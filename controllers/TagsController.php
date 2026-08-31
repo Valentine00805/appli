@@ -37,7 +37,7 @@ final class TagsController
         $noms = $this->decouper(post('nom'));
         if ($noms === []) {
             Session::flash('erreur', 'Indiquez au moins un nom de tag.');
-            redirect('tags');
+            redirect('organisation/tags');
         }
 
         $crees = 0;
@@ -60,7 +60,7 @@ final class TagsController
             Session::flash('info', 'Déjà existant' . (count($ignores) > 1 ? 's' : '') . ' : '
                 . implode(', ', $ignores) . '.');
         }
-        redirect('tags');
+        redirect('organisation/tags');
     }
 
     public function modifier(int $id): void
@@ -76,7 +76,7 @@ final class TagsController
         $nom = $this->nettoyer(post('nom'));
         if ($nom === '') {
             Session::flash('erreur', 'Le nom du tag est obligatoire.');
-            redirect('tags');
+            redirect('organisation/tags');
         }
 
         $doublon = Database::valeur(
@@ -86,12 +86,12 @@ final class TagsController
         if ($doublon !== null) {
             Session::flash('erreur',
                 'Un autre tag porte déjà ce nom. Utilisez « Fusionner » pour réunir les deux.');
-            redirect('tags');
+            redirect('organisation/tags');
         }
 
         Database::run('UPDATE tags SET nom = ? WHERE id = ? AND user_id = ?', [$nom, $id, $userId]);
         Session::flash('succes', 'Tag renommé en « ' . $nom . ' ».');
-        redirect('tags');
+        redirect('organisation/tags');
     }
 
     public function supprimer(int $id): void
@@ -119,7 +119,7 @@ final class TagsController
                 $nbCours > 1 ? 'sont' : 'est',
                 $nbCours > 1 ? 's' : ''
             ));
-        redirect('tags');
+        redirect('organisation/tags');
     }
 
     /** Réunit un tag dans un autre : les cours sont reportés, le premier disparaît. */
@@ -137,13 +137,13 @@ final class TagsController
         $cibleId = entier_ou_null($_POST['cible_id'] ?? null);
         if ($cibleId === null || $cibleId === $id) {
             Session::flash('erreur', 'Choisissez un autre tag comme destination.');
-            redirect('tags');
+            redirect('organisation/tags');
         }
 
         $cible = Database::one('SELECT nom FROM tags WHERE id = ? AND user_id = ?', [$cibleId, $userId]);
         if ($cible === null) {
             Session::flash('erreur', 'Tag de destination introuvable.');
-            redirect('tags');
+            redirect('organisation/tags');
         }
 
         // Report des cours qui n'ont pas déjà le tag de destination.
@@ -159,7 +159,7 @@ final class TagsController
             $source['nom'],
             $cible['nom']
         ));
-        redirect('tags');
+        redirect('organisation/tags');
     }
 
     /** Supprime d'un coup les tags qui ne sont sur aucun cours. */
@@ -183,7 +183,7 @@ final class TagsController
         Session::flash('succes', $nb === 0
             ? 'Aucun tag inutilisé à supprimer.'
             : $nb . ' tag' . ($nb > 1 ? 's inutilisés supprimés.' : ' inutilisé supprimé.'));
-        redirect('tags');
+        redirect('organisation/tags');
     }
 
     /** Tous les tags d'un utilisateur, pour les suggestions du formulaire de cours. */

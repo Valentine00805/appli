@@ -38,9 +38,7 @@ PHP 8 + MySQL, sans aucune dépendance externe : pas de Composer, pas de CDN, to
 | **Accueil** | Ce qui est prévu aujourd'hui, les 7 prochains jours, les échéances, les cours récents. |
 | **Calendrier** | Vue **mois**, **semaine** ou **liste**. Filtres par matière et par type. Clic sur `+` dans une case pour créer un évènement à cette date. |
 | **Mes cours** | Liste filtrable (recherche, matière, tag, favoris, tri) et création de cours. |
-| **Matières** | Nom, couleur et enseignant. La couleur sert de repère partout dans l'application. |
-| **Types** | Types d'évènement : nom, icône, couleur, ordre d'affichage, et indicateur « échéance ». |
-| **Tags** | Créer, renommer, fusionner et supprimer les tags des cours. |
+| **Organisation** | Trois onglets : **Matières** (nom, couleur, enseignant), **Types d'évènement** (nom, icône, couleur, ordre, indicateur « échéance ») et **Tags** (créer, renommer, fusionner, supprimer). |
 | **Recherche** | Cherche simultanément dans les cours et dans le calendrier, avec surlignage des termes. |
 | **Mon compte** | Statistiques et changement de mot de passe. |
 

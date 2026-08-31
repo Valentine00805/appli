@@ -42,7 +42,7 @@ $ligneEvenement = static function (array $evt): string {
   <a class="carte stat" href="<?= url('cours') ?>" style="text-decoration:none;color:inherit">
     <div class="stat__valeur"><?= (int) $stats['cours'] ?></div><div class="stat__libelle">cours enregistrés</div>
   </a>
-  <a class="carte stat" href="<?= url('matieres') ?>" style="text-decoration:none;color:inherit">
+  <a class="carte stat" href="<?= url('organisation/matieres') ?>" style="text-decoration:none;color:inherit">
     <div class="stat__valeur"><?= (int) $stats['matieres'] ?></div><div class="stat__libelle">matières</div>
   </a>
   <a class="carte stat" href="<?= url('calendrier') ?>" style="text-decoration:none;color:inherit">

@@ -52,7 +52,7 @@ $matiereActive = $edition ? entier_ou_null($cours['matiere_id']) : $matiereSelec
               </option>
             <?php endforeach; ?>
           </select>
-          <span class="champ__aide"><a href="<?= url('matieres') ?>">Gérer mes matières</a></span>
+          <span class="champ__aide"><a href="<?= url('organisation/matieres') ?>">Gérer mes matières</a></span>
         </div>
 
         <div class="champ">
@@ -65,7 +65,7 @@ $matiereActive = $edition ? entier_ou_null($cours['matiere_id']) : $matiereSelec
             <?php endforeach; ?>
           </datalist>
           <span class="champ__aide">
-            Séparés par des virgules. <a href="<?= url('tags') ?>">Gérer mes tags</a>
+            Séparés par des virgules. <a href="<?= url('organisation/tags') ?>">Gérer mes tags</a>
           </span>
         </div>
       </div>

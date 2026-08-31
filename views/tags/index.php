@@ -4,6 +4,8 @@ $csrf = Session::jetonCsrf();
 $total = count($tags);
 ?>
 
+<?= Vue::rendre('organisation/_onglets', ['onglet' => 'tags']) ?>
+
 <div class="entete-page">
   <div>
     <h1>Mes tags</h1>
@@ -31,9 +33,9 @@ $total = count($tags);
     <?php else: ?>
       <div class="filtres" style="margin-bottom:.75rem">
         <span class="discret">Trier :</span>
-        <a class="pastille" href="<?= url('tags', ['tri' => 'nom']) ?>"
+        <a class="pastille" href="<?= url('organisation/tags', ['tri' => 'nom']) ?>"
            <?= $tri === 'nom' ? 'style="background:var(--accent-doux);color:var(--accent-fonce)"' : '' ?>>A → Z</a>
-        <a class="pastille" href="<?= url('tags', ['tri' => 'usage']) ?>"
+        <a class="pastille" href="<?= url('organisation/tags', ['tri' => 'usage']) ?>"
            <?= $tri === 'usage' ? 'style="background:var(--accent-doux);color:var(--accent-fonce)"' : '' ?>>Les plus utilisés</a>
       </div>
 

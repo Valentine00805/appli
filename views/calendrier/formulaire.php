@@ -52,7 +52,7 @@ $matiereActive = $edition ? entier_ou_null($evenement['matiere_id']) : null;
         <legend>Type d'évènement</legend>
         <?php if ($types === []): ?>
           <p class="discret" style="margin:0">
-            Vous n'avez aucun type. <a href="<?= url('types') ?>">En créer un</a> pour classer vos évènements.
+            Vous n'avez aucun type. <a href="<?= url('organisation/types') ?>">En créer un</a> pour classer vos évènements.
           </p>
         <?php else: ?>
           <div style="display:flex;gap:.5rem;flex-wrap:wrap">
@@ -66,7 +66,7 @@ $matiereActive = $edition ? entier_ou_null($evenement['matiere_id']) : null;
             <?php endforeach; ?>
           </div>
           <p class="champ__aide" style="margin-top:.5rem">
-            <a href="<?= url('types') ?>">Gérer les types d'évènement</a>
+            <a href="<?= url('organisation/types') ?>">Gérer les types d'évènement</a>
           </p>
         <?php endif; ?>
       </fieldset>

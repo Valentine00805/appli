@@ -3,6 +3,8 @@
 $csrf = Session::jetonCsrf();
 ?>
 
+<?= Vue::rendre('organisation/_onglets', ['onglet' => 'matieres']) ?>
+
 <div class="entete-page">
   <div>
     <h1>Mes matières</h1>

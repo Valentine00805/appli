@@ -44,11 +44,11 @@ final class TypesEvenementController
         $nom = mb_substr(post('nom'), 0, 60);
         if ($nom === '') {
             Session::flash('erreur', 'Le nom du type est obligatoire.');
-            redirect('types');
+            redirect('organisation/types');
         }
         if (Database::valeur('SELECT id FROM types_evenement WHERE user_id = ? AND nom = ?', [$userId, $nom]) !== null) {
             Session::flash('erreur', 'Vous avez déjà un type nommé « ' . $nom . ' ».');
-            redirect('types');
+            redirect('organisation/types');
         }
 
         $position = (int) Database::valeur(
@@ -70,7 +70,7 @@ final class TypesEvenementController
         );
 
         Session::flash('succes', 'Type « ' . $nom . ' » créé.');
-        redirect('types');
+        redirect('organisation/types');
     }
 
     public function modifier(int $id): void
@@ -86,7 +86,7 @@ final class TypesEvenementController
         $nom = mb_substr(post('nom'), 0, 60);
         if ($nom === '') {
             Session::flash('erreur', 'Le nom du type est obligatoire.');
-            redirect('types');
+            redirect('organisation/types');
         }
 
         $doublon = Database::valeur(
@@ -95,7 +95,7 @@ final class TypesEvenementController
         );
         if ($doublon !== null) {
             Session::flash('erreur', 'Un autre type porte déjà ce nom.');
-            redirect('types');
+            redirect('organisation/types');
         }
 
         Database::run(
@@ -112,7 +112,7 @@ final class TypesEvenementController
         );
 
         Session::flash('succes', 'Type mis à jour.');
-        redirect('types');
+        redirect('organisation/types');
     }
 
     public function supprimer(int $id): void
@@ -140,7 +140,7 @@ final class TypesEvenementController
                 $nbEvenements > 1 ? 's' : '',
                 $nbEvenements > 1 ? 's' : ''
             ));
-        redirect('types');
+        redirect('organisation/types');
     }
 
     /** Monte ou descend un type dans la liste. */
@@ -173,7 +173,7 @@ final class TypesEvenementController
             }
         }
 
-        redirect('types');
+        redirect('organisation/types');
     }
 
     /** Crée les types par défaut pour un nouveau compte. */

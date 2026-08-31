@@ -43,11 +43,11 @@ final class MatieresController
         $nom = mb_substr(post('nom'), 0, 120);
         if ($nom === '') {
             Session::flash('erreur', 'Le nom de la matière est obligatoire.');
-            redirect('matieres');
+            redirect('organisation/matieres');
         }
         if (Database::valeur('SELECT id FROM matieres WHERE user_id = ? AND nom = ?', [$userId, $nom]) !== null) {
             Session::flash('erreur', 'Vous avez déjà une matière nommée « ' . $nom .' ».');
-            redirect('matieres');
+            redirect('organisation/matieres');
         }
 
         Database::run(
@@ -56,7 +56,7 @@ final class MatieresController
         );
 
         Session::flash('succes', 'Matière « ' . $nom . ' » créée.');
-        redirect('matieres');
+        redirect('organisation/matieres');
     }
 
     public function modifier(int $id): void
@@ -74,7 +74,7 @@ final class MatieresController
         $nom = mb_substr(post('nom'), 0, 120);
         if ($nom === '') {
             Session::flash('erreur', 'Le nom de la matière est obligatoire.');
-            redirect('matieres');
+            redirect('organisation/matieres');
         }
 
         $doublon = Database::valeur(
@@ -83,7 +83,7 @@ final class MatieresController
         );
         if ($doublon !== null) {
             Session::flash('erreur', 'Une autre matière porte déjà ce nom.');
-            redirect('matieres');
+            redirect('organisation/matieres');
         }
 
         Database::run(
@@ -92,7 +92,7 @@ final class MatieresController
         );
 
         Session::flash('succes', 'Matière mise à jour.');
-        redirect('matieres');
+        redirect('organisation/matieres');
     }
 
     public function supprimer(int $id): void
@@ -102,7 +102,7 @@ final class MatieresController
         // Les cours et évènements liés sont conservés : leur matière passe simplement à NULL.
         Database::run('DELETE FROM matieres WHERE id = ? AND user_id = ?', [$id, Auth::id()]);
         Session::flash('succes', 'Matière supprimée. Les cours associés ont été conservés.');
-        redirect('matieres');
+        redirect('organisation/matieres');
     }
 
     private function couleurValide(string $couleur): string

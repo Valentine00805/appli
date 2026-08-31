@@ -14,6 +14,7 @@ require __DIR__ . '/controllers/CalendrierController.php';
 require __DIR__ . '/controllers/MatieresController.php';
 require __DIR__ . '/controllers/TypesEvenementController.php';
 require __DIR__ . '/controllers/TagsController.php';
+require __DIR__ . '/controllers/OrganisationController.php';
 require __DIR__ . '/controllers/TableauBordController.php';
 
 /**
@@ -50,7 +51,15 @@ $routes = [
     ['POST', 'evenements/{id}/supprimer', [CalendrierController::class, 'supprimer']],
     ['POST', 'evenements/{id}/termine',   [CalendrierController::class, 'basculerTermine']],
 
-    ['GET',  'matieres',                  [MatieresController::class, 'index']],
+    ['GET',  'organisation',               [OrganisationController::class, 'index']],
+    ['GET',  'organisation/matieres',      [MatieresController::class, 'index']],
+    ['GET',  'organisation/types',         [TypesEvenementController::class, 'index']],
+    ['GET',  'organisation/tags',          [TagsController::class, 'index']],
+
+    // Anciennes adresses, conservées pour les liens déjà enregistrés.
+    ['GET',  'matieres',                  [OrganisationController::class, 'ancienneAdresse']],
+    ['GET',  'types',                     [OrganisationController::class, 'ancienneAdresse']],
+    ['GET',  'tags',                      [OrganisationController::class, 'ancienneAdresse']],
     ['POST', 'matieres',                  [MatieresController::class, 'creer']],
     ['POST', 'matieres/{id}/modifier',    [MatieresController::class, 'modifier']],
     ['POST', 'matieres/{id}/supprimer',   [MatieresController::class, 'supprimer']],

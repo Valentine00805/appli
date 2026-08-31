@@ -4,6 +4,8 @@ $csrf = Session::jetonCsrf();
 $dernier = count($types) - 1;
 ?>
 
+<?= Vue::rendre('organisation/_onglets', ['onglet' => 'types']) ?>
+
 <div class="entete-page">
   <div>
     <h1>Types d'évènement</h1>

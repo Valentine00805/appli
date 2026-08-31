@@ -18,7 +18,7 @@ $actif = static function (string $prefixe) use ($route): string {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#4f46e5">
 <title><?= e($titrePage) ?></title>
-<link rel="stylesheet" href="<?= url('assets/css/app.css') ?>?v=2">
+<link rel="stylesheet" href="<?= url('assets/css/app.css') ?>?v=3">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>">
 </head>
 <body>
@@ -40,9 +40,7 @@ $actif = static function (string $prefixe) use ($route): string {
       <a href="<?= url('') ?>"<?= $actif('') ?>>Accueil</a>
       <a href="<?= url('calendrier') ?>"<?= $actif('calendrier') ?>>Calendrier</a>
       <a href="<?= url('cours') ?>"<?= $actif('cours') ?>>Mes cours</a>
-      <a href="<?= url('matieres') ?>"<?= $actif('matieres') ?>>Matières</a>
-      <a href="<?= url('types') ?>"<?= $actif('types') ?>>Types</a>
-      <a href="<?= url('tags') ?>"<?= $actif('tags') ?>>Tags</a>
+      <a href="<?= url('organisation/matieres') ?>"<?= $actif('organisation') ?>>Organisation</a>
 
       <form class="recherche-rapide" action="<?= url('recherche') ?>" method="get" role="search">
         <input type="search" name="q" placeholder="Rechercher…" aria-label="Rechercher dans mes cours"
@@ -83,6 +81,6 @@ $actif = static function (string $prefixe) use ($route): string {
   <p><?= e((string) Config::get('app', 'nom')) ?> — vos cours et votre planning, en local.</p>
 </footer>
 
-<script src="<?= url('assets/js/app.js') ?>?v=2" defer></script>
+<script src="<?= url('assets/js/app.js') ?>?v=3" defer></script>
 </body>
 </html>

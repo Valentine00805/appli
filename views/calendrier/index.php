@@ -52,7 +52,7 @@ $puce = static function (array $evt): string {
     <p>Planifiez vos cours et vos échéances.</p>
   </div>
   <div class="actions">
-    <a class="bouton bouton--secondaire" href="<?= url('types') ?>">Gérer les types</a>
+    <a class="bouton bouton--secondaire" href="<?= url('organisation/types') ?>">Gérer les types</a>
     <a class="bouton" href="<?= url('evenements/nouveau') ?>">+ Évènement</a>
   </div>
 </div>
@@ -205,7 +205,7 @@ $puce = static function (array $evt): string {
       <?= e($t['icone'] . ' ' . $t['nom']) ?>
     </a>
   <?php endforeach; ?>
-  <a class="pastille" href="<?= url('types') ?>">⚙ Gérer</a>
+  <a class="pastille" href="<?= url('organisation/types') ?>">⚙ Gérer</a>
 </div>
 
 <?php if ($aVenir !== []): ?>
