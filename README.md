@@ -163,6 +163,32 @@ Une opération importée est une opération comme une autre : **modifiable et
 supprimable**. Un repère 📥 la distingue dans la liste, et un filtre permet de
 n'afficher que les lignes importées ou que celles saisies à la main.
 
+### Reprendre ses anciens classeurs
+
+L'onglet **Import** accepte aussi les anciens fichiers de comptes au format
+`.xlsx`, ceux tenus à la main avant l'application.
+
+La feuille est lue telle qu'elle est écrite : date, libellé et montant dans les
+trois premières colonnes, dépenses réunies en blocs séparés par une ligne vide.
+Le nom de la rubrique n'étant pas sur les lignes mais dans les totaux à droite
+(« Total essence : », « Total repas pour les parents : »), il en est déduit.
+
+Sont également reconnus :
+
+- **« divisé par 2 »** — seule la moitié est réclamée, et le reliquat d'arrondi
+  est reporté pour que le bloc retombe exactement sur votre chiffre ;
+- **« pas dans le total » / « à voir avec … »** — le bloc concerné est repris
+  avec le statut « hors total », sans contaminer les blocs voisins ;
+- plusieurs mois dans une même feuille.
+
+Avant validation, **le total recalculé est comparé à celui inscrit dans votre
+feuille**, mois par mois. Un écart est signalé plutôt que corrigé en silence :
+il vient en général d'une ligne que vous comptiez autrement.
+
+Les rubriques trouvées se rattachent à vos catégories, ou sont créées. Les
+lignes reprises sont cochées « à me faire rembourser », avec le destinataire de
+votre choix, et peuvent être marquées comme déjà remboursées.
+
 ### Prévisions
 
 L'onglet **Prévisions** répond à une question simple : combien me restera-t-il à

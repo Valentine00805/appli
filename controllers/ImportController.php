@@ -14,7 +14,7 @@ final class ImportController
     /** Taille maximale d'un relevé. */
     private const TAILLE_MAX = 4 * 1024 * 1024;
 
-    private const EXTENSIONS = ['csv', 'txt', 'tsv'];
+    private const EXTENSIONS = ['csv', 'txt', 'tsv', 'xlsx'];
 
     public function formulaire(): void
     {
@@ -53,8 +53,12 @@ final class ImportController
         $extension = strtolower(pathinfo((string) $fichier['name'], PATHINFO_EXTENSION));
         if (!in_array($extension, self::EXTENSIONS, true)) {
             Session::flash('erreur',
-                'Format non reconnu. Exportez votre relevé en CSV depuis le site de votre banque.');
+                'Format non reconnu. Déposez un relevé en CSV, ou un ancien classeur au format .xlsx.');
             redirect('budget/import');
+        }
+
+        if ($extension === 'xlsx') {
+            $this->analyserClasseur((string) $fichier['tmp_name'], (string) $fichier['name']);
         }
 
         $contenu = file_get_contents((string) $fichier['tmp_name']);
@@ -82,6 +86,129 @@ final class ImportController
         redirect('budget/import/apercu');
     }
 
+    /**
+     * Lecture d'un ancien classeur tenu à la main. La structure y est différente
+     * d'un relevé bancaire : rubriques déduites des lignes de total, parts
+     * partagées, blocs mis hors total. On la traite à part.
+     */
+    private function analyserClasseur(string $chemin, string $nom): never
+    {
+        try {
+            $analyse = ReleveExcel::analyser($chemin);
+        } catch (RuntimeException $e) {
+            Session::flash('erreur', $e->getMessage());
+            redirect('budget/import');
+        }
+
+        if ($analyse['operations'] === []) {
+            Session::flash('erreur',
+                'Aucune dépense reconnue. La feuille doit comporter une date, un libellé et un montant '
+                . 'dans les trois premières colonnes.');
+            redirect('budget/import');
+        }
+
+        $_SESSION['_import'] = [
+            'type'       => 'classeur',
+            'nom'        => mb_substr($nom, 0, 120),
+            'operations' => $analyse['operations'],
+            'totaux'     => $analyse['totaux'],
+            'ignorees'   => $analyse['ignorees'],
+        ];
+        redirect('budget/import/apercu');
+    }
+
+    /** Aperçu d'un ancien classeur : rubriques à rattacher, lignes à cocher. */
+    private function apercuClasseur(array $releve, int $userId): never
+    {
+        $categories = $this->categories($userId);
+        $operations = $releve['operations'];
+
+        // Empreintes déjà connues, pour ne pas réimporter deux fois le même mois.
+        $pourEmpreinte = array_map(
+            static fn (array $o): array => ['date' => $o['date'], 'montant' => $o['montant'], 'libelle' => $o['libelle']],
+            $operations
+        );
+        $connues = $this->empreintesConnues($userId, $pourEmpreinte);
+
+        $rubriques = [];
+        $lignes = [];
+        $parMois = [];
+
+        foreach ($operations as $i => $o) {
+            $empreinte = ReleveCsv::empreinte($o['date'], (float) $o['montant'], $o['libelle']);
+            $doublon = isset($connues[$empreinte]);
+
+            $rubrique = $o['rubrique'] ?? '';
+            if ($rubrique !== '' && !isset($rubriques[$rubrique])) {
+                $rubriques[$rubrique] = [
+                    'nom'       => $rubrique,
+                    'categorie' => $this->categorieProche($rubrique, $categories),
+                    'nb'        => 0,
+                ];
+            }
+            if ($rubrique !== '') {
+                $rubriques[$rubrique]['nb']++;
+            }
+
+            $lignes[] = $o + ['index' => $i, 'doublon' => $doublon];
+
+            if ($o['statut'] !== 'hors_total' && !$doublon) {
+                $mois = substr($o['date'], 0, 7);
+                $parMois[$mois] = ($parMois[$mois] ?? 0) + ($o['part'] ?? $o['montant']);
+            }
+        }
+        ksort($parMois);
+
+        // Comparaison avec les totaux inscrits dans la feuille.
+        $controles = [];
+        foreach ($parMois as $mois => $somme) {
+            $nom = self::sansAccents(strtolower(nom_mois((int) substr($mois, 5, 2))));
+            $sien = $releve['totaux'][$nom] ?? null;
+            $controles[] = [
+                'mois'      => $mois,
+                'recalcule' => $somme,
+                'feuille'   => $sien,
+                'ecart'     => $sien === null ? null : round($somme - $sien, 2),
+            ];
+        }
+
+        Vue::afficher('budget/import_apercu_classeur', [
+            'nom'        => $releve['nom'],
+            'lignes'     => $lignes,
+            'rubriques'  => $rubriques,
+            'categories' => $categories,
+            'controles'  => $controles,
+            'ignorees'   => (int) $releve['ignorees'],
+            'doublons'   => count(array_filter($lignes, static fn (array $l): bool => $l['doublon'])),
+            'personnes'  => RemboursementsController::personnes($userId),
+        ], 'Aperçu du classeur');
+        exit;
+    }
+
+    /** Rapproche une rubrique du classeur d'une catégorie existante. */
+    private function categorieProche(string $rubrique, array $categories): ?int
+    {
+        $cible = self::sansAccents(mb_strtolower($rubrique));
+        foreach ($categories as $c) {
+            if ($c['sens'] !== 'depense') {
+                continue;
+            }
+            $nom = self::sansAccents(mb_strtolower((string) $c['nom']));
+            if ($nom === $cible || str_contains($cible, $nom) || str_contains($nom, $cible)) {
+                return (int) $c['id'];
+            }
+        }
+        return null;
+    }
+
+    private static function sansAccents(string $texte): string
+    {
+        return strtr(trim($texte), [
+            'à' => 'a', 'â' => 'a', 'ä' => 'a', 'é' => 'e', 'è' => 'e', 'ê' => 'e', 'ë' => 'e',
+            'î' => 'i', 'ï' => 'i', 'ô' => 'o', 'ö' => 'o', 'ù' => 'u', 'û' => 'u', 'ü' => 'u', 'ç' => 'c',
+        ]);
+    }
+
     /** Deuxième étape : vérification, correction du mapping, choix des lignes. */
     public function apercu(): void
     {
@@ -92,6 +219,10 @@ final class ImportController
         if (!is_array($releve)) {
             Session::flash('info', 'Commencez par déposer un fichier.');
             redirect('budget/import');
+        }
+
+        if (($releve['type'] ?? '') === 'classeur') {
+            $this->apercuClasseur($releve, $userId);
         }
 
         // Un ajustement du mapping renvoie ici en GET.
@@ -159,6 +290,10 @@ final class ImportController
         if ($retenues === []) {
             Session::flash('erreur', 'Aucune ligne sélectionnée.');
             redirect('budget/import/apercu');
+        }
+
+        if (($releve['type'] ?? '') === 'classeur') {
+            $this->confirmerClasseur($releve, $userId, $retenues);
         }
 
         $mapping = $releve['mapping'];
@@ -230,6 +365,111 @@ final class ImportController
             }
         }
         redirect('budget', $premiere !== null ? ['mois' => substr($premiere, 0, 7)] : []);
+    }
+
+    /** Enregistrement des lignes retenues d'un ancien classeur. */
+    private function confirmerClasseur(array $releve, int $userId, array $retenues): never
+    {
+        $operations = $releve['operations'];
+        $mapping = (array) ($_POST['rubrique'] ?? []);
+        $personne = mb_substr(post('rembourse_par'), 0, 80) ?: null;
+        $dejaRegle = isset($_POST['deja_rembourse']);
+        $categoriesValides = array_column($this->categories($userId), 'sens', 'id');
+
+        $creees = [];
+        $importees = 0;
+        $ignorees = 0;
+
+        foreach ($retenues as $index) {
+            $o = $operations[$index] ?? null;
+            if ($o === null) {
+                $ignorees++;
+                continue;
+            }
+
+            $empreinte = ReleveCsv::empreinte($o['date'], (float) $o['montant'], $o['libelle']);
+            if (Database::valeur(
+                'SELECT id FROM operations WHERE user_id = ? AND empreinte = ? LIMIT 1',
+                [$userId, $empreinte]
+            ) !== null) {
+                $ignorees++;
+                continue;
+            }
+
+            // Rattachement de la rubrique : catégorie existante, création, ou rien.
+            $categorieId = null;
+            $rubrique = (string) ($o['rubrique'] ?? '');
+            if ($rubrique !== '') {
+                $choix = (string) ($mapping[$rubrique] ?? '');
+                if ($choix === 'creer') {
+                    $categorieId = $creees[$rubrique] ??= $this->creerCategorie($userId, $rubrique);
+                } elseif ($choix !== '' && $choix !== 'aucune') {
+                    $id = (int) $choix;
+                    if (($categoriesValides[$id] ?? null) === 'depense') {
+                        $categorieId = $id;
+                    }
+                }
+            }
+
+            $statut = $o['statut'] === 'hors_total'
+                ? 'hors_total'
+                : ($dejaRegle ? 'rembourse' : 'a_reclamer');
+
+            Database::run(
+                "INSERT INTO operations
+                   (user_id, categorie_id, libelle, montant, sens, date_operation, note, source, empreinte,
+                    a_rembourser, part_rembourser, rembourse_par, statut_remb, date_remboursement)
+                 VALUES (?, ?, ?, ?, 'depense', ?, ?, 'import', ?, 1, ?, ?, ?, ?)",
+                [
+                    $userId,
+                    $categorieId,
+                    $o['libelle'],
+                    number_format((float) $o['montant'], 2, '.', ''),
+                    $o['date'],
+                    $o['note'] ?? null,
+                    $empreinte,
+                    $o['part'] === null ? null : number_format((float) $o['part'], 2, '.', ''),
+                    $personne,
+                    $statut,
+                    $statut === 'rembourse' ? $o['date'] : null,
+                ]
+            );
+            $importees++;
+        }
+
+        unset($_SESSION['_import']);
+
+        Session::flash('succes', sprintf(
+            '%d dépense%s reprise%s du classeur.%s%s',
+            $importees,
+            $importees > 1 ? 's' : '',
+            $importees > 1 ? 's' : '',
+            $creees !== [] ? ' ' . count($creees) . ' catégorie' . (count($creees) > 1 ? 's créées' : ' créée') . '.' : '',
+            $ignorees > 0 ? ' ' . $ignorees . ' ligne' . ($ignorees > 1 ? 's ignorées' : ' ignorée') . '.' : ''
+        ));
+        redirect('budget/remboursements');
+    }
+
+    private function creerCategorie(int $userId, string $nom): int
+    {
+        $existe = Database::valeur(
+            "SELECT id FROM categories_budget WHERE user_id = ? AND nom = ? AND sens = 'depense'",
+            [$userId, $nom]
+        );
+        if ($existe !== null) {
+            return (int) $existe;
+        }
+
+        $position = (int) Database::valeur(
+            "SELECT COALESCE(MAX(position), 0) + 1 FROM categories_budget WHERE user_id = ? AND sens = 'depense'",
+            [$userId]
+        );
+        Database::run(
+            "INSERT INTO categories_budget (user_id, nom, icone, couleur, sens, position)
+             VALUES (?, ?, '💶', ?, 'depense', ?)",
+            [$userId, mb_substr($nom, 0, 60), BudgetController::PALETTE[$position % count(BudgetController::PALETTE)], $position]
+        );
+        return Database::dernierId();
     }
 
     public function abandonner(): void

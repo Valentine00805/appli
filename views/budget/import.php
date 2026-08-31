@@ -21,9 +21,11 @@
 
       <div class="champ">
         <label for="releve">Relevé de compte</label>
-        <input type="file" id="releve" name="releve" accept=".csv,.txt,.tsv,text/csv" required>
+        <input type="file" id="releve" name="releve"
+               accept=".csv,.txt,.tsv,.xlsx,text/csv" required>
         <span class="champ__aide">
-          Format CSV, tel que proposé par votre banque. 4 Mo maximum.
+          Un relevé bancaire au format <strong>CSV</strong>, ou un ancien classeur
+          <strong>.xlsx</strong> tenu à la main. 4 Mo maximum.
         </span>
       </div>
 
@@ -46,7 +48,7 @@
 
   <div class="pile">
     <div class="carte">
-      <h2>Comment obtenir le fichier</h2>
+      <h2>Un relevé de banque</h2>
       <p class="discret" style="margin-bottom:.6rem">
         Sur le site ou l'application de votre banque, ouvrez l'historique du compte
         et cherchez « Exporter », « Télécharger les opérations » ou une icône de
@@ -68,6 +70,20 @@
         <li>Les lignes d'en-tête et le préambule de certaines banques.</li>
         <li>Les doublons, si vous réimportez un relevé qui se chevauche.</li>
       </ul>
+    </div>
+
+    <div class="carte">
+      <h2>Un ancien classeur</h2>
+      <p class="discret" style="margin-bottom:.6rem">
+        Vos anciens fichiers de comptes au format <strong>.xlsx</strong> se reprennent
+        aussi, avec leur structure : une date, un libellé et un montant dans les trois
+        premières colonnes, et des lignes « Total … » à droite dont sont déduites les
+        rubriques.
+      </p>
+      <p class="discret" style="margin:0">
+        Les mentions « divisé par 2 » et « pas dans le total » sont reconnues, et le
+        total recalculé est comparé à celui de votre feuille avant validation.
+      </p>
     </div>
 
     <div class="carte">
