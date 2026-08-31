@@ -26,11 +26,14 @@ final class TableauBordController
                 $finSemaine
             ),
             'examens' => Database::all(
-                'SELECT e.*, m.nom AS matiere_nom, m.couleur AS matiere_couleur
-                 FROM evenements e LEFT JOIN matieres m ON m.id = e.matiere_id
-                 WHERE e.user_id = ? AND e.type IN (?, ?) AND e.fin >= NOW() AND e.termine = 0
+                'SELECT e.*, m.nom AS matiere_nom, m.couleur AS matiere_couleur,
+                        t.nom AS type_nom, t.icone AS type_icone, t.couleur AS type_couleur
+                 FROM evenements e
+                 LEFT JOIN matieres m   ON m.id = e.matiere_id
+                 JOIN types_evenement t ON t.id = e.type_id
+                 WHERE e.user_id = ? AND t.est_echeance = 1 AND e.fin >= NOW() AND e.termine = 0
                  ORDER BY e.debut ASC LIMIT 5',
-                [$userId, 'examen', 'devoir']
+                [$userId]
             ),
             'derniersCours' => Database::all(
                 'SELECT c.id, c.titre, c.updated_at, m.nom AS matiere_nom, m.couleur AS matiere_couleur

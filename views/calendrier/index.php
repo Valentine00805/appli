@@ -2,16 +2,14 @@
 /**
  * @var string $vue
  * @var DateTimeImmutable $ancre, $debut, $fin
- * @var array $evenements, $parJour, $matieres, $aVenir
- * @var ?int $matiereId
- * @var ?string $type
+ * @var array $evenements, $parJour, $matieres, $types, $aVenir
+ * @var ?int $matiereId, $typeId
  */
-$types = types_evenement();
 $aujourdhui = (new DateTimeImmutable('today'))->format('Y-m-d');
 
 $filtresUrl = array_filter([
     'matiere' => $matiereId,
-    'type'    => $type,
+    'type'    => $typeId,
 ], static fn ($v): bool => $v !== null);
 
 /** Lien de navigation en gardant les filtres. */
@@ -35,15 +33,15 @@ if ($vue === 'semaine') {
 }
 
 /** Rend une puce d'évènement pour la grille mensuelle. */
-$puce = static function (array $evt) use ($types): string {
-    $couleur = $evt['matiere_couleur'] ?? '#64748b';
+$puce = static function (array $evt): string {
+    $couleur = couleur_evenement($evt);
     $fond = 'color-mix(in srgb, ' . $couleur . ' 16%, transparent)';
     $heure = $evt['journee_entiere'] ? '' : '<span class="evt__heure">' . date('H:i', strtotime($evt['debut'])) . '</span> ';
     return '<a class="evt' . ($evt['termine'] ? ' evt--termine' : '') . '"'
         . ' href="' . url('evenements/' . $evt['id'] . '/modifier') . '"'
         . ' style="background:' . e($fond) . ';border-left-color:' . e($couleur) . ';color:inherit"'
-        . ' title="' . e($types[$evt['type']]['libelle'] . ' · ' . $evt['titre']) . '">'
-        . $heure . e($types[$evt['type']]['icone']) . ' ' . e($evt['titre'])
+        . ' title="' . e(libelle_type($evt) . ' · ' . $evt['titre']) . '">'
+        . $heure . e(icone_evenement($evt)) . ' ' . e($evt['titre'])
         . '</a>';
 };
 ?>
@@ -51,10 +49,10 @@ $puce = static function (array $evt) use ($types): string {
 <div class="entete-page">
   <div>
     <h1>Calendrier</h1>
-    <p>Cours, examens, devoirs et révisions.</p>
+    <p>Planifiez vos cours et vos échéances.</p>
   </div>
   <div class="actions">
-    <a class="bouton bouton--secondaire" href="<?= url('evenements/nouveau', ['type' => 'examen']) ?>">+ Examen</a>
+    <a class="bouton bouton--secondaire" href="<?= url('types') ?>">Gérer les types</a>
     <a class="bouton" href="<?= url('evenements/nouveau') ?>">+ Évènement</a>
   </div>
 </div>
@@ -81,9 +79,9 @@ $puce = static function (array $evt) use ($types): string {
       </select>
       <select name="type" aria-label="Filtrer par type">
         <option value="">Tous les types</option>
-        <?php foreach ($types as $cle => $info): ?>
-          <option value="<?= e($cle) ?>"<?= $type === $cle ? ' selected' : '' ?>>
-            <?= e($info['icone'] . ' ' . $info['libelle']) ?>
+        <?php foreach ($types as $t): ?>
+          <option value="<?= (int) $t['id'] ?>"<?= $typeId === (int) $t['id'] ? ' selected' : '' ?>>
+            <?= e($t['icone'] . ' ' . $t['nom']) ?>
           </option>
         <?php endforeach; ?>
       </select>
@@ -161,7 +159,7 @@ $puce = static function (array $evt) use ($types): string {
               <span class="discret">Rien de prévu.</span>
             <?php else: ?>
               <?php foreach ($duJour as $evt): ?>
-                <?= Vue::rendre('calendrier/_ligne', ['evt' => $evt, 'types' => $types]) ?>
+                <?= Vue::rendre('calendrier/_ligne', ['evt' => $evt]) ?>
               <?php endforeach; ?>
             <?php endif; ?>
           </div>
@@ -193,7 +191,7 @@ $puce = static function (array $evt) use ($types): string {
                 <?= e(date_fr($evt['debut'], false)) ?>
               </h3>
           <?php endif; ?>
-          <?= Vue::rendre('calendrier/_ligne', ['evt' => $evt, 'types' => $types]) ?>
+          <?= Vue::rendre('calendrier/_ligne', ['evt' => $evt]) ?>
       <?php endforeach; ?>
     </div>
   <?php endif; ?>
@@ -201,17 +199,22 @@ $puce = static function (array $evt) use ($types): string {
 <?php endif; ?>
 
 <div class="legende-types" style="margin-top:1rem">
-  <?php foreach ($types as $info): ?>
-    <span><?= e($info['icone'] . ' ' . $info['libelle']) ?></span>
+  <?php foreach ($types as $t): ?>
+    <a class="pastille" href="<?= url('calendrier', ['vue' => $vue, 'date' => $ancre->format('Y-m-d'), 'type' => $t['id']]) ?>"
+       style="background:<?= e($t['couleur']) ?>;color:<?= e(couleur_texte($t['couleur'])) ?>">
+      <?= e($t['icone'] . ' ' . $t['nom']) ?>
+    </a>
   <?php endforeach; ?>
+  <a class="pastille" href="<?= url('types') ?>">⚙ Gérer</a>
 </div>
 
 <?php if ($aVenir !== []): ?>
   <section class="carte" style="margin-top:1.5rem">
-    <h2>Prochaines échéances</h2>
+    <h2>Prochainement</h2>
+    <p class="discret" style="margin:-.4rem 0 .75rem">Les prochains évènements, quels que soient les filtres ci-dessus.</p>
     <div class="pile">
       <?php foreach ($aVenir as $evt): ?>
-        <?= Vue::rendre('calendrier/_ligne', ['evt' => $evt, 'types' => $types, 'avecDate' => true]) ?>
+        <?= Vue::rendre('calendrier/_ligne', ['evt' => $evt, 'avecDate' => true]) ?>
       <?php endforeach; ?>
     </div>
   </section>

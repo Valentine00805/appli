@@ -2,11 +2,10 @@
 /**
  * Une ligne d'évènement réutilisable.
  * @var array $evt
- * @var array $types
  * @var bool $avecDate
  */
 $avecDate = $avecDate ?? false;
-$couleur = $evt['matiere_couleur'] ?? '#94a3b8';
+$couleur = couleur_evenement($evt);
 $heure = $evt['journee_entiere']
     ? 'Journée'
     : date('H:i', strtotime((string) $evt['debut'])) . ' – ' . date('H:i', strtotime((string) $evt['fin']));
@@ -21,10 +20,10 @@ $heure = $evt['journee_entiere']
   <span style="min-width:0">
     <a class="evt-ligne__titre" href="<?= url('evenements/' . $evt['id'] . '/modifier') ?>"
        style="text-decoration:none;color:inherit">
-      <?= e($types[$evt['type']]['icone'] . ' ' . $evt['titre']) ?>
+      <?= e(icone_evenement($evt) . ' ' . $evt['titre']) ?>
     </a><br>
     <span class="evt-ligne__meta">
-      <?= e($types[$evt['type']]['libelle']) ?><?php
+      <?= e(libelle_type($evt)) ?><?php
         if (!empty($evt['matiere_nom'])) { echo ' · ' . e($evt['matiere_nom']); }
         if (!empty($evt['lieu'])) { echo ' · 📍 ' . e($evt['lieu']); }
         if (!empty($evt['cours_titre'])) { echo ' · 📘 ' . e($evt['cours_titre']); }

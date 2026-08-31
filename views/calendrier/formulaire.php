@@ -1,12 +1,12 @@
 <?php
 /**
  * @var ?array $evenement
- * @var array $matieres, $coursListe
- * @var string $dateDefaut, $typeDefaut
+ * @var array $matieres, $coursListe, $types
+ * @var string $dateDefaut
+ * @var ?int $typeDefaut
  */
 $edition = $evenement !== null;
 $action = $edition ? url('evenements/' . $evenement['id'] . '/modifier') : url('evenements/nouveau');
-$types = types_evenement();
 
 $valeur = static function (string $champ, string $defaut = '') use ($evenement, $edition): string {
     if ($edition) {
@@ -20,7 +20,10 @@ $dateFin   = $edition ? substr((string) $evenement['fin'], 0, 10) : $dateDebut;
 $heureDebut = $edition ? substr((string) $evenement['debut'], 11, 5) : '08:00';
 $heureFin   = $edition ? substr((string) $evenement['fin'], 11, 5) : '09:00';
 $journee = $edition ? (int) $evenement['journee_entiere'] === 1 : false;
-$typeActif = $edition ? (string) $evenement['type'] : $typeDefaut;
+$typeActif = $edition ? entier_ou_null($evenement['type_id']) : $typeDefaut;
+if ($typeActif === null && $types !== []) {
+    $typeActif = (int) $types[0]['id'];
+}
 $coursActif = $edition ? entier_ou_null($evenement['cours_id']) : entier_ou_null($_GET['cours'] ?? null);
 $matiereActive = $edition ? entier_ou_null($evenement['matiere_id']) : null;
 ?>
@@ -47,14 +50,25 @@ $matiereActive = $edition ? entier_ou_null($evenement['matiere_id']) : null;
 
       <fieldset>
         <legend>Type d'évènement</legend>
-        <div style="display:flex;gap:.5rem;flex-wrap:wrap">
-          <?php foreach ($types as $cle => $info): ?>
-            <label class="case">
-              <input type="radio" name="type" value="<?= e($cle) ?>"<?= $typeActif === $cle ? ' checked' : '' ?>>
-              <?= e($info['icone'] . ' ' . $info['libelle']) ?>
-            </label>
-          <?php endforeach; ?>
-        </div>
+        <?php if ($types === []): ?>
+          <p class="discret" style="margin:0">
+            Vous n'avez aucun type. <a href="<?= url('types') ?>">En créer un</a> pour classer vos évènements.
+          </p>
+        <?php else: ?>
+          <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+            <?php foreach ($types as $t): ?>
+              <label class="case">
+                <input type="radio" name="type_id" value="<?= (int) $t['id'] ?>"<?= $typeActif === (int) $t['id'] ? ' checked' : '' ?>>
+                <span class="pastille" style="background:<?= e($t['couleur']) ?>;color:<?= e(couleur_texte($t['couleur'])) ?>">
+                  <?= e($t['icone'] . ' ' . $t['nom']) ?>
+                </span>
+              </label>
+            <?php endforeach; ?>
+          </div>
+          <p class="champ__aide" style="margin-top:.5rem">
+            <a href="<?= url('types') ?>">Gérer les types d'évènement</a>
+          </p>
+        <?php endif; ?>
       </fieldset>
 
       <div class="ligne-champs">

@@ -39,12 +39,21 @@ PHP 8 + MySQL, sans aucune dépendance externe : pas de Composer, pas de CDN, to
 | **Calendrier** | Vue **mois**, **semaine** ou **liste**. Filtres par matière et par type. Clic sur `+` dans une case pour créer un évènement à cette date. |
 | **Mes cours** | Liste filtrable (recherche, matière, tag, favoris, tri) et création de cours. |
 | **Matières** | Nom, couleur et enseignant. La couleur sert de repère partout dans l'application. |
+| **Types** | Types d'évènement : nom, icône, couleur, ordre d'affichage, et indicateur « échéance ». |
 | **Recherche** | Cherche simultanément dans les cours et dans le calendrier, avec surlignage des termes. |
 | **Mon compte** | Statistiques et changement de mot de passe. |
 
-Types d'évènement : 📘 Cours · 📝 Examen · 🗂️ Devoir · 🔁 Révision · 📌 Autre.
-Chaque évènement peut être coché comme terminé (☐ / ☑) et rattaché à un cours,
-pour retrouver ses notes le jour J.
+Cinq types sont créés avec le compte (📘 Cours, 📝 Examen, 🗂️ Devoir, 🔁 Révision,
+📌 Autre) et sont entièrement modifiables depuis la page **Types** : renommer,
+changer l'icône et la couleur, réordonner, ajouter les vôtres, supprimer.
+
+Un type marqué « échéance » fait apparaître ses évènements sur l'accueil avec un
+compte à rebours. Supprimer un type ne supprime pas les évènements : ils passent
+simplement en « Sans type ».
+
+La couleur d'un évènement au calendrier est celle de sa matière ; à défaut, celle
+de son type. Chaque évènement peut être coché comme terminé (☐ / ☑) et rattaché à
+un cours, pour retrouver ses notes le jour J.
 
 ### Fichiers joints
 
@@ -99,6 +108,7 @@ views/                 Gabarits et pages, en PHP pur
 assets/                CSS et JavaScript
 storage/uploads/       Fichiers téléversés (jamais servis directement par Apache)
 sql/schema.sql         Création de la base et des tables
+sql/migration-*.sql    Migrations à appliquer sur une base déjà installée
 ```
 
 Chaque URL passe par `index.php` (règle de réécriture dans `.htaccess`), qui la

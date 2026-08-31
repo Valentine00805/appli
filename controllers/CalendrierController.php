@@ -19,9 +19,9 @@ final class CalendrierController
         };
 
         $matiereId = entier_ou_null($_GET['matiere'] ?? null);
-        $type = in_array($_GET['type'] ?? '', array_keys(types_evenement()), true) ? (string) $_GET['type'] : null;
+        $typeId = $this->typeValide($userId, $_GET['type'] ?? null);
 
-        $evenements = $this->evenements($userId, $debut, $fin, $matiereId, $type);
+        $evenements = $this->evenements($userId, $debut, $fin, $matiereId, $typeId);
 
         Vue::afficher('calendrier/index', [
             'vue'           => $vue,
@@ -32,7 +32,8 @@ final class CalendrierController
             'parJour'       => $this->grouperParJour($evenements),
             'matieres'      => $this->matieres($userId),
             'matiereId'     => $matiereId,
-            'type'          => $type,
+            'types'         => TypesEvenementController::pourUtilisateur($userId),
+            'typeId'        => $typeId,
             'aVenir'        => $this->aVenir($userId, 6),
         ], 'Calendrier');
     }
@@ -61,9 +62,8 @@ final class CalendrierController
             'matieres'   => $this->matieres($userId),
             'coursListe' => Database::all('SELECT id, titre FROM cours WHERE user_id = ? ORDER BY titre', [$userId]),
             'dateDefaut' => $dateDefaut,
-            'typeDefaut' => in_array($_GET['type'] ?? '', array_keys(types_evenement()), true)
-                ? (string) $_GET['type']
-                : 'cours',
+            'types'      => TypesEvenementController::pourUtilisateur($userId),
+            'typeDefaut' => $this->typeValide($userId, $_GET['type'] ?? null),
         ], $evenement === null ? 'Nouvel événement' : 'Modifier l\'événement');
     }
 
@@ -80,13 +80,13 @@ final class CalendrierController
         }
 
         Database::run(
-            'INSERT INTO evenements (user_id, matiere_id, cours_id, type, titre, description, lieu, debut, fin, journee_entiere)
+            'INSERT INTO evenements (user_id, matiere_id, cours_id, type_id, titre, description, lieu, debut, fin, journee_entiere)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             [
                 $userId,
                 $donnees['matiere_id'],
                 $donnees['cours_id'],
-                $donnees['type'],
+                $donnees['type_id'],
                 $donnees['titre'],
                 $donnees['description'],
                 $donnees['lieu'],
@@ -118,13 +118,13 @@ final class CalendrierController
 
         Database::run(
             'UPDATE evenements
-             SET matiere_id = ?, cours_id = ?, type = ?, titre = ?, description = ?, lieu = ?,
+             SET matiere_id = ?, cours_id = ?, type_id = ?, titre = ?, description = ?, lieu = ?,
                  debut = ?, fin = ?, journee_entiere = ?
              WHERE id = ? AND user_id = ?',
             [
                 $donnees['matiere_id'],
                 $donnees['cours_id'],
-                $donnees['type'],
+                $donnees['type_id'],
                 $donnees['titre'],
                 $donnees['description'],
                 $donnees['lieu'],
@@ -169,12 +169,14 @@ final class CalendrierController
         DateTimeInterface $debut,
         DateTimeInterface $fin,
         ?int $matiereId = null,
-        ?string $type = null
+        ?int $typeId = null
     ): array {
-        $sql = 'SELECT e.*, m.nom AS matiere_nom, m.couleur AS matiere_couleur, c.titre AS cours_titre
+        $sql = 'SELECT e.*, m.nom AS matiere_nom, m.couleur AS matiere_couleur, c.titre AS cours_titre,
+                       t.nom AS type_nom, t.icone AS type_icone, t.couleur AS type_couleur, t.est_echeance
                 FROM evenements e
-                LEFT JOIN matieres m ON m.id = e.matiere_id
-                LEFT JOIN cours c    ON c.id = e.cours_id
+                LEFT JOIN matieres m        ON m.id = e.matiere_id
+                LEFT JOIN cours c           ON c.id = e.cours_id
+                LEFT JOIN types_evenement t ON t.id = e.type_id
                 WHERE e.user_id = ? AND e.debut <= ? AND e.fin >= ?';
         $params = [$userId, $fin->format('Y-m-d H:i:s'), $debut->format('Y-m-d H:i:s')];
 
@@ -182,9 +184,9 @@ final class CalendrierController
             $sql .= ' AND e.matiere_id = ?';
             $params[] = $matiereId;
         }
-        if ($type !== null) {
-            $sql .= ' AND e.type = ?';
-            $params[] = $type;
+        if ($typeId !== null) {
+            $sql .= ' AND e.type_id = ?';
+            $params[] = $typeId;
         }
         $sql .= ' ORDER BY e.debut ASC, e.fin ASC';
 
@@ -196,9 +198,9 @@ final class CalendrierController
         DateTimeInterface $debut,
         DateTimeInterface $fin,
         ?int $matiereId,
-        ?string $type
+        ?int $typeId
     ): array {
-        return self::evenementsEntre($userId, $debut, $fin, $matiereId, $type);
+        return self::evenementsEntre($userId, $debut, $fin, $matiereId, $typeId);
     }
 
     /** Répartit les événements sur chaque jour qu'ils couvrent (clé : Y-m-d). */
@@ -220,8 +222,11 @@ final class CalendrierController
     private function aVenir(int $userId, int $limite): array
     {
         return Database::all(
-            'SELECT e.*, m.nom AS matiere_nom, m.couleur AS matiere_couleur
-             FROM evenements e LEFT JOIN matieres m ON m.id = e.matiere_id
+            'SELECT e.*, m.nom AS matiere_nom, m.couleur AS matiere_couleur,
+                    t.nom AS type_nom, t.icone AS type_icone, t.couleur AS type_couleur
+             FROM evenements e
+             LEFT JOIN matieres m        ON m.id = e.matiere_id
+             LEFT JOIN types_evenement t ON t.id = e.type_id
              WHERE e.user_id = ? AND e.fin >= NOW() AND e.termine = 0
              ORDER BY e.debut ASC LIMIT ' . $limite,
             [$userId]
@@ -271,10 +276,7 @@ final class CalendrierController
             return 'Le titre de l\'événement est obligatoire.';
         }
 
-        $type = post('type', 'cours');
-        if (!array_key_exists($type, types_evenement())) {
-            $type = 'cours';
-        }
+        $typeId = $this->typeValide($userId, $_POST['type_id'] ?? null);
 
         $journeeEntiere = isset($_POST['journee_entiere']) ? 1 : 0;
         $dateDebut = post('date_debut');
@@ -314,7 +316,7 @@ final class CalendrierController
         return [
             'matiere_id'      => $matiereId,
             'cours_id'        => $coursId,
-            'type'            => $type,
+            'type_id'         => $typeId,
             'titre'           => mb_substr($titre, 0, 200),
             'description'     => post('description') ?: null,
             'lieu'            => mb_substr(post('lieu'), 0, 160) ?: null,
@@ -324,6 +326,19 @@ final class CalendrierController
         ];
     }
 
+    /** Renvoie l'identifiant du type s'il appartient bien à l'utilisateur, sinon null. */
+    private function typeValide(int $userId, mixed $valeur): ?int
+    {
+        $id = entier_ou_null($valeur);
+        if ($id === null) {
+            return null;
+        }
+        $existe = Database::valeur(
+            'SELECT id FROM types_evenement WHERE id = ? AND user_id = ?',
+            [$id, $userId]
+        );
+        return $existe === null ? null : $id;
+    }
     private function introuvable(): never
     {
         http_response_code(404);

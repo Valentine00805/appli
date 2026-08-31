@@ -1,6 +1,5 @@
 <?php
 /** @var array $cours, $fichiers, $tags, $evenements */
-$types = types_evenement();
 $images = array_filter($fichiers, static fn (array $f): bool => Fichiers::estImage($f['mime']));
 ?>
 
@@ -95,7 +94,7 @@ $images = array_filter($fichiers, static fn (array $f): bool => Fichiers::estIma
           <?php foreach ($evenements as $evt): ?>
             <a class="evt-ligne" href="<?= url('evenements/' . $evt['id'] . '/modifier') ?>">
               <span>
-                <span class="evt-ligne__titre"><?= e($types[$evt['type']]['icone'] . ' ' . $evt['titre']) ?></span><br>
+                <span class="evt-ligne__titre"><?= e(icone_evenement($evt) . ' ' . $evt['titre']) ?></span><br>
                 <span class="evt-ligne__meta"><?= e(date_fr($evt['debut'])) ?></span>
               </span>
             </a>

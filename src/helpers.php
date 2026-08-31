@@ -84,16 +84,53 @@ function date_fr(string $datetime, bool $avecHeure = true): string
     return $texte;
 }
 
-/** Libellés et couleurs des types d'évènement. */
-function types_evenement(): array
+/**
+ * Types d'évènement proposés à la création d'un compte.
+ * Ils sont ensuite entièrement modifiables depuis la page « Types ».
+ */
+function types_evenement_par_defaut(): array
 {
     return [
-        'cours'    => ['libelle' => 'Cours',       'icone' => '📘'],
-        'examen'   => ['libelle' => 'Examen',      'icone' => '📝'],
-        'devoir'   => ['libelle' => 'Devoir',      'icone' => '🗂️'],
-        'revision' => ['libelle' => 'Révision',    'icone' => '🔁'],
-        'autre'    => ['libelle' => 'Autre',       'icone' => '📌'],
+        ['nom' => 'Cours',    'icone' => '📘', 'couleur' => '#4f46e5', 'est_echeance' => 0],
+        ['nom' => 'Examen',   'icone' => '📝', 'couleur' => '#dc2626', 'est_echeance' => 1],
+        ['nom' => 'Devoir',   'icone' => '🗂️', 'couleur' => '#ea580c', 'est_echeance' => 1],
+        ['nom' => 'Révision', 'icone' => '🔁', 'couleur' => '#059669', 'est_echeance' => 0],
+        ['nom' => 'Autre',    'icone' => '📌', 'couleur' => '#64748b', 'est_echeance' => 0],
     ];
+}
+
+/** Icône d'un évènement, avec repli si son type a été supprimé. */
+function icone_evenement(array $evt): string
+{
+    return (string) ($evt['type_icone'] ?? '') !== '' ? (string) $evt['type_icone'] : '📌';
+}
+
+/** Libellé du type d'un évènement, avec repli si le type a été supprimé. */
+function libelle_type(array $evt): string
+{
+    return (string) ($evt['type_nom'] ?? '') !== '' ? (string) $evt['type_nom'] : 'Sans type';
+}
+
+/**
+ * Couleur d'un évènement : celle de sa matière en priorité,
+ * sinon celle de son type, sinon un gris neutre.
+ */
+function couleur_evenement(array $evt): string
+{
+    foreach (['matiere_couleur', 'type_couleur'] as $cle) {
+        $couleur = (string) ($evt[$cle] ?? '');
+        if ($couleur !== '') {
+            return $couleur;
+        }
+    }
+    return '#94a3b8';
+}
+
+/** Emoji proposés dans le sélecteur d'icône d'un type. */
+function icones_proposees(): array
+{
+    return ['📘', '📝', '🗂️', '🔁', '📌', '🧪', '🎓', '✏️', '📚', '🧮', '🗣️', '🎨',
+        '🎵', '⚽', '💻', '🔬', '🌍', '⏰', '⭐', '🚀', '📊', '🧠', '📅', '🏫'];
 }
 
 /** Contraste : renvoie du texte noir ou blanc selon la couleur de fond. */

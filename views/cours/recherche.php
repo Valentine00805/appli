@@ -1,6 +1,5 @@
 <?php
 /** @var string $recherche @var array $cours, $evenements, $termes */
-$types = types_evenement();
 ?>
 
 <div class="entete-page">
@@ -56,9 +55,9 @@ $types = types_evenement();
     <div class="pile">
       <?php foreach ($evenements as $evt): ?>
         <a class="evt-ligne" href="<?= url('evenements/' . $evt['id'] . '/modifier') ?>">
-          <span class="evt-ligne__barre" style="background:<?= e($evt['matiere_couleur'] ?? '#94a3b8') ?>"></span>
+          <span class="evt-ligne__barre" style="background:<?= e(couleur_evenement($evt)) ?>"></span>
           <span>
-            <span class="evt-ligne__titre"><?= $types[$evt['type']]['icone'] ?> <?= surligner(e($evt['titre']), $termes) ?></span><br>
+            <span class="evt-ligne__titre"><?= e(icone_evenement($evt)) ?> <?= surligner(e($evt['titre']), $termes) ?></span><br>
             <span class="evt-ligne__meta">
               <?= e(date_fr($evt['debut'])) ?><?= $evt['lieu'] ? ' · ' . e($evt['lieu']) : '' ?>
             </span>

@@ -38,9 +38,11 @@ final class CoursController
         $evenements = [];
         if ($recherche !== '') {
             $evenements = Database::all(
-                'SELECT e.*, m.nom AS matiere_nom, m.couleur AS matiere_couleur
+                'SELECT e.*, m.nom AS matiere_nom, m.couleur AS matiere_couleur,
+                        t.nom AS type_nom, t.icone AS type_icone, t.couleur AS type_couleur
                  FROM evenements e
-                 LEFT JOIN matieres m ON m.id = e.matiere_id
+                 LEFT JOIN matieres m        ON m.id = e.matiere_id
+                 LEFT JOIN types_evenement t ON t.id = e.type_id
                  WHERE e.user_id = ? AND (e.titre LIKE ? OR e.description LIKE ? OR e.lieu LIKE ?)
                  ORDER BY e.debut DESC LIMIT 50',
                 [$userId, "%$recherche%", "%$recherche%", "%$recherche%"]
@@ -78,7 +80,10 @@ final class CoursController
                 [$id]
             ),
             'evenements' => Database::all(
-                'SELECT * FROM evenements WHERE cours_id = ? AND user_id = ? ORDER BY debut',
+                'SELECT e.*, t.nom AS type_nom, t.icone AS type_icone, t.couleur AS type_couleur
+                 FROM evenements e
+                 LEFT JOIN types_evenement t ON t.id = e.type_id
+                 WHERE e.cours_id = ? AND e.user_id = ? ORDER BY e.debut',
                 [$id, $userId]
             ),
         ], $cours['titre']);

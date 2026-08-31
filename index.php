@@ -12,6 +12,7 @@ require __DIR__ . '/controllers/AuthController.php';
 require __DIR__ . '/controllers/CoursController.php';
 require __DIR__ . '/controllers/CalendrierController.php';
 require __DIR__ . '/controllers/MatieresController.php';
+require __DIR__ . '/controllers/TypesEvenementController.php';
 require __DIR__ . '/controllers/TableauBordController.php';
 
 /**
@@ -52,6 +53,12 @@ $routes = [
     ['POST', 'matieres',                  [MatieresController::class, 'creer']],
     ['POST', 'matieres/{id}/modifier',    [MatieresController::class, 'modifier']],
     ['POST', 'matieres/{id}/supprimer',   [MatieresController::class, 'supprimer']],
+
+    ['GET',  'types',                      [TypesEvenementController::class, 'index']],
+    ['POST', 'types',                      [TypesEvenementController::class, 'creer']],
+    ['POST', 'types/{id}/modifier',        [TypesEvenementController::class, 'modifier']],
+    ['POST', 'types/{id}/supprimer',       [TypesEvenementController::class, 'supprimer']],
+    ['POST', 'types/{id}/deplacer',        [TypesEvenementController::class, 'deplacer']],
 
     ['GET',  'recherche',                 [CoursController::class, 'recherche']],
 ];

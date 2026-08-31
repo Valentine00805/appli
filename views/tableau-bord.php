@@ -3,11 +3,9 @@
  * @var DateTimeImmutable $aujourdhui
  * @var array $duJour, $semaine, $examens, $derniersCours, $stats
  */
-$types = types_evenement();
-
 /** Petit rendu d'une ligne d'évènement. */
-$ligneEvenement = static function (array $evt) use ($types): string {
-    $couleur = $evt['matiere_couleur'] ?? '#94a3b8';
+$ligneEvenement = static function (array $evt): string {
+    $couleur = couleur_evenement($evt);
     $heure = $evt['journee_entiere']
         ? 'Journée'
         : date('H:i', strtotime($evt['debut'])) . ' – ' . date('H:i', strtotime($evt['fin']));
@@ -17,7 +15,7 @@ $ligneEvenement = static function (array $evt) use ($types): string {
     $html .= '<span class="evt-ligne__barre" style="background:' . e($couleur) . '"></span>';
     $html .= '<span class="evt-ligne__heure">' . e($heure) . '</span>';
     $html .= '<span><span class="evt-ligne__titre">' . e($evt['titre']) . '</span><br>';
-    $html .= '<span class="evt-ligne__meta">' . e($types[$evt['type']]['icone'] . ' ' . $types[$evt['type']]['libelle']);
+    $html .= '<span class="evt-ligne__meta">' . e(icone_evenement($evt) . ' ' . libelle_type($evt));
     if (!empty($evt['matiere_nom'])) {
         $html .= ' · ' . e($evt['matiere_nom']);
     }
@@ -103,9 +101,9 @@ $ligneEvenement = static function (array $evt) use ($types): string {
           <?php foreach ($examens as $evt):
               $jours = (int) floor((strtotime((string) $evt['debut']) - time()) / 86400); ?>
             <a class="evt-ligne" href="<?= url('evenements/' . $evt['id'] . '/modifier') ?>">
-              <span class="evt-ligne__barre" style="background:<?= e($evt['matiere_couleur'] ?? '#dc2626') ?>"></span>
+              <span class="evt-ligne__barre" style="background:<?= e(couleur_evenement($evt)) ?>"></span>
               <span>
-                <span class="evt-ligne__titre"><?= e($types[$evt['type']]['icone'] . ' ' . $evt['titre']) ?></span><br>
+                <span class="evt-ligne__titre"><?= e(icone_evenement($evt) . ' ' . $evt['titre']) ?></span><br>
                 <span class="evt-ligne__meta"><?= e(date_fr($evt['debut'])) ?></span>
               </span>
               <span class="evt-ligne__droite">

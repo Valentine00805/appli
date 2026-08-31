@@ -78,12 +78,28 @@ CREATE TABLE IF NOT EXISTS `fichiers` (
   CONSTRAINT `fk_fichiers_user`  FOREIGN KEY (`user_id`)  REFERENCES `users`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Types d'évènement, propres à chaque utilisateur et modifiables depuis l'application.
+CREATE TABLE IF NOT EXISTS `types_evenement` (
+  `id`           INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `user_id`      INT UNSIGNED NOT NULL,
+  `nom`          VARCHAR(60)  NOT NULL,
+  `icone`        VARCHAR(16)  NOT NULL DEFAULT '📌',
+  `couleur`      CHAR(7)      NOT NULL DEFAULT '#64748b',
+  `est_echeance` TINYINT(1)   NOT NULL DEFAULT 0,
+  `position`     SMALLINT     NOT NULL DEFAULT 0,
+  `created_at`   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_type_user_nom` (`user_id`, `nom`),
+  KEY `idx_type_user_position` (`user_id`, `position`),
+  CONSTRAINT `fk_types_user` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS `evenements` (
   `id`          INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `user_id`     INT UNSIGNED NOT NULL,
   `matiere_id`  INT UNSIGNED DEFAULT NULL,
+  `type_id`     INT UNSIGNED DEFAULT NULL,
   `cours_id`    INT UNSIGNED DEFAULT NULL,
-  `type`        ENUM('cours','examen','devoir','revision','autre') NOT NULL DEFAULT 'cours',
   `titre`       VARCHAR(200) NOT NULL,
   `description` TEXT         NULL,
   `lieu`        VARCHAR(160) NULL,
@@ -94,7 +110,9 @@ CREATE TABLE IF NOT EXISTS `evenements` (
   `created_at`  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `idx_evt_user_debut` (`user_id`, `debut`),
+  KEY `idx_evt_type` (`type_id`),
   CONSTRAINT `fk_evt_user`    FOREIGN KEY (`user_id`)    REFERENCES `users`(`id`)    ON DELETE CASCADE,
   CONSTRAINT `fk_evt_matiere` FOREIGN KEY (`matiere_id`) REFERENCES `matieres`(`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_evt_type`    FOREIGN KEY (`type_id`)    REFERENCES `types_evenement`(`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_evt_cours`   FOREIGN KEY (`cours_id`)   REFERENCES `cours`(`id`)    ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
