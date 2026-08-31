@@ -86,8 +86,12 @@ passent en « Sans catégorie ».
 ### Remboursements
 
 L'onglet **Remboursements** suit ce que vous avancez pour quelqu'un d'autre.
-Dans la liste des opérations, l'icône 🧾 coche une dépense ; elle apparaît alors
-dans le récapitulatif.
+Une dépense se coche à deux endroits : la case **🧾 À me faire rembourser** du
+formulaire d'ajout, pour le décider dès la saisie, et l'icône 🧾 de la liste des
+opérations, pour le décider après coup. La case cochée déplie « par qui » et la
+part à réclamer ; le formulaire de modification y ajoute le statut et la date de
+remboursement. Une dépense décochée reste dans le budget, seul son suivi
+disparaît.
 
 Le récapitulatif reprend la présentation d'un relevé tenu à la main : les lignes
 sont **groupées par catégorie avec un sous-total**, un total pour la période, et

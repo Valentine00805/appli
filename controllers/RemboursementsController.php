@@ -56,7 +56,7 @@ final class RemboursementsController
             'fin'         => $fin,
             'periode'     => $periode,
             'personne'    => $personne,
-            'personnes'   => $this->personnes($userId),
+            'personnes'   => self::personnes($userId),
             'statut'      => $statut,
             'statuts'     => self::STATUTS,
             'aReclamerGlobal' => (float) Database::valeur(
@@ -235,7 +235,7 @@ final class RemboursementsController
     }
 
     /** Noms déjà utilisés, pour les suggestions et le filtre. */
-    private function personnes(int $userId): array
+    public static function personnes(int $userId): array
     {
         return array_column(Database::all(
             "SELECT DISTINCT rembourse_par FROM operations

@@ -53,6 +53,17 @@
     });
   }
 
+  // Les champs de remboursement n'apparaissent qu'une fois la case cochée
+  var caseRemb = document.getElementById('a_rembourser');
+  var blocRemb = document.getElementById('bloc-remboursement');
+  if (caseRemb && blocRemb) {
+    var majRemb = function () {
+      blocRemb.hidden = !caseRemb.checked;
+    };
+    caseRemb.addEventListener('change', majRemb);
+    majRemb();
+  }
+
   // Édition rapide d'une matière
   document.querySelectorAll('[data-bascule]').forEach(function (bouton) {
     bouton.addEventListener('click', function () {

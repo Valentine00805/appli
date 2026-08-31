@@ -60,6 +60,7 @@ final class BudgetController
             'sens'        => $sens,
             'origine'     => $origine,
             'moyens'      => self::MOYENS,
+            'personnes'   => RemboursementsController::personnes($userId),
             'historique'  => $this->douzeDerniersMois($userId, $mois),
         ], 'Budget — ' . nom_mois((int) $mois->format('n')) . ' ' . $mois->format('Y'));
     }
@@ -79,8 +80,10 @@ final class BudgetController
         }
 
         Database::run(
-            'INSERT INTO operations (user_id, categorie_id, libelle, montant, sens, date_operation, moyen, note)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            'INSERT INTO operations
+               (user_id, categorie_id, libelle, montant, sens, date_operation, moyen, note,
+                a_rembourser, part_rembourser, rembourse_par, statut_remb, date_remboursement)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             [
                 $userId,
                 $donnees['categorie_id'],
@@ -90,6 +93,11 @@ final class BudgetController
                 $donnees['date_operation'],
                 $donnees['moyen'],
                 $donnees['note'],
+                $donnees['a_rembourser'],
+                $donnees['part_rembourser'],
+                $donnees['rembourse_par'],
+                $donnees['statut_remb'],
+                $donnees['date_remboursement'],
             ]
         );
 
@@ -115,6 +123,8 @@ final class BudgetController
             'operation'  => $operation,
             'categories' => $this->categories($userId),
             'moyens'     => self::MOYENS,
+            'personnes'  => RemboursementsController::personnes($userId),
+            'statuts'    => RemboursementsController::STATUTS,
         ], "Modifier l'opération");
     }
 
@@ -136,7 +146,8 @@ final class BudgetController
 
         Database::run(
             'UPDATE operations
-             SET categorie_id = ?, libelle = ?, montant = ?, sens = ?, date_operation = ?, moyen = ?, note = ?
+             SET categorie_id = ?, libelle = ?, montant = ?, sens = ?, date_operation = ?, moyen = ?, note = ?,
+                 a_rembourser = ?, part_rembourser = ?, rembourse_par = ?, statut_remb = ?, date_remboursement = ?
              WHERE id = ? AND user_id = ?',
             [
                 $donnees['categorie_id'],
@@ -146,6 +157,11 @@ final class BudgetController
                 $donnees['date_operation'],
                 $donnees['moyen'],
                 $donnees['note'],
+                $donnees['a_rembourser'],
+                $donnees['part_rembourser'],
+                $donnees['rembourse_par'],
+                $donnees['statut_remb'],
+                $donnees['date_remboursement'],
                 $id,
                 $userId,
             ]
@@ -481,6 +497,39 @@ final class BudgetController
             $moyen = null;
         }
 
+        // Suivi du remboursement : la case cochée ouvre les champs qui l'accompagnent.
+        $aRembourser = isset($_POST['a_rembourser']) ? 1 : 0;
+        $part = null;
+        $par = null;
+        $statut = 'a_reclamer';
+        $dateRemb = null;
+
+        if ($aRembourser === 1) {
+            $par = mb_substr(post('rembourse_par'), 0, 80) ?: null;
+
+            $saisiePart = montant_depuis_saisie(post('part_rembourser'));
+            if ($saisiePart !== null) {
+                if ($saisiePart <= 0 || $saisiePart > $montant + 0.001) {
+                    return 'La part à se faire rembourser doit être comprise entre 0 et '
+                        . montant_fr($montant) . '.';
+                }
+                // Réclamer exactement ce qui a été payé revient à ne rien préciser.
+                $part = abs($saisiePart - $montant) < 0.005
+                    ? null
+                    : number_format($saisiePart, 2, '.', '');
+            }
+
+            if (array_key_exists(post('statut_remb'), RemboursementsController::STATUTS)) {
+                $statut = post('statut_remb');
+            }
+            if ($statut === 'rembourse') {
+                $saisieDate = post('date_remboursement');
+                $dateRemb = preg_match('/^\d{4}-\d{2}-\d{2}$/', $saisieDate) === 1
+                    ? $saisieDate
+                    : date('Y-m-d');
+            }
+        }
+
         return [
             'categorie_id'   => $categorieId,
             'libelle'        => mb_substr($libelle, 0, 160),
@@ -489,6 +538,11 @@ final class BudgetController
             'date_operation' => $date,
             'moyen'          => $moyen,
             'note'           => post('note') ?: null,
+            'a_rembourser'       => $aRembourser,
+            'part_rembourser'    => $part,
+            'rembourse_par'      => $par,
+            'statut_remb'        => $statut,
+            'date_remboursement' => $dateRemb,
         ];
     }
 

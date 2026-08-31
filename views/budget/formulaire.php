@@ -98,6 +98,62 @@ $retour = url('budget', ['mois' => substr((string) $operation['date_operation'],
         </div>
       </div>
 
+      <div class="carte">
+        <h2 style="font-size:1.05rem">Remboursement</h2>
+
+        <label class="case">
+          <input type="checkbox" id="a_rembourser" name="a_rembourser" value="1"
+                 <?= (int) $operation['a_rembourser'] === 1 ? ' checked' : '' ?>>
+          🧾 À me faire rembourser
+        </label>
+
+        <div id="bloc-remboursement" style="margin-top:.9rem">
+          <div class="champ">
+            <label for="rembourse_par">Par qui</label>
+            <input type="text" id="rembourse_par" name="rembourse_par" maxlength="80"
+                   list="liste-personnes" placeholder="Parents"
+                   value="<?= e((string) $operation['rembourse_par']) ?>">
+          </div>
+
+          <div class="champ">
+            <label for="part_rembourser">Part à réclamer</label>
+            <input type="text" id="part_rembourser" name="part_rembourser" inputmode="decimal"
+                   placeholder="<?= e(montant_fr($operation['montant'], false)) ?> (tout)"
+                   value="<?= $operation['part_rembourser'] !== null
+                       ? e(montant_fr($operation['part_rembourser'], false)) : '' ?>">
+            <span class="champ__aide">
+              Vide = tout le montant. La moitié ferait
+              <?= e(montant_fr(round((float) $operation['montant'] / 2, 2))) ?>.
+            </span>
+          </div>
+
+          <div class="ligne-champs">
+            <div class="champ">
+              <label for="statut_remb">Statut</label>
+              <select id="statut_remb" name="statut_remb">
+                <?php foreach ($statuts as $cle => $libelle): ?>
+                  <option value="<?= e($cle) ?>"<?= $operation['statut_remb'] === $cle ? ' selected' : '' ?>>
+                    <?= e($libelle) ?>
+                  </option>
+                <?php endforeach; ?>
+              </select>
+              <span class="champ__aide">« Hors total » garde la ligne visible sans la compter.</span>
+            </div>
+            <div class="champ">
+              <label for="date_remboursement">Remboursé le</label>
+              <input type="date" id="date_remboursement" name="date_remboursement"
+                     value="<?= e((string) $operation['date_remboursement']) ?>">
+            </div>
+          </div>
+        </div>
+
+        <datalist id="liste-personnes">
+          <?php foreach ($personnes as $p): ?>
+            <option value="<?= e($p) ?>"></option>
+          <?php endforeach; ?>
+        </datalist>
+      </div>
+
       <button class="bouton bouton--bloc" type="submit">Enregistrer</button>
       <a class="bouton bouton--secondaire bouton--bloc" href="<?= $retour ?>">Annuler</a>
     </div>
