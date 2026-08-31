@@ -38,7 +38,7 @@ PHP 8 + MySQL, sans aucune dépendance externe : pas de Composer, pas de CDN, to
 | **Accueil** | Ce qui est prévu aujourd'hui, les 7 prochains jours, les échéances, les cours récents. |
 | **Calendrier** | Vue **mois**, **semaine** ou **liste**. Filtres par matière et par type. Clic sur `+` dans une case pour créer un évènement à cette date. |
 | **Mes cours** | Liste filtrable (recherche, matière, tag, favoris, tri) et création de cours. |
-| **Budget** | Quatre onglets : **Opérations** (recettes et dépenses du mois, tendance sur 12 mois), **Prévisions** (solde de départ, charges fixes, solde prévisionnel reporté de mois en mois), **Import** (relevé bancaire au format CSV) et **Catégories** (avec plafond mensuel). |
+| **Budget** | Cinq onglets : **Opérations** (recettes et dépenses du mois, tendance sur 12 mois), **Prévisions** (solde de départ, charges fixes, solde prévisionnel reporté de mois en mois), **Remboursements** (ce qu'on vous doit), **Import** (relevé bancaire au format CSV) et **Catégories** (avec plafond mensuel). |
 | **Organisation** | Trois onglets : **Matières** (nom, couleur, enseignant), **Types d'évènement** (nom, icône, couleur, ordre, indicateur « échéance ») et **Tags** (créer, renommer, fusionner, supprimer). |
 | **Recherche** | Cherche simultanément dans les cours et dans le calendrier, avec surlignage des termes. |
 | **Mon compte** | Statistiques et changement de mot de passe. |
@@ -82,6 +82,30 @@ dépassement est signalé.
 Douze catégories sont créées avec le compte et se modifient depuis l'onglet
 **Catégories**. Supprimer une catégorie ne supprime pas les opérations : elles
 passent en « Sans catégorie ».
+
+### Remboursements
+
+L'onglet **Remboursements** suit ce que vous avancez pour quelqu'un d'autre.
+Dans la liste des opérations, l'icône 🧾 coche une dépense ; elle apparaît alors
+dans le récapitulatif.
+
+Le récapitulatif reprend la présentation d'un relevé tenu à la main : les lignes
+sont **groupées par catégorie avec un sous-total**, un total pour la période, et
+un **détail mois par mois avec cumul** dès que la période en couvre plusieurs.
+
+Trois choses se règlent ligne par ligne :
+
+- **La part réclamée**, quand elle diffère de ce que vous avez payé — une essence
+  partagée en deux se réclame pour la moitié. La colonne affiche alors les deux
+  montants.
+- **Qui rembourse**, en texte libre, avec les noms déjà utilisés en suggestion.
+  Un filtre permet d'éditer un récapitulatif par personne.
+- **Le statut** : à réclamer, remboursé (avec sa date), ou **hors total** pour
+  garder une ligne sous les yeux sans la compter.
+
+Un bouton marque d'un coup toutes les lignes cochées comme remboursées. Le
+bouton **Imprimer** produit une version propre, sans les boutons ni la
+navigation, à envoyer ou à enregistrer en PDF.
 
 ### Importer un relevé bancaire
 

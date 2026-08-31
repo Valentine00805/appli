@@ -157,6 +157,15 @@ $plafondHistorique = max(array_merge([1.0], array_map(
                     $op['sens'] === 'recette' ? 'var(--succes)' : 'var(--erreur)' ?>">
                   <?= $op['sens'] === 'recette' ? '+' : '−' ?> <?= e(montant_fr($op['montant'])) ?>
                 </strong>
+                <form method="post" action="<?= url('operations/' . $op['id'] . '/rembourser') ?>" class="en-ligne">
+                  <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+                  <input type="hidden" name="retour" value="budget">
+                  <input type="hidden" name="mois" value="<?= e($mois->format('Y-m')) ?>">
+                  <button class="bouton bouton--discret bouton--petit" type="submit"
+                          title="<?= (int) $op['a_rembourser'] === 1 ? 'Retirer des remboursements' : 'À me faire rembourser' ?>">
+                    <?= (int) $op['a_rembourser'] === 1 ? '🧾' : '<span style="opacity:.35">🧾</span>' ?>
+                  </button>
+                </form>
                 <a class="bouton bouton--discret bouton--petit"
                    href="<?= url('budget/operations/' . $op['id'] . '/modifier') ?>" title="Modifier">✎</a>
                 <form method="post" action="<?= url('budget/operations/' . $op['id'] . '/supprimer') ?>"

@@ -18,6 +18,7 @@ require __DIR__ . '/controllers/OrganisationController.php';
 require __DIR__ . '/controllers/BudgetController.php';
 require __DIR__ . '/controllers/PrevisionsController.php';
 require __DIR__ . '/controllers/ImportController.php';
+require __DIR__ . '/controllers/RemboursementsController.php';
 require __DIR__ . '/controllers/TableauBordController.php';
 
 /**
@@ -93,6 +94,11 @@ $routes = [
     ['POST', 'budget/previsions/recurrences/{id}/supprimer', [PrevisionsController::class, 'supprimerRecurrence']],
     ['POST', 'budget/previsions/recurrences/{id}/pointer',   [PrevisionsController::class, 'pointer']],
     ['POST', 'budget/previsions/pointer-tout',    [PrevisionsController::class, 'pointerTout']],
+
+    ['GET',  'budget/remboursements',      [RemboursementsController::class, 'index']],
+    ['POST', 'budget/remboursements/regler', [RemboursementsController::class, 'reglerLot']],
+    ['POST', 'budget/remboursements/{id}/modifier', [RemboursementsController::class, 'modifier']],
+    ['POST', 'operations/{id}/rembourser', [RemboursementsController::class, 'basculer']],
 
     ['GET',  'budget/import',              [ImportController::class, 'formulaire']],
     ['POST', 'budget/import',              [ImportController::class, 'analyser']],

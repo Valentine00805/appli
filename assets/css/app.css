@@ -552,3 +552,16 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
   position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
   overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
 }
+
+/* --- Remboursements ---------------------------------------------------------- */
+
+.tableau--remb tbody tr.est-hors-total { opacity: .55; }
+.tableau--remb tbody tr.est-reglee td:not(.sans-impression) { color: var(--texte-doux); }
+.tableau--remb tbody tr.est-reglee .nombre { text-decoration: line-through; }
+
+@media print {
+  .sans-impression, .onglets { display: none !important; }
+  .carte { break-inside: avoid; border: 1px solid #ccc; }
+  .grille--4 { grid-template-columns: repeat(4, 1fr); }
+  .tableau { font-size: .82rem; }
+}
