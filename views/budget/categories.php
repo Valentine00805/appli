@@ -1,5 +1,5 @@
 <?php
-/** @var array $depenses, $recettes, $palette, $icones @var int $sansCategorie */
+/** @var array $depenses, $recettes, $palette, $icones, $suggestions @var int $sansCategorie */
 $csrf = Session::jetonCsrf();
 
 /** Rend le bloc d'une catégorie, avec son panneau de modification. */
@@ -107,6 +107,116 @@ $carte = static function (array $c) use ($csrf, $palette, $icones): string {
     <a class="bouton bouton--secondaire" href="<?= url('budget') ?>">Voir les opérations</a>
   </div>
 </div>
+
+<section class="carte" style="margin-bottom:1.5rem;border-color:var(--accent)">
+  <div style="display:flex;justify-content:space-between;align-items:baseline;gap:.6rem;flex-wrap:wrap">
+    <h2 style="margin:0">💡 Budget proposé</h2>
+    <?php if ($suggestions['suffisant']): ?>
+      <span class="discret">
+        d'après <?= (int) $suggestions['mois_disponibles'] ?> mois de dépenses,
+        de <?= e((string) $suggestions['periode']) ?>
+      </span>
+    <?php endif; ?>
+  </div>
+
+  <?php if (!$suggestions['suffisant']): ?>
+    <?php $manque = SuggestionBudget::MOIS_MINIMUM - (int) $suggestions['mois_disponibles']; ?>
+    <p class="discret" style="margin:.5rem 0 0">
+      <?php if ((int) $suggestions['mois_disponibles'] === 0): ?>
+        Aucune dépense classée sur les mois écoulés. Saisissez vos dépenses en les
+        rangeant par catégorie : au bout de <?= SuggestionBudget::MOIS_MINIMUM ?> mois,
+        une proposition de budget apparaîtra ici.
+      <?php else: ?>
+        <?= (int) $suggestions['mois_disponibles'] ?> mois de dépenses enregistré<?= (int) $suggestions['mois_disponibles'] > 1 ? 's' : '' ?>.
+        Encore <?= $manque ?> mois avant une proposition — il en faut au moins
+        <?= SuggestionBudget::MOIS_MINIMUM ?> pour dégager une habitude.
+      <?php endif; ?>
+    </p>
+    <div class="jauge" style="margin-top:.6rem;max-width:300px">
+      <span style="width:<?= min(100, ((int) $suggestions['mois_disponibles'] / SuggestionBudget::MOIS_MINIMUM) * 100) ?>%;background:var(--accent)"></span>
+    </div>
+
+  <?php else: ?>
+    <p class="discret" style="margin:.4rem 0 1rem">
+      Une fourchette, pas un chiffre : la marge est calculée sur la régularité de
+      chaque poste. Un poste stable donne une fourchette serrée, un poste en dents
+      de scie une fourchette large.
+      <?php if (!$suggestions['fiable']): ?>
+        <strong>À prendre avec des pincettes</strong> : avec moins de
+        <?= SuggestionBudget::MOIS_CONFIANCE ?> mois, l'estimation reste fragile.
+      <?php endif; ?>
+    </p>
+
+    <div style="overflow-x:auto">
+      <table class="tableau">
+        <thead>
+          <tr>
+            <th scope="col">Poste</th>
+            <th scope="col" class="nombre">Fourchette</th>
+            <th scope="col" class="nombre">À prévoir</th>
+            <th scope="col">Observé</th>
+            <th scope="col"></th>
+          </tr>
+        </thead>
+        <tbody>
+          <?php foreach ($suggestions['categories'] as $s): ?>
+            <tr>
+              <th scope="row" style="font-weight:600">
+                <span aria-hidden="true"><?= e($s['icone']) ?></span> <?= e($s['nom']) ?>
+                <?php if ($s['regulier']): ?>
+                  <span class="pastille" style="background:var(--succes-doux);color:var(--succes)"
+                        title="Dépenses régulières d'un mois à l'autre">régulier</span>
+                <?php endif; ?>
+              </th>
+              <td class="nombre">
+                <?= e(montant_fr($s['bas'])) ?> <span class="discret">à</span> <?= e(montant_fr($s['haut'])) ?>
+              </td>
+              <td class="nombre"><strong><?= e(montant_fr($s['conseille'])) ?></strong></td>
+              <td class="discret" style="font-size:.82rem;white-space:nowrap">
+                <?= (int) $s['mois'] ?> mois ·
+                de <?= e(montant_fr($s['mini'])) ?> à <?= e(montant_fr($s['maxi'])) ?>
+              </td>
+              <td>
+                <?php if ($s['plafond'] !== null && abs($s['plafond'] - $s['conseille']) < 0.005): ?>
+                  <span class="pastille" style="background:var(--succes-doux);color:var(--succes)">appliqué</span>
+                <?php else: ?>
+                  <form method="post" action="<?= url('budget/suggestions/' . $s['id'] . '/appliquer') ?>">
+                    <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+                    <button class="bouton bouton--secondaire bouton--petit" type="submit"
+                            title="Fixer le plafond mensuel de cette catégorie">
+                      Utiliser<?= $s['plafond'] !== null ? ' (remplace ' . e(montant_fr($s['plafond'])) . ')' : '' ?>
+                    </button>
+                  </form>
+                <?php endif; ?>
+              </td>
+            </tr>
+          <?php endforeach; ?>
+          <tr style="border-top:2px solid var(--bordure-forte)">
+            <th scope="row">Ensemble des postes</th>
+            <td class="nombre">
+              <?= e(montant_fr($suggestions['total_bas'])) ?>
+              <span class="discret">à</span>
+              <?= e(montant_fr($suggestions['total_haut'])) ?>
+            </td>
+            <td class="nombre"><strong><?= e(montant_fr($suggestions['total_conseille'])) ?></strong></td>
+            <td colspan="2"></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="actions" style="margin-top:1rem">
+      <form method="post" action="<?= url('budget/suggestions/appliquer') ?>"
+            data-confirmation="Fixer le plafond mensuel de tous ces postes à la valeur proposée ?">
+        <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+        <button class="bouton" type="submit">Appliquer toutes les propositions</button>
+      </form>
+      <span class="discret">
+        Les plafonds restent modifiables un par un, plus bas.
+      </span>
+    </div>
+  <?php endif; ?>
+</section>
 
 <div class="colonnes">
   <div class="pile">

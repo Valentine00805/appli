@@ -111,6 +111,8 @@ $routes = [
     ['POST', 'budget/categories',          [BudgetController::class, 'categorieCreer']],
     ['POST', 'budget/categories/{id}/modifier',  [BudgetController::class, 'categorieModifier']],
     ['POST', 'budget/categories/{id}/supprimer', [BudgetController::class, 'categorieSupprimer']],
+    ['POST', 'budget/suggestions/appliquer',   [BudgetController::class, 'appliquerSuggestion']],
+    ['POST', 'budget/suggestions/{id}/appliquer', [BudgetController::class, 'appliquerSuggestion']],
 
     ['GET',  'recherche',                 [CoursController::class, 'recherche']],
 ];

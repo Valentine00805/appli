@@ -119,6 +119,25 @@ Deux façons de sortir le récapitulatif :
 - **Imprimer** produit une version propre à l'écran, sans boutons ni navigation,
   à enregistrer en PDF.
 
+### Budget proposé
+
+Au bout de trois mois de dépenses classées par catégorie, l'onglet **Catégories**
+affiche une proposition de budget pour chaque poste : essence, sorties, courses…
+Avant cela, une jauge indique combien de mois manquent.
+
+C'est **une fourchette, pas un chiffre**. La valeur centrale est la médiane des
+mois écoulés, moins sensible qu'une moyenne à un mois exceptionnel. La marge est
+calculée sur l'écart réel entre les mois : un poste régulier donne une fourchette
+serrée, un poste en dents de scie une fourchette large. Un minimum de 10 %
+empêche qu'un poste parfaitement stable retombe sur une valeur fixe.
+
+Sont affichés en regard le nombre de mois observés et le minimum et le maximum
+réels, pour juger sur pièces. En dessous de cinq mois, l'estimation est signalée
+comme fragile. Le mois en cours, forcément incomplet, est exclu du calcul.
+
+Un bouton reprend la valeur conseillée comme **plafond mensuel** de la catégorie,
+une par une ou toutes d'un coup ; les plafonds restent modifiables à la main.
+
 ### Importer un relevé bancaire
 
 L'onglet **Import** préremplit les opérations du mois à partir du fichier CSV

@@ -216,6 +216,7 @@ final class BudgetController
                 'SELECT COUNT(*) FROM operations WHERE user_id = ? AND categorie_id IS NULL',
                 [$userId]
             ),
+            'suggestions' => SuggestionBudget::calculer($userId),
         ], 'Catégories de budget');
     }
 
@@ -306,6 +307,41 @@ final class BudgetController
         );
 
         Session::flash('succes', 'Catégorie mise à jour.');
+        redirect('budget/categories');
+    }
+
+    /** Reprend le plafond proposé pour une catégorie, ou pour toutes. */
+    public function appliquerSuggestion(?int $id = null): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $userId = Auth::id();
+
+        $suggestions = SuggestionBudget::calculer($userId);
+        $retenues = $id === null
+            ? $suggestions['categories']
+            : array_values(array_filter(
+                $suggestions['categories'],
+                static fn (array $s): bool => $s['id'] === $id
+            ));
+
+        if ($retenues === []) {
+            Session::flash('erreur', 'Aucune proposition disponible pour cette catégorie.');
+            redirect('budget/categories');
+        }
+
+        $nb = 0;
+        foreach ($retenues as $s) {
+            Database::run(
+                'UPDATE categories_budget SET plafond_mensuel = ? WHERE id = ? AND user_id = ?',
+                [number_format($s['conseille'], 2, '.', ''), $s['id'], $userId]
+            );
+            $nb++;
+        }
+
+        Session::flash('succes', $nb === 1
+            ? 'Plafond de « ' . $retenues[0]['nom'] . ' » fixé à ' . montant_fr($retenues[0]['conseille']) . '.'
+            : $nb . ' plafonds fixés à partir des propositions.');
         redirect('budget/categories');
     }
 
