@@ -14,10 +14,13 @@ DirectoryIndex index.php
 # Les dossiers internes ne sont jamais servis directement.
 RedirectMatch 404 (?i)^/.*/(config|src|controllers|views|storage|sql)/
 
-# Taille des fichiers téléversés (doit rester <= post_max_size de php.ini).
-<IfModule mod_php.c>
+# Taille des fichiers téléversés.
+# Le nom du module est « php_module » avec Apache 2.4 + PHP 8 : un garde
+# « mod_php.c » ne correspond à rien et les directives seraient ignorées.
+# Ces valeurs ne servent que de repli : la référence est le php.ini de WAMP.
+<IfModule php_module>
     php_value upload_max_filesize 25M
-    php_value post_max_size 30M
+    php_value post_max_size 128M
     php_value max_file_uploads 20
 </IfModule>
 

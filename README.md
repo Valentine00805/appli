@@ -154,5 +154,12 @@ Apache → Modules Apache → cocher `rewrite_module`.
 
 **Un fichier refuse de se téléverser**
 Soit son extension n'est pas dans la liste de `config/config.php`, soit il dépasse
-`upload_max_filesize` / `post_max_size` du `php.ini` de WAMP (25 Mo et 30 Mo par
-défaut ici).
+la limite de PHP. Les valeurs en place sont `upload_max_filesize = 25M` (par
+fichier) et `post_max_size = 128M` (par envoi, ce qui laisse la place à plusieurs
+fichiers d'un coup). Elles sont fixées dans le `php.ini` de WAMP
+(`C:\wamp64\bin\php\php8.3.28\`, les deux fichiers `php.ini` et
+`phpForApache.ini`) et rappelées dans le `.htaccess` de l'application.
+
+Attention au nom du module dans le `.htaccess` : avec Apache 2.4 et PHP 8 c'est
+`php_module`. Un bloc `<IfModule mod_php.c>` ne correspond à rien et ses
+directives sont ignorées silencieusement.
