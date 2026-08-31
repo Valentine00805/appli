@@ -1,22 +1,26 @@
 <?php
 /**
- * @var array $lignes, $rubriques, $parMois, $totaux, $periode, $personnes, $statuts
- * @var string $debut, $fin, $personne
+ * Chaque mois se lit seul : aucun cumul d'un mois sur l'autre.
+ *
+ * @var DateTimeImmutable $mois
+ * @var array $lignes, $rubriques, $totaux, $moisRenseignes, $personnes, $statuts
+ * @var string $personne
  * @var ?string $statut
  * @var float $aReclamerGlobal
  */
 $csrf = Session::jetonCsrf();
+$periode = $mois->format('Y-m');
+$moisCourant = (new DateTimeImmutable('today'))->format('Y-m');
+
 $filtres = array_filter([
-    'depuis'   => $periode['depuis'],
-    'jusqu'    => $periode['jusqu'],
+    'mois'     => $periode,
     'personne' => $personne !== '' ? $personne : null,
     'statut'   => $statut,
 ], static fn ($v): bool => $v !== null && $v !== '');
 
-$titrePeriode = $periode['depuis'] === $periode['jusqu']
-    ? strtolower(nom_mois((int) substr($periode['depuis'], 5, 2))) . ' ' . substr($periode['depuis'], 0, 4)
-    : 'de ' . strtolower(nom_mois((int) substr($periode['depuis'], 5, 2))) . ' ' . substr($periode['depuis'], 0, 4)
-      . ' à ' . strtolower(nom_mois((int) substr($periode['jusqu'], 5, 2))) . ' ' . substr($periode['jusqu'], 0, 4);
+$titrePeriode = strtolower(nom_mois((int) $mois->format('n'))) . ' ' . $mois->format('Y');
+$lien = static fn (string $m): string => url('budget/remboursements',
+    array_filter(['mois' => $m, 'personne' => $personne ?: null, 'statut' => $statut]));
 ?>
 
 <?= Vue::rendre('budget/_onglets', ['onglet' => 'remboursements']) ?>
@@ -24,9 +28,16 @@ $titrePeriode = $periode['depuis'] === $periode['jusqu']
 <div class="entete-page">
   <div>
     <h1>Remboursements</h1>
-    <p>Ce que vous avez avancé et qui doit vous être rendu, <?= e($titrePeriode) ?>.</p>
+    <p>Ce que vous avez avancé et qui doit vous être rendu en <?= e($titrePeriode) ?>.</p>
   </div>
   <div class="actions sans-impression">
+    <a class="bouton bouton--secondaire bouton--petit"
+       href="<?= $lien($mois->modify('-1 month')->format('Y-m')) ?>" aria-label="Mois précédent">←</a>
+    <?php if ($periode !== $moisCourant): ?>
+      <a class="bouton bouton--secondaire bouton--petit" href="<?= $lien($moisCourant) ?>">Ce mois-ci</a>
+    <?php endif; ?>
+    <a class="bouton bouton--secondaire bouton--petit"
+       href="<?= $lien($mois->modify('+1 month')->format('Y-m')) ?>" aria-label="Mois suivant">→</a>
     <a class="bouton" href="<?= url('budget/remboursements/export', $filtres) ?>">📊 Exporter en Excel</a>
     <button class="bouton bouton--secondaire" type="button" onclick="window.print()">🖨 Imprimer</button>
     <a class="bouton bouton--secondaire" href="<?= url('budget') ?>">Voir les opérations</a>
@@ -36,7 +47,7 @@ $titrePeriode = $periode['depuis'] === $periode['jusqu']
 <div class="grille grille--4" style="margin-bottom:1.5rem">
   <div class="carte stat" style="border-color:var(--accent)">
     <div class="stat__valeur" style="color:var(--accent-fonce)"><?= e(montant_fr($totaux['attente'])) ?></div>
-    <div class="stat__libelle"><strong>reste à réclamer</strong> sur la période</div>
+    <div class="stat__libelle"><strong>reste à réclamer</strong> ce mois-ci</div>
   </div>
   <div class="carte stat">
     <div class="stat__valeur" style="color:var(--succes)"><?= e(montant_fr($totaux['regle'])) ?></div>
@@ -54,12 +65,8 @@ $titrePeriode = $periode['depuis'] === $periode['jusqu']
 
 <form class="filtres sans-impression" method="get" action="<?= url('budget/remboursements') ?>" data-auto-envoi>
   <div class="champ">
-    <label for="f-depuis">De</label>
-    <input type="month" id="f-depuis" name="depuis" value="<?= e($periode['depuis']) ?>">
-  </div>
-  <div class="champ">
-    <label for="f-jusqu">À</label>
-    <input type="month" id="f-jusqu" name="jusqu" value="<?= e($periode['jusqu']) ?>">
+    <label for="f-mois">Mois</label>
+    <input type="month" id="f-mois" name="mois" value="<?= e($periode) ?>">
   </div>
   <?php if ($personnes !== []): ?>
     <div class="champ">
@@ -87,7 +94,7 @@ $titrePeriode = $periode['depuis'] === $periode['jusqu']
 <?php if ($lignes === []): ?>
   <div class="vide">
     <span class="vide__icone">🧾</span>
-    <p>Aucune dépense cochée sur cette période.</p>
+    <p>Aucune dépense cochée en <?= e($titrePeriode) ?>.</p>
     <p class="discret">
       Dans l'onglet <a href="<?= url('budget') ?>">Opérations</a>, cochez 🧾 sur une dépense
       pour la faire apparaître ici.
@@ -217,31 +224,11 @@ $titrePeriode = $periode['depuis'] === $periode['jusqu']
 
     <div class="carte" style="margin-bottom:1rem">
       <div style="display:flex;justify-content:space-between;align-items:baseline;gap:1rem;flex-wrap:wrap">
-        <h2 style="margin:0">Total <?= e($titrePeriode) ?></h2>
+        <h2 style="margin:0">Total de <?= e($titrePeriode) ?></h2>
         <strong style="font-size:1.5rem;color:var(--accent-fonce);font-variant-numeric:tabular-nums">
           <?= e(montant_fr($totaux['reclame'])) ?>
         </strong>
       </div>
-
-      <?php if (count($parMois) > 1): ?>
-        <hr class="separateur">
-        <table class="tableau" style="max-width:420px">
-          <tbody>
-            <?php foreach ($parMois as $cle => $montant): ?>
-              <tr>
-                <th scope="row" style="font-weight:500;text-transform:capitalize">
-                  <?= e(strtolower(nom_mois((int) substr($cle, 5, 2))) . ' ' . substr($cle, 0, 4)) ?>
-                </th>
-                <td class="nombre"><?= e(montant_fr($montant)) ?></td>
-              </tr>
-            <?php endforeach; ?>
-            <tr style="border-top:2px solid var(--bordure-forte)">
-              <th scope="row">Total des <?= count($parMois) ?> mois</th>
-              <td class="nombre"><strong><?= e(montant_fr($totaux['reclame'])) ?></strong></td>
-            </tr>
-          </tbody>
-        </table>
-      <?php endif; ?>
 
       <?php if ($totaux['hors_total'] > 0): ?>
         <p class="discret" style="margin:.8rem 0 0">
@@ -278,9 +265,26 @@ $titrePeriode = $periode['depuis'] === $periode['jusqu']
   </datalist>
 <?php endif; ?>
 
-<?php if ($aReclamerGlobal > $totaux['attente'] + 0.005): ?>
-  <p class="discret sans-impression" style="margin-top:1rem">
-    Hors de cette période, il reste <?= e(montant_fr($aReclamerGlobal - $totaux['attente'])) ?>
-    à réclamer. Élargissez les dates pour les voir.
-  </p>
+<?php if ($moisRenseignes !== []): ?>
+  <section class="carte sans-impression" style="margin-top:1.5rem">
+    <h2>Les autres mois</h2>
+    <p class="discret" style="margin:.2rem 0 .8rem">
+      Chaque mois se lit séparément : les montants ci-dessous ne s'additionnent pas
+      à celui du mois affiché.
+    </p>
+    <div style="display:flex;gap:.4rem;flex-wrap:wrap">
+      <?php foreach ($moisRenseignes as $cle => $infos): ?>
+        <a class="pastille" href="<?= $lien($cle) ?>"
+           <?= $cle === $periode ? 'style="background:var(--accent);color:#fff"' : '' ?>>
+          <?= e(strtolower(nom_mois((int) substr($cle, 5, 2))) . ' ' . substr($cle, 0, 4)) ?>
+          · <?= e(montant_fr($infos['total'])) ?>
+        </a>
+      <?php endforeach; ?>
+    </div>
+    <?php if ($aReclamerGlobal > $totaux['attente'] + 0.005): ?>
+      <p class="discret" style="margin:.8rem 0 0">
+        Tous mois confondus, il reste <?= e(montant_fr($aReclamerGlobal)) ?> à réclamer.
+      </p>
+    <?php endif; ?>
+  </section>
 <?php endif; ?>

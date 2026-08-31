@@ -5,8 +5,9 @@ declare(strict_types=1);
  * Récapitulatif des dépenses à se faire rembourser.
  *
  * Reprend la logique des relevés tenus au tableur : les lignes cochées sont
- * regroupées par rubrique avec un sous-total, un total par mois, et un cumul
- * sur la période choisie. Une ligne peut être mise « hors total » pour la
+ * regroupées par rubrique avec un sous-total, et un total pour le mois affiché.
+ * Chaque mois se lit seul, sans cumul avec les autres. Une ligne peut être mise
+ * « hors total » pour la
  * garder sous les yeux sans la réclamer, et une part différente du montant
  * payé peut être demandée (une essence partagée en deux, par exemple).
  */
@@ -23,7 +24,7 @@ final class RemboursementsController
         Auth::exiger();
         $userId = Auth::id();
 
-        [$debut, $fin, $periode] = $this->periode();
+        [$debut, $fin, $mois] = $this->mois();
         $personne = trim((string) ($_GET['personne'] ?? ''));
         $statut = array_key_exists($_GET['statut'] ?? '', self::STATUTS) ? (string) $_GET['statut'] : null;
 
@@ -32,11 +33,9 @@ final class RemboursementsController
         Vue::afficher('budget/remboursements', [
             'lignes'      => $lignes,
             'rubriques'   => $this->grouperParRubrique($lignes),
-            'parMois'     => $this->grouperParMois($lignes),
             'totaux'      => $this->totaux($lignes),
-            'debut'       => $debut,
-            'fin'         => $fin,
-            'periode'     => $periode,
+            'mois'        => $mois,
+            'moisRenseignes' => $this->moisRenseignes($userId),
             'personne'    => $personne,
             'personnes'   => self::personnes($userId),
             'statut'      => $statut,
@@ -47,33 +46,32 @@ final class RemboursementsController
                  WHERE user_id = ? AND a_rembourser = 1 AND statut_remb = 'a_reclamer'",
                 [$userId]
             ),
-        ], 'Remboursements');
+        ], 'Remboursements — ' . nom_mois((int) $mois->format('n')) . ' ' . $mois->format('Y'));
     }
 
     /**
      * Exporte le récapitulatif en classeur Excel, dans la présentation des
      * relevés tenus à la main : une rubrique par bloc, un sous-total, puis le
-     * total de la période et, s'il y a lieu, le détail mois par mois.
+     * total du mois. Un classeur par mois, comme les fichiers d'origine.
      */
     public function exporter(): void
     {
         Auth::exiger();
         $userId = Auth::id();
 
-        [$debut, $fin, $periode] = $this->periode();
+        [$debut, $fin, $mois] = $this->mois();
         $personne = trim((string) ($_GET['personne'] ?? ''));
         $statut = array_key_exists($_GET['statut'] ?? '', self::STATUTS) ? (string) $_GET['statut'] : null;
 
         $lignes = $this->lignes($userId, $debut, $fin, $personne, $statut);
         if ($lignes === []) {
-            Session::flash('erreur', 'Rien à exporter sur cette période.');
+            Session::flash('erreur', 'Rien à exporter pour ce mois.');
             redirect('budget/remboursements', $this->parametresRetour());
         }
 
         $rubriques = $this->grouperParRubrique($lignes);
-        $parMois = $this->grouperParMois($lignes);
         $totaux = $this->totaux($lignes);
-        $intitulePeriode = $this->intitulePeriode($periode);
+        $intitulePeriode = strtolower(nom_mois((int) $mois->format('n'))) . ' ' . $mois->format('Y');
 
         $classeur = new ClasseurXlsx('Remboursements');
         $classeur->largeurs([13, 44, 14, 14, 15]);
@@ -112,19 +110,6 @@ final class RemboursementsController
                 ['valeur' => $rubrique['total'], 'type' => 'nombre', 'style' => ClasseurXlsx::TOTAL_MONTANT],
                 ['valeur' => '', 'style' => ClasseurXlsx::TOTAL],
             ]);
-            $classeur->ligne();
-        }
-
-        if (count($parMois) > 1) {
-            $classeur->ligne([['valeur' => 'Détail par mois', 'style' => ClasseurXlsx::GRAS]]);
-            foreach ($parMois as $cle => $montant) {
-                $classeur->ligne([
-                    '',
-                    ucfirst(strtolower(nom_mois((int) substr($cle, 5, 2)))) . ' ' . substr($cle, 0, 4),
-                    '',
-                    ['valeur' => $montant, 'type' => 'nombre', 'style' => ClasseurXlsx::MONTANT],
-                ]);
-            }
             $classeur->ligne();
         }
 
@@ -299,17 +284,6 @@ final class RemboursementsController
         return Database::all($sql, $params);
     }
 
-    /** « février 2026 » ou « février 2026 à avril 2026 ». */
-    private function intitulePeriode(array $periode): string
-    {
-        $lisible = static fn (string $p): string
-            => strtolower(nom_mois((int) substr($p, 5, 2))) . ' ' . substr($p, 0, 4);
-
-        return $periode['depuis'] === $periode['jusqu']
-            ? $lisible($periode['depuis'])
-            : $lisible($periode['depuis']) . ' à ' . $lisible($periode['jusqu']);
-    }
-
     // --- Regroupements -------------------------------------------------------
 
     /** Par rubrique, comme les sous-totaux d'un relevé tenu à la main. */
@@ -335,21 +309,6 @@ final class RemboursementsController
             }
         }
         return $rubriques;
-    }
-
-    /** Un total par mois, plus le cumul de la période. */
-    private function grouperParMois(array $lignes): array
-    {
-        $mois = [];
-        foreach ($lignes as $l) {
-            if ($l['statut_remb'] === 'hors_total') {
-                continue;
-            }
-            $cle = substr((string) $l['date_operation'], 0, 7);
-            $mois[$cle] = ($mois[$cle] ?? 0.0) + (float) $l['montant_reclame'];
-        }
-        ksort($mois);
-        return $mois;
     }
 
     private function totaux(array $lignes): array
@@ -393,37 +352,42 @@ final class RemboursementsController
     }
 
     /** Période affichée : un mois, une année, ou une plage libre. */
-    private function periode(): array
+    /**
+     * Le mois affiché. Chaque mois se lit seul : rien n'est cumulé d'un mois
+     * sur l'autre, comme dans un relevé mensuel tenu à la main.
+     *
+     * @return array{0:string, 1:string, 2:DateTimeImmutable} début, fin, mois
+     */
+    private function mois(): array
     {
-        $depuis = (string) ($_GET['depuis'] ?? '');
-        $jusqu  = (string) ($_GET['jusqu'] ?? '');
+        $demande = (string) ($_GET['mois'] ?? '');
+        $mois = preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $demande) === 1
+            ? new DateTimeImmutable($demande . '-01')
+            : (new DateTimeImmutable('today'))->modify('first day of this month');
 
-        if (preg_match('/^\d{4}-\d{2}$/', $depuis) === 1 && preg_match('/^\d{4}-\d{2}$/', $jusqu) === 1) {
-            if ($jusqu < $depuis) {
-                [$depuis, $jusqu] = [$jusqu, $depuis];
-            }
-            return [
-                $depuis . '-01',
-                (new DateTimeImmutable($jusqu . '-01'))->format('Y-m-t'),
-                ['depuis' => $depuis, 'jusqu' => $jusqu],
-            ];
-        }
+        return [$mois->format('Y-m-01'), $mois->format('Y-m-t'), $mois];
+    }
 
-        // Par défaut : les douze derniers mois, ce qui couvre une année scolaire.
-        $fin = new DateTimeImmutable('today');
-        $debut = $fin->modify('-11 months')->modify('first day of this month');
-        return [
-            $debut->format('Y-m-d'),
-            $fin->format('Y-m-t'),
-            ['depuis' => $debut->format('Y-m'), 'jusqu' => $fin->format('Y-m')],
-        ];
+    /** Les mois qui contiennent au moins une ligne cochée, pour naviguer. */
+    private function moisRenseignes(int $userId): array
+    {
+        return array_column(Database::all(
+            "SELECT DATE_FORMAT(date_operation, '%Y-%m') AS mois,
+                    COALESCE(SUM(CASE WHEN statut_remb <> 'hors_total'
+                        THEN COALESCE(part_rembourser, montant) END), 0) AS total
+             FROM operations
+             WHERE user_id = ? AND a_rembourser = 1
+             GROUP BY mois
+             ORDER BY mois DESC",
+            [$userId]
+        ), null, 'mois');
     }
 
     /** Conserve les filtres au retour d'une action. */
     private function parametresRetour(): array
     {
         $params = [];
-        foreach (['depuis', 'jusqu', 'personne', 'statut', 'mois'] as $cle) {
+        foreach (['mois', 'personne', 'statut'] as $cle) {
             $valeur = $_POST[$cle] ?? $_GET[$cle] ?? '';
             if (is_string($valeur) && $valeur !== '') {
                 $params[$cle] = $valeur;

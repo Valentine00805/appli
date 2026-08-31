@@ -93,9 +93,11 @@ part à réclamer ; le formulaire de modification y ajoute le statut et la date 
 remboursement. Une dépense décochée reste dans le budget, seul son suivi
 disparaît.
 
-Le récapitulatif reprend la présentation d'un relevé tenu à la main : les lignes
-sont **groupées par catégorie avec un sous-total**, un total pour la période, et
-un **détail mois par mois avec cumul** dès que la période en couvre plusieurs.
+Le récapitulatif se lit **un mois à la fois**, comme un relevé mensuel tenu à la
+main : les lignes sont **groupées par catégorie avec un sous-total**, suivies du
+total du mois. Rien n'est cumulé d'un mois sur l'autre. On passe d'un mois au
+suivant avec les flèches, ou directement par les raccourcis en bas de page, qui
+rappellent le total de chaque mois renseigné.
 
 Trois choses se règlent ligne par ligne :
 
@@ -111,10 +113,10 @@ Un bouton marque d'un coup toutes les lignes cochées comme remboursées.
 
 Deux façons de sortir le récapitulatif :
 
-- **Exporter en Excel** produit un vrai fichier `.xlsx`, mis en forme comme un
-  relevé tenu à la main : un bloc par rubrique avec son sous-total, le détail
-  mois par mois, le total, et les sections « Pas dans le total » et « Reste à
-  rembourser ». Dates et montants y sont de vrais types Excel, calculables.
+- **Exporter en Excel** produit un vrai fichier `.xlsx` pour le mois affiché,
+  mis en forme comme un relevé tenu à la main : un bloc par rubrique avec son
+  sous-total, le total du mois, et les sections « Pas dans le total » et
+  « Reste à rembourser ». Un classeur par mois, comme les fichiers d'origine. Dates et montants y sont de vrais types Excel, calculables.
   Le fichier est généré sans bibliothèque externe.
 - **Imprimer** produit une version propre à l'écran, sans boutons ni navigation,
   à enregistrer en PDF.
