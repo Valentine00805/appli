@@ -36,6 +36,12 @@ final class RemboursementsController
             'totaux'      => $this->totaux($lignes),
             'mois'        => $mois,
             'moisRenseignes' => $this->moisRenseignes($userId),
+            'reglement'   => $this->reglementDuMois($userId, $mois->format('Y-m'), $personne),
+            'recettes'    => Database::all(
+                "SELECT id, nom, icone FROM categories_budget
+                  WHERE user_id = ? AND sens = 'recette' ORDER BY position, nom",
+                [$userId]
+            ),
             'personne'    => $personne,
             'personnes'   => self::personnes($userId),
             'statut'      => $statut,
@@ -150,6 +156,175 @@ final class RemboursementsController
         $nom = ($personne !== '' ? 'Compte pour ' . $personne : 'Remboursements')
             . ' ' . $intitulePeriode . '.xlsx';
         $classeur->telecharger($nom);
+    }
+
+    /**
+     * Déclare un mois remboursé : ses lignes passent au statut « remboursé » et
+     * une recette du même montant est ajoutée aux opérations du mois suivant,
+     * puisque l'argent revient sur le compte à ce moment-là.
+     */
+    public function reglerMois(): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $userId = Auth::id();
+
+        $periode = $this->periodeValide(post('periode'));
+        if ($periode === null) {
+            Session::flash('erreur', 'Mois invalide.');
+            redirect('budget/remboursements');
+        }
+
+        $personne = mb_substr(post('personne'), 0, 80);
+        $retour = array_filter(['mois' => $periode, 'personne' => $personne ?: null]);
+
+        if ($this->reglementDuMois($userId, $periode, $personne) !== null) {
+            Session::flash('info', 'Ce mois était déjà réglé.');
+            redirect('budget/remboursements', $retour);
+        }
+
+        $lignes = $this->lignesAReclamer($userId, $periode, $personne);
+        if ($lignes === []) {
+            Session::flash('erreur', 'Aucune dépense à réclamer pour ce mois.');
+            redirect('budget/remboursements', $retour);
+        }
+
+        $montant = round(array_sum(array_map(
+            static fn (array $l): float => (float) $l['montant_reclame'],
+            $lignes
+        )), 2);
+        $ids = array_map(static fn (array $l): int => (int) $l['id'], $lignes);
+
+        // Par défaut, l'argent arrive le 1er du mois suivant.
+        $dateSaisie = post('date_recette');
+        $date = preg_match('/^\d{4}-\d{2}-\d{2}$/', $dateSaisie) === 1
+            ? $dateSaisie
+            : (new DateTimeImmutable($periode . '-01'))->modify('+1 month')->format('Y-m-d');
+
+        $categorieId = entier_ou_null($_POST['categorie_id'] ?? null);
+        if ($categorieId !== null && Database::valeur(
+            "SELECT id FROM categories_budget WHERE id = ? AND user_id = ? AND sens = 'recette'",
+            [$categorieId, $userId]
+        ) === null) {
+            $categorieId = null;
+        }
+
+        $intitule = sprintf(
+            'Remboursement %s %s%s',
+            strtolower(nom_mois((int) substr($periode, 5, 2))),
+            substr($periode, 0, 4),
+            $personne !== '' ? ' — ' . $personne : ''
+        );
+
+        Database::run(
+            "INSERT INTO operations (user_id, categorie_id, libelle, montant, sens, date_operation, moyen)
+             VALUES (?, ?, ?, ?, 'recette', ?, 'Virement')",
+            [$userId, $categorieId, $intitule, number_format($montant, 2, '.', ''), $date]
+        );
+        $operationId = Database::dernierId();
+
+        $trous = implode(',', array_fill(0, count($ids), '?'));
+        Database::run(
+            "UPDATE operations SET statut_remb = 'rembourse', date_remboursement = ?
+             WHERE user_id = ? AND id IN ($trous)",
+            array_merge([$date, $userId], $ids)
+        );
+
+        Database::run(
+            'INSERT INTO reglements (user_id, periode, personne, montant, date_reglement, operation_id, lignes)
+             VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [
+                $userId,
+                $periode,
+                $personne !== '' ? $personne : null,
+                number_format($montant, 2, '.', ''),
+                $date,
+                $operationId,
+                json_encode($ids),
+            ]
+        );
+
+        Session::flash('succes', sprintf(
+            '%s réglés pour %s. La recette a été ajoutée aux opérations du %s.',
+            montant_fr($montant),
+            strtolower(nom_mois((int) substr($periode, 5, 2))) . ' ' . substr($periode, 0, 4),
+            date_fr($date . ' 00:00:00', false)
+        ));
+        redirect('budget/remboursements', $retour);
+    }
+
+    /** Revient sur un règlement : les lignes redeviennent à réclamer. */
+    public function annulerReglement(int $id): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $userId = Auth::id();
+
+        $reglement = Database::one('SELECT * FROM reglements WHERE id = ? AND user_id = ?', [$id, $userId]);
+        if ($reglement === null) {
+            $this->introuvable();
+        }
+
+        $ids = json_decode((string) $reglement['lignes'], true);
+        if (is_array($ids) && $ids !== []) {
+            $ids = array_map('intval', $ids);
+            $trous = implode(',', array_fill(0, count($ids), '?'));
+            Database::run(
+                "UPDATE operations SET statut_remb = 'a_reclamer', date_remboursement = NULL
+                 WHERE user_id = ? AND statut_remb = 'rembourse' AND id IN ($trous)",
+                array_merge([$userId], $ids)
+            );
+        }
+
+        // La recette produite disparaît avec le règlement, sauf si elle a déjà
+        // été supprimée à la main.
+        if ($reglement['operation_id'] !== null) {
+            Database::run(
+                'DELETE FROM operations WHERE id = ? AND user_id = ?',
+                [$reglement['operation_id'], $userId]
+            );
+        }
+
+        Database::run('DELETE FROM reglements WHERE id = ? AND user_id = ?', [$id, $userId]);
+
+        Session::flash('succes', 'Règlement annulé : les dépenses sont de nouveau à réclamer.');
+        redirect('budget/remboursements', array_filter([
+            'mois'     => $reglement['periode'],
+            'personne' => $reglement['personne'],
+        ]));
+    }
+
+    /** Le règlement enregistré pour ce mois, s'il existe. */
+    private function reglementDuMois(int $userId, string $periode, string $personne): ?array
+    {
+        return Database::one(
+            'SELECT r.*, o.date_operation AS date_recette
+             FROM reglements r
+             LEFT JOIN operations o ON o.id = r.operation_id
+             WHERE r.user_id = ? AND r.periode = ?
+               AND (r.personne <=> ?)',
+            [$userId, $periode, $personne !== '' ? $personne : null]
+        );
+    }
+
+    /** Les lignes encore à réclamer d'un mois. */
+    private function lignesAReclamer(int $userId, string $periode, string $personne): array
+    {
+        $sql = "SELECT id, COALESCE(part_rembourser, montant) AS montant_reclame
+                FROM operations
+                WHERE user_id = ? AND a_rembourser = 1 AND statut_remb = 'a_reclamer'
+                  AND date_operation >= ? AND date_operation <= LAST_DAY(?)";
+        $params = [$userId, $periode . '-01', $periode . '-01'];
+        if ($personne !== '') {
+            $sql .= ' AND rembourse_par = ?';
+            $params[] = $personne;
+        }
+        return Database::all($sql, $params);
+    }
+
+    private function periodeValide(string $periode): ?string
+    {
+        return preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $periode) === 1 ? $periode : null;
     }
 
     /** Coche ou décoche une opération depuis la liste des opérations. */

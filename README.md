@@ -109,7 +109,21 @@ Trois choses se règlent ligne par ligne :
 - **Le statut** : à réclamer, remboursé (avec sa date), ou **hors total** pour
   garder une ligne sous les yeux sans la compter.
 
-Un bouton marque d'un coup toutes les lignes cochées comme remboursées.
+### Déclarer un mois remboursé
+
+Quand l'argent arrive, un bouton **« Oui, X € remboursés »** solde le mois d'un
+coup : toutes ses lignes encore à réclamer passent à « remboursé », et **une
+recette du même montant est ajoutée aux opérations**, datée par défaut du 1er du
+mois suivant. L'argent rendu réapparaît donc dans le budget du mois où il
+arrive, et alimente le solde prévisionnel.
+
+La date et la catégorie de cette recette se choisissent au moment de confirmer.
+Un mois déjà réglé affiche un bandeau vert avec un lien vers la recette créée,
+et un bouton **Annuler le règlement** qui remet les dépenses à réclamer et
+supprime la recette.
+
+Un bouton marque aussi d'un coup les seules lignes cochées comme remboursées,
+sans créer de recette, pour les remboursements partiels.
 
 Deux façons de sortir le récapitulatif :
 

@@ -3,7 +3,8 @@
  * Chaque mois se lit seul : aucun cumul d'un mois sur l'autre.
  *
  * @var DateTimeImmutable $mois
- * @var array $lignes, $rubriques, $totaux, $moisRenseignes, $personnes, $statuts
+ * @var array $lignes, $rubriques, $totaux, $moisRenseignes, $personnes, $statuts, $recettes
+ * @var ?array $reglement
  * @var string $personne
  * @var ?string $statut
  * @var float $aReclamerGlobal
@@ -90,6 +91,73 @@ $lien = static fn (string $m): string => url('budget/remboursements',
   </div>
   <button class="bouton bouton--secondaire" type="submit">Filtrer</button>
 </form>
+
+<?php if ($reglement !== null): ?>
+  <section class="carte" style="margin-bottom:1.25rem;border-color:var(--succes)">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;gap:1rem;flex-wrap:wrap">
+      <div>
+        <h2 style="margin:0;color:var(--succes)">✅ Mois remboursé</h2>
+        <p class="discret" style="margin:.35rem 0 0">
+          <?= e(montant_fr($reglement['montant'])) ?> réglé<?= (float) $reglement['montant'] > 1 ? 's' : '' ?>
+          le <?= e(date_fr((string) $reglement['date_reglement'] . ' 00:00:00', false)) ?>.
+          <?php if ($reglement['operation_id'] !== null): ?>
+            La recette a été ajoutée aux opérations du
+            <a href="<?= url('budget', ['mois' => substr((string) $reglement['date_recette'], 0, 7)]) ?>">
+              <?= e(strtolower(nom_mois((int) substr((string) $reglement['date_recette'], 5, 2)))
+                  . ' ' . substr((string) $reglement['date_recette'], 0, 4)) ?></a>.
+          <?php else: ?>
+            <span style="color:var(--erreur)">La recette correspondante a été supprimée depuis.</span>
+          <?php endif; ?>
+        </p>
+      </div>
+      <form method="post" action="<?= url('budget/remboursements/reglements/' . $reglement['id'] . '/annuler') ?>"
+            class="sans-impression"
+            data-confirmation="Annuler ce règlement ? Les dépenses redeviendront à réclamer et la recette sera supprimée.">
+        <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+        <button class="bouton bouton--secondaire bouton--petit" type="submit">Annuler le règlement</button>
+      </form>
+    </div>
+  </section>
+
+<?php elseif ($totaux['attente'] > 0): ?>
+  <section class="carte sans-impression" style="margin-bottom:1.25rem;border-color:var(--accent)">
+    <h2 style="margin:0">Ce mois vous a-t-il été remboursé ?</h2>
+    <p class="discret" style="margin:.35rem 0 .9rem">
+      En confirmant, les <?= e(montant_fr($totaux['attente'])) ?> encore à réclamer passent
+      à « remboursé », et <strong>une recette du même montant est ajoutée à vos
+      opérations</strong> — l'argent revient sur le compte.
+    </p>
+
+    <form method="post" action="<?= url('budget/remboursements/regler-mois') ?>">
+      <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+      <input type="hidden" name="periode" value="<?= e($periode) ?>">
+      <input type="hidden" name="personne" value="<?= e($personne) ?>">
+
+      <div class="ligne-champs" style="align-items:end">
+        <div class="champ">
+          <label for="date_recette">Argent reçu le</label>
+          <input type="date" id="date_recette" name="date_recette"
+                 value="<?= e($mois->modify('+1 month')->format('Y-m-01')) ?>">
+          <span class="champ__aide">Le 1<sup>er</sup> du mois suivant par défaut.</span>
+        </div>
+        <div class="champ">
+          <label for="categorie_recette">Catégorie de la recette</label>
+          <select id="categorie_recette" name="categorie_id">
+            <option value="">— Aucune —</option>
+            <?php foreach ($recettes as $c): ?>
+              <option value="<?= (int) $c['id'] ?>"><?= e($c['icone'] . ' ' . $c['nom']) ?></option>
+            <?php endforeach; ?>
+          </select>
+        </div>
+        <div class="champ">
+          <button class="bouton" type="submit">
+            ✅ Oui, <?= e(montant_fr($totaux['attente'])) ?> remboursés
+          </button>
+        </div>
+      </div>
+    </form>
+  </section>
+<?php endif; ?>
 
 <?php if ($lignes === []): ?>
   <div class="vide">

@@ -98,6 +98,8 @@ $routes = [
     ['GET',  'budget/remboursements',      [RemboursementsController::class, 'index']],
     ['GET',  'budget/remboursements/export', [RemboursementsController::class, 'exporter']],
     ['POST', 'budget/remboursements/regler', [RemboursementsController::class, 'reglerLot']],
+    ['POST', 'budget/remboursements/regler-mois', [RemboursementsController::class, 'reglerMois']],
+    ['POST', 'budget/remboursements/reglements/{id}/annuler', [RemboursementsController::class, 'annulerReglement']],
     ['POST', 'budget/remboursements/{id}/modifier', [RemboursementsController::class, 'modifier']],
     ['POST', 'operations/{id}/rembourser', [RemboursementsController::class, 'basculer']],
 

@@ -194,3 +194,20 @@ CREATE TABLE IF NOT EXISTS `soldes_saisis` (
   UNIQUE KEY `uniq_solde_user_periode` (`user_id`, `periode`),
   CONSTRAINT `fk_solde_user` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Reglements : trace du solde d'un mois de remboursements.
+CREATE TABLE IF NOT EXISTS `reglements` (
+  `id`             INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `user_id`        INT UNSIGNED NOT NULL,
+  `periode`        CHAR(7)       NOT NULL COMMENT 'mois réglé, AAAA-MM',
+  `personne`       VARCHAR(80)   DEFAULT NULL COMMENT 'NULL = tout le monde',
+  `montant`        DECIMAL(10,2) NOT NULL,
+  `date_reglement` DATE          NOT NULL,
+  `operation_id`   INT UNSIGNED  DEFAULT NULL COMMENT 'la recette créée en retour',
+  `lignes`         TEXT          NOT NULL COMMENT 'identifiants des dépenses soldées, en JSON',
+  `created_at`     DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_reglement` (`user_id`, `periode`, `personne`),
+  CONSTRAINT `fk_reglement_user`      FOREIGN KEY (`user_id`)      REFERENCES `users`(`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_reglement_operation` FOREIGN KEY (`operation_id`) REFERENCES `operations`(`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
