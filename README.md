@@ -297,10 +297,24 @@ il faut autoriser Apache à répondre en dehors de `localhost` (fichier
 
 ## Sauvegarde
 
-Deux choses à conserver :
+**Mon compte → Sauvegarder mes données** produit un fichier `.zip` contenant tout
+ce que contient le compte : les données et les pièces jointes. Rangez-le ailleurs
+que sur la machine qui héberge l'application — un stockage en ligne, une clé USB,
+un disque externe. Une copie posée à côté de l'original ne protège de rien.
 
-- le dossier `storage/uploads` (les fichiers joints) ;
-- un export de la base `mon_appli_cours` (phpMyAdmin, <http://localhost/phpmyadmin5.2.3/> → **Exporter**).
+La même page permet de **restaurer** une sauvegarde. L'opération remplace toutes
+les données du compte, elle est donc protégée par une case à cocher et une
+confirmation. L'archive est entièrement vérifiée avant que la moindre ligne ne
+soit effacée, et la réécriture se fait dans une transaction : si quoi que ce soit
+échoue, rien n'est modifié. Les anciennes pièces jointes ne sont supprimées
+qu'une fois les nouvelles écrites.
+
+La sauvegarde ne dépend d'aucun outil externe — ni `mysqldump`, ni accès à la
+ligne de commande — ce qui la rend utilisable sur un hébergement mutualisé.
+
+> Le code est sur GitHub, mais **pas vos données** : `config/config.php` et
+> `storage/uploads` en sont exclus volontairement. Sans cette sauvegarde, une
+> panne vous laisserait une application fonctionnelle et vide.
 
 ---
 

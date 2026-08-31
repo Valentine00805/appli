@@ -19,6 +19,7 @@ require __DIR__ . '/controllers/BudgetController.php';
 require __DIR__ . '/controllers/PrevisionsController.php';
 require __DIR__ . '/controllers/ImportController.php';
 require __DIR__ . '/controllers/RemboursementsController.php';
+require __DIR__ . '/controllers/SauvegardeController.php';
 require __DIR__ . '/controllers/TableauBordController.php';
 
 /**
@@ -35,6 +36,9 @@ $routes = [
     ['POST', 'deconnexion',               [AuthController::class, 'deconnecter']],
     ['GET',  'compte',                    [AuthController::class, 'compte']],
     ['POST', 'compte/mot-de-passe',       [AuthController::class, 'changerMotDePasse']],
+    ['GET',  'compte/sauvegarde',           [SauvegardeController::class, 'index']],
+    ['GET',  'compte/sauvegarde/export',    [SauvegardeController::class, 'exporter']],
+    ['POST', 'compte/sauvegarde/restaurer', [SauvegardeController::class, 'restaurer']],
 
     ['GET',  'cours',                     [CoursController::class, 'index']],
     ['GET',  'cours/nouveau',             [CoursController::class, 'formulaire']],

@@ -49,16 +49,29 @@ $moi = Auth::utilisateur();
     </form>
   </div>
 
-  <div class="carte">
-    <h2>Où sont mes données ?</h2>
-    <p class="discret">
-      Tout est stocké sur cet ordinateur : les textes de cours dans la base MySQL
-      <code>mon_appli_cours</code>, les fichiers joints dans le dossier
-      <code>storage/uploads</code> de l'application.
-    </p>
-    <p class="discret">
-      Pour une sauvegarde complète, copiez ce dossier et exportez la base
-      (par exemple depuis phpMyAdmin).
-    </p>
+  <div class="pile">
+    <div class="carte" style="border-color:var(--accent)">
+      <h2>💾 Sauvegarde</h2>
+      <p class="discret" style="margin-bottom:.8rem">
+        Vos données n'existent qu'à un seul endroit. Téléchargez-en une copie et
+        rangez-la ailleurs : c'est la seule chose qui vous protège d'une panne.
+      </p>
+      <a class="bouton bouton--bloc" href="<?= url('compte/sauvegarde') ?>">
+        Sauvegarder mes données
+      </a>
+    </div>
+
+    <div class="carte">
+      <h2>Où sont mes données ?</h2>
+      <p class="discret">
+        Les textes de cours, votre calendrier et vos comptes sont dans la base
+        MySQL <code>mon_appli_cours</code> ; les fichiers joints dans le dossier
+        <code>storage/uploads</code> de l'application.
+      </p>
+      <p class="discret" style="margin:0">
+        Le code est sur GitHub, mais pas vos données : elles en sont exclues
+        volontairement.
+      </p>
+    </div>
   </div>
 </div>
