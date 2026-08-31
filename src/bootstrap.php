@@ -10,6 +10,7 @@ require $racine . '/src/Config.php';
 require $racine . '/src/Database.php';
 require $racine . '/src/Session.php';
 require $racine . '/src/Auth.php';
+require $racine . '/src/LimiteurConnexion.php';
 require $racine . '/src/Fichiers.php';
 require $racine . '/src/ReleveCsv.php';
 require $racine . '/src/ClasseurXlsx.php';

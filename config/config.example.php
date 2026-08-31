@@ -15,6 +15,13 @@ return [
     'app' => [
         'nom'              => 'Mes Cours',
         'inscription_ouverte' => true,          // passer à false pour bloquer les nouvelles inscriptions
+
+        // Mot de passe à fournir pour créer un compte. Laissé vide, l'inscription
+        // est libre — ce qui ne convient qu'en local. Dès que l'application est
+        // accessible depuis Internet, il faut soit renseigner ce code, soit
+        // fermer les inscriptions ci-dessus : sans cela l'application refuse
+        // toute inscription et vous le signale.
+        'code_inscription' => '',
         'dossier_uploads'  => __DIR__ . '/../storage/uploads',
         'taille_max_fichier' => 25 * 1024 * 1024, // 25 Mo
         'extensions_autorisees' => [

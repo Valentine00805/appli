@@ -257,6 +257,32 @@ Pour fermer les inscriptions une fois tout le monde inscrit, dans `config/config
 'inscription_ouverte' => false,
 ```
 
+Ou, pour les garder ouvertes mais protégées, un code à communiquer aux personnes
+concernées :
+
+```php
+'code_inscription' => 'un-code-de-votre-choix',
+```
+
+### Mise en ligne
+
+Deux protections s'activent dès que l'application n'est plus consultée depuis la
+machine elle-même :
+
+- **Les tentatives de connexion sont limitées.** Cinq échecs sur un compte, ou
+  vingt depuis une même adresse, bloquent les essais pendant quinze minutes. Une
+  connexion réussie remet le compteur du compte à zéro. Sans cela, un mot de
+  passe finit toujours par se deviner par essais successifs.
+- **L'inscription libre est refusée.** Si l'application répond à autre chose que
+  `localhost` alors que les inscriptions sont ouvertes sans code, le formulaire
+  est bloqué et vous explique quoi faire. Impossible d'exposer par distraction un
+  formulaire d'inscription au premier venu.
+
+À prévoir en plus chez l'hébergeur : le certificat HTTPS, et les limites d'envoi
+de fichiers depuis le panneau de configuration — les directives `php_value` du
+`.htaccess` sont ignorées par LiteSpeed, qu'utilisent la plupart des hébergeurs
+mutualisés.
+
 ### Accès depuis un téléphone sur le réseau local
 
 L'interface est responsive. Pour y accéder depuis un autre appareil du réseau,

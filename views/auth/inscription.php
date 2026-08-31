@@ -1,4 +1,4 @@
-<?php /** @var array $erreurs */ ?>
+<?php /** @var array $erreurs @var bool $codeExige */ ?>
 
 <form method="post" action="<?= url('inscription') ?>" novalidate>
   <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
@@ -30,6 +30,18 @@
       <span class="message-erreur"><?= e($erreurs['mot_de_passe_confirmation']) ?></span>
     <?php endif; ?>
   </div>
+
+  <?php if ($codeExige): ?>
+    <div class="champ<?= isset($erreurs['code_inscription']) ? ' champ--erreur' : '' ?>">
+      <label for="code_inscription">Code d’inscription</label>
+      <input type="password" id="code_inscription" name="code_inscription" required
+             autocomplete="off">
+      <span class="champ__aide">Fourni par la personne qui administre l’application.</span>
+      <?php if (isset($erreurs['code_inscription'])): ?>
+        <span class="message-erreur"><?= e($erreurs['code_inscription']) ?></span>
+      <?php endif; ?>
+    </div>
+  <?php endif; ?>
 
   <button class="bouton bouton--bloc" type="submit">Créer mon compte</button>
 </form>

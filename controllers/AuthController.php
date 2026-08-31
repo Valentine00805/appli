@@ -8,17 +8,23 @@ final class AuthController
         if (Auth::connecte()) {
             redirect('');
         }
-        if (!Config::get('app', 'inscription_ouverte')) {
-            Session::flash('erreur', 'Les inscriptions sont fermées.');
-            redirect('connexion');
-        }
-        Vue::afficherNu('auth/inscription', ['erreurs' => []], 'Inscription');
+        $this->verifierInscriptionPossible();
+
+        Vue::afficherNu('auth/inscription', [
+            'erreurs' => [],
+            'codeExige' => $this->codeInscription() !== '',
+        ], 'Inscription');
     }
 
     public function inscrire(): void
     {
         Session::verifierCsrf();
-        if (!Config::get('app', 'inscription_ouverte')) {
+        $this->verifierInscriptionPossible();
+
+        $ip = LimiteurConnexion::adresse();
+        $attente = LimiteurConnexion::attenteRestante('', $ip);
+        if ($attente !== null) {
+            Session::flash('erreur', LimiteurConnexion::message($attente));
             redirect('connexion');
         }
 
@@ -27,6 +33,14 @@ final class AuthController
         $mdp = $_POST['mot_de_passe'] ?? '';
         $mdp2 = $_POST['mot_de_passe_confirmation'] ?? '';
         $erreurs = [];
+
+        $code = $this->codeInscription();
+        if ($code !== '' && !hash_equals($code, (string) ($_POST['code_inscription'] ?? ''))) {
+            // Un code faux compte comme un échec : on ne veut pas qu'il se devine
+            // par essais successifs non plus.
+            LimiteurConnexion::enregistrer('', $ip, false);
+            $erreurs['code_inscription'] = 'Code d’inscription incorrect.';
+        }
 
         if (mb_strlen($nom) < 2) {
             $erreurs['nom'] = 'Indiquez un nom d’au moins 2 caractères.';
@@ -43,7 +57,10 @@ final class AuthController
         }
 
         if ($erreurs !== []) {
-            Vue::afficherNu('auth/inscription', ['erreurs' => $erreurs], 'Inscription');
+            Vue::afficherNu('auth/inscription', [
+                'erreurs' => $erreurs,
+                'codeExige' => $code !== '',
+            ], 'Inscription');
             return;
         }
 
@@ -74,9 +91,22 @@ final class AuthController
         Session::verifierCsrf();
         $email = mb_strtolower(post('email'));
         $mdp = $_POST['mot_de_passe'] ?? '';
+        $ip = LimiteurConnexion::adresse();
+
+        // Le blocage est vérifié avant même de regarder le mot de passe : sinon
+        // la durée de la réponse trahirait l'existence du compte.
+        $attente = LimiteurConnexion::attenteRestante($email, $ip);
+        if ($attente !== null) {
+            Vue::afficherNu('auth/connexion', [
+                'erreurs' => ['global' => LimiteurConnexion::message($attente)],
+            ], 'Connexion');
+            return;
+        }
 
         $utilisateur = Database::one('SELECT * FROM users WHERE email = ?', [$email]);
         if ($utilisateur === null || !password_verify($mdp, $utilisateur['password_hash'])) {
+            LimiteurConnexion::enregistrer($email, $ip, false);
+
             // Message volontairement générique : on n'indique pas si le compte existe.
             usleep(300000);
             Vue::afficherNu('auth/connexion', [
@@ -84,6 +114,8 @@ final class AuthController
             ], 'Connexion');
             return;
         }
+
+        LimiteurConnexion::enregistrer($email, $ip, true);
 
         if (password_needs_rehash($utilisateur['password_hash'], PASSWORD_DEFAULT)) {
             Database::run('UPDATE users SET password_hash = ? WHERE id = ?', [
@@ -154,6 +186,42 @@ final class AuthController
         ]);
         Session::flash('succes', 'Mot de passe mis à jour.');
         redirect('compte');
+    }
+
+    /**
+     * Refuse l'inscription quand elle serait ouverte à n'importe qui.
+     *
+     * En local, une inscription libre ne gêne personne. Dès que l'application
+     * est jointe depuis une autre machine, laisser le formulaire ouvert sans
+     * code reviendrait à autoriser le premier venu à se créer un compte : on
+     * bloque, en expliquant quoi faire.
+     */
+    private function verifierInscriptionPossible(): void
+    {
+        if (!Config::get('app', 'inscription_ouverte')) {
+            Session::flash('erreur', 'Les inscriptions sont fermées.');
+            redirect('connexion');
+        }
+
+        if ($this->codeInscription() === '' && !$this->accesLocal()) {
+            Session::flash('erreur',
+                'Inscription impossible : l’application est accessible depuis le réseau et '
+                . 'aucun code d’inscription n’est défini. Renseignez « code_inscription » dans '
+                . 'config/config.php, ou passez « inscription_ouverte » à false.');
+            redirect('connexion');
+        }
+    }
+
+    private function codeInscription(): string
+    {
+        return trim((string) Config::get('app', 'code_inscription'));
+    }
+
+    /** La requête vient-elle de la machine elle-même ? */
+    private function accesLocal(): bool
+    {
+        $ip = (string) ($_SERVER['REMOTE_ADDR'] ?? '');
+        return in_array($ip, ['127.0.0.1', '::1', ''], true);
     }
 
     /** Quelques matières pour ne pas démarrer sur une page vide. */
