@@ -1,0 +1,218 @@
+<?php
+/**
+ * @var string $vue
+ * @var DateTimeImmutable $ancre, $debut, $fin
+ * @var array $evenements, $parJour, $matieres, $aVenir
+ * @var ?int $matiereId
+ * @var ?string $type
+ */
+$types = types_evenement();
+$aujourdhui = (new DateTimeImmutable('today'))->format('Y-m-d');
+
+$filtresUrl = array_filter([
+    'matiere' => $matiereId,
+    'type'    => $type,
+], static fn ($v): bool => $v !== null);
+
+/** Lien de navigation en gardant les filtres. */
+$lien = static function (string $vueCible, DateTimeInterface $date) use ($filtresUrl): string {
+    return url('calendrier', $filtresUrl + ['vue' => $vueCible, 'date' => $date->format('Y-m-d')]);
+};
+
+$pas = match ($vue) {
+    'semaine' => '7 days',
+    'liste'   => '1 month',
+    default   => '1 month',
+};
+$precedent = $ancre->modify('-' . $pas);
+$suivant   = $ancre->modify('+' . $pas);
+
+if ($vue === 'semaine') {
+    $titre = 'Semaine du ' . $debut->format('j') . ' au ' . $fin->format('j') . ' '
+        . strtolower(nom_mois((int) $fin->format('n'))) . ' ' . $fin->format('Y');
+} else {
+    $titre = nom_mois((int) $ancre->format('n')) . ' ' . $ancre->format('Y');
+}
+
+/** Rend une puce d'évènement pour la grille mensuelle. */
+$puce = static function (array $evt) use ($types): string {
+    $couleur = $evt['matiere_couleur'] ?? '#64748b';
+    $fond = 'color-mix(in srgb, ' . $couleur . ' 16%, transparent)';
+    $heure = $evt['journee_entiere'] ? '' : '<span class="evt__heure">' . date('H:i', strtotime($evt['debut'])) . '</span> ';
+    return '<a class="evt' . ($evt['termine'] ? ' evt--termine' : '') . '"'
+        . ' href="' . url('evenements/' . $evt['id'] . '/modifier') . '"'
+        . ' style="background:' . e($fond) . ';border-left-color:' . e($couleur) . ';color:inherit"'
+        . ' title="' . e($types[$evt['type']]['libelle'] . ' · ' . $evt['titre']) . '">'
+        . $heure . e($types[$evt['type']]['icone']) . ' ' . e($evt['titre'])
+        . '</a>';
+};
+?>
+
+<div class="entete-page">
+  <div>
+    <h1>Calendrier</h1>
+    <p>Cours, examens, devoirs et révisions.</p>
+  </div>
+  <div class="actions">
+    <a class="bouton bouton--secondaire" href="<?= url('evenements/nouveau', ['type' => 'examen']) ?>">+ Examen</a>
+    <a class="bouton" href="<?= url('evenements/nouveau') ?>">+ Évènement</a>
+  </div>
+</div>
+
+<div class="cal-barre">
+  <div class="actions">
+    <a class="bouton bouton--secondaire bouton--petit" href="<?= $lien($vue, $precedent) ?>" aria-label="Période précédente">←</a>
+    <a class="bouton bouton--secondaire bouton--petit" href="<?= $lien($vue, new DateTimeImmutable('today')) ?>">Aujourd'hui</a>
+    <a class="bouton bouton--secondaire bouton--petit" href="<?= $lien($vue, $suivant) ?>" aria-label="Période suivante">→</a>
+    <h2 class="cal-titre"><?= e($titre) ?></h2>
+  </div>
+
+  <div class="actions">
+    <form method="get" action="<?= url('calendrier') ?>" data-auto-envoi>
+      <input type="hidden" name="vue" value="<?= e($vue) ?>">
+      <input type="hidden" name="date" value="<?= e($ancre->format('Y-m-d')) ?>">
+      <select name="matiere" aria-label="Filtrer par matière">
+        <option value="">Toutes les matières</option>
+        <?php foreach ($matieres as $m): ?>
+          <option value="<?= (int) $m['id'] ?>"<?= $matiereId === (int) $m['id'] ? ' selected' : '' ?>>
+            <?= e($m['nom']) ?>
+          </option>
+        <?php endforeach; ?>
+      </select>
+      <select name="type" aria-label="Filtrer par type">
+        <option value="">Tous les types</option>
+        <?php foreach ($types as $cle => $info): ?>
+          <option value="<?= e($cle) ?>"<?= $type === $cle ? ' selected' : '' ?>>
+            <?= e($info['icone'] . ' ' . $info['libelle']) ?>
+          </option>
+        <?php endforeach; ?>
+      </select>
+      <noscript><button class="bouton bouton--secondaire bouton--petit" type="submit">OK</button></noscript>
+    </form>
+
+    <nav class="cal-onglets" aria-label="Type d'affichage">
+      <a href="<?= $lien('mois', $ancre) ?>"<?= $vue === 'mois' ? ' aria-current="page"' : '' ?>>Mois</a>
+      <a href="<?= $lien('semaine', $ancre) ?>"<?= $vue === 'semaine' ? ' aria-current="page"' : '' ?>>Semaine</a>
+      <a href="<?= $lien('liste', $ancre) ?>"<?= $vue === 'liste' ? ' aria-current="page"' : '' ?>>Liste</a>
+    </nav>
+  </div>
+</div>
+
+<?php if ($vue === 'mois'): ?>
+
+  <div class="cal-grille">
+    <?php foreach (jours_semaine() as $jour): ?>
+      <div class="cal-entete-jour"><?= e($jour) ?></div>
+    <?php endforeach; ?>
+
+    <?php
+    $curseur = $debut;
+    $moisAffiche = (int) $ancre->format('n');
+    while ($curseur <= $fin):
+        $cle = $curseur->format('Y-m-d');
+        $duJour = $parJour[$cle] ?? [];
+        $classes = 'cal-jour';
+        if ((int) $curseur->format('n') !== $moisAffiche) {
+            $classes .= ' cal-jour--hors';
+        } elseif ((int) $curseur->format('N') >= 6) {
+            $classes .= ' cal-jour--weekend';
+        }
+        if ($cle === $aujourdhui) {
+            $classes .= ' cal-jour--aujourdhui';
+        }
+        ?>
+        <div class="<?= $classes ?>">
+          <div class="cal-jour__haut">
+            <span class="cal-jour__numero"><?= (int) $curseur->format('j') ?></span>
+            <a class="cal-jour__ajout" href="<?= url('evenements/nouveau', ['date' => $cle]) ?>"
+               title="Ajouter un évènement le <?= e($curseur->format('d/m/Y')) ?>">+</a>
+          </div>
+          <?php foreach (array_slice($duJour, 0, 4) as $evt): ?>
+            <?= $puce($evt) ?>
+          <?php endforeach; ?>
+          <?php if (count($duJour) > 4): ?>
+            <a class="discret" style="font-size:.72rem" href="<?= $lien('semaine', $curseur) ?>">
+              +<?= count($duJour) - 4 ?> autre<?= count($duJour) - 4 > 1 ? 's' : '' ?>
+            </a>
+          <?php endif; ?>
+        </div>
+        <?php
+        $curseur = $curseur->modify('+1 day');
+    endwhile;
+    ?>
+  </div>
+
+<?php elseif ($vue === 'semaine'): ?>
+
+  <div class="cal-semaine">
+    <?php
+    $curseur = $debut;
+    while ($curseur <= $fin):
+        $cle = $curseur->format('Y-m-d');
+        $duJour = $parJour[$cle] ?? [];
+        ?>
+        <section class="jour-bloc<?= $cle === $aujourdhui ? ' jour-bloc--aujourdhui' : '' ?>">
+          <header class="jour-bloc__entete">
+            <span class="jour-bloc__titre"><?= e(date_fr($cle . ' 00:00:00', false)) ?></span>
+            <a class="discret" href="<?= url('evenements/nouveau', ['date' => $cle]) ?>">+ ajouter</a>
+          </header>
+          <div class="jour-bloc__corps">
+            <?php if ($duJour === []): ?>
+              <span class="discret">Rien de prévu.</span>
+            <?php else: ?>
+              <?php foreach ($duJour as $evt): ?>
+                <?= Vue::rendre('calendrier/_ligne', ['evt' => $evt, 'types' => $types]) ?>
+              <?php endforeach; ?>
+            <?php endif; ?>
+          </div>
+        </section>
+        <?php
+        $curseur = $curseur->modify('+1 day');
+    endwhile;
+    ?>
+  </div>
+
+<?php else: ?>
+
+  <?php if ($evenements === []): ?>
+    <div class="vide">
+      <span class="vide__icone">🗓️</span>
+      <p>Aucun évènement à partir de <?= e(strtolower(nom_mois((int) $ancre->format('n')))) ?>
+         <?= e($ancre->format('Y')) ?>.</p>
+      <a class="bouton" href="<?= url('evenements/nouveau') ?>">Planifier quelque chose</a>
+    </div>
+  <?php else: ?>
+    <div class="pile">
+      <?php
+      $jourCourant = null;
+      foreach ($evenements as $evt):
+          $jour = substr((string) $evt['debut'], 0, 10);
+          if ($jour !== $jourCourant):
+              $jourCourant = $jour; ?>
+              <h3 style="margin:1rem 0 .25rem;text-transform:capitalize">
+                <?= e(date_fr($evt['debut'], false)) ?>
+              </h3>
+          <?php endif; ?>
+          <?= Vue::rendre('calendrier/_ligne', ['evt' => $evt, 'types' => $types]) ?>
+      <?php endforeach; ?>
+    </div>
+  <?php endif; ?>
+
+<?php endif; ?>
+
+<div class="legende-types" style="margin-top:1rem">
+  <?php foreach ($types as $info): ?>
+    <span><?= e($info['icone'] . ' ' . $info['libelle']) ?></span>
+  <?php endforeach; ?>
+</div>
+
+<?php if ($aVenir !== []): ?>
+  <section class="carte" style="margin-top:1.5rem">
+    <h2>Prochaines échéances</h2>
+    <div class="pile">
+      <?php foreach ($aVenir as $evt): ?>
+        <?= Vue::rendre('calendrier/_ligne', ['evt' => $evt, 'types' => $types, 'avecDate' => true]) ?>
+      <?php endforeach; ?>
+    </div>
+  </section>
+<?php endif; ?>

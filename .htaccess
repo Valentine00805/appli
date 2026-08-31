@@ -1,0 +1,35 @@
+# --- Mes Cours : configuration Apache -------------------------------------
+
+Options -Indexes
+DirectoryIndex index.php
+
+# Toutes les URL inconnues passent par le contrôleur frontal.
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^ index.php [QSA,L]
+</IfModule>
+
+# Les dossiers internes ne sont jamais servis directement.
+RedirectMatch 404 (?i)^/.*/(config|src|controllers|views|storage|sql)/
+
+# Taille des fichiers téléversés (doit rester <= post_max_size de php.ini).
+<IfModule mod_php.c>
+    php_value upload_max_filesize 25M
+    php_value post_max_size 30M
+    php_value max_file_uploads 20
+</IfModule>
+
+<IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-Frame-Options "SAMEORIGIN"
+    Header set Referrer-Policy "same-origin"
+</IfModule>
+
+# Cache des ressources statiques.
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType text/css "access plus 7 days"
+    ExpiresByType application/javascript "access plus 7 days"
+</IfModule>
