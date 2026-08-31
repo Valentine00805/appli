@@ -54,6 +54,7 @@ final class AuthController
         $userId = Database::dernierId();
         $this->creerMatieresParDefaut($userId);
         TypesEvenementController::creerParDefaut($userId);
+        BudgetController::creerCategoriesParDefaut($userId);
 
         Auth::connecter($userId);
         Session::flash('succes', 'Bienvenue ' . $nom . ' ! Votre espace est prêt.');

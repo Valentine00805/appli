@@ -38,6 +38,7 @@ PHP 8 + MySQL, sans aucune dépendance externe : pas de Composer, pas de CDN, to
 | **Accueil** | Ce qui est prévu aujourd'hui, les 7 prochains jours, les échéances, les cours récents. |
 | **Calendrier** | Vue **mois**, **semaine** ou **liste**. Filtres par matière et par type. Clic sur `+` dans une case pour créer un évènement à cette date. |
 | **Mes cours** | Liste filtrable (recherche, matière, tag, favoris, tri) et création de cours. |
+| **Budget** | Recettes et dépenses mois par mois, catégories avec plafond, répartition et tendance sur 12 mois. |
 | **Organisation** | Trois onglets : **Matières** (nom, couleur, enseignant), **Types d'évènement** (nom, icône, couleur, ordre, indicateur « échéance ») et **Tags** (créer, renommer, fusionner, supprimer). |
 | **Recherche** | Cherche simultanément dans les cours et dans le calendrier, avec surlignage des termes. |
 | **Mon compte** | Statistiques et changement de mot de passe. |
@@ -65,6 +66,22 @@ des virgules), de les renommer, de **fusionner** deux tags en un seul — pratiq
 pour réunir deux écritures d'une même idée — et de supprimer d'un clic tous ceux
 qui ne sont sur aucun cours. Supprimer un tag ne supprime jamais les cours : il
 leur est simplement retiré.
+
+### Budget
+
+La section **Budget** est indépendante des cours : elle sert à tenir ses comptes.
+Chaque opération a un intitulé, un montant, une date, un sens (dépense ou recette),
+une catégorie et un moyen de paiement. Les montants s'écrivent comme on veut :
+`12,50`, `12.50`, `1 234,56` ou `12 €` sont tous acceptés.
+
+La page affiche les totaux du mois (recettes, dépenses, solde), la répartition des
+dépenses par catégorie et la tendance des douze derniers mois. Une catégorie de
+dépense peut recevoir un **plafond mensuel** : une jauge se remplit et le
+dépassement est signalé.
+
+Douze catégories sont créées avec le compte et se modifient depuis l'onglet
+**Catégories**. Supprimer une catégorie ne supprime pas les opérations : elles
+passent en « Sans catégorie ».
 
 ### Fichiers joints
 

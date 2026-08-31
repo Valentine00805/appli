@@ -15,6 +15,7 @@ require __DIR__ . '/controllers/MatieresController.php';
 require __DIR__ . '/controllers/TypesEvenementController.php';
 require __DIR__ . '/controllers/TagsController.php';
 require __DIR__ . '/controllers/OrganisationController.php';
+require __DIR__ . '/controllers/BudgetController.php';
 require __DIR__ . '/controllers/TableauBordController.php';
 
 /**
@@ -76,6 +77,16 @@ $routes = [
     ['POST', 'tags/{id}/modifier',         [TagsController::class, 'modifier']],
     ['POST', 'tags/{id}/fusionner',        [TagsController::class, 'fusionner']],
     ['POST', 'tags/{id}/supprimer',        [TagsController::class, 'supprimer']],
+
+    ['GET',  'budget',                     [BudgetController::class, 'index']],
+    ['POST', 'budget/operations',          [BudgetController::class, 'creer']],
+    ['GET',  'budget/operations/{id}/modifier',  [BudgetController::class, 'formulaire']],
+    ['POST', 'budget/operations/{id}/modifier',  [BudgetController::class, 'modifier']],
+    ['POST', 'budget/operations/{id}/supprimer', [BudgetController::class, 'supprimer']],
+    ['GET',  'budget/categories',          [BudgetController::class, 'categoriesIndex']],
+    ['POST', 'budget/categories',          [BudgetController::class, 'categorieCreer']],
+    ['POST', 'budget/categories/{id}/modifier',  [BudgetController::class, 'categorieModifier']],
+    ['POST', 'budget/categories/{id}/supprimer', [BudgetController::class, 'categorieSupprimer']],
 
     ['GET',  'recherche',                 [CoursController::class, 'recherche']],
 ];

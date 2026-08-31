@@ -176,3 +176,53 @@ function surligner(string $texteEchappe, array $termes): string
     }
     return $texteEchappe;
 }
+
+/* --- Montants (budget) ------------------------------------------------- */
+
+/** Formate un montant pour l'affichage : 1 234,50 €. */
+function montant_fr(int|float|string|null $montant, bool $avecSymbole = true): string
+{
+    $valeur = (float) ($montant ?? 0);
+    $texte = number_format($valeur, 2, ',', ' ');
+    return $avecSymbole ? $texte . ' €' : $texte;
+}
+
+/**
+ * Lit un montant saisi à la main : « 12,50 », « 12.50 », « 1 234,50 », « 12 € ».
+ * Renvoie null si la saisie n'est pas un nombre exploitable.
+ */
+function montant_depuis_saisie(string $saisie): ?float
+{
+    $saisie = trim($saisie);
+    if ($saisie === '') {
+        return null;
+    }
+    // Espaces (y compris insécables), symbole monétaire : on retire.
+    $saisie = str_replace(["\u{00A0}", "\u{202F}", ' ', '€', 'EUR'], '', $saisie);
+    $saisie = str_replace(',', '.', $saisie);
+    if (!is_numeric($saisie)) {
+        return null;
+    }
+    return round((float) $saisie, 2);
+}
+
+/** Couleur d'une opération : celle de sa catégorie, sinon un gris neutre. */
+function couleur_operation(array $operation): string
+{
+    $couleur = (string) ($operation['categorie_couleur'] ?? '');
+    return $couleur !== '' ? $couleur : '#94a3b8';
+}
+
+/** Libellé de la catégorie d'une opération, avec repli. */
+function libelle_categorie(array $operation): string
+{
+    $nom = (string) ($operation['categorie_nom'] ?? '');
+    return $nom !== '' ? $nom : 'Sans catégorie';
+}
+
+/** Icône de la catégorie d'une opération, avec repli. */
+function icone_categorie(array $operation): string
+{
+    $icone = (string) ($operation['categorie_icone'] ?? '');
+    return $icone !== '' ? $icone : '💶';
+}

@@ -444,3 +444,34 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
   .onglets { gap: 0; }
   .onglets a { padding: .5rem .6rem; font-size: .85rem; }
 }
+
+/* --- Budget ---------------------------------------------------------------- */
+
+.jauge {
+  height: 8px; border-radius: 999px; background: var(--fond-doux);
+  overflow: hidden; margin-top: .3rem;
+}
+.jauge span { display: block; height: 100%; border-radius: 999px; transition: width .2s ease; }
+
+.histogramme {
+  display: flex; align-items: flex-end; gap: 3px; height: 110px;
+  padding-top: .3rem;
+}
+.histogramme__mois {
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: .25rem;
+  text-decoration: none; min-width: 0; height: 100%;
+}
+.histogramme__barres {
+  display: flex; align-items: flex-end; gap: 2px;
+  width: 100%; height: 100%; justify-content: center;
+}
+.histogramme__barres > span {
+  width: 45%; min-height: 2px; border-radius: 3px 3px 0 0; display: block;
+}
+.histogramme__recette { background: var(--succes); }
+.histogramme__depense { background: var(--erreur); }
+.histogramme__libelle { font-size: .68rem; color: var(--texte-doux); }
+.histogramme__mois:hover .histogramme__libelle { color: var(--texte); }
+.histogramme__mois.est-actif .histogramme__libelle {
+  color: var(--accent-fonce); font-weight: 700;
+}

@@ -116,3 +116,39 @@ CREATE TABLE IF NOT EXISTS `evenements` (
   CONSTRAINT `fk_evt_type`    FOREIGN KEY (`type_id`)    REFERENCES `types_evenement`(`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_evt_cours`   FOREIGN KEY (`cours_id`)   REFERENCES `cours`(`id`)    ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Budget : categories et operations, propres a chaque utilisateur.
+CREATE TABLE IF NOT EXISTS `categories_budget` (
+  `id`               INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `user_id`          INT UNSIGNED NOT NULL,
+  `nom`              VARCHAR(60)  NOT NULL,
+  `icone`            VARCHAR(16)  NOT NULL DEFAULT '💶',
+  `couleur`          CHAR(7)      NOT NULL DEFAULT '#64748b',
+  `sens`             ENUM('depense','recette') NOT NULL DEFAULT 'depense',
+  `plafond_mensuel`  DECIMAL(10,2) DEFAULT NULL,
+  `position`         SMALLINT     NOT NULL DEFAULT 0,
+  `created_at`       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_cat_user_nom_sens` (`user_id`, `nom`, `sens`),
+  KEY `idx_cat_user_sens` (`user_id`, `sens`, `position`),
+  CONSTRAINT `fk_cat_budget_user` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `operations` (
+  `id`             INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `user_id`        INT UNSIGNED NOT NULL,
+  `categorie_id`   INT UNSIGNED DEFAULT NULL,
+  `libelle`        VARCHAR(160)  NOT NULL,
+  `montant`        DECIMAL(10,2) NOT NULL,
+  `sens`           ENUM('depense','recette') NOT NULL DEFAULT 'depense',
+  `date_operation` DATE          NOT NULL,
+  `moyen`          VARCHAR(40)   DEFAULT NULL,
+  `note`           TEXT          DEFAULT NULL,
+  `created_at`     DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at`     DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_op_user_date` (`user_id`, `date_operation`),
+  KEY `idx_op_categorie` (`categorie_id`),
+  CONSTRAINT `fk_op_user`      FOREIGN KEY (`user_id`)      REFERENCES `users`(`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_op_categorie` FOREIGN KEY (`categorie_id`) REFERENCES `categories_budget`(`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
