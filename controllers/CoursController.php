@@ -116,6 +116,7 @@ final class CoursController
                 ? Database::all('SELECT * FROM fichiers WHERE cours_id = ? ORDER BY created_at', [$id])
                 : [],
             'matiereSelection' => entier_ou_null($_GET['matiere'] ?? null),
+            'tousLesTags'      => TagsController::nomsPourUtilisateur($userId),
         ], $cours === null ? 'Nouveau cours' : 'Modifier le cours');
     }
 
@@ -328,11 +329,8 @@ final class CoursController
             );
         }
 
-        // Nettoyage des tags devenus orphelins.
-        Database::run(
-            'DELETE FROM tags WHERE user_id = ? AND id NOT IN (SELECT tag_id FROM cours_tag)',
-            [$userId]
-        );
+        // Les tags devenus inutilises sont conservés : ils restent disponibles pour
+        // un prochain cours, et se suppriment depuis la page « Tags ».
     }
 
     private function traiterFichiers(int $coursId, int $userId): void

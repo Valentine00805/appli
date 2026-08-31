@@ -3,6 +3,7 @@
  * @var ?array $cours
  * @var array $matieres, $fichiers
  * @var string $tagsCours
+ * @var array $tousLesTags
  * @var ?int $matiereSelection
  */
 $edition = $cours !== null;
@@ -57,8 +58,15 @@ $matiereActive = $edition ? entier_ou_null($cours['matiere_id']) : $matiereSelec
         <div class="champ">
           <label for="tags">Tags</label>
           <input type="text" id="tags" name="tags" placeholder="révision, chapitre 3, important"
-                 value="<?= e($edition ? $tagsCours : post('tags')) ?>">
-          <span class="champ__aide">Séparés par des virgules.</span>
+                 list="tags-existants" value="<?= e($edition ? $tagsCours : post('tags')) ?>">
+          <datalist id="tags-existants">
+            <?php foreach ($tousLesTags as $nomTag): ?>
+              <option value="<?= e($nomTag) ?>"></option>
+            <?php endforeach; ?>
+          </datalist>
+          <span class="champ__aide">
+            Séparés par des virgules. <a href="<?= url('tags') ?>">Gérer mes tags</a>
+          </span>
         </div>
       </div>
 

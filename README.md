@@ -40,6 +40,7 @@ PHP 8 + MySQL, sans aucune dépendance externe : pas de Composer, pas de CDN, to
 | **Mes cours** | Liste filtrable (recherche, matière, tag, favoris, tri) et création de cours. |
 | **Matières** | Nom, couleur et enseignant. La couleur sert de repère partout dans l'application. |
 | **Types** | Types d'évènement : nom, icône, couleur, ordre d'affichage, et indicateur « échéance ». |
+| **Tags** | Créer, renommer, fusionner et supprimer les tags des cours. |
 | **Recherche** | Cherche simultanément dans les cours et dans le calendrier, avec surlignage des termes. |
 | **Mon compte** | Statistiques et changement de mot de passe. |
 
@@ -54,6 +55,18 @@ simplement en « Sans type ».
 La couleur d'un évènement au calendrier est celle de sa matière ; à défaut, celle
 de son type. Chaque évènement peut être coché comme terminé (☐ / ☑) et rattaché à
 un cours, pour retrouver ses notes le jour J.
+
+### Tags
+
+Un cours porte autant de tags qu'on veut, là où il n'a qu'une seule matière.
+Un tag saisi dans le champ « Tags » d'un cours est créé s'il n'existe pas ;
+les tags déjà connus sont proposés en autocomplétion.
+
+La page **Tags** permet de les créer à l'avance (plusieurs d'un coup, séparés par
+des virgules), de les renommer, de **fusionner** deux tags en un seul — pratique
+pour réunir deux écritures d'une même idée — et de supprimer d'un clic tous ceux
+qui ne sont sur aucun cours. Supprimer un tag ne supprime jamais les cours : il
+leur est simplement retiré.
 
 ### Fichiers joints
 

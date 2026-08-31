@@ -42,6 +42,7 @@ $actif = static function (string $prefixe) use ($route): string {
       <a href="<?= url('cours') ?>"<?= $actif('cours') ?>>Mes cours</a>
       <a href="<?= url('matieres') ?>"<?= $actif('matieres') ?>>Matières</a>
       <a href="<?= url('types') ?>"<?= $actif('types') ?>>Types</a>
+      <a href="<?= url('tags') ?>"<?= $actif('tags') ?>>Tags</a>
 
       <form class="recherche-rapide" action="<?= url('recherche') ?>" method="get" role="search">
         <input type="search" name="q" placeholder="Rechercher…" aria-label="Rechercher dans mes cours"
