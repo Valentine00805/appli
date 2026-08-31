@@ -38,7 +38,7 @@ PHP 8 + MySQL, sans aucune dépendance externe : pas de Composer, pas de CDN, to
 | **Accueil** | Ce qui est prévu aujourd'hui, les 7 prochains jours, les échéances, les cours récents. |
 | **Calendrier** | Vue **mois**, **semaine** ou **liste**. Filtres par matière et par type. Clic sur `+` dans une case pour créer un évènement à cette date. |
 | **Mes cours** | Liste filtrable (recherche, matière, tag, favoris, tri) et création de cours. |
-| **Budget** | Trois onglets : **Opérations** (recettes et dépenses du mois, tendance sur 12 mois), **Prévisions** (solde de départ, charges fixes, solde prévisionnel reporté de mois en mois) et **Catégories** (avec plafond mensuel). |
+| **Budget** | Quatre onglets : **Opérations** (recettes et dépenses du mois, tendance sur 12 mois), **Prévisions** (solde de départ, charges fixes, solde prévisionnel reporté de mois en mois), **Import** (relevé bancaire au format CSV) et **Catégories** (avec plafond mensuel). |
 | **Organisation** | Trois onglets : **Matières** (nom, couleur, enseignant), **Types d'évènement** (nom, icône, couleur, ordre, indicateur « échéance ») et **Tags** (créer, renommer, fusionner, supprimer). |
 | **Recherche** | Cherche simultanément dans les cours et dans le calendrier, avec surlignage des termes. |
 | **Mon compte** | Statistiques et changement de mot de passe. |
@@ -82,6 +82,31 @@ dépassement est signalé.
 Douze catégories sont créées avec le compte et se modifient depuis l'onglet
 **Catégories**. Supprimer une catégorie ne supprime pas les opérations : elles
 passent en « Sans catégorie ».
+
+### Importer un relevé bancaire
+
+L'onglet **Import** préremplit les opérations du mois à partir du fichier CSV
+exporté par votre banque, sans remplacer la saisie manuelle.
+
+Le parcours se fait en deux temps. On dépose le fichier, puis un **aperçu** montre
+ce qui a été compris : dates, libellés, montants, sens, et une catégorie devinée
+quand le libellé contient le nom d'une des vôtres. Rien n'entre en base avant
+validation ; on coche et décoche les lignes, on corrige la correspondance des
+colonnes si la détection s'est trompée.
+
+Sont gérés automatiquement : le séparateur (point-virgule, virgule, tabulation),
+les dates française ou ISO, un montant signé ou deux colonnes débit/crédit,
+l'encodage Windows des exports français, les lignes d'en-tête et le préambule que
+certaines banques ajoutent avant le tableau.
+
+Les **doublons sont repérés** par une signature date + montant + libellé :
+réimporter un relevé qui chevauche le précédent ne crée pas de lignes en double.
+La signature reste celle du relevé d'origine même après modification, ce qui évite
+qu'une ligne renommée revienne comme neuve.
+
+Une opération importée est une opération comme une autre : **modifiable et
+supprimable**. Un repère 📥 la distingue dans la liste, et un filtre permet de
+n'afficher que les lignes importées ou que celles saisies à la main.
 
 ### Prévisions
 

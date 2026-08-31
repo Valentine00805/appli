@@ -3,7 +3,7 @@
  * @var DateTimeImmutable $mois
  * @var array $operations, $totaux, $parCategorie, $categories, $moyens, $historique
  * @var ?int $categorieId
- * @var ?string $sens
+ * @var ?string $sens, $origine
  */
 $csrf = Session::jetonCsrf();
 $precedent = $mois->modify('-1 month');
@@ -13,6 +13,7 @@ $moisCourant = (new DateTimeImmutable('today'))->format('Y-m');
 $filtres = array_filter([
     'categorie' => $categorieId,
     'sens'      => $sens,
+    'origine'   => $origine,
 ], static fn ($v): bool => $v !== null);
 
 $lienMois = static fn (DateTimeInterface $m): string
@@ -33,6 +34,7 @@ $plafondHistorique = max(array_merge([1.0], array_map(
     <p>Vos recettes et vos dépenses, mois par mois.</p>
   </div>
   <div class="actions">
+    <a class="bouton bouton--secondaire" href="<?= url('budget/import') ?>">📥 Importer un relevé</a>
     <a class="bouton bouton--secondaire bouton--petit" href="<?= $lienMois($precedent) ?>"
        aria-label="Mois précédent">←</a>
     <?php if ($mois->format('Y-m') !== $moisCourant): ?>
@@ -79,6 +81,14 @@ $plafondHistorique = max(array_merge([1.0], array_map(
             <option value="">Tout</option>
             <option value="depense"<?= $sens === 'depense' ? ' selected' : '' ?>>Dépenses</option>
             <option value="recette"<?= $sens === 'recette' ? ' selected' : '' ?>>Recettes</option>
+          </select>
+        </div>
+        <div class="champ">
+          <label for="f-origine">Origine</label>
+          <select id="f-origine" name="origine">
+            <option value="">Toutes</option>
+            <option value="manuelle"<?= $origine === 'manuelle' ? ' selected' : '' ?>>Saisies à la main</option>
+            <option value="import"<?= $origine === 'import' ? ' selected' : '' ?>>Importées</option>
           </select>
         </div>
         <div class="champ">
@@ -131,7 +141,11 @@ $plafondHistorique = max(array_merge([1.0], array_map(
               <span style="min-width:0;flex:1">
                 <span class="evt-ligne__titre"><?= e($op['libelle']) ?></span><br>
                 <span class="evt-ligne__meta">
-                  <?= e(libelle_categorie($op)) ?><?= $op['moyen'] ? ' · ' . e($op['moyen']) : '' ?>
+                  <?= e(libelle_categorie($op)) ?><?= $op['moyen'] ? ' · ' . e($op['moyen']) : '' ?><?php
+                    if (($op['source'] ?? 'manuelle') === 'import') {
+                        echo ' · <span title="Provient d\'un relevé importé">📥 importée</span>';
+                    }
+                  ?>
                 </span>
                 <?php if ($op['note']): ?>
                   <br><span class="evt-ligne__meta"><?= e(extrait($op['note'], 90)) ?></span>

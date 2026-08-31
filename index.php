@@ -17,6 +17,7 @@ require __DIR__ . '/controllers/TagsController.php';
 require __DIR__ . '/controllers/OrganisationController.php';
 require __DIR__ . '/controllers/BudgetController.php';
 require __DIR__ . '/controllers/PrevisionsController.php';
+require __DIR__ . '/controllers/ImportController.php';
 require __DIR__ . '/controllers/TableauBordController.php';
 
 /**
@@ -92,6 +93,12 @@ $routes = [
     ['POST', 'budget/previsions/recurrences/{id}/supprimer', [PrevisionsController::class, 'supprimerRecurrence']],
     ['POST', 'budget/previsions/recurrences/{id}/pointer',   [PrevisionsController::class, 'pointer']],
     ['POST', 'budget/previsions/pointer-tout',    [PrevisionsController::class, 'pointerTout']],
+
+    ['GET',  'budget/import',              [ImportController::class, 'formulaire']],
+    ['POST', 'budget/import',              [ImportController::class, 'analyser']],
+    ['GET',  'budget/import/apercu',       [ImportController::class, 'apercu']],
+    ['POST', 'budget/import/confirmer',    [ImportController::class, 'confirmer']],
+    ['POST', 'budget/import/abandonner',   [ImportController::class, 'abandonner']],
 
     ['GET',  'budget/categories',          [BudgetController::class, 'categoriesIndex']],
     ['POST', 'budget/categories',          [BudgetController::class, 'categorieCreer']],

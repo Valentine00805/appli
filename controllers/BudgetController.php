@@ -27,6 +27,7 @@ final class BudgetController
 
         $categorieId = entier_ou_null($_GET['categorie'] ?? null);
         $sens = in_array($_GET['sens'] ?? '', ['depense', 'recette'], true) ? (string) $_GET['sens'] : null;
+        $origine = in_array($_GET['origine'] ?? '', ['manuelle', 'import'], true) ? (string) $_GET['origine'] : null;
 
         $sql = 'SELECT o.*, c.nom AS categorie_nom, c.icone AS categorie_icone, c.couleur AS categorie_couleur
                 FROM operations o
@@ -41,6 +42,10 @@ final class BudgetController
             $sql .= ' AND o.sens = ?';
             $params[] = $sens;
         }
+        if ($origine !== null) {
+            $sql .= ' AND o.source = ?';
+            $params[] = $origine;
+        }
         $sql .= ' ORDER BY o.date_operation DESC, o.id DESC';
 
         $operations = Database::all($sql, $params);
@@ -53,6 +58,7 @@ final class BudgetController
             'categories'  => $this->categories($userId),
             'categorieId' => $categorieId,
             'sens'        => $sens,
+            'origine'     => $origine,
             'moyens'      => self::MOYENS,
             'historique'  => $this->douzeDerniersMois($userId, $mois),
         ], 'Budget — ' . nom_mois((int) $mois->format('n')) . ' ' . $mois->format('Y'));
