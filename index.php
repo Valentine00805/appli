@@ -96,6 +96,7 @@ $routes = [
     ['POST', 'budget/previsions/pointer-tout',    [PrevisionsController::class, 'pointerTout']],
 
     ['GET',  'budget/remboursements',      [RemboursementsController::class, 'index']],
+    ['GET',  'budget/remboursements/export', [RemboursementsController::class, 'exporter']],
     ['POST', 'budget/remboursements/regler', [RemboursementsController::class, 'reglerLot']],
     ['POST', 'budget/remboursements/{id}/modifier', [RemboursementsController::class, 'modifier']],
     ['POST', 'operations/{id}/rembourser', [RemboursementsController::class, 'basculer']],

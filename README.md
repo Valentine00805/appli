@@ -107,9 +107,17 @@ Trois choses se règlent ligne par ligne :
 - **Le statut** : à réclamer, remboursé (avec sa date), ou **hors total** pour
   garder une ligne sous les yeux sans la compter.
 
-Un bouton marque d'un coup toutes les lignes cochées comme remboursées. Le
-bouton **Imprimer** produit une version propre, sans les boutons ni la
-navigation, à envoyer ou à enregistrer en PDF.
+Un bouton marque d'un coup toutes les lignes cochées comme remboursées.
+
+Deux façons de sortir le récapitulatif :
+
+- **Exporter en Excel** produit un vrai fichier `.xlsx`, mis en forme comme un
+  relevé tenu à la main : un bloc par rubrique avec son sous-total, le détail
+  mois par mois, le total, et les sections « Pas dans le total » et « Reste à
+  rembourser ». Dates et montants y sont de vrais types Excel, calculables.
+  Le fichier est généré sans bibliothèque externe.
+- **Imprimer** produit une version propre à l'écran, sans boutons ni navigation,
+  à enregistrer en PDF.
 
 ### Importer un relevé bancaire
 

@@ -12,6 +12,7 @@ require $racine . '/src/Session.php';
 require $racine . '/src/Auth.php';
 require $racine . '/src/Fichiers.php';
 require $racine . '/src/ReleveCsv.php';
+require $racine . '/src/ClasseurXlsx.php';
 require $racine . '/src/helpers.php';
 require $racine . '/src/Vue.php';
 

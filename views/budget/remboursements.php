@@ -27,6 +27,7 @@ $titrePeriode = $periode['depuis'] === $periode['jusqu']
     <p>Ce que vous avez avancé et qui doit vous être rendu, <?= e($titrePeriode) ?>.</p>
   </div>
   <div class="actions sans-impression">
+    <a class="bouton" href="<?= url('budget/remboursements/export', $filtres) ?>">📊 Exporter en Excel</a>
     <button class="bouton bouton--secondaire" type="button" onclick="window.print()">🖨 Imprimer</button>
     <a class="bouton bouton--secondaire" href="<?= url('budget') ?>">Voir les opérations</a>
   </div>

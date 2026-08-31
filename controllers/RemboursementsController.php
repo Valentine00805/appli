@@ -27,25 +27,7 @@ final class RemboursementsController
         $personne = trim((string) ($_GET['personne'] ?? ''));
         $statut = array_key_exists($_GET['statut'] ?? '', self::STATUTS) ? (string) $_GET['statut'] : null;
 
-        $sql = "SELECT o.*, c.nom AS categorie_nom, c.icone AS categorie_icone, c.couleur AS categorie_couleur,
-                       COALESCE(o.part_rembourser, o.montant) AS montant_reclame
-                FROM operations o
-                LEFT JOIN categories_budget c ON c.id = o.categorie_id
-                WHERE o.user_id = ? AND o.a_rembourser = 1
-                  AND o.date_operation BETWEEN ? AND ?";
-        $params = [$userId, $debut, $fin];
-
-        if ($personne !== '') {
-            $sql .= ' AND o.rembourse_par = ?';
-            $params[] = $personne;
-        }
-        if ($statut !== null) {
-            $sql .= ' AND o.statut_remb = ?';
-            $params[] = $statut;
-        }
-        $sql .= ' ORDER BY c.position, c.nom, o.date_operation, o.id';
-
-        $lignes = Database::all($sql, $params);
+        $lignes = $this->lignes($userId, $debut, $fin, $personne, $statut);
 
         Vue::afficher('budget/remboursements', [
             'lignes'      => $lignes,
@@ -66,6 +48,123 @@ final class RemboursementsController
                 [$userId]
             ),
         ], 'Remboursements');
+    }
+
+    /**
+     * Exporte le récapitulatif en classeur Excel, dans la présentation des
+     * relevés tenus à la main : une rubrique par bloc, un sous-total, puis le
+     * total de la période et, s'il y a lieu, le détail mois par mois.
+     */
+    public function exporter(): void
+    {
+        Auth::exiger();
+        $userId = Auth::id();
+
+        [$debut, $fin, $periode] = $this->periode();
+        $personne = trim((string) ($_GET['personne'] ?? ''));
+        $statut = array_key_exists($_GET['statut'] ?? '', self::STATUTS) ? (string) $_GET['statut'] : null;
+
+        $lignes = $this->lignes($userId, $debut, $fin, $personne, $statut);
+        if ($lignes === []) {
+            Session::flash('erreur', 'Rien à exporter sur cette période.');
+            redirect('budget/remboursements', $this->parametresRetour());
+        }
+
+        $rubriques = $this->grouperParRubrique($lignes);
+        $parMois = $this->grouperParMois($lignes);
+        $totaux = $this->totaux($lignes);
+        $intitulePeriode = $this->intitulePeriode($periode);
+
+        $classeur = new ClasseurXlsx('Remboursements');
+        $classeur->largeurs([13, 44, 14, 14, 15]);
+
+        $titre = $personne !== '' ? 'Compte pour ' . $personne : 'Dépenses à rembourser';
+        $classeur->ligne([['valeur' => $titre . ' — ' . $intitulePeriode, 'style' => ClasseurXlsx::TITRE]]);
+        $classeur->ligne([['valeur' => 'Édité le ' . date('d/m/Y'), 'style' => ClasseurXlsx::DISCRET]]);
+        $classeur->ligne();
+
+        foreach ($rubriques as $rubrique) {
+            $classeur->ligne([
+                ['valeur' => 'Date',     'style' => ClasseurXlsx::ENTETE],
+                ['valeur' => $rubrique['nom'], 'style' => ClasseurXlsx::ENTETE],
+                ['valeur' => 'Payé',     'style' => ClasseurXlsx::ENTETE],
+                ['valeur' => 'Réclamé',  'style' => ClasseurXlsx::ENTETE],
+                ['valeur' => 'Statut',   'style' => ClasseurXlsx::ENTETE],
+            ]);
+
+            foreach ($rubrique['lignes'] as $l) {
+                $horsTotal = $l['statut_remb'] === 'hors_total';
+                $classeur->ligne([
+                    ['valeur' => $l['date_operation'], 'type' => 'date', 'style' => ClasseurXlsx::DATE],
+                    ['valeur' => $l['libelle']],
+                    ['valeur' => $l['montant'], 'type' => 'nombre', 'style' => ClasseurXlsx::MONTANT],
+                    $horsTotal
+                        ? ['valeur' => '—', 'style' => ClasseurXlsx::DISCRET]
+                        : ['valeur' => $l['montant_reclame'], 'type' => 'nombre', 'style' => ClasseurXlsx::MONTANT],
+                    ['valeur' => self::STATUTS[$l['statut_remb']], 'style' => ClasseurXlsx::DISCRET],
+                ]);
+            }
+
+            $classeur->ligne([
+                ['valeur' => '', 'style' => ClasseurXlsx::TOTAL],
+                ['valeur' => 'Total ' . mb_strtolower($rubrique['nom']), 'style' => ClasseurXlsx::TOTAL],
+                ['valeur' => $rubrique['paye'], 'type' => 'nombre', 'style' => ClasseurXlsx::TOTAL_MONTANT],
+                ['valeur' => $rubrique['total'], 'type' => 'nombre', 'style' => ClasseurXlsx::TOTAL_MONTANT],
+                ['valeur' => '', 'style' => ClasseurXlsx::TOTAL],
+            ]);
+            $classeur->ligne();
+        }
+
+        if (count($parMois) > 1) {
+            $classeur->ligne([['valeur' => 'Détail par mois', 'style' => ClasseurXlsx::GRAS]]);
+            foreach ($parMois as $cle => $montant) {
+                $classeur->ligne([
+                    '',
+                    ucfirst(strtolower(nom_mois((int) substr($cle, 5, 2)))) . ' ' . substr($cle, 0, 4),
+                    '',
+                    ['valeur' => $montant, 'type' => 'nombre', 'style' => ClasseurXlsx::MONTANT],
+                ]);
+            }
+            $classeur->ligne();
+        }
+
+        $classeur->ligne([
+            ['valeur' => '', 'style' => ClasseurXlsx::TOTAL],
+            ['valeur' => 'TOTAL ' . mb_strtoupper($intitulePeriode), 'style' => ClasseurXlsx::TOTAL],
+            ['valeur' => $totaux['paye'], 'type' => 'nombre', 'style' => ClasseurXlsx::TOTAL_MONTANT],
+            ['valeur' => $totaux['reclame'], 'type' => 'nombre', 'style' => ClasseurXlsx::TOTAL_MONTANT],
+            ['valeur' => '', 'style' => ClasseurXlsx::TOTAL],
+        ]);
+
+        if ($totaux['hors_total'] > 0) {
+            $classeur->ligne();
+            $classeur->ligne([
+                '',
+                ['valeur' => 'Pas dans le total', 'style' => ClasseurXlsx::GRAS],
+                '',
+                ['valeur' => $totaux['hors_total'], 'type' => 'nombre', 'style' => ClasseurXlsx::MONTANT_GRAS],
+            ]);
+        }
+
+        if ($totaux['regle'] > 0) {
+            $classeur->ligne();
+            $classeur->ligne([
+                '',
+                ['valeur' => 'Dont déjà remboursé', 'style' => ClasseurXlsx::DISCRET],
+                '',
+                ['valeur' => $totaux['regle'], 'type' => 'nombre', 'style' => ClasseurXlsx::MONTANT],
+            ]);
+            $classeur->ligne([
+                '',
+                ['valeur' => 'Reste à rembourser', 'style' => ClasseurXlsx::GRAS],
+                '',
+                ['valeur' => $totaux['attente'], 'type' => 'nombre', 'style' => ClasseurXlsx::MONTANT_GRAS],
+            ]);
+        }
+
+        $nom = ($personne !== '' ? 'Compte pour ' . $personne : 'Remboursements')
+            . ' ' . $intitulePeriode . '.xlsx';
+        $classeur->telecharger($nom);
     }
 
     /** Coche ou décoche une opération depuis la liste des opérations. */
@@ -172,6 +271,43 @@ final class RemboursementsController
             ? 'Aucune ligne modifiée.'
             : $nb . ' ligne' . ($nb > 1 ? 's marquées remboursées' : ' marquée remboursée') . '.');
         redirect('budget/remboursements', $this->parametresRetour());
+    }
+
+    // --- Lecture -------------------------------------------------------------
+
+    /** Les lignes cochées d'une période, éventuellement filtrées. */
+    private function lignes(int $userId, string $debut, string $fin, string $personne, ?string $statut): array
+    {
+        $sql = "SELECT o.*, c.nom AS categorie_nom, c.icone AS categorie_icone, c.couleur AS categorie_couleur,
+                       COALESCE(o.part_rembourser, o.montant) AS montant_reclame
+                FROM operations o
+                LEFT JOIN categories_budget c ON c.id = o.categorie_id
+                WHERE o.user_id = ? AND o.a_rembourser = 1
+                  AND o.date_operation BETWEEN ? AND ?";
+        $params = [$userId, $debut, $fin];
+
+        if ($personne !== '') {
+            $sql .= ' AND o.rembourse_par = ?';
+            $params[] = $personne;
+        }
+        if ($statut !== null) {
+            $sql .= ' AND o.statut_remb = ?';
+            $params[] = $statut;
+        }
+        $sql .= ' ORDER BY c.position, c.nom, o.date_operation, o.id';
+
+        return Database::all($sql, $params);
+    }
+
+    /** « février 2026 » ou « février 2026 à avril 2026 ». */
+    private function intitulePeriode(array $periode): string
+    {
+        $lisible = static fn (string $p): string
+            => strtolower(nom_mois((int) substr($p, 5, 2))) . ' ' . substr($p, 0, 4);
+
+        return $periode['depuis'] === $periode['jusqu']
+            ? $lisible($periode['depuis'])
+            : $lisible($periode['depuis']) . ' à ' . $lisible($periode['jusqu']);
     }
 
     // --- Regroupements -------------------------------------------------------
