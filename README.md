@@ -38,7 +38,7 @@ PHP 8 + MySQL, sans aucune dépendance externe : pas de Composer, pas de CDN, to
 | **Accueil** | Ce qui est prévu aujourd'hui, les 7 prochains jours, les échéances, les cours récents. |
 | **Calendrier** | Vue **mois**, **semaine** ou **liste**. Filtres par matière et par type. Clic sur `+` dans une case pour créer un évènement à cette date. |
 | **Mes cours** | Liste filtrable (recherche, matière, tag, favoris, tri) et création de cours. |
-| **Budget** | Recettes et dépenses mois par mois, catégories avec plafond, répartition et tendance sur 12 mois. |
+| **Budget** | Trois onglets : **Opérations** (recettes et dépenses du mois, tendance sur 12 mois), **Prévisions** (solde de départ, charges fixes, solde prévisionnel reporté de mois en mois) et **Catégories** (avec plafond mensuel). |
 | **Organisation** | Trois onglets : **Matières** (nom, couleur, enseignant), **Types d'évènement** (nom, icône, couleur, ordre, indicateur « échéance ») et **Tags** (créer, renommer, fusionner, supprimer). |
 | **Recherche** | Cherche simultanément dans les cours et dans le calendrier, avec surlignage des termes. |
 | **Mon compte** | Statistiques et changement de mot de passe. |
@@ -82,6 +82,34 @@ dépassement est signalé.
 Douze catégories sont créées avec le compte et se modifient depuis l'onglet
 **Catégories**. Supprimer une catégorie ne supprime pas les opérations : elles
 passent en « Sans catégorie ».
+
+### Prévisions
+
+L'onglet **Prévisions** répond à une question simple : combien me restera-t-il à
+la fin du mois, et le mois d'après ?
+
+Le principe tient en trois temps :
+
+1. **Un solde de départ** saisi une fois, le montant réellement sur le compte.
+2. **Les charges fixes et revenus réguliers** (loyer, abonnements, bourse…), avec
+   leur jour du mois. Ils sont comptés automatiquement chaque mois.
+3. **Les dépenses variables**, ajoutées au fil de l'eau dans l'onglet Opérations.
+
+Le solde prévisionnel se calcule en continu, et **devient le solde de départ du
+mois suivant**, qui à son tour alimente le suivant. Un tableau projette les six
+prochains mois.
+
+Rien n'est figé en base : tout se recalcule à partir du dernier solde saisi.
+Corriger une vieille opération met donc à jour toute la chaîne.
+
+Une charge fixe apparaît « à venir » tant qu'elle n'est pas saisie dans les
+opérations réelles. Le bouton ✓ la transforme en opération datée du bon jour ;
+elle passe alors « saisie » et **n'est plus comptée deux fois**. Le prévisionnel
+ne bouge pas au passage.
+
+À tout moment, on peut **forcer le solde d'un mois** pour se recaler sur le vrai
+solde bancaire : les mois suivants repartent de cette valeur, ceux d'avant ne
+bougent pas.
 
 ### Fichiers joints
 

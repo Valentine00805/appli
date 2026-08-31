@@ -134,10 +134,29 @@ CREATE TABLE IF NOT EXISTS `categories_budget` (
   CONSTRAINT `fk_cat_budget_user` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Previsions : charges fixes/revenus reguliers, et soldes saisis a la main.
+CREATE TABLE IF NOT EXISTS `recurrences` (
+  `id`           INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `user_id`      INT UNSIGNED NOT NULL,
+  `categorie_id` INT UNSIGNED DEFAULT NULL,
+  `libelle`      VARCHAR(160)  NOT NULL,
+  `montant`      DECIMAL(10,2) NOT NULL,
+  `sens`         ENUM('depense','recette') NOT NULL DEFAULT 'depense',
+  `jour_du_mois` TINYINT UNSIGNED NOT NULL DEFAULT 1,
+  `moyen`        VARCHAR(40)   DEFAULT NULL,
+  `actif`        TINYINT(1)    NOT NULL DEFAULT 1,
+  `created_at`   DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_rec_user` (`user_id`, `actif`),
+  CONSTRAINT `fk_rec_user`      FOREIGN KEY (`user_id`)      REFERENCES `users`(`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_rec_categorie` FOREIGN KEY (`categorie_id`) REFERENCES `categories_budget`(`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS `operations` (
   `id`             INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `user_id`        INT UNSIGNED NOT NULL,
   `categorie_id`   INT UNSIGNED DEFAULT NULL,
+  `recurrence_id`  INT UNSIGNED DEFAULT NULL,
   `libelle`        VARCHAR(160)  NOT NULL,
   `montant`        DECIMAL(10,2) NOT NULL,
   `sens`           ENUM('depense','recette') NOT NULL DEFAULT 'depense',
@@ -150,5 +169,19 @@ CREATE TABLE IF NOT EXISTS `operations` (
   KEY `idx_op_user_date` (`user_id`, `date_operation`),
   KEY `idx_op_categorie` (`categorie_id`),
   CONSTRAINT `fk_op_user`      FOREIGN KEY (`user_id`)      REFERENCES `users`(`id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_op_categorie` FOREIGN KEY (`categorie_id`) REFERENCES `categories_budget`(`id`) ON DELETE SET NULL
+  CONSTRAINT `fk_op_categorie`  FOREIGN KEY (`categorie_id`)  REFERENCES `categories_budget`(`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_op_recurrence` FOREIGN KEY (`recurrence_id`) REFERENCES `recurrences`(`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `soldes_saisis` (
+  `id`         INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `user_id`    INT UNSIGNED NOT NULL,
+  `periode`    CHAR(7)       NOT NULL COMMENT 'AAAA-MM',
+  `montant`    DECIMAL(12,2) NOT NULL,
+  `note`       VARCHAR(160)  DEFAULT NULL,
+  `created_at` DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_solde_user_periode` (`user_id`, `periode`),
+  CONSTRAINT `fk_solde_user` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

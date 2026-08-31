@@ -16,6 +16,7 @@ require __DIR__ . '/controllers/TypesEvenementController.php';
 require __DIR__ . '/controllers/TagsController.php';
 require __DIR__ . '/controllers/OrganisationController.php';
 require __DIR__ . '/controllers/BudgetController.php';
+require __DIR__ . '/controllers/PrevisionsController.php';
 require __DIR__ . '/controllers/TableauBordController.php';
 
 /**
@@ -83,6 +84,15 @@ $routes = [
     ['GET',  'budget/operations/{id}/modifier',  [BudgetController::class, 'formulaire']],
     ['POST', 'budget/operations/{id}/modifier',  [BudgetController::class, 'modifier']],
     ['POST', 'budget/operations/{id}/supprimer', [BudgetController::class, 'supprimer']],
+    ['GET',  'budget/previsions',          [PrevisionsController::class, 'index']],
+    ['POST', 'budget/previsions/solde',    [PrevisionsController::class, 'enregistrerSolde']],
+    ['POST', 'budget/previsions/solde/supprimer', [PrevisionsController::class, 'supprimerSolde']],
+    ['POST', 'budget/previsions/recurrences',     [PrevisionsController::class, 'creerRecurrence']],
+    ['POST', 'budget/previsions/recurrences/{id}/modifier',  [PrevisionsController::class, 'modifierRecurrence']],
+    ['POST', 'budget/previsions/recurrences/{id}/supprimer', [PrevisionsController::class, 'supprimerRecurrence']],
+    ['POST', 'budget/previsions/recurrences/{id}/pointer',   [PrevisionsController::class, 'pointer']],
+    ['POST', 'budget/previsions/pointer-tout',    [PrevisionsController::class, 'pointerTout']],
+
     ['GET',  'budget/categories',          [BudgetController::class, 'categoriesIndex']],
     ['POST', 'budget/categories',          [BudgetController::class, 'categorieCreer']],
     ['POST', 'budget/categories/{id}/modifier',  [BudgetController::class, 'categorieModifier']],

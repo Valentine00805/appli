@@ -475,3 +475,16 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
 .histogramme__mois.est-actif .histogramme__libelle {
   color: var(--accent-fonce); font-weight: 700;
 }
+
+/* --- Tableau de projection -------------------------------------------------- */
+
+.tableau { width: 100%; border-collapse: collapse; font-size: .9rem; }
+.tableau th, .tableau td { padding: .5rem .6rem; text-align: left; }
+.tableau thead th {
+  font-size: .78rem; text-transform: uppercase; letter-spacing: .03em;
+  color: var(--texte-doux); border-bottom: 1px solid var(--bordure);
+}
+.tableau tbody tr { border-bottom: 1px solid var(--bordure); }
+.tableau tbody tr:last-child { border-bottom: none; }
+.tableau tbody tr.est-actif { background: var(--accent-doux); }
+.tableau .nombre { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
