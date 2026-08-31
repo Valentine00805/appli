@@ -62,6 +62,13 @@ function nom_mois(int $mois): string
         'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'][$mois] ?? '';
 }
 
+/** Abréviation française usuelle d'un mois : janv., févr., juil., sept.… */
+function nom_mois_court(int $mois): string
+{
+    return [1 => 'janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin',
+        'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'][$mois] ?? '';
+}
+
 function jours_semaine(): array
 {
     return ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
@@ -183,8 +190,11 @@ function surligner(string $texteEchappe, array $termes): string
 function montant_fr(int|float|string|null $montant, bool $avecSymbole = true): string
 {
     $valeur = (float) ($montant ?? 0);
-    $texte = number_format($valeur, 2, ',', ' ');
-    return $avecSymbole ? $texte . ' €' : $texte;
+    // Espace fine insécable pour les milliers : un montant ne doit jamais
+    // se couper en fin de ligne.
+    $texte = number_format($valeur, 2, ',', " ");
+    // Espace insécable avant le symbole : « 12,50 € » ne se coupe pas.
+    return $avecSymbole ? $texte . " €" : $texte;
 }
 
 /**

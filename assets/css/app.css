@@ -488,3 +488,55 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
 .tableau tbody tr:last-child { border-bottom: none; }
 .tableau tbody tr.est-actif { background: var(--accent-doux); }
 .tableau .nombre { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* --- Graphique du prévisionnel ---------------------------------------------- */
+
+.graphique { margin: 0 0 1rem; }
+.graphique svg { width: 100%; height: auto; display: block; overflow: visible; }
+
+.graphique__grille { stroke: var(--bordure); stroke-width: 1; }
+.graphique__zero { stroke: var(--erreur); stroke-width: 1.5; stroke-dasharray: 5 4; opacity: .7; }
+.graphique__graduation, .graphique__mois, .graphique__annee {
+  fill: var(--texte-doux); font-size: 11px;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+.graphique__annee { font-size: 10px; opacity: .75; }
+.graphique__mois.est-actif { fill: var(--accent-fonce); font-weight: 700; }
+
+.graphique__aire { fill: var(--accent); opacity: .10; }
+.graphique__trait {
+  fill: none; stroke: var(--accent); stroke-width: 2.5;
+  stroke-linecap: round; stroke-linejoin: round;
+}
+.graphique__trait--prevu { stroke-dasharray: 6 5; opacity: .75; }
+
+.graphique__point circle { fill: var(--accent); stroke: var(--fond-carte); stroke-width: 2; }
+.graphique__point.est-actif circle { stroke-width: 3; }
+.graphique__point.est-negatif circle { fill: var(--erreur); }
+.graphique__point:hover circle { r: 6; }
+
+.graphique__legende {
+  display: flex; gap: 1rem; flex-wrap: wrap; align-items: center;
+  color: var(--texte-doux); font-size: .82rem; margin-top: .5rem;
+}
+.graphique__cle { display: inline-block; width: 20px; height: 0; vertical-align: middle; margin-right: .3rem; }
+.graphique__cle--plein { border-top: 2.5px solid var(--accent); }
+.graphique__cle--pointille { border-top: 2.5px dashed var(--accent); opacity: .75; }
+
+@media (max-width: 520px) {
+  .graphique__graduation { font-size: 13px; }
+  .graphique__mois, .graphique__annee { font-size: 12px; }
+}
+
+/* --- Débordement horizontal ------------------------------------------------- */
+/* Un élément de grille ou de flex a `min-width: auto` par défaut : il refuse de
+   passer sous la largeur de son contenu et déborde de sa colonne. On l'autorise
+   à rétrécir, le contenu se réorganisant à l'intérieur. */
+
+.colonnes > *, .pile > *, .grille > * { min-width: 0; }
+
+.evt-ligne__droite { flex-wrap: wrap; justify-content: flex-end; }
+
+@media (max-width: 560px) {
+  .evt-ligne__droite { width: 100%; margin-left: 0; }
+}

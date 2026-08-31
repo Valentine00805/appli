@@ -97,7 +97,10 @@ Le principe tient en trois temps :
 
 Le solde prévisionnel se calcule en continu, et **devient le solde de départ du
 mois suivant**, qui à son tour alimente le suivant. Un tableau projette les six
-prochains mois.
+prochains mois, et **une courbe du solde** montre la trajectoire : trait plein
+sur les mois écoulés, pointillé sur la prévision, ligne rouge au passage sous
+zéro. Le graphique est dessiné côté serveur, sans aucune bibliothèque : il
+fonctionne hors ligne, s'adapte au thème clair ou sombre et s'imprime net.
 
 Rien n'est figé en base : tout se recalcule à partir du dernier solde saisi.
 Corriger une vieille opération met donc à jour toute la chaîne.

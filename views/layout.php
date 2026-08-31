@@ -18,7 +18,7 @@ $actif = static function (string $prefixe) use ($route): string {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#4f46e5">
 <title><?= e($titrePage) ?></title>
-<link rel="stylesheet" href="<?= url('assets/css/app.css') ?>?v=5">
+<link rel="stylesheet" href="<?= url('assets/css/app.css') ?>?v=7">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>">
 </head>
 <body>
@@ -82,6 +82,6 @@ $actif = static function (string $prefixe) use ($route): string {
   <p><?= e((string) Config::get('app', 'nom')) ?> — vos cours et votre planning, en local.</p>
 </footer>
 
-<script src="<?= url('assets/js/app.js') ?>?v=5" defer></script>
+<script src="<?= url('assets/js/app.js') ?>?v=7" defer></script>
 </body>
 </html>

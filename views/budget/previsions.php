@@ -253,6 +253,25 @@ $aVenirIds = array_map(static fn (array $r): int => (int) $r['id'], $aVenir);
 
     <section class="carte">
       <h2>Projection</h2>
+
+      <?php
+      // Fenetre affichee : jusqu'a six mois avant le mois courant, et les six suivants.
+      $borneBasse = $mois->modify('-6 months')->format('Y-m');
+      $pointsGraphique = [];
+      foreach ($chaine as $p => $ligne) {
+          if ($p < $borneBasse) {
+              continue;
+          }
+          $pointsGraphique[] = [
+              'periode' => $p,
+              'mois'    => $ligne['mois'],
+              'solde'   => $ligne['solde_previsionnel'],
+              'origine' => $ligne['origine'],
+          ];
+      }
+      ?>
+      <?= Vue::rendre('budget/_graphique', ['points' => $pointsGraphique, 'periode' => $periode]) ?>
+
       <p class="discret" style="margin:.2rem 0 .8rem">
         Chaque mois part du solde prévisionnel du précédent, auquel s'ajoutent
         les lignes fixes et les opérations déjà saisies.
