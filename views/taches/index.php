@@ -163,8 +163,11 @@ $ligneTache = static function (array $t) use ($csrf, $contexte, $listes, $vue): 
             <noscript><button class="bouton bouton--petit" type="submit">OK</button></noscript>
           </form>
 
-          <a class="liste-carte__lien" href="<?= url('taches', ['liste' => $liste['id']]) ?>#volet"
-             aria-label="Ouvrir la liste <?= e($liste['nom']) ?>"
+          <?php // Un clic ouvre la liste, un second la referme. ?>
+          <a class="liste-carte__lien"
+             href="<?= $active ? url('taches') : url('taches', ['liste' => $liste['id']]) . '#volet' ?>"
+             aria-label="<?= $active ? 'Fermer' : 'Ouvrir' ?> la liste <?= e($liste['nom']) ?>"
+             aria-expanded="<?= $active ? 'true' : 'false' ?>"
              <?= $active ? ' aria-current="true"' : '' ?>>
             <span class="liste-carte__icone" aria-hidden="true"><?= e($liste['icone']) ?></span>
             <span style="flex:1;min-width:0">

@@ -604,8 +604,11 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
 .liste-carte__icone { font-size: 1.2rem; line-height: 1; flex: none; }
 .liste-carte__nom { display: block; font-weight: 650; overflow-wrap: anywhere; }
 .liste-carte__meta { display: block; font-size: .8rem; color: var(--texte-doux); }
-.liste-carte__chevron { flex: none; color: var(--texte-doux); font-size: 1.3rem; line-height: 1; }
-.liste-carte--active .liste-carte__chevron { color: var(--accent); }
+.liste-carte__chevron {
+  flex: none; color: var(--texte-doux); font-size: 1.3rem; line-height: 1;
+  transition: transform .15s;
+}
+.liste-carte--active .liste-carte__chevron { transform: rotate(90deg); color: var(--accent); }
 
 .nouvelle-liste > summary {
   cursor: pointer; font-weight: 650; color: var(--accent-fonce);
