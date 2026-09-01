@@ -236,3 +236,68 @@ function icone_categorie(array $operation): string
     $icone = (string) ($operation['categorie_icone'] ?? '');
     return $icone !== '' ? $icone : '💶';
 }
+
+/* --- Tâches ------------------------------------------------------------ */
+
+/**
+ * Situation d'une échéance par rapport à aujourd'hui.
+ * Renvoie 'aucune', 'retard', 'aujourdhui', 'demain', 'proche' (moins d'une
+ * semaine) ou 'lointain'. Une tâche faite n'est jamais en retard.
+ */
+function echeance_etat(?string $echeance, bool $faite = false): string
+{
+    if ($echeance === null || $echeance === '') {
+        return 'aucune';
+    }
+    if ($faite) {
+        return 'lointain';
+    }
+    $jour = date_create($echeance);
+    if ($jour === false) {
+        return 'aucune';
+    }
+    $jours = (int) date_create('today')->diff($jour->setTime(0, 0))->format('%r%a');
+
+    return match (true) {
+        $jours < 0  => 'retard',
+        $jours === 0 => 'aujourdhui',
+        $jours === 1 => 'demain',
+        $jours <= 7 => 'proche',
+        default     => 'lointain',
+    };
+}
+
+/** Libellé court d'une échéance : « En retard », « Aujourd'hui », « lun. 8 sept. ». */
+function echeance_libelle(?string $echeance, bool $faite = false): string
+{
+    $etat = echeance_etat($echeance, $faite);
+    if ($etat === 'aucune') {
+        return '';
+    }
+    $ts = strtotime((string) $echeance);
+    $date = (int) date('j', $ts) . ' ' . nom_mois_court((int) date('n', $ts));
+
+    if ($etat === 'retard') {
+        $jours = (int) date_create('today')->diff(date_create((string) $echeance)->setTime(0, 0))->format('%a');
+        return $jours === 1 ? 'Hier' : 'En retard · ' . $date;
+    }
+    if ($etat === 'aujourdhui') {
+        return "Aujourd'hui";
+    }
+    if ($etat === 'demain') {
+        return 'Demain';
+    }
+    if ($etat === 'proche') {
+        $jours = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
+        return $jours[(int) date('w', $ts)] . '. ' . $date;
+    }
+    // Au-delà d'un an, l'année lève l'ambiguïté.
+    return $date . (date('Y', $ts) !== date('Y') ? ' ' . date('Y', $ts) : '');
+}
+
+/** Emoji proposés pour une liste de tâches. */
+function icones_listes(): array
+{
+    return ['📋', '🎓', '🏠', '🛒', '💼', '💡', '✈️', '🎯', '🧾', '📦',
+        '🩺', '🚗', '🎉', '💪', '📞', '🔖'];
+}

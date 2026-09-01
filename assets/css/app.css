@@ -565,3 +565,79 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
   .grille--4 { grid-template-columns: repeat(4, 1fr); }
   .tableau { font-size: .82rem; }
 }
+
+/* --- Tâches ---------------------------------------------------------------- */
+
+.onglets__compteur {
+  display: inline-block; margin-left: .3rem; padding: .05rem .4rem;
+  border-radius: 999px; background: var(--fond-doux); color: var(--texte-doux);
+  font-size: .75rem; font-variant-numeric: tabular-nums;
+}
+.onglets a[aria-current="page"] .onglets__compteur { background: var(--accent-doux); color: var(--accent-fonce); }
+.onglets__compteur--alerte { background: var(--erreur-doux); color: var(--erreur); }
+
+.liste-taches__entete { display: flex; align-items: flex-start; gap: .7rem; }
+.liste-taches__icone { font-size: 1.35rem; line-height: 1.2; flex: none; }
+
+.taches { list-style: none; margin: .9rem 0 0; padding: 0; display: grid; gap: .15rem; }
+
+.tache {
+  display: flex; align-items: center; gap: .6rem;
+  padding: .4rem .3rem; border-radius: var(--rayon-s);
+  border-bottom: 1px solid var(--bordure);
+}
+.tache:last-child { border-bottom: 0; }
+.tache:hover { background: var(--fond-doux); }
+
+.tache__bascule { display: flex; flex: none; }
+.tache__case {
+  width: 22px; height: 22px; flex: none; padding: 0; cursor: pointer;
+  border: 2px solid var(--bordure-forte); border-radius: 6px;
+  background: var(--fond-carte); color: #fff;
+  display: grid; place-items: center;
+  font-size: .8rem; font-weight: 700; line-height: 1;
+}
+.tache__case:hover { border-color: var(--accent); }
+.tache__case[aria-pressed="true"] { background: var(--succes); border-color: var(--succes); }
+
+.tache__titre { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.tache__actions { margin-left: auto; flex: none; opacity: 0; transition: opacity .12s; }
+.tache:hover .tache__actions,
+.tache:focus-within .tache__actions { opacity: 1; }
+
+.tache--faite .tache__titre { text-decoration: line-through; color: var(--texte-doux); }
+
+.tache-edition {
+  list-style: none; padding: .8rem .3rem 1rem;
+  border-bottom: 1px solid var(--bordure);
+}
+.tache-edition__forme { margin-bottom: .5rem; }
+
+.echeance {
+  flex: none; padding: .1rem .5rem; border-radius: 999px;
+  font-size: .76rem; font-weight: 650; white-space: nowrap;
+  background: var(--fond-doux); color: var(--texte-doux);
+}
+.echeance--retard     { background: var(--erreur-doux);  color: var(--erreur); }
+.echeance--aujourdhui { background: var(--accent-doux);  color: var(--accent-fonce); }
+.echeance--demain     { background: var(--info-doux);    color: var(--info); }
+
+.taches-terminees { margin-top: .6rem; }
+.taches-terminees > summary {
+  cursor: pointer; font-size: .85rem; color: var(--texte-doux);
+  font-weight: 600; padding: .3rem 0;
+}
+.taches-terminees > summary:hover { color: var(--texte); }
+
+.tache-ajout {
+  display: flex; gap: .4rem; flex-wrap: wrap; align-items: center;
+  margin-top: .9rem; padding-top: .8rem; border-top: 1px dashed var(--bordure);
+}
+.tache-ajout input[type="text"] { flex: 1 1 12rem; min-width: 0; }
+.tache-ajout input[type="date"] { flex: 0 1 10rem; min-width: 0; }
+.tache-ajout .bouton { flex: none; }
+
+@media (max-width: 520px) {
+  .tache__actions { opacity: 1; }
+  .tache-ajout input[type="date"] { flex: 1 1 100%; }
+}

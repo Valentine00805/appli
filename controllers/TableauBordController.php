@@ -35,6 +35,7 @@ final class TableauBordController
                  ORDER BY e.debut ASC LIMIT 5',
                 [$userId]
             ),
+            'taches' => TachesController::aVenir($userId),
             'derniersCours' => Database::all(
                 'SELECT c.id, c.titre, c.updated_at, m.nom AS matiere_nom, m.couleur AS matiere_couleur
                  FROM cours c LEFT JOIN matieres m ON m.id = c.matiere_id
@@ -46,6 +47,7 @@ final class TableauBordController
                 'cours'    => (int) Database::valeur('SELECT COUNT(*) FROM cours WHERE user_id = ?', [$userId]),
                 'matieres' => (int) Database::valeur('SELECT COUNT(*) FROM matieres WHERE user_id = ?', [$userId]),
                 'fichiers' => (int) Database::valeur('SELECT COUNT(*) FROM fichiers WHERE user_id = ?', [$userId]),
+                'taches'   => TachesController::resteAFaire($userId),
                 'aVenir'   => (int) Database::valeur(
                     'SELECT COUNT(*) FROM evenements WHERE user_id = ? AND debut >= NOW()',
                     [$userId]

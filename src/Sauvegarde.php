@@ -41,6 +41,8 @@ final class Sauvegarde
         'operations'        => ['portee' => 'user',  'liens' => [
             'categorie_id' => 'categories_budget', 'recurrence_id' => 'recurrences']],
         'reglements'        => ['portee' => 'user',  'liens' => ['operation_id' => 'operations']],
+        'listes_taches'     => ['portee' => 'user',  'liens' => []],
+        'taches'            => ['portee' => 'user',  'liens' => ['liste_id' => 'listes_taches']],
     ];
 
     // --- Export --------------------------------------------------------------

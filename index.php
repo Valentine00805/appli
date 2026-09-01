@@ -20,6 +20,7 @@ require __DIR__ . '/controllers/PrevisionsController.php';
 require __DIR__ . '/controllers/ImportController.php';
 require __DIR__ . '/controllers/RemboursementsController.php';
 require __DIR__ . '/controllers/SauvegardeController.php';
+require __DIR__ . '/controllers/TachesController.php';
 require __DIR__ . '/controllers/TableauBordController.php';
 
 /**
@@ -119,6 +120,16 @@ $routes = [
     ['POST', 'budget/categories/{id}/supprimer', [BudgetController::class, 'categorieSupprimer']],
     ['POST', 'budget/suggestions/appliquer',   [BudgetController::class, 'appliquerSuggestion']],
     ['POST', 'budget/suggestions/{id}/appliquer', [BudgetController::class, 'appliquerSuggestion']],
+
+    ['GET',  'taches',                       [TachesController::class, 'index']],
+    ['POST', 'taches',                       [TachesController::class, 'creer']],
+    ['POST', 'taches/listes',                [TachesController::class, 'creerListe']],
+    ['POST', 'taches/listes/{id}/modifier',  [TachesController::class, 'modifierListe']],
+    ['POST', 'taches/listes/{id}/supprimer', [TachesController::class, 'supprimerListe']],
+    ['POST', 'taches/listes/{id}/vider',     [TachesController::class, 'viderTerminees']],
+    ['POST', 'taches/{id}/cocher',           [TachesController::class, 'basculer']],
+    ['POST', 'taches/{id}/modifier',         [TachesController::class, 'modifier']],
+    ['POST', 'taches/{id}/supprimer',        [TachesController::class, 'supprimer']],
 
     ['GET',  'recherche',                 [CoursController::class, 'recherche']],
 ];

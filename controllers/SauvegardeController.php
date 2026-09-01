@@ -27,6 +27,8 @@ final class SauvegardeController
                 'soldes_saisis'     => 'soldes saisis',
                 'operations'        => 'opérations',
                 'reglements'        => 'règlements',
+                'listes_taches'     => 'listes de tâches',
+                'taches'            => 'tâches',
             ],
         ], 'Sauvegarde');
     }

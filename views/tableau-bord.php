@@ -1,7 +1,7 @@
 <?php
 /**
  * @var DateTimeImmutable $aujourdhui
- * @var array $duJour, $semaine, $examens, $derniersCours, $stats
+ * @var array $duJour, $semaine, $examens, $taches, $derniersCours, $stats
  */
 /** Petit rendu d'une ligne d'évènement. */
 $ligneEvenement = static function (array $evt): string {
@@ -48,9 +48,9 @@ $ligneEvenement = static function (array $evt): string {
   <a class="carte stat" href="<?= url('calendrier') ?>" style="text-decoration:none;color:inherit">
     <div class="stat__valeur"><?= (int) $stats['aVenir'] ?></div><div class="stat__libelle">évènements à venir</div>
   </a>
-  <div class="carte stat">
-    <div class="stat__valeur"><?= (int) $stats['fichiers'] ?></div><div class="stat__libelle">fichiers joints</div>
-  </div>
+  <a class="carte stat" href="<?= url('taches') ?>" style="text-decoration:none;color:inherit">
+    <div class="stat__valeur"><?= (int) $stats['taches'] ?></div><div class="stat__libelle">tâches à faire</div>
+  </a>
 </div>
 
 <div class="colonnes">
@@ -92,6 +92,37 @@ $ligneEvenement = static function (array $evt): string {
   </div>
 
   <div class="pile">
+    <section class="carte">
+      <h2>Mes tâches</h2>
+      <?php if ($taches === []): ?>
+        <p class="discret" style="margin:0">
+          <?php if ((int) $stats['taches'] > 0): ?>
+            <?= (int) $stats['taches'] ?> tâche<?= (int) $stats['taches'] > 1 ? 's' : '' ?> en attente, sans échéance proche.
+            <a href="<?= url('taches') ?>">Voir mes listes</a>.
+          <?php else: ?>
+            Rien à faire dans les jours qui viennent.
+            <a href="<?= url('taches') ?>">Ouvrir mes listes</a>.
+          <?php endif; ?>
+        </p>
+      <?php else: ?>
+        <div class="pile">
+          <?php foreach ($taches as $t): ?>
+            <?php $etat = echeance_etat($t['echeance']); ?>
+            <a class="evt-ligne" href="<?= url('taches') ?>">
+              <span class="evt-ligne__barre" style="background:<?= e($t['liste_couleur']) ?>"></span>
+              <span>
+                <span class="evt-ligne__titre"><?= e($t['titre']) ?></span><br>
+                <span class="evt-ligne__meta"><?= e($t['liste_icone'] . ' ' . $t['liste_nom']) ?></span>
+              </span>
+              <span class="evt-ligne__droite">
+                <span class="echeance echeance--<?= e($etat) ?>"><?= e(echeance_libelle($t['echeance'])) ?></span>
+              </span>
+            </a>
+          <?php endforeach; ?>
+        </div>
+      <?php endif; ?>
+    </section>
+
     <section class="carte">
       <h2>Examens &amp; devoirs</h2>
       <?php if ($examens === []): ?>
