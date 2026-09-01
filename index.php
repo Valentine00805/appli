@@ -128,6 +128,7 @@ $routes = [
     ['POST', 'taches/listes/{id}/supprimer', [TachesController::class, 'supprimerListe']],
     ['POST', 'taches/listes/{id}/cocher',    [TachesController::class, 'basculerListe']],
     ['POST', 'taches/listes/{id}/deplacer',  [TachesController::class, 'deplacerListe']],
+    ['POST', 'taches/listes/ordre',          [TachesController::class, 'reordonnerListes']],
     ['POST', 'taches/listes/{id}/vider',     [TachesController::class, 'viderTerminees']],
     ['POST', 'taches/{id}/cocher',           [TachesController::class, 'basculer']],
     ['POST', 'taches/{id}/modifier',         [TachesController::class, 'modifier']],

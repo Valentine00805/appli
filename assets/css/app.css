@@ -717,3 +717,40 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
 @media (max-width: 520px) {
   .liste-carte__ordre { opacity: 1; }
 }
+
+/* --- Glisser-déposer des tâches principales -------------------------------- */
+
+/* Actif seulement quand JavaScript a pris la main. */
+.est-triable .liste-carte { cursor: grab; }
+.est-triable .liste-carte:active { cursor: grabbing; }
+
+/* La poignée annonce que la carte se saisit. */
+.est-triable .liste-carte::before {
+  content: "⠿";
+  flex: none; margin-right: -.15rem;
+  color: var(--bordure-forte); font-size: .95rem; line-height: 1;
+  opacity: 0; transition: opacity .12s;
+}
+.est-triable .liste-carte:hover::before { opacity: 1; }
+
+.liste-carte--glisse {
+  opacity: .45; border-style: dashed;
+}
+.est-en-cours { opacity: .6; pointer-events: none; }
+
+/*
+ * Les flèches restent pour le clavier : invisibles à l'œil, elles
+ * réapparaissent dès qu'on les atteint par tabulation.
+ */
+.est-triable .liste-carte__ordre {
+  position: absolute; width: 1px; height: 1px;
+  overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+}
+.est-triable .liste-carte__ordre:focus-within {
+  position: static; width: auto; height: auto;
+  overflow: visible; clip-path: none; opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .est-triable .liste-carte::before { transition: none; }
+}

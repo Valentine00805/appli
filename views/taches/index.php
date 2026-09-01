@@ -134,7 +134,7 @@ $ligneTache = static function (array $t) use ($csrf, $contexte, $listes, $vue): 
 <div class="taches-vue">
 
   <!-- Colonne de gauche : rien que les tâches principales. -->
-  <div class="pile">
+  <div class="pile" data-listes-triables>
     <?php if ($listes === []): ?>
       <div class="vide">
         <span class="vide__icone">📋</span>
@@ -153,6 +153,7 @@ $ligneTache = static function (array $t) use ($csrf, $contexte, $listes, $vue): 
         $active    = (int) $liste['id'] === (int) $listeOuverte && $vue === 'tout';
         ?>
         <div class="liste-carte<?= $active ? ' liste-carte--active' : '' ?><?= $terminee ? ' liste-carte--faite' : '' ?>"
+             data-liste-id="<?= (int) $liste['id'] ?>"
              style="border-left-color:<?= e($liste['couleur']) ?>">
           <form method="post" action="<?= url('taches/listes/' . $liste['id'] . '/cocher') ?>"
                 class="tache__bascule">
@@ -170,7 +171,8 @@ $ligneTache = static function (array $t) use ($csrf, $contexte, $listes, $vue): 
           </form>
 
           <?php // Un clic ouvre la liste, un second la referme. ?>
-          <a class="liste-carte__lien"
+          <?php // draggable=false : sans quoi le navigateur glisserait l'URL du lien. ?>
+          <a class="liste-carte__lien" draggable="false"
              href="<?= $active ? url('taches') : url('taches', ['liste' => $liste['id']]) . '#volet' ?>"
              aria-label="<?= $active ? 'Fermer' : 'Ouvrir' ?> la liste <?= e($liste['nom']) ?>"
              aria-expanded="<?= $active ? 'true' : 'false' ?>"
@@ -234,6 +236,16 @@ $ligneTache = static function (array $t) use ($csrf, $contexte, $listes, $vue): 
         </div>
       <?php endforeach; ?>
     <?php endif; ?>
+
+    <?php // Le glisser-déposer poste ici le classement complet. ?>
+    <form method="post" action="<?= url('taches/listes/ordre') ?>" id="forme-ordre" hidden>
+      <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+      <input type="hidden" name="vue" value="<?= e($vue) ?>">
+      <?php if ($listeOuverte !== null): ?>
+        <input type="hidden" name="liste" value="<?= (int) $listeOuverte ?>">
+      <?php endif; ?>
+      <input type="hidden" name="ordre" value="">
+    </form>
 
     <details class="carte nouvelle-liste"<?= $listes === [] ? ' open' : '' ?>>
       <summary>+ Nouvelle liste</summary>

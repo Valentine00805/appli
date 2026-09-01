@@ -226,6 +226,50 @@ final class TachesController
     }
 
     /**
+     * Enregistre un classement complet, envoyé par le glisser-déposer.
+     *
+     * On ne fait pas confiance à la liste reçue : seuls les identifiants du
+     * compte sont retenus, sans doublon, et celles qui manquent à l'appel
+     * sont replacées à la fin dans leur ordre actuel.
+     */
+    public function reordonnerListes(): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $userId = Auth::id();
+
+        $siennes = array_map(
+            static fn (array $l): int => (int) $l['id'],
+            Database::all(
+                'SELECT id FROM listes_taches WHERE user_id = ? ORDER BY position, id',
+                [$userId]
+            )
+        );
+
+        $ordre = [];
+        foreach (explode(',', post('ordre')) as $brut) {
+            $id = (int) trim($brut);
+            if (in_array($id, $siennes, true) && !in_array($id, $ordre, true)) {
+                $ordre[] = $id;
+            }
+        }
+        foreach ($siennes as $id) {
+            if (!in_array($id, $ordre, true)) {
+                $ordre[] = $id;
+            }
+        }
+
+        foreach ($ordre as $rang => $listeId) {
+            Database::run(
+                'UPDATE listes_taches SET position = ? WHERE id = ? AND user_id = ?',
+                [$rang + 1, $listeId, $userId]
+            );
+        }
+
+        redirect('taches', $this->filtreCourant());
+    }
+
+    /**
      * Coche ou décoche une liste entière.
      *
      * La liste se comporte comme la tâche principale : la cocher termine tout

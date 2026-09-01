@@ -92,4 +92,57 @@
     case_.indeterminate = true;
   });
 
+  // Réordonner les tâches principales en les faisant glisser.
+  // Sans JavaScript, les deux flèches de chaque carte prennent le relais.
+  var colonne = document.querySelector("[data-listes-triables]");
+  var formeOrdre = document.getElementById("forme-ordre");
+  if (colonne && formeOrdre && "draggable" in document.createElement("div")) {
+    var cartes = [].slice.call(colonne.querySelectorAll(".liste-carte"));
+
+    if (cartes.length > 1) {
+      colonne.classList.add("est-triable");
+
+      var ordreDe = function () {
+        return [].slice.call(colonne.querySelectorAll(".liste-carte"))
+          .map(function (c) { return c.dataset.listeId; });
+      };
+      var ordreDepart = ordreDe().join(",");
+      var glissee = null;
+
+      cartes.forEach(function (carte) {
+        carte.draggable = true;
+
+        carte.addEventListener("dragstart", function (evenement) {
+          glissee = carte;
+          carte.classList.add("liste-carte--glisse");
+          evenement.dataTransfer.effectAllowed = "move";
+          // Firefox exige une donnée pour démarrer le glissement.
+          try { evenement.dataTransfer.setData("text/plain", carte.dataset.listeId); } catch (e) {}
+        });
+
+        carte.addEventListener("dragover", function (evenement) {
+          if (!glissee || glissee === carte) { return; }
+          evenement.preventDefault();
+          evenement.dataTransfer.dropEffect = "move";
+          // On insère avant ou après selon la moitié survolée.
+          var zone = carte.getBoundingClientRect();
+          var avant = (evenement.clientY - zone.top) < zone.height / 2;
+          colonne.insertBefore(glissee, avant ? carte : carte.nextSibling);
+        });
+
+        carte.addEventListener("drop", function (evenement) { evenement.preventDefault(); });
+
+        carte.addEventListener("dragend", function () {
+          carte.classList.remove("liste-carte--glisse");
+          glissee = null;
+          var ordre = ordreDe();
+          if (ordre.join(",") === ordreDepart) { return; }
+          colonne.classList.add("est-en-cours");
+          formeOrdre.elements.ordre.value = ordre.join(",");
+          formeOrdre.submit();
+        });
+      });
+    }
+  }
+
 })();
