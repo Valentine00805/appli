@@ -126,6 +126,7 @@
 
       cartes.forEach(function (carte) {
         carte.draggable = true;
+        carte.classList.add("est-saisissable");
 
         carte.addEventListener("dragstart", function (evenement) {
           listeGlissee = carte;
@@ -163,6 +164,7 @@
 
       [].slice.call(document.querySelectorAll(".tache[data-tache-id]")).forEach(function (ligne) {
         ligne.draggable = true;
+        ligne.classList.add("est-saisissable");
 
         ligne.addEventListener("dragstart", function (evenement) {
           tacheGlissee = ligne;

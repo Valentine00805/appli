@@ -718,20 +718,27 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
   .liste-carte__ordre { opacity: 1; }
 }
 
-/* --- Glisser-déposer des tâches principales -------------------------------- */
+/* --- Glisser-déposer ------------------------------------------------------- */
 
-/* Actif seulement quand JavaScript a pris la main. */
-.est-triable .liste-carte { cursor: grab; }
-.est-triable .liste-carte:active { cursor: grabbing; }
+/*
+ * La classe est posée par JavaScript sur ce qui se saisit vraiment : une
+ * tâche principale, ou une sous-tâche. La poignée n'apparaît donc jamais
+ * là où le glissement n'est pas possible.
+ */
+.est-saisissable { cursor: grab; }
+.est-saisissable:active { cursor: grabbing; }
 
-/* La poignée annonce que la carte se saisit. */
-.est-triable .liste-carte::before {
+.est-saisissable::before {
   content: "⠿";
   flex: none; margin-right: -.15rem;
   color: var(--bordure-forte); font-size: .95rem; line-height: 1;
   opacity: 0; transition: opacity .12s;
 }
-.est-triable .liste-carte:hover::before { opacity: 1; }
+.est-saisissable:hover::before,
+.est-saisissable:focus-within::before { opacity: 1; }
+
+/* Sur une sous-tâche, la poignée est un peu plus discrète. */
+.tache.est-saisissable::before { font-size: .85rem; margin-left: -.1rem; }
 
 .liste-carte--glisse {
   opacity: .45; border-style: dashed;
@@ -752,12 +759,9 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .est-triable .liste-carte::before { transition: none; }
+  .est-saisissable::before { transition: none; }
 }
 
-/* Une sous-tâche que l'on fait glisser vers une autre liste. */
-.est-triable .tache[data-tache-id] { cursor: grab; }
-.est-triable .tache[data-tache-id]:active { cursor: grabbing; }
 .tache--glisse { opacity: .45; }
 
 /* Les cartes s'annoncent comme cibles pendant qu'une sous-tâche voyage. */
