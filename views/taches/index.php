@@ -38,7 +38,7 @@ $ligneTache = static function (array $t) use ($csrf, $contexte, $listes, $vue): 
     $etat  = echeance_etat($t['echeance'], $faite);
     $texte = echeance_libelle($t['echeance'], $faite);
     ob_start(); ?>
-    <li class="tache<?= $faite ? ' tache--faite' : '' ?>">
+    <li class="tache<?= $faite ? ' tache--faite' : '' ?>" data-tache-id="<?= (int) $t['id'] ?>">
       <form method="post" action="<?= url('taches/' . $t['id'] . '/cocher') ?>" class="tache__bascule">
         <?= $contexte() ?>
         <input type="checkbox" class="tache__case" id="case-<?= (int) $t['id'] ?>"
@@ -245,6 +245,17 @@ $ligneTache = static function (array $t) use ($csrf, $contexte, $listes, $vue): 
         <input type="hidden" name="liste" value="<?= (int) $listeOuverte ?>">
       <?php endif; ?>
       <input type="hidden" name="ordre" value="">
+    </form>
+
+    <?php // Une sous-tâche déposée sur une carte de gauche passe par ici. ?>
+    <form method="post" action="<?= url('taches/ranger') ?>" id="forme-ranger" hidden>
+      <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+      <input type="hidden" name="vue" value="<?= e($vue) ?>">
+      <?php if ($listeOuverte !== null): ?>
+        <input type="hidden" name="liste" value="<?= (int) $listeOuverte ?>">
+      <?php endif; ?>
+      <input type="hidden" name="tache" value="">
+      <input type="hidden" name="cible" value="">
     </form>
 
     <details class="carte nouvelle-liste"<?= $listes === [] ? ' open' : '' ?>>

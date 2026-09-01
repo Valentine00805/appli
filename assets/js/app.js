@@ -92,57 +92,116 @@
     case_.indeterminate = true;
   });
 
-  // Réordonner les tâches principales en les faisant glisser.
-  // Sans JavaScript, les deux flèches de chaque carte prennent le relais.
+  /*
+   * Glisser-déposer des tâches, en deux gestes :
+   *   — une carte de la colonne se déplace dans la colonne (on la réordonne) ;
+   *   — une sous-tâche du volet se dépose sur une carte (elle change de liste).
+   * Sans JavaScript, les flèches et le champ « Déplacer vers » prennent le relais.
+   */
   var colonne = document.querySelector("[data-listes-triables]");
   var formeOrdre = document.getElementById("forme-ordre");
-  if (colonne && formeOrdre && "draggable" in document.createElement("div")) {
+  var formeRanger = document.getElementById("forme-ranger");
+  var glissementPossible = "draggable" in document.createElement("div");
+
+  if (colonne && glissementPossible) {
     var cartes = [].slice.call(colonne.querySelectorAll(".liste-carte"));
+    var listeGlissee = null;   // carte en cours de déplacement
+    var tacheGlissee = null;   // sous-tâche en cours de déplacement
 
-    if (cartes.length > 1) {
+    var ordreDe = function () {
+      return [].slice.call(colonne.querySelectorAll(".liste-carte"))
+        .map(function (c) { return c.dataset.listeId; });
+    };
+    var ordreDepart = ordreDe().join(",");
+
+    var envoyer = function (forme) {
+      colonne.classList.add("est-en-cours");
+      forme.submit();
+    };
+
+    /* --- Réordonner les tâches principales --- */
+
+    if (formeOrdre && cartes.length > 1) {
       colonne.classList.add("est-triable");
-
-      var ordreDe = function () {
-        return [].slice.call(colonne.querySelectorAll(".liste-carte"))
-          .map(function (c) { return c.dataset.listeId; });
-      };
-      var ordreDepart = ordreDe().join(",");
-      var glissee = null;
 
       cartes.forEach(function (carte) {
         carte.draggable = true;
 
         carte.addEventListener("dragstart", function (evenement) {
-          glissee = carte;
+          listeGlissee = carte;
           carte.classList.add("liste-carte--glisse");
           evenement.dataTransfer.effectAllowed = "move";
           // Firefox exige une donnée pour démarrer le glissement.
           try { evenement.dataTransfer.setData("text/plain", carte.dataset.listeId); } catch (e) {}
         });
 
-        carte.addEventListener("dragover", function (evenement) {
-          if (!glissee || glissee === carte) { return; }
-          evenement.preventDefault();
-          evenement.dataTransfer.dropEffect = "move";
-          // On insère avant ou après selon la moitié survolée.
-          var zone = carte.getBoundingClientRect();
-          var avant = (evenement.clientY - zone.top) < zone.height / 2;
-          colonne.insertBefore(glissee, avant ? carte : carte.nextSibling);
-        });
-
-        carte.addEventListener("drop", function (evenement) { evenement.preventDefault(); });
-
         carte.addEventListener("dragend", function () {
           carte.classList.remove("liste-carte--glisse");
-          glissee = null;
+          listeGlissee = null;
           var ordre = ordreDe();
-          if (ordre.join(",") === ordreDepart) { return; }
-          colonne.classList.add("est-en-cours");
+          if (ordre.join(",") === ordreDepart || !formeOrdre) { return; }
           formeOrdre.elements.ordre.value = ordre.join(",");
-          formeOrdre.submit();
+          envoyer(formeOrdre);
         });
       });
     }
+
+    /* --- Déposer une sous-tâche sur une carte --- */
+
+    if (formeRanger) {
+      [].slice.call(document.querySelectorAll(".tache[data-tache-id]")).forEach(function (ligne) {
+        ligne.draggable = true;
+
+        ligne.addEventListener("dragstart", function (evenement) {
+          tacheGlissee = ligne;
+          ligne.classList.add("tache--glisse");
+          colonne.classList.add("attend-une-tache");
+          evenement.dataTransfer.effectAllowed = "move";
+          try { evenement.dataTransfer.setData("text/plain", ligne.dataset.tacheId); } catch (e) {}
+        });
+
+        ligne.addEventListener("dragend", function () {
+          ligne.classList.remove("tache--glisse");
+          colonne.classList.remove("attend-une-tache");
+          tacheGlissee = null;
+        });
+      });
+    }
+
+    /* --- Survol et dépôt sur une carte --- */
+
+    cartes.forEach(function (carte) {
+      carte.addEventListener("dragover", function (evenement) {
+        // Une carte glissée : on réordonne la colonne en direct.
+        if (listeGlissee && listeGlissee !== carte) {
+          evenement.preventDefault();
+          evenement.dataTransfer.dropEffect = "move";
+          var zone = carte.getBoundingClientRect();
+          var avant = (evenement.clientY - zone.top) < zone.height / 2;
+          colonne.insertBefore(listeGlissee, avant ? carte : carte.nextSibling);
+          return;
+        }
+        // Une sous-tâche glissée : la carte devient une cible de dépôt.
+        if (tacheGlissee) {
+          evenement.preventDefault();
+          evenement.dataTransfer.dropEffect = "move";
+          carte.classList.add("liste-carte--cible");
+        }
+      });
+
+      carte.addEventListener("dragleave", function () {
+        carte.classList.remove("liste-carte--cible");
+      });
+
+      carte.addEventListener("drop", function (evenement) {
+        evenement.preventDefault();
+        carte.classList.remove("liste-carte--cible");
+        if (!tacheGlissee || !formeRanger) { return; }
+        formeRanger.elements.tache.value = tacheGlissee.dataset.tacheId;
+        formeRanger.elements.cible.value = carte.dataset.listeId;
+        envoyer(formeRanger);
+      });
+    });
   }
 
 })();

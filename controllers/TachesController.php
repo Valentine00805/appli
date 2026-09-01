@@ -401,6 +401,43 @@ final class TachesController
         redirect('taches', ['liste' => $listeId]);
     }
 
+    /**
+     * Range une sous-tâche dans une autre liste, sans passer par le formulaire.
+     * C'est ce qu'appelle le glisser-déposer depuis le volet vers la colonne.
+     */
+    public function rangerTache(): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $userId = Auth::id();
+
+        $tacheId = entier_ou_null($_POST['tache'] ?? null);
+        $tache = $tacheId === null ? null : Database::one(
+            'SELECT id, titre, liste_id FROM taches WHERE id = ? AND user_id = ?',
+            [$tacheId, $userId]
+        );
+        if ($tache === null) {
+            $this->introuvable();
+        }
+
+        $cible = $this->listeValide($userId, $_POST['cible'] ?? null);
+        if ($cible === null) {
+            Session::flash('erreur', 'Liste de destination introuvable.');
+            redirect('taches', $this->filtreCourant());
+        }
+
+        if ($cible !== (int) $tache['liste_id']) {
+            Database::run(
+                'UPDATE taches SET liste_id = ? WHERE id = ? AND user_id = ?',
+                [$cible, $tache['id'], $userId]
+            );
+            $nom = Database::valeur('SELECT nom FROM listes_taches WHERE id = ? AND user_id = ?', [$cible, $userId]);
+            Session::flash('succes', '« ' . $tache['titre'] . ' » déplacée vers « ' . $nom . ' ».');
+        }
+
+        redirect('taches', $this->filtreCourant());
+    }
+
     /** Coche ou décoche une tâche. */
     public function basculer(int $id): void
     {
