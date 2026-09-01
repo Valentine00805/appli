@@ -566,7 +566,14 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
   .tableau { font-size: .82rem; }
 }
 
-/* --- Tâches ---------------------------------------------------------------- */
+
+/* --- Tâches : listes à gauche, volet de détail à droite -------------------- */
+
+.taches-vue {
+  display: grid; gap: 1.25rem; align-items: start;
+  grid-template-columns: minmax(0, 21rem) minmax(0, 1fr);
+}
+.taches-vue > * { min-width: 0; }
 
 .onglets__compteur {
   display: inline-block; margin-left: .3rem; padding: .05rem .4rem;
@@ -576,10 +583,49 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
 .onglets a[aria-current="page"] .onglets__compteur { background: var(--accent-doux); color: var(--accent-fonce); }
 .onglets__compteur--alerte { background: var(--erreur-doux); color: var(--erreur); }
 
-.liste-taches__entete { display: flex; align-items: flex-start; gap: .7rem; }
-.liste-taches__icone { font-size: 1.35rem; line-height: 1.2; flex: none; }
+.alerte { color: var(--erreur); }
 
-.taches { list-style: none; margin: .9rem 0 0; padding: 0; display: grid; gap: .15rem; }
+/* La carte d'une tâche principale, dans la colonne de gauche. */
+.liste-carte {
+  display: flex; align-items: center; gap: .6rem;
+  padding: .7rem .8rem; border-radius: var(--rayon-s);
+  background: var(--fond-carte);
+  border: 1px solid var(--bordure); border-left: 4px solid var(--bordure);
+  transition: border-color .12s, background .12s;
+}
+.liste-carte:hover { border-color: var(--bordure-forte); }
+.liste-carte--active { background: var(--accent-doux); border-color: var(--accent); }
+.liste-carte--faite .liste-carte__nom { text-decoration: line-through; color: var(--texte-doux); }
+
+.liste-carte__lien {
+  flex: 1; min-width: 0; display: flex; align-items: center; gap: .55rem;
+  text-decoration: none; color: inherit;
+}
+.liste-carte__icone { font-size: 1.2rem; line-height: 1; flex: none; }
+.liste-carte__nom { display: block; font-weight: 650; overflow-wrap: anywhere; }
+.liste-carte__meta { display: block; font-size: .8rem; color: var(--texte-doux); }
+.liste-carte__chevron { flex: none; color: var(--texte-doux); font-size: 1.3rem; line-height: 1; }
+.liste-carte--active .liste-carte__chevron { color: var(--accent); }
+
+.nouvelle-liste > summary {
+  cursor: pointer; font-weight: 650; color: var(--accent-fonce);
+  list-style: none;
+}
+.nouvelle-liste > summary::-webkit-details-marker { display: none; }
+.nouvelle-liste > summary:hover { text-decoration: underline; }
+
+/* Le volet : il suit la page tant qu'il tient à l'écran. */
+.volet { position: sticky; top: 1rem; }
+.volet__entete { display: flex; align-items: flex-start; gap: .7rem; }
+.volet__icone { font-size: 1.5rem; line-height: 1.1; flex: none; }
+.volet__carte h2 label { cursor: pointer; }
+.liste-taches--faite .volet__entete h2 label {
+  text-decoration: line-through; color: var(--texte-doux);
+}
+
+/* --- Sous-tâches ---------------------------------------------------------- */
+
+.taches { list-style: none; margin: 1rem 0 0; padding: 0; display: grid; gap: .15rem; }
 
 .tache {
   display: flex; align-items: center; gap: .6rem;
@@ -594,8 +640,11 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
   width: 19px; height: 19px; flex: none; margin: 0; cursor: pointer;
   accent-color: var(--accent);
 }
+.tache__case--liste { width: 22px; height: 22px; margin-top: .2rem; }
+.liste-carte .tache__case--liste { margin-top: 0; }
 
 .tache__titre { flex: 1; min-width: 0; overflow-wrap: anywhere; cursor: pointer; font-weight: 400; }
+.tache__liste { display: block; font-size: .78rem; color: var(--texte-doux); }
 .tache__actions { margin-left: auto; flex: none; opacity: 0; transition: opacity .12s; }
 .tache:hover .tache__actions,
 .tache:focus-within .tache__actions { opacity: 1; }
@@ -626,21 +675,17 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
 
 .tache-ajout {
   display: flex; gap: .4rem; flex-wrap: wrap; align-items: center;
-  margin-top: .9rem; padding-top: .8rem; border-top: 1px dashed var(--bordure);
+  margin-top: 1rem; padding-top: .85rem; border-top: 1px dashed var(--bordure);
 }
 .tache-ajout input[type="text"] { flex: 1 1 12rem; min-width: 0; }
 .tache-ajout input[type="date"] { flex: 0 1 10rem; min-width: 0; }
 .tache-ajout .bouton { flex: none; }
 
+@media (max-width: 900px) {
+  .taches-vue { grid-template-columns: minmax(0, 1fr); }
+  .volet { position: static; }
+}
 @media (max-width: 520px) {
   .tache__actions { opacity: 1; }
   .tache-ajout input[type="date"] { flex: 1 1 100%; }
-}
-
-/* Case de la liste : la tâche principale, un cran plus grande. */
-.tache__case--liste { width: 22px; height: 22px; margin-top: .2rem; }
-.liste-taches__entete .tache__bascule { align-items: flex-start; }
-.liste-taches__entete h2 label { cursor: pointer; }
-.liste-taches--faite .liste-taches__entete h2 label {
-  text-decoration: line-through; color: var(--texte-doux);
 }

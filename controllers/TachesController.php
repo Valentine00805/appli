@@ -42,28 +42,44 @@ final class TachesController
             [$userId]
         );
 
-        // Un seul aller-retour en base : les tâches sont ensuite réparties par liste.
-        $taches = Database::all(
-            'SELECT * FROM taches
-             WHERE user_id = ?' . $this->conditionVue($vue) . '
-             ORDER BY faite,
-                      echeance IS NULL, echeance,
-                      created_at, id',
-            [$userId]
-        );
+        // La colonne de gauche ne montre que les listes ; le volet de droite
+        // affiche soit la liste ouverte, soit le résultat d'un filtre.
+        $listeOuverte = null;
+        $taches = [];
 
-        $parListe = [];
-        foreach ($taches as $tache) {
-            $parListe[(int) $tache['liste_id']][] = $tache;
+        if ($vue === 'tout') {
+            $demandee = $this->listeValide($userId, $_GET['liste'] ?? null);
+            // À l'arrivée, la première liste s'ouvre : le volet n'est jamais vide.
+            $listeOuverte = $demandee ?? (isset($listes[0]) ? (int) $listes[0]['id'] : null);
+
+            if ($listeOuverte !== null) {
+                $taches = Database::all(
+                    'SELECT * FROM taches
+                     WHERE user_id = ? AND liste_id = ?
+                     ORDER BY faite, echeance IS NULL, echeance, created_at, id',
+                    [$userId, $listeOuverte]
+                );
+            }
+        } else {
+            // Un filtre traverse toutes les listes : chaque tâche rappelle la sienne.
+            $taches = Database::all(
+                'SELECT t.*, l.nom AS liste_nom, l.couleur AS liste_couleur, l.icone AS liste_icone
+                 FROM taches t
+                 JOIN listes_taches l ON l.id = t.liste_id
+                 WHERE t.user_id = ?' . $this->conditionVue($vue, 't.') . '
+                 ORDER BY t.faite, t.echeance IS NULL, t.echeance, t.created_at, t.id',
+                [$userId]
+            );
         }
 
         Vue::afficher('taches/index', [
-            'listes'   => $listes,
-            'parListe' => $parListe,
-            'vue'      => $vue,
-            'compteurs' => $this->compteurs($userId),
-            'palette'  => self::PALETTE,
-            'icones'   => icones_listes(),
+            'listes'       => $listes,
+            'taches'       => $taches,
+            'listeOuverte' => $listeOuverte,
+            'vue'          => $vue,
+            'compteurs'    => $this->compteurs($userId),
+            'palette'      => self::PALETTE,
+            'icones'       => icones_listes(),
         ], 'Mes tâches');
     }
 
@@ -89,9 +105,11 @@ final class TachesController
             'INSERT INTO listes_taches (user_id, nom, couleur, icone) VALUES (?, ?, ?, ?)',
             [$userId, $nom, $this->couleurValide(post('couleur')), $this->iconeValide(post('icone'))]
         );
+        $nouvelleListe = Database::dernierId();
 
         Session::flash('succes', 'Liste « ' . $nom . ' » créée.');
-        redirect('taches');
+        // La nouvelle liste s'ouvre aussitôt dans le volet.
+        redirect('taches', ['liste' => $nouvelleListe]);
     }
 
     public function modifierListe(int $id): void
@@ -124,7 +142,7 @@ final class TachesController
         );
 
         Session::flash('succes', 'Liste mise à jour.');
-        redirect('taches');
+        redirect('taches', ['liste' => $id]);
     }
 
     public function supprimerListe(int $id): void
@@ -244,7 +262,8 @@ final class TachesController
             [$userId, $listeId, $titre, $this->dateValide(post('echeance'))]
         );
 
-        redirect('taches');
+        // Le volet reste ouvert sur la liste où l'on vient d'écrire.
+        redirect('taches', ['liste' => $listeId]);
     }
 
     public function modifier(int $id): void
@@ -276,7 +295,8 @@ final class TachesController
         );
 
         Session::flash('succes', 'Tâche mise à jour.');
-        redirect('taches');
+        // On rouvre la liste d'arrivée : c'est là que la tâche se trouve désormais.
+        redirect('taches', ['liste' => $listeId]);
     }
 
     /** Coche ou décoche une tâche. */
@@ -341,15 +361,18 @@ final class TachesController
 
     /* --- Interne -------------------------------------------------------- */
 
-    /** Fragment SQL correspondant au filtre choisi. */
-    private function conditionVue(string $vue): string
+    /**
+     * Fragment SQL correspondant au filtre choisi.
+     * Le préfixe sert quand la requête utilise un alias de table (« t. »).
+     */
+    private function conditionVue(string $vue, string $p = ''): string
     {
         return match ($vue) {
-            'retard'     => ' AND faite = 0 AND echeance IS NOT NULL AND echeance < CURDATE()',
-            'aujourdhui' => ' AND faite = 0 AND echeance = CURDATE()',
-            'semaine'    => ' AND faite = 0 AND echeance IS NOT NULL'
-                          . ' AND echeance BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY)',
-            'terminees'  => ' AND faite = 1',
+            'retard'     => " AND {$p}faite = 0 AND {$p}echeance IS NOT NULL AND {$p}echeance < CURDATE()",
+            'aujourdhui' => " AND {$p}faite = 0 AND {$p}echeance = CURDATE()",
+            'semaine'    => " AND {$p}faite = 0 AND {$p}echeance IS NOT NULL"
+                          . " AND {$p}echeance BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY)",
+            'terminees'  => " AND {$p}faite = 1",
             default      => '',
         };
     }
@@ -378,11 +401,18 @@ final class TachesController
         ];
     }
 
-    /** Conserve le filtre en cours lors d'une redirection. */
+    /**
+     * Conserve le contexte lors d'une redirection : le filtre en cours, ou à
+     * défaut la liste ouverte dans le volet. On revient là d'où l'on vient.
+     */
     private function filtreCourant(): array
     {
         $vue = $_POST['vue'] ?? '';
-        return in_array($vue, self::VUES, true) && $vue !== 'tout' ? ['vue' => $vue] : [];
+        if (in_array($vue, self::VUES, true) && $vue !== 'tout') {
+            return ['vue' => $vue];
+        }
+        $liste = entier_ou_null($_POST['liste'] ?? null);
+        return $liste === null ? [] : ['liste' => $liste];
     }
 
     /** Vérifie qu'une liste existe et appartient bien au compte. */
