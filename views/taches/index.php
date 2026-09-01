@@ -118,11 +118,31 @@ $ligneTache = static function (array $t) use ($csrf, $vue, $listes): string {
         $aFaire   = array_filter($taches, static fn (array $t): bool => (int) $t['faite'] === 0);
         $terminees = array_filter($taches, static fn (array $t): bool => (int) $t['faite'] === 1);
         ?>
-        <section class="carte liste-taches" style="border-left:4px solid <?= e($liste['couleur']) ?>">
+        <?php
+        $total    = (int) $liste['reste'] + (int) $liste['finies'];
+        $terminee = $total > 0 && (int) $liste['reste'] === 0;
+        $partielle = (int) $liste['finies'] > 0 && (int) $liste['reste'] > 0;
+        ?>
+        <section class="carte liste-taches<?= $terminee ? ' liste-taches--faite' : '' ?>"
+                 style="border-left:4px solid <?= e($liste['couleur']) ?>">
           <div class="liste-taches__entete">
+            <form method="post" action="<?= url('taches/listes/' . $liste['id'] . '/cocher') ?>"
+                  class="tache__bascule">
+              <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+              <input type="hidden" name="vue" value="<?= e($vue) ?>">
+              <input type="checkbox" class="tache__case tache__case--liste" id="liste-case-<?= (int) $liste['id'] ?>"
+                     data-envoi-immediat<?= $terminee ? ' checked' : '' ?><?= $partielle ? ' data-partiel' : '' ?>
+                     <?= $total === 0 ? ' disabled' : '' ?>
+                     title="<?= $total === 0
+                         ? 'Liste vide'
+                         : ($terminee ? 'Rouvrir toute la liste' : 'Terminer toute la liste') ?>">
+              <noscript><button class="bouton bouton--petit" type="submit">OK</button></noscript>
+            </form>
             <span class="liste-taches__icone" aria-hidden="true"><?= e($liste['icone']) ?></span>
             <div style="flex:1;min-width:0">
-              <h2 style="margin:0"><?= e($liste['nom']) ?></h2>
+              <h2 style="margin:0">
+                <label for="liste-case-<?= (int) $liste['id'] ?>"><?= e($liste['nom']) ?></label>
+              </h2>
               <p class="discret" style="margin:.15rem 0 0;font-size:.84rem">
                 <?php if ((int) $liste['reste'] === 0 && (int) $liste['finies'] > 0): ?>
                   Tout est fait 🎉

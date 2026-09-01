@@ -636,3 +636,11 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
   .tache__actions { opacity: 1; }
   .tache-ajout input[type="date"] { flex: 1 1 100%; }
 }
+
+/* Case de la liste : la tâche principale, un cran plus grande. */
+.tache__case--liste { width: 22px; height: 22px; margin-top: .2rem; }
+.liste-taches__entete .tache__bascule { align-items: flex-start; }
+.liste-taches__entete h2 label { cursor: pointer; }
+.liste-taches--faite .liste-taches__entete h2 label {
+  text-decoration: line-through; color: var(--texte-doux);
+}

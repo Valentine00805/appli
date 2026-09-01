@@ -149,6 +149,54 @@ final class TachesController
         redirect('taches');
     }
 
+    /**
+     * Coche ou décoche une liste entière.
+     *
+     * La liste se comporte comme la tâche principale : la cocher termine tout
+     * ce qu'elle contient, la décocher rouvre tout. Son état n'est pas stocké,
+     * il se déduit de ses tâches — une liste est faite quand toutes le sont.
+     */
+    public function basculerListe(int $id): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $userId = Auth::id();
+
+        if (Database::valeur('SELECT id FROM listes_taches WHERE id = ? AND user_id = ?', [$id, $userId]) === null) {
+            $this->introuvable();
+        }
+
+        $restantes = (int) Database::valeur(
+            'SELECT COUNT(*) FROM taches WHERE liste_id = ? AND user_id = ? AND faite = 0',
+            [$id, $userId]
+        );
+        $total = (int) Database::valeur(
+            'SELECT COUNT(*) FROM taches WHERE liste_id = ? AND user_id = ?',
+            [$id, $userId]
+        );
+
+        if ($total === 0) {
+            Session::flash('info', 'Cette liste est vide : ajoutez-y une tâche avant de la terminer.');
+            redirect('taches', $this->filtreCourant());
+        }
+
+        if ($restantes === 0) {
+            // Tout était fait : on rouvre la liste.
+            Database::run(
+                'UPDATE taches SET faite = 0, faite_le = NULL WHERE liste_id = ? AND user_id = ? AND faite = 1',
+                [$id, $userId]
+            );
+        } else {
+            // Les tâches déjà cochées gardent leur date d'origine.
+            Database::run(
+                'UPDATE taches SET faite = 1, faite_le = ? WHERE liste_id = ? AND user_id = ? AND faite = 0',
+                [date('Y-m-d H:i:s'), $id, $userId]
+            );
+        }
+
+        redirect('taches', $this->filtreCourant());
+    }
+
     /** Retire les tâches déjà cochées d'une liste. */
     public function viderTerminees(int $id): void
     {

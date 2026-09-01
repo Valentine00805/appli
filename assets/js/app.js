@@ -86,4 +86,10 @@
     }
   });
 
+  // Une liste dont seules certaines tâches sont faites : la case
+  // affiche un trait, ni vide ni cochée. Seul JavaScript peut le poser.
+  document.querySelectorAll("[data-partiel]").forEach(function (case_) {
+    case_.indeterminate = true;
+  });
+
 })();
