@@ -20,14 +20,13 @@ $ligneTache = static function (array $t) use ($csrf, $vue, $listes): string {
       <form method="post" action="<?= url('taches/' . $t['id'] . '/cocher') ?>" class="tache__bascule">
         <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
         <input type="hidden" name="vue" value="<?= e($vue) ?>">
-        <button type="submit" class="tache__case" aria-pressed="<?= $faite ? 'true' : 'false' ?>"
-                title="<?= $faite ? 'Décocher' : 'Marquer comme faite' ?>">
-          <span aria-hidden="true"><?= $faite ? '✓' : '' ?></span>
-          <span class="sr-only"><?= $faite ? 'Décocher' : 'Marquer comme faite' ?> : <?= e($t['titre']) ?></span>
-        </button>
+        <input type="checkbox" class="tache__case" id="case-<?= (int) $t['id'] ?>"
+               data-envoi-immediat<?= $faite ? ' checked' : '' ?>
+               title="<?= $faite ? 'Décocher' : 'Marquer comme faite' ?>">
+        <noscript><button class="bouton bouton--petit" type="submit">OK</button></noscript>
       </form>
 
-      <span class="tache__titre"><?= e($t['titre']) ?></span>
+      <label class="tache__titre" for="case-<?= (int) $t['id'] ?>"><?= e($t['titre']) ?></label>
 
       <?php if ($texte !== ''): ?>
         <span class="echeance echeance--<?= e($etat) ?>"><?= e($texte) ?></span>

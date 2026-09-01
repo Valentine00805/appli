@@ -591,16 +591,11 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
 
 .tache__bascule { display: flex; flex: none; }
 .tache__case {
-  width: 22px; height: 22px; flex: none; padding: 0; cursor: pointer;
-  border: 2px solid var(--bordure-forte); border-radius: 6px;
-  background: var(--fond-carte); color: #fff;
-  display: grid; place-items: center;
-  font-size: .8rem; font-weight: 700; line-height: 1;
+  width: 19px; height: 19px; flex: none; margin: 0; cursor: pointer;
+  accent-color: var(--accent);
 }
-.tache__case:hover { border-color: var(--accent); }
-.tache__case[aria-pressed="true"] { background: var(--succes); border-color: var(--succes); }
 
-.tache__titre { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.tache__titre { flex: 1; min-width: 0; overflow-wrap: anywhere; cursor: pointer; font-weight: 400; }
 .tache__actions { margin-left: auto; flex: none; opacity: 0; transition: opacity .12s; }
 .tache:hover .tache__actions,
 .tache:focus-within .tache__actions { opacity: 1; }

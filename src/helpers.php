@@ -301,3 +301,14 @@ function icones_listes(): array
     return ['📋', '🎓', '🏠', '🛒', '💼', '💡', '✈️', '🎯', '🧾', '📦',
         '🩺', '🚗', '🎉', '💪', '📞', '🔖'];
 }
+
+/**
+ * Adresse d'un fichier statique, suivie de sa date de modification.
+ * Le navigateur récupère ainsi la nouvelle version dès que le fichier change,
+ * sans qu'il faille penser à incrémenter un numéro à la main.
+ */
+function asset(string $chemin): string
+{
+    $absolu = dirname(__DIR__) . '/' . ltrim($chemin, '/');
+    return url($chemin) . '?v=' . (is_file($absolu) ? (string) filemtime($absolu) : '0');
+}

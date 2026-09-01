@@ -77,4 +77,13 @@
       }
     });
   });
+  // Les cases à cocher des tâches enregistrent d'elles-mêmes.
+  // Sans JavaScript, le bouton « OK » du <noscript> prend le relais.
+  document.addEventListener("change", function (evenement) {
+    var champ = evenement.target;
+    if (champ.matches && champ.matches("[data-envoi-immediat]") && champ.form) {
+      champ.form.submit();
+    }
+  });
+
 })();
