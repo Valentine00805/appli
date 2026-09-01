@@ -48,9 +48,8 @@ final class TachesController
         $taches = [];
 
         if ($vue === 'tout') {
-            $demandee = $this->listeValide($userId, $_GET['liste'] ?? null);
-            // À l'arrivée, la première liste s'ouvre : le volet n'est jamais vide.
-            $listeOuverte = $demandee ?? (isset($listes[0]) ? (int) $listes[0]['id'] : null);
+            // Rien ne s'ouvre tout seul : le volet attend un clic.
+            $listeOuverte = $this->listeValide($userId, $_GET['liste'] ?? null);
 
             if ($listeOuverte !== null) {
                 $taches = Database::all(

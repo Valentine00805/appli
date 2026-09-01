@@ -251,13 +251,14 @@ $ligneTache = static function (array $t) use ($csrf, $contexte, $listes, $vue): 
       </section>
 
     <?php elseif ($ouverte === null): ?>
-      <section class="carte">
-        <p class="discret" style="margin:0">
+      <div class="vide">
+        <span class="vide__icone">👈</span>
+        <p>
           <?= $listes === []
               ? 'Créez votre première liste : elle s’ouvrira ici.'
-              : 'Choisissez une liste à gauche pour voir ce qu’elle contient.' ?>
+              : 'Cliquez sur une tâche principale à gauche pour voir ce qu’elle contient.' ?>
         </p>
-      </section>
+      </div>
 
     <?php else: ?>
       <?php
