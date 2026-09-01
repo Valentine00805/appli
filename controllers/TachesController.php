@@ -46,7 +46,7 @@ final class TachesController
                         AND t.echeance IS NOT NULL AND t.echeance >= CURDATE())   AS prochaine
              FROM listes_taches l
              WHERE l.user_id = ?
-             ORDER BY l.created_at, l.id',
+             ORDER BY l.position, l.id',
             [$userId]
         );
 
@@ -110,10 +110,17 @@ final class TachesController
             redirect('taches');
         }
 
+        // Une nouvelle liste se range à la fin, sans bousculer l'ordre choisi.
+        $rang = (int) Database::valeur(
+            'SELECT COALESCE(MAX(position), 0) + 1 FROM listes_taches WHERE user_id = ?',
+            [$userId]
+        );
+
         Database::run(
-            'INSERT INTO listes_taches (user_id, nom, couleur, icone, echeance) VALUES (?, ?, ?, ?, ?)',
+            'INSERT INTO listes_taches (user_id, nom, couleur, icone, echeance, position)
+             VALUES (?, ?, ?, ?, ?, ?)',
             [$userId, $nom, $this->couleurValide(post('couleur')), $this->iconeValide(post('icone')),
-             $this->dateValide(post('echeance'))]
+             $this->dateValide(post('echeance')), $rang]
         );
         $nouvelleListe = Database::dernierId();
 
@@ -176,6 +183,46 @@ final class TachesController
             ? 'Liste « ' . $liste['nom'] . ' » supprimée.'
             : 'Liste « ' . $liste['nom'] . ' » supprimée, avec ses ' . $nb . ' tâche' . ($nb > 1 ? 's' : '') . '.');
         redirect('taches');
+    }
+
+    /**
+     * Monte ou descend une liste d'un cran.
+     *
+     * On réécrit tout le classement plutôt que d'échanger deux positions :
+     * l'ordre reste sain même si d'anciennes lignes partagent un rang.
+     */
+    public function deplacerListe(int $id): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $userId = Auth::id();
+
+        $sens = post('sens') === 'bas' ? 'bas' : 'haut';
+
+        $ids = array_map(
+            static fn (array $l): int => (int) $l['id'],
+            Database::all(
+                'SELECT id FROM listes_taches WHERE user_id = ? ORDER BY position, id',
+                [$userId]
+            )
+        );
+        $index = array_search($id, $ids, true);
+        if ($index === false) {
+            $this->introuvable();
+        }
+
+        $cible = $sens === 'haut' ? $index - 1 : $index + 1;
+        if ($cible >= 0 && $cible < count($ids)) {
+            [$ids[$index], $ids[$cible]] = [$ids[$cible], $ids[$index]];
+            foreach ($ids as $rang => $listeId) {
+                Database::run(
+                    'UPDATE listes_taches SET position = ? WHERE id = ? AND user_id = ?',
+                    [$rang + 1, $listeId, $userId]
+                );
+            }
+        }
+
+        redirect('taches', $this->filtreCourant());
     }
 
     /**

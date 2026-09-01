@@ -231,10 +231,12 @@ CREATE TABLE IF NOT EXISTS `listes_taches` (
   `couleur`    CHAR(7)      NOT NULL DEFAULT '#4f46e5',
   `icone`      VARCHAR(8)   NOT NULL DEFAULT '',
   `echeance`   DATE         DEFAULT NULL,
+  `position`   INT UNSIGNED NOT NULL DEFAULT 0,
   `created_at` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uniq_liste_user_nom` (`user_id`, `nom`),
   KEY `idx_listes_echeance` (`user_id`, `echeance`),
+  KEY `idx_listes_position` (`user_id`, `position`),
   CONSTRAINT `fk_listes_taches_user` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -244,6 +246,7 @@ CREATE TABLE IF NOT EXISTS `taches` (
   `liste_id`   INT UNSIGNED NOT NULL,
   `titre`      VARCHAR(200) NOT NULL,
   `echeance`   DATE         DEFAULT NULL,
+  `position`   INT UNSIGNED NOT NULL DEFAULT 0,
   `faite`      TINYINT(1)   NOT NULL DEFAULT 0,
   `faite_le`   DATETIME     DEFAULT NULL,
   `created_at` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,

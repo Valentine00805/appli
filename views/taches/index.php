@@ -139,7 +139,8 @@ $ligneTache = static function (array $t) use ($csrf, $contexte, $listes, $vue): 
         </p>
       </div>
     <?php else: ?>
-      <?php foreach ($listes as $liste): ?>
+      <?php $derniere = count($listes) - 1; ?>
+      <?php foreach ($listes as $rang => $liste): ?>
         <?php
         $total     = (int) $liste['reste'] + (int) $liste['finies'];
         $terminee  = $total > 0 && (int) $liste['reste'] === 0;
@@ -197,6 +198,34 @@ $ligneTache = static function (array $t) use ($csrf, $contexte, $listes, $vue): 
 
             <span class="liste-carte__chevron" aria-hidden="true">›</span>
           </a>
+
+          <?php // Ordre choisi : deux crans, sans glisser-déposer. ?>
+          <?php if (count($listes) > 1): ?>
+            <span class="liste-carte__ordre">
+              <form method="post" action="<?= url('taches/listes/' . $liste['id'] . '/deplacer') ?>">
+                <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+                <input type="hidden" name="vue" value="<?= e($vue) ?>">
+                <?php if ($listeOuverte !== null): ?>
+                  <input type="hidden" name="liste" value="<?= (int) $listeOuverte ?>">
+                <?php endif; ?>
+                <input type="hidden" name="sens" value="haut">
+                <button type="submit" title="Monter « <?= e($liste['nom']) ?> »"
+                        aria-label="Monter la liste <?= e($liste['nom']) ?>"
+                        <?= $rang === 0 ? ' disabled' : '' ?>>↑</button>
+              </form>
+              <form method="post" action="<?= url('taches/listes/' . $liste['id'] . '/deplacer') ?>">
+                <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+                <input type="hidden" name="vue" value="<?= e($vue) ?>">
+                <?php if ($listeOuverte !== null): ?>
+                  <input type="hidden" name="liste" value="<?= (int) $listeOuverte ?>">
+                <?php endif; ?>
+                <input type="hidden" name="sens" value="bas">
+                <button type="submit" title="Descendre « <?= e($liste['nom']) ?> »"
+                        aria-label="Descendre la liste <?= e($liste['nom']) ?>"
+                        <?= $rang === $derniere ? ' disabled' : '' ?>>↓</button>
+              </form>
+            </span>
+          <?php endif; ?>
         </div>
       <?php endforeach; ?>
     <?php endif; ?>

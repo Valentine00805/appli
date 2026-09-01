@@ -698,3 +698,25 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
 }
 .volet__section:first-of-type { margin-top: 1rem; }
 .liste-carte .echeance { margin-right: .2rem; }
+
+/* Les deux flèches d'ordre, discrètes jusqu'au survol de la carte. */
+.liste-carte__ordre {
+  flex: none; display: grid; gap: 1px;
+  opacity: 0; transition: opacity .12s;
+}
+.liste-carte:hover .liste-carte__ordre,
+.liste-carte:focus-within .liste-carte__ordre { opacity: 1; }
+.liste-carte__ordre button {
+  display: block; width: 22px; height: 16px; padding: 0;
+  border: 1px solid var(--bordure); border-radius: 5px;
+  background: var(--fond-carte); color: var(--texte-doux);
+  font: inherit; font-size: .7rem; line-height: 1; cursor: pointer;
+}
+.liste-carte__ordre button:hover:not([disabled]) {
+  border-color: var(--accent); color: var(--accent);
+}
+.liste-carte__ordre button[disabled] { opacity: .3; cursor: default; }
+
+@media (max-width: 520px) {
+  .liste-carte__ordre { opacity: 1; }
+}
