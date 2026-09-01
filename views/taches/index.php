@@ -1,5 +1,5 @@
 <?php
-/** @var array $listes, $taches, $compteurs, $palette, $icones @var ?int $listeOuverte @var string $vue */
+/** @var array $listes, $taches, $listesFiltrees, $compteurs, $palette, $icones @var ?int $listeOuverte @var string $vue */
 $csrf = Session::jetonCsrf();
 
 $onglets = [
@@ -187,6 +187,14 @@ $ligneTache = static function (array $t) use ($csrf, $contexte, $listes, $vue): 
                 <?php endif; ?>
               </span>
             </span>
+
+            <?php // L'échéance de la tâche principale, distincte de celles de ses sous-tâches. ?>
+            <?php if ($liste['echeance'] !== null): ?>
+              <span class="echeance echeance--<?= e(echeance_etat($liste['echeance'], $terminee)) ?>">
+                <?= e(echeance_libelle($liste['echeance'], $terminee)) ?>
+              </span>
+            <?php endif; ?>
+
             <span class="liste-carte__chevron" aria-hidden="true">›</span>
           </a>
         </div>
@@ -201,6 +209,12 @@ $ligneTache = static function (array $t) use ($csrf, $contexte, $listes, $vue): 
         <div class="champ">
           <label for="nom">Nom</label>
           <input type="text" id="nom" name="nom" required maxlength="120" placeholder="Cette semaine">
+        </div>
+
+        <div class="champ">
+          <label for="ech-liste">Échéance <span class="discret">(facultative)</span></label>
+          <input type="date" id="ech-liste" name="echeance">
+          <span class="champ__aide">La date de la tâche principale, indépendante de ses sous-tâches.</span>
         </div>
 
         <div class="champ">
@@ -238,15 +252,52 @@ $ligneTache = static function (array $t) use ($csrf, $contexte, $listes, $vue): 
           <div style="flex:1;min-width:0">
             <h2 style="margin:0"><?= e($titres[$vue] ?? '') ?></h2>
             <p class="discret" style="margin:.15rem 0 0;font-size:.84rem">
-              <?= count($taches) ?> tâche<?= count($taches) > 1 ? 's' : '' ?>, toutes listes confondues
+              <?php $nbTotal = count($taches) + count($listesFiltrees); ?>
+              <?= $nbTotal ?> élément<?= $nbTotal > 1 ? 's' : '' ?>, toutes listes confondues
             </p>
           </div>
           <a class="bouton bouton--discret bouton--petit" href="<?= url('taches') ?>">← Mes listes</a>
         </div>
 
-        <?php if ($taches === []): ?>
+        <?php if ($listesFiltrees !== []): ?>
+          <h3 class="volet__section">Tâches principales</h3>
+          <div class="pile">
+            <?php foreach ($listesFiltrees as $l): ?>
+              <?php $lTerminee = ((int) $l['reste'] + (int) $l['finies']) > 0 && (int) $l['reste'] === 0; ?>
+              <div class="liste-carte" style="border-left-color:<?= e($l['couleur']) ?>">
+                <form method="post" action="<?= url('taches/listes/' . $l['id'] . '/cocher') ?>"
+                      class="tache__bascule">
+                  <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+                  <input type="hidden" name="vue" value="<?= e($vue) ?>">
+                  <input type="checkbox" class="tache__case tache__case--liste"
+                         data-envoi-immediat<?= $lTerminee ? ' checked' : '' ?>
+                         <?= ((int) $l['reste'] + (int) $l['finies']) === 0 ? ' disabled' : '' ?>
+                         aria-label="Terminer la liste <?= e($l['nom']) ?>">
+                  <noscript><button class="bouton bouton--petit" type="submit">OK</button></noscript>
+                </form>
+                <a class="liste-carte__lien" href="<?= url('taches', ['liste' => $l['id']]) ?>"
+                   aria-label="Ouvrir la liste <?= e($l['nom']) ?>">
+                  <span class="liste-carte__icone" aria-hidden="true"><?= e($l['icone']) ?></span>
+                  <span style="flex:1;min-width:0">
+                    <span class="liste-carte__nom"><?= e($l['nom']) ?></span>
+                    <span class="liste-carte__meta"><?= (int) $l['reste'] ?> sous-tâche<?= (int) $l['reste'] > 1 ? 's' : '' ?> à faire</span>
+                  </span>
+                  <span class="echeance echeance--<?= e(echeance_etat($l['echeance'])) ?>">
+                    <?= e(echeance_libelle($l['echeance'])) ?>
+                  </span>
+                  <span class="liste-carte__chevron" aria-hidden="true">›</span>
+                </a>
+              </div>
+            <?php endforeach; ?>
+          </div>
+        <?php endif; ?>
+
+        <?php if ($taches === [] && $listesFiltrees === []): ?>
           <p class="discret" style="margin:1rem 0 0">Rien à afficher ici. Bonne nouvelle.</p>
-        <?php else: ?>
+        <?php elseif ($taches !== []): ?>
+          <?php if ($listesFiltrees !== []): ?>
+            <h3 class="volet__section">Sous-tâches</h3>
+          <?php endif; ?>
           <ul class="taches">
             <?php foreach ($taches as $t): ?><?= $ligneTache($t) ?><?php endforeach; ?>
           </ul>
@@ -288,7 +339,15 @@ $ligneTache = static function (array $t) use ($csrf, $contexte, $listes, $vue): 
           <span class="volet__icone" aria-hidden="true"><?= e($ouverte['icone']) ?></span>
 
           <div style="flex:1;min-width:0">
-            <h2 style="margin:0"><label for="volet-case"><?= e($ouverte['nom']) ?></label></h2>
+            <h2 style="margin:0">
+              <label for="volet-case"><?= e($ouverte['nom']) ?></label>
+              <?php if ($ouverte['echeance'] !== null): ?>
+                <span class="echeance echeance--<?= e(echeance_etat($ouverte['echeance'], $terminee)) ?>"
+                      style="vertical-align:middle;margin-left:.4rem">
+                  <?= e(echeance_libelle($ouverte['echeance'], $terminee)) ?>
+                </span>
+              <?php endif; ?>
+            </h2>
             <p class="discret" style="margin:.15rem 0 0;font-size:.84rem">
               <?php if ($total === 0): ?>
                 Aucune sous-tâche pour l'instant
@@ -313,9 +372,15 @@ $ligneTache = static function (array $t) use ($csrf, $contexte, $listes, $vue): 
           <hr class="separateur" style="margin:.75rem 0">
           <form method="post" action="<?= url('taches/listes/' . $ouverte['id'] . '/modifier') ?>">
             <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
-            <div class="champ">
-              <label for="ln">Nom de la liste</label>
-              <input type="text" id="ln" name="nom" required maxlength="120" value="<?= e($ouverte['nom']) ?>">
+            <div class="ligne-champs">
+              <div class="champ">
+                <label for="ln">Nom de la liste</label>
+                <input type="text" id="ln" name="nom" required maxlength="120" value="<?= e($ouverte['nom']) ?>">
+              </div>
+              <div class="champ">
+                <label for="le">Échéance <span class="discret">(facultative)</span></label>
+                <input type="date" id="le" name="echeance" value="<?= e((string) $ouverte['echeance']) ?>">
+              </div>
             </div>
 
             <div class="champ">

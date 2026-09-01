@@ -692,3 +692,9 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
   .tache__actions { opacity: 1; }
   .tache-ajout input[type="date"] { flex: 1 1 100%; }
 }
+.volet__section {
+  margin: 1.1rem 0 .5rem; font-size: .8rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .04em; color: var(--texte-doux);
+}
+.volet__section:first-of-type { margin-top: 1rem; }
+.liste-carte .echeance { margin-right: .2rem; }

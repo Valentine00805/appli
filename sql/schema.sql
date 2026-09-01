@@ -230,9 +230,11 @@ CREATE TABLE IF NOT EXISTS `listes_taches` (
   `nom`        VARCHAR(120) NOT NULL,
   `couleur`    CHAR(7)      NOT NULL DEFAULT '#4f46e5',
   `icone`      VARCHAR(8)   NOT NULL DEFAULT '',
+  `echeance`   DATE         DEFAULT NULL,
   `created_at` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uniq_liste_user_nom` (`user_id`, `nom`),
+  KEY `idx_listes_echeance` (`user_id`, `echeance`),
   CONSTRAINT `fk_listes_taches_user` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

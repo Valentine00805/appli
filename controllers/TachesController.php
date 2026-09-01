@@ -19,6 +19,14 @@ final class TachesController
     /** Filtres disponibles en haut de page. */
     private const VUES = ['tout', 'retard', 'aujourdhui', 'semaine', 'terminees'];
 
+    /**
+     * Une liste est encore en cours tant qu'elle est vide ou qu'il lui reste
+     * une sous-tâche à faire. Son échéance ne compte que dans ce cas.
+     */
+    private const LISTE_EN_COURS =
+        '((SELECT COUNT(*) FROM taches t WHERE t.liste_id = l.id) = 0
+          OR (SELECT COUNT(*) FROM taches t WHERE t.liste_id = l.id AND t.faite = 0) > 0)';
+
     public function index(): void
     {
         Auth::exiger();
@@ -74,6 +82,8 @@ final class TachesController
         Vue::afficher('taches/index', [
             'listes'       => $listes,
             'taches'       => $taches,
+            // Les tâches principales dont l'échéance propre tombe dans le filtre.
+            'listesFiltrees' => $this->listesFiltrees($userId, $vue),
             'listeOuverte' => $listeOuverte,
             'vue'          => $vue,
             'compteurs'    => $this->compteurs($userId),
@@ -101,8 +111,9 @@ final class TachesController
         }
 
         Database::run(
-            'INSERT INTO listes_taches (user_id, nom, couleur, icone) VALUES (?, ?, ?, ?)',
-            [$userId, $nom, $this->couleurValide(post('couleur')), $this->iconeValide(post('icone'))]
+            'INSERT INTO listes_taches (user_id, nom, couleur, icone, echeance) VALUES (?, ?, ?, ?, ?)',
+            [$userId, $nom, $this->couleurValide(post('couleur')), $this->iconeValide(post('icone')),
+             $this->dateValide(post('echeance'))]
         );
         $nouvelleListe = Database::dernierId();
 
@@ -136,8 +147,9 @@ final class TachesController
         }
 
         Database::run(
-            'UPDATE listes_taches SET nom = ?, couleur = ?, icone = ? WHERE id = ? AND user_id = ?',
-            [$nom, $this->couleurValide(post('couleur')), $this->iconeValide(post('icone')), $id, $userId]
+            'UPDATE listes_taches SET nom = ?, couleur = ?, icone = ?, echeance = ? WHERE id = ? AND user_id = ?',
+            [$nom, $this->couleurValide(post('couleur')), $this->iconeValide(post('icone')),
+             $this->dateValide(post('echeance')), $id, $userId]
         );
 
         Session::flash('succes', 'Liste mise à jour.');
@@ -376,6 +388,39 @@ final class TachesController
         };
     }
 
+    /**
+     * Les tâches principales que le filtre retient par leur échéance propre.
+     * Seuls les filtres de date en sélectionnent ; « tout » et « terminées »
+     * n'en renvoient aucune.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function listesFiltrees(int $userId, string $vue): array
+    {
+        $condition = match ($vue) {
+            'retard'     => 'l.echeance < CURDATE()',
+            'aujourdhui' => 'l.echeance = CURDATE()',
+            'semaine'    => 'l.echeance BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY)',
+            default      => null,
+        };
+        if ($condition === null) {
+            return [];
+        }
+
+        return Database::all(
+            'SELECT l.*,
+                    (SELECT COUNT(*) FROM taches t WHERE t.liste_id = l.id AND t.faite = 0) AS reste,
+                    (SELECT COUNT(*) FROM taches t WHERE t.liste_id = l.id AND t.faite = 1) AS finies
+             FROM listes_taches l
+             WHERE l.user_id = ?
+               AND l.echeance IS NOT NULL
+               AND ' . $condition . '
+               AND ' . self::LISTE_EN_COURS . '
+             ORDER BY l.echeance, l.id',
+            [$userId]
+        );
+    }
+
     /** Effectifs affichés sur les onglets de filtre. */
     private function compteurs(int $userId): array
     {
@@ -391,11 +436,23 @@ final class TachesController
             [$userId]
         ) ?? [];
 
+        // Les échéances portées par les listes elles-mêmes comptent aussi :
+        // sans cela une tâche principale en retard n'apparaîtrait nulle part.
+        $desListes = Database::one(
+            'SELECT
+               SUM(l.echeance <  CURDATE())                                              AS retard,
+               SUM(l.echeance =  CURDATE())                                              AS aujourdhui,
+               SUM(l.echeance BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY))  AS semaine
+             FROM listes_taches l
+             WHERE l.user_id = ? AND l.echeance IS NOT NULL AND ' . self::LISTE_EN_COURS,
+            [$userId]
+        ) ?? [];
+
         return [
             'a_faire'    => (int) ($ligne['a_faire'] ?? 0),
-            'retard'     => (int) ($ligne['retard'] ?? 0),
-            'aujourdhui' => (int) ($ligne['aujourdhui'] ?? 0),
-            'semaine'    => (int) ($ligne['semaine'] ?? 0),
+            'retard'     => (int) ($ligne['retard'] ?? 0)     + (int) ($desListes['retard'] ?? 0),
+            'aujourdhui' => (int) ($ligne['aujourdhui'] ?? 0) + (int) ($desListes['aujourdhui'] ?? 0),
+            'semaine'    => (int) ($ligne['semaine'] ?? 0)    + (int) ($desListes['semaine'] ?? 0),
             'terminees'  => (int) ($ligne['terminees'] ?? 0),
         ];
     }
