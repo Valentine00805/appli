@@ -146,9 +146,21 @@
       });
     }
 
-    /* --- Déposer une sous-tâche sur une carte --- */
+    /* --- Glisser une sous-tâche : vers une carte, ou dans sa propre liste --- */
 
-    if (formeRanger) {
+    var listeTaches = document.querySelector("[data-taches-triables]");
+    var formeOrdreTaches = document.getElementById("forme-ordre-taches");
+
+    var ordreTachesDe = function () {
+      if (!listeTaches) { return []; }
+      return [].slice.call(listeTaches.querySelectorAll(".tache[data-tache-id]"))
+        .map(function (l) { return l.dataset.tacheId; });
+    };
+    var ordreTachesDepart = ordreTachesDe().join(",");
+
+    if (formeRanger || formeOrdreTaches) {
+      if (listeTaches) { listeTaches.classList.add("est-triable"); }
+
       [].slice.call(document.querySelectorAll(".tache[data-tache-id]")).forEach(function (ligne) {
         ligne.draggable = true;
 
@@ -160,10 +172,34 @@
           try { evenement.dataTransfer.setData("text/plain", ligne.dataset.tacheId); } catch (e) {}
         });
 
+        // Survoler une sœur la réordonne, à condition de rester dans la même liste.
+        ligne.addEventListener("dragover", function (evenement) {
+          if (!tacheGlissee || tacheGlissee === ligne) { return; }
+          if (!listeTaches || ligne.parentNode !== listeTaches) { return; }
+          if (tacheGlissee.parentNode !== listeTaches) { return; }
+          evenement.preventDefault();
+          evenement.dataTransfer.dropEffect = "move";
+
+          var zone = ligne.getBoundingClientRect();
+          var avant = (evenement.clientY - zone.top) < zone.height / 2;
+          var repere = avant ? ligne : ligne.nextSibling;
+          // Le formulaire d'édition suit sa ligne, sans quoi il resterait en arrière.
+          var edition = document.getElementById("tache-" + tacheGlissee.dataset.tacheId);
+          listeTaches.insertBefore(tacheGlissee, repere);
+          if (edition) { listeTaches.insertBefore(edition, tacheGlissee.nextSibling); }
+        });
+
+        ligne.addEventListener("drop", function (evenement) { evenement.preventDefault(); });
+
         ligne.addEventListener("dragend", function () {
           ligne.classList.remove("tache--glisse");
           colonne.classList.remove("attend-une-tache");
           tacheGlissee = null;
+
+          var ordre = ordreTachesDe();
+          if (!formeOrdreTaches || ordre.join(",") === ordreTachesDepart) { return; }
+          formeOrdreTaches.elements.ordre.value = ordre.join(",");
+          envoyer(formeOrdreTaches);
         });
       });
     }

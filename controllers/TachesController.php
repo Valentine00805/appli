@@ -60,10 +60,11 @@ final class TachesController
             $listeOuverte = $this->listeValide($userId, $_GET['liste'] ?? null);
 
             if ($listeOuverte !== null) {
+                // Dans une liste, l'ordre est celui que vous avez choisi.
                 $taches = Database::all(
                     'SELECT * FROM taches
                      WHERE user_id = ? AND liste_id = ?
-                     ORDER BY faite, echeance IS NULL, echeance, created_at, id',
+                     ORDER BY faite, position, id',
                     [$userId, $listeOuverte]
                 );
             }
@@ -360,8 +361,9 @@ final class TachesController
         }
 
         Database::run(
-            'INSERT INTO taches (user_id, liste_id, titre, echeance) VALUES (?, ?, ?, ?)',
-            [$userId, $listeId, $titre, $this->dateValide(post('echeance'))]
+            'INSERT INTO taches (user_id, liste_id, titre, echeance, position) VALUES (?, ?, ?, ?, ?)',
+            [$userId, $listeId, $titre, $this->dateValide(post('echeance')),
+             $this->rangSuivant($userId, $listeId)]
         );
 
         // Le volet reste ouvert sur la liste où l'on vient d'écrire.
@@ -391,14 +393,67 @@ final class TachesController
             redirect('taches');
         }
 
+        // Un changement de liste renvoie la tâche en fin de sa destination.
+        $ancienne = (int) Database::valeur('SELECT liste_id FROM taches WHERE id = ? AND user_id = ?', [$id, $userId]);
+        $rang = $ancienne === $listeId
+            ? (int) Database::valeur('SELECT position FROM taches WHERE id = ? AND user_id = ?', [$id, $userId])
+            : $this->rangSuivant($userId, $listeId);
+
         Database::run(
-            'UPDATE taches SET titre = ?, echeance = ?, liste_id = ? WHERE id = ? AND user_id = ?',
-            [$titre, $this->dateValide(post('echeance')), $listeId, $id, $userId]
+            'UPDATE taches SET titre = ?, echeance = ?, liste_id = ?, position = ? WHERE id = ? AND user_id = ?',
+            [$titre, $this->dateValide(post('echeance')), $listeId, $rang, $id, $userId]
         );
 
         Session::flash('succes', 'Tâche mise à jour.');
         // On rouvre la liste d'arrivée : c'est là que la tâche se trouve désormais.
         redirect('taches', ['liste' => $listeId]);
+    }
+
+    /**
+     * Enregistre l'ordre des sous-tâches d'une liste, envoyé par le glissement.
+     * Même prudence que pour les listes : seules les tâches de cette liste
+     * sont retenues, et celles qui manquent restent à la suite.
+     */
+    public function reordonnerTaches(): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $userId = Auth::id();
+
+        $listeId = $this->listeValide($userId, $_POST['cible'] ?? null);
+        if ($listeId === null) {
+            $this->introuvable();
+        }
+
+        $siennes = array_map(
+            static fn (array $t): int => (int) $t['id'],
+            Database::all(
+                'SELECT id FROM taches WHERE user_id = ? AND liste_id = ? ORDER BY position, id',
+                [$userId, $listeId]
+            )
+        );
+
+        $ordre = [];
+        foreach (explode(',', post('ordre')) as $brut) {
+            $tacheId = (int) trim($brut);
+            if (in_array($tacheId, $siennes, true) && !in_array($tacheId, $ordre, true)) {
+                $ordre[] = $tacheId;
+            }
+        }
+        foreach ($siennes as $tacheId) {
+            if (!in_array($tacheId, $ordre, true)) {
+                $ordre[] = $tacheId;
+            }
+        }
+
+        foreach ($ordre as $rang => $tacheId) {
+            Database::run(
+                'UPDATE taches SET position = ? WHERE id = ? AND user_id = ?',
+                [$rang + 1, $tacheId, $userId]
+            );
+        }
+
+        redirect('taches', $this->filtreCourant());
     }
 
     /**
@@ -427,9 +482,10 @@ final class TachesController
         }
 
         if ($cible !== (int) $tache['liste_id']) {
+            // Elle arrive en fin de sa nouvelle liste.
             Database::run(
-                'UPDATE taches SET liste_id = ? WHERE id = ? AND user_id = ?',
-                [$cible, $tache['id'], $userId]
+                'UPDATE taches SET liste_id = ?, position = ? WHERE id = ? AND user_id = ?',
+                [$cible, $this->rangSuivant($userId, $cible), $tache['id'], $userId]
             );
             $nom = Database::valeur('SELECT nom FROM listes_taches WHERE id = ? AND user_id = ?', [$cible, $userId]);
             Session::flash('succes', '« ' . $tache['titre'] . ' » déplacée vers « ' . $nom . ' ».');
@@ -597,6 +653,15 @@ final class TachesController
         }
         $liste = entier_ou_null($_POST['liste'] ?? null);
         return $liste === null ? [] : ['liste' => $liste];
+    }
+
+    /** Le rang à donner à une sous-tâche qui arrive en fin de liste. */
+    private function rangSuivant(int $userId, int $listeId): int
+    {
+        return (int) Database::valeur(
+            'SELECT COALESCE(MAX(position), 0) + 1 FROM taches WHERE user_id = ? AND liste_id = ?',
+            [$userId, $listeId]
+        );
     }
 
     /** Vérifie qu'une liste existe et appartient bien au compte. */

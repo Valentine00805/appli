@@ -757,6 +757,7 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
 
 /* Une sous-tâche que l'on fait glisser vers une autre liste. */
 .est-triable .tache[data-tache-id] { cursor: grab; }
+.est-triable .tache[data-tache-id]:active { cursor: grabbing; }
 .tache--glisse { opacity: .45; }
 
 /* Les cartes s'annoncent comme cibles pendant qu'une sous-tâche voyage. */

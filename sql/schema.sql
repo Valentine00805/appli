@@ -246,15 +246,16 @@ CREATE TABLE IF NOT EXISTS `taches` (
   `liste_id`   INT UNSIGNED NOT NULL,
   `titre`      VARCHAR(200) NOT NULL,
   `echeance`   DATE         DEFAULT NULL,
-  `position`   INT UNSIGNED NOT NULL DEFAULT 0,
   `faite`      TINYINT(1)   NOT NULL DEFAULT 0,
   `faite_le`   DATETIME     DEFAULT NULL,
+  `position`   INT UNSIGNED NOT NULL DEFAULT 0,
   `created_at` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `idx_taches_user` (`user_id`),
   KEY `idx_taches_liste` (`liste_id`),
   KEY `idx_taches_echeance` (`user_id`, `faite`, `echeance`),
+  KEY `idx_taches_position` (`liste_id`, `position`),
   CONSTRAINT `fk_taches_user`  FOREIGN KEY (`user_id`)  REFERENCES `users`(`id`)         ON DELETE CASCADE,
   CONSTRAINT `fk_taches_liste` FOREIGN KEY (`liste_id`) REFERENCES `listes_taches`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

@@ -258,6 +258,17 @@ $ligneTache = static function (array $t) use ($csrf, $contexte, $listes, $vue): 
       <input type="hidden" name="cible" value="">
     </form>
 
+    <?php // Le classement des sous-tâches d'une liste. ?>
+    <?php if ($listeOuverte !== null): ?>
+      <form method="post" action="<?= url('taches/ordre') ?>" id="forme-ordre-taches" hidden>
+        <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+        <input type="hidden" name="vue" value="<?= e($vue) ?>">
+        <input type="hidden" name="liste" value="<?= (int) $listeOuverte ?>">
+        <input type="hidden" name="cible" value="<?= (int) $listeOuverte ?>">
+        <input type="hidden" name="ordre" value="">
+      </form>
+    <?php endif; ?>
+
     <details class="carte nouvelle-liste"<?= $listes === [] ? ' open' : '' ?>>
       <summary>+ Nouvelle liste</summary>
       <form method="post" action="<?= url('taches/listes') ?>" style="margin-top:.9rem">
@@ -485,8 +496,9 @@ $ligneTache = static function (array $t) use ($csrf, $contexte, $listes, $vue): 
           </div>
         </div>
 
+        <?php // Seules les sous-tâches à faire se réordonnent : les autres sont classées. ?>
         <?php if ($aFaire !== []): ?>
-          <ul class="taches">
+          <ul class="taches" data-taches-triables>
             <?php foreach ($aFaire as $t): ?><?= $ligneTache($t) ?><?php endforeach; ?>
           </ul>
         <?php elseif ($terminees === []): ?>
