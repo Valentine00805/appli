@@ -648,9 +648,7 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
 
 .tache__titre { flex: 1; min-width: 0; overflow-wrap: anywhere; cursor: pointer; font-weight: 400; }
 .tache__liste { display: block; font-size: .78rem; color: var(--texte-doux); }
-.tache__actions { margin-left: auto; flex: none; opacity: 0; transition: opacity .12s; }
-.tache:hover .tache__actions,
-.tache:focus-within .tache__actions { opacity: 1; }
+.tache__actions { margin-left: auto; flex: none; }
 
 .tache--faite .tache__titre { text-decoration: line-through; color: var(--texte-doux); }
 
@@ -689,7 +687,6 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
   .volet { position: static; }
 }
 @media (max-width: 520px) {
-  .tache__actions { opacity: 1; }
   .tache-ajout input[type="date"] { flex: 1 1 100%; }
 }
 .volet__section {

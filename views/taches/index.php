@@ -79,7 +79,7 @@ $ligneTache = static function (array $t) use ($csrf, $contexte, $listes, $vue): 
                    value="<?= e((string) $t['echeance']) ?>">
           </div>
           <div class="champ">
-            <label for="lst-<?= (int) $t['id'] ?>">Liste</label>
+            <label for="lst-<?= (int) $t['id'] ?>">Déplacer vers</label>
             <select id="lst-<?= (int) $t['id'] ?>" name="liste_id">
               <?php foreach ($listes as $l): ?>
                 <option value="<?= (int) $l['id'] ?>"<?= (int) $l['id'] === (int) $t['liste_id'] ? ' selected' : '' ?>>
@@ -87,6 +87,11 @@ $ligneTache = static function (array $t) use ($csrf, $contexte, $listes, $vue): 
                 </option>
               <?php endforeach; ?>
             </select>
+            <span class="champ__aide">
+              <?= count($listes) > 1
+                  ? 'Choisissez une autre tâche principale pour y déplacer celle-ci.'
+                  : 'Créez une autre liste pour pouvoir y déplacer cette tâche.' ?>
+            </span>
           </div>
         </div>
         <div class="actions">
