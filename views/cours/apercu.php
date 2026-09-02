@@ -1,10 +1,12 @@
 <?php
 /**
  * @var array $fichier, $paragraphes, $lignes
+ * @var string $genre, $texte, $format
+ * @var bool $tronque
  * @var bool $estTableur
  * @var int $total, $limite
  * @var ?string $erreur
- * @var string $format
+
  */
 ?>
 
@@ -23,17 +25,22 @@
   </div>
 </div>
 
-<div class="flash flash--info" style="margin-bottom:1.25rem">
-  <?php if ($estTableur): ?>
-    <strong>Aperçu du contenu.</strong> Les formules, les couleurs et les graphiques
-    ne sont pas reproduits : seules les valeurs sont affichées.
-    Téléchargez le fichier pour l'ouvrir tel quel dans Excel ou LibreOffice.
-  <?php else: ?>
-    <strong>Aperçu du texte.</strong> La mise en forme, les images et la pagination
-    ne sont pas reproduites — un navigateur ne sait pas afficher un <?= e($format) ?>.
-    Téléchargez le fichier pour l'ouvrir tel quel dans Word ou LibreOffice.
-  <?php endif; ?>
-</div>
+<?php // Un PDF ou une image s'affichent tels quels : aucun avertissement à donner. ?>
+<?php if (!in_array($genre, ['pdf', 'image'], true)): ?>
+  <div class="flash flash--info" style="margin-bottom:1.25rem">
+    <?php if ($genre === 'tableur'): ?>
+      <strong>Aperçu du contenu.</strong> Les formules, les couleurs et les graphiques
+      ne sont pas reproduits : seules les valeurs sont affichées.
+      Téléchargez le fichier pour l'ouvrir tel quel dans Excel ou LibreOffice.
+    <?php elseif ($genre === 'brut'): ?>
+      <strong>Contenu du fichier</strong>, tel qu'il est enregistré.
+    <?php else: ?>
+      <strong>Aperçu du texte.</strong> La mise en forme, les images et la pagination
+      ne sont pas reproduites — un navigateur ne sait pas afficher un <?= e($format) ?>.
+      Téléchargez le fichier pour l'ouvrir tel quel dans Word ou LibreOffice.
+    <?php endif; ?>
+  </div>
+<?php endif; ?>
 
 <?php if ($erreur !== null): ?>
   <div class="vide">
@@ -43,6 +50,35 @@
       Télécharger le fichier
     </a>
   </div>
+<?php elseif ($genre === 'pdf'): ?>
+  <?php // Le document lui-même, dans la page, avec la visionneuse du navigateur. ?>
+  <div class="carte apercu-cadre">
+    <iframe src="<?= url('fichiers/' . $fichier['id']) ?>"
+            title="<?= e((string) $fichier['nom_origine']) ?>"></iframe>
+  </div>
+  <p class="champ__aide" style="margin-top:.6rem">
+    Si le document ne s'affiche pas,
+    <a href="<?= url('fichiers/' . $fichier['id']) ?>" target="_blank" rel="noopener">l'ouvrir dans un onglet</a>.
+  </p>
+
+<?php elseif ($genre === 'image'): ?>
+  <div class="carte apercu-image">
+    <a href="<?= url('fichiers/' . $fichier['id']) ?>" target="_blank" rel="noopener"
+       title="Voir l'image en taille réelle">
+      <img src="<?= url('fichiers/' . $fichier['id']) ?>" alt="<?= e((string) $fichier['nom_origine']) ?>">
+    </a>
+  </div>
+
+<?php elseif ($genre === 'brut'): ?>
+  <div class="carte">
+    <pre class="apercu-brut"><?= e($texte) ?></pre>
+  </div>
+  <?php if ($tronque): ?>
+    <p class="champ__aide" style="margin-top:.6rem">
+      Fichier volumineux : seul le début est affiché. Téléchargez-le pour tout voir.
+    </p>
+  <?php endif; ?>
+
 <?php elseif ($estTableur): ?>
   <?php if ($lignes === []): ?>
     <div class="vide">

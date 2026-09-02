@@ -144,6 +144,7 @@ final class Fichiers
             in_array($ext, ['doc', 'docx', 'odt'], true) => '📄',
             in_array($ext, ['ppt', 'pptx', 'odp'], true) => '📊',
             in_array($ext, ['xls', 'xlsx', 'ods', 'csv'], true) => '📈',
+            in_array($ext, ['txt', 'md'], true)           => '📝',
             in_array($ext, ['zip', 'rar', '7z'], true)   => '🗜️',
             in_array($ext, ['mp3', 'm4a'], true)         => '🎧',
             $ext === 'mp4'                               => '🎬',

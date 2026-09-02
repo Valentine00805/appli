@@ -153,18 +153,27 @@ final class CoursController
 
         $chemin = Config::get('app', 'dossier_uploads') . DIRECTORY_SEPARATOR . $fichier['nom_stocke'];
         $nom = (string) $fichier['nom_origine'];
-        $estTableur = ApercuDocument::estTableur($nom);
+        $genre = (string) ApercuDocument::genre($nom);
 
         $paragraphes = [];
         $lignes = [];
+        $texte = '';
+        $tronque = false;
         $total = 0;
         $erreur = null;
 
         try {
-            if ($estTableur) {
-                ['lignes' => $lignes, 'total' => $total] = ApercuDocument::tableau((string) $chemin, $nom);
-            } else {
-                $paragraphes = ApercuDocument::paragraphes((string) $chemin, $nom);
+            switch ($genre) {
+                case 'tableur':
+                    ['lignes' => $lignes, 'total' => $total] = ApercuDocument::tableau((string) $chemin, $nom);
+                    break;
+                case 'brut':
+                    ['texte' => $texte, 'tronque' => $tronque] = ApercuDocument::texteBrut((string) $chemin);
+                    break;
+                case 'document':
+                    $paragraphes = ApercuDocument::paragraphes((string) $chemin, $nom);
+                    break;
+                // Un PDF et une image sont affichés tels quels : rien à lire ici.
             }
         } catch (Throwable $e) {
             $erreur = $e->getMessage();
@@ -172,9 +181,12 @@ final class CoursController
 
         Vue::afficher('cours/apercu', [
             'fichier'     => $fichier,
-            'estTableur'  => $estTableur,
+            'genre'       => $genre,
+            'estTableur'  => $genre === 'tableur',
             'paragraphes' => $paragraphes,
             'lignes'      => $lignes,
+            'texte'       => $texte,
+            'tronque'     => $tronque,
             'total'       => $total,
             'limite'      => ApercuDocument::LIGNES_MAX,
             'erreur'      => $erreur,

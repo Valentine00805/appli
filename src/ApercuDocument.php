@@ -28,20 +28,67 @@ final class ApercuDocument
     /** Formats présentés sous forme de tableau plutôt que de paragraphes. */
     private const TABLEURS = ['xlsx', 'csv'];
 
+    /** Que le navigateur sait afficher lui-même : on l'intègre dans la page. */
+    private const IMAGES = ['png', 'jpg', 'jpeg', 'gif', 'webp'];
+    private const BRUTS  = ['txt', 'md'];
+
     /** Lignes affichées au plus : un gros classeur ne doit pas noyer la page. */
     public const LIGNES_MAX = 500;
+
+    /** Au-delà, un fichier texte est tronqué à l'affichage. */
+    public const TEXTE_MAX = 200000;
 
     /** Ce fichier peut-il être présenté en aperçu ? */
     public static function possible(string $nomOrigine): bool
     {
+        return self::genre($nomOrigine) !== null;
+    }
+
+    /**
+     * Comment ce fichier se montre :
+     *   'document' → son texte, paragraphe par paragraphe
+     *   'tableur'  → un tableau de valeurs
+     *   'pdf'      → le document lui-même, intégré dans la page
+     *   'image'    → l'image elle-même
+     *   'brut'     → le contenu du fichier, tel quel
+     */
+    public static function genre(string $nomOrigine): ?string
+    {
         $ext = self::extension($nomOrigine);
-        return array_key_exists($ext, self::FORMATS) || in_array($ext, self::TABLEURS, true);
+
+        return match (true) {
+            array_key_exists($ext, self::FORMATS)  => 'document',
+            in_array($ext, self::TABLEURS, true)   => 'tableur',
+            $ext === 'pdf'                          => 'pdf',
+            in_array($ext, self::IMAGES, true)      => 'image',
+            in_array($ext, self::BRUTS, true)       => 'brut',
+            default                                 => null,
+        };
     }
 
     /** Cet aperçu est-il un tableau ? */
     public static function estTableur(string $nomOrigine): bool
     {
-        return in_array(self::extension($nomOrigine), self::TABLEURS, true);
+        return self::genre($nomOrigine) === 'tableur';
+    }
+
+    /**
+     * Le contenu d'un fichier texte, remis en UTF-8 et borné.
+     * @return array{texte: string, tronque: bool}
+     */
+    public static function texteBrut(string $chemin): array
+    {
+        $contenu = file_get_contents($chemin, false, null, 0, self::TEXTE_MAX + 1);
+        if ($contenu === false) {
+            throw new RuntimeException('Le fichier est illisible.');
+        }
+
+        $tronque = strlen($contenu) > self::TEXTE_MAX;
+        if ($tronque) {
+            $contenu = substr($contenu, 0, self::TEXTE_MAX);
+        }
+
+        return ['texte' => self::enUtf8($contenu), 'tronque' => $tronque];
     }
 
     /**
@@ -143,6 +190,10 @@ final class ApercuDocument
             'odp'   => 'présentation LibreOffice',
             'xlsx'  => 'classeur Excel',
             'csv'   => 'fichier CSV',
+            'pdf'   => 'document PDF',
+            'txt'   => 'fichier texte',
+            'md'    => 'fichier Markdown',
+            'png', 'jpg', 'jpeg', 'gif', 'webp' => 'image',
             default => 'document',
         };
     }
