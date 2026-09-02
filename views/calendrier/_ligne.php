@@ -42,9 +42,23 @@ $lienEvt = $estTache
 
   <span class="evt-ligne__droite">
     <?php if ($estTache): ?>
-      <?php // Une échéance se coche et se modifie dans « Tâches », d'un seul endroit. ?>
+      <?php
+      // Cocher ici ramène sur le calendrier, au mois et aux filtres en cours.
+      $estListe = ($evt['type_nom'] ?? '') === 'Tâche principale';
+      $fait = (int) $evt['termine'] === 1;
+      ?>
+      <form method="post" action="<?= url((string) $evt['route_cocher']) ?>" class="en-ligne">
+        <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
+        <input type="hidden" name="retour" value="<?= e((string) ($_SERVER['REQUEST_URI'] ?? '')) ?>">
+        <button class="bouton bouton--discret bouton--petit" type="submit"
+                title="<?= $estListe
+                    ? ($fait ? 'Rouvrir toute la liste' : 'Terminer toute la liste')
+                    : ($fait ? 'Marquer comme à faire' : 'Marquer comme faite') ?>">
+          <?= $fait ? '☑' : '☐' ?>
+        </button>
+      </form>
       <a class="bouton bouton--discret bouton--petit" href="<?= e($lienEvt) ?>"
-         title="Ouvrir dans Tâches">Ouvrir</a>
+         title="Ouvrir dans Tâches">↗</a>
     <?php else: ?>
       <form method="post" action="<?= url('evenements/' . $evt['id'] . '/termine') ?>" class="en-ligne">
         <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">

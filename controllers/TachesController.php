@@ -298,7 +298,7 @@ final class TachesController
 
         if ($total === 0) {
             Session::flash('info', 'Cette liste est vide : ajoutez-y une tâche avant de la terminer.');
-            redirect('taches', $this->filtreCourant());
+            $this->repartirVers('taches', $this->filtreCourant());
         }
 
         if ($restantes === 0) {
@@ -315,7 +315,7 @@ final class TachesController
             );
         }
 
-        redirect('taches', $this->filtreCourant());
+        $this->repartirVers('taches', $this->filtreCourant());
     }
 
     /** Retire les tâches déjà cochées d'une liste. */
@@ -512,8 +512,9 @@ final class TachesController
             [$faite, $faite === 1 ? date('Y-m-d H:i:s') : null, $id, $userId]
         );
 
-        // Retour à l'endroit exact d'où l'on vient : le filtre en cours est conservé.
-        redirect('taches', $this->filtreCourant());
+        // Retour à l'endroit exact d'où l'on vient : le calendrier s'il a lancé
+        // l'action, sinon la page des tâches avec son filtre.
+        $this->repartirVers('taches', $this->filtreCourant());
     }
 
     public function supprimer(int $id): void
@@ -639,6 +640,31 @@ final class TachesController
             'semaine'    => (int) ($ligne['semaine'] ?? 0)    + (int) ($desListes['semaine'] ?? 0),
             'terminees'  => (int) ($ligne['terminees'] ?? 0),
         ];
+    }
+
+    /**
+     * Repart vers la page d'où l'action a été lancée, quand elle en fournit
+     * une : le calendrier, par exemple, garde ainsi son mois et ses filtres.
+     *
+     * On n'accepte qu'une adresse interne. Une adresse absolue, une adresse
+     * protocole-relative (« //ailleurs ») ou un saut de ligne — de quoi
+     * fabriquer un en-tête HTTP — sont refusés.
+     */
+    private function repartirVers(string $defaut, array $params = []): never
+    {
+        $retour = $_POST['retour'] ?? '';
+
+        if (is_string($retour) && $retour !== ''
+            && $retour[0] === '/'
+            && !str_starts_with($retour, '//')
+            && !preg_match('/[\r\n]/', $retour)
+            && (BASE_URL === '' || str_starts_with($retour, BASE_URL . '/'))
+        ) {
+            header('Location: ' . $retour);
+            exit;
+        }
+
+        redirect($defaut, $params);
     }
 
     /**

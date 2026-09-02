@@ -239,6 +239,7 @@ final class CalendrierController
                 (int) $tache['liste_id'],
                 'Sous-tâche',
                 '☑️',
+                'taches/' . (int) $tache['id'] . '/cocher',
                 (string) $tache['liste_couleur'],
                 (string) $tache['liste_icone'] . ' ' . (string) $tache['liste_nom']
             );
@@ -260,6 +261,7 @@ final class CalendrierController
                 (int) $liste['id'],
                 'Tâche principale',
                 (string) $liste['icone'],
+                'taches/listes/' . (int) $liste['id'] . '/cocher',
                 (string) $liste['couleur'],
                 (int) $liste['total'] === 0
                     ? 'aucune sous-tâche'
@@ -279,6 +281,7 @@ final class CalendrierController
         int $listeId,
         string $typeNom,
         string $icone,
+        string $routeCocher,
         string $couleur,
         string $detail
     ): array {
@@ -301,6 +304,7 @@ final class CalendrierController
             'est_tache'       => true,
             'liste_id'        => $listeId,
             'detail_tache'    => $detail,
+            'route_cocher'    => $routeCocher,
         ];
     }
 
