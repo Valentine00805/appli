@@ -995,3 +995,28 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
   .cours-vue { grid-template-columns: minmax(0, 1fr); }
   .cours-dossiers { position: static; }
 }
+
+/* --- Glisser un dossier dans un autre -------------------------------------- */
+
+.dossier-noeud { display: block; }
+.est-saisissable > .dossier-carte { cursor: grab; }
+.dossier-noeud--glisse > .dossier-carte { opacity: .45; border-style: dashed; }
+
+/* Pendant le trajet, les dossiers acceptables se signalent. */
+.attend-un-dossier .dossier-carte { border-style: dashed; }
+.dossier-carte--survol {
+  border-style: solid !important; border-color: var(--accent);
+  background: var(--accent-doux);
+}
+
+.dossier-racine {
+  margin-top: .9rem; padding: .8rem; text-align: center;
+  border: 1px dashed var(--bordure-forte); border-radius: var(--rayon-s);
+  color: var(--texte-doux); font-size: .85rem;
+  opacity: 0; transition: opacity .12s;
+}
+.attend-un-dossier .dossier-racine { opacity: 1; }
+.dossier-racine--survol {
+  border-style: solid; border-color: var(--accent);
+  background: var(--accent-doux); color: var(--accent-fonce);
+}

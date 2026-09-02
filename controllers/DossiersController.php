@@ -242,6 +242,51 @@ final class DossiersController
         redirect('organisation/dossiers');
     }
 
+    /**
+     * Range un dossier dans un autre, sans passer par le formulaire.
+     * C'est ce qu'appelle le glisser-déposer.
+     */
+    public function ranger(): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $userId = Auth::id();
+
+        $id = self::valide($userId, $_POST['dossier'] ?? null);
+        if ($id === null) {
+            $this->introuvable();
+        }
+
+        // Un parent vide signifie « à la racine ».
+        $parent = self::valide($userId, $_POST['parent'] ?? null);
+
+        // Même garde-fou que dans le formulaire : on ne referme pas la branche.
+        if ($parent !== null && in_array($parent, self::avecDescendants($userId, $id), true)) {
+            Session::flash('erreur', 'Un dossier ne peut pas être rangé dans lui-même ou dans un de ses sous-dossiers.');
+            redirect('organisation/dossiers');
+        }
+
+        // Il arrive en fin de ses nouveaux frères.
+        $rang = (int) Database::valeur(
+            'SELECT COALESCE(MAX(position), 0) + 1 FROM dossiers
+             WHERE user_id = ? AND parent_id ' . ($parent === null ? 'IS NULL' : '= ?'),
+            $parent === null ? [$userId] : [$userId, $parent]
+        );
+
+        Database::run(
+            'UPDATE dossiers SET parent_id = ?, position = ? WHERE id = ? AND user_id = ?',
+            [$parent, $rang, $id, $userId]
+        );
+
+        $nom = Database::valeur('SELECT nom FROM dossiers WHERE id = ? AND user_id = ?', [$id, $userId]);
+        Session::flash('succes', $parent === null
+            ? '« ' . $nom . ' » est remonté au premier niveau.'
+            : '« ' . $nom . ' » rangé dans « '
+              . Database::valeur('SELECT nom FROM dossiers WHERE id = ? AND user_id = ?', [$parent, $userId]) . ' ».');
+
+        redirect('organisation/dossiers');
+    }
+
     /** Monte ou descend un dossier d'un cran. */
     public function deplacer(int $id): void
     {

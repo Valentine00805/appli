@@ -360,4 +360,89 @@
     });
   }
 
+  // Glisser un dossier dans un autre.
+  // Sans JavaScript, le champ « Range dans » du formulaire fait le meme travail.
+  var arbreDossiers = document.querySelector("[data-dossiers-arbre]");
+  var formeRangerDossier = document.getElementById("forme-ranger-dossier");
+  if (arbreDossiers && formeRangerDossier && "draggable" in document.createElement("div")) {
+    var noeudGlisse = null;
+    var zoneRacine = document.querySelector(".dossier-racine");
+
+    var noeuds = [].slice.call(arbreDossiers.querySelectorAll(".dossier-noeud"));
+
+    noeuds.forEach(function (noeud) {
+      var carte = noeud.querySelector(".dossier-carte");
+      if (!carte) { return; }
+      noeud.draggable = true;
+      noeud.classList.add("est-saisissable");
+
+      noeud.addEventListener("dragstart", function (evenement) {
+        // Le nœud le plus profond gagne : on ne saisit pas le parent
+        // quand on attrape un enfant.
+        evenement.stopPropagation();
+        noeudGlisse = noeud;
+        noeud.classList.add("dossier-noeud--glisse");
+        arbreDossiers.classList.add("attend-un-dossier");
+        if (zoneRacine) { zoneRacine.parentNode.classList.add("attend-un-dossier"); }
+        document.body.classList.add("attend-un-dossier");
+        evenement.dataTransfer.effectAllowed = "move";
+        try { evenement.dataTransfer.setData("text/plain", noeud.dataset.dossier); } catch (e) {}
+      });
+
+      noeud.addEventListener("dragend", function () {
+        noeud.classList.remove("dossier-noeud--glisse");
+        arbreDossiers.classList.remove("attend-un-dossier");
+        document.body.classList.remove("attend-un-dossier");
+        noeudGlisse = null;
+      });
+
+      // Un dossier ne se depose ni sur lui-meme ni chez sa descendance :
+      // celle-ci est justement contenue dans son propre noeud.
+      var accepte = function () {
+        return noeudGlisse && !noeudGlisse.contains(noeud);
+      };
+
+      carte.addEventListener("dragover", function (evenement) {
+        if (!accepte()) { return; }
+        evenement.preventDefault();
+        evenement.stopPropagation();
+        evenement.dataTransfer.dropEffect = "move";
+        carte.classList.add("dossier-carte--survol");
+      });
+
+      carte.addEventListener("dragleave", function () {
+        carte.classList.remove("dossier-carte--survol");
+      });
+
+      carte.addEventListener("drop", function (evenement) {
+        evenement.preventDefault();
+        evenement.stopPropagation();
+        carte.classList.remove("dossier-carte--survol");
+        if (!accepte()) { return; }
+        formeRangerDossier.elements.dossier.value = noeudGlisse.dataset.dossier;
+        formeRangerDossier.elements.parent.value = noeud.dataset.dossier;
+        formeRangerDossier.submit();
+      });
+    });
+
+    if (zoneRacine) {
+      zoneRacine.addEventListener("dragover", function (evenement) {
+        if (!noeudGlisse) { return; }
+        evenement.preventDefault();
+        zoneRacine.classList.add("dossier-racine--survol");
+      });
+      zoneRacine.addEventListener("dragleave", function () {
+        zoneRacine.classList.remove("dossier-racine--survol");
+      });
+      zoneRacine.addEventListener("drop", function (evenement) {
+        evenement.preventDefault();
+        zoneRacine.classList.remove("dossier-racine--survol");
+        if (!noeudGlisse) { return; }
+        formeRangerDossier.elements.dossier.value = noeudGlisse.dataset.dossier;
+        formeRangerDossier.elements.parent.value = "";
+        formeRangerDossier.submit();
+      });
+    }
+  }
+
 })();

@@ -40,7 +40,12 @@ $dernier = count($dossiers) - 1;
       ): void {
           $enfants = $parNiveau[(int) $d['id']] ?? [];
           ?>
-        <section class="carte dossier-carte">
+        <?php // Le nœud enveloppe le dossier ET sa descendance : un dossier ne
+              // peut alors pas être déposé chez lui-même, il suffit de regarder
+              // si la cible est à l'intérieur. ?>
+        <div class="dossier-noeud" data-dossier="<?= (int) $d['id'] ?>">
+        <section class="carte dossier-carte"
+                 title="Faites glisser ce dossier sur un autre pour l'y ranger">
           <div class="matiere-carte">
             <span class="matiere-pastille" style="background:<?= e($d['couleur']) ?>;display:grid;place-items:center;font-size:1.1rem">
               <?= e($d['icone']) ?>
@@ -161,13 +166,28 @@ $dernier = count($dossiers) - 1;
               <?php endforeach; ?>
             </div>
           <?php endif; ?>
+        </div>
           <?php
       };
       ?>
 
-      <?php foreach ($parNiveau[0] ?? [] as $rangFrere => $d): ?>
-        <?= $rendreDossier($d, $parNiveau[0], $rangFrere) ?>
-      <?php endforeach; ?>
+      <div data-dossiers-arbre>
+        <?php foreach ($parNiveau[0] ?? [] as $rangFrere => $d): ?>
+          <?= $rendreDossier($d, $parNiveau[0], $rangFrere) ?>
+        <?php endforeach; ?>
+      </div>
+
+      <?php // Déposer ici sort un dossier de son parent. ?>
+      <div class="dossier-racine" data-dossier="">
+        ⬆︎ Déposez un dossier ici pour le remettre au premier niveau
+      </div>
+
+      <?php // Le glisser-déposer poste ici le dossier et son parent d'arrivée. ?>
+      <form method="post" action="<?= url('dossiers/ranger') ?>" id="forme-ranger-dossier" hidden>
+        <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+        <input type="hidden" name="dossier" value="">
+        <input type="hidden" name="parent" value="">
+      </form>
     <?php endif; ?>
 
     <?php if ($sansDossier > 0): ?>
