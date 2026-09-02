@@ -6,11 +6,16 @@
  */
 $avecDate = $avecDate ?? false;
 $couleur = couleur_evenement($evt);
+// Une échéance de tâche n'a pas d'heure, et se modifie depuis « Tâches ».
+$estTache = !empty($evt['est_tache']);
 $heure = $evt['journee_entiere']
-    ? 'Journée'
+    ? ($estTache ? 'Échéance' : 'Journée')
     : date('H:i', strtotime((string) $evt['debut'])) . ' – ' . date('H:i', strtotime((string) $evt['fin']));
+$lienEvt = $estTache
+    ? url('taches', ['liste' => $evt['liste_id']])
+    : url('evenements/' . $evt['id'] . '/modifier');
 ?>
-<div class="evt-ligne<?= (int) $evt['termine'] === 1 ? ' evt-ligne--termine' : '' ?>">
+<div class="evt-ligne<?= (int) $evt['termine'] === 1 ? ' evt-ligne--termine' : '' ?><?= $estTache ? ' evt-ligne--tache' : '' ?>">
   <span class="evt-ligne__barre" style="background:<?= e($couleur) ?>"></span>
 
   <span class="evt-ligne__heure">
@@ -18,12 +23,13 @@ $heure = $evt['journee_entiere']
   </span>
 
   <span style="min-width:0">
-    <a class="evt-ligne__titre" href="<?= url('evenements/' . $evt['id'] . '/modifier') ?>"
+    <a class="evt-ligne__titre" href="<?= e($lienEvt) ?>"
        style="text-decoration:none;color:inherit">
       <?= e(icone_evenement($evt) . ' ' . $evt['titre']) ?>
     </a><br>
     <span class="evt-ligne__meta">
       <?= e(libelle_type($evt)) ?><?php
+        if ($estTache && !empty($evt['detail_tache'])) { echo ' · ' . e((string) $evt['detail_tache']); }
         if (!empty($evt['matiere_nom'])) { echo ' · ' . e($evt['matiere_nom']); }
         if (!empty($evt['lieu'])) { echo ' · 📍 ' . e($evt['lieu']); }
         if (!empty($evt['cours_titre'])) { echo ' · 📘 ' . e($evt['cours_titre']); }
@@ -35,15 +41,21 @@ $heure = $evt['journee_entiere']
   </span>
 
   <span class="evt-ligne__droite">
-    <form method="post" action="<?= url('evenements/' . $evt['id'] . '/termine') ?>" class="en-ligne">
-      <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
-      <input type="hidden" name="retour" value="<?= e(ROUTE === '' ? '' : ROUTE) ?>">
-      <button class="bouton bouton--discret bouton--petit" type="submit"
-              title="<?= (int) $evt['termine'] === 1 ? 'Marquer comme à faire' : 'Marquer comme terminé' ?>">
-        <?= (int) $evt['termine'] === 1 ? '☑' : '☐' ?>
-      </button>
-    </form>
-    <a class="bouton bouton--discret bouton--petit" href="<?= url('evenements/' . $evt['id'] . '/modifier') ?>"
-       title="Modifier">✎</a>
+    <?php if ($estTache): ?>
+      <?php // Une échéance se coche et se modifie dans « Tâches », d'un seul endroit. ?>
+      <a class="bouton bouton--discret bouton--petit" href="<?= e($lienEvt) ?>"
+         title="Ouvrir dans Tâches">Ouvrir</a>
+    <?php else: ?>
+      <form method="post" action="<?= url('evenements/' . $evt['id'] . '/termine') ?>" class="en-ligne">
+        <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
+        <input type="hidden" name="retour" value="<?= e(ROUTE === '' ? '' : ROUTE) ?>">
+        <button class="bouton bouton--discret bouton--petit" type="submit"
+                title="<?= (int) $evt['termine'] === 1 ? 'Marquer comme à faire' : 'Marquer comme terminé' ?>">
+          <?= (int) $evt['termine'] === 1 ? '☑' : '☐' ?>
+        </button>
+      </form>
+      <a class="bouton bouton--discret bouton--petit" href="<?= url('evenements/' . $evt['id'] . '/modifier') ?>"
+         title="Modifier">✎</a>
+    <?php endif; ?>
   </span>
 </div>

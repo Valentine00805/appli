@@ -804,3 +804,8 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
   .barre-taches__actions { width: 100%; }
   .barre-taches__actions > .nouvelle-liste { flex: 1; }
 }
+
+/* Une échéance de tâche dans le calendrier : même place, trait distinct. */
+.evt--tache { border-left-style: dashed; }
+.evt-ligne--tache .evt-ligne__barre { background-image: repeating-linear-gradient(
+  180deg, rgba(255,255,255,.55) 0 3px, transparent 3px 6px); }

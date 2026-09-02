@@ -32,13 +32,24 @@ if ($vue === 'semaine') {
     $titre = nom_mois((int) $ancre->format('n')) . ' ' . $ancre->format('Y');
 }
 
+/**
+ * Où mène un élément du calendrier : un vrai évènement s'ouvre en
+ * modification, une échéance de tâche ouvre sa liste.
+ */
+$destination = static function (array $evt): string {
+    return empty($evt['est_tache'])
+        ? url('evenements/' . $evt['id'] . '/modifier')
+        : url('taches', ['liste' => $evt['liste_id']]);
+};
+
 /** Rend une puce d'évènement pour la grille mensuelle. */
-$puce = static function (array $evt): string {
+$puce = static function (array $evt) use ($destination): string {
     $couleur = couleur_evenement($evt);
     $fond = 'color-mix(in srgb, ' . $couleur . ' 16%, transparent)';
     $heure = $evt['journee_entiere'] ? '' : '<span class="evt__heure">' . date('H:i', strtotime($evt['debut'])) . '</span> ';
-    return '<a class="evt' . ($evt['termine'] ? ' evt--termine' : '') . '"'
-        . ' href="' . url('evenements/' . $evt['id'] . '/modifier') . '"'
+    $classes = 'evt' . ($evt['termine'] ? ' evt--termine' : '') . (empty($evt['est_tache']) ? '' : ' evt--tache');
+    return '<a class="' . $classes . '"'
+        . ' href="' . $destination($evt) . '"'
         . ' style="background:' . e($fond) . ';border-left-color:' . e($couleur) . ';color:inherit"'
         . ' title="' . e(libelle_type($evt) . ' · ' . $evt['titre']) . '">'
         . $heure . e(icone_evenement($evt)) . ' ' . e($evt['titre'])
@@ -49,7 +60,7 @@ $puce = static function (array $evt): string {
 <div class="entete-page">
   <div>
     <h1>Calendrier</h1>
-    <p>Planifiez vos cours et vos échéances.</p>
+    <p>Vos évènements et les échéances de vos tâches, au même endroit.</p>
   </div>
   <div class="actions">
     <a class="bouton bouton--secondaire" href="<?= url('organisation/types') ?>">Gérer les types</a>
@@ -211,7 +222,7 @@ $puce = static function (array $evt): string {
 <?php if ($aVenir !== []): ?>
   <section class="carte" style="margin-top:1.5rem">
     <h2>Prochainement</h2>
-    <p class="discret" style="margin:-.4rem 0 .75rem">Les prochains évènements, quels que soient les filtres ci-dessus.</p>
+    <p class="discret" style="margin:-.4rem 0 .75rem">Les prochains évènements et échéances, quels que soient les filtres ci-dessus.</p>
     <div class="pile">
       <?php foreach ($aVenir as $evt): ?>
         <?= Vue::rendre('calendrier/_ligne', ['evt' => $evt, 'avecDate' => true]) ?>

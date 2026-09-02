@@ -23,6 +23,14 @@ final class CalendrierController
 
         $evenements = $this->evenements($userId, $debut, $fin, $matiereId, $typeId);
 
+        // Les échéances des tâches s'invitent dans le calendrier sans y être
+        // recopiées : elles sont relues à chaque affichage, donc toujours à
+        // jour. Un filtre par matière ou par type les écarte, n'en ayant pas.
+        if ($matiereId === null && $typeId === null) {
+            $evenements = array_merge($evenements, $this->echeancesTaches($userId, $debut, $fin));
+            usort($evenements, static fn (array $a, array $b): int => $a['debut'] <=> $b['debut']);
+        }
+
         Vue::afficher('calendrier/index', [
             'vue'           => $vue,
             'ancre'         => $ancre,
@@ -204,6 +212,98 @@ final class CalendrierController
     }
 
     /** Répartit les événements sur chaque jour qu'ils couvrent (clé : Y-m-d). */
+    /**
+     * Les échéances des tâches, présentées comme des évènements d'une journée.
+     * Rien n'est écrit : ces lignes n'existent que le temps de l'affichage.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function echeancesTaches(int $userId, DateTimeInterface $debut, DateTimeInterface $fin): array
+    {
+        $bornes = [$userId, $debut->format('Y-m-d'), $fin->format('Y-m-d')];
+        $lignes = [];
+
+        foreach (Database::all(
+            'SELECT t.id, t.titre, t.echeance, t.faite, t.liste_id,
+                    l.nom AS liste_nom, l.couleur AS liste_couleur, l.icone AS liste_icone
+             FROM taches t
+             JOIN listes_taches l ON l.id = t.liste_id
+             WHERE t.user_id = ? AND t.echeance BETWEEN ? AND ?',
+            $bornes
+        ) as $tache) {
+            $lignes[] = $this->pseudoEvenement(
+                (int) $tache['id'],
+                (string) $tache['titre'],
+                (string) $tache['echeance'],
+                (int) $tache['faite'] === 1,
+                (int) $tache['liste_id'],
+                'Sous-tâche',
+                '☑️',
+                (string) $tache['liste_couleur'],
+                (string) $tache['liste_icone'] . ' ' . (string) $tache['liste_nom']
+            );
+        }
+
+        foreach (Database::all(
+            'SELECT l.id, l.nom, l.echeance, l.couleur, l.icone,
+                    (SELECT COUNT(*) FROM taches t WHERE t.liste_id = l.id)                  AS total,
+                    (SELECT COUNT(*) FROM taches t WHERE t.liste_id = l.id AND t.faite = 0)  AS reste
+             FROM listes_taches l
+             WHERE l.user_id = ? AND l.echeance BETWEEN ? AND ?',
+            $bornes
+        ) as $liste) {
+            $lignes[] = $this->pseudoEvenement(
+                (int) $liste['id'],
+                (string) $liste['nom'],
+                (string) $liste['echeance'],
+                (int) $liste['total'] > 0 && (int) $liste['reste'] === 0,
+                (int) $liste['id'],
+                'Tâche principale',
+                (string) $liste['icone'],
+                (string) $liste['couleur'],
+                (int) $liste['total'] === 0
+                    ? 'aucune sous-tâche'
+                    : (int) $liste['reste'] . ' sur ' . (int) $liste['total'] . ' à faire'
+            );
+        }
+
+        return $lignes;
+    }
+
+    /** Une échéance mise à la forme d'un évènement, pour que les vues la rendent. */
+    private function pseudoEvenement(
+        int $id,
+        string $titre,
+        string $jour,
+        bool $termine,
+        int $listeId,
+        string $typeNom,
+        string $icone,
+        string $couleur,
+        string $detail
+    ): array {
+        return [
+            'id'              => $id,
+            'titre'           => $titre,
+            'debut'           => $jour . ' 00:00:00',
+            'fin'             => $jour . ' 23:59:59',
+            'journee_entiere' => 1,
+            'termine'         => $termine ? 1 : 0,
+            'type_nom'        => $typeNom,
+            'type_icone'      => $icone !== '' ? $icone : '📋',
+            'type_couleur'    => $couleur,
+            'matiere_nom'     => null,
+            'matiere_couleur' => null,
+            'lieu'            => null,
+            'cours_titre'     => null,
+            'description'     => null,
+            // Ce qui distingue une échéance d'un vrai évènement.
+            'est_tache'       => true,
+            'liste_id'        => $listeId,
+            'detail_tache'    => $detail,
+        ];
+    }
+
     private function grouperParJour(array $evenements): array
     {
         $parJour = [];
@@ -221,7 +321,7 @@ final class CalendrierController
 
     private function aVenir(int $userId, int $limite): array
     {
-        return Database::all(
+        $lignes = Database::all(
             'SELECT e.*, m.nom AS matiere_nom, m.couleur AS matiere_couleur,
                     t.nom AS type_nom, t.icone AS type_icone, t.couleur AS type_couleur
              FROM evenements e
@@ -231,6 +331,18 @@ final class CalendrierController
              ORDER BY e.debut ASC LIMIT ' . $limite,
             [$userId]
         );
+
+        // Les échéances encore ouvertes s'y ajoutent, sur un horizon large.
+        $horizon = (new DateTimeImmutable('today'))->modify('+1 year');
+        foreach ($this->echeancesTaches($userId, new DateTimeImmutable('today'), $horizon) as $echeance) {
+            if ((int) $echeance['termine'] === 0) {
+                $lignes[] = $echeance;
+            }
+        }
+
+        usort($lignes, static fn (array $a, array $b): int => $a['debut'] <=> $b['debut']);
+
+        return array_slice($lignes, 0, $limite);
     }
 
     private function dateAncre(): DateTimeImmutable
