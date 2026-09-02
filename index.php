@@ -139,6 +139,7 @@ $routes = [
 
     ['GET',  'tableau',                      [KanbanController::class, 'index']],
     ['POST', 'tableau/deplacer',             [KanbanController::class, 'deplacer']],
+    ['POST', 'tableau/note',                 [KanbanController::class, 'noter']],
 
     ['GET',  'recherche',                 [CoursController::class, 'recherche']],
 ];

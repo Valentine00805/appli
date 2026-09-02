@@ -2,21 +2,22 @@
 declare(strict_types=1);
 
 /**
- * Tableau kanban : tout ce qu'il y a à faire, réparti en trois colonnes.
+ * Tableau kanban : tout ce qu'il y a à faire, réparti en quatre colonnes.
  *
  * Les cartes ne sont pas une nouvelle sorte d'objet — ce sont vos sous-tâches
  * et vos évènements, relus à chaque affichage. Rien n'est recopié, donc rien
- * ne peut se désynchroniser. Seule la colonne « En cours » a demandé un
+ * ne peut se désynchroniser. Seule l’étape (en cours, validation) a demandé un
  * indicateur : « faite » et « termine » restent la référence pour le reste
  * de l'application, et un élément terminé l'est ici aussi.
  */
 final class KanbanController
 {
-    /** Les trois colonnes, dans l'ordre d'affichage. */
+    /** Les quatre colonnes, dans l'ordre d'affichage. */
     public const COLONNES = [
-        'a_faire'  => ['titre' => 'À faire',  'icone' => '📥'],
-        'en_cours' => ['titre' => 'En cours', 'icone' => '🚧'],
-        'termine'  => ['titre' => 'Terminé',  'icone' => '✅'],
+        'a_faire'    => ['titre' => 'À faire',    'icone' => '📥'],
+        'en_cours'   => ['titre' => 'En cours',   'icone' => '🚧'],
+        'validation' => ['titre' => 'Validation', 'icone' => '🔎'],
+        'termine'    => ['titre' => 'Terminé',    'icone' => '✅'],
     ];
 
     public function index(): void
@@ -82,9 +83,9 @@ final class KanbanController
             $this->introuvable();
         }
 
-        // « Terminé » et « En cours » s'excluent : une carte n'est que dans une colonne.
+        // Une carte n'est que dans une colonne : « terminé » efface l'étape.
         $fait    = $colonne === 'termine' ? 1 : 0;
-        $encours = $colonne === 'en_cours' ? 1 : 0;
+        $etape   = match ($colonne) { 'en_cours' => 1, 'validation' => 2, default => 0 };
 
         if ($nature === 'tache') {
             $existe = Database::valeur('SELECT id FROM taches WHERE id = ? AND user_id = ?', [$id, $userId]);
@@ -92,8 +93,8 @@ final class KanbanController
                 $this->introuvable();
             }
             Database::run(
-                'UPDATE taches SET faite = ?, faite_le = ?, en_cours = ? WHERE id = ? AND user_id = ?',
-                [$fait, $fait === 1 ? date('Y-m-d H:i:s') : null, $encours, $id, $userId]
+                'UPDATE taches SET faite = ?, faite_le = ?, etape = ? WHERE id = ? AND user_id = ?',
+                [$fait, $fait === 1 ? date('Y-m-d H:i:s') : null, $etape, $id, $userId]
             );
         } else {
             $existe = Database::valeur('SELECT id FROM evenements WHERE id = ? AND user_id = ?', [$id, $userId]);
@@ -101,11 +102,45 @@ final class KanbanController
                 $this->introuvable();
             }
             Database::run(
-                'UPDATE evenements SET termine = ?, en_cours = ? WHERE id = ? AND user_id = ?',
-                [$fait, $encours, $id, $userId]
+                'UPDATE evenements SET termine = ?, etape = ? WHERE id = ? AND user_id = ?',
+                [$fait, $etape, $id, $userId]
             );
         }
 
+        $this->repartirVers('tableau');
+    }
+
+    /**
+     * Enregistre la remarque d'une carte.
+     * Une sous-tâche a son champ « note » ; un évènement réutilise sa
+     * description, qui dit déjà la même chose.
+     */
+    public function noter(): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $userId = Auth::id();
+
+        $nature = (string) ($_POST['nature'] ?? '');
+        $id = entier_ou_null($_POST['carte'] ?? null);
+        if ($id === null || !in_array($nature, ['tache', 'evenement'], true)) {
+            $this->introuvable();
+        }
+
+        $note = mb_substr(post('note'), 0, 500);
+        $note = $note === '' ? null : $note;
+
+        [$table, $colonne] = $nature === 'tache' ? ['taches', 'note'] : ['evenements', 'description'];
+
+        if (Database::valeur("SELECT id FROM `$table` WHERE id = ? AND user_id = ?", [$id, $userId]) === null) {
+            $this->introuvable();
+        }
+        Database::run(
+            "UPDATE `$table` SET `$colonne` = ? WHERE id = ? AND user_id = ?",
+            [$note, $id, $userId]
+        );
+
+        Session::flash('succes', $note === null ? 'Remarque effacée.' : 'Remarque enregistrée.');
         $this->repartirVers('tableau');
     }
 
@@ -116,7 +151,7 @@ final class KanbanController
     {
         $cartes = [];
         foreach (Database::all(
-            'SELECT t.id, t.titre, t.echeance, t.faite, t.en_cours, t.liste_id,
+            'SELECT t.id, t.titre, t.echeance, t.faite, t.etape, t.note, t.liste_id,
                     l.nom AS liste_nom, l.couleur AS liste_couleur, l.icone AS liste_icone
              FROM taches t
              JOIN listes_taches l ON l.id = t.liste_id
@@ -128,10 +163,11 @@ final class KanbanController
                 'id'          => (int) $t['id'],
                 'titre'       => (string) $t['titre'],
                 'echeance'    => $t['echeance'],
-                'colonne'     => $this->colonneDe((int) $t['faite'], (int) $t['en_cours']),
+                'colonne'     => $this->colonneDe((int) $t['faite'], (int) $t['etape']),
                 'couleur'     => (string) $t['liste_couleur'],
                 'icone'       => (string) $t['liste_icone'] !== '' ? (string) $t['liste_icone'] : '📋',
                 'origine'     => (string) $t['liste_nom'],
+                'note'        => (string) ($t['note'] ?? ''),
                 'lien'        => url('taches', ['liste' => (int) $t['liste_id']]),
             ];
         }
@@ -143,7 +179,7 @@ final class KanbanController
     {
         // On écarte le passé déjà réglé : un cours d'il y a trois mois n'a
         // rien à faire sur un tableau de ce qui reste à faire.
-        $sql = 'SELECT e.id, e.titre, e.debut, e.termine, e.en_cours,
+        $sql = 'SELECT e.id, e.titre, e.debut, e.termine, e.etape, e.description,
                        m.nom AS matiere_nom, m.couleur AS matiere_couleur,
                        t.nom AS type_nom, t.icone AS type_icone, t.couleur AS type_couleur
                 FROM evenements e
@@ -169,25 +205,31 @@ final class KanbanController
                 'id'       => (int) $e['id'],
                 'titre'    => (string) $e['titre'],
                 'echeance' => substr((string) $e['debut'], 0, 10),
-                'colonne'  => $this->colonneDe((int) $e['termine'], (int) $e['en_cours']),
+                'colonne'  => $this->colonneDe((int) $e['termine'], (int) $e['etape']),
                 'couleur'  => (string) ($e['matiere_couleur'] ?? '') !== ''
                     ? (string) $e['matiere_couleur']
                     : ((string) ($e['type_couleur'] ?? '') !== '' ? (string) $e['type_couleur'] : '#94a3b8'),
                 'icone'    => (string) ($e['type_icone'] ?? '') !== '' ? (string) $e['type_icone'] : '📌',
                 'origine'  => trim(((string) ($e['type_nom'] ?? 'Évènement'))
                     . ((string) ($e['matiere_nom'] ?? '') !== '' ? ' · ' . (string) $e['matiere_nom'] : '')),
+                'note'     => (string) ($e['description'] ?? ''),
                 'lien'     => url('evenements/' . (int) $e['id'] . '/modifier'),
             ];
         }
         return $cartes;
     }
 
-    private function colonneDe(int $fait, int $enCours): string
+    /** « Terminé » l'emporte : un élément fait l'est, quelle que soit l'étape. */
+    private function colonneDe(int $fait, int $etape): string
     {
         if ($fait === 1) {
             return 'termine';
         }
-        return $enCours === 1 ? 'en_cours' : 'a_faire';
+        return match ($etape) {
+            1       => 'en_cours',
+            2       => 'validation',
+            default => 'a_faire',
+        };
     }
 
     /** Même prudence qu'ailleurs : on ne suit qu'une adresse interne. */

@@ -93,6 +93,24 @@ $total = array_sum(array_map('count', $parColonne));
               <span class="echeance">Sans échéance</span>
             <?php endif; ?>
 
+            <?php // La remarque : affichée si elle existe, modifiable d'un clic. ?>
+            <details class="kanban-note"<?= $carte['note'] !== '' ? ' open' : '' ?>>
+              <summary><?= $carte['note'] !== '' ? '📝 Remarque' : '📝 Ajouter une remarque' ?></summary>
+              <form method="post" action="<?= url('tableau/note') ?>">
+                <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+                <input type="hidden" name="retour" value="<?= e((string) ($_SERVER['REQUEST_URI'] ?? '')) ?>">
+                <input type="hidden" name="carte" value="<?= (int) $carte['id'] ?>">
+                <input type="hidden" name="nature" value="<?= e($carte['nature']) ?>">
+                <label class="sr-only" for="note-<?= e($carte['nature']) ?>-<?= (int) $carte['id'] ?>">
+                  Remarque sur « <?= e($carte['titre']) ?> »
+                </label>
+                <textarea id="note-<?= e($carte['nature']) ?>-<?= (int) $carte['id'] ?>"
+                          name="note" rows="3" maxlength="500"
+                          placeholder="Revoir la partie 3 avant de rendre…"><?= e($carte['note']) ?></textarea>
+                <button class="bouton bouton--petit bouton--bloc" type="submit">Enregistrer</button>
+              </form>
+            </details>
+
             <?php // Sans glisser-déposer, ces boutons déplacent la carte. ?>
             <div class="kanban-carte__deplacer">
               <?php foreach ($colonnes as $vers => $autre): ?>
