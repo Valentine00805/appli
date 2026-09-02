@@ -814,3 +814,67 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
 .jour-bloc--seul { max-width: 46rem; }
 .jour-bloc--seul .jour-bloc__titre { font-size: 1.05rem; }
 .jour-bloc--seul .jour-bloc__corps { padding-top: .35rem; }
+
+/* --- Tableau kanban -------------------------------------------------------- */
+
+.kanban {
+  display: grid; gap: 1rem; align-items: start;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.kanban__colonne {
+  background: var(--fond-doux); border: 1px solid var(--bordure);
+  border-radius: var(--rayon); padding: .8rem; min-width: 0;
+}
+.kanban__colonne--cible { border-color: var(--accent); background: var(--accent-doux); }
+
+.kanban__entete { display: flex; align-items: center; gap: .5rem; margin-bottom: .7rem; }
+.kanban__entete h2 { margin: 0; font-size: 1rem; }
+.kanban__compteur {
+  margin-left: auto; padding: .05rem .5rem; border-radius: 999px;
+  background: var(--fond-carte); color: var(--texte-doux);
+  font-size: .78rem; font-variant-numeric: tabular-nums;
+}
+.kanban__pile { display: grid; gap: .55rem; min-height: 4rem; }
+.kanban__vide {
+  margin: 0; padding: .9rem .6rem; text-align: center;
+  color: var(--texte-doux); font-size: .85rem;
+  border: 1px dashed var(--bordure-forte); border-radius: var(--rayon-s);
+}
+
+.kanban-carte {
+  position: relative;
+  background: var(--fond-carte); border: 1px solid var(--bordure);
+  border-left: 4px solid var(--bordure); border-radius: var(--rayon-s);
+  padding: .6rem .7rem;
+}
+.kanban-carte:hover { border-color: var(--bordure-forte); }
+.kanban-carte--faite .kanban-carte__titre { text-decoration: line-through; color: var(--texte-doux); }
+.kanban-carte--glisse { opacity: .45; border-style: dashed; }
+
+.kanban-carte__titre {
+  display: block; font-weight: 600; text-decoration: none; color: inherit;
+  overflow-wrap: anywhere;
+}
+.kanban-carte__meta {
+  margin: .15rem 0 .45rem; color: var(--texte-doux); font-size: .8rem;
+  overflow-wrap: anywhere;
+}
+
+/* Les deux flèches de secours : visibles au survol, toujours au clavier. */
+.kanban-carte__deplacer {
+  position: absolute; top: .45rem; right: .45rem;
+  display: flex; gap: .2rem; opacity: 0; transition: opacity .12s;
+}
+.kanban-carte:hover .kanban-carte__deplacer,
+.kanban-carte:focus-within .kanban-carte__deplacer { opacity: 1; }
+.kanban-carte__deplacer button {
+  border: 1px solid var(--bordure); border-radius: 6px;
+  background: var(--fond-carte); cursor: pointer;
+  font: inherit; font-size: .75rem; line-height: 1; padding: .15rem .3rem;
+}
+.kanban-carte__deplacer button:hover { border-color: var(--accent); }
+
+@media (max-width: 820px) {
+  .kanban { grid-template-columns: minmax(0, 1fr); }
+  .kanban-carte__deplacer { opacity: 1; }
+}

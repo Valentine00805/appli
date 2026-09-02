@@ -242,4 +242,55 @@
     });
   }
 
+  // Tableau kanban : on saisit une carte, on la depose dans une colonne.
+  // Sans JavaScript, les petits boutons de chaque carte font le meme travail.
+  var tableau = document.querySelector("[data-kanban]");
+  var formeKanban = document.getElementById("forme-kanban");
+  if (tableau && formeKanban && "draggable" in document.createElement("div")) {
+    var carteGlissee = null;
+
+    [].slice.call(tableau.querySelectorAll(".kanban-carte")).forEach(function (carte) {
+      carte.draggable = true;
+      carte.classList.add("est-saisissable");
+
+      carte.addEventListener("dragstart", function (evenement) {
+        carteGlissee = carte;
+        carte.classList.add("kanban-carte--glisse");
+        evenement.dataTransfer.effectAllowed = "move";
+        try { evenement.dataTransfer.setData("text/plain", carte.dataset.carte); } catch (e) {}
+      });
+
+      carte.addEventListener("dragend", function () {
+        carte.classList.remove("kanban-carte--glisse");
+        carteGlissee = null;
+      });
+    });
+
+    [].slice.call(tableau.querySelectorAll(".kanban__colonne")).forEach(function (colonne) {
+      colonne.addEventListener("dragover", function (evenement) {
+        if (!carteGlissee) { return; }
+        evenement.preventDefault();
+        evenement.dataTransfer.dropEffect = "move";
+        colonne.classList.add("kanban__colonne--cible");
+      });
+
+      colonne.addEventListener("dragleave", function () {
+        colonne.classList.remove("kanban__colonne--cible");
+      });
+
+      colonne.addEventListener("drop", function (evenement) {
+        evenement.preventDefault();
+        colonne.classList.remove("kanban__colonne--cible");
+        if (!carteGlissee) { return; }
+        // Reposee dans sa propre colonne : rien a enregistrer.
+        if (carteGlissee.closest(".kanban__colonne") === colonne) { return; }
+        formeKanban.elements.carte.value = carteGlissee.dataset.carte;
+        formeKanban.elements.nature.value = carteGlissee.dataset.nature;
+        formeKanban.elements.colonne.value = colonne.dataset.colonne;
+        tableau.classList.add("est-en-cours");
+        formeKanban.submit();
+      });
+    });
+  }
+
 })();

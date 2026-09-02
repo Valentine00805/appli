@@ -21,6 +21,7 @@ require __DIR__ . '/controllers/ImportController.php';
 require __DIR__ . '/controllers/RemboursementsController.php';
 require __DIR__ . '/controllers/SauvegardeController.php';
 require __DIR__ . '/controllers/TachesController.php';
+require __DIR__ . '/controllers/KanbanController.php';
 require __DIR__ . '/controllers/TableauBordController.php';
 
 /**
@@ -135,6 +136,9 @@ $routes = [
     ['POST', 'taches/{id}/cocher',           [TachesController::class, 'basculer']],
     ['POST', 'taches/{id}/modifier',         [TachesController::class, 'modifier']],
     ['POST', 'taches/{id}/supprimer',        [TachesController::class, 'supprimer']],
+
+    ['GET',  'tableau',                      [KanbanController::class, 'index']],
+    ['POST', 'tableau/deplacer',             [KanbanController::class, 'deplacer']],
 
     ['GET',  'recherche',                 [CoursController::class, 'recherche']],
 ];
