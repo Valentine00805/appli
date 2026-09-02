@@ -21,30 +21,53 @@ $dernier = count($dossiers) - 1;
         <p>Aucun dossier pour le moment. Créez-en un avec le formulaire ci-contre.</p>
       </div>
     <?php else: ?>
-      <?php foreach ($dossiers as $rang => $d): ?>
-        <?php
-        // Un sous-dossier est décalé, et les flèches ne le comparent qu'à ses frères.
-        $freres = array_values(array_filter(
-            $dossiers,
-            static fn (array $x): bool => ($x['parent_id'] ?? null) == ($d['parent_id'] ?? null)
-        ));
-        $rangFrere = array_search((int) $d['id'], array_map(
-            static fn (array $x): int => (int) $x['id'],
-            $freres
-        ), true);
-        $profondeur = (int) $d['profondeur'];
-        ?>
-        <section class="carte" style="margin-left:<?= $profondeur * 1.6 ?>rem">
+      <?php
+      // On regroupe par parent : seuls les dossiers de premier niveau sont
+      // affichés d'emblée, chacun repliant les siens.
+      $parNiveau = [];
+      foreach ($dossiers as $d) {
+          $parNiveau[(int) ($d['parent_id'] ?? 0)][] = $d;
+      }
+      ?>
+      <?php
+      /**
+       * Rend un dossier, puis ses enfants dans un bloc que l'on replie.
+       * Sans JavaScript, ce bloc reste ouvert : l'arborescence est simplement
+       * affichée en entier, ce qui reste utilisable.
+       */
+      $rendreDossier = function (array $d, array $freres, int $rangFrere) use (
+          &$rendreDossier, $parNiveau, $descendants, $dossiers, $icones, $palette, $csrf
+      ): void {
+          $enfants = $parNiveau[(int) $d['id']] ?? [];
+          ?>
+        <section class="carte dossier-carte">
           <div class="matiere-carte">
             <span class="matiere-pastille" style="background:<?= e($d['couleur']) ?>;display:grid;place-items:center;font-size:1.1rem">
               <?= e($d['icone']) ?>
             </span>
-            <div style="flex:1;min-width:0">
-              <h2 style="margin-bottom:.15rem"><?= e($d['nom']) ?></h2>
-              <p class="discret" style="margin:0">
-                <?= (int) $d['nb_cours'] ?> cours
-              </p>
-            </div>
+
+            <?php // Un dossier qui en contient d'autres se plie et se déplie d'un clic. ?>
+            <?php if ($enfants !== []): ?>
+              <button class="dossier-plier" type="button"
+                      data-plier="enfants-<?= (int) $d['id'] ?>"
+                      aria-expanded="true" aria-controls="enfants-<?= (int) $d['id'] ?>">
+                <span class="dossier-plier__chevron" aria-hidden="true">›</span>
+                <span style="flex:1;min-width:0;text-align:left">
+                  <span class="dossier-plier__nom"><?= e($d['nom']) ?></span>
+                  <span class="discret" style="display:block;font-size:.84rem">
+                    <?= (int) $d['nb_cours'] ?> cours ·
+                    <?= count($enfants) ?> sous-dossier<?= count($enfants) > 1 ? 's' : '' ?>
+                  </span>
+                </span>
+              </button>
+            <?php else: ?>
+              <div style="flex:1;min-width:0">
+                <h2 style="margin-bottom:.15rem"><?= e($d['nom']) ?></h2>
+                <p class="discret" style="margin:0">
+                  <?= (int) $d['nb_cours'] ?> cours
+                </p>
+              </div>
+            <?php endif; ?>
             <div class="actions">
               <?php if (count($freres) > 1): ?>
                 <form method="post" action="<?= url('dossiers/' . $d['id'] . '/deplacer') ?>" class="en-ligne">
@@ -130,6 +153,20 @@ $dernier = count($dossiers) - 1;
             </form>
           </div>
         </section>
+
+          <?php if ($enfants !== []): ?>
+            <div class="dossier-enfants" id="enfants-<?= (int) $d['id'] ?>" data-repliable>
+              <?php foreach ($enfants as $rang => $enfant): ?>
+                <?= $rendreDossier($enfant, $enfants, $rang) ?>
+              <?php endforeach; ?>
+            </div>
+          <?php endif; ?>
+          <?php
+      };
+      ?>
+
+      <?php foreach ($parNiveau[0] ?? [] as $rangFrere => $d): ?>
+        <?= $rendreDossier($d, $parNiveau[0], $rangFrere) ?>
       <?php endforeach; ?>
     <?php endif; ?>
 

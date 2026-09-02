@@ -293,4 +293,22 @@
     });
   }
 
+  // Les dossiers se plient : seuls ceux de premier niveau restent
+  // visibles, un clic sur un dossier montre ou masque les siens.
+  // Sans JavaScript, rien ne se replie et l arborescence reste entiere.
+  document.querySelectorAll("[data-plier]").forEach(function (bouton) {
+    var cible = document.getElementById(bouton.getAttribute("data-plier"));
+    if (!cible) { return; }
+
+    var appliquer = function (ouvert) {
+      cible.hidden = !ouvert;
+      bouton.setAttribute("aria-expanded", ouvert ? "true" : "false");
+    };
+    appliquer(false);   // replié au chargement
+
+    bouton.addEventListener("click", function () {
+      appliquer(cible.hidden);
+    });
+  });
+
 })();

@@ -925,3 +925,30 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
   .kanban-note__icone,
   .kanban-note__supprimer button { opacity: 1; }
 }
+
+/* --- Arborescence des dossiers --------------------------------------------- */
+
+.dossier-plier {
+  flex: 1; min-width: 0;
+  display: flex; align-items: center; gap: .5rem;
+  background: none; border: 0; padding: 0; margin: 0;
+  font: inherit; color: inherit; cursor: pointer; text-align: left;
+}
+.dossier-plier__nom { display: block; font-size: 1.25rem; font-weight: 650; line-height: 1.25; }
+.dossier-plier:hover .dossier-plier__nom { color: var(--accent-fonce); }
+.dossier-plier__chevron {
+  flex: none; color: var(--texte-doux); font-size: 1.3rem; line-height: 1;
+  transition: transform .15s;
+}
+.dossier-plier[aria-expanded="true"] .dossier-plier__chevron {
+  transform: rotate(90deg); color: var(--accent);
+}
+
+/* Les enfants sont décalés, et rattachés à leur parent par un filet. */
+/* « display: grid » l'emporterait sur l'attribut hidden : on le neutralise. */
+.dossier-enfants[hidden] { display: none; }
+.dossier-enfants {
+  display: grid; gap: .75rem;
+  margin: .75rem 0 0 1.4rem; padding-left: 1rem;
+  border-left: 2px solid var(--bordure);
+}
