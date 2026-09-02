@@ -13,14 +13,21 @@ final class TableauBordController
         $aujourdhui = new DateTimeImmutable('today');
         $finSemaine = $aujourdhui->modify('+7 days')->setTime(23, 59, 59);
 
+        // Évènements et échéances se mélangent, rangés par date : ce qui compte
+        // sur cette page, c'est ce qui arrive, quelle qu'en soit la nature.
+        $melange = static function (int $userId, DateTimeImmutable $de, DateTimeImmutable $a): array {
+            $lignes = array_merge(
+                CalendrierController::evenementsEntre($userId, $de, $a),
+                CalendrierController::echeancesEntre($userId, $de, $a)
+            );
+            usort($lignes, static fn (array $x, array $y): int => $x['debut'] <=> $y['debut']);
+            return $lignes;
+        };
+
         Vue::afficher('tableau-bord', [
             'aujourdhui' => $aujourdhui,
-            'duJour' => CalendrierController::evenementsEntre(
-                $userId,
-                $aujourdhui,
-                $aujourdhui->setTime(23, 59, 59)
-            ),
-            'semaine' => CalendrierController::evenementsEntre(
+            'duJour' => $melange($userId, $aujourdhui, $aujourdhui->setTime(23, 59, 59)),
+            'semaine' => $melange(
                 $userId,
                 $aujourdhui->modify('+1 day')->setTime(0, 0),
                 $finSemaine

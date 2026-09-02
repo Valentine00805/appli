@@ -535,18 +535,43 @@ final class TachesController
      */
     public static function aVenir(int $userId, int $jours = 7, int $limite = 6): array
     {
-        return Database::all(
-            'SELECT t.*, l.nom AS liste_nom, l.couleur AS liste_couleur, l.icone AS liste_icone
+        // Pas de borne basse : ce qui est en retard doit rester sous les yeux.
+        $lignes = Database::all(
+            'SELECT t.id, t.titre, t.echeance, t.liste_id,
+                    l.nom AS liste_nom, l.couleur AS liste_couleur, l.icone AS liste_icone
              FROM taches t
              JOIN listes_taches l ON l.id = t.liste_id
              WHERE t.user_id = ?
                AND t.faite = 0
                AND t.echeance IS NOT NULL
-               AND t.echeance <= DATE_ADD(CURDATE(), INTERVAL ? DAY)
-             ORDER BY t.echeance, t.id
-             LIMIT ' . (int) $limite,
+               AND t.echeance <= DATE_ADD(CURDATE(), INTERVAL ? DAY)',
             [$userId, $jours]
         );
+
+        // Les tâches principales datées comptent autant que leurs sous-tâches.
+        foreach (Database::all(
+            'SELECT l.id, l.nom, l.echeance, l.couleur, l.icone
+             FROM listes_taches l
+             WHERE l.user_id = ?
+               AND l.echeance IS NOT NULL
+               AND l.echeance <= DATE_ADD(CURDATE(), INTERVAL ? DAY)
+               AND ' . self::LISTE_EN_COURS,
+            [$userId, $jours]
+        ) as $liste) {
+            $lignes[] = [
+                'id'            => (int) $liste['id'],
+                'titre'         => (string) $liste['nom'],
+                'echeance'      => $liste['echeance'],
+                'liste_id'      => (int) $liste['id'],
+                'liste_nom'     => 'tâche principale',
+                'liste_couleur' => (string) $liste['couleur'],
+                'liste_icone'   => (string) $liste['icone'],
+            ];
+        }
+
+        usort($lignes, static fn (array $a, array $b): int => $a['echeance'] <=> $b['echeance']);
+
+        return array_slice($lignes, 0, $limite);
     }
 
     /** Nombre de tâches non faites, pour la pastille du tableau de bord. */

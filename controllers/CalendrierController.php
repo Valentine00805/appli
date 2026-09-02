@@ -27,7 +27,7 @@ final class CalendrierController
         // recopiées : elles sont relues à chaque affichage, donc toujours à
         // jour. Un filtre par matière ou par type les écarte, n'en ayant pas.
         if ($matiereId === null && $typeId === null) {
-            $evenements = array_merge($evenements, $this->echeancesTaches($userId, $debut, $fin));
+            $evenements = array_merge($evenements, self::echeancesEntre($userId, $debut, $fin));
             usort($evenements, static fn (array $a, array $b): int => $a['debut'] <=> $b['debut']);
         }
 
@@ -218,7 +218,7 @@ final class CalendrierController
      *
      * @return array<int, array<string, mixed>>
      */
-    private function echeancesTaches(int $userId, DateTimeInterface $debut, DateTimeInterface $fin): array
+    public static function echeancesEntre(int $userId, DateTimeInterface $debut, DateTimeInterface $fin): array
     {
         $bornes = [$userId, $debut->format('Y-m-d'), $fin->format('Y-m-d')];
         $lignes = [];
@@ -231,7 +231,7 @@ final class CalendrierController
              WHERE t.user_id = ? AND t.echeance BETWEEN ? AND ?',
             $bornes
         ) as $tache) {
-            $lignes[] = $this->pseudoEvenement(
+            $lignes[] = self::pseudoEvenement(
                 (int) $tache['id'],
                 (string) $tache['titre'],
                 (string) $tache['echeance'],
@@ -253,7 +253,7 @@ final class CalendrierController
              WHERE l.user_id = ? AND l.echeance BETWEEN ? AND ?',
             $bornes
         ) as $liste) {
-            $lignes[] = $this->pseudoEvenement(
+            $lignes[] = self::pseudoEvenement(
                 (int) $liste['id'],
                 (string) $liste['nom'],
                 (string) $liste['echeance'],
@@ -273,7 +273,7 @@ final class CalendrierController
     }
 
     /** Une échéance mise à la forme d'un évènement, pour que les vues la rendent. */
-    private function pseudoEvenement(
+    private static function pseudoEvenement(
         int $id,
         string $titre,
         string $jour,
@@ -338,7 +338,7 @@ final class CalendrierController
 
         // Les échéances encore ouvertes s'y ajoutent, sur un horizon large.
         $horizon = (new DateTimeImmutable('today'))->modify('+1 year');
-        foreach ($this->echeancesTaches($userId, new DateTimeImmutable('today'), $horizon) as $echeance) {
+        foreach (self::echeancesEntre($userId, new DateTimeImmutable('today'), $horizon) as $echeance) {
             if ((int) $echeance['termine'] === 0) {
                 $lignes[] = $echeance;
             }

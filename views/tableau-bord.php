@@ -3,19 +3,28 @@
  * @var DateTimeImmutable $aujourdhui
  * @var array $duJour, $semaine, $examens, $taches, $derniersCours, $stats
  */
-/** Petit rendu d'une ligne d'évènement. */
+/** Petit rendu d'une ligne : un évènement, ou une échéance de tâche. */
 $ligneEvenement = static function (array $evt): string {
     $couleur = couleur_evenement($evt);
+    // Une échéance n'a pas d'heure, et se gère depuis « Tâches ».
+    $estTache = !empty($evt['est_tache']);
     $heure = $evt['journee_entiere']
-        ? 'Journée'
+        ? ($estTache ? 'Échéance' : 'Journée')
         : date('H:i', strtotime($evt['debut'])) . ' – ' . date('H:i', strtotime($evt['fin']));
 
-    $html = '<a class="evt-ligne' . ($evt['termine'] ? ' evt-ligne--termine' : '') . '" href="'
-        . url('evenements/' . $evt['id'] . '/modifier') . '">';
+    $destination = $estTache
+        ? url('taches', ['liste' => $evt['liste_id']])
+        : url('evenements/' . $evt['id'] . '/modifier');
+
+    $html = '<a class="evt-ligne' . ($evt['termine'] ? ' evt-ligne--termine' : '')
+        . ($estTache ? ' evt-ligne--tache' : '') . '" href="' . $destination . '">';
     $html .= '<span class="evt-ligne__barre" style="background:' . e($couleur) . '"></span>';
     $html .= '<span class="evt-ligne__heure">' . e($heure) . '</span>';
     $html .= '<span><span class="evt-ligne__titre">' . e($evt['titre']) . '</span><br>';
     $html .= '<span class="evt-ligne__meta">' . e(icone_evenement($evt) . ' ' . libelle_type($evt));
+    if ($estTache && !empty($evt['detail_tache'])) {
+        $html .= ' · ' . e((string) $evt['detail_tache']);
+    }
     if (!empty($evt['matiere_nom'])) {
         $html .= ' · ' . e($evt['matiere_nom']);
     }
