@@ -108,7 +108,17 @@ final class Fichiers
         header('Content-Type: ' . $mime);
         header('Content-Length: ' . (string) filesize($chemin));
         header('X-Content-Type-Options: nosniff');
-        header('Content-Security-Policy: default-src \'none\'; img-src \'self\'; object-src \'none\'');
+
+        /*
+         * Le lecteur PDF intégré des navigateurs charge le document comme un
+         * objet embarqué : « object-src 'none' » le bloque, et le navigateur
+         * se rabat alors sur le téléchargement. On l'autorise donc, mais
+         * seulement depuis notre propre origine, et seulement pour un PDF
+         * affiché en ligne. Tout le reste garde la politique la plus stricte.
+         */
+        $pdfEnLigne = $disposition === 'inline' && $mime === 'application/pdf';
+        header('Content-Security-Policy: default-src \'none\'; img-src \'self\'; object-src '
+            . ($pdfEnLigne ? '\'self\'; frame-src \'self\'' : '\'none\''));
         header(sprintf(
             "Content-Disposition: %s; filename*=UTF-8''%s",
             $disposition,
