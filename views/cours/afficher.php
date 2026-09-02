@@ -55,7 +55,12 @@ $images = array_filter($fichiers, static fn (array $f): bool => Fichiers::estIma
             <li class="fichier">
               <span class="fichier__icone" aria-hidden="true"><?= Fichiers::icone($f['mime'], $f['nom_origine']) ?></span>
               <span style="min-width:0">
-                <a class="fichier__nom" href="<?= url('fichiers/' . $f['id']) ?>" target="_blank" rel="noopener">
+                <?php // Un document Word ou PowerPoint s'ouvre en aperçu texte,
+                      // le navigateur ne sachant pas l'afficher lui-même. ?>
+                <?php $apercu = ApercuDocument::possible((string) $f['nom_origine']); ?>
+                <a class="fichier__nom"
+                   href="<?= url('fichiers/' . $f['id'] . ($apercu ? '/apercu' : '')) ?>"
+                   <?= $apercu ? '' : ' target="_blank" rel="noopener"' ?>>
                   <?= e($f['nom_origine']) ?>
                 </a><br>
                 <span class="fichier__meta"><?= e(taille_lisible((int) $f['taille'])) ?></span>

@@ -1044,3 +1044,8 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
 }
 .depot__champ:focus-visible + [data-depot-envoi] { outline: 2px solid var(--accent); }
 .depot [data-depot-envoi] { margin-top: .6rem; }
+
+/* Aperçu texte d'un document bureautique. */
+.apercu-document { max-width: 46rem; line-height: 1.7; }
+.apercu-document p { margin: 0 0 .9em; overflow-wrap: anywhere; }
+.apercu-document p:last-child { margin-bottom: 0; }

@@ -130,6 +130,46 @@ final class CoursController
     }
 
     /**
+     * Aperçu texte d'un document bureautique.
+     * Le navigateur ne sait pas les afficher ; on en montre le texte ici.
+     */
+    public function apercuFichier(int $id): void
+    {
+        Auth::exiger();
+        $userId = Auth::id();
+
+        $fichier = Database::one(
+            'SELECT f.*, c.id AS cours_id, c.titre AS cours_titre
+             FROM fichiers f JOIN cours c ON c.id = f.cours_id
+             WHERE f.id = ? AND f.user_id = ?',
+            [$id, $userId]
+        );
+        if ($fichier === null) {
+            $this->introuvable();
+        }
+        if (!ApercuDocument::possible((string) $fichier['nom_origine'])) {
+            redirect('fichiers/' . $id);
+        }
+
+        $chemin = Config::get('app', 'dossier_uploads') . DIRECTORY_SEPARATOR . $fichier['nom_stocke'];
+        $paragraphes = [];
+        $erreur = null;
+
+        try {
+            $paragraphes = ApercuDocument::paragraphes((string) $chemin, (string) $fichier['nom_origine']);
+        } catch (Throwable $e) {
+            $erreur = $e->getMessage();
+        }
+
+        Vue::afficher('cours/apercu', [
+            'fichier'     => $fichier,
+            'paragraphes' => $paragraphes,
+            'erreur'      => $erreur,
+            'format'      => ApercuDocument::format((string) $fichier['nom_origine']),
+        ], (string) $fichier['nom_origine']);
+    }
+
+    /**
      * Crée un cours par fichier déposé sur un dossier.
      *
      * Un fichier ne peut pas vivre seul dans l'application : il est toujours

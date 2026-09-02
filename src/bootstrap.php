@@ -13,6 +13,7 @@ require $racine . '/src/Auth.php';
 require $racine . '/src/LimiteurConnexion.php';
 require $racine . '/src/Sauvegarde.php';
 require $racine . '/src/Fichiers.php';
+require $racine . '/src/ApercuDocument.php';
 require $racine . '/src/ReleveCsv.php';
 require $racine . '/src/ClasseurXlsx.php';
 require $racine . '/src/SuggestionBudget.php';
