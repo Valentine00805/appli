@@ -337,11 +337,20 @@
       });
     });
 
+    // Un dossier accepte deux choses : une carte de cours, ou des fichiers
+    // venus du bureau — qui deviennent alors des cours.
+    var formeDepot = document.getElementById("forme-depot-dossier");
+    var apporteDesFichiers = function (evenement) {
+      var t = evenement.dataTransfer && evenement.dataTransfer.types;
+      if (!t) { return false; }
+      return [].indexOf.call(t, "Files") !== -1;
+    };
+
     [].slice.call(colonneDossiers.querySelectorAll("[data-dossier]")).forEach(function (cible) {
       cible.addEventListener("dragover", function (evenement) {
-        if (!coursGlisse) { return; }
+        if (!coursGlisse && !apporteDesFichiers(evenement)) { return; }
         evenement.preventDefault();
-        evenement.dataTransfer.dropEffect = "move";
+        evenement.dataTransfer.dropEffect = coursGlisse ? "move" : "copy";
         cible.classList.add("dossier-cible--survol");
       });
 
@@ -352,6 +361,16 @@
       cible.addEventListener("drop", function (evenement) {
         evenement.preventDefault();
         cible.classList.remove("dossier-cible--survol");
+
+        // Des fichiers deposes : on cree un cours par fichier dans ce dossier.
+        var fichiers = evenement.dataTransfer && evenement.dataTransfer.files;
+        if (!coursGlisse && fichiers && fichiers.length && formeDepot) {
+          formeDepot.elements.dossier.value = cible.dataset.dossier;
+          formeDepot.elements["fichiers[]"].files = fichiers;
+          formeDepot.submit();
+          return;
+        }
+
         if (!coursGlisse) { return; }
         formeRangerCours.elements.cours.value = coursGlisse.dataset.cours;
         formeRangerCours.elements.dossier.value = cible.dataset.dossier;

@@ -135,9 +135,19 @@
     </a>
 
     <p class="champ__aide" style="margin:.6rem .2rem 0">
-      Faites glisser un cours sur un dossier pour l'y ranger.
+      Faites glisser un cours sur un dossier pour l'y ranger. Un fichier déposé
+      sur un dossier y crée un cours qui le contient.
     </p>
   </aside>
+
+  <?php // Un fichier venu du bureau passe par ici : un cours par fichier. ?>
+  <form method="post" action="<?= url('cours/depot') ?>" enctype="multipart/form-data"
+        id="forme-depot-dossier" hidden>
+    <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
+    <input type="hidden" name="retour" value="<?= e((string) ($_SERVER['REQUEST_URI'] ?? '')) ?>">
+    <input type="hidden" name="dossier" value="">
+    <input type="file" name="fichiers[]" multiple>
+  </form>
 
   <?php // Le glisser-déposer poste ici le cours et son dossier d'arrivée. ?>
   <form method="post" action="<?= url('cours/ranger') ?>" id="forme-ranger-cours" hidden>

@@ -130,6 +130,79 @@ final class CoursController
     }
 
     /**
+     * Crée un cours par fichier déposé sur un dossier.
+     *
+     * Un fichier ne peut pas vivre seul dans l'application : il est toujours
+     * attaché à un cours. Déposer un document sur un dossier crée donc le
+     * cours qui l'accueille, nommé d'après le fichier — un fichier, un cours,
+     * pour que le résultat soit prévisible.
+     */
+    public function deposer(): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $userId = Auth::id();
+
+        $dossier = DossiersController::valide($userId, $_POST['dossier'] ?? null);
+        $noms = $_FILES['fichiers']['name'] ?? null;
+
+        if (!is_array($noms) || $noms === []) {
+            Session::flash('erreur', 'Aucun fichier reçu.');
+            $this->repartirVers('cours');
+        }
+
+        $crees = 0;
+        foreach (array_keys($noms) as $i) {
+            if ((int) ($_FILES['fichiers']['error'][$i] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) {
+                continue;
+            }
+
+            $nom = (string) $noms[$i];
+            $titre = mb_substr(pathinfo($nom, PATHINFO_FILENAME) ?: $nom, 0, 200);
+            if (trim($titre) === '') {
+                $titre = 'Document';
+            }
+
+            Database::run(
+                'INSERT INTO cours (user_id, matiere_id, dossier_id, titre, contenu) VALUES (?, NULL, ?, ?, NULL)',
+                [$userId, $dossier, $titre]
+            );
+            $coursId = Database::dernierId();
+
+            // Le fichier de rang $i, présenté seul au service d'enregistrement.
+            $unSeul = [];
+            foreach (['name', 'type', 'tmp_name', 'error', 'size'] as $cle) {
+                $unSeul[$cle] = [$_FILES['fichiers'][$cle][$i] ?? null];
+            }
+            $erreurs = Fichiers::enregistrer($unSeul, $coursId, $userId);
+
+            // Fichier refusé : on ne laisse pas un cours vide derrière.
+            if (Database::valeur('SELECT COUNT(*) FROM fichiers WHERE cours_id = ?', [$coursId]) < 1) {
+                Database::run('DELETE FROM cours WHERE id = ? AND user_id = ?', [$coursId, $userId]);
+                foreach ($erreurs as $erreur) {
+                    Session::flash('erreur', $erreur);
+                }
+                continue;
+            }
+            $crees++;
+        }
+
+        if ($crees > 0) {
+            $ou = $dossier === null
+                ? ''
+                : ' dans « ' . Database::valeur(
+                    'SELECT nom FROM dossiers WHERE id = ? AND user_id = ?',
+                    [$dossier, $userId]
+                ) . ' »';
+            Session::flash('succes', $crees === 1
+                ? 'Un cours créé' . $ou . ', avec son fichier.'
+                : $crees . ' cours créés' . $ou . ', un par fichier.');
+        }
+
+        $this->repartirVers('cours');
+    }
+
+    /**
      * Joint des fichiers à un cours depuis sa propre page.
      * C'est ce qu'appelle le dépôt de fichiers, sans passer par « Modifier ».
      */
