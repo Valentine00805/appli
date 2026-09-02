@@ -47,6 +47,7 @@ $routes = [
     ['GET',  'cours/nouveau',             [CoursController::class, 'formulaire']],
     ['POST', 'cours/nouveau',             [CoursController::class, 'creer']],
     ['POST', 'cours/ranger',              [CoursController::class, 'ranger']],
+    ['POST', 'cours/{id}/fichiers',       [CoursController::class, 'joindre']],
     ['GET',  'cours/{id}',                [CoursController::class, 'afficher']],
     ['GET',  'cours/{id}/modifier',       [CoursController::class, 'formulaire']],
     ['POST', 'cours/{id}/modifier',       [CoursController::class, 'modifier']],

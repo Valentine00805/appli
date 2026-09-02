@@ -1020,3 +1020,27 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
   border-style: solid; border-color: var(--accent);
   background: var(--accent-doux); color: var(--accent-fonce);
 }
+
+/* --- Dépôt de fichiers sur la page d'un cours ------------------------------ */
+
+.depot { margin-top: .9rem; }
+.depot__zone {
+  display: flex; align-items: center; gap: .7rem;
+  padding: .9rem; border-radius: var(--rayon-s);
+  border: 2px dashed var(--bordure-forte); background: var(--fond-doux);
+  cursor: pointer; font-size: .88rem; line-height: 1.4;
+  transition: border-color .12s, background .12s;
+}
+.depot__zone:hover { border-color: var(--accent); }
+.depot__icone { font-size: 1.4rem; flex: none; }
+.depot--survol .depot__zone {
+  border-style: solid; border-color: var(--accent); background: var(--accent-doux);
+}
+
+/* Le champ reste accessible au clavier, mais sort du flux visuel. */
+.depot__champ {
+  position: absolute; width: 1px; height: 1px;
+  overflow: hidden; clip-path: inset(50%);
+}
+.depot__champ:focus-visible + [data-depot-envoi] { outline: 2px solid var(--accent); }
+.depot [data-depot-envoi] { margin-top: .6rem; }

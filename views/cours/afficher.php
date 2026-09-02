@@ -48,8 +48,7 @@ $images = array_filter($fichiers, static fn (array $f): bool => Fichiers::estIma
       <h2>Fichiers joints <span class="discret">(<?= count($fichiers) ?>)</span></h2>
 
       <?php if ($fichiers === []): ?>
-        <p class="discret">Aucun fichier. Ajoutez des PDF, images ou documents depuis
-          <a href="<?= url('cours/' . $cours['id'] . '/modifier') ?>">la page de modification</a>.</p>
+        <p class="discret">Aucun fichier joint pour l'instant.</p>
       <?php else: ?>
         <ul class="liste-fichiers">
           <?php foreach ($fichiers as $f): ?>
@@ -74,6 +73,25 @@ $images = array_filter($fichiers, static fn (array $f): bool => Fichiers::estIma
           <?php endforeach; ?>
         </ul>
       <?php endif; ?>
+
+      <?php // Déposer des fichiers ici, sans passer par « Modifier ». ?>
+      <form method="post" action="<?= url('cours/' . $cours['id'] . '/fichiers') ?>"
+            enctype="multipart/form-data" class="depot" data-depot>
+        <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
+
+        <label class="depot__zone" for="depot-<?= (int) $cours['id'] ?>">
+          <span class="depot__icone" aria-hidden="true">📎</span>
+          <span>
+            <strong>Déposez vos fichiers ici</strong><br>
+            <span class="discret">ou cliquez pour les choisir — PDF, images, Word, audio…
+              <?= e(taille_lisible((int) Config::get('app', 'taille_max_fichier'))) ?> par fichier</span>
+          </span>
+        </label>
+
+        <input type="file" id="depot-<?= (int) $cours['id'] ?>" name="fichiers[]" multiple
+               class="depot__champ" data-depot-champ>
+        <button class="bouton bouton--petit bouton--bloc" type="submit" data-depot-envoi>Joindre</button>
+      </form>
     </section>
 
     <?php if ($tags !== []): ?>

@@ -445,4 +445,41 @@
     }
   }
 
+  // Deposer des fichiers sur la page d un cours.
+  // Sans JavaScript, la zone reste un champ de fichiers avec son bouton.
+  [].slice.call(document.querySelectorAll("[data-depot]")).forEach(function (forme) {
+    var champ = forme.querySelector("[data-depot-champ]");
+    var envoi = forme.querySelector("[data-depot-envoi]");
+    if (!champ) { return; }
+
+    // Avec JavaScript, le depot suffit : le bouton ne sert plus qu au clavier.
+    var transfertPossible = "DataTransfer" in window && "files" in champ;
+
+    champ.addEventListener("change", function () {
+      if (champ.files && champ.files.length) { forme.submit(); }
+    });
+
+    ["dragenter", "dragover"].forEach(function (nom) {
+      forme.addEventListener(nom, function (evenement) {
+        evenement.preventDefault();
+        forme.classList.add("depot--survol");
+      });
+    });
+
+    ["dragleave", "dragend"].forEach(function (nom) {
+      forme.addEventListener(nom, function () { forme.classList.remove("depot--survol"); });
+    });
+
+    forme.addEventListener("drop", function (evenement) {
+      evenement.preventDefault();
+      forme.classList.remove("depot--survol");
+      var fichiers = evenement.dataTransfer && evenement.dataTransfer.files;
+      if (!fichiers || !fichiers.length || !transfertPossible) { return; }
+      champ.files = fichiers;
+      forme.submit();
+    });
+
+    if (envoi) { envoi.textContent = "Joindre les fichiers choisis"; }
+  });
+
 })();

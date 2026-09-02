@@ -130,6 +130,41 @@ final class CoursController
     }
 
     /**
+     * Joint des fichiers à un cours depuis sa propre page.
+     * C'est ce qu'appelle le dépôt de fichiers, sans passer par « Modifier ».
+     */
+    public function joindre(int $id): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $userId = Auth::id();
+
+        if (Database::valeur('SELECT id FROM cours WHERE id = ? AND user_id = ?', [$id, $userId]) === null) {
+            $this->introuvable();
+        }
+
+        if (!isset($_FILES['fichiers']) || !is_array($_FILES['fichiers']['name'] ?? null)) {
+            Session::flash('erreur', 'Aucun fichier reçu.');
+            redirect('cours/' . $id);
+        }
+
+        $avant = (int) Database::valeur('SELECT COUNT(*) FROM fichiers WHERE cours_id = ?', [$id]);
+        $erreurs = Fichiers::enregistrer($_FILES['fichiers'], $id, $userId);
+        $ajoutes = (int) Database::valeur('SELECT COUNT(*) FROM fichiers WHERE cours_id = ?', [$id]) - $avant;
+
+        foreach ($erreurs as $erreur) {
+            Session::flash('erreur', $erreur);
+        }
+        if ($ajoutes > 0) {
+            Session::flash('succes', $ajoutes . ' fichier' . ($ajoutes > 1 ? 's joints' : ' joint') . '.');
+        } elseif ($erreurs === []) {
+            Session::flash('erreur', 'Aucun fichier reçu.');
+        }
+
+        redirect('cours/' . $id);
+    }
+
+    /**
      * Range un cours dans un dossier, sans passer par le formulaire.
      * C'est ce qu'appelle le glisser-déposer depuis la liste des cours.
      */
