@@ -134,6 +134,47 @@ $ligneTache = static function (array $t) use ($csrf, $contexte, $listes, $vue): 
     <span></span>
   <?php endif; ?>
 
+  <div class="barre-taches__actions">
+
+  <?php // Une sous-tâche, rangée dans la tâche principale de votre choix. ?>
+  <?php if ($listes !== []): ?>
+    <details class="nouvelle-liste nouvelle-tache">
+      <summary class="bouton bouton--petit bouton--secondaire">+ Nouvelle sous-tâche</summary>
+      <div class="nouvelle-liste__panneau carte">
+        <h2 style="margin-top:0">Nouvelle sous-tâche</h2>
+        <form method="post" action="<?= url('taches') ?>">
+          <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+
+          <div class="champ">
+            <label for="st-liste">Tâche principale</label>
+            <select id="st-liste" name="liste_id" required>
+              <?php foreach ($listes as $l): ?>
+                <option value="<?= (int) $l['id'] ?>"
+                        <?= (int) $l['id'] === (int) $listeOuverte ? ' selected' : '' ?>>
+                  <?= e($l['icone'] . ' ' . $l['nom']) ?>
+                </option>
+              <?php endforeach; ?>
+            </select>
+            <span class="champ__aide">La liste dans laquelle ranger cette sous-tâche.</span>
+          </div>
+
+          <div class="champ">
+            <label for="st-titre">Tâche</label>
+            <input type="text" id="st-titre" name="titre" required maxlength="200"
+                   placeholder="Relire le chapitre 3">
+          </div>
+
+          <div class="champ">
+            <label for="st-echeance">Échéance <span class="discret">(facultative)</span></label>
+            <input type="date" id="st-echeance" name="echeance">
+          </div>
+
+          <button class="bouton bouton--bloc" type="submit">Ajouter la sous-tâche</button>
+        </form>
+      </div>
+    </details>
+  <?php endif; ?>
+
   <?php // Le formulaire s'ouvre en panneau, sous le bouton. ?>
   <details class="nouvelle-liste"<?= $listes === [] ? ' open' : '' ?>>
     <summary class="bouton bouton--petit">+ Nouvelle liste</summary>
@@ -177,6 +218,8 @@ $ligneTache = static function (array $t) use ($csrf, $contexte, $listes, $vue): 
       </form>
     </div>
   </details>
+
+  </div>
 </div>
 
 <div class="taches-vue">

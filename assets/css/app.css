@@ -794,3 +794,13 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
   border-style: solid; border-color: var(--accent);
   background: var(--accent-doux); transform: scale(1.02);
 }
+
+/* Les deux boutons de création, groupés au bout de la barre. */
+.barre-taches__actions {
+  display: flex; align-items: flex-end; gap: .5rem; flex: none;
+}
+
+@media (max-width: 640px) {
+  .barre-taches__actions { width: 100%; }
+  .barre-taches__actions > .nouvelle-liste { flex: 1; }
+}
