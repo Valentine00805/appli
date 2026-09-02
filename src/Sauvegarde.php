@@ -28,10 +28,12 @@ final class Sauvegarde
      */
     private const TABLES = [
         'matieres'          => ['portee' => 'user',  'liens' => []],
+        'dossiers'          => ['portee' => 'user',  'liens' => []],
         'tags'              => ['portee' => 'user',  'liens' => []],
         'types_evenement'   => ['portee' => 'user',  'liens' => []],
         'categories_budget' => ['portee' => 'user',  'liens' => []],
-        'cours'             => ['portee' => 'user',  'liens' => ['matiere_id' => 'matieres']],
+        'cours'             => ['portee' => 'user',  'liens' => [
+            'matiere_id' => 'matieres', 'dossier_id' => 'dossiers']],
         'cours_tag'         => ['portee' => 'cours', 'liens' => ['cours_id' => 'cours', 'tag_id' => 'tags']],
         'fichiers'          => ['portee' => 'user',  'liens' => ['cours_id' => 'cours']],
         'evenements'        => ['portee' => 'user',  'liens' => [

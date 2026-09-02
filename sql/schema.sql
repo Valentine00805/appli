@@ -28,10 +28,24 @@ CREATE TABLE IF NOT EXISTS `matieres` (
   CONSTRAINT `fk_matieres_user` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS `dossiers` (
+  `id`         INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `user_id`    INT UNSIGNED NOT NULL,
+  `nom`        VARCHAR(120) NOT NULL,
+  `couleur`    CHAR(7)      NOT NULL DEFAULT '#4f46e5',
+  `icone`      VARCHAR(8)   NOT NULL DEFAULT '📁',
+  `position`   INT UNSIGNED NOT NULL DEFAULT 0,
+  `created_at` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_dossier_user_nom` (`user_id`, `nom`),
+  KEY `idx_dossier_position` (`user_id`, `position`),
+  CONSTRAINT `fk_dossiers_user` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 CREATE TABLE IF NOT EXISTS `cours` (
   `id`         INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `user_id`    INT UNSIGNED NOT NULL,
   `matiere_id` INT UNSIGNED DEFAULT NULL,
+  `dossier_id` INT UNSIGNED DEFAULT NULL,
   `titre`      VARCHAR(200) NOT NULL,
   `contenu`    LONGTEXT     NULL,
   `favori`     TINYINT(1)   NOT NULL DEFAULT 0,
@@ -40,9 +54,11 @@ CREATE TABLE IF NOT EXISTS `cours` (
   PRIMARY KEY (`id`),
   KEY `idx_cours_user` (`user_id`),
   KEY `idx_cours_matiere` (`matiere_id`),
+  KEY `idx_cours_dossier` (`dossier_id`),
   KEY `idx_cours_titre` (`titre`),
   CONSTRAINT `fk_cours_user`    FOREIGN KEY (`user_id`)    REFERENCES `users`(`id`)    ON DELETE CASCADE,
-  CONSTRAINT `fk_cours_matiere` FOREIGN KEY (`matiere_id`) REFERENCES `matieres`(`id`) ON DELETE SET NULL
+  CONSTRAINT `fk_cours_matiere` FOREIGN KEY (`matiere_id`) REFERENCES `matieres`(`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_cours_dossier` FOREIGN KEY (`dossier_id`) REFERENCES `dossiers`(`id`)  ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `tags` (

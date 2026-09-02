@@ -12,6 +12,7 @@ require __DIR__ . '/controllers/AuthController.php';
 require __DIR__ . '/controllers/CoursController.php';
 require __DIR__ . '/controllers/CalendrierController.php';
 require __DIR__ . '/controllers/MatieresController.php';
+require __DIR__ . '/controllers/DossiersController.php';
 require __DIR__ . '/controllers/TypesEvenementController.php';
 require __DIR__ . '/controllers/TagsController.php';
 require __DIR__ . '/controllers/OrganisationController.php';
@@ -65,6 +66,12 @@ $routes = [
     ['GET',  'organisation/matieres',      [MatieresController::class, 'index']],
     ['GET',  'organisation/types',         [TypesEvenementController::class, 'index']],
     ['GET',  'organisation/tags',          [TagsController::class, 'index']],
+    ['GET',  'organisation/dossiers',      [DossiersController::class, 'index']],
+
+    ['POST', 'dossiers',                   [DossiersController::class, 'creer']],
+    ['POST', 'dossiers/{id}/modifier',     [DossiersController::class, 'modifier']],
+    ['POST', 'dossiers/{id}/supprimer',    [DossiersController::class, 'supprimer']],
+    ['POST', 'dossiers/{id}/deplacer',     [DossiersController::class, 'deplacer']],
 
     // Anciennes adresses, conservées pour les liens déjà enregistrés.
     ['GET',  'matieres',                  [OrganisationController::class, 'ancienneAdresse']],

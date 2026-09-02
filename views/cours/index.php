@@ -49,6 +49,20 @@
     </div>
   <?php endif; ?>
 
+  <?php if ($dossiers !== []): ?>
+    <div class="champ">
+      <label for="f-dossier">Dossier</label>
+      <select id="f-dossier" name="dossier">
+        <option value="">Tous</option>
+        <?php foreach ($dossiers as $d): ?>
+          <option value="<?= (int) $d['id'] ?>"<?= $dossierId === (int) $d['id'] ? ' selected' : '' ?>>
+            <?= e($d['icone'] . ' ' . $d['nom']) ?> (<?= (int) $d['nb_cours'] ?>)
+          </option>
+        <?php endforeach; ?>
+      </select>
+    </div>
+  <?php endif; ?>
+
   <div class="champ">
     <label for="f-tri">Trier par</label>
     <select id="f-tri" name="tri">

@@ -312,3 +312,10 @@ function asset(string $chemin): string
     $absolu = dirname(__DIR__) . '/' . ltrim($chemin, '/');
     return url($chemin) . '?v=' . (is_file($absolu) ? (string) filemtime($absolu) : '0');
 }
+
+/** Emoji proposés pour un dossier de cours. */
+function icones_dossiers(): array
+{
+    return ['📁', '📂', '🗂️', '📚', '🎓', '🔬', '🧮', '🗓️', '📦', '⭐',
+        '🧪', '💼', '🎨', '🌍', '💻', '🏛️'];
+}

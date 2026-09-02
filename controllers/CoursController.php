@@ -11,18 +11,21 @@ final class CoursController
         $recherche = trim((string) ($_GET['q'] ?? ''));
         $matiereId = entier_ou_null($_GET['matiere'] ?? null);
         $tagId     = entier_ou_null($_GET['tag'] ?? null);
+        $dossierId = entier_ou_null($_GET['dossier'] ?? null);
         $favoris   = isset($_GET['favoris']);
         $tri       = in_array($_GET['tri'] ?? '', ['titre', 'ancien'], true) ? (string) $_GET['tri'] : 'recent';
 
-        $cours = $this->chercher($userId, $recherche, $matiereId, $tagId, $favoris, $tri);
+        $cours = $this->chercher($userId, $recherche, $matiereId, $tagId, $dossierId, $favoris, $tri);
 
         Vue::afficher('cours/index', [
             'cours'     => $cours,
             'matieres'  => $this->matieres($userId),
             'tags'      => $this->tags($userId),
+            'dossiers'  => DossiersController::pourUtilisateur($userId, true),
             'recherche' => $recherche,
             'matiereId' => $matiereId,
             'tagId'     => $tagId,
+            'dossierId' => $dossierId,
             'favoris'   => $favoris,
             'tri'       => $tri,
         ], 'Mes cours');
@@ -111,6 +114,7 @@ final class CoursController
         Vue::afficher('cours/formulaire', [
             'cours'            => $cours,
             'matieres'         => $this->matieres($userId),
+            'dossiers'         => DossiersController::pourUtilisateur($userId),
             'tagsCours'        => implode(', ', $tagsCours),
             'fichiers'         => $id !== null
                 ? Database::all('SELECT * FROM fichiers WHERE cours_id = ? ORDER BY created_at', [$id])
@@ -133,10 +137,11 @@ final class CoursController
         }
 
         Database::run(
-            'INSERT INTO cours (user_id, matiere_id, titre, contenu) VALUES (?, ?, ?, ?)',
+            'INSERT INTO cours (user_id, matiere_id, dossier_id, titre, contenu) VALUES (?, ?, ?, ?, ?)',
             [
                 $userId,
                 $this->matiereValide($userId, $_POST['matiere_id'] ?? null),
+                DossiersController::valide($userId, $_POST['dossier_id'] ?? null),
                 mb_substr($titre, 0, 200),
                 post('contenu'),
             ]
@@ -167,9 +172,10 @@ final class CoursController
         }
 
         Database::run(
-            'UPDATE cours SET matiere_id = ?, titre = ?, contenu = ? WHERE id = ? AND user_id = ?',
+            'UPDATE cours SET matiere_id = ?, dossier_id = ?, titre = ?, contenu = ? WHERE id = ? AND user_id = ?',
             [
                 $this->matiereValide($userId, $_POST['matiere_id'] ?? null),
+                DossiersController::valide($userId, $_POST['dossier_id'] ?? null),
                 mb_substr($titre, 0, 200),
                 post('contenu'),
                 $id,
@@ -246,13 +252,16 @@ final class CoursController
         string $recherche,
         ?int $matiereId,
         ?int $tagId,
+        ?int $dossierId,
         bool $favoris,
         string $tri
     ): array {
         $sql = 'SELECT c.*, m.nom AS matiere_nom, m.couleur AS matiere_couleur,
+                       d.nom AS dossier_nom, d.couleur AS dossier_couleur, d.icone AS dossier_icone,
                        (SELECT COUNT(*) FROM fichiers f WHERE f.cours_id = c.id) AS nb_fichiers
                 FROM cours c
                 LEFT JOIN matieres m ON m.id = c.matiere_id
+                LEFT JOIN dossiers d ON d.id = c.dossier_id
                 WHERE c.user_id = ?';
         $params = [$userId];
 
@@ -267,6 +276,10 @@ final class CoursController
         if ($tagId !== null) {
             $sql .= ' AND EXISTS (SELECT 1 FROM cours_tag ct WHERE ct.cours_id = c.id AND ct.tag_id = ?)';
             $params[] = $tagId;
+        }
+        if ($dossierId !== null) {
+            $sql .= ' AND c.dossier_id = ?';
+            $params[] = $dossierId;
         }
         if ($favoris) {
             $sql .= ' AND c.favori = 1';

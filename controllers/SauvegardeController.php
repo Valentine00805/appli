@@ -16,6 +16,7 @@ final class SauvegardeController
             'resume' => Sauvegarde::resume($userId),
             'libelles' => [
                 'matieres'          => 'matières',
+                'dossiers'          => 'dossiers',
                 'tags'              => 'tags',
                 'types_evenement'   => 'types d’évènement',
                 'categories_budget' => 'catégories de budget',

@@ -1,11 +1,12 @@
 <?php
 /**
  * Sous-navigation de la section Organisation.
- * @var string $onglet  matieres | types | tags
+ * @var string $onglet  matieres, types, dossiers ou tags
  */
 $liens = [
     'matieres' => ['libelle' => 'Matières', 'icone' => '🎨'],
     'types'    => ['libelle' => "Types d'évènement", 'icone' => '🏷️'],
+    'dossiers' => ['libelle' => 'Dossiers', 'icone' => '📁'],
     'tags'     => ['libelle' => 'Tags', 'icone' => '#'],
 ];
 ?>

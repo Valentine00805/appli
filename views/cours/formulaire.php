@@ -9,6 +9,7 @@
 $edition = $cours !== null;
 $action = $edition ? url('cours/' . $cours['id'] . '/modifier') : url('cours/nouveau');
 $matiereActive = $edition ? entier_ou_null($cours['matiere_id']) : $matiereSelection;
+$dossierActif  = $edition ? entier_ou_null($cours['dossier_id']) : entier_ou_null($_GET['dossier'] ?? null);
 ?>
 
 <div class="entete-page">
@@ -53,6 +54,22 @@ $matiereActive = $edition ? entier_ou_null($cours['matiere_id']) : $matiereSelec
             <?php endforeach; ?>
           </select>
           <span class="champ__aide"><a href="<?= url('organisation/matieres') ?>">Gérer mes matières</a></span>
+        </div>
+
+        <div class="champ">
+          <label for="dossier_id">Dossier</label>
+          <select id="dossier_id" name="dossier_id">
+            <option value="">— Aucun —</option>
+            <?php foreach ($dossiers as $d): ?>
+              <option value="<?= (int) $d['id'] ?>"<?= $dossierActif === (int) $d['id'] ? ' selected' : '' ?>>
+                <?= e($d['icone'] . ' ' . $d['nom']) ?>
+              </option>
+            <?php endforeach; ?>
+          </select>
+          <span class="champ__aide">
+            Où ranger ce cours, indépendamment de sa matière —
+            <a href="<?= url('organisation/dossiers') ?>">gérer mes dossiers</a>.
+          </span>
         </div>
 
         <div class="champ">
