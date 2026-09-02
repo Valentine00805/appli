@@ -610,12 +610,36 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
 }
 .liste-carte--active .liste-carte__chevron { transform: rotate(90deg); color: var(--accent); }
 
+/* La barre du haut : les filtres à gauche, la création à droite. */
+.barre-taches {
+  display: flex; align-items: flex-end; justify-content: space-between;
+  gap: 1rem; flex-wrap: wrap;
+  border-bottom: 1px solid var(--bordure);
+  margin: -.4rem 0 1.4rem;
+}
+.barre-taches .onglets { border-bottom: 0; margin: 0; flex: 1 1 auto; min-width: 0; }
+
+/* Le bouton ouvre un panneau posé sous lui, sans pousser la page. */
+.nouvelle-liste { position: relative; margin-bottom: .45rem; flex: none; }
 .nouvelle-liste > summary {
-  cursor: pointer; font-weight: 650; color: var(--accent-fonce);
-  list-style: none;
+  cursor: pointer; list-style: none;
+  /* Le <summary> porte les classes .bouton : on neutralise le marqueur. */
 }
 .nouvelle-liste > summary::-webkit-details-marker { display: none; }
-.nouvelle-liste > summary:hover { text-decoration: underline; }
+.nouvelle-liste > summary::marker { content: ""; }
+
+.nouvelle-liste__panneau {
+  position: absolute; right: 0; top: calc(100% + .5rem); z-index: 20;
+  width: min(22rem, calc(100vw - 2rem));
+  box-shadow: 0 12px 30px rgba(15, 23, 42, .18);
+}
+
+@media (max-width: 640px) {
+  .barre-taches { align-items: stretch; }
+  .nouvelle-liste { margin-bottom: .6rem; }
+  .nouvelle-liste > summary { justify-content: center; width: 100%; }
+  .nouvelle-liste__panneau { right: auto; left: 0; }
+}
 
 /* Le volet : il suit la page tant qu'il tient à l'écran. */
 .volet { position: sticky; top: 1rem; }

@@ -117,19 +117,67 @@ $ligneTache = static function (array $t) use ($csrf, $contexte, $listes, $vue): 
   </div>
 </div>
 
-<?php if ($listes !== []): ?>
-  <nav class="onglets" aria-label="Filtrer les tâches">
-    <?php foreach ($onglets as $cle => [$libelle, $nombre]): ?>
-      <a href="<?= $cle === 'tout' ? url('taches') : url('taches', ['vue' => $cle]) ?>"
-         <?= $vue === $cle ? ' aria-current="page"' : '' ?>>
-        <?= e($libelle) ?>
-        <?php if ($nombre > 0): ?>
-          <span class="onglets__compteur<?= $cle === 'retard' ? ' onglets__compteur--alerte' : '' ?>"><?= $nombre ?></span>
-        <?php endif; ?>
-      </a>
-    <?php endforeach; ?>
-  </nav>
-<?php endif; ?>
+<div class="barre-taches">
+  <?php if ($listes !== []): ?>
+    <nav class="onglets" aria-label="Filtrer les tâches">
+      <?php foreach ($onglets as $cle => [$libelle, $nombre]): ?>
+        <a href="<?= $cle === 'tout' ? url('taches') : url('taches', ['vue' => $cle]) ?>"
+           <?= $vue === $cle ? ' aria-current="page"' : '' ?>>
+          <?= e($libelle) ?>
+          <?php if ($nombre > 0): ?>
+            <span class="onglets__compteur<?= $cle === 'retard' ? ' onglets__compteur--alerte' : '' ?>"><?= $nombre ?></span>
+          <?php endif; ?>
+        </a>
+      <?php endforeach; ?>
+    </nav>
+  <?php else: ?>
+    <span></span>
+  <?php endif; ?>
+
+  <?php // Le formulaire s'ouvre en panneau, sous le bouton. ?>
+  <details class="nouvelle-liste"<?= $listes === [] ? ' open' : '' ?>>
+    <summary class="bouton bouton--petit">+ Nouvelle liste</summary>
+    <div class="nouvelle-liste__panneau carte">
+      <h2 style="margin-top:0">Nouvelle liste</h2>
+      <form method="post" action="<?= url('taches/listes') ?>">
+        <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+
+        <div class="champ">
+          <label for="nom">Nom</label>
+          <input type="text" id="nom" name="nom" required maxlength="120" placeholder="Cette semaine">
+        </div>
+
+        <div class="champ">
+          <label for="ech-liste">Échéance <span class="discret">(facultative)</span></label>
+          <input type="date" id="ech-liste" name="echeance">
+          <span class="champ__aide">La date de la tâche principale, indépendante de ses sous-tâches.</span>
+        </div>
+
+        <div class="champ">
+          <span class="legende">Icône</span>
+          <div class="choix-icones">
+            <?php foreach ($icones as $i => $icone): ?>
+              <input type="radio" id="ni-<?= $i ?>" name="icone" value="<?= e($icone) ?>"<?= $i === 0 ? ' checked' : '' ?>>
+              <label for="ni-<?= $i ?>"><?= e($icone) ?></label>
+            <?php endforeach; ?>
+          </div>
+        </div>
+
+        <div class="champ">
+          <span class="legende">Couleur</span>
+          <div class="choix-couleurs">
+            <?php foreach ($palette as $i => $couleur): ?>
+              <input type="radio" id="nc-<?= $i ?>" name="couleur" value="<?= e($couleur) ?>"<?= $i === 0 ? ' checked' : '' ?>>
+              <label for="nc-<?= $i ?>" style="background:<?= e($couleur) ?>" title="<?= e($couleur) ?>"></label>
+            <?php endforeach; ?>
+          </div>
+        </div>
+
+        <button class="bouton bouton--bloc" type="submit">Créer la liste</button>
+      </form>
+    </div>
+  </details>
+</div>
 
 <div class="taches-vue">
 
@@ -139,8 +187,8 @@ $ligneTache = static function (array $t) use ($csrf, $contexte, $listes, $vue): 
       <div class="vide">
         <span class="vide__icone">📋</span>
         <p>
-          Aucune liste pour l'instant. Créez-en une ci-contre — « Cette semaine »,
-          « Dossier d'inscription », « Courses »… — puis ajoutez-y vos tâches.
+          Aucune liste pour l'instant. Créez-en une avec le bouton « + Nouvelle liste »,
+          en haut à droite — « Cette semaine », « Dossier d'inscription », « Courses »…
         </p>
       </div>
     <?php else: ?>
@@ -269,45 +317,6 @@ $ligneTache = static function (array $t) use ($csrf, $contexte, $listes, $vue): 
       </form>
     <?php endif; ?>
 
-    <details class="carte nouvelle-liste"<?= $listes === [] ? ' open' : '' ?>>
-      <summary>+ Nouvelle liste</summary>
-      <form method="post" action="<?= url('taches/listes') ?>" style="margin-top:.9rem">
-        <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
-
-        <div class="champ">
-          <label for="nom">Nom</label>
-          <input type="text" id="nom" name="nom" required maxlength="120" placeholder="Cette semaine">
-        </div>
-
-        <div class="champ">
-          <label for="ech-liste">Échéance <span class="discret">(facultative)</span></label>
-          <input type="date" id="ech-liste" name="echeance">
-          <span class="champ__aide">La date de la tâche principale, indépendante de ses sous-tâches.</span>
-        </div>
-
-        <div class="champ">
-          <span class="legende">Icône</span>
-          <div class="choix-icones">
-            <?php foreach ($icones as $i => $icone): ?>
-              <input type="radio" id="ni-<?= $i ?>" name="icone" value="<?= e($icone) ?>"<?= $i === 0 ? ' checked' : '' ?>>
-              <label for="ni-<?= $i ?>"><?= e($icone) ?></label>
-            <?php endforeach; ?>
-          </div>
-        </div>
-
-        <div class="champ">
-          <span class="legende">Couleur</span>
-          <div class="choix-couleurs">
-            <?php foreach ($palette as $i => $couleur): ?>
-              <input type="radio" id="nc-<?= $i ?>" name="couleur" value="<?= e($couleur) ?>"<?= $i === 0 ? ' checked' : '' ?>>
-              <label for="nc-<?= $i ?>" style="background:<?= e($couleur) ?>" title="<?= e($couleur) ?>"></label>
-            <?php endforeach; ?>
-          </div>
-        </div>
-
-        <button class="bouton bouton--bloc" type="submit">Créer la liste</button>
-      </form>
-    </details>
   </div>
 
   <!-- Volet de droite : la tâche principale ouverte, et ses sous-tâches. -->
