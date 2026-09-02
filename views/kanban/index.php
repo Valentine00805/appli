@@ -93,23 +93,51 @@ $total = array_sum(array_map('count', $parColonne));
               <span class="echeance">Sans échéance</span>
             <?php endif; ?>
 
-            <?php // La remarque : affichée si elle existe, modifiable d'un clic. ?>
-            <details class="kanban-note"<?= $carte['note'] !== '' ? ' open' : '' ?>>
-              <summary><?= $carte['note'] !== '' ? '📝 Remarque' : '📝 Ajouter une remarque' ?></summary>
-              <form method="post" action="<?= url('tableau/note') ?>">
-                <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
-                <input type="hidden" name="retour" value="<?= e((string) ($_SERVER['REQUEST_URI'] ?? '')) ?>">
-                <input type="hidden" name="carte" value="<?= (int) $carte['id'] ?>">
-                <input type="hidden" name="nature" value="<?= e($carte['nature']) ?>">
-                <label class="sr-only" for="note-<?= e($carte['nature']) ?>-<?= (int) $carte['id'] ?>">
-                  Remarque sur « <?= e($carte['titre']) ?> »
-                </label>
-                <textarea id="note-<?= e($carte['nature']) ?>-<?= (int) $carte['id'] ?>"
-                          name="note" rows="3" maxlength="500"
-                          placeholder="Revoir la partie 3 avant de rendre…"><?= e($carte['note']) ?></textarea>
-                <button class="bouton bouton--petit bouton--bloc" type="submit">Enregistrer</button>
-              </form>
-            </details>
+            <?php
+            // Une remarque enregistrée s'affiche simplement : on clique dessus
+            // pour la reprendre, la corbeille l'efface. Le formulaire ne
+            // réapparaît qu'à la demande.
+            $champNote = 'note-' . $carte['nature'] . '-' . $carte['id'];
+            $aUneNote  = $carte['note'] !== '';
+            ?>
+            <div class="kanban-note<?= $aUneNote ? ' kanban-note--remplie' : '' ?>">
+              <details>
+                <summary title="<?= $aUneNote ? 'Modifier la remarque' : 'Ajouter une remarque' ?>">
+                  <?php if ($aUneNote): ?>
+                    <span class="kanban-note__texte">📝 <?= e($carte['note']) ?></span>
+                  <?php else: ?>
+                    <span class="kanban-note__ajout">📝 Ajouter une remarque</span>
+                  <?php endif; ?>
+                  <span class="kanban-note__icone" aria-hidden="true"><?= $aUneNote ? '✎' : '+' ?></span>
+                </summary>
+
+                <form method="post" action="<?= url('tableau/note') ?>">
+                  <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+                  <input type="hidden" name="retour" value="<?= e((string) ($_SERVER['REQUEST_URI'] ?? '')) ?>">
+                  <input type="hidden" name="carte" value="<?= (int) $carte['id'] ?>">
+                  <input type="hidden" name="nature" value="<?= e($carte['nature']) ?>">
+                  <label class="sr-only" for="<?= e($champNote) ?>">
+                    Remarque sur « <?= e($carte['titre']) ?> »
+                  </label>
+                  <textarea id="<?= e($champNote) ?>" name="note" rows="3" maxlength="500"
+                            placeholder="Revoir la partie 3 avant de rendre…"><?= e($carte['note']) ?></textarea>
+                  <button class="bouton bouton--petit bouton--bloc" type="submit">Enregistrer</button>
+                </form>
+              </details>
+
+              <?php if ($aUneNote): ?>
+                <form method="post" action="<?= url('tableau/note') ?>" class="kanban-note__supprimer"
+                      data-confirmation="Supprimer cette remarque ?">
+                  <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+                  <input type="hidden" name="retour" value="<?= e((string) ($_SERVER['REQUEST_URI'] ?? '')) ?>">
+                  <input type="hidden" name="carte" value="<?= (int) $carte['id'] ?>">
+                  <input type="hidden" name="nature" value="<?= e($carte['nature']) ?>">
+                  <input type="hidden" name="note" value="">
+                  <button type="submit" title="Supprimer la remarque"
+                          aria-label="Supprimer la remarque de « <?= e($carte['titre']) ?> »">🗑</button>
+                </form>
+              <?php endif; ?>
+            </div>
 
             <?php // Sans glisser-déposer, ces boutons déplacent la carte. ?>
             <div class="kanban-carte__deplacer">
