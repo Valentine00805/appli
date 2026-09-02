@@ -1049,3 +1049,11 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
 .apercu-document { max-width: 46rem; line-height: 1.7; }
 .apercu-document p { margin: 0 0 .9em; overflow-wrap: anywhere; }
 .apercu-document p:last-child { margin-bottom: 0; }
+
+/* Aperçu d'un classeur : lignes numérotées, colonnes lisibles. */
+.apercu-classeur { font-size: .88rem; white-space: nowrap; }
+.apercu-classeur td { max-width: 22rem; overflow: hidden; text-overflow: ellipsis; }
+.apercu-classeur__num {
+  color: var(--texte-doux); font-weight: 500; text-align: right;
+  font-variant-numeric: tabular-nums; padding-right: .8rem;
+}

@@ -25,10 +25,112 @@ final class ApercuDocument
         'odp'  => ['content.xml',             ['text:p', 'text:h']],
     ];
 
+    /** Formats présentés sous forme de tableau plutôt que de paragraphes. */
+    private const TABLEURS = ['xlsx', 'csv'];
+
+    /** Lignes affichées au plus : un gros classeur ne doit pas noyer la page. */
+    public const LIGNES_MAX = 500;
+
     /** Ce fichier peut-il être présenté en aperçu ? */
     public static function possible(string $nomOrigine): bool
     {
-        return array_key_exists(self::extension($nomOrigine), self::FORMATS);
+        $ext = self::extension($nomOrigine);
+        return array_key_exists($ext, self::FORMATS) || in_array($ext, self::TABLEURS, true);
+    }
+
+    /** Cet aperçu est-il un tableau ? */
+    public static function estTableur(string $nomOrigine): bool
+    {
+        return in_array(self::extension($nomOrigine), self::TABLEURS, true);
+    }
+
+    /**
+     * Les lignes d'un tableur, chacune étant un tableau de cellules.
+     * Les colonnes absentes d'une ligne sont comblées : le tableau reste droit.
+     *
+     * @return array{lignes: array<int, array<int, string>>, total: int}
+     * @throws RuntimeException si le fichier est illisible
+     */
+    public static function tableau(string $chemin, string $nomOrigine): array
+    {
+        $brut = self::extension($nomOrigine) === 'csv'
+            ? self::lireCsv($chemin)
+            : array_values(ClasseurLecteur::lire($chemin));
+
+        $total = count($brut);
+
+        // Toutes les colonnes rencontrées, pour donner la même largeur à chaque ligne.
+        $colonnes = [];
+        foreach (array_slice($brut, 0, self::LIGNES_MAX) as $ligne) {
+            foreach (array_keys($ligne) as $colonne) {
+                $colonnes[(string) $colonne] = true;
+            }
+        }
+        $colonnes = array_keys($colonnes);
+        usort($colonnes, static fn (string $a, string $b): int => [strlen($a), $a] <=> [strlen($b), $b]);
+
+        $lignes = [];
+        foreach (array_slice($brut, 0, self::LIGNES_MAX) as $ligne) {
+            $droite = [];
+            foreach ($colonnes as $colonne) {
+                $droite[] = (string) ($ligne[$colonne] ?? '');
+            }
+            // Une ligne entièrement vide n'apporte rien.
+            if (implode('', $droite) !== '') {
+                $lignes[] = $droite;
+            }
+        }
+
+        return ['lignes' => $lignes, 'total' => $total];
+    }
+
+    /**
+     * Les lignes d'un fichier CSV, séparateur deviné entre « ; » et « , ».
+     * @return array<int, array<int, string>>
+     */
+    private static function lireCsv(string $chemin): array
+    {
+        $flux = fopen($chemin, 'rb');
+        if ($flux === false) {
+            throw new RuntimeException('Le fichier est illisible.');
+        }
+
+        try {
+            $premiere = (string) fgets($flux);
+            // Le point-virgule est la norme des tableurs français.
+            $separateur = substr_count($premiere, ';') >= substr_count($premiere, ',') ? ';' : ',';
+            rewind($flux);
+
+            $lignes = [];
+            while (($cellules = fgetcsv($flux, 0, $separateur, '"', '\\')) !== false) {
+                if ($cellules === [null]) {
+                    continue;
+                }
+                $lignes[] = array_map(
+                    static fn ($c): string => self::enUtf8((string) ($c ?? '')),
+                    $cellules
+                );
+                if (count($lignes) > self::LIGNES_MAX) {
+                    // On continue à compter sans tout garder en mémoire.
+                    while (fgetcsv($flux, 0, $separateur, '"', '\\') !== false) {
+                        $lignes[] = [];
+                    }
+                    break;
+                }
+            }
+            return $lignes;
+        } finally {
+            fclose($flux);
+        }
+    }
+
+    /** Un CSV exporté depuis Excel est souvent en Windows-1252, pas en UTF-8. */
+    private static function enUtf8(string $texte): string
+    {
+        if ($texte === '' || mb_check_encoding($texte, 'UTF-8')) {
+            return $texte;
+        }
+        return (string) mb_convert_encoding($texte, 'UTF-8', 'Windows-1252');
     }
 
     /** Nom lisible du format, pour l'expliquer à l'écran. */
@@ -39,6 +141,8 @@ final class ApercuDocument
             'odt'   => 'document LibreOffice',
             'pptx'  => 'présentation PowerPoint',
             'odp'   => 'présentation LibreOffice',
+            'xlsx'  => 'classeur Excel',
+            'csv'   => 'fichier CSV',
             default => 'document',
         };
     }

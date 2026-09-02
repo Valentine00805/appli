@@ -152,21 +152,34 @@ final class CoursController
         }
 
         $chemin = Config::get('app', 'dossier_uploads') . DIRECTORY_SEPARATOR . $fichier['nom_stocke'];
+        $nom = (string) $fichier['nom_origine'];
+        $estTableur = ApercuDocument::estTableur($nom);
+
         $paragraphes = [];
+        $lignes = [];
+        $total = 0;
         $erreur = null;
 
         try {
-            $paragraphes = ApercuDocument::paragraphes((string) $chemin, (string) $fichier['nom_origine']);
+            if ($estTableur) {
+                ['lignes' => $lignes, 'total' => $total] = ApercuDocument::tableau((string) $chemin, $nom);
+            } else {
+                $paragraphes = ApercuDocument::paragraphes((string) $chemin, $nom);
+            }
         } catch (Throwable $e) {
             $erreur = $e->getMessage();
         }
 
         Vue::afficher('cours/apercu', [
             'fichier'     => $fichier,
+            'estTableur'  => $estTableur,
             'paragraphes' => $paragraphes,
+            'lignes'      => $lignes,
+            'total'       => $total,
+            'limite'      => ApercuDocument::LIGNES_MAX,
             'erreur'      => $erreur,
-            'format'      => ApercuDocument::format((string) $fichier['nom_origine']),
-        ], (string) $fichier['nom_origine']);
+            'format'      => ApercuDocument::format($nom),
+        ], $nom);
     }
 
     /**
