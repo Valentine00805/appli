@@ -28,7 +28,7 @@ final class Sauvegarde
      */
     private const TABLES = [
         'matieres'          => ['portee' => 'user',  'liens' => []],
-        'dossiers'          => ['portee' => 'user',  'liens' => []],
+        'dossiers'          => ['portee' => 'user',  'liens' => ['parent_id' => 'dossiers']],
         'tags'              => ['portee' => 'user',  'liens' => []],
         'types_evenement'   => ['portee' => 'user',  'liens' => []],
         'categories_budget' => ['portee' => 'user',  'liens' => []],
@@ -232,7 +232,55 @@ final class Sauvegarde
                 [$userId]
             );
         }
-        return Database::all("SELECT * FROM `$table` WHERE user_id = ?", [$userId]);
+        $lignes = Database::all("SELECT * FROM `$table` WHERE user_id = ?", [$userId]);
+
+        // Une table qui se référence elle-même — un dossier rangé dans un autre
+        // — doit sortir parents d'abord : à la restauration, l'identifiant du
+        // parent doit déjà être connu quand son enfant est inséré.
+        $liens = self::TABLES[$table]['liens'] ?? [];
+        foreach ($liens as $colonne => $cible) {
+            if ($cible === $table) {
+                return self::parentsDAbord($lignes, $colonne);
+            }
+        }
+
+        return $lignes;
+    }
+
+    /**
+     * Réordonne des lignes hiérarchiques : chaque ligne suit son parent.
+     * Une référence cassée ne bloque pas — la ligne est simplement traitée
+     * comme une racine.
+     *
+     * @param array<int, array<string, mixed>> $lignes
+     * @return array<int, array<string, mixed>>
+     */
+    private static function parentsDAbord(array $lignes, string $colonne): array
+    {
+        $enfants = [];
+        $connus = [];
+        foreach ($lignes as $ligne) {
+            $connus[(int) $ligne['id']] = true;
+        }
+        foreach ($lignes as $ligne) {
+            $parent = $ligne[$colonne] ?? null;
+            // Un parent absent de l'export vaut racine.
+            $cle = ($parent !== null && isset($connus[(int) $parent])) ? (int) $parent : 0;
+            $enfants[$cle][] = $ligne;
+        }
+
+        $ordonnees = [];
+        $descendre = static function (int $parent, int $profondeur) use (&$descendre, &$ordonnees, $enfants): void {
+            foreach ($enfants[$parent] ?? [] as $ligne) {
+                $ordonnees[] = $ligne;
+                if ($profondeur < 50) {
+                    $descendre((int) $ligne['id'], $profondeur + 1);
+                }
+            }
+        };
+        $descendre(0, 0);
+
+        return $ordonnees;
     }
 
     /** Efface les données du compte, dans l'ordre inverse des dépendances. */

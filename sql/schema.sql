@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS `matieres` (
 CREATE TABLE IF NOT EXISTS `dossiers` (
   `id`         INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `user_id`    INT UNSIGNED NOT NULL,
+  `parent_id`  INT UNSIGNED DEFAULT NULL,
   `nom`        VARCHAR(120) NOT NULL,
   `couleur`    CHAR(7)      NOT NULL DEFAULT '#4f46e5',
   `icone`      VARCHAR(8)   NOT NULL DEFAULT '📁',
@@ -39,7 +40,9 @@ CREATE TABLE IF NOT EXISTS `dossiers` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `uniq_dossier_user_nom` (`user_id`, `nom`),
   KEY `idx_dossier_position` (`user_id`, `position`),
-  CONSTRAINT `fk_dossiers_user` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
+  KEY `idx_dossier_parent` (`parent_id`),
+  CONSTRAINT `fk_dossiers_user`   FOREIGN KEY (`user_id`)   REFERENCES `users`(`id`)    ON DELETE CASCADE,
+  CONSTRAINT `fk_dossiers_parent` FOREIGN KEY (`parent_id`) REFERENCES `dossiers`(`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 CREATE TABLE IF NOT EXISTS `cours` (
   `id`         INT UNSIGNED NOT NULL AUTO_INCREMENT,

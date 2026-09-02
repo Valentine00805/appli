@@ -56,7 +56,7 @@
         <option value="">Tous</option>
         <?php foreach ($dossiers as $d): ?>
           <option value="<?= (int) $d['id'] ?>"<?= $dossierId === (int) $d['id'] ? ' selected' : '' ?>>
-            <?= e($d['icone'] . ' ' . $d['nom']) ?> (<?= (int) $d['nb_cours'] ?>)
+            <?= e(retrait_dossier($d) . $d['icone'] . ' ' . $d['nom']) ?> (<?= (int) $d['nb_cours'] ?>)
           </option>
         <?php endforeach; ?>
       </select>
@@ -78,7 +78,7 @@
   </label>
 
   <button class="bouton bouton--secondaire" type="submit">Filtrer</button>
-  <?php if ($recherche !== '' || $matiereId !== null || $tagId !== null || $favoris): ?>
+  <?php if ($recherche !== '' || $matiereId !== null || $tagId !== null || $dossierId !== null || $favoris): ?>
     <a class="bouton bouton--discret" href="<?= url('cours') ?>">Réinitialiser</a>
   <?php endif; ?>
 </form>
@@ -86,7 +86,7 @@
 <?php if ($cours === []): ?>
   <div class="vide">
     <span class="vide__icone">📄</span>
-    <?php if ($recherche !== '' || $matiereId !== null || $tagId !== null || $favoris): ?>
+    <?php if ($recherche !== '' || $matiereId !== null || $tagId !== null || $dossierId !== null || $favoris): ?>
       <p>Aucun cours ne correspond à ces critères.</p>
       <a class="bouton bouton--secondaire" href="<?= url('cours') ?>">Voir tous les cours</a>
     <?php else: ?>
@@ -105,6 +105,9 @@
             </span>
           <?php else: ?>
             <span class="pastille">Sans matière</span>
+          <?php endif; ?>
+          <?php if ($c['dossier_nom'] !== null): ?>
+            <span class="pastille" title="Dossier"><?= e($c['dossier_icone'] . ' ' . $c['dossier_nom']) ?></span>
           <?php endif; ?>
           <?php if ((int) $c['favori'] === 1): ?><span title="Favori">⭐</span><?php endif; ?>
         </div>

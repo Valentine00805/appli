@@ -278,8 +278,10 @@ final class CoursController
             $params[] = $tagId;
         }
         if ($dossierId !== null) {
-            $sql .= ' AND c.dossier_id = ?';
-            $params[] = $dossierId;
+            // Ouvrir un dossier montre aussi ce que contiennent ses sous-dossiers.
+            $branche = DossiersController::avecDescendants($userId, $dossierId);
+            $sql .= ' AND c.dossier_id IN (' . implode(',', array_fill(0, count($branche), '?')) . ')';
+            array_push($params, ...$branche);
         }
         if ($favoris) {
             $sql .= ' AND c.favori = 1';

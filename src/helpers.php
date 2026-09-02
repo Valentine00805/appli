@@ -319,3 +319,9 @@ function icones_dossiers(): array
     return ['📁', '📂', '🗂️', '📚', '🎓', '🔬', '🧮', '🗓️', '📦', '⭐',
         '🧪', '💼', '🎨', '🌍', '💻', '🏛️'];
 }
+
+/** Décalage visuel d'un dossier selon sa profondeur, dans une liste déroulante. */
+function retrait_dossier(array $dossier): string
+{
+    return str_repeat("\u{00A0}\u{00A0}\u{00A0}", (int) ($dossier['profondeur'] ?? 0));
+}

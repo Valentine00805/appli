@@ -62,7 +62,7 @@ $dossierActif  = $edition ? entier_ou_null($cours['dossier_id']) : entier_ou_nul
             <option value="">— Aucun —</option>
             <?php foreach ($dossiers as $d): ?>
               <option value="<?= (int) $d['id'] ?>"<?= $dossierActif === (int) $d['id'] ? ' selected' : '' ?>>
-                <?= e($d['icone'] . ' ' . $d['nom']) ?>
+                <?= e(retrait_dossier($d) . $d['icone'] . ' ' . $d['nom']) ?>
               </option>
             <?php endforeach; ?>
           </select>

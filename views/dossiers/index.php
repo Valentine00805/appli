@@ -1,5 +1,5 @@
 <?php
-/** @var array $dossiers, $palette, $icones @var int $sansDossier */
+/** @var array $dossiers, $descendants, $palette, $icones @var int $sansDossier */
 $csrf = Session::jetonCsrf();
 $dernier = count($dossiers) - 1;
 ?>
@@ -22,7 +22,19 @@ $dernier = count($dossiers) - 1;
       </div>
     <?php else: ?>
       <?php foreach ($dossiers as $rang => $d): ?>
-        <section class="carte">
+        <?php
+        // Un sous-dossier est décalé, et les flèches ne le comparent qu'à ses frères.
+        $freres = array_values(array_filter(
+            $dossiers,
+            static fn (array $x): bool => ($x['parent_id'] ?? null) == ($d['parent_id'] ?? null)
+        ));
+        $rangFrere = array_search((int) $d['id'], array_map(
+            static fn (array $x): int => (int) $x['id'],
+            $freres
+        ), true);
+        $profondeur = (int) $d['profondeur'];
+        ?>
+        <section class="carte" style="margin-left:<?= $profondeur * 1.6 ?>rem">
           <div class="matiere-carte">
             <span class="matiere-pastille" style="background:<?= e($d['couleur']) ?>;display:grid;place-items:center;font-size:1.1rem">
               <?= e($d['icone']) ?>
@@ -34,18 +46,18 @@ $dernier = count($dossiers) - 1;
               </p>
             </div>
             <div class="actions">
-              <?php if (count($dossiers) > 1): ?>
+              <?php if (count($freres) > 1): ?>
                 <form method="post" action="<?= url('dossiers/' . $d['id'] . '/deplacer') ?>" class="en-ligne">
                   <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
                   <input type="hidden" name="sens" value="haut">
                   <button class="bouton bouton--discret bouton--petit" type="submit"
-                          title="Monter"<?= $rang === 0 ? ' disabled' : '' ?>>↑</button>
+                          title="Monter"<?= $rangFrere === 0 ? ' disabled' : '' ?>>↑</button>
                 </form>
                 <form method="post" action="<?= url('dossiers/' . $d['id'] . '/deplacer') ?>" class="en-ligne">
                   <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
                   <input type="hidden" name="sens" value="bas">
                   <button class="bouton bouton--discret bouton--petit" type="submit"
-                          title="Descendre"<?= $rang === $dernier ? ' disabled' : '' ?>>↓</button>
+                          title="Descendre"<?= $rangFrere === count($freres) - 1 ? ' disabled' : '' ?>>↓</button>
                 </form>
               <?php endif; ?>
               <a class="bouton bouton--discret bouton--petit"
@@ -60,10 +72,26 @@ $dernier = count($dossiers) - 1;
             <form method="post" action="<?= url('dossiers/' . $d['id'] . '/modifier') ?>">
               <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
 
-              <div class="champ">
-                <label for="nom-<?= (int) $d['id'] ?>">Nom</label>
-                <input type="text" id="nom-<?= (int) $d['id'] ?>" name="nom" required maxlength="120"
-                       value="<?= e($d['nom']) ?>">
+              <div class="ligne-champs">
+                <div class="champ">
+                  <label for="nom-<?= (int) $d['id'] ?>">Nom</label>
+                  <input type="text" id="nom-<?= (int) $d['id'] ?>" name="nom" required maxlength="120"
+                         value="<?= e($d['nom']) ?>">
+                </div>
+                <div class="champ">
+                  <label for="par-<?= (int) $d['id'] ?>">Rangé dans</label>
+                  <select id="par-<?= (int) $d['id'] ?>" name="parent_id">
+                    <option value="">— À la racine —</option>
+                    <?php foreach ($dossiers as $autre): ?>
+                      <?php // Ni lui-même, ni l'un de ses propres sous-dossiers. ?>
+                      <?php if (in_array((int) $autre['id'], $descendants[(int) $d['id']], true)) { continue; } ?>
+                      <option value="<?= (int) $autre['id'] ?>"
+                              <?= (int) ($d['parent_id'] ?? 0) === (int) $autre['id'] ? ' selected' : '' ?>>
+                        <?= e(retrait_dossier($autre) . $autre['icone'] . ' ' . $autre['nom']) ?>
+                      </option>
+                    <?php endforeach; ?>
+                  </select>
+                </div>
               </div>
 
               <div class="champ">
@@ -96,7 +124,7 @@ $dernier = count($dossiers) - 1;
             </form>
 
             <form method="post" action="<?= url('dossiers/' . $d['id'] . '/supprimer') ?>" style="margin-top:.75rem"
-                  data-confirmation="Supprimer ce dossier ? Les cours qu'il contient seront conservés, sans dossier.">
+                  data-confirmation="Supprimer ce dossier ? Ses cours seront conservés sans dossier, et ses sous-dossiers remonteront à la racine.">
               <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
               <button class="bouton bouton--danger bouton--petit" type="submit">Supprimer le dossier</button>
             </form>
@@ -121,6 +149,17 @@ $dernier = count($dossiers) - 1;
       <div class="champ">
         <label for="nom">Nom</label>
         <input type="text" id="nom" name="nom" required maxlength="120" placeholder="Semestre 1">
+      </div>
+
+      <div class="champ">
+        <label for="parent_id">Rangé dans</label>
+        <select id="parent_id" name="parent_id">
+          <option value="">— À la racine —</option>
+          <?php foreach ($dossiers as $d): ?>
+            <option value="<?= (int) $d["id"] ?>"><?= e(retrait_dossier($d) . $d["icone"] . " " . $d["nom"]) ?></option>
+          <?php endforeach; ?>
+        </select>
+        <span class="champ__aide">Laissez vide pour un dossier de premier niveau.</span>
       </div>
 
       <div class="champ">
