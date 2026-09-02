@@ -56,6 +56,8 @@ $routes = [
     ['POST', 'cours/{id}/favori',         [CoursController::class, 'basculerFavori']],
     ['GET',  'fichiers/{id}',             [CoursController::class, 'telechargerFichier']],
     ['GET',  'fichiers/{id}/apercu',      [CoursController::class, 'apercuFichier']],
+    ['GET',  'fichiers/{id}/modifier',    [CoursController::class, 'modifierFichier']],
+    ['POST', 'fichiers/{id}/modifier',    [CoursController::class, 'enregistrerFichier']],
     ['POST', 'fichiers/{id}/supprimer',   [CoursController::class, 'supprimerFichier']],
 
     ['GET',  'calendrier',                [CalendrierController::class, 'index']],

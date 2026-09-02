@@ -501,4 +501,54 @@
     if (envoi) { envoi.textContent = "Joindre les fichiers choisis"; }
   });
 
+  /*
+   * Modifier le texte d un document : ajouter, supprimer, et laisser chaque
+   * zone grandir avec son contenu.
+   */
+  var zoneParagraphes = document.querySelector("[data-paragraphes]");
+  if (zoneParagraphes) {
+    var modeleParagraphe = document.querySelector("[data-modele-paragraphe]");
+    var ajoutParagraphe = document.querySelector("[data-ajouter-paragraphe]");
+
+    var ajusterHauteur = function (zone) {
+      zone.style.height = "auto";
+      zone.style.height = zone.scrollHeight + "px";
+    };
+
+    var renumeroter = function () {
+      var rang = 1;
+      [].slice.call(zoneParagraphes.querySelectorAll(".paragraphe__rang")).forEach(function (etiquette) {
+        etiquette.textContent = String(rang++);
+      });
+    };
+
+    [].slice.call(zoneParagraphes.querySelectorAll("textarea")).forEach(ajusterHauteur);
+
+    zoneParagraphes.addEventListener("input", function (evenement) {
+      if (evenement.target && evenement.target.tagName === "TEXTAREA") {
+        ajusterHauteur(evenement.target);
+      }
+    });
+
+    zoneParagraphes.addEventListener("click", function (evenement) {
+      var bouton = evenement.target.closest && evenement.target.closest("[data-supprimer-paragraphe]");
+      if (!bouton) { return; }
+      var ligne = bouton.closest("[data-paragraphe]");
+      if (!ligne) { return; }
+      ligne.parentNode.removeChild(ligne);
+      renumeroter();
+    });
+
+    if (ajoutParagraphe && modeleParagraphe && modeleParagraphe.content) {
+      ajoutParagraphe.hidden = false;
+      ajoutParagraphe.addEventListener("click", function () {
+        var ligne = modeleParagraphe.content.firstElementChild.cloneNode(true);
+        zoneParagraphes.appendChild(ligne);
+        renumeroter();
+        var zone = ligne.querySelector("textarea");
+        if (zone) { ajusterHauteur(zone); zone.focus(); }
+      });
+    }
+  }
+
 })();

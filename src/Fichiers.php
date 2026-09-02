@@ -87,6 +87,11 @@ final class Fichiers
         if (is_file($chemin)) {
             @unlink($chemin);
         }
+        // La copie d'avant la première modification n'a plus lieu d'être.
+        $origine = EditionDocument::dossierVersions() . DIRECTORY_SEPARATOR . $fichier['nom_stocke'];
+        if (is_file($origine)) {
+            @unlink($origine);
+        }
         Database::run('DELETE FROM fichiers WHERE id = ?', [$fichierId]);
         return true;
     }

@@ -463,6 +463,60 @@ final class CoursController
         Fichiers::envoyer($fichier, isset($_GET['telecharger']));
     }
 
+    public function modifierFichier(int $id): void
+    {
+        Auth::exiger();
+        $fichier = $this->fichierModifiable($id);
+        $nom = (string) $fichier['nom_origine'];
+
+        try {
+            $paragraphes = EditionDocument::lire($this->cheminDe($fichier), $nom);
+            $erreur = null;
+        } catch (Throwable $e) {
+            $paragraphes = [];
+            $erreur = $e->getMessage();
+        }
+
+        Vue::afficher('cours/modifier-document', [
+            'fichier'     => $fichier,
+            'paragraphes' => $paragraphes,
+            'format'      => ApercuDocument::format($nom),
+            'erreur'      => $erreur,
+        ], 'Modifier ' . $nom);
+    }
+
+    public function enregistrerFichier(int $id): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $fichier = $this->fichierModifiable($id);
+        $nom = (string) $fichier['nom_origine'];
+        $chemin = $this->cheminDe($fichier);
+
+        $entrees = $this->paragraphesSoumis();
+        if ($entrees === []) {
+            Session::flash('erreur', 'Un document ne peut pas être entièrement vidé : gardez au moins une ligne.');
+            redirect('fichiers/' . $id . '/modifier');
+        }
+
+        try {
+            EditionDocument::enregistrer($chemin, $nom, $entrees);
+        } catch (Throwable $e) {
+            Session::flash('erreur', 'Le document n’a pas été modifié : ' . $e->getMessage());
+            redirect('fichiers/' . $id . '/modifier');
+        }
+
+        // La taille affichée doit suivre le fichier, qui vient de changer.
+        clearstatcache(true, $chemin);
+        Database::run(
+            'UPDATE fichiers SET taille = ? WHERE id = ? AND user_id = ?',
+            [(int) filesize($chemin), $id, Auth::id()]
+        );
+
+        Session::flash('succes', 'Document enregistré.');
+        redirect('fichiers/' . $id . '/apercu');
+    }
+
     public function supprimerFichier(int $id): void
     {
         Auth::exiger();
@@ -589,6 +643,66 @@ final class CoursController
         foreach (Fichiers::enregistrer($_FILES['fichiers'], $coursId, $userId) as $erreur) {
             Session::flash('erreur', $erreur);
         }
+    }
+
+    /** Le fichier de l'utilisateur, à condition que son texte soit réécrivable. */
+    private function fichierModifiable(int $id): array
+    {
+        $fichier = Database::one(
+            'SELECT f.*, c.id AS cours_id, c.titre AS cours_titre
+             FROM fichiers f JOIN cours c ON c.id = f.cours_id
+             WHERE f.id = ? AND f.user_id = ?',
+            [$id, Auth::id()]
+        );
+        if ($fichier === null) {
+            $this->introuvable();
+        }
+        if (!EditionDocument::modifiable((string) $fichier['nom_origine'])) {
+            redirect('fichiers/' . $id . '/apercu');
+        }
+        return $fichier;
+    }
+
+    private function cheminDe(array $fichier): string
+    {
+        return Config::get('app', 'dossier_uploads') . DIRECTORY_SEPARATOR . $fichier['nom_stocke'];
+    }
+
+    /**
+     * Les paragraphes envoyés par le formulaire, dans l'ordre de la page.
+     *
+     * Une zone de saisie peut contenir plusieurs lignes : chacune devient un
+     * paragraphe à part, en gardant la mise en forme de celui d'où elle vient.
+     * Une ligne ajoutée puis laissée vide est ignorée ; un paragraphe existant
+     * qu'on vide reste, car c'est ainsi qu'on garde une ligne blanche.
+     *
+     * @return array<int, array{origine: ?int, texte: string}>
+     */
+    private function paragraphesSoumis(): array
+    {
+        $textes   = array_values((array) ($_POST['texte'] ?? []));
+        $origines = array_values((array) ($_POST['origine'] ?? []));
+
+        $entrees = [];
+        foreach ($textes as $rang => $texte) {
+            if (!is_scalar($texte)) {
+                continue;
+            }
+            $reference = $origines[$rang] ?? '';
+            $origine = is_numeric($reference) ? (int) $reference : null;
+
+            // Découpage octet par octet : les fins de ligne sont de l'ASCII,
+            // et un motif Unicode échouerait en silence sur un texte mal encodé
+            // — au prix d'un paragraphe vidé sans prévenir.
+            foreach (preg_split('/\r\n|\r|\n/', (string) $texte) ?: [''] as $ligne) {
+                $ligne = rtrim($ligne);
+                if ($ligne === '' && $origine === null) {
+                    continue;
+                }
+                $entrees[] = ['origine' => $origine, 'texte' => $ligne];
+            }
+        }
+        return $entrees;
     }
 
     private function introuvable(): never

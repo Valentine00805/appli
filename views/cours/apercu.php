@@ -19,6 +19,11 @@
     <p><?= e(ucfirst($format)) ?> · <?= e(taille_lisible((int) $fichier['taille'])) ?></p>
   </div>
   <div class="actions">
+    <?php if (EditionDocument::modifiable((string) $fichier['nom_origine'])): ?>
+      <a class="bouton bouton--secondaire" href="<?= url('fichiers/' . $fichier['id'] . '/modifier') ?>">
+        ✎ Modifier le texte
+      </a>
+    <?php endif; ?>
     <a class="bouton" href="<?= url('fichiers/' . $fichier['id'], ['telecharger' => 1]) ?>">
       ⬇ Télécharger le fichier
     </a>

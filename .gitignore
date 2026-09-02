@@ -1,3 +1,5 @@
 /config/config.php
 /storage/uploads/*
 !/storage/uploads/.gitignore
+/storage/versions/*
+!/storage/versions/.gitignore
