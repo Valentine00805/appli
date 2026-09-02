@@ -809,3 +809,8 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
 .evt--tache { border-left-style: dashed; }
 .evt-ligne--tache .evt-ligne__barre { background-image: repeating-linear-gradient(
   180deg, rgba(255,255,255,.55) 0 3px, transparent 3px 6px); }
+
+/* La vue « Jour » : un seul bloc, plus aéré que dans la semaine. */
+.jour-bloc--seul { max-width: 46rem; }
+.jour-bloc--seul .jour-bloc__titre { font-size: 1.05rem; }
+.jour-bloc--seul .jour-bloc__corps { padding-top: .35rem; }

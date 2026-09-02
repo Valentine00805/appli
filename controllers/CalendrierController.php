@@ -8,10 +8,11 @@ final class CalendrierController
         Auth::exiger();
         $userId = Auth::id();
 
-        $vue = in_array($_GET['vue'] ?? '', ['semaine', 'liste'], true) ? (string) $_GET['vue'] : 'mois';
+        $vue = in_array($_GET['vue'] ?? '', ['jour', 'semaine', 'liste'], true) ? (string) $_GET['vue'] : 'mois';
         $ancre = $this->dateAncre();
 
         [$debut, $fin] = match ($vue) {
+            'jour'    => [$ancre->setTime(0, 0), $ancre->setTime(23, 59, 59)],
             'semaine' => $this->bornesSemaine($ancre),
             'liste'   => [(clone $ancre)->modify('first day of this month')->setTime(0, 0),
                           (clone $ancre)->modify('+1 year')->setTime(23, 59, 59)],

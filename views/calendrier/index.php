@@ -17,15 +17,18 @@ $lien = static function (string $vueCible, DateTimeInterface $date) use ($filtre
     return url('calendrier', $filtresUrl + ['vue' => $vueCible, 'date' => $date->format('Y-m-d')]);
 };
 
+// Les flèches avancent du pas de la vue : un jour, une semaine, un mois.
 $pas = match ($vue) {
+    'jour'    => '1 day',
     'semaine' => '7 days',
-    'liste'   => '1 month',
     default   => '1 month',
 };
 $precedent = $ancre->modify('-' . $pas);
 $suivant   = $ancre->modify('+' . $pas);
 
-if ($vue === 'semaine') {
+if ($vue === 'jour') {
+    $titre = ucfirst(date_fr($ancre->format('Y-m-d') . ' 00:00:00', false));
+} elseif ($vue === 'semaine') {
     $titre = 'Semaine du ' . $debut->format('j') . ' au ' . $fin->format('j') . ' '
         . strtolower(nom_mois((int) $fin->format('n'))) . ' ' . $fin->format('Y');
 } else {
@@ -100,6 +103,7 @@ $puce = static function (array $evt) use ($destination): string {
     </form>
 
     <nav class="cal-onglets" aria-label="Type d'affichage">
+      <a href="<?= $lien('jour', $ancre) ?>"<?= $vue === 'jour' ? ' aria-current="page"' : '' ?>>Jour</a>
       <a href="<?= $lien('mois', $ancre) ?>"<?= $vue === 'mois' ? ' aria-current="page"' : '' ?>>Mois</a>
       <a href="<?= $lien('semaine', $ancre) ?>"<?= $vue === 'semaine' ? ' aria-current="page"' : '' ?>>Semaine</a>
       <a href="<?= $lien('liste', $ancre) ?>"<?= $vue === 'liste' ? ' aria-current="page"' : '' ?>>Liste</a>
@@ -107,7 +111,31 @@ $puce = static function (array $evt) use ($destination): string {
   </div>
 </div>
 
-<?php if ($vue === 'mois'): ?>
+<?php if ($vue === 'jour'): ?>
+
+  <?php
+  $cle = $ancre->format('Y-m-d');
+  $duJour = $parJour[$cle] ?? [];
+  ?>
+  <section class="jour-bloc jour-bloc--seul<?= $cle === $aujourdhui ? ' jour-bloc--aujourdhui' : '' ?>">
+    <header class="jour-bloc__entete">
+      <span class="jour-bloc__titre">
+        <?= $cle === $aujourdhui ? "Aujourd'hui" : e(ucfirst(date_fr($cle . ' 00:00:00', false))) ?>
+      </span>
+      <a class="discret" href="<?= url('evenements/nouveau', ['date' => $cle]) ?>">+ ajouter</a>
+    </header>
+    <div class="jour-bloc__corps">
+      <?php if ($duJour === []): ?>
+        <span class="discret">Rien de prévu ce jour-là.</span>
+      <?php else: ?>
+        <?php foreach ($duJour as $evt): ?>
+          <?= Vue::rendre('calendrier/_ligne', ['evt' => $evt]) ?>
+        <?php endforeach; ?>
+      <?php endif; ?>
+    </div>
+  </section>
+
+<?php elseif ($vue === 'mois'): ?>
 
   <div class="cal-grille">
     <?php foreach (jours_semaine() as $jour): ?>
