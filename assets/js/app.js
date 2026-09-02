@@ -311,4 +311,53 @@
     });
   });
 
+  // Glisser un cours sur un dossier pour l y ranger.
+  // Sans JavaScript, le champ « Dossier » du formulaire fait le meme travail.
+  var colonneDossiers = document.querySelector("[data-dossiers-cibles]");
+  var formeRangerCours = document.getElementById("forme-ranger-cours");
+  if (colonneDossiers && formeRangerCours && "draggable" in document.createElement("div")) {
+    var coursGlisse = null;
+
+    [].slice.call(document.querySelectorAll(".cours-carte[data-cours]")).forEach(function (carte) {
+      carte.draggable = true;
+      carte.classList.add("est-saisissable");
+
+      carte.addEventListener("dragstart", function (evenement) {
+        coursGlisse = carte;
+        carte.classList.add("cours-carte--glisse");
+        colonneDossiers.classList.add("attend-un-cours");
+        evenement.dataTransfer.effectAllowed = "move";
+        try { evenement.dataTransfer.setData("text/plain", carte.dataset.cours); } catch (e) {}
+      });
+
+      carte.addEventListener("dragend", function () {
+        carte.classList.remove("cours-carte--glisse");
+        colonneDossiers.classList.remove("attend-un-cours");
+        coursGlisse = null;
+      });
+    });
+
+    [].slice.call(colonneDossiers.querySelectorAll("[data-dossier]")).forEach(function (cible) {
+      cible.addEventListener("dragover", function (evenement) {
+        if (!coursGlisse) { return; }
+        evenement.preventDefault();
+        evenement.dataTransfer.dropEffect = "move";
+        cible.classList.add("dossier-cible--survol");
+      });
+
+      cible.addEventListener("dragleave", function () {
+        cible.classList.remove("dossier-cible--survol");
+      });
+
+      cible.addEventListener("drop", function (evenement) {
+        evenement.preventDefault();
+        cible.classList.remove("dossier-cible--survol");
+        if (!coursGlisse) { return; }
+        formeRangerCours.elements.cours.value = coursGlisse.dataset.cours;
+        formeRangerCours.elements.dossier.value = cible.dataset.dossier;
+        formeRangerCours.submit();
+      });
+    });
+  }
+
 })();

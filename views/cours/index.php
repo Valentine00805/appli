@@ -1,8 +1,9 @@
 <?php
 /**
- * @var array $cours, $matieres, $tags
+ * @var array $cours, $matieres, $tags, $dossiers
+ * @var int $sansDossier, $total
  * @var string $recherche, $tri
- * @var ?int $matiereId, $tagId
+ * @var ?int $matiereId, $tagId, $dossierId
  * @var bool $favoris
  */
 ?>
@@ -49,18 +50,9 @@
     </div>
   <?php endif; ?>
 
-  <?php if ($dossiers !== []): ?>
-    <div class="champ">
-      <label for="f-dossier">Dossier</label>
-      <select id="f-dossier" name="dossier">
-        <option value="">Tous</option>
-        <?php foreach ($dossiers as $d): ?>
-          <option value="<?= (int) $d['id'] ?>"<?= $dossierId === (int) $d['id'] ? ' selected' : '' ?>>
-            <?= e(retrait_dossier($d) . $d['icone'] . ' ' . $d['nom']) ?> (<?= (int) $d['nb_cours'] ?>)
-          </option>
-        <?php endforeach; ?>
-      </select>
-    </div>
+  <?php // Le dossier se choisit dans la colonne de gauche ; on le conserve ici. ?>
+  <?php if ($dossierId !== null): ?>
+    <input type="hidden" name="dossier" value="<?= (int) $dossierId ?>">
   <?php endif; ?>
 
   <div class="champ">
@@ -83,6 +75,80 @@
   <?php endif; ?>
 </form>
 
+<div class="<?= $dossiers === [] ? '' : 'cours-vue' ?>">
+
+<?php if ($dossiers !== []): ?>
+  <?php
+  $lienDossier = static function (?int $id) use ($recherche, $matiereId, $tagId, $tri, $favoris): string {
+      $params = array_filter([
+          'q' => $recherche !== '' ? $recherche : null,
+          'matiere' => $matiereId,
+          'tag' => $tagId,
+          'dossier' => $id,
+          'tri' => $tri !== 'recent' ? $tri : null,
+          'favoris' => $favoris ? '1' : null,
+      ], static fn ($v): bool => $v !== null);
+      return url('cours', $params);
+  };
+  $parNiveau = [];
+  foreach ($dossiers as $d) {
+      $parNiveau[(int) ($d['parent_id'] ?? 0)][] = $d;
+  }
+  ?>
+  <aside class="cours-dossiers" data-dossiers-cibles>
+    <p class="cours-dossiers__titre">Dossiers</p>
+
+    <a class="dossier-cible<?= $dossierId === null ? ' dossier-cible--active' : '' ?>"
+       href="<?= $lienDossier(null) ?>">
+      <span aria-hidden="true">🗃️</span>
+      <span style="flex:1;min-width:0">Tous les cours</span>
+      <span class="dossier-cible__compte"><?= (int) $total ?></span>
+    </a>
+
+    <?php
+    $rendreCible = function (array $d, int $profondeur) use (&$rendreCible, $parNiveau, $dossierId, $lienDossier): void {
+        ?>
+        <a class="dossier-cible<?= $dossierId === (int) $d['id'] ? ' dossier-cible--active' : '' ?>"
+           href="<?= $lienDossier((int) $d['id']) ?>"
+           style="padding-left:<?= 0.7 + $profondeur * 0.9 ?>rem"
+           data-dossier="<?= (int) $d['id'] ?>"
+           title="Déposez un cours ici pour le ranger dans « <?= e($d['nom']) ?> »">
+          <span aria-hidden="true"><?= e($d['icone']) ?></span>
+          <span style="flex:1;min-width:0"><?= e($d['nom']) ?></span>
+          <span class="dossier-cible__compte"><?= (int) $d['nb_cours'] ?></span>
+        </a>
+        <?php
+        foreach ($parNiveau[(int) $d['id']] ?? [] as $enfant) {
+            $rendreCible($enfant, $profondeur + 1);
+        }
+    };
+    foreach ($parNiveau[0] ?? [] as $racine) {
+        $rendreCible($racine, 0);
+    }
+    ?>
+
+    <a class="dossier-cible" href="<?= $lienDossier(null) ?>" data-dossier=""
+       title="Déposez un cours ici pour le sortir de son dossier">
+      <span aria-hidden="true">➖</span>
+      <span style="flex:1;min-width:0">Sans dossier</span>
+      <span class="dossier-cible__compte"><?= (int) $sansDossier ?></span>
+    </a>
+
+    <p class="champ__aide" style="margin:.6rem .2rem 0">
+      Faites glisser un cours sur un dossier pour l'y ranger.
+    </p>
+  </aside>
+
+  <?php // Le glisser-déposer poste ici le cours et son dossier d'arrivée. ?>
+  <form method="post" action="<?= url('cours/ranger') ?>" id="forme-ranger-cours" hidden>
+    <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
+    <input type="hidden" name="retour" value="<?= e((string) ($_SERVER['REQUEST_URI'] ?? '')) ?>">
+    <input type="hidden" name="cours" value="">
+    <input type="hidden" name="dossier" value="">
+  </form>
+<?php endif; ?>
+
+<div>
 <?php if ($cours === []): ?>
   <div class="vide">
     <span class="vide__icone">📄</span>
@@ -97,7 +163,8 @@
 <?php else: ?>
   <div class="grille grille--3">
     <?php foreach ($cours as $c): ?>
-      <a class="carte cours-carte" href="<?= url('cours/' . $c['id']) ?>">
+      <a class="carte cours-carte" href="<?= url('cours/' . $c['id']) ?>"
+         data-cours="<?= (int) $c['id'] ?>">
         <div style="display:flex;align-items:center;gap:.4rem;flex-wrap:wrap">
           <?php if ($c['matiere_nom'] !== null): ?>
             <span class="pastille" style="background:<?= e($c['matiere_couleur']) ?>;color:<?= e(couleur_texte($c['matiere_couleur'])) ?>">
@@ -125,3 +192,5 @@
     <?php endforeach; ?>
   </div>
 <?php endif; ?>
+</div>
+</div>

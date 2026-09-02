@@ -22,6 +22,11 @@ final class CoursController
             'matieres'  => $this->matieres($userId),
             'tags'      => $this->tags($userId),
             'dossiers'  => DossiersController::pourUtilisateur($userId, true),
+            'sansDossier' => (int) Database::valeur(
+                'SELECT COUNT(*) FROM cours WHERE user_id = ? AND dossier_id IS NULL',
+                [$userId]
+            ),
+            'total'     => (int) Database::valeur('SELECT COUNT(*) FROM cours WHERE user_id = ?', [$userId]),
             'recherche' => $recherche,
             'matiereId' => $matiereId,
             'tagId'     => $tagId,
@@ -122,6 +127,61 @@ final class CoursController
             'matiereSelection' => entier_ou_null($_GET['matiere'] ?? null),
             'tousLesTags'      => TagsController::nomsPourUtilisateur($userId),
         ], $cours === null ? 'Nouveau cours' : 'Modifier le cours');
+    }
+
+    /**
+     * Range un cours dans un dossier, sans passer par le formulaire.
+     * C'est ce qu'appelle le glisser-déposer depuis la liste des cours.
+     */
+    public function ranger(): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $userId = Auth::id();
+
+        $coursId = entier_ou_null($_POST['cours'] ?? null);
+        $cours = $coursId === null ? null : Database::one(
+            'SELECT id, titre FROM cours WHERE id = ? AND user_id = ?',
+            [$coursId, $userId]
+        );
+        if ($cours === null) {
+            $this->introuvable();
+        }
+
+        // Un dossier vide signifie « hors dossier » : c'est un choix valable.
+        $dossier = DossiersController::valide($userId, $_POST['dossier'] ?? null);
+
+        Database::run(
+            'UPDATE cours SET dossier_id = ? WHERE id = ? AND user_id = ?',
+            [$dossier, $cours['id'], $userId]
+        );
+
+        $nom = $dossier === null
+            ? null
+            : Database::valeur('SELECT nom FROM dossiers WHERE id = ? AND user_id = ?', [$dossier, $userId]);
+        Session::flash('succes', $dossier === null
+            ? '« ' . $cours['titre'] . ' » ne fait plus partie d’un dossier.'
+            : '« ' . $cours['titre'] . ' » rangé dans « ' . $nom . ' ».');
+
+        $this->repartirVers('cours');
+    }
+
+    /** Ne suit qu'une adresse interne, comme ailleurs dans l'application. */
+    private function repartirVers(string $defaut): never
+    {
+        $retour = $_POST['retour'] ?? '';
+
+        if (is_string($retour) && $retour !== ''
+            && $retour[0] === '/'
+            && !str_starts_with($retour, '//')
+            && !preg_match('/[\r\n]/', $retour)
+            && (BASE_URL === '' || str_starts_with($retour, BASE_URL . '/'))
+        ) {
+            header('Location: ' . $retour);
+            exit;
+        }
+
+        redirect($defaut);
     }
 
     public function creer(): void
