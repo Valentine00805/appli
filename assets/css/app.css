@@ -1213,3 +1213,6 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
   display: flex; align-items: center; gap: .5rem; flex-wrap: wrap;
   margin: 0 0 .5rem; font-size: .78rem;
 }
+
+/* La fiche seule : une colonne lisible, pas toute la largeur de l'écran. */
+.fiche-seule { max-width: 52rem; }

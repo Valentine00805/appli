@@ -144,7 +144,7 @@ final class CoursController
         );
 
         Session::flash('succes', $fiche === '' ? 'Fiche de révision vidée.' : 'Fiche de révision enregistrée.');
-        redirect('cours/' . $id, ['revision' => 1]);
+        $this->retourFiche($id);
     }
 
     /** Toutes les fiches de révision, groupées par matière. */
@@ -271,6 +271,59 @@ final class CoursController
         return false;
     }
 
+    /** La fiche d'un cours, seule : ni son contenu, ni ses pièces jointes. */
+    public function fiche(int $id): void
+    {
+        Auth::exiger();
+        $userId = Auth::id();
+
+        $cours = Database::one(
+            'SELECT c.id, c.titre, c.fiche_revision,
+                    m.nom AS matiere_nom, m.couleur AS matiere_couleur
+             FROM cours c LEFT JOIN matieres m ON m.id = c.matiere_id
+             WHERE c.id = ? AND c.user_id = ?',
+            [$id, $userId]
+        );
+        if ($cours === null) {
+            $this->introuvable();
+        }
+
+        $parType = ['lien' => [], 'cours' => [], 'evenement' => []];
+        foreach ($this->elementsDeFiche($id, $userId) as $element) {
+            $parType[$element['type']][] = $element;
+        }
+
+        Vue::afficher('cours/fiche', [
+            'cours'   => $cours,
+            'fiche'   => (string) ($cours['fiche_revision'] ?? ''),
+            'parType' => $parType,
+            'fichiersFiche' => Database::all(
+                'SELECT * FROM fichiers WHERE cours_id = ? AND pour_fiche = 1 ORDER BY created_at',
+                [$id]
+            ),
+            'autresCours' => Database::all(
+                'SELECT id, titre FROM cours WHERE user_id = ? AND id <> ? ORDER BY titre',
+                [$userId, $id]
+            ),
+            'evenementsChoix' => Database::all(
+                'SELECT id, titre, debut FROM evenements WHERE user_id = ? ORDER BY debut DESC LIMIT 100',
+                [$userId]
+            ),
+        ], 'Fiche — ' . $cours['titre']);
+    }
+
+    /**
+     * Où revenir après avoir modifié une fiche : sur sa page si l'on y était,
+     * sur le cours sinon. Deux destinations connues, aucune venue de l'URL.
+     */
+    private function retourFiche(int $coursId): never
+    {
+        if (($_POST['page'] ?? '') === 'fiche') {
+            redirect('revision/' . $coursId);
+        }
+        redirect('cours/' . $coursId, ['revision' => 1]);
+    }
+
     /** Joint des fichiers à la fiche de révision, pas aux pièces jointes du cours. */
     public function joindreFiche(int $id): void
     {
@@ -284,7 +337,7 @@ final class CoursController
 
         if (!isset($_FILES['fichiers']) || !is_array($_FILES['fichiers']['name'] ?? null)) {
             Session::flash('erreur', 'Aucun fichier reçu.');
-            redirect('cours/' . $id, ['revision' => 1]);
+            $this->retourFiche($id);
         }
 
         $compte = static fn (): int => (int) Database::valeur(
@@ -304,7 +357,7 @@ final class CoursController
                 ? 'Fichier ajouté à la fiche.'
                 : $ajoutes . ' fichiers ajoutés à la fiche.');
         }
-        redirect('cours/' . $id, ['revision' => 1]);
+        $this->retourFiche($id);
     }
 
     /** Rattache à la fiche un lien web, un autre cours ou un évènement. */
@@ -329,7 +382,7 @@ final class CoursController
         };
 
         Session::flash($erreur === null ? 'succes' : 'erreur', $erreur ?? 'Élément ajouté à la fiche.');
-        redirect('cours/' . $id, ['revision' => 1]);
+        $this->retourFiche($id);
     }
 
     public function supprimerElement(int $id): void
@@ -348,7 +401,7 @@ final class CoursController
 
         Database::run('DELETE FROM fiche_elements WHERE id = ? AND user_id = ?', [$id, $userId]);
         Session::flash('succes', 'Élément retiré de la fiche.');
-        redirect('cours/' . (int) $coursId, ['revision' => 1]);
+        $this->retourFiche((int) $coursId);
     }
 
     /** Formulaire de création (id null) ou de modification. */

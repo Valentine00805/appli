@@ -157,7 +157,7 @@ $compteurs = static function (array $c): array {
         <div class="grille grille--fiches">
       <?php endif; ?>
 
-      <a class="carte fiche-carte" href="<?= url('cours/' . $c['id'], ['revision' => 1]) ?>">
+      <a class="carte fiche-carte" href="<?= url('revision/' . $c['id']) ?>">
         <?php if (!$parMatiere): ?>
           <p class="fiche-carte__entete">
             <?php if ($c['matiere_nom'] !== null): ?>
@@ -214,7 +214,7 @@ $compteurs = static function (array $c): array {
       <summary><strong>Cours sans fiche</strong> <span class="discret">(<?= count($vides) ?>)</span></summary>
       <div class="pile" style="margin-top:.85rem">
         <?php foreach ($vides as $c): ?>
-          <a class="evt-ligne" href="<?= url('cours/' . $c['id'], ['revision' => 1]) ?>">
+          <a class="evt-ligne" href="<?= url('revision/' . $c['id']) ?>">
             <span>
               <span class="evt-ligne__titre"><?= surligner(e($c['titre']), $termes) ?></span><br>
               <span class="evt-ligne__meta">
