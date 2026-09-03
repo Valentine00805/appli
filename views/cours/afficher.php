@@ -1,6 +1,10 @@
 <?php
-/** @var array $cours, $fichiers, $tags, $evenements */
+/**
+ * @var array $cours, $fichiers, $tags, $evenements
+ * @var bool $revision  le volet de révision est-il ouvert ?
+ */
 $images = array_filter($fichiers, static fn (array $f): bool => Fichiers::estImage($f['mime']));
+$fiche = (string) ($cours['fiche_revision'] ?? '');
 ?>
 
 <div class="entete-page">
@@ -28,12 +32,19 @@ $images = array_filter($fichiers, static fn (array $f): bool => Fichiers::estIma
         <?= (int) $cours['favori'] === 1 ? '⭐ Favori' : '☆ Favori' ?>
       </button>
     </form>
+    <?php // Le même bouton ouvre et referme le volet. ?>
+    <a class="bouton bouton--secondaire<?= $revision ? ' est-actif' : '' ?>"
+       href="<?= $revision
+           ? url('cours/' . $cours['id'])
+           : url('cours/' . $cours['id'], ['revision' => 1]) . '#revision' ?>">
+      📝 Révision<?= $fiche !== '' ? ' •' : '' ?>
+    </a>
     <a class="bouton bouton--secondaire" href="<?= url('evenements/nouveau', ['cours' => $cours['id']]) ?>">Planifier</a>
     <a class="bouton" href="<?= url('cours/' . $cours['id'] . '/modifier') ?>">Modifier</a>
   </div>
 </div>
 
-<div class="colonnes">
+<div class="colonnes<?= $revision ? ' colonnes--volet' : '' ?>">
   <article class="carte">
     <?php if (trim((string) $cours['contenu']) === ''): ?>
       <p class="discret">Ce cours n'a pas encore de contenu écrit.
@@ -42,6 +53,34 @@ $images = array_filter($fichiers, static fn (array $f): bool => Fichiers::estIma
       <div class="contenu-cours"><?= e($cours['contenu']) ?></div>
     <?php endif; ?>
   </article>
+
+  <?php if ($revision): ?>
+    <section class="carte volet fiche" id="revision">
+      <div class="volet__entete">
+        <span class="volet__icone" aria-hidden="true">📝</span>
+        <div style="min-width:0">
+          <h2 style="margin:0">Fiche de révision</h2>
+          <p class="discret" style="margin:.15rem 0 0"><?= e($cours['titre']) ?></p>
+        </div>
+      </div>
+
+      <form method="post" action="<?= url('cours/' . $cours['id'] . '/revision') ?>" style="margin-top:1rem">
+        <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
+
+        <div class="champ">
+          <label for="fiche_revision">Ce qu'il faut retenir</label>
+          <textarea id="fiche_revision" name="fiche_revision" class="fiche__texte"
+                    placeholder="Définitions, formules, dates, plan du chapitre, questions à se poser…"><?= e($fiche) ?></textarea>
+          <span class="champ__aide">Le texte est affiché tel quel, sauts de ligne compris.</span>
+        </div>
+
+        <div class="actions">
+          <button class="bouton" type="submit">Enregistrer la fiche</button>
+          <a class="bouton bouton--discret" href="<?= url('cours/' . $cours['id']) ?>">Fermer</a>
+        </div>
+      </form>
+    </section>
+  <?php endif; ?>
 
   <div class="pile">
     <section class="carte">

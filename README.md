@@ -24,16 +24,21 @@ PHP 8 + MySQL, sans aucune dépendance externe : pas de Composer, pas de CDN, to
 3. **Vérifier les identifiants MySQL** (par défaut WAMP : utilisateur `root`,
    mot de passe vide).
 
-   Sans rien faire, l'application démarre sur les réglages de
-   `config/reglages.php`, qui conviennent à une installation WAMP
-   ordinaire. Pour d'autres identifiants — un hébergeur, un autre mot de passe —
-   recopiez ce fichier et modifiez la copie, qui a la priorité :
+   Sans rien faire, l'application démarre sur les réglages par défaut, écrits
+   en haut d'`index.php` : ils conviennent à une installation WAMP ordinaire.
 
-   ```bash
-   cp config/reglages.php config/parametres.php
+   Pour d'autres identifiants — un hébergeur, un autre mot de passe —, créez
+   `config/parametres.php` en y recopiant ce tableau, modifié. Ce fichier a la
+   priorité et n'entre pas dans le dépôt, puisqu'il porte vos identifiants :
+
+   ```php
+   <?php
+   return [
+       'db'  => ['host' => '127.0.0.1', 'port' => 3306, 'name' => 'mon_appli_cours',
+                 'user' => 'root', 'pass' => '', 'charset' => 'utf8mb4'],
+       'app' => [ /* … voir index.php … */ ],
+   ];
    ```
-
-   Cette copie n'est pas dans le dépôt : elle contient vos identifiants.
 
 4. **Ouvrir l'application** : <http://localhost/mon_appli/appli/>
 
@@ -48,7 +53,7 @@ PHP 8 + MySQL, sans aucune dépendance externe : pas de Composer, pas de CDN, to
 |---|---|
 | **Accueil** | Ce qui est prévu aujourd'hui, les 7 prochains jours, les échéances, les cours récents. |
 | **Calendrier** | Vue **mois**, **semaine** ou **liste**. Filtres par matière et par type. Clic sur `+` dans une case pour créer un évènement à cette date. |
-| **Mes cours** | Liste filtrable (recherche, matière, tag, favoris, tri) et création de cours. |
+| **Mes cours** | Liste filtrable (recherche, matière, tag, favoris, tri) et création de cours. Chaque cours a un bouton **Révision** qui ouvre sa fiche de révision dans un volet. |
 | **Budget** | Cinq onglets : **Opérations** (recettes et dépenses du mois, tendance sur 12 mois), **Prévisions** (solde de départ, charges fixes, solde prévisionnel reporté de mois en mois), **Remboursements** (ce qu'on vous doit), **Import** (relevé bancaire au format CSV) et **Catégories** (avec plafond mensuel). |
 | **Organisation** | Trois onglets : **Matières** (nom, couleur, enseignant), **Types d'évènement** (nom, icône, couleur, ordre, indicateur « échéance ») et **Tags** (créer, renommer, fusionner, supprimer). |
 | **Recherche** | Cherche simultanément dans les cours et dans le calendrier, avec surlignage des termes. |

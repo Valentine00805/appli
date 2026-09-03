@@ -1097,3 +1097,21 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
 }
 
 .paragraphe [data-supprimer-paragraphe] { margin-top: .3rem; }
+
+/* --- Fiche de révision : le volet d'un cours ------------------------------ */
+
+/* Volet ouvert : le contenu et la fiche côte à côte, le reste en dessous. */
+.colonnes--volet { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.colonnes--volet > .pile { grid-column: 1 / -1; }
+
+@media (max-width: 900px) {
+  .colonnes--volet { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* Le bouton reste allumé tant que le volet est ouvert. */
+.bouton--secondaire.est-actif {
+  background: var(--accent-doux); color: var(--accent-fonce); border-color: var(--accent);
+}
+
+.fiche__texte { min-height: 22rem; line-height: 1.7; }
+.fiche .actions { margin-top: .85rem; }

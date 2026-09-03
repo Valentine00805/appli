@@ -82,6 +82,8 @@ final class CoursController
 
         Vue::afficher('cours/afficher', [
             'cours'      => $cours,
+            // Le volet de révision s'ouvre et se referme depuis le même bouton.
+            'revision'   => isset($_GET['revision']),
             'fichiers'   => Database::all('SELECT * FROM fichiers WHERE cours_id = ? ORDER BY created_at', [$id]),
             'tags'       => Database::all(
                 'SELECT t.* FROM tags t JOIN cours_tag ct ON ct.tag_id = t.id WHERE ct.cours_id = ? ORDER BY t.nom',
@@ -95,6 +97,30 @@ final class CoursController
                 [$id, $userId]
             ),
         ], $cours['titre']);
+    }
+
+    /** Enregistre la fiche de révision d'un cours, depuis son volet. */
+    public function enregistrerRevision(int $id): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $userId = Auth::id();
+
+        $existe = Database::valeur('SELECT id FROM cours WHERE id = ? AND user_id = ?', [$id, $userId]);
+        if ($existe === null) {
+            $this->introuvable();
+        }
+
+        $fiche = trim((string) ($_POST['fiche_revision'] ?? ''));
+
+        Database::run(
+            'UPDATE cours SET fiche_revision = ? WHERE id = ? AND user_id = ?',
+            // Une fiche vidée redevient absente : le cours n'affiche pas une fiche blanche.
+            [$fiche === '' ? null : $fiche, $id, $userId]
+        );
+
+        Session::flash('succes', $fiche === '' ? 'Fiche de révision vidée.' : 'Fiche de révision enregistrée.');
+        redirect('cours/' . $id, ['revision' => 1]);
     }
 
     /** Formulaire de création (id null) ou de modification. */

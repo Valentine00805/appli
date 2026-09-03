@@ -54,8 +54,41 @@ require __DIR__ . '/controllers/TachesController.php';
 require __DIR__ . '/controllers/KanbanController.php';
 require __DIR__ . '/controllers/TableauBordController.php';
 
-// Les réglages locaux s'ils existent, les réglages par défaut sinon.
-Config::charger(__DIR__ . '/config/parametres.php', __DIR__ . '/config/reglages.php');
+/*
+ * Réglages par défaut : ceux d'une installation WAMP ordinaire. Ils vivent ici
+ * plutôt que dans un fichier à part, que l'antivirus du poste a mis en
+ * quarantaine quatre fois de suite, emportant l'application avec lui.
+ *
+ * Pour d'autres identifiants — un hébergeur, un mot de passe MySQL —, créez
+ * config/parametres.php avec le même tableau : il a la priorité et reste hors
+ * du dépôt.
+ */
+Config::charger([
+    'db' => [
+        'host'    => '127.0.0.1',
+        'port'    => 3306,
+        'name'    => 'mon_appli_cours',
+        'user'    => 'root',
+        'pass'    => '',
+        'charset' => 'utf8mb4',
+    ],
+    'app' => [
+        'nom'                 => 'Mes Cours',
+        'inscription_ouverte' => true,
+        // Code à fournir pour créer un compte. Vide, l'inscription est libre —
+        // ce qui ne convient qu'en local : depuis le réseau, l'application la
+        // refuse et le dit.
+        'code_inscription'    => '',
+        'dossier_uploads'     => __DIR__ . '/storage/uploads',
+        'taille_max_fichier'  => 25 * 1024 * 1024,
+        'extensions_autorisees' => [
+            'pdf', 'doc', 'docx', 'odt', 'ppt', 'pptx', 'odp', 'xls', 'xlsx', 'ods',
+            'txt', 'md', 'csv', 'rtf',
+            'png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'heic',
+            'zip', 'mp3', 'mp4', 'm4a',
+        ],
+    ],
+], __DIR__ . '/config/parametres.php');
 
 /* --- Où l'application est installée, et ce qui lui est demandé --- */
 define('BASE_PATH_BRUT', Requete::baseBrute());
@@ -94,6 +127,7 @@ $routes = [
     ['POST', 'cours/{id}/modifier',       [CoursController::class, 'modifier']],
     ['POST', 'cours/{id}/supprimer',      [CoursController::class, 'supprimer']],
     ['POST', 'cours/{id}/favori',         [CoursController::class, 'basculerFavori']],
+    ['POST', 'cours/{id}/revision',       [CoursController::class, 'enregistrerRevision']],
     ['GET',  'fichiers/{id}',             [CoursController::class, 'telechargerFichier']],
     ['GET',  'fichiers/{id}/apercu',      [CoursController::class, 'apercuFichier']],
     ['GET',  'fichiers/{id}/modifier',    [CoursController::class, 'modifierFichier']],
