@@ -4,7 +4,16 @@
  * @var array $vides      ceux dont la fiche est encore blanche
  * @var string $recherche ce qui est cherché, vide sinon
  * @var array $termes     les mots de la recherche, pour le surlignage
+ * @var array $matieres   les matières de l'utilisateur, pour le filtre
+ * @var ?int $matiereId   la matière retenue, null pour toutes
  */
+$matiereChoisie = null;
+foreach ($matieres as $m) {
+    if ((int) $m['id'] === $matiereId) {
+        $matiereChoisie = $m['nom'];
+    }
+}
+$filtreActif = $recherche !== '' || $matiereId !== null;
 
 /** Les quatre compteurs d'une fiche, sans les zéros. */
 $compteurs = static function (array $c): array {
@@ -28,9 +37,10 @@ $compteurs = static function (array $c): array {
   <div>
     <h1>📝 Révision</h1>
     <p>
-      <?php if ($recherche !== ''): ?>
+      <?php if ($filtreActif): ?>
         <?= count($garnies) ?> fiche<?= count($garnies) > 1 ? 's' : '' ?>
-        pour « <?= e($recherche) ?> ».
+        <?php if ($recherche !== ''): ?>pour « <?= e($recherche) ?> »<?php endif; ?>
+        <?php if ($matiereChoisie !== null): ?>en <?= e($matiereChoisie) ?><?php endif; ?>.
         <a href="<?= url('revision') ?>">Tout revoir</a>
       <?php elseif ($garnies === []): ?>
         Vos fiches de révision se retrouveront ici.
@@ -40,20 +50,43 @@ $compteurs = static function (array $c): array {
       <?php endif; ?>
     </p>
   </div>
-
-  <form class="filtres" method="get" action="<?= url('revision') ?>" role="search">
-    <input type="search" name="q" placeholder="Chercher dans mes fiches…"
-           aria-label="Chercher dans mes fiches de révision"
-           value="<?= e($recherche) ?>">
-    <button class="bouton bouton--secondaire" type="submit">Chercher</button>
-  </form>
 </div>
 
-<?php if ($recherche !== '' && $garnies === [] && $vides === []): ?>
+<form class="filtres" method="get" action="<?= url('revision') ?>" data-auto-envoi>
+  <div class="champ">
+    <label for="f-fiche-q">Rechercher</label>
+    <input type="search" id="f-fiche-q" name="q" value="<?= e($recherche) ?>"
+           placeholder="texte, lien, fichier…">
+  </div>
+
+  <div class="champ">
+    <label for="f-fiche-matiere">Matière</label>
+    <select id="f-fiche-matiere" name="matiere">
+      <option value="">Toutes</option>
+      <?php foreach ($matieres as $m): ?>
+        <option value="<?= (int) $m['id'] ?>"<?= $matiereId === (int) $m['id'] ? ' selected' : '' ?>>
+          <?= e($m['nom']) ?>
+        </option>
+      <?php endforeach; ?>
+    </select>
+  </div>
+
+  <button class="bouton bouton--secondaire" type="submit">Filtrer</button>
+  <?php if ($filtreActif): ?>
+    <a class="bouton bouton--discret" href="<?= url('revision') ?>">Réinitialiser</a>
+  <?php endif; ?>
+</form>
+
+<?php if ($filtreActif && $garnies === [] && $vides === []): ?>
   <div class="vide">
     <span class="vide__icone">🔍</span>
-    <p>Rien pour « <?= e($recherche) ?> » — ni dans le texte des fiches, ni dans
-       les titres, les liens ou les noms de fichiers rattachés.</p>
+    <?php if ($recherche !== ''): ?>
+      <p>Rien pour « <?= e($recherche) ?> »<?php if ($matiereChoisie !== null): ?>
+         en <?= e($matiereChoisie) ?><?php endif; ?> — ni dans le texte des fiches,
+         ni dans les titres, les liens ou les noms de fichiers rattachés.</p>
+    <?php else: ?>
+      <p>Aucun cours en <?= e((string) $matiereChoisie) ?>.</p>
+    <?php endif; ?>
     <a class="bouton bouton--secondaire" href="<?= url('revision') ?>">Revoir toutes les fiches</a>
   </div>
 <?php elseif ($garnies === [] && $vides === []): ?>
@@ -67,9 +100,9 @@ $compteurs = static function (array $c): array {
   <?php if ($garnies === []): ?>
     <div class="vide">
       <span class="vide__icone">📝</span>
-      <?php if ($recherche !== ''): ?>
-        <p>Aucune fiche ne contient « <?= e($recherche) ?> ». Le cours trouvé
-           ci-dessous n'a pas encore la sienne.</p>
+      <?php if ($filtreActif): ?>
+        <p>Aucune fiche ne correspond. Le ou les cours ci-dessous n'ont pas
+           encore la leur.</p>
       <?php else: ?>
         <p>Aucune fiche pour l'instant. Ouvrez un cours et cliquez sur
            <strong>📝 Révision</strong> pour commencer la sienne.</p>

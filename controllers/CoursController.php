@@ -155,9 +155,24 @@ final class CoursController
 
         $recherche = trim((string) ($_GET['q'] ?? ''));
         $termes = preg_split('/\s+/u', $recherche, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        $matiereId = entier_ou_null($_GET['matiere'] ?? null);
+        $matieres = $this->matieres($userId);
+
+        // Une matière qui n'est pas la sienne ne filtre rien : la retenir
+        // afficherait « 0 fiche » sans pouvoir dire de quelle matière.
+        if ($matiereId !== null
+            && !in_array($matiereId, array_map(static fn (array $m): int => (int) $m['id'], $matieres), true)
+        ) {
+            $matiereId = null;
+        }
 
         $filtre = '';
         $params = [$userId];
+
+        if ($matiereId !== null) {
+            $filtre .= ' AND c.matiere_id = ?';
+            $params[] = $matiereId;
+        }
         /*
          * Chaque terme doit se retrouver quelque part dans la fiche : son
          * texte, le titre du cours, un intitulé de lien, un nom de fichier.
@@ -218,6 +233,8 @@ final class CoursController
             'vides'     => $vides,
             'recherche' => $recherche,
             'termes'    => $termes,
+            'matieres'  => $matieres,
+            'matiereId' => $matiereId,
         ], $recherche === '' ? 'Révision' : 'Révision — ' . $recherche);
     }
 
