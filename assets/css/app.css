@@ -1100,9 +1100,14 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
 
 /* --- Fiche de révision : le volet d'un cours ------------------------------ */
 
-/* Volet ouvert : le contenu et la fiche côte à côte, le reste en dessous. */
+/*
+ * Volet ouvert : le contenu et la fiche côte à côte, et le reste — fichiers
+ * joints, tags, calendrier — sous le contenu du cours, dans sa colonne.
+ * Sur toute la largeur, cette carte passait sous le volet et paraissait
+ * lui appartenir.
+ */
 .colonnes--volet { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
-.colonnes--volet > .pile { grid-column: 1 / -1; }
+.colonnes--volet > .pile { grid-column: 1; }
 
 /*
  * Le volet ne colle pas au défilement ici. Un élément « sticky » placé
