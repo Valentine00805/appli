@@ -1107,7 +1107,21 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
  * lui appartenir.
  */
 .colonnes--volet { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
-.colonnes--volet > .pile { grid-column: 1; }
+
+/*
+ * Volet fermé, « cours-colonne » s efface : le contenu et la carte des
+ * fichiers redeviennent les deux cases de la grille, comme avant.
+ */
+.colonnes > .cours-colonne { display: contents; }
+
+/*
+ * Volet ouvert, elle devient la colonne de gauche et empile ce qu elle
+ * contient. Les cartes suivent alors le contenu du cours de près, au lieu
+ * d attendre que le volet, bien plus haut, se termine.
+ */
+.colonnes--volet > .cours-colonne {
+  display: grid; gap: 1.25rem; align-content: start;
+}
 
 /*
  * Le volet ne colle pas au défilement ici. Un élément « sticky » placé
