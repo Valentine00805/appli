@@ -80,7 +80,7 @@ Config::charger([
         // refuse et le dit.
         'code_inscription'    => '',
         'dossier_uploads'     => __DIR__ . '/storage/uploads',
-        'taille_max_fichier'  => 25 * 1024 * 1024,
+        'taille_max_fichier'  => 200 * 1024 * 1024,
         'extensions_autorisees' => [
             'pdf', 'doc', 'docx', 'odt', 'ppt', 'pptx', 'odp', 'xls', 'xlsx', 'ods',
             'txt', 'md', 'csv', 'rtf',

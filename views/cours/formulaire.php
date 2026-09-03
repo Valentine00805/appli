@@ -93,7 +93,7 @@ $dossierActif  = $edition ? entier_ou_null($cours['dossier_id']) : entier_ou_nul
           <input type="file" id="fichiers" name="fichiers[]" multiple>
           <span class="champ__aide">
             PDF, images, Word, PowerPoint, Excel, audio…
-            <?= e(taille_lisible((int) Config::get('app', 'taille_max_fichier'))) ?> maximum par fichier.
+            <?= e(taille_lisible(Fichiers::tailleMax())) ?> maximum par fichier.
           </span>
         </div>
 

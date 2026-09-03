@@ -20,7 +20,7 @@ final class Fichiers
     {
         $erreurs = [];
         $dossier = (string) Config::get('app', 'dossier_uploads');
-        $tailleMax = (int) Config::get('app', 'taille_max_fichier');
+        $tailleMax = self::tailleMax();
         $extensions = (array) Config::get('app', 'extensions_autorisees');
 
         if (!is_dir($dossier) && !mkdir($dossier, 0775, true) && !is_dir($dossier)) {
@@ -79,6 +79,45 @@ final class Fichiers
         }
 
         return $erreurs;
+    }
+
+    /**
+     * La taille réellement acceptée pour un fichier.
+     *
+     * PHP refuse un envoi avant même que l'application le voie, selon
+     * « upload_max_filesize » et « post_max_size ». Annoncer le réglage de
+     * l'application sans en tenir compte promettrait ce que le serveur ne
+     * tiendrait pas — et un fichier refusé sans explication est déroutant.
+     */
+    public static function tailleMax(): int
+    {
+        $limites = [(int) Config::get('app', 'taille_max_fichier')];
+
+        foreach (['upload_max_filesize', 'post_max_size'] as $directive) {
+            $octets = self::enOctets((string) ini_get($directive));
+            if ($octets > 0) {
+                $limites[] = $octets;
+            }
+        }
+
+        return min($limites);
+    }
+
+    /** « 200M » vaut 209 715 200 ; « 0 » et « -1 » veulent dire « sans limite ». */
+    private static function enOctets(string $valeur): int
+    {
+        $valeur = trim($valeur);
+        if ($valeur === '' || (int) $valeur <= 0) {
+            return 0;
+        }
+
+        $nombre = (int) $valeur;
+        return match (strtolower(substr($valeur, -1))) {
+            'g'     => $nombre * 1024 * 1024 * 1024,
+            'm'     => $nombre * 1024 * 1024,
+            'k'     => $nombre * 1024,
+            default => $nombre,
+        };
     }
 
     /** Supprime un fichier (base + disque) s'il appartient à l'utilisateur. */

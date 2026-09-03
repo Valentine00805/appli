@@ -110,7 +110,7 @@ $nbElements = count($elements) + count($fichiersFiche);
             <span>
               <strong>Déposez vos fichiers ici</strong><br>
               <span class="discret">ou cliquez pour les choisir — PDF, images, Word, audio…
-                <?= e(taille_lisible((int) Config::get('app', 'taille_max_fichier'))) ?> par fichier</span>
+                <?= e(taille_lisible(Fichiers::tailleMax())) ?> par fichier</span>
             </span>
           </label>
 

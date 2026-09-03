@@ -19,8 +19,8 @@ RedirectMatch 404 (?i)^/.*/(config|src|controllers|views|storage|sql)/
 # « mod_php.c » ne correspond à rien et les directives seraient ignorées.
 # Ces valeurs ne servent que de repli : la référence est le php.ini de WAMP.
 <IfModule php_module>
-    php_value upload_max_filesize 25M
-    php_value post_max_size 128M
+    php_value upload_max_filesize 200M
+    php_value post_max_size 256M
     php_value max_file_uploads 20
 </IfModule>
 
