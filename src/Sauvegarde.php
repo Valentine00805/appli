@@ -38,6 +38,8 @@ final class Sauvegarde
         'fichiers'          => ['portee' => 'user',  'liens' => ['cours_id' => 'cours']],
         'evenements'        => ['portee' => 'user',  'liens' => [
             'matiere_id' => 'matieres', 'type_id' => 'types_evenement', 'cours_id' => 'cours']],
+        'fiche_elements'    => ['portee' => 'user',  'liens' => [
+            'cours_id' => 'cours', 'cible_cours_id' => 'cours', 'cible_evenement_id' => 'evenements']],
         'recurrences'       => ['portee' => 'user',  'liens' => ['categorie_id' => 'categories_budget']],
         'soldes_saisis'     => ['portee' => 'user',  'liens' => []],
         'operations'        => ['portee' => 'user',  'liens' => [

@@ -1,10 +1,18 @@
 <?php
 /**
  * @var array $cours, $fichiers, $tags, $evenements
+ * @var array $fichiersFiche, $elements, $autresCours, $evenementsChoix
  * @var bool $revision  le volet de révision est-il ouvert ?
  */
 $images = array_filter($fichiers, static fn (array $f): bool => Fichiers::estImage($f['mime']));
 $fiche = (string) ($cours['fiche_revision'] ?? '');
+
+// Les éléments arrivent triés par type : on les range par rayon pour l'affichage.
+$parType = ['lien' => [], 'cours' => [], 'evenement' => []];
+foreach ($elements as $element) {
+    $parType[$element['type']][] = $element;
+}
+$nbElements = count($elements) + count($fichiersFiche);
 ?>
 
 <div class="entete-page">
@@ -37,7 +45,7 @@ $fiche = (string) ($cours['fiche_revision'] ?? '');
        href="<?= $revision
            ? url('cours/' . $cours['id'])
            : url('cours/' . $cours['id'], ['revision' => 1]) . '#revision' ?>">
-      📝 Révision<?= $fiche !== '' ? ' •' : '' ?>
+      📝 Révision<?= $fiche !== '' || $nbElements > 0 ? ' •' : '' ?>
     </a>
     <a class="bouton bouton--secondaire" href="<?= url('evenements/nouveau', ['cours' => $cours['id']]) ?>">Planifier</a>
     <a class="bouton" href="<?= url('cours/' . $cours['id'] . '/modifier') ?>">Modifier</a>
@@ -79,6 +87,205 @@ $fiche = (string) ($cours['fiche_revision'] ?? '');
           <a class="bouton bouton--discret" href="<?= url('cours/' . $cours['id']) ?>">Fermer</a>
         </div>
       </form>
+
+      <hr class="separateur">
+
+      <h3 class="volet__section" style="margin-top:0">
+        Éléments rattachés
+        <?php if ($nbElements > 0): ?><span class="discret">(<?= $nbElements ?>)</span><?php endif; ?>
+      </h3>
+      <p class="champ__aide" style="margin:-.35rem 0 .9rem">
+        Ce qui ne vient pas du cours lui-même : documents, liens, autres chapitres, échéances.
+      </p>
+
+      <?php // --- Fichiers et images propres à la fiche ------------------- ?>
+      <div class="fiche__rayon">
+        <h4 class="fiche__titre">📎 Fichiers et images</h4>
+
+        <?php if ($fichiersFiche === []): ?>
+          <p class="discret fiche__vide">Rien pour l'instant.</p>
+        <?php else: ?>
+          <ul class="liste-fichiers">
+            <?php foreach ($fichiersFiche as $f): ?>
+              <?php $estImage = Fichiers::estImage($f['mime']); ?>
+              <li class="fichier">
+                <?php if ($estImage): ?>
+                  <a href="<?= url('fichiers/' . $f['id']) ?>" target="_blank" rel="noopener" class="fiche__vignette">
+                    <img src="<?= url('fichiers/' . $f['id']) ?>" alt="<?= e($f['nom_origine']) ?>" loading="lazy">
+                  </a>
+                <?php else: ?>
+                  <span class="fichier__icone" aria-hidden="true"><?= Fichiers::icone($f['mime'], $f['nom_origine']) ?></span>
+                <?php endif; ?>
+                <span style="min-width:0">
+                  <?php $apercu = ApercuDocument::possible((string) $f['nom_origine']); ?>
+                  <a class="fichier__nom"
+                     href="<?= url('fichiers/' . $f['id'] . ($apercu ? '/apercu' : '')) ?>"
+                     <?= $apercu ? '' : ' target="_blank" rel="noopener"' ?>>
+                    <?= e($f['nom_origine']) ?>
+                  </a><br>
+                  <span class="fichier__meta"><?= e(taille_lisible((int) $f['taille'])) ?></span>
+                </span>
+                <span class="fichier__actions">
+                  <a class="bouton bouton--discret bouton--petit"
+                     href="<?= url('fichiers/' . $f['id'], ['telecharger' => 1]) ?>" title="Télécharger">⬇</a>
+                  <form method="post" action="<?= url('fichiers/' . $f['id'] . '/supprimer') ?>" class="en-ligne"
+                        data-confirmation="Retirer ce fichier de la fiche ?">
+                    <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
+                    <button class="bouton bouton--discret bouton--petit" type="submit" title="Retirer">✕</button>
+                  </form>
+                </span>
+              </li>
+            <?php endforeach; ?>
+          </ul>
+        <?php endif; ?>
+
+        <form method="post" action="<?= url('cours/' . $cours['id'] . '/revision/fichiers') ?>"
+              enctype="multipart/form-data" class="depot depot--mince" data-depot>
+          <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
+          <label class="depot__zone" for="depot-fiche-<?= (int) $cours['id'] ?>">
+            <span class="depot__icone" aria-hidden="true">📎</span>
+            <span><strong>Déposez ici</strong> <span class="discret">— photo du tableau, schéma, annales…</span></span>
+          </label>
+          <input type="file" id="depot-fiche-<?= (int) $cours['id'] ?>" name="fichiers[]" multiple
+                 class="depot__champ" data-depot-champ>
+          <button class="bouton bouton--petit bouton--bloc" type="submit" data-depot-envoi>Joindre à la fiche</button>
+        </form>
+      </div>
+
+      <?php // --- Liens web ----------------------------------------------- ?>
+      <div class="fiche__rayon">
+        <h4 class="fiche__titre">🔗 Liens</h4>
+
+        <?php if ($parType['lien'] === []): ?>
+          <p class="discret fiche__vide">Rien pour l'instant.</p>
+        <?php else: ?>
+          <ul class="fiche__liste">
+            <?php foreach ($parType['lien'] as $lien): ?>
+              <li>
+                <a href="<?= e((string) $lien['url']) ?>" target="_blank" rel="noopener noreferrer">
+                  <?= e((string) $lien['libelle']) ?> ↗
+                </a>
+                <span class="fiche__url discret"><?= e((string) parse_url((string) $lien['url'], PHP_URL_HOST)) ?></span>
+                <?= Vue::rendre('cours/_retirer-element', ['element' => $lien]) ?>
+              </li>
+            <?php endforeach; ?>
+          </ul>
+        <?php endif; ?>
+
+        <details class="fiche__ajout">
+          <summary>+ Ajouter un lien</summary>
+          <form method="post" action="<?= url('cours/' . $cours['id'] . '/revision/elements') ?>">
+            <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
+            <input type="hidden" name="type" value="lien">
+            <div class="champ">
+              <label for="lien-url">Adresse</label>
+              <input type="url" id="lien-url" name="url" required placeholder="https://…">
+            </div>
+            <div class="champ">
+              <label for="lien-libelle">Intitulé <span class="discret">(facultatif)</span></label>
+              <input type="text" id="lien-libelle" name="libelle" maxlength="200"
+                     placeholder="Vidéo sur les fonctions affines">
+            </div>
+            <button class="bouton bouton--petit" type="submit">Ajouter le lien</button>
+          </form>
+        </details>
+      </div>
+
+      <?php // --- Renvois vers d'autres cours ----------------------------- ?>
+      <div class="fiche__rayon">
+        <h4 class="fiche__titre">📘 Autres cours</h4>
+
+        <?php if ($parType['cours'] === []): ?>
+          <p class="discret fiche__vide">Rien pour l'instant.</p>
+        <?php else: ?>
+          <ul class="fiche__liste">
+            <?php foreach ($parType['cours'] as $renvoi): ?>
+              <li>
+                <a href="<?= url('cours/' . (int) $renvoi['cible_cours_id']) ?>">
+                  <?= e((string) $renvoi['cours_titre']) ?>
+                </a>
+                <?php if (($renvoi['libelle'] ?? '') !== ''): ?>
+                  <span class="fiche__url discret"><?= e((string) $renvoi['libelle']) ?></span>
+                <?php endif; ?>
+                <?= Vue::rendre('cours/_retirer-element', ['element' => $renvoi]) ?>
+              </li>
+            <?php endforeach; ?>
+          </ul>
+        <?php endif; ?>
+
+        <?php if ($autresCours === []): ?>
+          <p class="champ__aide">Vous n'avez pas d'autre cours pour l'instant.</p>
+        <?php else: ?>
+          <details class="fiche__ajout">
+            <summary>+ Renvoyer vers un cours</summary>
+            <form method="post" action="<?= url('cours/' . $cours['id'] . '/revision/elements') ?>">
+              <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
+              <input type="hidden" name="type" value="cours">
+              <div class="champ">
+                <label for="renvoi-cours">Cours</label>
+                <select id="renvoi-cours" name="cible" required>
+                  <?php foreach ($autresCours as $c): ?>
+                    <option value="<?= (int) $c['id'] ?>"><?= e($c['titre']) ?></option>
+                  <?php endforeach; ?>
+                </select>
+              </div>
+              <div class="champ">
+                <label for="renvoi-note">Pourquoi <span class="discret">(facultatif)</span></label>
+                <input type="text" id="renvoi-note" name="libelle" maxlength="200"
+                       placeholder="Les dérivées y sont expliquées">
+              </div>
+              <button class="bouton bouton--petit" type="submit">Ajouter le renvoi</button>
+            </form>
+          </details>
+        <?php endif; ?>
+      </div>
+
+      <?php // --- Évènements du calendrier -------------------------------- ?>
+      <div class="fiche__rayon">
+        <h4 class="fiche__titre">📅 Au calendrier</h4>
+
+        <?php if ($parType['evenement'] === []): ?>
+          <p class="discret fiche__vide">Rien pour l'instant.</p>
+        <?php else: ?>
+          <ul class="fiche__liste">
+            <?php foreach ($parType['evenement'] as $renvoi): ?>
+              <li>
+                <a href="<?= url('evenements/' . (int) $renvoi['cible_evenement_id'] . '/modifier') ?>">
+                  <?= e(($renvoi['type_icone'] ?? '📌') . ' ' . (string) $renvoi['evenement_titre']) ?>
+                </a>
+                <span class="fiche__url discret">
+                  <?= e(date_fr((string) $renvoi['evenement_debut'], (int) $renvoi['journee_entiere'] === 0)) ?>
+                  <?= (int) $renvoi['termine'] === 1 ? '· terminé' : '' ?>
+                </span>
+                <?= Vue::rendre('cours/_retirer-element', ['element' => $renvoi]) ?>
+              </li>
+            <?php endforeach; ?>
+          </ul>
+        <?php endif; ?>
+
+        <?php if ($evenementsChoix === []): ?>
+          <p class="champ__aide">Votre calendrier est encore vide.</p>
+        <?php else: ?>
+          <details class="fiche__ajout">
+            <summary>+ Rattacher un évènement</summary>
+            <form method="post" action="<?= url('cours/' . $cours['id'] . '/revision/elements') ?>">
+              <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
+              <input type="hidden" name="type" value="evenement">
+              <div class="champ">
+                <label for="renvoi-evt">Évènement</label>
+                <select id="renvoi-evt" name="cible" required>
+                  <?php foreach ($evenementsChoix as $evt): ?>
+                    <option value="<?= (int) $evt['id'] ?>">
+                      <?= e(date_fr((string) $evt['debut'], false) . ' — ' . $evt['titre']) ?>
+                    </option>
+                  <?php endforeach; ?>
+                </select>
+              </div>
+              <button class="bouton bouton--petit" type="submit">Rattacher</button>
+            </form>
+          </details>
+        <?php endif; ?>
+      </div>
     </section>
   <?php endif; ?>
 

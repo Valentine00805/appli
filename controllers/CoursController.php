@@ -80,11 +80,31 @@ final class CoursController
             $this->introuvable();
         }
 
+        // Le volet de révision s'ouvre et se referme depuis le même bouton.
+        $revision = isset($_GET['revision']);
+
         Vue::afficher('cours/afficher', [
             'cours'      => $cours,
-            // Le volet de révision s'ouvre et se referme depuis le même bouton.
-            'revision'   => isset($_GET['revision']),
-            'fichiers'   => Database::all('SELECT * FROM fichiers WHERE cours_id = ? ORDER BY created_at', [$id]),
+            'revision'   => $revision,
+            'fichiers'   => Database::all(
+                'SELECT * FROM fichiers WHERE cours_id = ? AND pour_fiche = 0 ORDER BY created_at',
+                [$id]
+            ),
+            // Les pièces de la fiche : rangées à part, elles ne viennent pas du cours.
+            'fichiersFiche' => Database::all(
+                'SELECT * FROM fichiers WHERE cours_id = ? AND pour_fiche = 1 ORDER BY created_at',
+                [$id]
+            ),
+            'elements'   => $this->elementsDeFiche($id, $userId),
+            // De quoi remplir les sélecteurs, seulement quand le volet est ouvert.
+            'autresCours' => $revision ? Database::all(
+                'SELECT id, titre FROM cours WHERE user_id = ? AND id <> ? ORDER BY titre',
+                [$userId, $id]
+            ) : [],
+            'evenementsChoix' => $revision ? Database::all(
+                'SELECT id, titre, debut FROM evenements WHERE user_id = ? ORDER BY debut DESC LIMIT 100',
+                [$userId]
+            ) : [],
             'tags'       => Database::all(
                 'SELECT t.* FROM tags t JOIN cours_tag ct ON ct.tag_id = t.id WHERE ct.cours_id = ? ORDER BY t.nom',
                 [$id]
@@ -121,6 +141,86 @@ final class CoursController
 
         Session::flash('succes', $fiche === '' ? 'Fiche de révision vidée.' : 'Fiche de révision enregistrée.');
         redirect('cours/' . $id, ['revision' => 1]);
+    }
+
+    /** Joint des fichiers à la fiche de révision, pas aux pièces jointes du cours. */
+    public function joindreFiche(int $id): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $userId = Auth::id();
+
+        if (Database::valeur('SELECT id FROM cours WHERE id = ? AND user_id = ?', [$id, $userId]) === null) {
+            $this->introuvable();
+        }
+
+        if (!isset($_FILES['fichiers']) || !is_array($_FILES['fichiers']['name'] ?? null)) {
+            Session::flash('erreur', 'Aucun fichier reçu.');
+            redirect('cours/' . $id, ['revision' => 1]);
+        }
+
+        $compte = static fn (): int => (int) Database::valeur(
+            'SELECT COUNT(*) FROM fichiers WHERE cours_id = ? AND pour_fiche = 1',
+            [$id]
+        );
+
+        $avant = $compte();
+        $erreurs = Fichiers::enregistrer($_FILES['fichiers'], $id, $userId, true);
+        $ajoutes = $compte() - $avant;
+
+        foreach ($erreurs as $erreur) {
+            Session::flash('erreur', $erreur);
+        }
+        if ($ajoutes > 0) {
+            Session::flash('succes', $ajoutes === 1
+                ? 'Fichier ajouté à la fiche.'
+                : $ajoutes . ' fichiers ajoutés à la fiche.');
+        }
+        redirect('cours/' . $id, ['revision' => 1]);
+    }
+
+    /** Rattache à la fiche un lien web, un autre cours ou un évènement. */
+    public function ajouterElement(int $id): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $userId = Auth::id();
+
+        if (Database::valeur('SELECT id FROM cours WHERE id = ? AND user_id = ?', [$id, $userId]) === null) {
+            $this->introuvable();
+        }
+
+        $type = (string) ($_POST['type'] ?? '');
+        $libelle = mb_substr(trim((string) ($_POST['libelle'] ?? '')), 0, 200);
+
+        $erreur = match ($type) {
+            'lien'      => $this->ajouterLien($id, $userId, $libelle),
+            'cours'     => $this->ajouterRenvoi($id, $userId, 'cible_cours_id', 'cours', $libelle),
+            'evenement' => $this->ajouterRenvoi($id, $userId, 'cible_evenement_id', 'evenements', $libelle),
+            default     => 'Type d’élément inconnu.',
+        };
+
+        Session::flash($erreur === null ? 'succes' : 'erreur', $erreur ?? 'Élément ajouté à la fiche.');
+        redirect('cours/' . $id, ['revision' => 1]);
+    }
+
+    public function supprimerElement(int $id): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $userId = Auth::id();
+
+        $coursId = Database::valeur(
+            'SELECT cours_id FROM fiche_elements WHERE id = ? AND user_id = ?',
+            [$id, $userId]
+        );
+        if ($coursId === null) {
+            $this->introuvable();
+        }
+
+        Database::run('DELETE FROM fiche_elements WHERE id = ? AND user_id = ?', [$id, $userId]);
+        Session::flash('succes', 'Élément retiré de la fiche.');
+        redirect('cours/' . (int) $coursId, ['revision' => 1]);
     }
 
     /** Formulaire de création (id null) ou de modification. */
@@ -669,6 +769,111 @@ final class CoursController
         foreach (Fichiers::enregistrer($_FILES['fichiers'], $coursId, $userId) as $erreur) {
             Session::flash('erreur', $erreur);
         }
+    }
+
+    /**
+     * Ce qui est rattaché à une fiche, avec de quoi l'afficher.
+     *
+     * Les jointures suffisent à décrire chaque renvoi : la cible supprimée
+     * emporte la ligne, les clés étrangères s'en chargent.
+     */
+    private function elementsDeFiche(int $coursId, int $userId): array
+    {
+        return Database::all(
+            'SELECT e.*,
+                    c.titre AS cours_titre,
+                    v.titre AS evenement_titre, v.debut AS evenement_debut,
+                    v.journee_entiere, v.termine,
+                    t.icone AS type_icone, t.couleur AS type_couleur
+             FROM fiche_elements e
+             LEFT JOIN cours c            ON c.id = e.cible_cours_id
+             LEFT JOIN evenements v       ON v.id = e.cible_evenement_id
+             LEFT JOIN types_evenement t  ON t.id = v.type_id
+             WHERE e.cours_id = ? AND e.user_id = ?
+             ORDER BY e.type, e.position, e.id',
+            [$coursId, $userId]
+        );
+    }
+
+    /** @return string|null le message d'erreur, ou null si l'ajout a réussi */
+    private function ajouterLien(int $coursId, int $userId, string $libelle): ?string
+    {
+        $url = trim((string) ($_POST['url'] ?? ''));
+        if ($url === '') {
+            return 'Il manque l’adresse du lien.';
+        }
+        /*
+         * Seuls http et https sont acceptés. Un « javascript: » ou un « data: »
+         * placé ici deviendrait un lien cliquable dans la page : c'est la porte
+         * d'entrée classique d'un script injecté.
+         */
+        if (!preg_match('#^https?://#i', $url) || filter_var($url, FILTER_VALIDATE_URL) === false) {
+            return 'Adresse invalide : elle doit commencer par http:// ou https://.';
+        }
+        if (mb_strlen($url) > 2048) {
+            return 'Adresse trop longue.';
+        }
+
+        // Sans intitulé, le nom du site fait l'affaire.
+        if ($libelle === '') {
+            $libelle = (string) (parse_url($url, PHP_URL_HOST) ?: 'Lien');
+        }
+
+        Database::run(
+            'INSERT INTO fiche_elements (user_id, cours_id, type, libelle, url, position)
+             VALUES (?, ?, \'lien\', ?, ?, ?)',
+            [$userId, $coursId, $libelle, $url, $this->rangSuivant($coursId, 'lien')]
+        );
+        return null;
+    }
+
+    /**
+     * Rattache un cours ou un évènement, après avoir vérifié qu'il appartient
+     * bien à l'utilisateur : sans quoi une fiche pointerait chez quelqu'un d'autre.
+     *
+     * @return string|null le message d'erreur, ou null si l'ajout a réussi
+     */
+    private function ajouterRenvoi(
+        int $coursId,
+        int $userId,
+        string $colonne,
+        string $table,
+        string $libelle
+    ): ?string {
+        $cible = entier_ou_null($_POST['cible'] ?? null);
+        if ($cible === null) {
+            return 'Aucun élément choisi.';
+        }
+        if ($table === 'cours' && $cible === $coursId) {
+            return 'Un cours ne peut pas renvoyer à lui-même.';
+        }
+        if (Database::valeur("SELECT id FROM `$table` WHERE id = ? AND user_id = ?", [$cible, $userId]) === null) {
+            return 'Élément introuvable.';
+        }
+
+        $type = $table === 'cours' ? 'cours' : 'evenement';
+        $deja = Database::valeur(
+            "SELECT id FROM fiche_elements WHERE cours_id = ? AND user_id = ? AND `$colonne` = ?",
+            [$coursId, $userId, $cible]
+        );
+        if ($deja !== null) {
+            return 'Cet élément est déjà dans la fiche.';
+        }
+
+        Database::run(
+            "INSERT INTO fiche_elements (user_id, cours_id, type, libelle, `$colonne`, position)
+             VALUES (?, ?, ?, ?, ?, ?)",
+            [$userId, $coursId, $type, $libelle !== '' ? $libelle : null, $cible, $this->rangSuivant($coursId, $type)]
+        );
+        return null;
+    }
+
+    private function rangSuivant(int $coursId, string $type): int
+    {
+        return 1 + (int) Database::valeur(
+            'SELECT COALESCE(MAX(position), 0) FROM fiche_elements WHERE cours_id = ? AND type = ?',
+            [$coursId, $type]
+        );
     }
 
     /** Le fichier de l'utilisateur, à condition que son texte soit réécrivable. */

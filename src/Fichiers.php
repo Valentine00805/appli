@@ -6,9 +6,13 @@ final class Fichiers
 {
     /**
      * Enregistre les fichiers téléversés et renvoie la liste des erreurs rencontrées.
+     *
+     * $pourFiche range le fichier dans la fiche de révision du cours plutôt que
+     * dans ses pièces jointes : même stockage, même contrôle, autre rayon.
+     *
      * @return string[]
      */
-    public static function enregistrer(array $fichiers, int $coursId, int $userId): array
+    public static function enregistrer(array $fichiers, int $coursId, int $userId, bool $pourFiche = false): array
     {
         $erreurs = [];
         $dossier = (string) Config::get('app', 'dossier_uploads');
@@ -64,9 +68,9 @@ final class Fichiers
             }
 
             Database::run(
-                'INSERT INTO fichiers (user_id, cours_id, nom_origine, nom_stocke, mime, taille)
-                 VALUES (?, ?, ?, ?, ?, ?)',
-                [$userId, $coursId, mb_substr($nomOrigine, 0, 255), $nomStocke, $mime, $taille]
+                'INSERT INTO fichiers (user_id, cours_id, pour_fiche, nom_origine, nom_stocke, mime, taille)
+                 VALUES (?, ?, ?, ?, ?, ?, ?)',
+                [$userId, $coursId, $pourFiche ? 1 : 0, mb_substr($nomOrigine, 0, 255), $nomStocke, $mime, $taille]
             );
         }
 

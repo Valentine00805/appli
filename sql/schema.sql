@@ -87,6 +87,9 @@ CREATE TABLE IF NOT EXISTS `fichiers` (
   `id`         INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `user_id`    INT UNSIGNED NOT NULL,
   `cours_id`   INT UNSIGNED NOT NULL,
+  -- Un fichier de la fiche de révision ne figure pas dans les pièces jointes
+  -- du cours : c'est la seule différence, tout le reste est commun.
+  `pour_fiche` TINYINT(1)   NOT NULL DEFAULT 0,
   `nom_origine` VARCHAR(255) NOT NULL,
   `nom_stocke` VARCHAR(255) NOT NULL,
   `mime`       VARCHAR(120) NOT NULL,
@@ -94,6 +97,7 @@ CREATE TABLE IF NOT EXISTS `fichiers` (
   `created_at` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `idx_fichiers_cours` (`cours_id`),
+  KEY `idx_fichiers_fiche` (`cours_id`, `pour_fiche`),
   CONSTRAINT `fk_fichiers_cours` FOREIGN KEY (`cours_id`) REFERENCES `cours`(`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_fichiers_user`  FOREIGN KEY (`user_id`)  REFERENCES `users`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -281,4 +285,29 @@ CREATE TABLE IF NOT EXISTS `taches` (
   KEY `idx_taches_position` (`liste_id`, `position`),
   CONSTRAINT `fk_taches_user`  FOREIGN KEY (`user_id`)  REFERENCES `users`(`id`)         ON DELETE CASCADE,
   CONSTRAINT `fk_taches_liste` FOREIGN KEY (`liste_id`) REFERENCES `listes_taches`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Ce qu'on rattache à une fiche de révision sans que ça vienne du cours :
+-- des liens web, des renvois vers d'autres cours, des évènements du calendrier.
+-- Les fichiers de la fiche, eux, vivent dans « fichiers » avec pour_fiche = 1.
+CREATE TABLE IF NOT EXISTS `fiche_elements` (
+  `id`         INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `user_id`    INT UNSIGNED NOT NULL,
+  `cours_id`   INT UNSIGNED NOT NULL,
+  `type`       ENUM('lien', 'cours', 'evenement') NOT NULL,
+  `libelle`    VARCHAR(200) DEFAULT NULL,
+  `url`        VARCHAR(2048) DEFAULT NULL,
+  -- Une cible par type, chacune avec sa clé étrangère : le cours ou
+  -- l'évènement disparu emporte le renvoi, sans laisser de ligne morte.
+  `cible_cours_id`     INT UNSIGNED DEFAULT NULL,
+  `cible_evenement_id` INT UNSIGNED DEFAULT NULL,
+  `position`   INT UNSIGNED NOT NULL DEFAULT 0,
+  `created_at` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_fiche_elements_cours` (`cours_id`, `type`, `position`),
+  KEY `idx_fiche_elements_user` (`user_id`),
+  CONSTRAINT `fk_fiche_elements_user`  FOREIGN KEY (`user_id`)  REFERENCES `users`(`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_fiche_elements_cours` FOREIGN KEY (`cours_id`) REFERENCES `cours`(`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_fiche_elements_cible_cours` FOREIGN KEY (`cible_cours_id`) REFERENCES `cours`(`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_fiche_elements_cible_evt`   FOREIGN KEY (`cible_evenement_id`) REFERENCES `evenements`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

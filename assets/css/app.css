@@ -1115,3 +1115,37 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
 
 .fiche__texte { min-height: 22rem; line-height: 1.7; }
 .fiche .actions { margin-top: .85rem; }
+
+/* Ce qu'on rattache à une fiche : un rayon par nature d'élément. */
+.fiche__rayon + .fiche__rayon { margin-top: 1.1rem; }
+.fiche__titre { margin: 0 0 .5rem; font-size: .92rem; }
+
+.fiche__vide { margin: 0 0 .5rem; font-size: .88rem; }
+
+.fiche__liste { list-style: none; margin: 0 0 .5rem; padding: 0; display: grid; gap: .35rem; }
+.fiche__liste li {
+  display: flex; align-items: baseline; gap: .5rem;
+  padding: .4rem .55rem; border-radius: var(--rayon-s); background: var(--fond-doux);
+}
+.fiche__liste li > a { font-weight: 600; overflow-wrap: anywhere; }
+.fiche__url { font-size: .8rem; margin-left: auto; text-align: right; flex: none; }
+.fiche__liste form { margin-left: .2rem; flex: none; }
+
+/* Une vignette à la place de l'icône, quand le fichier est une image. */
+.fiche__vignette { flex: none; }
+.fiche__vignette img {
+  width: 44px; height: 44px; object-fit: cover;
+  border-radius: var(--rayon-s); display: block;
+}
+
+/* Les formulaires d'ajout restent repliés tant qu'on ne s'en sert pas. */
+.fiche__ajout > summary {
+  cursor: pointer; font-size: .88rem; color: var(--accent-fonce);
+  padding: .3rem 0; list-style: none;
+}
+.fiche__ajout > summary::-webkit-details-marker { display: none; }
+.fiche__ajout > summary:hover { text-decoration: underline; }
+.fiche__ajout[open] > summary { margin-bottom: .5rem; }
+.fiche__ajout .champ { margin-bottom: .6rem; }
+
+.depot--mince .depot__zone { padding: .7rem .8rem; }
