@@ -119,6 +119,7 @@ $routes = [
     ['POST', 'compte/sauvegarde/restaurer', [SauvegardeController::class, 'restaurer']],
 
     ['GET',  'cours',                     [CoursController::class, 'index']],
+    ['GET',  'revision',                  [CoursController::class, 'revisions']],
     ['GET',  'cours/nouveau',             [CoursController::class, 'formulaire']],
     ['POST', 'cours/nouveau',             [CoursController::class, 'creer']],
     ['POST', 'cours/ranger',              [CoursController::class, 'ranger']],

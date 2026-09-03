@@ -1185,3 +1185,23 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
   height: auto; max-height: 60vh; border-radius: var(--rayon-s);
   background: #000;
 }
+
+/* --- Page Révision : les fiches, matière par matière ---------------------- */
+
+.revisions__matiere { margin: 1.5rem 0 .75rem; font-size: 1rem; }
+.revisions__matiere:first-of-type { margin-top: 0; }
+
+.grille--fiches { grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr)); }
+
+.fiche-carte { display: block; text-decoration: none; color: inherit; }
+.fiche-carte:hover { border-color: var(--accent); }
+.fiche-carte__titre { margin: 0 0 .45rem; font-size: 1rem; }
+
+/* Un extrait, pas la fiche : trois lignes suffisent à la reconnaître. */
+.fiche-carte__extrait {
+  margin: 0; color: var(--texte-doux); font-size: .88rem; line-height: 1.5;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.fiche-carte__compteurs { margin: .6rem 0 0; font-size: .8rem; color: var(--texte-doux); }

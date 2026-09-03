@@ -143,6 +143,51 @@ final class CoursController
         redirect('cours/' . $id, ['revision' => 1]);
     }
 
+    /** Toutes les fiches de révision, groupées par matière. */
+    public function revisions(): void
+    {
+        Auth::exiger();
+        $userId = Auth::id();
+
+        $cours = Database::all(
+            'SELECT c.id, c.titre, c.fiche_revision, c.updated_at,
+                    m.nom AS matiere_nom, m.couleur AS matiere_couleur,
+                    (SELECT COUNT(*) FROM fichiers f
+                      WHERE f.cours_id = c.id AND f.pour_fiche = 1)            AS nb_fichiers,
+                    (SELECT COUNT(*) FROM fiche_elements e
+                      WHERE e.cours_id = c.id AND e.type = \'lien\')           AS nb_liens,
+                    (SELECT COUNT(*) FROM fiche_elements e
+                      WHERE e.cours_id = c.id AND e.type = \'cours\')          AS nb_renvois,
+                    (SELECT COUNT(*) FROM fiche_elements e
+                      WHERE e.cours_id = c.id AND e.type = \'evenement\')      AS nb_evenements
+             FROM cours c
+             LEFT JOIN matieres m ON m.id = c.matiere_id
+             WHERE c.user_id = ?
+             ORDER BY COALESCE(m.nom, \'￿\'), c.titre',
+            [$userId]
+        );
+
+        // Une fiche existe dès qu'elle porte du texte ou le moindre élément.
+        $garnies = [];
+        $vides = [];
+        foreach ($cours as $c) {
+            $elements = (int) $c['nb_fichiers'] + (int) $c['nb_liens']
+                      + (int) $c['nb_renvois'] + (int) $c['nb_evenements'];
+            $c['nb_elements'] = $elements;
+
+            if (trim((string) $c['fiche_revision']) !== '' || $elements > 0) {
+                $garnies[] = $c;
+            } else {
+                $vides[] = $c;
+            }
+        }
+
+        Vue::afficher('cours/revisions', [
+            'garnies' => $garnies,
+            'vides'   => $vides,
+        ], 'Révision');
+    }
+
     /** Joint des fichiers à la fiche de révision, pas aux pièces jointes du cours. */
     public function joindreFiche(int $id): void
     {
