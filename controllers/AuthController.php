@@ -207,7 +207,7 @@ final class AuthController
             Session::flash('erreur',
                 'Inscription impossible : l’application est accessible depuis le réseau et '
                 . 'aucun code d’inscription n’est défini. Renseignez « code_inscription » dans '
-                . 'config/config.php, ou passez « inscription_ouverte » à false.');
+                . 'config/parametres.php, ou passez « inscription_ouverte » à false.');
             redirect('connexion');
         }
     }
