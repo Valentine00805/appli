@@ -11,6 +11,9 @@ $estTache = !empty($evt['est_tache']);
 $heure = $evt['journee_entiere']
     ? ($estTache ? 'Échéance' : 'Journée')
     : date('H:i', strtotime((string) $evt['debut'])) . ' – ' . date('H:i', strtotime((string) $evt['fin']));
+// Quand la date précède l'heure, la place manque pour la plage entière :
+// seul le début est montré. Un libellé, lui, se garde en un seul morceau.
+$heureCourte = $evt['journee_entiere'] ? $heure : date('H:i', strtotime((string) $evt['debut']));
 $lienEvt = $estTache
     ? url('taches', ['liste' => $evt['liste_id']])
     : url('evenements/' . $evt['id'] . '/modifier');
@@ -19,7 +22,7 @@ $lienEvt = $estTache
   <span class="evt-ligne__barre" style="background:<?= e($couleur) ?>"></span>
 
   <span class="evt-ligne__heure">
-    <?= e($avecDate ? date('d/m', strtotime((string) $evt['debut'])) . ' ' . substr($heure, 0, 5) : $heure) ?>
+    <?= e($avecDate ? date('d/m', strtotime((string) $evt['debut'])) . ' ' . $heureCourte : $heure) ?>
   </span>
 
   <span style="min-width:0">
