@@ -6,7 +6,7 @@ declare(strict_types=1);
  * Toutes les URL passent par ce fichier (voir .htaccess).
  */
 
-require __DIR__ . '/src/demarrage.php';
+require __DIR__ . '/src/bootstrap.php';
 
 require __DIR__ . '/controllers/AuthController.php';
 require __DIR__ . '/controllers/CoursController.php';
