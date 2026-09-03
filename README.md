@@ -21,8 +21,19 @@ PHP 8 + MySQL, sans aucune dépendance externe : pas de Composer, pas de CDN, to
 
    - Ou depuis phpMyAdmin (<http://localhost/phpmyadmin5.2.3/>) : onglet **Importer** → choisir `sql/schema.sql` → **Exécuter**.
 
-3. **Vérifier les identifiants MySQL** dans `config/config.php`
-   (par défaut WAMP : utilisateur `root`, mot de passe vide).
+3. **Vérifier les identifiants MySQL** (par défaut WAMP : utilisateur `root`,
+   mot de passe vide).
+
+   Sans rien faire, l'application démarre sur les réglages de
+   `config/config.example.php`, qui conviennent à une installation WAMP
+   ordinaire. Pour d'autres identifiants — un hébergeur, un autre mot de passe —
+   recopiez l'exemple et modifiez la copie, qui a la priorité :
+
+   ```bash
+   cp config/config.example.php config/parametres.php
+   ```
+
+   Cette copie n'est pas dans le dépôt : elle contient vos identifiants.
 
 4. **Ouvrir l'application** : <http://localhost/mon_appli/appli/>
 
@@ -251,7 +262,7 @@ d'abord que le fichier vous appartient.
 Chaque compte a ses propres cours, matières, tags, fichiers et évènements ;
 rien n'est partagé et aucun compte ne peut lire les données d'un autre.
 
-Pour fermer les inscriptions une fois tout le monde inscrit, dans `config/config.php` :
+Pour fermer les inscriptions une fois tout le monde inscrit, dans `config/parametres.php` :
 
 ```php
 'inscription_ouverte' => false,
@@ -312,7 +323,7 @@ qu'une fois les nouvelles écrites.
 La sauvegarde ne dépend d'aucun outil externe — ni `mysqldump`, ni accès à la
 ligne de commande — ce qui la rend utilisable sur un hébergement mutualisé.
 
-> Le code est sur GitHub, mais **pas vos données** : `config/config.php` et
+> Le code est sur GitHub, mais **pas vos données** : `config/parametres.php` et
 > `storage/uploads` en sont exclus volontairement. Sans cette sauvegarde, une
 > panne vous laisserait une application fonctionnelle et vide.
 
@@ -322,7 +333,7 @@ ligne de commande — ce qui la rend utilisable sur un hébergement mutualisé.
 
 ```
 index.php              Point d'entrée unique + table de routage
-config/config.php      Identifiants MySQL et réglages (taille max, extensions…)
+config/parametres.php    Identifiants MySQL et réglages (taille max, extensions…)
 src/                   Noyau : Database, Auth, Session (CSRF/flash), Fichiers, Vue, helpers
 controllers/           Un contrôleur par domaine (cours, calendrier, matières, compte)
 views/                 Gabarits et pages, en PHP pur
@@ -356,14 +367,14 @@ compare à la table de routage et appelle la méthode de contrôleur corresponda
 
 **« Impossible de se connecter à la base de données »**
 WAMP n'est pas démarré, la base n'a pas été importée, ou les identifiants de
-`config/config.php` sont faux.
+`config/parametres.php` sont faux.
 
 **Erreur 404 sur toutes les pages sauf l'accueil**
 Le module `rewrite_module` d'Apache est désactivé : clic gauche sur l'icône WAMP →
 Apache → Modules Apache → cocher `rewrite_module`.
 
 **Un fichier refuse de se téléverser**
-Soit son extension n'est pas dans la liste de `config/config.php`, soit il dépasse
+Soit son extension n'est pas dans la liste de `config/parametres.php`, soit il dépasse
 la limite de PHP. Les valeurs en place sont `upload_max_filesize = 25M` (par
 fichier) et `post_max_size = 128M` (par envoi, ce qui laisse la place à plusieurs
 fichiers d'un coup). Elles sont fixées dans le `php.ini` de WAMP

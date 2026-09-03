@@ -1,4 +1,4 @@
-/config/config.php
+/config/parametres.php
 /storage/uploads/*
 !/storage/uploads/.gitignore
 /storage/versions/*
