@@ -1104,6 +1104,15 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
 .colonnes--volet { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
 .colonnes--volet > .pile { grid-column: 1 / -1; }
 
+/*
+ * Le volet ne colle pas au défilement ici. Un élément « sticky » placé
+ * dans une grille est retenu par le conteneur entier, pas par sa seule
+ * ligne : il descendait donc par-dessus les fichiers joints de la ligne
+ * suivante. La fiche est déjà le plus haut des deux blocs, elle n a
+ * rien à gagner à suivre l écran.
+ */
+.colonnes--volet > .volet { position: static; }
+
 @media (max-width: 900px) {
   .colonnes--volet { grid-template-columns: minmax(0, 1fr); }
 }
