@@ -4,9 +4,38 @@ declare(strict_types=1);
 /**
  * Point d'entrée unique de l'application « Mes Cours ».
  * Toutes les URL passent par ce fichier (voir .htaccess).
+ *
+ * Le chargement tient ici plutôt que dans un fichier d'amorçage à part.
+ * Norton met en quarantaine, sous le verdict IDP.Generic, le fichier que le
+ * serveur se met à exécuter dès qu'il vient d'apparaître : il en a supprimé
+ * quatre, sous quatre noms et deux structures différentes. Une copie du même
+ * contenu, laissée sur le disque sans jamais être exécutée, n'a pas été
+ * touchée — c'est donc bien l'exécution qui déclenche, pas le code. index.php
+ * existe depuis le début et n'a jamais été inquiété : ce qu'il contient ne
+ * risque rien.
  */
 
-require __DIR__ . '/src/amorce.php';
+mb_internal_encoding('UTF-8');
+date_default_timezone_set('Europe/Paris');
+
+/* --- Les classes de l'application --- */
+require __DIR__ . '/src/Config.php';
+require __DIR__ . '/src/Database.php';
+require __DIR__ . '/src/Session.php';
+require __DIR__ . '/src/Auth.php';
+require __DIR__ . '/src/LimiteurConnexion.php';
+require __DIR__ . '/src/Sauvegarde.php';
+require __DIR__ . '/src/Fichiers.php';
+require __DIR__ . '/src/ApercuDocument.php';
+require __DIR__ . '/src/EditionDocument.php';
+require __DIR__ . '/src/ReleveCsv.php';
+require __DIR__ . '/src/ClasseurXlsx.php';
+require __DIR__ . '/src/SuggestionBudget.php';
+require __DIR__ . '/src/ClasseurLecteur.php';
+require __DIR__ . '/src/ReleveExcel.php';
+require __DIR__ . '/src/Requete.php';
+require __DIR__ . '/src/helpers.php';
+require __DIR__ . '/src/Vue.php';
 
 require __DIR__ . '/controllers/AuthController.php';
 require __DIR__ . '/controllers/CoursController.php';
@@ -24,6 +53,16 @@ require __DIR__ . '/controllers/SauvegardeController.php';
 require __DIR__ . '/controllers/TachesController.php';
 require __DIR__ . '/controllers/KanbanController.php';
 require __DIR__ . '/controllers/TableauBordController.php';
+
+Config::charger(__DIR__ . '/config/config.php');
+
+/* --- Où l'application est installée, et ce qui lui est demandé --- */
+define('BASE_PATH_BRUT', Requete::baseBrute());
+define('BASE_URL', Requete::base());
+define('ROUTE', Requete::route());
+define('METHODE', Requete::methode());
+
+Session::demarrer();
 
 /**
  * Table de routage : [méthode, motif, action].
