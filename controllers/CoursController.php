@@ -157,6 +157,7 @@ final class CoursController
         $termes = preg_split('/\s+/u', $recherche, -1, PREG_SPLIT_NO_EMPTY) ?: [];
         $matiereId = entier_ou_null($_GET['matiere'] ?? null);
         $matieres = $this->matieres($userId);
+        $tri = in_array($_GET['tri'] ?? '', ['recent', 'ancien'], true) ? (string) $_GET['tri'] : 'matiere';
 
         // Une matière qui n'est pas la sienne ne filtre rien : la retenir
         // afficherait « 0 fiche » sans pouvoir dire de quelle matière.
@@ -190,8 +191,28 @@ final class CoursController
             array_push($params, "%$terme%", "%$terme%", "%$terme%", "%$terme%", "%$terme%");
         }
 
+        /*
+         * La date de modification d'une fiche n'est pas seulement celle du
+         * cours : ajouter un lien ou joindre un fichier la fait vivre sans
+         * toucher à la ligne « cours ». On prend donc la plus récente des trois.
+         */
+        $modifiee = 'GREATEST(
+                c.updated_at,
+                COALESCE((SELECT MAX(e.created_at) FROM fiche_elements e
+                           WHERE e.cours_id = c.id), c.updated_at),
+                COALESCE((SELECT MAX(f.created_at) FROM fichiers f
+                           WHERE f.cours_id = c.id AND f.pour_fiche = 1), c.updated_at)
+            )';
+
+        $ordre = match ($tri) {
+            'recent' => $modifiee . ' DESC, c.titre',
+            'ancien' => $modifiee . ' ASC, c.titre',
+            default  => 'COALESCE(m.nom, \'￿\'), c.titre',
+        };
+
         $cours = Database::all(
             'SELECT c.id, c.titre, c.fiche_revision, c.updated_at,
+                    ' . $modifiee . ' AS modifiee_le,
                     m.nom AS matiere_nom, m.couleur AS matiere_couleur,
                     (SELECT COUNT(*) FROM fichiers f
                       WHERE f.cours_id = c.id AND f.pour_fiche = 1)            AS nb_fichiers,
@@ -204,7 +225,7 @@ final class CoursController
              FROM cours c
              LEFT JOIN matieres m ON m.id = c.matiere_id
              WHERE c.user_id = ?' . $filtre . '
-             ORDER BY COALESCE(m.nom, \'￿\'), c.titre',
+             ORDER BY ' . $ordre,
             $params
         );
 
@@ -235,6 +256,7 @@ final class CoursController
             'termes'    => $termes,
             'matieres'  => $matieres,
             'matiereId' => $matiereId,
+            'tri'       => $tri,
         ], $recherche === '' ? 'Révision' : 'Révision — ' . $recherche);
     }
 
