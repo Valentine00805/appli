@@ -25,12 +25,12 @@ PHP 8 + MySQL, sans aucune dépendance externe : pas de Composer, pas de CDN, to
    mot de passe vide).
 
    Sans rien faire, l'application démarre sur les réglages de
-   `config/config.example.php`, qui conviennent à une installation WAMP
+   `config/reglages.php`, qui conviennent à une installation WAMP
    ordinaire. Pour d'autres identifiants — un hébergeur, un autre mot de passe —
-   recopiez l'exemple et modifiez la copie, qui a la priorité :
+   recopiez ce fichier et modifiez la copie, qui a la priorité :
 
    ```bash
-   cp config/config.example.php config/parametres.php
+   cp config/reglages.php config/parametres.php
    ```
 
    Cette copie n'est pas dans le dépôt : elle contient vos identifiants.

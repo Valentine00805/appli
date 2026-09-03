@@ -54,8 +54,8 @@ require __DIR__ . '/controllers/TachesController.php';
 require __DIR__ . '/controllers/KanbanController.php';
 require __DIR__ . '/controllers/TableauBordController.php';
 
-// Les réglages locaux s'ils existent, l'exemple sinon : voir Config::charger().
-Config::charger(__DIR__ . '/config/parametres.php', __DIR__ . '/config/config.example.php');
+// Les réglages locaux s'ils existent, les réglages par défaut sinon.
+Config::charger(__DIR__ . '/config/parametres.php', __DIR__ . '/config/reglages.php');
 
 /* --- Où l'application est installée, et ce qui lui est demandé --- */
 define('BASE_PATH_BRUT', Requete::baseBrute());

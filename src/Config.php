@@ -23,7 +23,7 @@ final class Config
         if ($choisi === null || !is_file($choisi)) {
             throw new RuntimeException(
                 'Configuration introuvable : ' . $fichier . '. '
-                . 'La recréer en recopiant config/config.example.php.'
+                . 'La recréer en recopiant config/reglages.php.'
             );
         }
 
