@@ -42,7 +42,11 @@ final class CoursController
         $userId = Auth::id();
         $recherche = trim((string) ($_GET['q'] ?? ''));
 
-        $cours = $recherche === '' ? [] : $this->chercher($userId, $recherche, null, null, false, 'recent');
+        // Aucun filtre : la recherche globale cherche dans tous les cours,
+        // quels que soient leur matière, leur tag et leur dossier.
+        $cours = $recherche === ''
+            ? []
+            : $this->chercher($userId, $recherche, null, null, null, false, 'recent');
         $evenements = [];
         if ($recherche !== '') {
             $evenements = Database::all(
@@ -149,6 +153,28 @@ final class CoursController
         Auth::exiger();
         $userId = Auth::id();
 
+        $recherche = trim((string) ($_GET['q'] ?? ''));
+        $termes = preg_split('/\s+/u', $recherche, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+
+        $filtre = '';
+        $params = [$userId];
+        /*
+         * Chaque terme doit se retrouver quelque part dans la fiche : son
+         * texte, le titre du cours, un intitulé de lien, un nom de fichier.
+         * Chercher « annales » doit trouver la fiche où elles sont jointes,
+         * même si le mot n'est pas écrit dedans.
+         */
+        foreach ($termes as $terme) {
+            $filtre .= ' AND (c.titre LIKE ? OR c.fiche_revision LIKE ?
+                         OR EXISTS (SELECT 1 FROM fiche_elements e
+                                     WHERE e.cours_id = c.id
+                                       AND (e.libelle LIKE ? OR e.url LIKE ?))
+                         OR EXISTS (SELECT 1 FROM fichiers f
+                                     WHERE f.cours_id = c.id AND f.pour_fiche = 1
+                                       AND f.nom_origine LIKE ?))';
+            array_push($params, "%$terme%", "%$terme%", "%$terme%", "%$terme%", "%$terme%");
+        }
+
         $cours = Database::all(
             'SELECT c.id, c.titre, c.fiche_revision, c.updated_at,
                     m.nom AS matiere_nom, m.couleur AS matiere_couleur,
@@ -162,9 +188,9 @@ final class CoursController
                       WHERE e.cours_id = c.id AND e.type = \'evenement\')      AS nb_evenements
              FROM cours c
              LEFT JOIN matieres m ON m.id = c.matiere_id
-             WHERE c.user_id = ?
+             WHERE c.user_id = ?' . $filtre . '
              ORDER BY COALESCE(m.nom, \'￿\'), c.titre',
-            [$userId]
+            $params
         );
 
         // Une fiche existe dès qu'elle porte du texte ou le moindre élément.
@@ -175,6 +201,11 @@ final class CoursController
                       + (int) $c['nb_renvois'] + (int) $c['nb_evenements'];
             $c['nb_elements'] = $elements;
 
+            // Le terme se cache peut-être dans un lien ou un nom de fichier :
+            // la carte le dira, plutôt que d'afficher un extrait sans surlignage.
+            $c['trouve_ailleurs'] = $termes !== []
+                && !$this->contient((string) $c['titre'] . ' ' . (string) $c['fiche_revision'], $termes);
+
             if (trim((string) $c['fiche_revision']) !== '' || $elements > 0) {
                 $garnies[] = $c;
             } else {
@@ -183,9 +214,22 @@ final class CoursController
         }
 
         Vue::afficher('cours/revisions', [
-            'garnies' => $garnies,
-            'vides'   => $vides,
-        ], 'Révision');
+            'garnies'   => $garnies,
+            'vides'     => $vides,
+            'recherche' => $recherche,
+            'termes'    => $termes,
+        ], $recherche === '' ? 'Révision' : 'Révision — ' . $recherche);
+    }
+
+    /** Ce texte contient-il au moins un des termes cherchés ? */
+    private function contient(string $texte, array $termes): bool
+    {
+        foreach ($termes as $terme) {
+            if ($terme !== '' && mb_stripos($texte, $terme) !== false) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** Joint des fichiers à la fiche de révision, pas aux pièces jointes du cours. */
@@ -724,8 +768,10 @@ final class CoursController
         $params = [$userId];
 
         foreach (preg_split('/\s+/u', $recherche, -1, PREG_SPLIT_NO_EMPTY) ?: [] as $terme) {
-            $sql .= ' AND (c.titre LIKE ? OR c.contenu LIKE ? OR m.nom LIKE ?)';
-            array_push($params, "%$terme%", "%$terme%", "%$terme%");
+            // La fiche de révision fait partie du cours : la recherche globale
+            // doit la trouver comme elle trouve son contenu.
+            $sql .= ' AND (c.titre LIKE ? OR c.contenu LIKE ? OR c.fiche_revision LIKE ? OR m.nom LIKE ?)';
+            array_push($params, "%$terme%", "%$terme%", "%$terme%", "%$terme%");
         }
         if ($matiereId !== null) {
             $sql .= ' AND c.matiere_id = ?';

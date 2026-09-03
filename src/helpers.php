@@ -167,6 +167,46 @@ function extrait(?string $texte, int $longueur = 160): string
     return mb_substr($texte, 0, $longueur) . '…';
 }
 
+/**
+ * Un extrait centré sur le premier terme trouvé, plutôt que sur le début.
+ *
+ * Une fiche de plusieurs pages ne se reconnaît pas à ses trois premières
+ * lignes : ce qu'on cherche est le plus souvent au milieu.
+ *
+ * @param string[] $termes
+ */
+function extrait_autour(?string $texte, array $termes, int $longueur = 240): string
+{
+    $texte = trim(preg_replace('/\s+/u', ' ', (string) $texte) ?? '');
+    if ($texte === '' || mb_strlen($texte) <= $longueur) {
+        return $texte;
+    }
+
+    $position = null;
+    foreach ($termes as $terme) {
+        $terme = trim($terme);
+        if (mb_strlen($terme) < 2) {
+            continue;
+        }
+        $trouve = mb_stripos($texte, $terme);
+        if ($trouve !== false && ($position === null || $trouve < $position)) {
+            $position = $trouve;
+        }
+    }
+
+    if ($position === null) {
+        return extrait($texte, $longueur);
+    }
+
+    // On recule d'un tiers : un extrait qui commence pile sur le terme perd
+    // ce qui l'amenait.
+    $debut = max(0, $position - intdiv($longueur, 3));
+
+    return ($debut > 0 ? '…' : '')
+         . mb_substr($texte, $debut, $longueur)
+         . ($debut + $longueur < mb_strlen($texte) ? '…' : '');
+}
+
 /** Surligne les termes recherchés dans un texte déjà échappé. */
 function surligner(string $texteEchappe, array $termes): string
 {
