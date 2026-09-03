@@ -214,8 +214,11 @@ $nbElements = count($elements) + count($fichiersFiche);
         <?php else: ?>
           <ul class="liste-fichiers">
             <?php foreach ($fichiersFiche as $f): ?>
-              <?php $estImage = Fichiers::estImage($f['mime']); ?>
-              <li class="fichier">
+              <?php
+              $estImage = Fichiers::estImage($f['mime']);
+              $estAudio = Fichiers::estAudio((string) $f['mime'], (string) $f['nom_origine']);
+              ?>
+              <li class="fichier<?= $estAudio ? ' fichier--audio' : '' ?>">
                 <?php if ($estImage): ?>
                   <a href="<?= url('fichiers/' . $f['id']) ?>" target="_blank" rel="noopener" class="fiche__vignette">
                     <img src="<?= url('fichiers/' . $f['id']) ?>" alt="<?= e($f['nom_origine']) ?>" loading="lazy">
@@ -241,6 +244,16 @@ $nbElements = count($elements) + count($fichiersFiche);
                     <button class="bouton bouton--discret bouton--petit" type="submit" title="Retirer">✕</button>
                   </form>
                 </span>
+
+                <?php if ($estAudio): ?>
+                  <?php // Le lecteur du navigateur suffit : rien à charger de plus. ?>
+                  <audio class="fichier__lecteur" controls preload="metadata"
+                         src="<?= url('fichiers/' . $f['id']) ?>">
+                    <a href="<?= url('fichiers/' . $f['id'], ['telecharger' => 1]) ?>">
+                      Télécharger l'enregistrement
+                    </a>
+                  </audio>
+                <?php endif; ?>
               </li>
             <?php endforeach; ?>
           </ul>
@@ -251,7 +264,8 @@ $nbElements = count($elements) + count($fichiersFiche);
           <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
           <label class="depot__zone" for="depot-fiche-<?= (int) $cours['id'] ?>">
             <span class="depot__icone" aria-hidden="true">📎</span>
-            <span><strong>Déposez ici</strong> <span class="discret">— photo du tableau, schéma, annales…</span></span>
+            <span><strong>Déposez ici</strong>
+              <span class="discret">— photo du tableau, schéma, annales, enregistrement audio…</span></span>
           </label>
           <input type="file" id="depot-fiche-<?= (int) $cours['id'] ?>" name="fichiers[]" multiple
                  class="depot__champ" data-depot-champ>

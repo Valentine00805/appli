@@ -85,7 +85,8 @@ Config::charger([
             'pdf', 'doc', 'docx', 'odt', 'ppt', 'pptx', 'odp', 'xls', 'xlsx', 'ods',
             'txt', 'md', 'csv', 'rtf',
             'png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'heic',
-            'zip', 'mp3', 'mp4', 'm4a',
+            'zip', 'mp4',
+            'mp3', 'm4a', 'wav', 'ogg', 'oga', 'opus', 'aac', 'weba',
         ],
     ],
 ], __DIR__ . '/config/parametres.php');

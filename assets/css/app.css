@@ -1177,3 +1177,7 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
 .fiche__ajout .champ { margin-bottom: .6rem; }
 
 .depot--mince .depot__zone { padding: .7rem .8rem; }
+
+/* Un enregistrement se lit sur place : le lecteur prend la ligne du dessous. */
+.fichier--audio { flex-wrap: wrap; }
+.fichier__lecteur { width: 100%; height: 34px; margin-top: .45rem; }
