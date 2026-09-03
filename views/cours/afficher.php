@@ -217,8 +217,9 @@ $nbElements = count($elements) + count($fichiersFiche);
               <?php
               $estImage = Fichiers::estImage($f['mime']);
               $estAudio = Fichiers::estAudio((string) $f['mime'], (string) $f['nom_origine']);
+              $estVideo = Fichiers::estVideo((string) $f['mime'], (string) $f['nom_origine']);
               ?>
-              <li class="fichier<?= $estAudio ? ' fichier--audio' : '' ?>">
+              <li class="fichier<?= $estAudio || $estVideo ? ' fichier--media' : '' ?>">
                 <?php if ($estImage): ?>
                   <a href="<?= url('fichiers/' . $f['id']) ?>" target="_blank" rel="noopener" class="fiche__vignette">
                     <img src="<?= url('fichiers/' . $f['id']) ?>" alt="<?= e($f['nom_origine']) ?>" loading="lazy">
@@ -245,14 +246,21 @@ $nbElements = count($elements) + count($fichiersFiche);
                   </form>
                 </span>
 
+                <?php // Le lecteur du navigateur suffit : rien à charger de plus. ?>
                 <?php if ($estAudio): ?>
-                  <?php // Le lecteur du navigateur suffit : rien à charger de plus. ?>
                   <audio class="fichier__lecteur" controls preload="metadata"
                          src="<?= url('fichiers/' . $f['id']) ?>">
                     <a href="<?= url('fichiers/' . $f['id'], ['telecharger' => 1]) ?>">
                       Télécharger l'enregistrement
                     </a>
                   </audio>
+                <?php elseif ($estVideo): ?>
+                  <video class="fichier__lecteur fichier__lecteur--video" controls preload="metadata"
+                         src="<?= url('fichiers/' . $f['id']) ?>">
+                    <a href="<?= url('fichiers/' . $f['id'], ['telecharger' => 1]) ?>">
+                      Télécharger la vidéo
+                    </a>
+                  </video>
                 <?php endif; ?>
               </li>
             <?php endforeach; ?>
@@ -265,7 +273,7 @@ $nbElements = count($elements) + count($fichiersFiche);
           <label class="depot__zone" for="depot-fiche-<?= (int) $cours['id'] ?>">
             <span class="depot__icone" aria-hidden="true">📎</span>
             <span><strong>Déposez ici</strong>
-              <span class="discret">— photo du tableau, schéma, annales, enregistrement audio…</span></span>
+              <span class="discret">— photo du tableau, schéma, annales, audio, vidéo…</span></span>
           </label>
           <input type="file" id="depot-fiche-<?= (int) $cours['id'] ?>" name="fichiers[]" multiple
                  class="depot__champ" data-depot-champ>

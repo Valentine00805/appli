@@ -6,6 +6,7 @@ final class Fichiers
 {
     /** Extensions que le navigateur sait lire dans la page. */
     private const AUDIO = ['mp3', 'm4a', 'wav', 'ogg', 'oga', 'opus', 'aac', 'weba'];
+    private const VIDEO = ['mp4', 'm4v', 'webm', 'ogv', 'mov'];
 
     /**
      * Enregistre les fichiers téléversés et renvoie la liste des erreurs rencontrées.
@@ -115,8 +116,17 @@ final class Fichiers
         $mime = $fichier['mime'];
         // On ne rend en ligne que les types sûrs ; le reste est forcé en téléchargement.
         $enLigneAutorise = ['application/pdf', 'image/png', 'image/jpeg', 'image/gif', 'image/webp', 'text/plain'];
-        $enLigne = !$telecharger
-            && (in_array($mime, $enLigneAutorise, true) || self::estAudio($mime, (string) $fichier['nom_origine']));
+        $estMedia = self::estMedia($mime, (string) $fichier['nom_origine']);
+        if ($estMedia) {
+            /*
+             * finfo se trompe volontiers sur les conteneurs : un .m4a passe
+             * pour « video/mp4 », un .mov pour « application/octet-stream ».
+             * Le navigateur, lui, refuse de lire ce qu'on lui annonce mal.
+             * L'extension, elle, ne ment pas sur ce que l'utilisateur a déposé.
+             */
+            $mime = self::mimeMedia((string) $fichier['nom_origine']) ?? $mime;
+        }
+        $enLigne = !$telecharger && (in_array($mime, $enLigneAutorise, true) || $estMedia);
         $disposition = $enLigne ? 'inline' : 'attachment';
 
         $taille = (int) filesize($chemin);
@@ -140,14 +150,14 @@ final class Fichiers
          * objet embarqué : « object-src 'none' » le bloque, et le navigateur
          * se rabat alors sur le téléchargement. On l'autorise donc, mais
          * seulement depuis notre propre origine, et seulement pour un PDF
-         * affiché en ligne. Un enregistrement ouvert seul a besoin de la même
-         * permission pour « media-src ». Tout le reste garde la politique la
-         * plus stricte.
+         * affiché en ligne. Un enregistrement ou une vidéo ouverts seuls ont
+         * besoin de la même permission pour « media-src ». Tout le reste garde
+         * la politique la plus stricte.
          */
         $politique = 'default-src \'none\'; img-src \'self\'; ';
         if ($enLigne && $mime === 'application/pdf') {
             $politique .= 'object-src \'self\'; frame-src \'self\'';
-        } elseif ($enLigne && self::estAudio($mime, (string) $fichier['nom_origine'])) {
+        } elseif ($enLigne && $estMedia) {
             $politique .= 'object-src \'none\'; media-src \'self\'';
         } else {
             $politique .= 'object-src \'none\'';
@@ -223,11 +233,46 @@ final class Fichiers
     /** Un enregistrement, que le navigateur sait lire dans la page. */
     public static function estAudio(string $mime, string $nom = ''): bool
     {
-        if (str_starts_with($mime, 'audio/')) {
-            return true;
+        // L extension prime : un .m4a ressort souvent en « video/mp4 », et un
+        // fichier mal détecté en « application/octet-stream ».
+        $ext = strtolower(pathinfo($nom, PATHINFO_EXTENSION));
+        if ($ext !== '' && (in_array($ext, self::AUDIO, true) || in_array($ext, self::VIDEO, true))) {
+            return in_array($ext, self::AUDIO, true);
         }
-        // Un .m4a mal détecté ressort parfois en « video/mp4 » ou en octet-stream.
-        return in_array(strtolower(pathinfo($nom, PATHINFO_EXTENSION)), self::AUDIO, true);
+        return str_starts_with($mime, 'audio/');
+    }
+
+    /** Une vidéo, que le navigateur sait lire dans la page. */
+    public static function estVideo(string $mime, string $nom = ''): bool
+    {
+        $ext = strtolower(pathinfo($nom, PATHINFO_EXTENSION));
+        if ($ext !== '' && (in_array($ext, self::AUDIO, true) || in_array($ext, self::VIDEO, true))) {
+            return in_array($ext, self::VIDEO, true);
+        }
+        return str_starts_with($mime, 'video/');
+    }
+
+    public static function estMedia(string $mime, string $nom = ''): bool
+    {
+        return self::estAudio($mime, $nom) || self::estVideo($mime, $nom);
+    }
+
+    /** Le type à annoncer pour un média, déduit de son extension. */
+    private static function mimeMedia(string $nom): ?string
+    {
+        return match (strtolower(pathinfo($nom, PATHINFO_EXTENSION))) {
+            'mp3'          => 'audio/mpeg',
+            'm4a', 'aac'   => 'audio/mp4',
+            'wav'          => 'audio/wav',
+            'ogg', 'oga'   => 'audio/ogg',
+            'opus'         => 'audio/ogg; codecs=opus',
+            'weba'         => 'audio/webm',
+            'mp4', 'm4v'   => 'video/mp4',
+            'mov'          => 'video/quicktime',
+            'webm'         => 'video/webm',
+            'ogv'          => 'video/ogg',
+            default        => null,
+        };
     }
 
     public static function estImage(string $mime): bool
@@ -249,7 +294,7 @@ final class Fichiers
             in_array($ext, ['txt', 'md'], true)           => '📝',
             in_array($ext, ['zip', 'rar', '7z'], true)   => '🗜️',
             in_array($ext, self::AUDIO, true)            => '🎧',
-            $ext === 'mp4'                               => '🎬',
+            in_array($ext, self::VIDEO, true)            => '🎬',
             default                                      => '📎',
         };
     }
