@@ -82,16 +82,32 @@ $total = array_sum(array_map('count', $parColonne));
                    style="border-left-color:<?= e($carte['couleur']) ?>"
                    data-carte="<?= (int) $carte['id'] ?>"
                    data-nature="<?= e($carte['nature']) ?>">
-            <a class="kanban-carte__titre" href="<?= e($carte['lien']) ?>">
+            <?php // Le titre ne se clique pas : les boutons disent où l'on va. ?>
+            <span class="kanban-carte__titre">
               <span aria-hidden="true"><?= e($carte['icone']) ?></span>
               <?= e($carte['titre']) ?>
-            </a>
-            <p class="kanban-carte__meta"><?= e($carte['origine']) ?></p>
+            </span>
+            <p class="kanban-carte__meta"><?= e($carte['origine']) ?><?php
+              if ($carte['cours_titre'] !== '') { echo ' · 📘 ' . e($carte['cours_titre']); }
+            ?></p>
             <?php if ($texte !== ''): ?>
               <span class="echeance echeance--<?= e($etat) ?>"><?= e($texte) ?></span>
             <?php else: ?>
               <span class="echeance">Sans échéance</span>
             <?php endif; ?>
+
+            <div class="kanban-carte__liens">
+              <?php if ($carte['cours_id'] > 0): ?>
+                <a class="bouton bouton--secondaire" href="<?= url('cours/' . $carte['cours_id']) ?>"
+                   title="Ouvrir le cours">📘 Cours</a>
+                <a class="bouton bouton--secondaire" href="<?= url('revision/' . $carte['cours_id']) ?>"
+                   title="Ouvrir la fiche de révision">📝 Révision</a>
+              <?php endif; ?>
+              <a class="bouton bouton--discret bouton--petit" href="<?= e($carte['lien']) ?>"
+                 title="<?= $carte['nature'] === 'tache' ? 'Ouvrir dans Tâches' : 'Modifier l’évènement' ?>">
+                <?= $carte['nature'] === 'tache' ? '↗' : '✎' ?>
+              </a>
+            </div>
 
             <?php
             // Une remarque enregistrée s'affiche simplement : on clique dessus

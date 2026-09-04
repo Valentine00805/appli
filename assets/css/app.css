@@ -1272,3 +1272,14 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
   .fiche__rayon { break-inside: avoid; }
   .fiche .separateur { display: none; }
 }
+
+/* Les renvois d'une carte du tableau : vers le cours, sa fiche, ou l'élément. */
+.kanban-carte__liens {
+  display: flex; flex-wrap: wrap; align-items: center; gap: .35rem;
+  margin-top: .55rem;
+}
+.kanban-carte__liens > a:last-child { margin-left: auto; }
+
+/* Une colonne du tableau est étroite : les deux renvois y tiennent sur une
+   ligne grâce à des marges intérieures un peu plus serrées. */
+.kanban-carte__liens .bouton--secondaire { padding-left: .6rem; padding-right: .6rem; }

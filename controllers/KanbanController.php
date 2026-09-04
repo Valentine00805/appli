@@ -169,6 +169,8 @@ final class KanbanController
                 'origine'     => (string) $t['liste_nom'],
                 'note'        => (string) ($t['note'] ?? ''),
                 'lien'        => url('taches', ['liste' => (int) $t['liste_id']]),
+                'cours_id'    => 0,
+                'cours_titre' => '',
             ];
         }
         return $cartes;
@@ -180,10 +182,12 @@ final class KanbanController
         // On écarte le passé déjà réglé : un cours d'il y a trois mois n'a
         // rien à faire sur un tableau de ce qui reste à faire.
         $sql = 'SELECT e.id, e.titre, e.debut, e.termine, e.etape, e.description,
+                       e.cours_id, c.titre AS cours_titre,
                        m.nom AS matiere_nom, m.couleur AS matiere_couleur,
                        t.nom AS type_nom, t.icone AS type_icone, t.couleur AS type_couleur
                 FROM evenements e
                 LEFT JOIN matieres m        ON m.id = e.matiere_id
+                LEFT JOIN cours c           ON c.id = e.cours_id
                 LEFT JOIN types_evenement t ON t.id = e.type_id
                 WHERE e.user_id = ?
                   AND (e.termine = 0 OR e.fin >= DATE_SUB(NOW(), INTERVAL 30 DAY))';
@@ -214,6 +218,9 @@ final class KanbanController
                     . ((string) ($e['matiere_nom'] ?? '') !== '' ? ' · ' . (string) $e['matiere_nom'] : '')),
                 'note'     => (string) ($e['description'] ?? ''),
                 'lien'     => url('evenements/' . (int) $e['id'] . '/modifier'),
+                // De quoi rejoindre le cours et sa fiche, comme au calendrier.
+                'cours_id'    => (int) ($e['cours_id'] ?? 0),
+                'cours_titre' => (string) ($e['cours_titre'] ?? ''),
             ];
         }
         return $cartes;
