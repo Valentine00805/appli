@@ -10,7 +10,7 @@
 
 <div class="entete-page">
   <div>
-    <p class="discret" style="margin-bottom:.35rem">
+    <p class="discret sans-impression" style="margin-bottom:.35rem">
       <a href="<?= url('revision') ?>">← Révision</a>
     </p>
     <h1><?= e($cours['titre']) ?></h1>
@@ -25,6 +25,8 @@
   </div>
 
   <div class="actions">
+    <?php // L'impression sort la fiche seule : ni menu, ni boutons, ni formulaires. ?>
+    <button class="bouton bouton--secondaire" type="button" onclick="window.print()">🖨 Imprimer</button>
     <a class="bouton bouton--secondaire" href="<?= url('cours/' . $cours['id']) ?>">
       Voir le cours
     </a>

@@ -1234,3 +1234,41 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
   .fiche-seule .fiche-grille__elements { order: 2; }
   .fiche-seule .fiche-grille__note     { order: 1; }
 }
+
+/* La copie de la note destinée au papier : invisible à l'écran. */
+.fiche__impression { display: none; }
+
+@media print {
+  /* La fiche imprimée : le texte d'abord, ce qui l'accompagne ensuite. */
+  .fiche-seule { max-width: none; }
+  .fiche-seule .fiche-grille { grid-template-columns: minmax(0, 1fr); }
+  .fiche-seule .fiche-grille__note     { order: 1; }
+  .fiche-seule .fiche-grille__elements { order: 2; }
+
+  /* La zone de saisie cède la place à sa copie, qui sort en entier. */
+  .fiche__texte { display: none; }
+  .fiche__impression {
+    display: block; white-space: pre-wrap; overflow-wrap: anywhere;
+    line-height: 1.6;
+  }
+
+  /* Rien de ce qui sert à modifier n'a de sens sur une feuille. */
+  .depot, .fiche__ajout, .fichier__actions, .fiche__lecteur,
+  .fiche__liste form, .fiche-carte__ailleurs { display: none !important; }
+
+  /* Un message passager n a rien à faire sur une feuille. */
+  .flashs { display: none !important; }
+
+  /* Un rayon sans rien dedans, et les conseils de saisie, ne s impriment pas. */
+  .fiche__rayon--vide,
+  .fiche-grille__elements--vide,
+  .fiche .champ__aide { display: none !important; }
+  .fichier__lecteur { display: none !important; }
+
+  /* Une adresse ne se clique pas sur papier : elle s'écrit. */
+  .fiche__liste a[href^="http"]::after { content: " — " attr(href); font-weight: 400; }
+  .fiche__url { display: none; }
+
+  .fiche__rayon { break-inside: avoid; }
+  .fiche .separateur { display: none; }
+}

@@ -551,4 +551,16 @@
     }
   }
 
+  /*
+   * La copie imprimable de la fiche suit ce qu on tape : sans cela, imprimer
+   * avant d avoir enregistre sortirait l ancien texte.
+   */
+  var zoneFiche = document.getElementById("fiche_revision");
+  var copieFiche = document.querySelector("[data-impression-fiche]");
+  if (zoneFiche && copieFiche) {
+    zoneFiche.addEventListener("input", function () {
+      copieFiche.textContent = zoneFiche.value;
+    });
+  }
+
 })();

@@ -38,6 +38,15 @@ $champPage = $surPage ? '<input type="hidden" name="page" value="fiche">' : '';
       <label for="fiche_revision">Ce qu'il faut retenir</label>
       <textarea id="fiche_revision" name="fiche_revision" class="fiche__texte"
                 placeholder="Définitions, formules, dates, plan du chapitre, questions à se poser…"><?= e($fiche) ?></textarea>
+      <?php
+      /*
+       * Une zone de saisie s'imprime mal : seule la partie visible sort, avec
+       * sa barre de défilement. Cette copie ne sert qu'au papier, et le script
+       * la tient à jour pendant la frappe pour qu'on puisse imprimer un texte
+       * pas encore enregistré.
+       */
+      ?>
+      <div class="fiche__impression" data-impression-fiche aria-hidden="true"><?= e($fiche) ?></div>
       <span class="champ__aide">Le texte est affiché tel quel, sauts de ligne compris.</span>
     </div>
 
@@ -53,7 +62,7 @@ $champPage = $surPage ? '<input type="hidden" name="page" value="fiche">' : '';
 
     </div>
 
-    <div class="fiche-grille__elements">
+    <div class="fiche-grille__elements<?= $nbElements === 0 ? ' fiche-grille__elements--vide' : '' ?>">
 
   <h3 class="volet__section" style="margin-top:0">
     Éléments rattachés
@@ -64,7 +73,7 @@ $champPage = $surPage ? '<input type="hidden" name="page" value="fiche">' : '';
   </p>
 
   <?php // --- Fichiers et images propres à la fiche ------------------- ?>
-  <div class="fiche__rayon">
+  <div class="fiche__rayon<?= $fichiersFiche === [] ? ' fiche__rayon--vide' : '' ?>">
     <h4 class="fiche__titre">📎 Fichiers et images</h4>
 
     <?php if ($fichiersFiche === []): ?>
@@ -140,7 +149,7 @@ $champPage = $surPage ? '<input type="hidden" name="page" value="fiche">' : '';
   </div>
 
   <?php // --- Liens web ----------------------------------------------- ?>
-  <div class="fiche__rayon">
+  <div class="fiche__rayon<?= $parType['lien'] === [] ? ' fiche__rayon--vide' : '' ?>">
     <h4 class="fiche__titre">🔗 Liens</h4>
 
     <?php if ($parType['lien'] === []): ?>
@@ -179,7 +188,7 @@ $champPage = $surPage ? '<input type="hidden" name="page" value="fiche">' : '';
   </div>
 
   <?php // --- Renvois vers d'autres cours ----------------------------- ?>
-  <div class="fiche__rayon">
+  <div class="fiche__rayon<?= $parType['cours'] === [] ? ' fiche__rayon--vide' : '' ?>">
     <h4 class="fiche__titre">📘 Autres cours</h4>
 
     <?php if ($parType['cours'] === []): ?>
@@ -228,7 +237,7 @@ $champPage = $surPage ? '<input type="hidden" name="page" value="fiche">' : '';
   </div>
 
   <?php // --- Évènements du calendrier -------------------------------- ?>
-  <div class="fiche__rayon">
+  <div class="fiche__rayon<?= $parType['evenement'] === [] ? ' fiche__rayon--vide' : '' ?>">
     <h4 class="fiche__titre">📅 Au calendrier</h4>
 
     <?php if ($parType['evenement'] === []): ?>
