@@ -28,6 +28,9 @@ $champPage = $surPage ? '<input type="hidden" name="page" value="fiche">' : '';
     </div>
   </div>
 
+  <?php // Sur sa propre page, la note et ce qui lui est rattaché se font face. ?>
+  <div class="fiche-grille">
+    <div class="fiche-grille__note">
   <form method="post" action="<?= url('cours/' . $cours['id'] . '/revision') ?>" style="margin-top:1rem">
     <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>"><?= $champPage ?>
 
@@ -48,7 +51,9 @@ $champPage = $surPage ? '<input type="hidden" name="page" value="fiche">' : '';
     </div>
   </form>
 
-  <hr class="separateur">
+    </div>
+
+    <div class="fiche-grille__elements">
 
   <h3 class="volet__section" style="margin-top:0">
     Éléments rattachés
@@ -267,5 +272,7 @@ $champPage = $surPage ? '<input type="hidden" name="page" value="fiche">' : '';
         </form>
       </details>
     <?php endif; ?>
+  </div>
+    </div>
   </div>
 </section>

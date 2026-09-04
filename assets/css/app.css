@@ -1214,5 +1214,23 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
   margin: 0 0 .5rem; font-size: .78rem;
 }
 
-/* La fiche seule : une colonne lisible, pas toute la largeur de l'écran. */
-.fiche-seule { max-width: 52rem; }
+/*
+ * La fiche seule se lit en deux colonnes sur un écran d ordinateur : ce qui
+ * lui est rattaché à gauche, la note à droite, tête-bêche dans le HTML pour
+ * que la note vienne en premier sur un téléphone.
+ */
+.fiche-seule { max-width: 76rem; }
+
+.fiche-seule .fiche-grille {
+  display: grid; gap: 1.5rem; align-items: start; margin-top: 1rem;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+.fiche-seule .fiche-grille__elements { order: 1; }
+.fiche-seule .fiche-grille__note     { order: 2; }
+.fiche-seule .fiche-grille__note > form { margin-top: 0; }
+
+@media (max-width: 900px) {
+  .fiche-seule .fiche-grille { grid-template-columns: minmax(0, 1fr); }
+  .fiche-seule .fiche-grille__elements { order: 2; }
+  .fiche-seule .fiche-grille__note     { order: 1; }
+}
