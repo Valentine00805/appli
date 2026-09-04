@@ -166,8 +166,18 @@ final class CalendrierController
             'UPDATE evenements SET termine = 1 - termine WHERE id = ? AND user_id = ?',
             [$id, Auth::id()]
         );
-        $retour = $_POST['retour'] ?? 'calendrier';
-        redirect(is_string($retour) && $retour !== '' ? ltrim($retour, '/') : 'calendrier');
+        /*
+         * On revient d'où l'on vient. Une chaîne vide n'est pas une absence :
+         * c'est l'accueil, qui est la racine de l'application — sans quoi
+         * cocher un évènement depuis l'accueil renverrait au calendrier.
+         * Seul un chemin interne est accepté.
+         */
+        $retour = $_POST['retour'] ?? null;
+        $interne = is_string($retour)
+            && !str_contains($retour, '//')
+            && preg_match('#[\r\n:]#', $retour) !== 1;
+
+        redirect($interne ? ltrim($retour, '/') : 'calendrier');
     }
 
     // --- Outils internes ------------------------------------------------

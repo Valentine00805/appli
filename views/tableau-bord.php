@@ -3,37 +3,11 @@
  * @var DateTimeImmutable $aujourdhui
  * @var array $duJour, $semaine, $examens, $taches, $derniersCours, $stats
  */
-/** Petit rendu d'une ligne : un évènement, ou une échéance de tâche. */
-$ligneEvenement = static function (array $evt): string {
-    $couleur = couleur_evenement($evt);
-    // Une échéance n'a pas d'heure, et se gère depuis « Tâches ».
-    $estTache = !empty($evt['est_tache']);
-    $heure = $evt['journee_entiere']
-        ? ($estTache ? 'Échéance' : 'Journée')
-        : date('H:i', strtotime($evt['debut'])) . ' – ' . date('H:i', strtotime($evt['fin']));
-
-    $destination = $estTache
-        ? url('taches', ['liste' => $evt['liste_id']])
-        : url('evenements/' . $evt['id'] . '/modifier');
-
-    $html = '<a class="evt-ligne' . ($evt['termine'] ? ' evt-ligne--termine' : '')
-        . ($estTache ? ' evt-ligne--tache' : '') . '" href="' . $destination . '">';
-    $html .= '<span class="evt-ligne__barre" style="background:' . e($couleur) . '"></span>';
-    $html .= '<span class="evt-ligne__heure">' . e($heure) . '</span>';
-    $html .= '<span><span class="evt-ligne__titre">' . e($evt['titre']) . '</span><br>';
-    $html .= '<span class="evt-ligne__meta">' . e(icone_evenement($evt) . ' ' . libelle_type($evt));
-    if ($estTache && !empty($evt['detail_tache'])) {
-        $html .= ' · ' . e((string) $evt['detail_tache']);
-    }
-    if (!empty($evt['matiere_nom'])) {
-        $html .= ' · ' . e($evt['matiere_nom']);
-    }
-    if (!empty($evt['lieu'])) {
-        $html .= ' · ' . e($evt['lieu']);
-    }
-    $html .= '</span></span></a>';
-    return $html;
-};
+/*
+ * Les lignes d'évènement sont celles du calendrier : mêmes boutons, même
+ * comportement. En avoir eu deux versions, c'était en corriger une sur deux.
+ */
+$ligneEvenement = static fn (array $evt): string => Vue::rendre('calendrier/_ligne', ['evt' => $evt]);
 ?>
 
 <div class="entete-page">
@@ -140,18 +114,30 @@ $ligneEvenement = static function (array $evt): string {
         <div class="pile">
           <?php foreach ($examens as $evt):
               $jours = (int) floor((strtotime((string) $evt['debut']) - time()) / 86400); ?>
-            <a class="evt-ligne" href="<?= url('evenements/' . $evt['id'] . '/modifier') ?>">
+            <div class="evt-ligne">
               <span class="evt-ligne__barre" style="background:<?= e(couleur_evenement($evt)) ?>"></span>
-              <span>
+              <span style="min-width:0">
                 <span class="evt-ligne__titre"><?= e(icone_evenement($evt) . ' ' . $evt['titre']) ?></span><br>
-                <span class="evt-ligne__meta"><?= e(date_fr($evt['debut'])) ?></span>
+                <span class="evt-ligne__meta"><?= e(date_fr($evt['debut'])) ?><?php
+                  if (!empty($evt['cours_titre'])) { echo ' · 📘 ' . e((string) $evt['cours_titre']); }
+                ?></span>
               </span>
               <span class="evt-ligne__droite">
                 <span class="pastille">
                   <?= $jours <= 0 ? "aujourd'hui" : ($jours === 1 ? 'demain' : 'J-' . $jours) ?>
                 </span>
+                <?php // Avant une échéance, on va au cours ou à sa fiche. ?>
+                <?php $coursId = (int) ($evt['cours_id'] ?? 0); ?>
+                <?php if ($coursId > 0): ?>
+                  <a class="bouton bouton--secondaire" href="<?= url('cours/' . $coursId) ?>"
+                     title="Ouvrir le cours">📘 Cours</a>
+                  <a class="bouton bouton--secondaire" href="<?= url('revision/' . $coursId) ?>"
+                     title="Ouvrir la fiche de révision">📝 Révision</a>
+                <?php endif; ?>
+                <a class="bouton bouton--discret bouton--petit"
+                   href="<?= url('evenements/' . $evt['id'] . '/modifier') ?>" title="Modifier">✎</a>
               </span>
-            </a>
+            </div>
           <?php endforeach; ?>
         </div>
       <?php endif; ?>
