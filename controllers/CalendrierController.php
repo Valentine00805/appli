@@ -299,6 +299,7 @@ final class CalendrierController
             'matiere_nom'     => null,
             'matiere_couleur' => null,
             'lieu'            => null,
+            'cours_id'        => null,
             'cours_titre'     => null,
             'description'     => null,
             // Ce qui distingue une échéance d'un vrai évènement.

@@ -71,6 +71,19 @@ $lienEvt = $estTache
           <?= (int) $evt['termine'] === 1 ? '☑' : '☐' ?>
         </button>
       </form>
+      <?php
+      /*
+       * Un évènement rattaché à un cours mène aux deux endroits où l'on va
+       * avant un contrôle : le cours lui-même, et sa fiche de révision.
+       */
+      $coursId = (int) ($evt['cours_id'] ?? 0);
+      ?>
+      <?php if ($coursId > 0): ?>
+        <a class="bouton bouton--discret bouton--petit" href="<?= url('cours/' . $coursId) ?>"
+           title="Ouvrir le cours<?= !empty($evt['cours_titre']) ? ' : ' . e((string) $evt['cours_titre']) : '' ?>">📘</a>
+        <a class="bouton bouton--discret bouton--petit" href="<?= url('revision/' . $coursId) ?>"
+           title="Ouvrir la fiche de révision">📝</a>
+      <?php endif; ?>
       <a class="bouton bouton--discret bouton--petit" href="<?= url('evenements/' . $evt['id'] . '/modifier') ?>"
          title="Modifier">✎</a>
     <?php endif; ?>
