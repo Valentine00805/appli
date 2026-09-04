@@ -26,10 +26,8 @@ $lienEvt = $estTache
   </span>
 
   <span style="min-width:0">
-    <a class="evt-ligne__titre" href="<?= e($lienEvt) ?>"
-       style="text-decoration:none;color:inherit">
-      <?= e(icone_evenement($evt) . ' ' . $evt['titre']) ?>
-    </a><br>
+    <?php // Le titre ne se clique pas : les boutons de droite disent où l'on va. ?>
+    <span class="evt-ligne__titre"><?= e(icone_evenement($evt) . ' ' . $evt['titre']) ?></span><br>
     <span class="evt-ligne__meta">
       <?= e(libelle_type($evt)) ?><?php
         if ($estTache && !empty($evt['detail_tache'])) { echo ' · ' . e((string) $evt['detail_tache']); }
@@ -79,10 +77,14 @@ $lienEvt = $estTache
       $coursId = (int) ($evt['cours_id'] ?? 0);
       ?>
       <?php if ($coursId > 0): ?>
-        <a class="bouton bouton--discret bouton--petit" href="<?= url('cours/' . $coursId) ?>"
-           title="Ouvrir le cours<?= !empty($evt['cours_titre']) ? ' : ' . e((string) $evt['cours_titre']) : '' ?>">📘</a>
-        <a class="bouton bouton--discret bouton--petit" href="<?= url('revision/' . $coursId) ?>"
-           title="Ouvrir la fiche de révision">📝</a>
+        <a class="bouton bouton--secondaire" href="<?= url('cours/' . $coursId) ?>"
+           title="Ouvrir le cours<?= !empty($evt['cours_titre']) ? ' : ' . e((string) $evt['cours_titre']) : '' ?>">
+          📘 Cours
+        </a>
+        <a class="bouton bouton--secondaire" href="<?= url('revision/' . $coursId) ?>"
+           title="Ouvrir la fiche de révision">
+          📝 Révision
+        </a>
       <?php endif; ?>
       <a class="bouton bouton--discret bouton--petit" href="<?= url('evenements/' . $evt['id'] . '/modifier') ?>"
          title="Modifier">✎</a>
