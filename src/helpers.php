@@ -106,6 +106,56 @@ function types_evenement_par_defaut(): array
     ];
 }
 
+/**
+ * Les trois états d'une révision, et ce que chacun pèse dans l'avancement.
+ *
+ * « En cours » compte pour moitié : une fiche entamée n'est pas rien, mais
+ * n'est pas révisée non plus.
+ */
+function etats_revision(): array
+{
+    return [
+        0 => ['libelle' => 'À réviser', 'icone' => '○', 'poids' => 0.0,  'classe' => 'a-reviser'],
+        1 => ['libelle' => 'En cours',  'icone' => '◐', 'poids' => 0.5,  'classe' => 'en-cours'],
+        2 => ['libelle' => 'Révisée',   'icone' => '●', 'poids' => 1.0,  'classe' => 'revisee'],
+    ];
+}
+
+/** L'état d'une fiche, ramené à une valeur connue. */
+function etat_revision(mixed $valeur): array
+{
+    $etats = etats_revision();
+    return $etats[(int) $valeur] ?? $etats[0];
+}
+
+/**
+ * L'avancement d'un ensemble de fiches, en pourcentage entier.
+ *
+ * @param array<int, array> $cours lignes portant une clé « etat_revision »
+ * @return array{pourcentage: int, total: int, compte: array<int, int>}
+ */
+function avancement_revision(array $cours): array
+{
+    $etats = etats_revision();
+    $compte = [0 => 0, 1 => 0, 2 => 0];
+    $poids = 0.0;
+
+    foreach ($cours as $c) {
+        $etat = (int) ($c['etat_revision'] ?? 0);
+        $etat = isset($etats[$etat]) ? $etat : 0;
+        $compte[$etat]++;
+        $poids += $etats[$etat]['poids'];
+    }
+
+    $total = count($cours);
+
+    return [
+        'pourcentage' => $total === 0 ? 0 : (int) round($poids / $total * 100),
+        'total'       => $total,
+        'compte'      => $compte,
+    ];
+}
+
 /** Icône d'un évènement, avec repli si son type a été supprimé. */
 function icone_evenement(array $evt): string
 {

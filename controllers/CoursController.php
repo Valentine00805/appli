@@ -147,6 +147,32 @@ final class CoursController
         $this->retourFiche($id);
     }
 
+    /** Où l'on en est de la révision d'un cours : c'est l'utilisateur qui le dit. */
+    public function etatRevision(int $id): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $userId = Auth::id();
+
+        if (Database::valeur('SELECT id FROM cours WHERE id = ? AND user_id = ?', [$id, $userId]) === null) {
+            $this->introuvable();
+        }
+
+        $etat = entier_ou_null($_POST['etat'] ?? null);
+        if ($etat === null || !array_key_exists($etat, etats_revision())) {
+            Session::flash('erreur', 'État de révision inconnu.');
+            $this->retourFiche($id);
+        }
+
+        Database::run(
+            'UPDATE cours SET etat_revision = ? WHERE id = ? AND user_id = ?',
+            [$etat, $id, $userId]
+        );
+
+        Session::flash('succes', 'Fiche marquée « ' . etat_revision($etat)['libelle'] . ' ».');
+        $this->retourFiche($id);
+    }
+
     /** Toutes les fiches de révision, groupées par matière. */
     public function revisions(): void
     {
@@ -211,7 +237,7 @@ final class CoursController
         };
 
         $cours = Database::all(
-            'SELECT c.id, c.titre, c.fiche_revision, c.updated_at,
+            'SELECT c.id, c.titre, c.fiche_revision, c.etat_revision, c.updated_at,
                     ' . $modifiee . ' AS modifiee_le,
                     m.nom AS matiere_nom, m.couleur AS matiere_couleur,
                     (SELECT COUNT(*) FROM fichiers f
@@ -249,9 +275,31 @@ final class CoursController
             }
         }
 
+        /*
+         * L'avancement porte sur tous les cours retenus, fiche écrite ou non :
+         * un cours dont la fiche reste à faire est bien un cours à réviser.
+         * Le détail par matière suit le regroupement de la page.
+         */
+        $tous = array_merge($garnies, $vides);
+        $parMatiere = [];
+        foreach ($tous as $c) {
+            $parMatiere[(string) ($c['matiere_nom'] ?? '')][] = $c;
+        }
+        $avancementMatieres = [];
+        foreach ($parMatiere as $nom => $lignes) {
+            $avancementMatieres[$nom] = avancement_revision($lignes) + [
+                'couleur' => (string) ($lignes[0]['matiere_couleur'] ?? ''),
+            ];
+        }
+        // Comme ailleurs sur la page, « Sans matière » ferme la marche.
+        uksort($avancementMatieres, static fn (string $a, string $b): int
+            => [$a === '', mb_strtolower($a)] <=> [$b === '', mb_strtolower($b)]);
+
         Vue::afficher('cours/revisions', [
             'garnies'   => $garnies,
             'vides'     => $vides,
+            'avancement'         => avancement_revision($tous),
+            'avancementMatieres' => $avancementMatieres,
             'recherche' => $recherche,
             'termes'    => $termes,
             'matieres'  => $matieres,
@@ -278,7 +326,7 @@ final class CoursController
         $userId = Auth::id();
 
         $cours = Database::one(
-            'SELECT c.id, c.titre, c.fiche_revision,
+            'SELECT c.id, c.titre, c.fiche_revision, c.etat_revision,
                     m.nom AS matiere_nom, m.couleur AS matiere_couleur
              FROM cours c LEFT JOIN matieres m ON m.id = c.matiere_id
              WHERE c.id = ? AND c.user_id = ?',

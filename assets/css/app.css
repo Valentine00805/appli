@@ -1254,7 +1254,8 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
 
   /* Rien de ce qui sert à modifier n'a de sens sur une feuille. */
   .depot, .fiche__ajout, .fichier__actions, .fiche__lecteur,
-  .fiche__liste form, .fiche-carte__ailleurs { display: none !important; }
+  .fiche__liste form, .fiche-carte__ailleurs,
+  .fiche-etat { display: none !important; }
 
   /* Un message passager n a rien à faire sur une feuille. */
   .flashs { display: none !important; }
@@ -1283,3 +1284,54 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
 /* Une colonne du tableau est étroite : les deux renvois y tiennent sur une
    ligne grâce à des marges intérieures un peu plus serrées. */
 .kanban-carte__liens .bouton--secondaire { padding-left: .6rem; padding-right: .6rem; }
+
+/* --- Avancement des révisions --------------------------------------------- */
+
+.avancement { margin-bottom: 1.5rem; }
+.avancement__entete { display: flex; align-items: baseline; gap: .75rem; }
+.avancement__entete h2 { margin: 0; flex: 1; }
+.avancement__chiffre { font-size: 1.6rem; font-weight: 700; color: var(--accent-fonce); }
+
+/* Deux parts empilées : ce qui est révisé, puis ce qui est en cours. */
+.jauge {
+  display: flex; height: 12px; margin: .7rem 0 .55rem;
+  border-radius: 999px; overflow: hidden; background: var(--fond-doux);
+  border: 1px solid var(--bordure);
+}
+.jauge--fine { height: 8px; margin: 0; flex: 1; }
+.jauge__part { display: block; height: 100%; }
+.jauge__part--revisee  { background: var(--succes); }
+.jauge__part--en-cours { background: var(--accent); opacity: .45; }
+
+.avancement__detail { margin: 0; font-size: .88rem; color: var(--texte-doux); }
+
+.avancement__matieres { display: grid; gap: .5rem; margin-top: 1rem; }
+.avancement__ligne { display: flex; align-items: center; gap: .75rem; }
+.avancement__nom { flex: none; width: 9rem; font-size: .85rem; overflow-wrap: anywhere; }
+.avancement__part {
+  flex: none; width: 3rem; text-align: right;
+  font-size: .82rem; color: var(--texte-doux); font-variant-numeric: tabular-nums;
+}
+
+/* L'état d'une fiche : un bouton par choix, celui retenu se détache. */
+.fiche-etat { display: flex; flex-wrap: wrap; gap: .35rem; margin-top: .9rem; }
+.fiche-etat__choix {
+  border: 1px solid var(--bordure); background: var(--fond-carte);
+  color: var(--texte-doux); cursor: pointer;
+  padding: .35rem .7rem; border-radius: 999px; font-size: .82rem; font-weight: 550;
+}
+.fiche-etat__choix:hover { border-color: var(--bordure-forte); color: var(--texte); }
+.fiche-etat__choix.est-actif { cursor: default; }
+.fiche-etat__choix--a-reviser.est-actif { background: var(--fond-doux); color: var(--texte); border-color: var(--bordure-forte); }
+.fiche-etat__choix--en-cours.est-actif  { background: var(--accent-doux); color: var(--accent-fonce); border-color: var(--accent); }
+.fiche-etat__choix--revisee.est-actif   { background: var(--succes-doux); color: var(--succes); border-color: var(--succes); }
+
+/* Sur une carte, l'état n'est qu'une mention. */
+.fiche-carte__etat {
+  display: inline-block; margin: .6rem 0 0;
+  padding: .2rem .55rem; border-radius: 999px;
+  font-size: .78rem; font-weight: 550;
+  border: 1px solid var(--bordure); color: var(--texte-doux);
+}
+.fiche-carte__etat.fiche-etat__choix--en-cours { background: var(--accent-doux); color: var(--accent-fonce); border-color: var(--accent); }
+.fiche-carte__etat.fiche-etat__choix--revisee  { background: var(--succes-doux); color: var(--succes); border-color: var(--succes); }

@@ -28,6 +28,28 @@ $champPage = $surPage ? '<input type="hidden" name="page" value="fiche">' : '';
     </div>
   </div>
 
+  <?php
+  /*
+   * Où l'on en est : c'est l'utilisateur qui le dit, l'application se contente
+   * d'en faire un total sur l'onglet Révision. Un bouton par état, celui en
+   * cours étant simplement mis en avant.
+   */
+  $etatActuel = (int) ($cours['etat_revision'] ?? 0);
+  ?>
+  <div class="fiche-etat" role="group" aria-label="Avancement de cette révision">
+    <?php foreach (etats_revision() as $valeur => $etat): ?>
+      <form method="post" action="<?= url('cours/' . $cours['id'] . '/revision/etat') ?>" class="en-ligne">
+        <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>"><?= $champPage ?>
+        <input type="hidden" name="etat" value="<?= (int) $valeur ?>">
+        <button type="submit"
+                class="fiche-etat__choix fiche-etat__choix--<?= e($etat['classe']) ?><?= $valeur === $etatActuel ? ' est-actif' : '' ?>"
+                <?= $valeur === $etatActuel ? ' aria-pressed="true"' : '' ?>>
+          <span aria-hidden="true"><?= $etat['icone'] ?></span> <?= e($etat['libelle']) ?>
+        </button>
+      </form>
+    <?php endforeach; ?>
+  </div>
+
   <?php // Sur sa propre page, la note et ce qui lui est rattaché se font face. ?>
   <div class="fiche-grille">
     <div class="fiche-grille__note">

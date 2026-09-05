@@ -7,6 +7,8 @@
  * @var array $matieres   les matières de l'utilisateur, pour le filtre
  * @var ?int $matiereId   la matière retenue, null pour toutes
  * @var string $tri       'matiere', 'recent' ou 'ancien'
+ * @var array $avancement          pourcentage, total et compte par état
+ * @var array $avancementMatieres  le même détail, matière par matière
  */
 $matiereChoisie = null;
 foreach ($matieres as $m) {
@@ -105,6 +107,48 @@ $compteurs = static function (array $c): array {
   <?php endif; ?>
 </form>
 
+<?php if ($avancement['total'] > 0): ?>
+  <section class="carte avancement">
+    <div class="avancement__entete">
+      <h2>Avancement de mes révisions</h2>
+      <span class="avancement__chiffre"><?= (int) $avancement['pourcentage'] ?> %</span>
+    </div>
+
+    <?php $compte = $avancement['compte']; ?>
+    <div class="jauge" role="img"
+         aria-label="<?= (int) $avancement['pourcentage'] ?> pour cent des révisions faites">
+      <span class="jauge__part jauge__part--revisee"
+            style="width:<?= $avancement['total'] ? round($compte[2] / $avancement['total'] * 100, 2) : 0 ?>%"></span>
+      <span class="jauge__part jauge__part--en-cours"
+            style="width:<?= $avancement['total'] ? round($compte[1] / $avancement['total'] * 100, 2) : 0 ?>%"></span>
+    </div>
+
+    <p class="avancement__detail">
+      ● <?= $compte[2] ?> révisée<?= $compte[2] > 1 ? 's' : '' ?>
+      · ◐ <?= $compte[1] ?> en cours
+      · ○ <?= $compte[0] ?> à réviser
+      <span class="discret">— une fiche en cours compte pour moitié.</span>
+    </p>
+
+    <?php if (count($avancementMatieres) > 1): ?>
+      <div class="avancement__matieres">
+        <?php foreach ($avancementMatieres as $nom => $a): ?>
+          <div class="avancement__ligne">
+            <span class="avancement__nom"><?= $nom !== '' ? e($nom) : 'Sans matière' ?></span>
+            <div class="jauge jauge--fine">
+              <span class="jauge__part jauge__part--revisee"
+                    style="width:<?= round($a['compte'][2] / $a['total'] * 100, 2) ?>%"></span>
+              <span class="jauge__part jauge__part--en-cours"
+                    style="width:<?= round($a['compte'][1] / $a['total'] * 100, 2) ?>%"></span>
+            </div>
+            <span class="avancement__part"><?= (int) $a['pourcentage'] ?> %</span>
+          </div>
+        <?php endforeach; ?>
+      </div>
+    <?php endif; ?>
+  </section>
+<?php endif; ?>
+
 <?php if ($filtreActif && $garnies === [] && $vides === []): ?>
   <div class="vide">
     <span class="vide__icone">🔍</span>
@@ -183,6 +227,11 @@ $compteurs = static function (array $c): array {
         <?php if (!empty($c['trouve_ailleurs'])): ?>
           <p class="fiche-carte__ailleurs">🔍 Trouvé dans un élément rattaché</p>
         <?php endif; ?>
+
+        <?php $etat = etat_revision($c['etat_revision'] ?? 0); ?>
+        <p class="fiche-carte__etat fiche-etat__choix--<?= e($etat['classe']) ?>">
+          <span aria-hidden="true"><?= $etat['icone'] ?></span> <?= e($etat['libelle']) ?>
+        </p>
 
         <?php $lignes = $compteurs($c); ?>
         <?php if ($lignes !== []): ?>

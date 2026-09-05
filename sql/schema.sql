@@ -52,6 +52,8 @@ CREATE TABLE IF NOT EXISTS `cours` (
   `titre`      VARCHAR(200) NOT NULL,
   `contenu`    LONGTEXT     NULL,
   `fiche_revision` MEDIUMTEXT NULL,
+  -- Où l'on en est de sa révision : 0 à réviser, 1 en cours, 2 révisée.
+  `etat_revision` TINYINT UNSIGNED NOT NULL DEFAULT 0,
   `favori`     TINYINT(1)   NOT NULL DEFAULT 0,
   `created_at` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
