@@ -1255,7 +1255,7 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
   /* Rien de ce qui sert à modifier n'a de sens sur une feuille. */
   .depot, .fiche__ajout, .fichier__actions, .fiche__lecteur,
   .fiche__liste form, .fiche-carte__ailleurs,
-  .fiche-etat { display: none !important; }
+  .fiche-etat, .fichier__avancement { display: none !important; }
 
   /* Un message passager n a rien à faire sur une feuille. */
   .flashs { display: none !important; }
@@ -1335,3 +1335,36 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
 }
 .fiche-carte__etat.fiche-etat__choix--en-cours { background: var(--accent-doux); color: var(--accent-fonce); border-color: var(--accent); }
 .fiche-carte__etat.fiche-etat__choix--revisee  { background: var(--succes-doux); color: var(--succes); border-color: var(--succes); }
+
+/* --- Anneau de progression ------------------------------------------------ */
+
+.anneau {
+  position: relative; display: inline-grid; place-items: center;
+  width: 46px; height: 46px; flex: none;
+}
+.anneau svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.anneau circle { fill: none; stroke-width: 3.2; }
+.anneau__fond { stroke: var(--bordure); }
+.anneau__part {
+  stroke: var(--accent); stroke-linecap: round;
+  transition: stroke-dasharray .25s ease;
+}
+.anneau--fini .anneau__part { stroke: var(--succes); }
+.anneau--inconnu .anneau__part { stroke: transparent; }
+
+.anneau__texte {
+  position: absolute; font-size: .72rem; font-weight: 700;
+  color: var(--texte); font-variant-numeric: tabular-nums;
+}
+.anneau--inconnu .anneau__texte { color: var(--texte-doux); font-weight: 550; }
+.anneau--fini .anneau__texte { color: var(--succes); }
+.anneau__pourcent { font-size: .58rem; font-weight: 600; }
+
+/* L'anneau d'un enregistrement, avec son minutage sous le lecteur. */
+.fichier__avancement {
+  display: flex; align-items: center; gap: .6rem;
+  width: 100%; margin-top: .5rem;
+}
+.fichier__minutage {
+  font-size: .78rem; color: var(--texte-doux); font-variant-numeric: tabular-nums;
+}

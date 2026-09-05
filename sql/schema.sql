@@ -96,6 +96,9 @@ CREATE TABLE IF NOT EXISTS `fichiers` (
   `nom_stocke` VARCHAR(255) NOT NULL,
   `mime`       VARCHAR(120) NOT NULL,
   `taille`     INT UNSIGNED NOT NULL,
+  -- Où l'on s'est arrêté dans un enregistrement, et sa durée : en secondes.
+  `position_lecture` INT UNSIGNED NOT NULL DEFAULT 0,
+  `duree_lecture`    INT UNSIGNED NOT NULL DEFAULT 0,
   `created_at` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `idx_fichiers_cours` (`cours_id`),

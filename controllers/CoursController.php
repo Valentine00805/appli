@@ -147,6 +147,48 @@ final class CoursController
         $this->retourFiche($id);
     }
 
+    /**
+     * Retient où l'on s'est arrêté dans un enregistrement.
+     *
+     * Appelée par le lecteur en cours de route, sans recharger la page : elle
+     * ne répond donc rien, sinon un code. La durée arrive en même temps, le
+     * navigateur étant le seul à la connaître.
+     */
+    public function positionLecture(int $id): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $userId = Auth::id();
+
+        $fichier = Database::one(
+            'SELECT id, duree_lecture FROM fichiers WHERE id = ? AND user_id = ?',
+            [$id, $userId]
+        );
+        if ($fichier === null) {
+            http_response_code(404);
+            exit;
+        }
+
+        $position = max(0, (int) round((float) ($_POST['position'] ?? 0)));
+        $duree = max(0, (int) round((float) ($_POST['duree'] ?? 0)));
+
+        // Une durée absente ne doit pas effacer celle qu'on connaissait.
+        if ($duree === 0) {
+            $duree = (int) $fichier['duree_lecture'];
+        }
+        if ($duree > 0) {
+            $position = min($position, $duree);
+        }
+
+        Database::run(
+            'UPDATE fichiers SET position_lecture = ?, duree_lecture = ? WHERE id = ? AND user_id = ?',
+            [$position, $duree, $id, $userId]
+        );
+
+        http_response_code(204);
+        exit;
+    }
+
     /** Où l'on en est de la révision d'un cours : c'est l'utilisateur qui le dit. */
     public function etatRevision(int $id): void
     {

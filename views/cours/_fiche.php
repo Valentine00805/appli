@@ -15,7 +15,12 @@ $nbElements = count($fichiersFiche) + array_sum(array_map('count', $parType));
 
 // Sur sa propre page, chaque formulaire doit y ramener plutôt que d'ouvrir le cours.
 $champPage = $surPage ? '<input type="hidden" name="page" value="fiche">' : '';
+
+// Le lecteur enregistre sa position sans recharger la page : il lui faut le
+// jeton, que les formulaires portent déjà mais qu'aucun ne lui prête.
+$jetonLecture = Session::jetonCsrf();
 ?>
+<span hidden data-jeton-lecture="<?= e($jetonLecture) ?>"></span>
 
 <section class="carte fiche<?= $surPage ? '' : ' volet' ?>" id="revision">
   <div class="volet__entete">
@@ -135,9 +140,37 @@ $champPage = $surPage ? '<input type="hidden" name="page" value="fiche">' : '';
               </form>
             </span>
 
+            <?php if ($estAudio || $estVideo): ?>
+              <?php
+              /*
+               * L'anneau dit où l'on en est dans l'enregistrement. Le lecteur
+               * le met à jour en cours de route et reprend là où on s'était
+               * arrêté ; sans JavaScript, il montre la dernière position connue.
+               */
+              $avance = avancement_media($f);
+              ?>
+              <span class="fichier__avancement" data-avancement="<?= (int) $f['id'] ?>">
+                <?= Vue::rendre('cours/_anneau', [
+                    'pourcentage' => $avance,
+                    'titre'       => 'Avancement de « ' . $f['nom_origine'] . ' »',
+                ]) ?>
+                <span class="fichier__minutage">
+                  <?php if ((int) $f['duree_lecture'] > 0): ?>
+                    <?= e(duree_lisible((int) $f['position_lecture'])) ?>
+                    / <?= e(duree_lisible((int) $f['duree_lecture'])) ?>
+                  <?php else: ?>
+                    pas encore lu
+                  <?php endif; ?>
+                </span>
+              </span>
+            <?php endif; ?>
+
             <?php // Le lecteur du navigateur suffit : rien à charger de plus. ?>
             <?php if ($estAudio): ?>
               <audio class="fichier__lecteur" controls preload="metadata"
+                     data-lecteur="<?= (int) $f['id'] ?>"
+                     data-position="<?= (int) $f['position_lecture'] ?>"
+                     data-position-url="<?= url('fichiers/' . $f['id'] . '/position') ?>"
                      src="<?= url('fichiers/' . $f['id']) ?>">
                 <a href="<?= url('fichiers/' . $f['id'], ['telecharger' => 1]) ?>">
                   Télécharger l'enregistrement
@@ -145,6 +178,9 @@ $champPage = $surPage ? '<input type="hidden" name="page" value="fiche">' : '';
               </audio>
             <?php elseif ($estVideo): ?>
               <video class="fichier__lecteur fichier__lecteur--video" controls preload="metadata"
+                     data-lecteur="<?= (int) $f['id'] ?>"
+                     data-position="<?= (int) $f['position_lecture'] ?>"
+                     data-position-url="<?= url('fichiers/' . $f['id'] . '/position') ?>"
                      src="<?= url('fichiers/' . $f['id']) ?>">
                 <a href="<?= url('fichiers/' . $f['id'], ['telecharger' => 1]) ?>">
                   Télécharger la vidéo

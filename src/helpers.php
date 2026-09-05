@@ -156,6 +156,38 @@ function avancement_revision(array $cours): array
     ];
 }
 
+/**
+ * L'avancement dans un enregistrement, en pourcentage entier.
+ *
+ * Sans durée connue, on ne sait rien : le navigateur ne l'a pas encore dite.
+ * Les dernières secondes comptent pour la fin : personne ne regarde le
+ * générique, et un lecteur s'arrête rarement au centième près.
+ */
+function avancement_media(array $fichier): ?int
+{
+    $duree = (int) ($fichier['duree_lecture'] ?? 0);
+    if ($duree <= 0) {
+        return null;
+    }
+    $position = min((int) ($fichier['position_lecture'] ?? 0), $duree);
+    $pourcentage = (int) round($position / $duree * 100);
+
+    return $duree - $position <= 5 ? 100 : $pourcentage;
+}
+
+/** Une durée en secondes, écrite comme sur un lecteur : 4:07, 1:02:30. */
+function duree_lisible(int $secondes): string
+{
+    $secondes = max(0, $secondes);
+    $h = intdiv($secondes, 3600);
+    $m = intdiv($secondes % 3600, 60);
+    $s = $secondes % 60;
+
+    return $h > 0
+        ? sprintf('%d:%02d:%02d', $h, $m, $s)
+        : sprintf('%d:%02d', $m, $s);
+}
+
 /** Icône d'un évènement, avec repli si son type a été supprimé. */
 function icone_evenement(array $evt): string
 {

@@ -563,4 +563,94 @@
     });
   }
 
+  /*
+   * L'avancement dans un enregistrement : le lecteur reprend là où on s'était
+   * arrêté, et prévient le serveur quand on le quitte. L'anneau suit en direct.
+   */
+  var jetonLecture = document.querySelector("[data-jeton-lecture]");
+  var lecteurs = [].slice.call(document.querySelectorAll("[data-lecteur]"));
+
+  if (jetonLecture && lecteurs.length) {
+    var jeton = jetonLecture.getAttribute("data-jeton-lecture");
+
+    var minutage = function (secondes) {
+      secondes = Math.max(0, Math.round(secondes));
+      var h = Math.floor(secondes / 3600);
+      var m = Math.floor((secondes % 3600) / 60);
+      var s = secondes % 60;
+      var deux = function (n) { return n < 10 ? "0" + n : String(n); };
+      return h > 0 ? h + ":" + deux(m) + ":" + deux(s) : m + ":" + deux(s);
+    };
+
+    lecteurs.forEach(function (lecteur) {
+      var id = lecteur.getAttribute("data-lecteur");
+      var bloc = document.querySelector("[data-avancement='" + id + "']");
+      var anneau = bloc ? bloc.querySelector(".anneau") : null;
+      var trait = anneau ? anneau.querySelector(".anneau__part") : null;
+      var texte = anneau ? anneau.querySelector(".anneau__texte") : null;
+      var horloge = bloc ? bloc.querySelector(".fichier__minutage") : null;
+      var dernierEnvoi = 0;
+      var repris = false;
+
+      var peindre = function () {
+        if (!lecteur.duration || !isFinite(lecteur.duration)) { return; }
+        var part = Math.max(0, Math.min(100, Math.round(lecteur.currentTime / lecteur.duration * 100)));
+        // Les toutes dernières secondes valent la fin : même règle que le serveur.
+        if (lecteur.duration - lecteur.currentTime <= 5) { part = 100; }
+        if (trait) { trait.setAttribute("stroke-dasharray", part + " 100"); }
+        if (texte) { texte.innerHTML = part + "<span class='anneau__pourcent'>%</span>"; }
+        if (anneau) {
+          anneau.classList.remove("anneau--inconnu");
+          anneau.classList.toggle("anneau--fini", part >= 100);
+        }
+        if (horloge) {
+          horloge.textContent = minutage(lecteur.currentTime) + " / " + minutage(lecteur.duration);
+        }
+      };
+
+      var envoyer = function () {
+        if (!lecteur.duration || !isFinite(lecteur.duration)) { return; }
+        var corps = new URLSearchParams();
+        corps.set("_csrf", jeton);
+        corps.set("position", String(Math.round(lecteur.currentTime)));
+        corps.set("duree", String(Math.round(lecteur.duration)));
+        var url = lecteur.getAttribute("data-position-url");
+        // sendBeacon survit à la fermeture de l'onglet ; fetch prend le relais.
+        if (navigator.sendBeacon) {
+          navigator.sendBeacon(url, corps);
+        } else {
+          fetch(url, { method: "POST", body: corps, credentials: "same-origin", keepalive: true });
+        }
+        dernierEnvoi = Date.now();
+      };
+
+      lecteur.addEventListener("loadedmetadata", function () {
+        var depart = parseInt(lecteur.getAttribute("data-position") || "0", 10);
+        // On ne reprend pas à la toute fin : ce serait rejouer le générique.
+        if (!repris && depart > 0 && lecteur.duration - depart > 5) {
+          lecteur.currentTime = depart;
+        }
+        repris = true;
+        peindre();
+      });
+
+      lecteur.addEventListener("timeupdate", function () {
+        peindre();
+        // Une écriture toutes les cinq secondes suffit : c'est un repère, pas un chronomètre.
+        if (Date.now() - dernierEnvoi > 5000) { envoyer(); }
+      });
+
+      ["pause", "ended", "seeked"].forEach(function (nom) {
+        lecteur.addEventListener(nom, envoyer);
+      });
+    });
+
+    // Quitter la page sans avoir mis en pause ne doit pas perdre la position.
+    window.addEventListener("pagehide", function () {
+      lecteurs.forEach(function (l) {
+        if (l.currentTime > 0 && !l.paused) { l.dispatchEvent(new Event("pause")); }
+      });
+    });
+  }
+
 })();
