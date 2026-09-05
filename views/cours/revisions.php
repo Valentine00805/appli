@@ -7,8 +7,9 @@
  * @var array $matieres   les matières de l'utilisateur, pour le filtre
  * @var ?int $matiereId   la matière retenue, null pour toutes
  * @var string $tri       'matiere', 'recent' ou 'ancien'
- * @var array $avancement          pourcentage, total et compte par état
+ * @var array $avancement          ce qui a été écouté, tous cours confondus
  * @var array $avancementMatieres  le même détail, matière par matière
+ * @var array $anneaux            les enregistrements de chaque fiche, par cours
  */
 $matiereChoisie = null;
 foreach ($matieres as $m) {
@@ -114,20 +115,18 @@ $compteurs = static function (array $c): array {
       <span class="avancement__chiffre"><?= (int) $avancement['pourcentage'] ?> %</span>
     </div>
 
-    <?php $compte = $avancement['compte']; ?>
     <div class="jauge" role="img"
-         aria-label="<?= (int) $avancement['pourcentage'] ?> pour cent des révisions faites">
+         aria-label="<?= (int) $avancement['pourcentage'] ?> pour cent des enregistrements écoutés">
       <span class="jauge__part jauge__part--revisee"
-            style="width:<?= $avancement['total'] ? round($compte[2] / $avancement['total'] * 100, 2) : 0 ?>%"></span>
-      <span class="jauge__part jauge__part--en-cours"
-            style="width:<?= $avancement['total'] ? round($compte[1] / $avancement['total'] * 100, 2) : 0 ?>%"></span>
+            style="width:<?= (int) $avancement['pourcentage'] ?>%"></span>
     </div>
 
     <p class="avancement__detail">
-      ● <?= $compte[2] ?> révisée<?= $compte[2] > 1 ? 's' : '' ?>
-      · ◐ <?= $compte[1] ?> en cours
-      · ○ <?= $compte[0] ?> à réviser
-      <span class="discret">— une fiche en cours compte pour moitié.</span>
+      <?= $avancement['total'] ?> enregistrement<?= $avancement['total'] > 1 ? 's' : '' ?> dans vos fiches
+      · ● <?= $avancement['finis'] ?> terminé<?= $avancement['finis'] > 1 ? 's' : '' ?>
+      · ◐ <?= $avancement['commences'] ?> entamé<?= $avancement['commences'] > 1 ? 's' : '' ?>
+      · ○ <?= $avancement['a_faire'] ?> à écouter
+      <span class="discret">— la moyenne de vos anneaux d'écoute.</span>
     </p>
 
     <?php if (count($avancementMatieres) > 1): ?>
@@ -137,9 +136,7 @@ $compteurs = static function (array $c): array {
             <span class="avancement__nom"><?= $nom !== '' ? e($nom) : 'Sans matière' ?></span>
             <div class="jauge jauge--fine">
               <span class="jauge__part jauge__part--revisee"
-                    style="width:<?= round($a['compte'][2] / $a['total'] * 100, 2) ?>%"></span>
-              <span class="jauge__part jauge__part--en-cours"
-                    style="width:<?= round($a['compte'][1] / $a['total'] * 100, 2) ?>%"></span>
+                    style="width:<?= (int) $a['pourcentage'] ?>%"></span>
             </div>
             <span class="avancement__part"><?= (int) $a['pourcentage'] ?> %</span>
           </div>
@@ -217,6 +214,21 @@ $compteurs = static function (array $c): array {
 
         <h3 class="fiche-carte__titre"><?= surligner(e($c['titre']), $termes) ?></h3>
 
+        <?php $mediasFiche = $anneaux[(int) $c['id']] ?? []; ?>
+        <?php if ($mediasFiche !== []): ?>
+          <?php $a = avancement_anneaux($mediasFiche); ?>
+          <p class="fiche-carte__ecoute">
+            <?= Vue::rendre('cours/_anneau', [
+                 'pourcentage' => $a['pourcentage'],
+                 'titre'       => 'Écoute de cette fiche',
+               ]) ?>
+            <span class="discret">
+              <?= $a['total'] ?> enregistrement<?= $a['total'] > 1 ? 's' : '' ?>
+              <?php if ($a['finis'] > 0): ?>· <?= $a['finis'] ?> terminé<?= $a['finis'] > 1 ? 's' : '' ?><?php endif; ?>
+            </span>
+          </p>
+        <?php endif; ?>
+
         <?php $texte = trim((string) $c['fiche_revision']); ?>
         <?php if ($texte !== ''): ?>
           <p class="fiche-carte__extrait"><?= surligner(e(extrait_autour($texte, $termes)), $termes) ?></p>
@@ -227,11 +239,6 @@ $compteurs = static function (array $c): array {
         <?php if (!empty($c['trouve_ailleurs'])): ?>
           <p class="fiche-carte__ailleurs">🔍 Trouvé dans un élément rattaché</p>
         <?php endif; ?>
-
-        <?php $etat = etat_revision($c['etat_revision'] ?? 0); ?>
-        <p class="fiche-carte__etat fiche-etat__choix--<?= e($etat['classe']) ?>">
-          <span aria-hidden="true"><?= $etat['icone'] ?></span> <?= e($etat['libelle']) ?>
-        </p>
 
         <?php $lignes = $compteurs($c); ?>
         <?php if ($lignes !== []): ?>

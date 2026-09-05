@@ -107,52 +107,40 @@ function types_evenement_par_defaut(): array
 }
 
 /**
- * Les trois états d'une révision, et ce que chacun pèse dans l'avancement.
+ * L'avancement d'un ensemble d'enregistrements : la moyenne de leurs anneaux.
  *
- * « En cours » compte pour moitié : une fiche entamée n'est pas rien, mais
- * n'est pas révisée non plus.
- */
-function etats_revision(): array
-{
-    return [
-        0 => ['libelle' => 'À réviser', 'icone' => '○', 'poids' => 0.0,  'classe' => 'a-reviser'],
-        1 => ['libelle' => 'En cours',  'icone' => '◐', 'poids' => 0.5,  'classe' => 'en-cours'],
-        2 => ['libelle' => 'Révisée',   'icone' => '●', 'poids' => 1.0,  'classe' => 'revisee'],
-    ];
-}
-
-/** L'état d'une fiche, ramené à une valeur connue. */
-function etat_revision(mixed $valeur): array
-{
-    $etats = etats_revision();
-    return $etats[(int) $valeur] ?? $etats[0];
-}
-
-/**
- * L'avancement d'un ensemble de fiches, en pourcentage entier.
+ * Chaque enregistrement pèse pareil, quelle que soit sa durée : une heure de
+ * cours à moitié écoutée vaut la même chose qu'un mémo de trois minutes à
+ * moitié écouté. Un enregistrement jamais ouvert n'a pas de durée connue et
+ * compte pour zéro : ne pas l'avoir lancé, c'est ne pas l'avoir révisé.
  *
- * @param array<int, array> $cours lignes portant une clé « etat_revision »
- * @return array{pourcentage: int, total: int, compte: array<int, int>}
+ * @param array<int, array> $fichiers lignes de « fichiers » (audio ou vidéo)
+ * @return array{pourcentage: int, total: int, finis: int, commences: int, a_faire: int}
  */
-function avancement_revision(array $cours): array
+function avancement_anneaux(array $fichiers): array
 {
-    $etats = etats_revision();
-    $compte = [0 => 0, 1 => 0, 2 => 0];
-    $poids = 0.0;
+    $somme = 0;
+    $finis = 0;
+    $commences = 0;
 
-    foreach ($cours as $c) {
-        $etat = (int) ($c['etat_revision'] ?? 0);
-        $etat = isset($etats[$etat]) ? $etat : 0;
-        $compte[$etat]++;
-        $poids += $etats[$etat]['poids'];
+    foreach ($fichiers as $fichier) {
+        $part = avancement_media($fichier) ?? 0;
+        $somme += $part;
+        if ($part >= 100) {
+            $finis++;
+        } elseif ($part > 0) {
+            $commences++;
+        }
     }
 
-    $total = count($cours);
+    $total = count($fichiers);
 
     return [
-        'pourcentage' => $total === 0 ? 0 : (int) round($poids / $total * 100),
+        'pourcentage' => $total === 0 ? 0 : (int) round($somme / $total),
         'total'       => $total,
-        'compte'      => $compte,
+        'finis'       => $finis,
+        'commences'   => $commences,
+        'a_faire'     => $total - $finis - $commences,
     ];
 }
 

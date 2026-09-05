@@ -1255,7 +1255,7 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
   /* Rien de ce qui sert à modifier n'a de sens sur une feuille. */
   .depot, .fiche__ajout, .fichier__actions, .fiche__lecteur,
   .fiche__liste form, .fiche-carte__ailleurs,
-  .fiche-etat, .fichier__avancement { display: none !important; }
+  .fichier__avancement { display: none !important; }
 
   /* Un message passager n a rien à faire sur une feuille. */
   .flashs { display: none !important; }
@@ -1313,28 +1313,11 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
   font-size: .82rem; color: var(--texte-doux); font-variant-numeric: tabular-nums;
 }
 
-/* L'état d'une fiche : un bouton par choix, celui retenu se détache. */
-.fiche-etat { display: flex; flex-wrap: wrap; gap: .35rem; margin-top: .9rem; }
-.fiche-etat__choix {
-  border: 1px solid var(--bordure); background: var(--fond-carte);
-  color: var(--texte-doux); cursor: pointer;
-  padding: .35rem .7rem; border-radius: 999px; font-size: .82rem; font-weight: 550;
+/* Sur une carte, l'anneau dit ce qui a déjà été écouté. */
+.fiche-carte__ecoute {
+  display: flex; align-items: center; gap: .5rem;
+  margin: .6rem 0 0; font-size: .8rem;
 }
-.fiche-etat__choix:hover { border-color: var(--bordure-forte); color: var(--texte); }
-.fiche-etat__choix.est-actif { cursor: default; }
-.fiche-etat__choix--a-reviser.est-actif { background: var(--fond-doux); color: var(--texte); border-color: var(--bordure-forte); }
-.fiche-etat__choix--en-cours.est-actif  { background: var(--accent-doux); color: var(--accent-fonce); border-color: var(--accent); }
-.fiche-etat__choix--revisee.est-actif   { background: var(--succes-doux); color: var(--succes); border-color: var(--succes); }
-
-/* Sur une carte, l'état n'est qu'une mention. */
-.fiche-carte__etat {
-  display: inline-block; margin: .6rem 0 0;
-  padding: .2rem .55rem; border-radius: 999px;
-  font-size: .78rem; font-weight: 550;
-  border: 1px solid var(--bordure); color: var(--texte-doux);
-}
-.fiche-carte__etat.fiche-etat__choix--en-cours { background: var(--accent-doux); color: var(--accent-fonce); border-color: var(--accent); }
-.fiche-carte__etat.fiche-etat__choix--revisee  { background: var(--succes-doux); color: var(--succes); border-color: var(--succes); }
 
 /* --- Anneau de progression ------------------------------------------------ */
 
