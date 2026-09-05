@@ -190,7 +190,10 @@ final class KanbanController
                 LEFT JOIN cours c           ON c.id = e.cours_id
                 LEFT JOIN types_evenement t ON t.id = e.type_id
                 WHERE e.user_id = ?
-                  AND (e.termine = 0 OR e.fin >= DATE_SUB(NOW(), INTERVAL 30 DAY))';
+                  AND (e.termine = 0 OR e.fin >= DATE_SUB(NOW(), INTERVAL 30 DAY))
+                  -- Un type peut se retirer du tableau : un cours au programme
+                  -- n\'est pas une chose à faire. Un évènement sans type reste.
+                  AND (t.au_tableau = 1 OR e.type_id IS NULL)';
         $params = [$userId];
 
         if ($matiereId !== null) {

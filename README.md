@@ -56,7 +56,7 @@ PHP 8 + MySQL, sans aucune dépendance externe : pas de Composer, pas de CDN, to
 | **Mes cours** | Liste filtrable (recherche, matière, tag, favoris, tri) et création de cours. Chaque cours a un bouton **Révision** qui ouvre sa fiche dans un volet. |
 | **Révision** | Toutes les fiches de révision réunies, groupées par matière, avec un extrait et le compte de ce qui y est rattaché. Recherche (texte, liens, noms de fichiers joints), filtre par matière et tri par date de modification. Un clic ouvre la fiche seule — le titre du cours en tête, sans son contenu ni ses pièces jointes — imprimable en une page propre. Les cours sans fiche sont listés à part. |
 | **Budget** | Cinq onglets : **Opérations** (recettes et dépenses du mois, tendance sur 12 mois), **Prévisions** (solde de départ, charges fixes, solde prévisionnel reporté de mois en mois), **Remboursements** (ce qu'on vous doit), **Import** (relevé bancaire au format CSV) et **Catégories** (avec plafond mensuel). |
-| **Organisation** | Trois onglets : **Matières** (nom, couleur, enseignant), **Types d'évènement** (nom, icône, couleur, ordre, indicateur « échéance ») et **Tags** (créer, renommer, fusionner, supprimer). |
+| **Organisation** | Trois onglets : **Matières** (nom, couleur, enseignant), **Types d'évènement** (nom, icône, couleur, ordre, indicateurs « échéance » et « paraît sur le tableau ») et **Tags** (créer, renommer, fusionner, supprimer). |
 | **Recherche** | Cherche simultanément dans les cours et dans le calendrier, avec surlignage des termes. |
 | **Mon compte** | Statistiques et changement de mot de passe. |
 
@@ -65,8 +65,11 @@ Cinq types sont créés avec le compte (📘 Cours, 📝 Examen, 🗂️ Devoir,
 changer l'icône et la couleur, réordonner, ajouter les vôtres, supprimer.
 
 Un type marqué « échéance » fait apparaître ses évènements sur l'accueil avec un
-compte à rebours. Supprimer un type ne supprime pas les évènements : ils passent
-simplement en « Sans type ».
+compte à rebours. Un type qui **paraît sur le tableau** y envoie ses évènements ;
+décoché, ils restent au calendrier mais quittent le tableau — c'est le réglage
+d'origine de « Cours », un cours au programme n'étant pas une chose à faire.
+Supprimer un type ne supprime pas les évènements : ils passent simplement en
+« Sans type ».
 
 La couleur d'un évènement au calendrier est celle de sa matière ; à défaut, celle
 de son type. Chaque évènement peut être coché comme terminé (☐ / ☑) et rattaché à

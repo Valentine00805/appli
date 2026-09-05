@@ -110,6 +110,9 @@ CREATE TABLE IF NOT EXISTS `types_evenement` (
   `icone`        VARCHAR(16)  NOT NULL DEFAULT '📌',
   `couleur`      CHAR(7)      NOT NULL DEFAULT '#64748b',
   `est_echeance` TINYINT(1)   NOT NULL DEFAULT 0,
+  -- Un cours au programme n'est pas une chose à faire : chaque type décide
+  -- s'il paraît sur le tableau.
+  `au_tableau`   TINYINT(1)   NOT NULL DEFAULT 1,
   `position`     SMALLINT     NOT NULL DEFAULT 0,
   `created_at`   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),

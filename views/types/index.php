@@ -39,6 +39,9 @@ $dernier = count($types) - 1;
                 <?php if ((int) $t['est_echeance'] === 1): ?>
                   · <span title="Apparaît dans « Examens &amp; devoirs » sur l'accueil">⏳ compte comme échéance</span>
                 <?php endif; ?>
+                <?php if ((int) $t['au_tableau'] === 0): ?>
+                  · <span title="Ses évènements ne paraissent pas sur le tableau">🚫 hors du tableau</span>
+                <?php endif; ?>
               </p>
             </div>
 
@@ -103,8 +106,19 @@ $dernier = count($types) - 1;
                 <input type="checkbox" name="est_echeance" value="1"<?= (int) $t['est_echeance'] === 1 ? ' checked' : '' ?>>
                 Compte comme une échéance
               </label>
+
               <span class="champ__aide" style="display:block;margin:-.75rem 0 1rem">
                 Les évènements de ce type apparaissent sur l'accueil avec un compte à rebours (J-5, demain…).
+              </span>
+
+              <label class="case" style="margin-bottom:1rem">
+                <input type="checkbox" name="au_tableau" value="1"<?= (int) $t['au_tableau'] === 1 ? ' checked' : '' ?>>
+                Paraît sur le tableau
+              </label>
+              <span class="champ__aide" style="display:block;margin:-.75rem 0 1rem">
+                Décochez pour un type qui n'est pas une chose à faire — un cours au
+                programme, par exemple : ses évènements resteront au calendrier mais
+                quitteront le tableau.
               </span>
 
               <div class="actions">
@@ -164,6 +178,11 @@ $dernier = count($types) - 1;
       <label class="case" style="margin-bottom:1rem">
         <input type="checkbox" name="est_echeance" value="1">
         Compte comme une échéance
+      </label>
+
+      <label class="case" style="margin-bottom:1rem">
+        <input type="checkbox" name="au_tableau" value="1" checked>
+        Paraît sur le tableau
       </label>
 
       <button class="bouton bouton--bloc" type="submit">Créer le type</button>

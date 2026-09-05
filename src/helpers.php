@@ -98,11 +98,11 @@ function date_fr(string $datetime, bool $avecHeure = true): string
 function types_evenement_par_defaut(): array
 {
     return [
-        ['nom' => 'Cours',    'icone' => '📘', 'couleur' => '#4f46e5', 'est_echeance' => 0],
-        ['nom' => 'Examen',   'icone' => '📝', 'couleur' => '#dc2626', 'est_echeance' => 1],
-        ['nom' => 'Devoir',   'icone' => '🗂️', 'couleur' => '#ea580c', 'est_echeance' => 1],
-        ['nom' => 'Révision', 'icone' => '🔁', 'couleur' => '#059669', 'est_echeance' => 0],
-        ['nom' => 'Autre',    'icone' => '📌', 'couleur' => '#64748b', 'est_echeance' => 0],
+        ['nom' => 'Cours',    'icone' => '📘', 'couleur' => '#4f46e5', 'est_echeance' => 0, 'au_tableau' => 0],
+        ['nom' => 'Examen',   'icone' => '📝', 'couleur' => '#dc2626', 'est_echeance' => 1, 'au_tableau' => 1],
+        ['nom' => 'Devoir',   'icone' => '🗂️', 'couleur' => '#ea580c', 'est_echeance' => 1, 'au_tableau' => 1],
+        ['nom' => 'Révision', 'icone' => '🔁', 'couleur' => '#059669', 'est_echeance' => 0, 'au_tableau' => 1],
+        ['nom' => 'Autre',    'icone' => '📌', 'couleur' => '#64748b', 'est_echeance' => 0, 'au_tableau' => 1],
     ];
 }
 

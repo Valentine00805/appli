@@ -57,14 +57,15 @@ final class TypesEvenementController
         );
 
         Database::run(
-            'INSERT INTO types_evenement (user_id, nom, icone, couleur, est_echeance, position)
-             VALUES (?, ?, ?, ?, ?, ?)',
+            'INSERT INTO types_evenement (user_id, nom, icone, couleur, est_echeance, au_tableau, position)
+             VALUES (?, ?, ?, ?, ?, ?, ?)',
             [
                 $userId,
                 $nom,
                 $this->iconeValide(post('icone')),
                 $this->couleurValide(post('couleur')),
                 isset($_POST['est_echeance']) ? 1 : 0,
+                isset($_POST['au_tableau']) ? 1 : 0,
                 $position,
             ]
         );
@@ -99,13 +100,14 @@ final class TypesEvenementController
         }
 
         Database::run(
-            'UPDATE types_evenement SET nom = ?, icone = ?, couleur = ?, est_echeance = ?
+            'UPDATE types_evenement SET nom = ?, icone = ?, couleur = ?, est_echeance = ?, au_tableau = ?
              WHERE id = ? AND user_id = ?',
             [
                 $nom,
                 $this->iconeValide(post('icone')),
                 $this->couleurValide(post('couleur')),
                 isset($_POST['est_echeance']) ? 1 : 0,
+                isset($_POST['au_tableau']) ? 1 : 0,
                 $id,
                 $userId,
             ]
@@ -181,9 +183,10 @@ final class TypesEvenementController
     {
         foreach (types_evenement_par_defaut() as $rang => $type) {
             Database::run(
-                'INSERT IGNORE INTO types_evenement (user_id, nom, icone, couleur, est_echeance, position)
-                 VALUES (?, ?, ?, ?, ?, ?)',
-                [$userId, $type['nom'], $type['icone'], $type['couleur'], $type['est_echeance'], $rang + 1]
+                'INSERT IGNORE INTO types_evenement (user_id, nom, icone, couleur, est_echeance, au_tableau, position)
+                 VALUES (?, ?, ?, ?, ?, ?, ?)',
+                [$userId, $type['nom'], $type['icone'], $type['couleur'],
+                 $type['est_echeance'], $type['au_tableau'], $rang + 1]
             );
         }
     }
