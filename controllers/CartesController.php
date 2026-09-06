@@ -197,6 +197,7 @@ final class CartesController
 
         $gardees = (array) ($_POST['carte'] ?? []);
         $ajoutees = 0;
+        $sansReponse = 0;
 
         foreach ($gardees as $carte) {
             // Les champs d'une proposition décochée sont envoyés quand même :
@@ -206,7 +207,13 @@ final class CartesController
             }
             $question = trim((string) ($carte['question'] ?? ''));
             $reponse = trim((string) ($carte['reponse'] ?? ''));
-            if ($question === '' || $reponse === '') {
+            if ($question === '') {
+                continue;
+            }
+            // Une question de devoir arrive sans réponse : à l'utilisateur de
+            // l'écrire. Sans elle, la carte n'aurait rien à montrer.
+            if ($reponse === '') {
+                $sansReponse++;
                 continue;
             }
             $ajoutees += $this->ajouter(
@@ -224,6 +231,12 @@ final class CartesController
             $ajoutees === 1 => 'Carte ajoutée au paquet.',
             default        => 'Aucune carte retenue.',
         });
+
+        if ($sansReponse > 0) {
+            Session::flash('erreur', $sansReponse > 1
+                ? $sansReponse . ' cartes laissées de côté : leur réponse était vide.'
+                : 'Une carte laissée de côté : sa réponse était vide.');
+        }
         redirect('cours/' . $id . '/cartes');
     }
 

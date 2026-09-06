@@ -26,8 +26,14 @@ final class GenerateurCartes
     private const REPONSE_MIN = 2;
     private const REPONSE_MAX = 600;
 
+    /** Ce qui remplace l'élément masqué dans un texte à trous. */
+    private const TROU = '……';
+
     /** Au-delà, on arrête de proposer : une fiche n'est pas un dictionnaire. */
     public const PROPOSITIONS_MAX = 120;
+
+    /** Les textes à trous se comptent à part : ils viennent par centaines. */
+    private const TROUS_MAX = 40;
 
     /**
      * Les cartes qu'on peut tirer d'un texte.
@@ -87,6 +93,7 @@ final class GenerateurCartes
                 $cartes[] = [
                     'question' => $terme,
                     'reponse'  => $reponse,
+                    'genre'    => 'definition',
                     'origine'  => 'fichier',
                     'source'   => $source,
                 ];
@@ -97,7 +104,13 @@ final class GenerateurCartes
     }
 
     /**
-     * Écarte les doublons et ce qui existe déjà.
+     * Écarte les doublons, range par intérêt, et s'arrête à temps.
+     *
+     * Une définition vaut mieux qu'une question de devoir sans réponse, qui
+     * vaut mieux qu'un texte à trous : les premières se lisent telles quelles,
+     * les derniers demandent un coup d'œil. Les trous sont en outre plafonnés,
+     * pour qu'un long document n'en produise pas des centaines qui noieraient
+     * les bonnes cartes.
      *
      * @param list<array> $cartes
      * @param list<string> $dejaLa empreintes des cartes du cours
@@ -105,24 +118,34 @@ final class GenerateurCartes
      */
     public static function trier(array $cartes, array $dejaLa = []): array
     {
+        $rang = ['definition' => 0, 'devoir' => 1, 'trou' => 2];
         $vues = array_fill_keys($dejaLa, true);
-        $gardees = [];
+        $paniers = ['definition' => [], 'devoir' => [], 'trou' => []];
 
         foreach ($cartes as $carte) {
+            $genre = $carte['genre'] ?? 'definition';
+            $genre = isset($rang[$genre]) ? $genre : 'definition';
+
             $empreinte = self::empreinte($carte['question']);
             if (isset($vues[$empreinte])) {
                 continue;
             }
             $vues[$empreinte] = true;
-            $carte['empreinte'] = $empreinte;
-            $gardees[] = $carte;
 
-            if (count($gardees) >= self::PROPOSITIONS_MAX) {
-                break;
+            if ($genre === 'trou' && count($paniers['trou']) >= self::TROUS_MAX) {
+                continue;
             }
+
+            $carte['empreinte'] = $empreinte;
+            $carte['genre'] = $genre;
+            $paniers[$genre][] = $carte;
         }
 
-        return $gardees;
+        return array_slice(
+            array_merge($paniers['definition'], $paniers['devoir'], $paniers['trou']),
+            0,
+            self::PROPOSITIONS_MAX
+        );
     }
 
     /**
@@ -182,13 +205,14 @@ final class GenerateurCartes
         $coupe = self::couper($ligne);
         if ($coupe !== null) {
             [$terme, $reponse] = $coupe;
-            // « Chapitre 1 — L'entreprise » annonce la suite : ce n'est pas
-            // une définition, même si la ligne en a la forme.
+            // « Question 3 : … » n'est pas une définition, mais ce qui suit
+            // est souvent la vraie question du devoir : elle fait une carte,
+            // dont la réponse reste à écrire.
             if (self::estUnIntitule($terme)) {
-                return null;
+                return self::questionDuDevoir($terme, $reponse);
             }
             return self::acceptable($terme, $reponse)
-                ? ['question' => $terme, 'reponse' => $reponse]
+                ? ['question' => $terme, 'reponse' => $reponse, 'genre' => 'definition']
                 : null;
         }
 
@@ -230,31 +254,108 @@ final class GenerateurCartes
     }
 
     /**
-     * Un mot mis en gras devient un trou à combler.
+     * Une phrase dont on masque l'élément saillant.
      *
-     * On ne le fait que sur du gras explicite : c'est l'utilisateur qui a
-     * désigné le mot important, l'application ne le devine pas.
+     * Trois pistes, dans cet ordre : ce que l'utilisateur a mis en gras, puis
+     * un nombre — une date, un pourcentage, une quantité — enfin un nom propre.
+     * Ce sont les trois choses qu'on retient mal et qu'une carte fait réviser ;
+     * masquer un mot ordinaire ne demanderait rien.
+     *
+     * La phrase doit être assez longue pour que le trou garde un sens : sans
+     * contexte, la question n'a pas de réponse.
      */
     private static function texteATrous(string $ligne): ?array
     {
-        if (!preg_match('/\*\*(.+?)\*\*/u', $ligne, $trouve)) {
+        // Le gras d'abord : c'est l'utilisateur qui a désigné le mot important.
+        if (preg_match('/\*\*(.+?)\*\*/u', $ligne, $trouve)) {
+            $mot = trim($trouve[1]);
+            $phrase = str_replace('**', '', trim(str_replace($trouve[0], self::TROU, $ligne)));
+
+            return self::acceptable($mot, $phrase) && mb_strlen($phrase) >= 12
+                ? ['question' => $phrase, 'reponse' => $mot, 'genre' => 'trou']
+                : null;
+        }
+
+        // Une phrase, et non une ligne d'en-tête ou de tableau : au moins huit
+        // vrais mots, et une nette majorité de lettres.
+        $mots = preg_match_all('/\p{L}{2,}/u', $ligne);
+        $lettres = preg_match_all('/[\p{L}\s]/u', $ligne);
+        if ($mots < 8 || mb_strlen($ligne) < 40 || mb_strlen($ligne) > 300
+            || $lettres / max(1, mb_strlen($ligne)) < 0.75) {
             return null;
         }
 
-        $mot = trim($trouve[1]);
-        $phrase = trim(str_replace($trouve[0], '……', $ligne));
-        // Le reste du gras de la phrase n'a plus lieu d'être affiché.
-        $phrase = str_replace('**', '', $phrase);
+        $cache = self::elementSaillant($ligne);
+        if ($cache === null) {
+            return null;
+        }
 
-        return self::acceptable($mot, $phrase) && mb_strlen($phrase) >= 12
-            ? ['question' => $phrase, 'reponse' => $mot]
-            : null;
+        [$element, $position] = $cache;
+        $phrase = mb_substr($ligne, 0, $position) . self::TROU
+            . mb_substr($ligne, $position + mb_strlen($element));
+
+        return ['question' => trim($phrase), 'reponse' => $element, 'genre' => 'trou'];
+    }
+
+    /**
+     * L'élément d'une phrase qui mérite d'être masqué, et où il se trouve.
+     *
+     * @return array{0: string, 1: int}|null
+     */
+    private static function elementSaillant(string $ligne): ?array
+    {
+        // Un nombre d'au moins deux chiffres : une année, une quantité, un taux.
+        if (preg_match('/\d[\d  ]*(?:[.,]\d+)?\s?%?/u', $ligne, $m, PREG_OFFSET_CAPTURE)) {
+            $element = trim($m[0][0]);
+            if (mb_strlen(preg_replace('/\D/u', '', $element) ?? '') >= 2) {
+                return [$element, mb_strlen(substr($ligne, 0, $m[0][1]))];
+            }
+        }
+
+        // Un nom propre : une majuscule au milieu de la phrase, pas en tête ni
+        // après un point, où toute phrase commence par une majuscule.
+        if (preg_match_all('/(?<=[a-zà-ÿ,;] )(\p{Lu}[\p{L}\'’-]{2,})/u', $ligne, $noms, PREG_OFFSET_CAPTURE)) {
+            foreach ($noms[1] as $nom) {
+                return [$nom[0], mb_strlen(substr($ligne, 0, $nom[1]))];
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * La question d'un devoir, repérée derrière son intitulé.
+     *
+     * « Question 3 : quelles sont les deux catégories ? » vaut une carte. La
+     * réponse, elle, n'est écrite nulle part dans l'énoncé : elle reste vide,
+     * à remplir par celui qui révise — c'est d'ailleurs tout l'exercice.
+     */
+    private static function questionDuDevoir(string $intitule, string $suite): ?array
+    {
+        // « Activité 2 : … » annonce un titre ; « Question 3 : … » pose une
+        // question. Seule la seconde a une réponse à chercher.
+        $nu = self::sansAccents(mb_strtolower($intitule));
+        if (!preg_match('/^(?:question|q|consigne)\b/', $nu)) {
+            return null;
+        }
+
+        $suite = trim($suite);
+        $mots = preg_match_all('/\S+/u', $suite);
+        if ($mots < 4 || mb_strlen($suite) > 400 || !preg_match('/\p{L}/u', $suite)) {
+            return null;
+        }
+
+        return ['question' => $suite, 'reponse' => '', 'genre' => 'devoir'];
     }
 
     // --- Le tout-venant ------------------------------------------------------
 
     /**
-     * Les lignes d'un texte, puces et numéros retirés.
+     * Les lignes d'un texte, débarrassées de ce qui se répète.
+     *
+     * L'en-tête et le pied d'un document reviennent à chaque page : « CEJM |
+     * Chapitre 3 | 2024-2025 ». Ce n'est pas du contenu, et une carte fabriquée
+     * dessus ne demande rien. Une ligne vue trois fois est donc écartée.
      *
      * @return list<string>
      */
@@ -264,14 +365,27 @@ final class GenerateurCartes
             $texte = (string) mb_convert_encoding($texte, 'UTF-8', 'Windows-1252');
         }
 
-        $lignes = preg_split('/\r\n|\r|\n/', $texte);
+        $brutes = preg_split('/\r\n|\r|\n/', $texte);
+        if ($brutes === false) {
+            return [];
+        }
 
-        return $lignes === false ? [] : array_values(array_filter(
-            array_map('trim', $lignes),
+        $lignes = array_values(array_filter(
+            array_map('trim', $brutes),
             static fn (string $l): bool => $l !== ''
         ));
-    }
 
+        $vues = [];
+        foreach ($lignes as $ligne) {
+            $cle = self::empreinte($ligne);
+            $vues[$cle] = ($vues[$cle] ?? 0) + 1;
+        }
+
+        return array_values(array_filter(
+            $lignes,
+            static fn (string $l): bool => ($vues[self::empreinte($l)] ?? 0) < 3
+        ));
+    }
     /** Une ligne débarrassée de sa puce, de son numéro et de ses marques de titre. */
     private static function nettoyer(string $ligne): string
     {

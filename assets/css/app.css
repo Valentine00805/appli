@@ -433,6 +433,13 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
 }
 .proposition__garder { display: flex; align-items: center; gap: .45rem; cursor: pointer; }
 .proposition__source { font-size: .75rem; color: var(--texte-doux); }
+/* Ce qui n'est pas une définition se signale : on ne les lit pas pareil. */
+.proposition__genre {
+  margin-left: auto; padding: .1rem .5rem; border-radius: 999px;
+  font-size: .7rem; font-weight: 600;
+}
+.proposition__genre--devoir { background: var(--accent-doux); color: var(--accent-fonce); }
+.proposition__genre--trou { background: var(--fond-doux); color: var(--texte-doux); }
 .proposition__couple { display: grid; gap: .35rem; }
 @media (min-width: 700px) {
   .proposition__couple { grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr); }

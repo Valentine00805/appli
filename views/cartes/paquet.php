@@ -76,12 +76,18 @@ $provenance = static function (array $c): string {
                   default   => '',
               }) ?>
             </span>
+            <?php $genre = $p['genre'] ?? 'definition'; ?>
+            <?php if ($genre !== 'definition'): ?>
+              <span class="proposition__genre proposition__genre--<?= e($genre) ?>">
+                <?= $genre === 'devoir' ? 'question du devoir — écrivez la réponse' : 'texte à trous' ?>
+              </span>
+            <?php endif; ?>
           </label>
           <div class="proposition__couple">
             <input type="text" name="carte[<?= $rang ?>][question]" value="<?= e($p['question']) ?>"
                    aria-label="Question" maxlength="500">
             <input type="text" name="carte[<?= $rang ?>][reponse]" value="<?= e($p['reponse']) ?>"
-                   aria-label="Réponse">
+                   aria-label="Réponse" placeholder="<?= $p['reponse'] === '' ? 'À écrire — sans réponse, la carte est ignorée' : '' ?>">
           </div>
           <input type="hidden" name="carte[<?= $rang ?>][origine]" value="<?= e($p['origine']) ?>">
           <input type="hidden" name="carte[<?= $rang ?>][source]" value="<?= e($p['source']) ?>">
