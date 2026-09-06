@@ -1037,9 +1037,15 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
   border-style: solid; border-color: var(--accent); background: var(--accent-doux);
 }
 
-/* Le champ reste accessible au clavier, mais sort du flux visuel. */
-.depot__champ {
+/*
+ * Le champ reste accessible au clavier, mais sort du flux visuel.
+ * « input » en tête n'est pas décoratif : sans lui, la règle générale
+ * input[type="file"] { width: 100% } l'emporte, le champ garde toute la
+ * largeur de la page et la déborde par la droite.
+ */
+input.depot__champ {
   position: absolute; width: 1px; height: 1px;
+  padding: 0; border: 0;
   overflow: hidden; clip-path: inset(50%);
 }
 .depot__champ:focus-visible + [data-depot-envoi] { outline: 2px solid var(--accent); }
