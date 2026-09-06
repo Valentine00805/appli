@@ -371,18 +371,23 @@ final class TextePdf
     /**
      * Le texte d'un flux de contenu.
      *
-     * On déroule les instructions en tenant le compte de l'endroit où l'on
-     * écrit. Deux morceaux à la même hauteur appartiennent à la même ligne et
-     * se recollent sans rien entre eux — l'espace, quand il existe, est dans le
-     * texte lui-même. Une hauteur qui change, ou un retour vers la gauche,
-     * commence une ligne : c'est exactement le découpage qu'attend le
-     * fabricant de cartes.
+     * Une chaîne n'est du texte que si un opérateur d'affichage la réclame :
+     * Tj, TJ, ' ou ". Toutes les autres sont des paramètres — l'étiquette de
+     * langue « (fr-FR) » d'un balisage, par exemple — et n'ont rien à faire
+     * dans le résultat. On les met donc en attente, et on ne les retient que
+     * lorsqu'un tel opérateur arrive.
+     *
+     * Le reste suit les positions : deux morceaux à la même hauteur
+     * appartiennent à la même ligne et se recollent sans rien entre eux —
+     * l'espace, quand il existe, est dans le texte lui-même. Une hauteur qui
+     * change, ou un retour vers la gauche, commence une ligne.
      *
      * @param array<string, array<int, string>> $polices
      */
     private static function lireContenu(string $contenu, array $polices): string
     {
         $sortie = '';
+        $attente = '';           // les chaînes lues, tant qu'aucun opérateur ne les réclame
         $police = [];
         $pile = [];              // les nombres en attente d'un opérateur
         $nom = '';               // le dernier /Nom rencontré
@@ -423,17 +428,17 @@ final class TextePdf
                 continue;
             }
 
-            // Une chaîne littérale : « (bonjour) ».
-            if ($c === '(') {
-                [$chaine, $i] = self::lireChaine($contenu, $i);
-                $ecrire(self::decoder($chaine, $police));
-                $i++;
+            // Un dictionnaire en ligne ne contient que des paramètres : on l'enjambe.
+            if ($c === '<' && ($contenu[$i + 1] ?? '') === '<') {
+                $i = self::finDuDictionnaire($contenu, $i);
                 continue;
             }
 
-            // Un dictionnaire en ligne ne nous apprend rien.
-            if ($c === '<' && ($contenu[$i + 1] ?? '') === '<') {
-                $i += 2;
+            // Une chaîne littérale : « (bonjour) ».
+            if ($c === '(') {
+                [$chaine, $i] = self::lireChaine($contenu, $i);
+                $attente .= self::decoder($chaine, $police);
+                $i++;
                 continue;
             }
 
@@ -447,7 +452,7 @@ final class TextePdf
                 if (strlen($hexa) % 2 === 1) {
                     $hexa .= '0';
                 }
-                $ecrire(self::decoder((string) @hex2bin($hexa), $police));
+                $attente .= self::decoder((string) @hex2bin($hexa), $police);
                 $i = $ferme + 1;
                 continue;
             }
@@ -473,8 +478,8 @@ final class TextePdf
                 $valeur = (float) $m[0];
                 // Dans « [(Mai) -250 (lior)] TJ », un grand recul est une espace.
                 if ($dansTableau) {
-                    if ($valeur <= -120 && !str_ends_with($sortie, ' ')) {
-                        $sortie .= ' ';
+                    if ($valeur <= -120 && !str_ends_with($attente, ' ')) {
+                        $attente .= ' ';
                     }
                 } else {
                     $pile[] = $valeur;
@@ -493,6 +498,15 @@ final class TextePdf
             $i += strlen($operateur);
 
             switch ($operateur) {
+                case 'Tj':
+                case 'TJ':
+                    $ecrire($attente);
+                    break;
+                case "'":
+                case '"':
+                    $forcerLigne = true;
+                    $ecrire($attente);
+                    break;
                 case 'Tf':
                     $police = $polices[$nom] ?? [];
                     break;
@@ -516,17 +530,42 @@ final class TextePdf
                     }
                     break;
                 case 'T*':
-                case "'":
-                case '"':
                     $forcerLigne = true;
                     break;
             }
 
+            // Une chaîne qu'aucun opérateur d'affichage n'a réclamée était un
+            // paramètre : elle ne fait pas partie du texte de la page.
+            $attente = '';
             $pile = [];
         }
 
         return self::nettoyer($sortie);
     }
+
+    /** La position juste après le dictionnaire « << … >> » qui commence ici. */
+    private static function finDuDictionnaire(string $contenu, int $depart): int
+    {
+        $profondeur = 0;
+        $longueur = strlen($contenu);
+
+        for ($i = $depart; $i < $longueur - 1; $i++) {
+            $paire = substr($contenu, $i, 2);
+            if ($paire === '<<') {
+                $profondeur++;
+                $i++;
+            } elseif ($paire === '>>') {
+                $profondeur--;
+                $i++;
+                if ($profondeur === 0) {
+                    return $i + 1;
+                }
+            }
+        }
+
+        return $longueur;
+    }
+
     /** Une chaîne littérale, parenthèses imbriquées et échappements compris. */
     private static function lireChaine(string $contenu, int $depart): array
     {

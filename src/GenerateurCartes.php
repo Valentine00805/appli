@@ -20,7 +20,9 @@ final class GenerateurCartes
 
     /** En deçà, ce n'est pas une question ; au-delà, ce n'est plus une carte. */
     private const TERME_MIN = 2;
-    private const TERME_MAX = 120;
+    // Au-delà, ce n'est plus un terme mais une phrase : la ligne était de la
+    // prose, coupée par hasard sur un deux-points.
+    private const TERME_MAX = 80;
     private const REPONSE_MIN = 2;
     private const REPONSE_MAX = 600;
 
@@ -279,10 +281,18 @@ final class GenerateurCartes
         return trim($ligne);
     }
 
-    /** « Chapitre 3 », « Partie II », « Leçon 2 » : un intitulé, pas un terme. */
+    /**
+     * « Chapitre 3 », « Activité 1 », « Source » : un intitulé, pas un terme.
+     *
+     * Un document scolaire est jalonné de ces étiquettes. Elles ont la forme
+     * d'une définition — un mot, deux points, du texte — mais ne définissent
+     * rien : « Source » n'est pas une notion à réviser.
+     */
     private static function estUnIntitule(string $terme): bool
     {
-        $mots = 'chapitre|chap|partie|section|lecon|cours|theme|titre|annexe|module|unite|seance';
+        $mots = 'chapitre|chap|partie|section|lecon|cours|theme|titre|annexe|module|unite|seance'
+            . '|activite|exercice|document|doc|source|sources|question|consigne|objectif|objectifs'
+            . '|remarque|exemple|exemples|methode|bilan|correction|bareme|figure|tableau|schema';
         $nu = self::sansAccents(mb_strtolower(trim($terme)));
 
         return (bool) preg_match('/^(?:' . $mots . ')\.?\s*[0-9ivx]*$/', $nu)
@@ -305,6 +315,13 @@ final class GenerateurCartes
         // La réponse doit dire quelque chose ; la question peut être une
         // date ou une année, qui n'ont pas de lettre mais interrogent bien.
         if (!preg_match('/\p{L}/u', $reponse)) {
+            return false;
+        }
+
+        // Un terme est court et d'un seul tenant. Une virgule ou une longue
+        // enfilade de mots trahissent une phrase coupée par hasard sur un
+        // séparateur — « Sa population, tout d'abord, est constituée de… ».
+        if (str_contains($terme, ',') || preg_match_all('/\S+/u', $terme) > 8) {
             return false;
         }
 
