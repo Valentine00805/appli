@@ -288,34 +288,12 @@ final class CoursController
             }
         }
 
-        /*
-         * L'avancement se lit sur les anneaux : ce qui a réellement été
-         * écouté ou regardé. Seuls les cours affichés comptent, filtre
-         * compris, pour que le chiffre parle bien de la liste sous les yeux.
-         */
+        // Chaque carte porte l'anneau de sa fiche : ce qui en a été écouté ou lu.
         $anneaux = $this->anneauxDesFiches(array_merge($garnies, $vides), $userId);
-
-        $parMatiere = [];
-        foreach (array_merge($garnies, $vides) as $c) {
-            foreach ($anneaux[(int) $c['id']] ?? [] as $fichier) {
-                $parMatiere[(string) ($c['matiere_nom'] ?? '')][] = $fichier;
-            }
-        }
-        $avancementMatieres = [];
-        foreach ($parMatiere as $nom => $lignes) {
-            $avancementMatieres[$nom] = avancement_anneaux($lignes);
-        }
-        // Comme ailleurs sur la page, « Sans matière » ferme la marche.
-        uksort($avancementMatieres, static fn (string $a, string $b): int
-            => [$a === '', mb_strtolower($a)] <=> [$b === '', mb_strtolower($b)]);
-
-        $tousLesAnneaux = array_merge(...array_values($anneaux));
 
         Vue::afficher('cours/revisions', [
             'garnies'   => $garnies,
             'vides'     => $vides,
-            'avancement'         => avancement_anneaux($tousLesAnneaux),
-            'avancementMatieres' => $avancementMatieres,
             'anneaux'   => $anneaux,
             'recherche' => $recherche,
             'termes'    => $termes,

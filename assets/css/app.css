@@ -1334,21 +1334,6 @@ input.depot__champ {
 
 /* --- Avancement des révisions --------------------------------------------- */
 
-.avancement { margin-bottom: 1.5rem; }
-.avancement__entete { display: flex; align-items: baseline; gap: .75rem; }
-.avancement__entete h2 { margin: 0; flex: 1; }
-.avancement__chiffre { font-size: 1.6rem; font-weight: 700; color: var(--accent-fonce); }
-
-.avancement__detail { margin: 0; font-size: .88rem; color: var(--texte-doux); }
-
-.avancement__matieres { display: grid; gap: .5rem; margin-top: 1rem; }
-.avancement__ligne { display: flex; align-items: center; gap: .75rem; }
-.avancement__nom { flex: 1; font-size: .85rem; overflow-wrap: anywhere; }
-.avancement__part {
-  flex: none; width: 3rem; text-align: right;
-  font-size: .82rem; color: var(--texte-doux); font-variant-numeric: tabular-nums;
-}
-
 /* Sur une carte, l'anneau dit ce qui a déjà été écouté. */
 .fiche-carte__ecoute {
   display: flex; align-items: center; gap: .5rem;

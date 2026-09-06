@@ -7,9 +7,7 @@
  * @var array $matieres   les matières de l'utilisateur, pour le filtre
  * @var ?int $matiereId   la matière retenue, null pour toutes
  * @var string $tri       'matiere', 'recent' ou 'ancien'
- * @var array $avancement          ce qui a été écouté, tous cours confondus
- * @var array $avancementMatieres  le même détail, matière par matière
- * @var array $anneaux            les enregistrements de chaque fiche, par cours
+ * @var array $anneaux    ce qui se lit ou s'écoute dans chaque fiche, par cours
  */
 $matiereChoisie = null;
 foreach ($matieres as $m) {
@@ -107,34 +105,6 @@ $compteurs = static function (array $c): array {
     <a class="bouton bouton--discret" href="<?= url('revision') ?>">Réinitialiser</a>
   <?php endif; ?>
 </form>
-
-<?php if ($avancement['total'] > 0): ?>
-  <section class="carte avancement">
-    <div class="avancement__entete">
-      <h2>Avancement de mes révisions</h2>
-      <span class="avancement__chiffre"><?= (int) $avancement['pourcentage'] ?> %</span>
-    </div>
-
-    <p class="avancement__detail">
-      <?= $avancement['total'] ?> document<?= $avancement['total'] > 1 ? 's' : '' ?> suivi<?= $avancement['total'] > 1 ? 's' : '' ?>
-      · ● <?= $avancement['finis'] ?> terminé<?= $avancement['finis'] > 1 ? 's' : '' ?>
-      · ◐ <?= $avancement['commences'] ?> entamé<?= $avancement['commences'] > 1 ? 's' : '' ?>
-      · ○ <?= $avancement['a_faire'] ?> à commencer
-      <span class="discret">— enregistrements écoutés et documents parcourus, à parts égales.</span>
-    </p>
-
-    <?php if (count($avancementMatieres) > 1): ?>
-      <div class="avancement__matieres">
-        <?php foreach ($avancementMatieres as $nom => $a): ?>
-          <div class="avancement__ligne">
-            <span class="avancement__nom"><?= $nom !== '' ? e($nom) : 'Sans matière' ?></span>
-            <span class="avancement__part"><?= (int) $a['pourcentage'] ?> %</span>
-          </div>
-        <?php endforeach; ?>
-      </div>
-    <?php endif; ?>
-  </section>
-<?php endif; ?>
 
 <?php if ($filtreActif && $garnies === [] && $vides === []): ?>
   <div class="vide">
