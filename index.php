@@ -33,6 +33,7 @@ require __DIR__ . '/src/ClasseurXlsx.php';
 require __DIR__ . '/src/SuggestionBudget.php';
 require __DIR__ . '/src/ClasseurLecteur.php';
 require __DIR__ . '/src/ReleveExcel.php';
+require __DIR__ . '/src/TextePdf.php';
 require __DIR__ . '/src/GenerateurCartes.php';
 require __DIR__ . '/src/Requete.php';
 require __DIR__ . '/src/helpers.php';

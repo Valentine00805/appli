@@ -101,10 +101,11 @@ $provenance = static function (array $c): string {
     <h2>Fabriquer des cartes</h2>
     <p class="champ__aide">
       L'application relit le texte du cours, sa fiche de révision et ses documents
-      (Word, OpenDocument, PowerPoint, tableurs, texte), et propose une carte
+      (PDF, Word, OpenDocument, PowerPoint, tableurs, texte), et propose une carte
       partout où elle trouve un terme suivi de sa définition — « Terme : définition »,
       « Terme = définition », « Terme — définition ». Elle ne devine rien : ce
-      qu'elle propose, vous le gardez ou vous le jetez.
+      qu'elle propose, vous le gardez ou vous le jetez. Un PDF scanné, lui, n'est
+      qu'une suite d'images : elle vous dira qu'elle n'a rien pu y lire.
     </p>
     <form method="post" action="<?= url('cours/' . $cours['id'] . '/cartes/proposer') ?>">
       <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">

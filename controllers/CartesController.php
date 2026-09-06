@@ -84,10 +84,11 @@ final class CartesController
         $userId = Auth::id();
         $cours = $this->cours($id, $userId);
 
+        $muets = [];
         $brutes = array_merge(
             GenerateurCartes::depuisTexte((string) $cours['contenu'], 'cours'),
             GenerateurCartes::depuisTexte((string) $cours['fiche_revision'], 'fiche'),
-            $this->depuisLesFichiers($id, $userId)
+            $this->depuisLesFichiers($id, $userId, $muets)
         );
 
         $dejaLa = array_column(Database::all(
@@ -100,6 +101,11 @@ final class CartesController
             Session::flash('erreur', $dejaLa === []
                 ? 'Rien à en tirer : les cartes se fabriquent à partir de lignes de la forme « Terme : définition ».'
                 : 'Aucune nouvelle carte à proposer : tout ce qui était repérable est déjà dans le paquet.');
+        }
+
+        $this->signalerLesMuets($muets);
+
+        if ($propositions === []) {
             redirect('cours/' . $id . '/cartes');
         }
 
@@ -107,8 +113,14 @@ final class CartesController
         redirect('cours/' . $id . '/cartes');
     }
 
-    /** Le texte des pièces jointes que l'application sait lire. */
-    private function depuisLesFichiers(int $coursId, int $userId): array
+    /**
+     * Le texte des pièces jointes que l'application sait lire.
+     *
+     * Les PDF muets — ceux dont on n'a rien pu tirer, un scan par exemple —
+     * sont retenus au passage : mieux vaut le dire que laisser croire que le
+     * document ne contenait rien.
+     */
+    private function depuisLesFichiers(int $coursId, int $userId, array &$muets = []): array
     {
         $cartes = [];
 
@@ -122,6 +134,16 @@ final class CartesController
             $genre = ApercuDocument::genre($nom);
             $chemin = Config::get('app', 'dossier_uploads') . DIRECTORY_SEPARATOR . $fichier['nom_stocke'];
             if ($genre === null || !is_file($chemin)) {
+                continue;
+            }
+
+            if ($genre === 'pdf') {
+                $texte = TextePdf::extraire($chemin);
+                if ($texte === null) {
+                    $muets[] = $nom;
+                    continue;
+                }
+                $cartes = array_merge($cartes, GenerateurCartes::depuisTexte($texte, 'fichier', $nom));
                 continue;
             }
 
@@ -145,6 +167,24 @@ final class CartesController
         }
 
         return $cartes;
+    }
+
+    /**
+     * Prévient quand un PDF n'a rien donné.
+     *
+     * Un document scanné n'est qu'une suite d'images : il n'y a pas de texte
+     * à lire dedans, et le dire vaut mieux que laisser l'utilisateur croire
+     * que l'application l'a ignoré.
+     */
+    private function signalerLesMuets(array $muets): void
+    {
+        if ($muets === []) {
+            return;
+        }
+
+        Session::flash('erreur', count($muets) > 1
+            ? 'Aucun texte lisible dans ' . implode(', ', $muets) . ' : ces PDF sont sans doute des scans, c\'est-à-dire des images.'
+            : 'Aucun texte lisible dans ' . $muets[0] . ' : ce PDF est sans doute un scan, c\'est-à-dire une image.');
     }
 
     /** Retient les propositions cochées. */
