@@ -448,8 +448,9 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
 /* --- Budget ---------------------------------------------------------------- */
 
 .jauge {
-  height: 8px; border-radius: 999px; background: var(--fond-doux);
-  overflow: hidden; margin-top: .3rem;
+  display: flex; height: 12px; margin: .7rem 0 .55rem;
+  border-radius: 999px; overflow: hidden; background: var(--fond-doux);
+  border: 1px solid var(--bordure);
 }
 .jauge span { display: block; height: 100%; border-radius: 999px; transition: width .2s ease; }
 
@@ -1338,22 +1339,11 @@ input.depot__champ {
 .avancement__entete h2 { margin: 0; flex: 1; }
 .avancement__chiffre { font-size: 1.6rem; font-weight: 700; color: var(--accent-fonce); }
 
-/* Deux parts empilées : ce qui est révisé, puis ce qui est en cours. */
-.jauge {
-  display: flex; height: 12px; margin: .7rem 0 .55rem;
-  border-radius: 999px; overflow: hidden; background: var(--fond-doux);
-  border: 1px solid var(--bordure);
-}
-.jauge--fine { height: 8px; margin: 0; flex: 1; }
-.jauge__part { display: block; height: 100%; }
-.jauge__part--revisee  { background: var(--succes); }
-.jauge__part--en-cours { background: var(--accent); opacity: .45; }
-
 .avancement__detail { margin: 0; font-size: .88rem; color: var(--texte-doux); }
 
 .avancement__matieres { display: grid; gap: .5rem; margin-top: 1rem; }
 .avancement__ligne { display: flex; align-items: center; gap: .75rem; }
-.avancement__nom { flex: none; width: 9rem; font-size: .85rem; overflow-wrap: anywhere; }
+.avancement__nom { flex: 1; font-size: .85rem; overflow-wrap: anywhere; }
 .avancement__part {
   flex: none; width: 3rem; text-align: right;
   font-size: .82rem; color: var(--texte-doux); font-variant-numeric: tabular-nums;

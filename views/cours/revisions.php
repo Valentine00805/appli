@@ -115,12 +115,6 @@ $compteurs = static function (array $c): array {
       <span class="avancement__chiffre"><?= (int) $avancement['pourcentage'] ?> %</span>
     </div>
 
-    <div class="jauge" role="img"
-         aria-label="<?= (int) $avancement['pourcentage'] ?> pour cent des documents parcourus">
-      <span class="jauge__part jauge__part--revisee"
-            style="width:<?= (int) $avancement['pourcentage'] ?>%"></span>
-    </div>
-
     <p class="avancement__detail">
       <?= $avancement['total'] ?> document<?= $avancement['total'] > 1 ? 's' : '' ?> suivi<?= $avancement['total'] > 1 ? 's' : '' ?>
       · ● <?= $avancement['finis'] ?> terminé<?= $avancement['finis'] > 1 ? 's' : '' ?>
@@ -134,10 +128,6 @@ $compteurs = static function (array $c): array {
         <?php foreach ($avancementMatieres as $nom => $a): ?>
           <div class="avancement__ligne">
             <span class="avancement__nom"><?= $nom !== '' ? e($nom) : 'Sans matière' ?></span>
-            <div class="jauge jauge--fine">
-              <span class="jauge__part jauge__part--revisee"
-                    style="width:<?= (int) $a['pourcentage'] ?>%"></span>
-            </div>
             <span class="avancement__part"><?= (int) $a['pourcentage'] ?> %</span>
           </div>
         <?php endforeach; ?>
