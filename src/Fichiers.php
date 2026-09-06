@@ -296,6 +296,87 @@ final class Fichiers
         return self::estAudio($mime, $nom) || self::estVideo($mime, $nom);
     }
 
+    /** Un PDF, que le navigateur sait afficher dans la page. */
+    public static function estPdf(string $mime, string $nom = ''): bool
+    {
+        $ext = strtolower(pathinfo($nom, PATHINFO_EXTENSION));
+        return $ext === 'pdf' || ($ext === '' && $mime === 'application/pdf');
+    }
+
+    /**
+     * Le nombre de pages d'un PDF, ou null si on n'arrive pas à le dire.
+     *
+     * Trois pistes, de la moins chère à la plus sûre : un PDF « linéarisé »
+     * annonce son compte dès son en-tête ; sinon on compte les objets de page,
+     * en clair puis dans les flux compressés, où les PDF récents les rangent.
+     */
+    public static function pagesPdf(string $chemin): ?int
+    {
+        if (!is_file($chemin)) {
+            return null;
+        }
+
+        // Le dictionnaire de linéarisation tient dans les premiers octets.
+        $debut = (string) @file_get_contents($chemin, false, null, 0, 4096);
+        if (preg_match('#/Linearized[^>]{0,400}?/N\s+(\d+)#s', $debut, $m)) {
+            return max(1, (int) $m[1]);
+        }
+
+        // Au-delà, on renonce plutôt que de charger un document énorme en mémoire.
+        if ((int) filesize($chemin) > 64 * 1024 * 1024) {
+            return null;
+        }
+        $contenu = (string) @file_get_contents($chemin);
+        if ($contenu === '') {
+            return null;
+        }
+
+        $pages = self::compterPages($contenu);
+        if ($pages === 0) {
+            foreach (self::fluxDecompresses($contenu) as $flux) {
+                $pages += self::compterPages($flux);
+            }
+        }
+
+        return $pages > 0 ? $pages : null;
+    }
+
+    /** Les objets « page » d'un morceau de PDF, sans confondre avec « /Pages ». */
+    private static function compterPages(string $contenu): int
+    {
+        return (int) preg_match_all('#/Type\s*/Page(?![a-zA-Z])#', $contenu);
+    }
+
+    /**
+     * Les flux compressés d'un PDF, décompressés.
+     *
+     * On s'arrête à cinquante : les objets de page sont rangés au début du
+     * document, et dérouler une thèse entière pour un chiffre n'en vaut pas la
+     * peine.
+     *
+     * @return list<string>
+     */
+    private static function fluxDecompresses(string $contenu): array
+    {
+        if (!preg_match_all('#FlateDecode.{0,400}?stream\r?\n#s', $contenu, $m, PREG_OFFSET_CAPTURE)) {
+            return [];
+        }
+
+        $flux = [];
+        foreach (array_slice($m[0], 0, 50) as [$entete, $position]) {
+            $depart = $position + strlen($entete);
+            $fin = strpos($contenu, 'endstream', $depart);
+            if ($fin === false) {
+                continue;
+            }
+            // Un flux illisible n'est pas une erreur : il n'était pas pour nous.
+            $clair = @gzuncompress(substr($contenu, $depart, $fin - $depart));
+            if (is_string($clair) && $clair !== '') {
+                $flux[] = $clair;
+            }
+        }
+        return $flux;
+    }
     /** Le type à annoncer pour un média, déduit de son extension. */
     private static function mimeMedia(string $nom): ?string
     {

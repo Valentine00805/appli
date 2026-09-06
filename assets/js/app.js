@@ -570,8 +570,9 @@
   var jetonLecture = document.querySelector("[data-jeton-lecture]");
   var lecteurs = [].slice.call(document.querySelectorAll("[data-lecteur]"));
 
+  var jeton = jetonLecture ? jetonLecture.getAttribute("data-jeton-lecture") : "";
+
   if (jetonLecture && lecteurs.length) {
-    var jeton = jetonLecture.getAttribute("data-jeton-lecture");
 
     var minutage = function (secondes) {
       secondes = Math.max(0, Math.round(secondes));
@@ -653,4 +654,81 @@
     });
   }
 
+  /*
+   * L'avancement dans un PDF. La visionneuse du navigateur ne dit rien de ce
+   * qu'on lit : ce sont nos propres flèches qui tournent les pages, et c'est
+   * donc par elles qu'on sait où l'on en est. Le cadre est remplacé à chaque
+   * fois, car le greffon ne relit pas un fragment changé sur place.
+   */
+  var documents = [].slice.call(document.querySelectorAll("[data-pdf]"));
+
+  if (jetonLecture && documents.length) {
+    documents.forEach(function (bloc) {
+      var pages = parseInt(bloc.getAttribute("data-pages") || "0", 10);
+      var page = parseInt(bloc.getAttribute("data-page") || "1", 10);
+      // Ouvrir un document ne l'a pas fait lire : l'anneau attend le premier saut.
+      var atteinte = parseInt(bloc.getAttribute("data-atteinte") || "0", 10);
+      if (!pages || pages < 2) { return; }
+
+      var id = bloc.getAttribute("data-pdf");
+      var cadre = bloc.querySelector("iframe");
+      var libelle = bloc.querySelector("[data-pdf-libelle]");
+      var recule = bloc.querySelector("[data-pdf-recule]");
+      var avance = bloc.querySelector("[data-pdf-avance]");
+      var mesure = document.querySelector("[data-avancement='" + id + "']");
+      var anneau = mesure ? mesure.querySelector(".anneau") : null;
+      var trait = anneau ? anneau.querySelector(".anneau__part") : null;
+      var texte = anneau ? anneau.querySelector(".anneau__texte") : null;
+      var minutage = mesure ? mesure.querySelector(".fichier__minutage") : null;
+
+      var peindre = function () {
+        var part = Math.max(0, Math.min(100, Math.round(atteinte / pages * 100)));
+        if (trait) { trait.setAttribute("stroke-dasharray", part + " 100"); }
+        if (texte) { texte.innerHTML = part + "<span class='anneau__pourcent'>%</span>"; }
+        if (anneau) {
+          anneau.classList.remove("anneau--inconnu");
+          anneau.classList.toggle("anneau--fini", part >= 100);
+        }
+        if (libelle) { libelle.textContent = "Page " + page + " sur " + pages; }
+        if (minutage) {
+          minutage.textContent = atteinte > 0 ? "Page " + atteinte + " sur " + pages : "pas encore lu";
+        }
+        if (recule) { recule.disabled = page <= 1; }
+        if (avance) { avance.disabled = page >= pages; }
+      };
+
+      var envoyer = function () {
+        var corps = new URLSearchParams();
+        corps.set("_csrf", jeton);
+        corps.set("position", String(page));
+        corps.set("duree", String(pages));
+        var url = bloc.getAttribute("data-position-url");
+        if (navigator.sendBeacon) {
+          navigator.sendBeacon(url, corps);
+        } else {
+          fetch(url, { method: "POST", body: corps, credentials: "same-origin", keepalive: true });
+        }
+      };
+
+      var aller = function (voulue) {
+        var neuve = Math.max(1, Math.min(pages, voulue));
+        if (neuve === page) { return; }
+        page = neuve;
+        atteinte = neuve;
+
+        var source = cadre.getAttribute("src").split("#")[0];
+        var remplacant = cadre.cloneNode(false);
+        remplacant.setAttribute("src", source + "#page=" + page + "&navpanes=0&view=FitH");
+        cadre.replaceWith(remplacant);
+        cadre = remplacant;
+
+        peindre();
+        envoyer();
+      };
+
+      if (recule) { recule.addEventListener("click", function () { aller(page - 1); }); }
+      if (avance) { avance.addEventListener("click", function () { aller(page + 1); }); }
+      peindre();
+    });
+  }
 })();

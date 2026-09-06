@@ -1206,6 +1206,18 @@ input.depot__champ {
   border: 1px solid var(--bordure); border-radius: var(--rayon-s);
   background: var(--fond-doux);
 }
+/* Tourner les pages : nos flèches, puisque la visionneuse ne dit rien. */
+.fichier__pages {
+  display: flex; align-items: center; justify-content: center; gap: .5rem;
+  margin-top: .4rem;
+}
+.fichier__pages .bouton { line-height: 1; }
+.fichier__pages .bouton:disabled { opacity: .4; cursor: default; }
+.fichier__page {
+  font-size: .8rem; color: var(--texte-doux);
+  font-variant-numeric: tabular-nums; min-width: 8.5rem; text-align: center;
+}
+
 .fichier__repli {
   display: block; margin-top: .3rem;
   font-size: .78rem; color: var(--texte-doux);

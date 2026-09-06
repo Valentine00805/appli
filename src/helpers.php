@@ -107,14 +107,14 @@ function types_evenement_par_defaut(): array
 }
 
 /**
- * L'avancement d'un ensemble d'enregistrements : la moyenne de leurs anneaux.
+ * L'avancement d'un ensemble de documents : la moyenne de leurs anneaux.
  *
- * Chaque enregistrement pèse pareil, quelle que soit sa durée : une heure de
- * cours à moitié écoutée vaut la même chose qu'un mémo de trois minutes à
- * moitié écouté. Un enregistrement jamais ouvert n'a pas de durée connue et
- * compte pour zéro : ne pas l'avoir lancé, c'est ne pas l'avoir révisé.
+ * Chacun pèse pareil, quelle que soit sa longueur : une heure de cours à
+ * moitié écoutée vaut la même chose qu'un mémo de trois minutes à moitié
+ * écouté, ou que des annales lues jusqu'à la moitié. Ce qui n'a jamais été
+ * ouvert compte pour zéro : ne pas l'avoir commencé, c'est ne pas l'avoir révisé.
  *
- * @param array<int, array> $fichiers lignes de « fichiers » (audio ou vidéo)
+ * @param array<int, array> $fichiers lignes de « fichiers » (audio, vidéo ou PDF)
  * @return array{pourcentage: int, total: int, finis: int, commences: int, a_faire: int}
  */
 function avancement_anneaux(array $fichiers): array
@@ -124,7 +124,7 @@ function avancement_anneaux(array $fichiers): array
     $commences = 0;
 
     foreach ($fichiers as $fichier) {
-        $part = avancement_media($fichier) ?? 0;
+        $part = avancement_lecture($fichier) ?? 0;
         $somme += $part;
         if ($part >= 100) {
             $finis++;
@@ -144,6 +144,36 @@ function avancement_anneaux(array $fichiers): array
     ];
 }
 
+/**
+ * L'avancement dans un document, quel qu'il soit.
+ *
+ * Un enregistrement se mesure en secondes, un PDF en pages : les deux tiennent
+ * dans les mêmes colonnes, « où l'on s'est arrêté » et « la longueur totale ».
+ */
+function avancement_lecture(array $fichier): ?int
+{
+    $nom = (string) ($fichier['nom_origine'] ?? '');
+    return Fichiers::estPdf((string) ($fichier['mime'] ?? ''), $nom)
+        ? avancement_pages($fichier)
+        : avancement_media($fichier);
+}
+
+/**
+ * L'avancement dans un document paginé, en pourcentage entier.
+ *
+ * Sans nombre de pages, on ne sait rien. La page zéro veut dire « ouvert, mais
+ * pas encore parcouru » : l'anneau reste vide tant qu'on n'a pas tourné de page.
+ */
+function avancement_pages(array $fichier): ?int
+{
+    $pages = (int) ($fichier['duree_lecture'] ?? 0);
+    if ($pages <= 0) {
+        return null;
+    }
+    $page = max(0, min((int) ($fichier['position_lecture'] ?? 0), $pages));
+
+    return (int) round($page / $pages * 100);
+}
 /**
  * L'avancement dans un enregistrement, en pourcentage entier.
  *

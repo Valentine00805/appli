@@ -95,10 +95,7 @@ final class CoursController
                 [$id]
             ),
             // Les pièces de la fiche : rangées à part, elles ne viennent pas du cours.
-            'fichiersFiche' => Database::all(
-                'SELECT * FROM fichiers WHERE cours_id = ? AND pour_fiche = 1 ORDER BY created_at',
-                [$id]
-            ),
+            'fichiersFiche' => $this->fichiersDeFiche($id, $userId),
             'elements'   => $this->elementsDeFiche($id, $userId),
             // De quoi remplir les sélecteurs, seulement quand le volet est ouvert.
             'autresCours' => $revision ? Database::all(
@@ -329,11 +326,10 @@ final class CoursController
     }
 
     /**
-     * Les enregistrements joints aux fiches de ces cours, rangés par cours.
+     * Ce qui se lit ou s'écoute dans les fiches de ces cours, rangé par cours.
      *
-     * Un seul aller-retour en base, et le tri audio/vidéo se fait ici : la
-     * table ne dit pas si un fichier est un enregistrement, seul son nom le
-     * dit vraiment.
+     * Un seul aller-retour en base, et le tri se fait ici : la table ne dit
+     * pas si un fichier se lit ou s'écoute, seul son nom le dit vraiment.
      *
      * @param array<int, array> $cours
      * @return array<int, array<int, array>>
@@ -355,11 +351,53 @@ final class CoursController
 
         $parCours = [];
         foreach ($lignes as $ligne) {
-            if (Fichiers::estMedia((string) $ligne['mime'], (string) $ligne['nom_origine'])) {
+            $nom = (string) $ligne['nom_origine'];
+            $mime = (string) $ligne['mime'];
+            // Une feuille unique n'a pas d'avancement : elle ne compte pas.
+            $pdfSuivi = Fichiers::estPdf($mime, $nom) && (int) $ligne['duree_lecture'] > 1;
+            if (Fichiers::estMedia($mime, $nom) || $pdfSuivi) {
                 $parCours[(int) $ligne['cours_id']][] = $ligne;
             }
         }
         return $parCours;
+    }
+    /**
+     * Les pièces jointes d'une fiche, un PDF sachant combien il a de pages.
+     *
+     * Le compte est fait une seule fois, à la première consultation, puis
+     * gardé en base : il sert d'échelle à l'anneau d'avancement, comme la
+     * durée d'un enregistrement.
+     *
+     * @return array<int, array>
+     */
+    private function fichiersDeFiche(int $coursId, int $userId): array
+    {
+        $fichiers = Database::all(
+            'SELECT * FROM fichiers WHERE cours_id = ? AND pour_fiche = 1 ORDER BY created_at',
+            [$coursId]
+        );
+
+        foreach ($fichiers as $rang => $fichier) {
+            if ((int) $fichier['duree_lecture'] > 0
+                || !Fichiers::estPdf((string) $fichier['mime'], (string) $fichier['nom_origine'])) {
+                continue;
+            }
+
+            $pages = Fichiers::pagesPdf(
+                Config::get('app', 'dossier_uploads') . DIRECTORY_SEPARATOR . $fichier['nom_stocke']
+            );
+            if ($pages === null) {
+                continue;
+            }
+
+            Database::run(
+                'UPDATE fichiers SET duree_lecture = ? WHERE id = ? AND user_id = ?',
+                [$pages, (int) $fichier['id'], $userId]
+            );
+            $fichiers[$rang]['duree_lecture'] = $pages;
+        }
+
+        return $fichiers;
     }
     /** Ce texte contient-il au moins un des termes cherchés ? */
     private function contient(string $texte, array $termes): bool
@@ -398,10 +436,7 @@ final class CoursController
             'cours'   => $cours,
             'fiche'   => (string) ($cours['fiche_revision'] ?? ''),
             'parType' => $parType,
-            'fichiersFiche' => Database::all(
-                'SELECT * FROM fichiers WHERE cours_id = ? AND pour_fiche = 1 ORDER BY created_at',
-                [$id]
-            ),
+            'fichiersFiche' => $this->fichiersDeFiche($id, $userId),
             'autresCours' => Database::all(
                 'SELECT id, titre FROM cours WHERE user_id = ? AND id <> ? ORDER BY titre',
                 [$userId, $id]

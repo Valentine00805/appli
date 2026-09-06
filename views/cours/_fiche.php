@@ -91,7 +91,13 @@ $jetonLecture = Session::jetonCsrf();
           $estAudio = Fichiers::estAudio((string) $f['mime'], (string) $f['nom_origine']);
           $estVideo = Fichiers::estVideo((string) $f['mime'], (string) $f['nom_origine']);
           // Un PDF se lit sur place, comme une vidéo : le navigateur sait le faire seul.
-          $estPdf = strtolower(pathinfo((string) $f['nom_origine'], PATHINFO_EXTENSION)) === 'pdf';
+          $estPdf = Fichiers::estPdf((string) $f['mime'], (string) $f['nom_origine']);
+          // Pour un PDF, « durée » veut dire nombre de pages, et « position » page atteinte.
+          $pages = $estPdf ? (int) $f['duree_lecture'] : 0;
+          // Page atteinte : zéro tant qu'on n'a pas tourné de page, comme un
+          // enregistrement jamais lancé. La page ouverte, elle, vaut au moins 1.
+          $pageAtteinte = $pages > 0 ? min(max(0, (int) $f['position_lecture']), $pages) : 0;
+          $pageLue = max(1, $pageAtteinte);
           ?>
           <li class="fichier<?= $estAudio || $estVideo || $estPdf ? ' fichier--media' : '' ?>">
             <?php if ($estImage): ?>
@@ -120,14 +126,15 @@ $jetonLecture = Session::jetonCsrf();
               </form>
             </span>
 
-            <?php if ($estAudio || $estVideo): ?>
+            <?php if ($estAudio || $estVideo || $pages > 1): ?>
               <?php
               /*
-               * L'anneau dit où l'on en est dans l'enregistrement. Le lecteur
-               * le met à jour en cours de route et reprend là où on s'était
-               * arrêté ; sans JavaScript, il montre la dernière position connue.
+               * L'anneau dit où l'on en est : dans l'enregistrement pour un
+               * média, dans les pages pour un PDF. Le lecteur et les flèches
+               * le mettent à jour en cours de route ; sans JavaScript, il
+               * montre la dernière position connue.
                */
-              $avance = avancement_media($f);
+              $avance = avancement_lecture($f);
               ?>
               <span class="fichier__avancement" data-avancement="<?= (int) $f['id'] ?>">
                 <?= Vue::rendre('cours/_anneau', [
@@ -135,7 +142,11 @@ $jetonLecture = Session::jetonCsrf();
                     'titre'       => 'Avancement de « ' . $f['nom_origine'] . ' »',
                 ]) ?>
                 <span class="fichier__minutage">
-                  <?php if ((int) $f['duree_lecture'] > 0): ?>
+                  <?php if ($pages > 1 && $pageAtteinte > 0): ?>
+                    Page <?= $pageAtteinte ?> sur <?= $pages ?>
+                  <?php elseif ($pages > 1): ?>
+                    pas encore lu
+                  <?php elseif ((int) $f['duree_lecture'] > 0): ?>
                     <?= e(duree_lisible((int) $f['position_lecture'])) ?>
                     / <?= e(duree_lisible((int) $f['duree_lecture'])) ?>
                   <?php else: ?>
@@ -176,10 +187,33 @@ $jetonLecture = Session::jetonCsrf();
                * charger tous les documents d'un coup quand il y en a plusieurs.
                */
               ?>
-              <span class="fichier__pdf">
+              <span class="fichier__pdf" data-pdf="<?= (int) $f['id'] ?>"
+                    data-pages="<?= $pages ?>" data-page="<?= $pageLue ?>"
+                    data-atteinte="<?= $pageAtteinte ?>"
+                    data-position-url="<?= url('fichiers/' . $f['id'] . '/position') ?>">
                 <?php // Le volet est étroit : la page est ajustée à sa largeur, sans le panneau des vignettes. ?>
-                <iframe src="<?= url('fichiers/' . $f['id']) ?>#navpanes=0&amp;view=FitH" loading="lazy"
-                        title="<?= e($f['nom_origine']) ?>"></iframe>
+                <iframe src="<?= url('fichiers/' . $f['id']) ?>#page=<?= $pageLue ?>&amp;navpanes=0&amp;view=FitH"
+                        loading="lazy" title="<?= e($f['nom_origine']) ?>"></iframe>
+
+                <?php if ($pages > 1): ?>
+                  <?php
+                  /*
+                   * La visionneuse du navigateur ne dit pas où l'on en est : ces
+                   * flèches sont notre seul moyen de le savoir, et elles font
+                   * avancer l'anneau à mesure qu'on tourne les pages.
+                   */
+                  ?>
+                  <span class="fichier__pages">
+                    <button class="bouton bouton--discret bouton--petit" type="button"
+                            data-pdf-recule title="Page précédente">◀</button>
+                    <span class="fichier__page" data-pdf-libelle aria-live="polite">
+                      Page <?= $pageLue ?> sur <?= $pages ?>
+                    </span>
+                    <button class="bouton bouton--discret bouton--petit" type="button"
+                            data-pdf-avance title="Page suivante">▶</button>
+                  </span>
+                <?php endif; ?>
+
                 <span class="fichier__repli">
                   Le document ne s'affiche pas ?
                   <a href="<?= url('fichiers/' . $f['id']) ?>" target="_blank" rel="noopener">

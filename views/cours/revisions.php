@@ -116,17 +116,17 @@ $compteurs = static function (array $c): array {
     </div>
 
     <div class="jauge" role="img"
-         aria-label="<?= (int) $avancement['pourcentage'] ?> pour cent des enregistrements écoutés">
+         aria-label="<?= (int) $avancement['pourcentage'] ?> pour cent des documents parcourus">
       <span class="jauge__part jauge__part--revisee"
             style="width:<?= (int) $avancement['pourcentage'] ?>%"></span>
     </div>
 
     <p class="avancement__detail">
-      <?= $avancement['total'] ?> enregistrement<?= $avancement['total'] > 1 ? 's' : '' ?> dans vos fiches
+      <?= $avancement['total'] ?> document<?= $avancement['total'] > 1 ? 's' : '' ?> suivi<?= $avancement['total'] > 1 ? 's' : '' ?>
       · ● <?= $avancement['finis'] ?> terminé<?= $avancement['finis'] > 1 ? 's' : '' ?>
       · ◐ <?= $avancement['commences'] ?> entamé<?= $avancement['commences'] > 1 ? 's' : '' ?>
-      · ○ <?= $avancement['a_faire'] ?> à écouter
-      <span class="discret">— la moyenne de vos anneaux d'écoute.</span>
+      · ○ <?= $avancement['a_faire'] ?> à commencer
+      <span class="discret">— enregistrements écoutés et documents parcourus, à parts égales.</span>
     </p>
 
     <?php if (count($avancementMatieres) > 1): ?>
@@ -223,7 +223,7 @@ $compteurs = static function (array $c): array {
                  'titre'       => 'Écoute de cette fiche',
                ]) ?>
             <span class="discret">
-              <?= $a['total'] ?> enregistrement<?= $a['total'] > 1 ? 's' : '' ?>
+              <?= $a['total'] ?> document<?= $a['total'] > 1 ? 's' : '' ?>
               <?php if ($a['finis'] > 0): ?>· <?= $a['finis'] ?> terminé<?= $a['finis'] > 1 ? 's' : '' ?><?php endif; ?>
             </span>
           </p>
