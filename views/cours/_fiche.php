@@ -19,6 +19,9 @@ $champPage = $surPage ? '<input type="hidden" name="page" value="fiche">' : '';
 // Le lecteur enregistre sa position sans recharger la page : il lui faut le
 // jeton, que les formulaires portent déjà mais qu'aucun ne lui prête.
 $jetonLecture = Session::jetonCsrf();
+
+// L'avancement de la fiche entière : la moyenne des anneaux qu'elle contient.
+$avancementFiche = avancement_anneaux(fichiers_suivis($fichiersFiche));
 ?>
 <span hidden data-jeton-lecture="<?= e($jetonLecture) ?>"></span>
 
@@ -31,6 +34,26 @@ $jetonLecture = Session::jetonCsrf();
         <p class="discret" style="margin:.15rem 0 0"><?= e($cours['titre']) ?></p>
       <?php endif; ?>
     </div>
+
+    <?php if ($avancementFiche['total'] > 0): ?>
+      <?php
+      /*
+       * Où l'on en est de toute la fiche : la moyenne des anneaux ci-dessous.
+       * Le script la refait à chaque fois que l'un d'eux bouge, pour qu'elle
+       * ne mente pas pendant qu'on écoute ou qu'on tourne une page.
+       */
+      ?>
+      <span class="fiche__total" data-total-fiche>
+        <?= Vue::rendre('cours/_anneau', [
+            'pourcentage' => $avancementFiche['pourcentage'],
+            'titre'       => 'Avancement de cette fiche',
+        ]) ?>
+        <span class="fiche__total-mot">
+          <?= $avancementFiche['total'] ?> document<?= $avancementFiche['total'] > 1 ? 's' : '' ?><br>
+          suivi<?= $avancementFiche['total'] > 1 ? 's' : '' ?>
+        </span>
+      </span>
+    <?php endif; ?>
   </div>
 
   <?php // Sur sa propre page, la note et ce qui lui est rattaché se font face. ?>

@@ -572,6 +572,40 @@
 
   var jeton = jetonLecture ? jetonLecture.getAttribute("data-jeton-lecture") : "";
 
+  /*
+   * L'avancement de toute la fiche : la moyenne des anneaux qu'elle contient.
+   * On la relit sur les anneaux eux-mêmes plutôt que de tenir un compte à
+   * part — c'est ce qui est affiché qui fait foi, et le serveur calcule
+   * exactement pareil au chargement suivant.
+   */
+  var totalFiche = document.querySelector("[data-total-fiche]");
+
+  var majTotalFiche = function () {
+    if (!totalFiche) { return; }
+
+    var parts = [].slice.call(document.querySelectorAll("[data-avancement] .anneau"));
+    if (!parts.length) { return; }
+
+    var somme = 0;
+    parts.forEach(function (anneau) {
+      // Un anneau qu'on ne sait pas encore mesurer vaut zéro, comme au serveur.
+      if (anneau.classList.contains("anneau--inconnu")) { return; }
+      var trait = anneau.querySelector(".anneau__part");
+      somme += parseFloat((trait.getAttribute("stroke-dasharray") || "0").split(" ")[0]) || 0;
+    });
+
+    var moyenne = Math.round(somme / parts.length);
+    var trait = totalFiche.querySelector(".anneau__part");
+    var texte = totalFiche.querySelector(".anneau__texte");
+    var anneau = totalFiche.querySelector(".anneau");
+    if (trait) { trait.setAttribute("stroke-dasharray", moyenne + " 100"); }
+    if (texte) { texte.innerHTML = moyenne + "<span class='anneau__pourcent'>%</span>"; }
+    if (anneau) {
+      anneau.classList.remove("anneau--inconnu");
+      anneau.classList.toggle("anneau--fini", moyenne >= 100);
+    }
+  };
+
   if (jetonLecture && lecteurs.length) {
 
     var minutage = function (secondes) {
@@ -607,6 +641,7 @@
         if (horloge) {
           horloge.textContent = minutage(lecteur.currentTime) + " / " + minutage(lecteur.duration);
         }
+        majTotalFiche();
       };
 
       var envoyer = function () {
@@ -695,6 +730,7 @@
         }
         if (recule) { recule.disabled = page <= 1; }
         if (avance) { avance.disabled = page >= pages; }
+        majTotalFiche();
       };
 
       var envoyer = function () {

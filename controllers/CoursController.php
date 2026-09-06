@@ -350,14 +350,8 @@ final class CoursController
         );
 
         $parCours = [];
-        foreach ($lignes as $ligne) {
-            $nom = (string) $ligne['nom_origine'];
-            $mime = (string) $ligne['mime'];
-            // Une feuille unique n'a pas d'avancement : elle ne compte pas.
-            $pdfSuivi = Fichiers::estPdf($mime, $nom) && (int) $ligne['duree_lecture'] > 1;
-            if (Fichiers::estMedia($mime, $nom) || $pdfSuivi) {
-                $parCours[(int) $ligne['cours_id']][] = $ligne;
-            }
+        foreach (fichiers_suivis($lignes) as $ligne) {
+            $parCours[(int) $ligne['cours_id']][] = $ligne;
         }
         return $parCours;
     }

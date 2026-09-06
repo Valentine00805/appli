@@ -645,6 +645,15 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
 .volet { position: sticky; top: 1rem; }
 .volet__entete { display: flex; align-items: flex-start; gap: .7rem; }
 .volet__icone { font-size: 1.5rem; line-height: 1.1; flex: none; }
+/* L'avancement de toute la fiche, à droite de son titre. */
+.fiche__total {
+  display: flex; align-items: center; gap: .5rem;
+  margin-left: auto; flex: none;
+}
+.fiche__total-mot {
+  font-size: .75rem; line-height: 1.25; color: var(--texte-doux); text-align: right;
+}
+
 .volet__carte h2 label { cursor: pointer; }
 .liste-taches--faite .volet__entete h2 label {
   text-decoration: line-through; color: var(--texte-doux);
@@ -1301,7 +1310,7 @@ input.depot__champ {
   .fiche__rayon--vide,
   .fiche-grille__elements--vide,
   .fiche .champ__aide { display: none !important; }
-  .fichier__lecteur, .fichier__pdf { display: none !important; }
+  .fichier__lecteur, .fichier__pdf, .fiche__total { display: none !important; }
 
   /* Une adresse ne se clique pas sur papier : elle s'écrit. */
   .fiche__liste a[href^="http"]::after { content: " — " attr(href); font-weight: 400; }

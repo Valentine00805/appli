@@ -107,6 +107,30 @@ function types_evenement_par_defaut(): array
 }
 
 /**
+ * Parmi des pièces jointes, celles dont on sait mesurer l'avancement.
+ *
+ * Un enregistrement, toujours. Un PDF dès qu'on connaît ses pages et qu'il en
+ * a plus d'une : une feuille unique ne se parcourt pas. Le reste — une image,
+ * un tableur — n'a pas d'anneau et ne pèse donc dans aucune moyenne.
+ *
+ * @param array<int, array> $fichiers
+ * @return list<array>
+ */
+function fichiers_suivis(array $fichiers): array
+{
+    $suivis = [];
+    foreach ($fichiers as $fichier) {
+        $mime = (string) ($fichier['mime'] ?? '');
+        $nom = (string) ($fichier['nom_origine'] ?? '');
+        $pdfSuivi = Fichiers::estPdf($mime, $nom) && (int) ($fichier['duree_lecture'] ?? 0) > 1;
+
+        if (Fichiers::estMedia($mime, $nom) || $pdfSuivi) {
+            $suivis[] = $fichier;
+        }
+    }
+    return $suivis;
+}
+/**
  * L'avancement d'un ensemble de documents : la moyenne de leurs anneaux.
  *
  * Chacun pèse pareil, quelle que soit sa longueur : une heure de cours à
