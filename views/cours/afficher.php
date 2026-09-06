@@ -13,6 +13,7 @@ foreach ($elements as $element) {
     $parType[$element['type']][] = $element;
 }
 $nbElements = count($elements) + count($fichiersFiche);
+$nbCartes = $nbCartes ?? 0;
 ?>
 
 <div class="entete-page">
@@ -46,6 +47,9 @@ $nbElements = count($elements) + count($fichiersFiche);
            ? url('cours/' . $cours['id'])
            : url('cours/' . $cours['id'], ['revision' => 1]) . '#revision' ?>">
       📝 Révision<?= $fiche !== '' || $nbElements > 0 ? ' •' : '' ?>
+    </a>
+    <a class="bouton bouton--secondaire" href="<?= url('cours/' . $cours['id'] . '/cartes') ?>">
+      🃏 Cartes<?= $nbCartes > 0 ? ' (' . $nbCartes . ')' : '' ?>
     </a>
     <a class="bouton bouton--secondaire" href="<?= url('evenements/nouveau', ['cours' => $cours['id']]) ?>">Planifier</a>
     <a class="bouton" href="<?= url('cours/' . $cours['id'] . '/modifier') ?>">Modifier</a>

@@ -33,6 +33,7 @@ require __DIR__ . '/src/ClasseurXlsx.php';
 require __DIR__ . '/src/SuggestionBudget.php';
 require __DIR__ . '/src/ClasseurLecteur.php';
 require __DIR__ . '/src/ReleveExcel.php';
+require __DIR__ . '/src/GenerateurCartes.php';
 require __DIR__ . '/src/Requete.php';
 require __DIR__ . '/src/helpers.php';
 require __DIR__ . '/src/Vue.php';
@@ -53,6 +54,7 @@ require __DIR__ . '/controllers/SauvegardeController.php';
 require __DIR__ . '/controllers/TachesController.php';
 require __DIR__ . '/controllers/KanbanController.php';
 require __DIR__ . '/controllers/TableauBordController.php';
+require __DIR__ . '/controllers/CartesController.php';
 
 /*
  * Réglages par défaut : ceux d'une installation WAMP ordinaire. Ils vivent ici
@@ -232,6 +234,18 @@ $routes = [
     ['POST', 'taches/{id}/cocher',           [TachesController::class, 'basculer']],
     ['POST', 'taches/{id}/modifier',         [TachesController::class, 'modifier']],
     ['POST', 'taches/{id}/supprimer',        [TachesController::class, 'supprimer']],
+
+    // « cartes/seance » passe avant « cartes/{id} » : sinon le mot serait
+    // pris pour un identifiant.
+    ['GET',  'cartes',                       [CartesController::class, 'index']],
+    ['GET',  'cartes/seance',                [CartesController::class, 'seance']],
+    ['POST', 'cartes/{id}/reponse',          [CartesController::class, 'repondre']],
+    ['POST', 'cartes/{id}/modifier',         [CartesController::class, 'modifier']],
+    ['POST', 'cartes/{id}/supprimer',        [CartesController::class, 'supprimer']],
+    ['GET',  'cours/{id}/cartes',            [CartesController::class, 'paquet']],
+    ['POST', 'cours/{id}/cartes',            [CartesController::class, 'ajouterUne']],
+    ['POST', 'cours/{id}/cartes/proposer',   [CartesController::class, 'proposer']],
+    ['POST', 'cours/{id}/cartes/retenir',    [CartesController::class, 'retenir']],
 
     ['GET',  'tableau',                      [KanbanController::class, 'index']],
     ['POST', 'tableau/deplacer',             [KanbanController::class, 'deplacer']],

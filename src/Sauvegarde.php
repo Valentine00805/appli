@@ -47,6 +47,7 @@ final class Sauvegarde
         'reglements'        => ['portee' => 'user',  'liens' => ['operation_id' => 'operations']],
         'listes_taches'     => ['portee' => 'user',  'liens' => []],
         'taches'            => ['portee' => 'user',  'liens' => ['liste_id' => 'listes_taches']],
+        'cartes'            => ['portee' => 'user',  'liens' => ['cours_id' => 'cours']],
     ];
 
     // --- Export --------------------------------------------------------------

@@ -767,4 +767,77 @@
       peindre();
     });
   }
+  /*
+   * La séance de cartes. Toutes les cartes sont déjà dans la page : le script
+   * n'en montre qu'une à la fois, dévoile la réponse à la demande, envoie le
+   * verdict et passe à la suivante. Sans lui, la page reste lisible — questions
+   * et réponses à la suite, ce qui vaut mieux que rien.
+   */
+  var seance = document.querySelector("[data-seance]");
+
+  if (seance) {
+    var cartesSeance = [].slice.call(seance.querySelectorAll("[data-carte]"));
+    var compteur = seance.querySelector("[data-seance-compteur]");
+    var fin = seance.querySelector("[data-seance-fin]");
+    var bilan = seance.querySelector("[data-seance-bilan]");
+    var jetonSeance = seance.getAttribute("data-jeton");
+    var rang = 0;
+    var sues = 0;
+
+    var montrerCarte = function () {
+      cartesSeance.forEach(function (carte, i) {
+        carte.hidden = i !== rang;
+        if (i === rang) {
+          // Chaque carte repart cachée : on ne triche pas d'une carte à l'autre.
+          carte.querySelector("[data-reponse]").hidden = true;
+          carte.querySelector("[data-montrer]").hidden = false;
+          carte.querySelectorAll("[data-verdict]").forEach(function (b) { b.hidden = true; });
+        }
+      });
+
+      var reste = cartesSeance.length - rang;
+      if (compteur) {
+        compteur.textContent = reste + " carte" + (reste > 1 ? "s" : "") + " à revoir";
+      }
+    };
+
+    var terminer = function () {
+      cartesSeance.forEach(function (carte) { carte.hidden = true; });
+      if (compteur) { compteur.hidden = true; }
+      if (bilan) {
+        bilan.textContent = sues + " carte" + (sues > 1 ? "s" : "") + " sur "
+          + cartesSeance.length + " sue" + (sues > 1 ? "s" : "") + " du premier coup.";
+      }
+      if (fin) { fin.hidden = false; }
+    };
+
+    var repondre = function (carte, sue) {
+      var corps = new URLSearchParams();
+      corps.set("_csrf", jetonSeance);
+      corps.set("sue", sue ? "1" : "0");
+      fetch(carte.getAttribute("data-url"), {
+        method: "POST", body: corps, credentials: "same-origin", keepalive: true,
+      });
+
+      if (sue) { sues++; }
+      rang++;
+      if (rang >= cartesSeance.length) { terminer(); } else { montrerCarte(); }
+    };
+
+    cartesSeance.forEach(function (carte) {
+      carte.querySelector("[data-montrer]").addEventListener("click", function (e) {
+        carte.querySelector("[data-reponse]").hidden = false;
+        e.currentTarget.hidden = true;
+        carte.querySelectorAll("[data-verdict]").forEach(function (b) { b.hidden = false; });
+      });
+
+      carte.querySelectorAll("[data-verdict]").forEach(function (bouton) {
+        bouton.addEventListener("click", function () {
+          repondre(carte, bouton.getAttribute("data-verdict") === "1");
+        });
+      });
+    });
+
+    montrerCarte();
+  }
 })();

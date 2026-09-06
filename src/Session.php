@@ -51,4 +51,25 @@ final class Session
         unset($_SESSION['_flash']);
         return $messages;
     }
+
+    // --- Données de passage ---------------------------------------------
+
+    /**
+     * Met de côté une donnée le temps d'une redirection.
+     *
+     * Comme un message flash, mais pour autre chose qu'une phrase : elle ne
+     * survit qu'à la page suivante, et disparaît dès qu'on l'a reprise.
+     */
+    public static function garder(string $cle, mixed $valeur): void
+    {
+        $_SESSION['_sac'][$cle] = $valeur;
+    }
+
+    /** Reprend une donnée mise de côté, et l'oublie. */
+    public static function reprendre(string $cle): mixed
+    {
+        $valeur = $_SESSION['_sac'][$cle] ?? null;
+        unset($_SESSION['_sac'][$cle]);
+        return $valeur;
+    }
 }

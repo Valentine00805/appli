@@ -399,6 +399,75 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
   .cal-jour { min-height: 62px; padding: .25rem; }
 }
 
+/* --- Cartes de révision ---------------------------------------------------- */
+
+/* Sur la liste des paquets, ce qui est dû aujourd'hui se remarque. */
+.carte-du {
+  padding: .1rem .5rem; border-radius: 999px;
+  background: var(--accent-doux); color: var(--accent-fonce);
+  font-size: .75rem; font-weight: 600;
+}
+
+/* Deux colonnes : fabriquer à gauche, le paquet à droite. */
+.colonnes--cartes {
+  display: grid; gap: 1rem; align-items: start;
+  grid-template-columns: minmax(0, 1fr);
+}
+@media (min-width: 900px) {
+  .colonnes--cartes { grid-template-columns: minmax(0, 22rem) minmax(0, 1fr); }
+}
+
+/* Les propositions, avant qu'elles ne deviennent des cartes. */
+.propositions { margin-bottom: 1.25rem; }
+.propositions__entete {
+  display: flex; align-items: baseline; gap: .75rem; flex-wrap: wrap;
+  margin-bottom: .35rem;
+}
+.propositions__entete h2 { margin: 0; }
+.propositions__liste { list-style: none; margin: .9rem 0; padding: 0; display: grid; gap: .6rem; }
+
+.proposition {
+  display: grid; gap: .35rem;
+  padding: .6rem .7rem; border-radius: var(--rayon-s);
+  background: var(--fond-doux); border: 1px solid var(--bordure);
+}
+.proposition__garder { display: flex; align-items: center; gap: .45rem; cursor: pointer; }
+.proposition__source { font-size: .75rem; color: var(--texte-doux); }
+.proposition__couple { display: grid; gap: .35rem; }
+@media (min-width: 700px) {
+  .proposition__couple { grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr); }
+}
+/* Une proposition décochée s'efface sans disparaître. */
+.proposition:has(input[type="checkbox"]:not(:checked)) { opacity: .5; }
+
+/* Le paquet : une ligne par carte, dépliable. */
+.paquet { list-style: none; margin: 0; padding: 0; display: grid; gap: .4rem; }
+.carte-ligne { border-bottom: 1px solid var(--bordure); padding-bottom: .4rem; }
+.carte-ligne:last-child { border-bottom: 0; padding-bottom: 0; }
+.carte-ligne summary {
+  display: flex; align-items: baseline; justify-content: space-between; gap: .75rem;
+  cursor: pointer; padding: .3rem 0;
+}
+.carte-ligne__question { min-width: 0; overflow-wrap: anywhere; }
+.carte-ligne__boite { flex: none; font-size: .7rem; letter-spacing: .1em; color: var(--accent); }
+.carte-ligne__edition { margin: .6rem 0; }
+
+/* La séance : une carte à la fois, au milieu de la page. */
+.seance { max-width: 44rem; margin: 0 auto; }
+.seance__compteur { margin: 0 0 .8rem; color: var(--texte-doux); font-size: .88rem; text-align: center; }
+.seance__carte { text-align: center; padding: 2rem 1.25rem; }
+.seance__cours { margin: 0 0 .6rem; font-size: .78rem; color: var(--texte-doux); }
+.seance__question {
+  margin: 0; font-size: 1.35rem; font-weight: 600; line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+.seance__reponse {
+  margin: 1.1rem 0 0; padding-top: 1.1rem; border-top: 1px solid var(--bordure);
+  font-size: 1.05rem; line-height: 1.6; color: var(--texte); overflow-wrap: anywhere;
+}
+.seance__actions { justify-content: center; margin-top: 1.4rem; }
+.seance__fin { margin-top: 1rem; }
+
 @media print {
   .entete, .pied, .actions, .filtres, .cal-jour__ajout { display: none !important; }
   body { background: #fff; }
