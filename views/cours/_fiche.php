@@ -90,8 +90,10 @@ $jetonLecture = Session::jetonCsrf();
           $estImage = Fichiers::estImage($f['mime']);
           $estAudio = Fichiers::estAudio((string) $f['mime'], (string) $f['nom_origine']);
           $estVideo = Fichiers::estVideo((string) $f['mime'], (string) $f['nom_origine']);
+          // Un PDF se lit sur place, comme une vidéo : le navigateur sait le faire seul.
+          $estPdf = strtolower(pathinfo((string) $f['nom_origine'], PATHINFO_EXTENSION)) === 'pdf';
           ?>
-          <li class="fichier<?= $estAudio || $estVideo ? ' fichier--media' : '' ?>">
+          <li class="fichier<?= $estAudio || $estVideo || $estPdf ? ' fichier--media' : '' ?>">
             <?php if ($estImage): ?>
               <a href="<?= url('fichiers/' . $f['id']) ?>" target="_blank" rel="noopener" class="fiche__vignette">
                 <img src="<?= url('fichiers/' . $f['id']) ?>" alt="<?= e($f['nom_origine']) ?>" loading="lazy">
@@ -164,6 +166,27 @@ $jetonLecture = Session::jetonCsrf();
                   Télécharger la vidéo
                 </a>
               </video>
+            <?php endif; ?>
+
+            <?php if ($estPdf): ?>
+              <?php
+              /*
+               * La visionneuse du navigateur, dans la fiche même : pas de page
+               * intermédiaire pour relire deux annales. « lazy » évite de
+               * charger tous les documents d'un coup quand il y en a plusieurs.
+               */
+              ?>
+              <span class="fichier__pdf">
+                <?php // Le volet est étroit : la page est ajustée à sa largeur, sans le panneau des vignettes. ?>
+                <iframe src="<?= url('fichiers/' . $f['id']) ?>#navpanes=0&amp;view=FitH" loading="lazy"
+                        title="<?= e($f['nom_origine']) ?>"></iframe>
+                <span class="fichier__repli">
+                  Le document ne s'affiche pas ?
+                  <a href="<?= url('fichiers/' . $f['id']) ?>" target="_blank" rel="noopener">
+                    L'ouvrir dans un onglet
+                  </a>
+                </span>
+              </span>
             <?php endif; ?>
           </li>
         <?php endforeach; ?>

@@ -1186,6 +1186,25 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
   background: #000;
 }
 
+/*
+ * Un PDF se lit dans la fiche, comme une vidéo. La proportion suit celle
+ * d'une page A4, la barre d'outils de la visionneuse en plus : le document
+ * garde sa forme, que le volet soit étroit ou la page large.
+ */
+/* « flex » plutôt que « width » : sans lui, le cadre se laisse écraser
+   par le nom du fichier quand la place manque. */
+.fichier__pdf { flex: 0 0 100%; margin-top: .45rem; }
+.fichier__pdf iframe {
+  display: block; width: 100%; aspect-ratio: 1 / 1.35;
+  min-height: 20rem; max-height: 70vh;
+  border: 1px solid var(--bordure); border-radius: var(--rayon-s);
+  background: var(--fond-doux);
+}
+.fichier__repli {
+  display: block; margin-top: .3rem;
+  font-size: .78rem; color: var(--texte-doux);
+}
+
 /* --- Page Révision : les fiches, matière par matière ---------------------- */
 
 .revisions__matiere { margin: 1.5rem 0 .75rem; font-size: 1rem; }
@@ -1264,7 +1283,7 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
   .fiche__rayon--vide,
   .fiche-grille__elements--vide,
   .fiche .champ__aide { display: none !important; }
-  .fichier__lecteur { display: none !important; }
+  .fichier__lecteur, .fichier__pdf { display: none !important; }
 
   /* Une adresse ne se clique pas sur papier : elle s'écrit. */
   .fiche__liste a[href^="http"]::after { content: " — " attr(href); font-weight: 400; }
