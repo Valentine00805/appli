@@ -67,6 +67,11 @@ final class TextePdf
             foreach (self::contenusDeLaPage($corps, $objets) as $contenu) {
                 $morceaux[] = self::lireContenu($contenu, $polices);
             }
+            // Un « formulaire » est un morceau de page rangé à part : beaucoup
+            // de mises en page y logent leur texte.
+            foreach (self::formulairesDeLaPage($corps, $objets) as [$contenu, $sesPolices]) {
+                $morceaux[] = self::lireContenu($contenu, $sesPolices + $polices);
+            }
 
             if (array_sum(array_map('strlen', $morceaux)) > self::CARACTERES_MAX) {
                 break;
@@ -143,7 +148,14 @@ final class TextePdf
         return $objets;
     }
 
-    /** Le flux d'un objet, décompressé s'il le faut, ou null. */
+    /**
+     * Le flux d'un objet, déballé de ses filtres, ou null.
+     *
+     * Un flux peut en traverser plusieurs, dans l'ordre où ils sont déclarés :
+     * ReportLab écrit « /Filter [ /ASCII85Decode /FlateDecode ] », d'abord
+     * encodé en texte imprimable, puis compressé. Un filtre qu'on ne sait pas
+     * défaire — une image JPEG, par exemple — n'est pas du texte : on renonce.
+     */
     private static function flux(string $corps): ?string
     {
         $debut = strpos($corps, 'stream');
@@ -161,9 +173,38 @@ final class TextePdf
         $fin = strpos($corps, 'endstream', $debut);
         $donnees = substr($corps, $debut, ($fin === false ? strlen($corps) : $fin) - $debut);
 
-        if (!str_contains($corps, 'FlateDecode')) {
-            return $donnees;
+        foreach (self::filtres($corps) as $filtre) {
+            $donnees = match ($filtre) {
+                'ASCII85Decode'  => self::ascii85($donnees),
+                'ASCIIHexDecode' => self::asciiHexa($donnees),
+                'FlateDecode'    => self::detasser($donnees),
+                default          => null,
+            };
+            if ($donnees === null) {
+                return null;
+            }
         }
+
+        return $donnees !== '' ? $donnees : null;
+    }
+
+    /**
+     * Les filtres déclarés par un objet, dans l'ordre.
+     *
+     * @return list<string>
+     */
+    private static function filtres(string $corps): array
+    {
+        if (!preg_match('#/Filter\s*(\[[^\]]*\]|/[A-Za-z0-9]+)#', $corps, $m)) {
+            return [];
+        }
+
+        return preg_match_all('#/([A-Za-z0-9]+)#', $m[1], $noms) ? $noms[1] : [];
+    }
+
+    /** Un flux compressé, rendu à sa taille. */
+    private static function detasser(string $donnees): ?string
+    {
         $clair = @gzuncompress($donnees);
         if (!is_string($clair)) {
             // Certains producteurs écrivent un flux brut, sans en-tête zlib.
@@ -171,6 +212,83 @@ final class TextePdf
         }
 
         return is_string($clair) && $clair !== '' ? $clair : null;
+    }
+
+    /**
+     * Le codage ASCII85, défait.
+     *
+     * Cinq caractères imprimables valent quatre octets ; « z » abrège quatre
+     * zéros, et « ~> » ferme le flux. Le dernier groupe peut être incomplet :
+     * on le complète par des « u » avant de le décoder, puis on coupe ce qu'on
+     * a ajouté.
+     */
+    private static function ascii85(string $donnees): ?string
+    {
+        $fin = strpos($donnees, '~>');
+        if ($fin !== false) {
+            $donnees = substr($donnees, 0, $fin);
+        }
+        $donnees = preg_replace('/\s/', '', $donnees) ?? $donnees;
+        if (str_starts_with($donnees, '<~')) {
+            $donnees = substr($donnees, 2);
+        }
+
+        $sortie = '';
+        $groupe = [];
+        $longueur = strlen($donnees);
+
+        for ($i = 0; $i < $longueur; $i++) {
+            $c = $donnees[$i];
+
+            if ($c === 'z' && $groupe === []) {
+                $sortie .= "\0\0\0\0";
+                continue;
+            }
+            $valeur = ord($c) - 33;
+            if ($valeur < 0 || $valeur > 84) {
+                return null;
+            }
+            $groupe[] = $valeur;
+
+            if (count($groupe) === 5) {
+                $sortie .= self::quatreOctets($groupe);
+                $groupe = [];
+            }
+        }
+
+        if ($groupe !== []) {
+            $manque = 5 - count($groupe);
+            $sortie .= substr(self::quatreOctets(array_pad($groupe, 5, 84)), 0, 4 - $manque);
+        }
+
+        return $sortie;
+    }
+
+    /** Les quatre octets que valent cinq chiffres ASCII85. */
+    private static function quatreOctets(array $groupe): string
+    {
+        $nombre = 0;
+        foreach ($groupe as $valeur) {
+            $nombre = $nombre * 85 + $valeur;
+        }
+
+        return pack('N', $nombre & 0xFFFFFFFF);
+    }
+
+    /** Le codage hexadécimal, défait. */
+    private static function asciiHexa(string $donnees): ?string
+    {
+        $fin = strpos($donnees, '>');
+        if ($fin !== false) {
+            $donnees = substr($donnees, 0, $fin);
+        }
+        $hexa = preg_replace('/[^0-9A-Fa-f]/', '', $donnees) ?? '';
+        if (strlen($hexa) % 2 === 1) {
+            $hexa .= '0';
+        }
+        $octets = @hex2bin($hexa);
+
+        return is_string($octets) ? $octets : null;
     }
 
     // --- Une page ------------------------------------------------------------
@@ -232,21 +350,58 @@ final class TextePdf
         return $polices;
     }
 
+    /**
+     * Les morceaux de page rangés à part, avec leurs propres polices.
+     *
+     * On ne descend pas plus loin qu'un formulaire dans un formulaire : au-delà
+     * c'est une mise en page très particulière, et le risque de tourner en rond
+     * n'en vaut pas la peine.
+     *
+     * @return list<array{0: string, 1: array<string, array<int, string>>}>
+     */
+    private static function formulairesDeLaPage(string $page, array $objets): array
+    {
+        $bloc = self::blocDeRessource($page, $objets, '/XObject');
+        if ($bloc === null || !preg_match_all('#/[^\s/<>\[\]]+\s+(\d+)\s+\d+\s+R#', $bloc, $refs)) {
+            return [];
+        }
+
+        $formulaires = [];
+        foreach (array_slice($refs[1], 0, 20) as $numero) {
+            $objet = $objets[(int) $numero] ?? '';
+            if (!preg_match('#/Subtype\s*/Form#', $objet)) {
+                continue;
+            }
+            $contenu = self::flux($objet);
+            if ($contenu !== null) {
+                $formulaires[] = [$contenu, self::policesDeLaPage($objet, $objets)];
+            }
+        }
+
+        return $formulaires;
+    }
+
     /** Le dictionnaire /Font de la page, qu'il soit sur place ou plus loin. */
     private static function blocDesPolices(string $page, array $objets): ?string
+    {
+        return self::blocDeRessource($page, $objets, '/Font');
+    }
+
+    /** Un dictionnaire de ressources de la page, sur place ou dans un objet à part. */
+    private static function blocDeRessource(string $page, array $objets, string $cle): ?string
     {
         $ressources = $page;
         if (preg_match('#/Resources\s+(\d+)\s+\d+\s+R#', $page, $r)) {
             $ressources = $objets[(int) $r[1]] ?? '';
         }
 
-        $position = strpos($ressources, '/Font');
+        $position = strpos($ressources, $cle);
         if ($position === false) {
             return null;
         }
 
-        // Le dictionnaire des polices peut être ici, ou dans un objet à part.
-        if (preg_match('#/Font\s+(\d+)\s+\d+\s+R#', $ressources, $f)) {
+        // Le dictionnaire peut être ici, ou dans un objet à part.
+        if (preg_match('#' . preg_quote($cle, '#') . '\s+(\d+)\s+\d+\s+R#', $ressources, $f)) {
             return $objets[(int) $f[1]] ?? null;
         }
 
