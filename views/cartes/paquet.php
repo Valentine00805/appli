@@ -115,6 +115,7 @@ $provenance = static function (array $c): string {
     </p>
     <form method="post" action="<?= url('cours/' . $cours['id'] . '/cartes/proposer') ?>">
       <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
+      <?= Vue::rendre('cartes/_sources', ['cours' => $cours]) ?>
       <button class="bouton bouton--secondaire" type="submit">Proposer des cartes</button>
     </form>
 

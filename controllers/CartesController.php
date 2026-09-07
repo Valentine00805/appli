@@ -44,6 +44,17 @@ final class CartesController
 
         Vue::afficher('cartes/index', [
             'paquets'  => $paquets,
+            // De quoi fabriquer sans passer par la page d'un cours.
+            'cours'    => Database::all(
+                'SELECT c.id, c.titre, m.nom AS matiere_nom,
+                        TRIM(COALESCE(c.contenu, \'\')) <> \'\'        AS a_contenu,
+                        TRIM(COALESCE(c.fiche_revision, \'\')) <> \'\' AS a_fiche,
+                        (SELECT COUNT(*) FROM fichiers f WHERE f.cours_id = c.id) AS nb_fichiers
+                 FROM cours c LEFT JOIN matieres m ON m.id = c.matiere_id
+                 WHERE c.user_id = ?
+                 ORDER BY COALESCE(m.nom, \'￿\'), c.titre',
+                [$userId]
+            ),
             'aRevoir'  => (int) Database::valeur(
                 'SELECT COUNT(*) FROM cartes WHERE user_id = ? AND revoir_le <= CURDATE()',
                 [$userId]
@@ -58,6 +69,11 @@ final class CartesController
         Auth::exiger();
         $userId = Auth::id();
         $cours = $this->cours($id, $userId);
+
+        $cours['nb_fichiers'] = (int) Database::valeur(
+            'SELECT COUNT(*) FROM fichiers WHERE cours_id = ? AND user_id = ?',
+            [$id, $userId]
+        );
 
         Vue::afficher('cartes/paquet', [
             'cours'  => $cours,
@@ -77,18 +93,30 @@ final class CartesController
      * Rien n'est enregistré : les propositions passent par la session, et
      * l'utilisateur coche celles qu'il garde.
      */
-    public function proposer(int $id): void
+    public function proposer(?int $id = null): void
     {
         Auth::exiger();
         Session::verifierCsrf();
         $userId = Auth::id();
+
+        // Depuis l'onglet Cartes, le cours est choisi dans une liste ; depuis un
+        // paquet, il est déjà dans l'adresse.
+        $id ??= entier_ou_null($_POST['cours'] ?? null);
+        if ($id === null) {
+            Session::flash('erreur', 'Choisissez un cours.');
+            redirect('cartes');
+        }
         $cours = $this->cours($id, $userId);
+        $sources = $this->sourcesDemandees();
 
         $muets = [];
         $brutes = array_merge(
-            GenerateurCartes::depuisTexte((string) $cours['contenu'], 'cours'),
-            GenerateurCartes::depuisTexte((string) $cours['fiche_revision'], 'fiche'),
-            $this->depuisLesFichiers($id, $userId, $muets)
+            in_array('cours', $sources, true)
+                ? GenerateurCartes::depuisTexte((string) $cours['contenu'], 'cours') : [],
+            in_array('fiche', $sources, true)
+                ? GenerateurCartes::depuisTexte((string) $cours['fiche_revision'], 'fiche') : [],
+            in_array('documents', $sources, true)
+                ? $this->depuisLesFichiers($id, $userId, $muets) : []
         );
 
         $dejaLa = array_column(Database::all(
@@ -99,8 +127,9 @@ final class CartesController
 
         if ($propositions === []) {
             Session::flash('erreur', $dejaLa === []
-                ? 'Rien à en tirer : les cartes se fabriquent à partir de lignes de la forme « Terme : définition ».'
-                : 'Aucune nouvelle carte à proposer : tout ce qui était repérable est déjà dans le paquet.');
+                ? 'Rien à tirer de ' . $this->nommerLesSources($sources) . '.'
+                : 'Aucune nouvelle carte dans ' . $this->nommerLesSources($sources)
+                    . ' : tout ce qui était repérable est déjà dans le paquet.');
         }
 
         $this->signalerLesMuets($muets);
@@ -111,6 +140,43 @@ final class CartesController
 
         Session::garder('propositions_cartes', $propositions);
         redirect('cours/' . $id . '/cartes');
+    }
+
+    /**
+     * Ce que l'utilisateur demande de relire.
+     *
+     * Sans rien de coché, on prend tout : c'est ce qu'attend quelqu'un qui
+     * clique sans réfléchir, et c'est le cas le plus courant.
+     *
+     * @return list<string>
+     */
+    private function sourcesDemandees(): array
+    {
+        $connues = ['cours', 'fiche', 'documents'];
+        $demandees = array_values(array_intersect($connues, (array) ($_POST['sources'] ?? [])));
+
+        return $demandees === [] ? $connues : $demandees;
+    }
+
+    /** Les sources, dites comme on les dirait à voix haute. */
+    private function nommerLesSources(array $sources): string
+    {
+        $noms = [];
+        foreach ($sources as $source) {
+            $noms[] = match ($source) {
+                'cours'     => 'le texte du cours',
+                'fiche'     => 'la fiche de révision',
+                'documents' => 'les documents joints',
+                default     => $source,
+            };
+        }
+
+        if (count($noms) <= 1) {
+            return $noms[0] ?? 'ce qui a été choisi';
+        }
+        $dernier = array_pop($noms);
+
+        return implode(', ', $noms) . ' ni ' . $dernier;
     }
 
     /**

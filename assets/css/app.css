@@ -433,6 +433,20 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
 }
 .proposition__garder { display: flex; align-items: center; gap: .45rem; cursor: pointer; }
 .proposition__source { font-size: .75rem; color: var(--texte-doux); }
+/* Choisir un cours et ce qu'on y relit. */
+.fabrique { margin-bottom: 1.5rem; }
+.fabrique__form { display: grid; gap: .9rem; max-width: 34rem; }
+.fabrique__form .bouton { justify-self: start; }
+
+.sources { border: 0; margin: 0; padding: 0; display: grid; gap: .35rem; }
+.sources legend {
+  padding: 0; margin-bottom: .35rem;
+  font-size: .85rem; font-weight: 600; color: var(--texte-doux);
+}
+.sources__choix { display: flex; align-items: baseline; gap: .5rem; cursor: pointer; font-size: .9rem; }
+.sources__choix .discret { font-size: .78rem; margin-left: .35rem; }
+.sources__choix--vide { cursor: default; opacity: .55; }
+
 /* Ce qui n'est pas une définition se signale : on ne les lit pas pareil. */
 .proposition__genre {
   margin-left: auto; padding: .1rem .5rem; border-radius: 999px;

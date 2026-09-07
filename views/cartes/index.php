@@ -5,6 +5,7 @@
  * @var array $paquets  un cours par ligne, avec ses compteurs
  * @var int $aRevoir    cartes dues, tous cours confondus
  * @var int $total      cartes existantes
+ * @var array $cours     tous les cours, pour choisir où puiser
  */
 ?>
 
@@ -13,7 +14,7 @@
     <h1>🃏 Cartes</h1>
     <p>
       <?php if ($total === 0): ?>
-        Des questions courtes, revues au bon moment. Elles se fabriquent depuis un cours.
+        Des questions courtes, revues au bon moment.
       <?php elseif ($aRevoir === 0): ?>
         Rien à revoir aujourd'hui. <?= $total ?> carte<?= $total > 1 ? 's' : '' ?> en tout.
       <?php else: ?>
@@ -28,12 +29,51 @@
   <?php endif; ?>
 </div>
 
+<section class="carte fabrique">
+  <h2>Fabriquer des cartes</h2>
+  <?php if ($cours === []): ?>
+    <p class="discret">Vous n'avez pas encore de cours.
+      <a href="<?= url('cours/nouveau') ?>">En créer un</a>.</p>
+  <?php else: ?>
+    <p class="champ__aide">
+      Choisissez un cours et ce que l'application doit relire. Elle propose une
+      carte partout où elle reconnaît un terme suivi de sa définition, une
+      question de devoir, ou une phrase dont un élément mérite d'être caché.
+      Rien n'est enregistré : vous validez ensuite ce que vous gardez.
+    </p>
+    <form method="post" action="<?= url('cartes/proposer') ?>" class="fabrique__form">
+      <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
+      <div class="champ">
+        <label for="cours">Cours</label>
+        <select id="cours" name="cours" required>
+          <?php $matiere = false; ?>
+          <?php foreach ($cours as $c): ?>
+            <?php if ($c['matiere_nom'] !== $matiere): ?>
+              <?php if ($matiere !== false): ?></optgroup><?php endif; ?>
+              <?php $matiere = $c['matiere_nom']; ?>
+              <optgroup label="<?= e($matiere ?? 'Sans matière') ?>">
+            <?php endif; ?>
+            <option value="<?= (int) $c['id'] ?>">
+              <?= e($c['titre']) ?>
+              <?php if (!$c['a_fiche']): ?> — sans fiche<?php endif; ?>
+            </option>
+          <?php endforeach; ?>
+          <?php if ($matiere !== false): ?></optgroup><?php endif; ?>
+        </select>
+      </div>
+
+      <?= Vue::rendre('cartes/_sources', ['cours' => null]) ?>
+
+      <button class="bouton" type="submit">Proposer des cartes</button>
+    </form>
+  <?php endif; ?>
+</section>
+
 <?php if ($paquets === []): ?>
   <div class="vide">
     <span class="vide__icone">🃏</span>
-    <p>Aucune carte pour l'instant. Ouvrez un cours, puis <strong>🃏 Cartes</strong> :
-       l'application vous en proposera à partir de son texte, de sa fiche et de ses documents.</p>
-    <a class="bouton" href="<?= url('cours') ?>">Voir mes cours</a>
+    <p>Aucune carte pour l'instant. Choisissez un cours ci-dessus et laissez
+       l'application vous en proposer.</p>
   </div>
 <?php else: ?>
   <div class="grille grille--fiches">

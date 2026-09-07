@@ -240,6 +240,8 @@ $routes = [
     // pris pour un identifiant.
     ['GET',  'cartes',                       [CartesController::class, 'index']],
     ['GET',  'cartes/seance',                [CartesController::class, 'seance']],
+    // Depuis l'onglet, le cours est dans le formulaire et non dans l'adresse.
+    ['POST', 'cartes/proposer',              [CartesController::class, 'proposer']],
     ['POST', 'cartes/{id}/reponse',          [CartesController::class, 'repondre']],
     ['POST', 'cartes/{id}/modifier',         [CartesController::class, 'modifier']],
     ['POST', 'cartes/{id}/supprimer',        [CartesController::class, 'supprimer']],
