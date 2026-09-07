@@ -37,6 +37,6 @@
   <?= Vue::rendre('cours/_fiche', [
       'cours' => $cours, 'fiche' => $fiche, 'fichiersFiche' => $fichiersFiche,
       'parType' => $parType, 'autresCours' => $autresCours,
-      'evenementsChoix' => $evenementsChoix, 'surPage' => true,
+      'evenementsChoix' => $evenementsChoix, 'cartes' => $cartes, 'surPage' => true,
   ]) ?>
 </div>

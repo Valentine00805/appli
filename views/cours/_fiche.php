@@ -7,6 +7,7 @@
  * ramènent là d'où l'on vient.
  *
  * @var array $cours, $fichiersFiche, $parType, $autresCours, $evenementsChoix
+ * @var array $cartes  combien de cartes a ce cours, et combien sont dues
  * @var string $fiche
  * @var bool $surPage
  */
@@ -262,6 +263,43 @@ $avancementFiche = avancement_anneaux(fichiers_suivis($fichiersFiche));
              class="depot__champ" data-depot-champ>
       <button class="bouton bouton--petit bouton--bloc" type="submit" data-depot-envoi>Joindre à la fiche</button>
     </form>
+  </div>
+
+  <?php // --- Cartes de révision --------------------------------------- ?>
+  <?php
+  /*
+   * Les cartes du cours, vues depuis sa fiche : combien il y en a, combien
+   * sont dues aujourd'hui, et de quoi s'y mettre. Le paquet lui-même se gère
+   * ailleurs — ici, on ne fait que le rejoindre.
+   */
+  $cartes = $cartes ?? ['total' => 0, 'a_revoir' => 0];
+  ?>
+  <div class="fiche__rayon<?= $cartes['total'] === 0 ? ' fiche__rayon--vide' : '' ?>">
+    <h4 class="fiche__titre">🃏 Cartes</h4>
+
+    <?php if ($cartes['total'] === 0): ?>
+      <p class="discret fiche__vide">Aucune carte pour ce cours.</p>
+    <?php else: ?>
+      <p class="fiche__cartes">
+        <strong><?= $cartes['total'] ?></strong> carte<?= $cartes['total'] > 1 ? 's' : '' ?>
+        <?php if ($cartes['a_revoir'] > 0): ?>
+          · <span class="carte-du"><?= $cartes['a_revoir'] ?> à revoir</span>
+        <?php else: ?>
+          · <span class="discret">rien à revoir aujourd'hui</span>
+        <?php endif; ?>
+      </p>
+    <?php endif; ?>
+
+    <p class="actions fiche__cartes-actions">
+      <?php if ($cartes['a_revoir'] > 0): ?>
+        <a class="bouton bouton--petit"
+           href="<?= url('cartes/seance', ['cours' => $cours['id']]) ?>">Réviser</a>
+      <?php endif; ?>
+      <a class="bouton bouton--secondaire bouton--petit"
+         href="<?= url('cours/' . $cours['id'] . '/cartes') ?>">
+        <?= $cartes['total'] === 0 ? 'En fabriquer' : 'Voir le paquet' ?>
+      </a>
+    </p>
   </div>
 
   <?php // --- Liens web ----------------------------------------------- ?>

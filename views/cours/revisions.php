@@ -29,6 +29,7 @@ $compteurs = static function (array $c): array {
         'nb_liens'      => ['🔗', 'lien', 'liens'],
         'nb_renvois'    => ['📘', 'renvoi', 'renvois'],
         'nb_evenements' => ['📅', 'échéance', 'échéances'],
+        'nb_cartes'     => ['🃏', 'carte', 'cartes'],
     ] as $cle => [$icone, $singulier, $pluriel]) {
         $n = (int) $c[$cle];
         if ($n > 0) {
@@ -198,6 +199,12 @@ $compteurs = static function (array $c): array {
 
         <?php if (!empty($c['trouve_ailleurs'])): ?>
           <p class="fiche-carte__ailleurs">🔍 Trouvé dans un élément rattaché</p>
+        <?php endif; ?>
+
+        <?php if ((int) $c['nb_cartes_dues'] > 0): ?>
+          <p class="fiche-carte__du">
+            <span class="carte-du">🃏 <?= (int) $c['nb_cartes_dues'] ?> à revoir</span>
+          </p>
         <?php endif; ?>
 
         <?php $lignes = $compteurs($c); ?>

@@ -100,6 +100,7 @@ final class CoursController
             ),
             // Les pièces de la fiche : rangées à part, elles ne viennent pas du cours.
             'fichiersFiche' => $this->fichiersDeFiche($id, $userId),
+            'cartes'     => $this->cartesDuCours($id, $userId),
             'elements'   => $this->elementsDeFiche($id, $userId),
             // De quoi remplir les sélecteurs, seulement quand le volet est ouvert.
             'autresCours' => $revision ? Database::all(
@@ -264,7 +265,11 @@ final class CoursController
                     (SELECT COUNT(*) FROM fiche_elements e
                       WHERE e.cours_id = c.id AND e.type = \'cours\')          AS nb_renvois,
                     (SELECT COUNT(*) FROM fiche_elements e
-                      WHERE e.cours_id = c.id AND e.type = \'evenement\')      AS nb_evenements
+                      WHERE e.cours_id = c.id AND e.type = \'evenement\')      AS nb_evenements,
+                    (SELECT COUNT(*) FROM cartes k
+                      WHERE k.cours_id = c.id)                                 AS nb_cartes,
+                    (SELECT COUNT(*) FROM cartes k
+                      WHERE k.cours_id = c.id AND k.revoir_le <= CURDATE())     AS nb_cartes_dues
              FROM cours c
              LEFT JOIN matieres m ON m.id = c.matiere_id
              WHERE c.user_id = ?' . $filtre . '
@@ -337,6 +342,25 @@ final class CoursController
         }
         return $parCours;
     }
+    /**
+     * Où en est le paquet de cartes d'un cours.
+     *
+     * @return array{total: int, a_revoir: int}
+     */
+    private function cartesDuCours(int $coursId, int $userId): array
+    {
+        $ligne = Database::one(
+            'SELECT COUNT(*) AS total, SUM(revoir_le <= CURDATE()) AS a_revoir
+               FROM cartes WHERE cours_id = ? AND user_id = ?',
+            [$coursId, $userId]
+        );
+
+        return [
+            'total'    => (int) ($ligne['total'] ?? 0),
+            'a_revoir' => (int) ($ligne['a_revoir'] ?? 0),
+        ];
+    }
+
     /**
      * Les pièces jointes d'une fiche, un PDF sachant combien il a de pages.
      *
@@ -413,6 +437,7 @@ final class CoursController
             'fiche'   => (string) ($cours['fiche_revision'] ?? ''),
             'parType' => $parType,
             'fichiersFiche' => $this->fichiersDeFiche($id, $userId),
+            'cartes'     => $this->cartesDuCours($id, $userId),
             'autresCours' => Database::all(
                 'SELECT id, titre FROM cours WHERE user_id = ? AND id <> ? ORDER BY titre',
                 [$userId, $id]

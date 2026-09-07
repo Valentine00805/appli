@@ -177,7 +177,7 @@ $nbCartes = $nbCartes ?? 0;
     <?= Vue::rendre('cours/_fiche', [
         'cours' => $cours, 'fiche' => $fiche, 'fichiersFiche' => $fichiersFiche,
         'parType' => $parType, 'autresCours' => $autresCours,
-        'evenementsChoix' => $evenementsChoix, 'surPage' => false,
+        'evenementsChoix' => $evenementsChoix, 'cartes' => $cartes, 'surPage' => false,
     ]) ?>
   <?php endif; ?>
 

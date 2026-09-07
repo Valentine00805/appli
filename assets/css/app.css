@@ -473,6 +473,11 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
 .carte-ligne__boite { flex: none; font-size: .7rem; letter-spacing: .1em; color: var(--accent); }
 .carte-ligne__edition { margin: .6rem 0; }
 
+/* Le renvoi vers le paquet, depuis la fiche de révision. */
+.fiche__cartes { margin: 0 0 .6rem; font-size: .9rem; }
+.fiche__cartes-actions { margin: 0; }
+.fiche-carte__du { margin: .5rem 0 0; }
+
 /* Ce qui efface pour de bon se tient à l'écart du reste. */
 .zone-danger {
   display: flex; align-items: center; justify-content: space-between;
