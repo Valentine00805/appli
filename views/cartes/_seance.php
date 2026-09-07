@@ -22,6 +22,18 @@ $retour = $retour ?? null;
       <?= count($cartes) ?> carte<?= count($cartes) > 1 ? 's' : '' ?> à revoir
     </p>
 
+    <?php if (count($cartes) > 1): ?>
+      <?php
+      /*
+       * Mélanger ce qui reste à voir, sans toucher aux cartes déjà tranchées :
+       * on révise mal quand on reconnaît une réponse à sa place dans la pile.
+       */
+      ?>
+      <button class="bouton bouton--discret bouton--petit" type="button" data-melanger>
+        🔀 Mélanger
+      </button>
+    <?php endif; ?>
+
     <?php
     /*
      * Le compte des verdicts donnés, qui monte au fil de la séance. Il part de

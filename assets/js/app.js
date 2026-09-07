@@ -781,6 +781,7 @@
     var fin = seance.querySelector("[data-seance-fin]");
     var bilan = seance.querySelector("[data-seance-bilan]");
     var jetonSeance = seance.getAttribute("data-jeton");
+    var melanger = seance.querySelector("[data-melanger]");
     var rang = 0;
     var sues = 0;
     var rates = 0;
@@ -805,6 +806,8 @@
       if (compteur) {
         compteur.textContent = reste + " carte" + (reste > 1 ? "s" : "") + " à revoir";
       }
+      // Brasser une seule carte n'a pas de sens.
+      if (melanger) { melanger.disabled = reste < 2; }
     };
 
     var terminer = function () {
@@ -832,6 +835,28 @@
       rang++;
       if (rang >= cartesSeance.length) { terminer(); } else { montrerCarte(); }
     };
+
+    /*
+     * Mélanger ne touche qu'à ce qui reste : les cartes déjà tranchées gardent
+     * leur place, et le compte des verdicts ne bouge pas. On brasse le tableau,
+     * puis on remet les nœuds dans le même ordre pour que la page suive.
+     */
+    if (melanger) {
+      melanger.addEventListener("click", function () {
+        var restantes = cartesSeance.slice(rang);
+        for (var i = restantes.length - 1; i > 0; i--) {
+          var j = Math.floor(Math.random() * (i + 1));
+          var garde = restantes[i];
+          restantes[i] = restantes[j];
+          restantes[j] = garde;
+        }
+        cartesSeance = cartesSeance.slice(0, rang).concat(restantes);
+        restantes.forEach(function (carte) {
+          if (fin) { fin.parentNode.insertBefore(carte, fin); }
+        });
+        montrerCarte();
+      });
+    }
 
     /*
      * Sur une fiche de révision, la séance est repliée : le lien « Réviser »

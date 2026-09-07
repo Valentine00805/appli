@@ -20,7 +20,7 @@ date_default_timezone_set('Europe/Paris');
 
 /* --- Les classes de l'application --- */
 require __DIR__ . '/src/Config.php';
-require __DIR__ . '/src/BaseDeDonnees.php';
+require __DIR__ . '/src/Depot.php';
 require __DIR__ . '/src/Session.php';
 require __DIR__ . '/src/Auth.php';
 require __DIR__ . '/src/LimiteurConnexion.php';

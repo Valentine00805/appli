@@ -501,6 +501,7 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
 .seance__compteur { margin: 0; color: var(--texte-doux); font-size: .88rem; }
 
 /* Le score du moment : ce qui reste à revoir à gauche, ce qui est su à droite. */
+.seance__entete [data-melanger] { margin-right: auto; }
 .score { display: flex; align-items: center; gap: .5rem; margin: 0; }
 .score__part {
   display: inline-flex; align-items: center; gap: .35rem;
