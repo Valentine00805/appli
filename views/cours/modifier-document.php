@@ -64,15 +64,30 @@
           <?php endforeach; ?>
         </select>
       </label>
-      <label class="barre-outils__taille">
+      <?php
+      /*
+       * Choisir la couleur et l'appliquer sont deux gestes séparés. Le
+       * nuancier du système ne prévient que lorsqu'on change de couleur :
+       * rouvrir pour reprendre la même ne dit rien, et le texte suivant serait
+       * resté noir sans qu'on comprenne pourquoi.
+       */
+      ?>
+      <span class="barre-outils__couleurs">
         <span class="discret">Couleur</span>
-        <?php // Le nuancier du système : n'importe quelle couleur, sans liste. ?>
-        <input type="color" class="barre-outils__couleur" data-couleur-texte value="#000000">
-      </label>
-      <button type="button" class="barre-outils__bouton" data-couleur-defaut
-              title="Remettre la couleur du document">⌫</button>
+        <button type="button" class="barre-outils__bouton barre-outils__appliquer"
+                data-couleur-appliquer title="Appliquer cette couleur au texte choisi">
+          <span aria-hidden="true">A</span>
+          <span class="barre-outils__trait"></span>
+          <span class="sr-only">Appliquer la couleur</span>
+        </button>
+        <input type="color" class="barre-outils__couleur" data-couleur-texte
+               value="#000000" title="Choisir une autre couleur"
+               aria-label="Choisir une autre couleur">
+        <button type="button" class="barre-outils__bouton" data-couleur-defaut
+                title="Remettre la couleur du document">⌫</button>
+      </span>
       <span class="champ__aide barre-outils__aide">
-        Sélectionnez du texte, puis choisissez.
+        Sélectionnez du texte, puis cliquez sur une commande.
       </span>
     </div>
 

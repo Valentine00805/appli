@@ -1364,6 +1364,19 @@ input.depot__champ {
 .barre-outils__bouton:hover { border-color: var(--accent); color: var(--accent); }
 .barre-outils__taille { display: inline-flex; align-items: center; gap: .4rem; margin-left: .4rem; }
 .barre-outils__taille select { width: auto; }
+/* Choisir la couleur, la poser, revenir en arrière : trois gestes voisins. */
+.barre-outils__couleurs { display: inline-flex; align-items: center; gap: .35rem; margin-left: .4rem; }
+
+/* Le « A » porte la couleur du moment, et un trait la rappelle sous la lettre. */
+.barre-outils__appliquer {
+  display: inline-flex; flex-direction: column; align-items: center; gap: .1rem;
+  padding: .25rem .55rem; font-weight: 700; line-height: 1;
+}
+.barre-outils__trait {
+  display: block; width: 1.1rem; height: .2rem; border-radius: 1px;
+  background: currentColor;
+}
+
 .barre-outils__couleur {
   width: 2.4rem; height: 2.1rem; padding: .15rem;
   border: 1px solid var(--bordure); border-radius: var(--rayon-s);

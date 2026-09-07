@@ -748,15 +748,42 @@
         });
       }
 
+      /*
+       * La couleur du moment. Le nuancier sert à la choisir, le bouton « A » à
+       * la poser : rouvrir le nuancier pour reprendre la même couleur ne
+       * déclenche aucun événement, et sans ce bouton il n'y aurait alors plus
+       * moyen de l'appliquer ailleurs.
+       */
       var choixCouleur = barreOutils.querySelector("[data-couleur-texte]");
+      var appliquerCouleur = barreOutils.querySelector("[data-couleur-appliquer]");
+
+      var poserLaCouleur = function () {
+        if (!choixCouleur) { return; }
+        var couleur = choixCouleur.value.replace("#", "").toUpperCase();
+        if (!/^[0-9A-F]{6}$/.test(couleur)) { return; }
+        marquerLaSelection(function (span) {
+          span.setAttribute("data-couleur", couleur);
+          span.style.color = "#" + couleur;
+        });
+      };
+
       if (choixCouleur) {
+        var montrerLaCouleur = function () {
+          if (appliquerCouleur) { appliquerCouleur.style.color = choixCouleur.value; }
+        };
+        montrerLaCouleur();
+        choixCouleur.addEventListener("input", montrerLaCouleur);
+        // Choisir une couleur l'applique aussitôt, quand du texte est retenu.
         choixCouleur.addEventListener("change", function () {
-          var couleur = choixCouleur.value.replace("#", "").toUpperCase();
-          if (!/^[0-9A-F]{6}$/.test(couleur)) { return; }
-          marquerLaSelection(function (span) {
-            span.setAttribute("data-couleur", couleur);
-            span.style.color = "#" + couleur;
-          });
+          montrerLaCouleur();
+          poserLaCouleur();
+        });
+      }
+
+      if (appliquerCouleur) {
+        appliquerCouleur.addEventListener("mousedown", function (evenement) {
+          evenement.preventDefault();
+          poserLaCouleur();
         });
       }
 
