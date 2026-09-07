@@ -101,6 +101,10 @@ final class BudgetController
             ]
         );
 
+        // Le nom entre au carnet une fois la dépense retenue, et pas avant : un
+        // formulaire refusé ne doit pas y laisser de trace.
+        RemboursementsController::retenirPersonne($userId, $donnees['rembourse_par']);
+
         Session::flash('succes', sprintf(
             '%s de %s enregistrée.',
             $donnees['sens'] === 'recette' ? 'Recette' : 'Dépense',
@@ -166,6 +170,8 @@ final class BudgetController
                 $userId,
             ]
         );
+
+        RemboursementsController::retenirPersonne($userId, $donnees['rembourse_par']);
 
         Session::flash('succes', 'Opération mise à jour.');
         redirect('budget', ['mois' => substr($donnees['date_operation'], 0, 7)]);

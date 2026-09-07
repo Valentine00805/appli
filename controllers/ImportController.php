@@ -439,6 +439,11 @@ final class ImportController
 
         unset($_SESSION['_import']);
 
+        // Le créancier de la reprise entre au carnet, comme après une saisie.
+        if ($importees > 0) {
+            RemboursementsController::retenirPersonne($userId, $personne);
+        }
+
         Session::flash('succes', sprintf(
             '%d dépense%s reprise%s du classeur.%s%s',
             $importees,

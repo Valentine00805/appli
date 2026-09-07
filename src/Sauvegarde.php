@@ -32,6 +32,7 @@ final class Sauvegarde
         'tags'              => ['portee' => 'user',  'liens' => []],
         'types_evenement'   => ['portee' => 'user',  'liens' => []],
         'categories_budget' => ['portee' => 'user',  'liens' => []],
+        'personnes'         => ['portee' => 'user',  'liens' => []],
         'cours'             => ['portee' => 'user',  'liens' => [
             'matiere_id' => 'matieres', 'dossier_id' => 'dossiers']],
         'cours_tag'         => ['portee' => 'cours', 'liens' => ['cours_id' => 'cours', 'tag_id' => 'tags']],

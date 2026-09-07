@@ -214,6 +214,11 @@ $routes = [
     ['POST', 'budget/import/confirmer',    [ImportController::class, 'confirmer']],
     ['POST', 'budget/import/abandonner',   [ImportController::class, 'abandonner']],
 
+    ['GET',  'budget/personnes',           [RemboursementsController::class, 'personnesIndex']],
+    ['POST', 'budget/personnes',           [RemboursementsController::class, 'personneCreer']],
+    ['POST', 'budget/personnes/{id}/renommer',  [RemboursementsController::class, 'personneRenommer']],
+    ['POST', 'budget/personnes/{id}/supprimer', [RemboursementsController::class, 'personneSupprimer']],
+
     ['GET',  'budget/categories',          [BudgetController::class, 'categoriesIndex']],
     ['POST', 'budget/categories',          [BudgetController::class, 'categorieCreer']],
     ['POST', 'budget/categories/{id}/modifier',  [BudgetController::class, 'categorieModifier']],

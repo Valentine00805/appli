@@ -384,19 +384,21 @@ final class RemboursementsController
         $date = post('date_remboursement');
         $date = preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) === 1 ? $date : null;
 
+        $qui = self::quiRembourse();
         Database::run(
             'UPDATE operations
              SET part_rembourser = ?, rembourse_par = ?, statut_remb = ?, date_remboursement = ?
              WHERE id = ? AND user_id = ?',
             [
                 $part === null ? null : number_format($part, 2, '.', ''),
-                self::quiRembourse(),
+                $qui,
                 $statut,
                 $statut === 'rembourse' ? ($date ?? date('Y-m-d')) : null,
                 $id,
                 $userId,
             ]
         );
+        self::retenirPersonne($userId, $qui);
 
         Session::flash('succes', 'Ligne mise à jour.');
         redirect('budget/remboursements', $this->parametresRetour());
@@ -522,15 +524,181 @@ final class RemboursementsController
         return $nom === '' ? null : mb_substr($nom, 0, 80);
     }
 
-    /** Noms déjà utilisés, pour la liste du formulaire et le filtre. */
+    /**
+     * Le carnet des personnes, pour la liste du formulaire et le filtre.
+     *
+     * Il se tient à part des opérations : une personne y reste même quand plus
+     * aucune dépense ne la nomme, et la renommer se fait en un endroit.
+     */
     public static function personnes(int $userId): array
     {
-        return array_column(Database::all(
-            "SELECT DISTINCT rembourse_par FROM operations
-             WHERE user_id = ? AND rembourse_par IS NOT NULL AND rembourse_par <> ''
-             ORDER BY rembourse_par",
-            [$userId]
-        ), 'rembourse_par');
+        return array_column(
+            Database::all('SELECT nom FROM personnes WHERE user_id = ? ORDER BY nom', [$userId]),
+            'nom'
+        );
+    }
+
+    /**
+     * Inscrit au carnet la personne qu'une opération vient de nommer.
+     *
+     * Appelée après l'enregistrement, et non pendant la lecture du formulaire :
+     * un nom n'entre au carnet que si la dépense a bien été retenue. La clé
+     * unique se charge des doublons — la collation étant insensible à la casse
+     * et aux accents, « Papa » n'y rejoindra pas « papa ».
+     */
+    public static function retenirPersonne(int $userId, ?string $nom): void
+    {
+        if ($nom === null || trim($nom) === '') {
+            return;
+        }
+
+        Database::run(
+            'INSERT IGNORE INTO personnes (user_id, nom) VALUES (?, ?)',
+            [$userId, mb_substr(trim($nom), 0, 80)]
+        );
+    }
+
+    // --- Le carnet des personnes ---------------------------------------------
+
+    /** Le carnet, et ce que chacun vous doit encore. */
+    public function personnesIndex(): void
+    {
+        Auth::exiger();
+        $userId = Auth::id();
+
+        Vue::afficher('budget/personnes', [
+            'personnes' => Database::all(
+                "SELECT p.id, p.nom,
+                        (SELECT COUNT(*) FROM operations o
+                          WHERE o.user_id = p.user_id AND o.rembourse_par = p.nom) AS nb_operations,
+                        (SELECT COALESCE(SUM(COALESCE(o.part_rembourser, o.montant)), 0)
+                           FROM operations o
+                          WHERE o.user_id = p.user_id AND o.rembourse_par = p.nom
+                            AND o.a_rembourser = 1 AND o.statut_remb = 'a_reclamer') AS reste
+                   FROM personnes p WHERE p.user_id = ? ORDER BY p.nom",
+                [$userId]
+            ),
+            // Un nom écrit sur une opération d'avant le carnet, ou repris d'une
+            // sauvegarde : on le signale plutôt que de le laisser hors liste.
+            'oublies' => array_column(Database::all(
+                "SELECT DISTINCT o.rembourse_par FROM operations o
+                  WHERE o.user_id = ? AND o.rembourse_par IS NOT NULL AND o.rembourse_par <> ''
+                    AND NOT EXISTS (SELECT 1 FROM personnes p
+                                     WHERE p.user_id = o.user_id AND p.nom = o.rembourse_par)
+                  ORDER BY o.rembourse_par",
+                [$userId]
+            ), 'rembourse_par'),
+        ], 'Personnes');
+    }
+
+    /** Ajoute une personne au carnet, sans attendre une dépense. */
+    public function personneCreer(): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $userId = Auth::id();
+
+        $nom = mb_substr(trim(post('nom')), 0, 80);
+        if ($nom === '') {
+            Session::flash('erreur', 'Écrivez un nom.');
+            redirect('budget/personnes');
+        }
+
+        if ($this->personneNommee($userId, $nom) !== null) {
+            Session::flash('erreur', '« ' . $nom . ' » est déjà au carnet.');
+            redirect('budget/personnes');
+        }
+
+        Database::run('INSERT INTO personnes (user_id, nom) VALUES (?, ?)', [$userId, $nom]);
+        Session::flash('succes', '« ' . $nom . ' » ajoutée.');
+        redirect('budget/personnes');
+    }
+
+    /**
+     * Renomme une personne, et les opérations qui la nomment avec elle.
+     *
+     * C'est tout l'intérêt du carnet : le nom écrit sur les dépenses passées
+     * suit, au lieu qu'il faille reprendre chaque ligne.
+     */
+    public function personneRenommer(int $id): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $userId = Auth::id();
+
+        $personne = Database::one('SELECT * FROM personnes WHERE id = ? AND user_id = ?', [$id, $userId]);
+        if ($personne === null) {
+            $this->introuvable();
+        }
+
+        $nom = mb_substr(trim(post('nom')), 0, 80);
+        if ($nom === '') {
+            Session::flash('erreur', 'Écrivez un nom.');
+            redirect('budget/personnes');
+        }
+
+        $ancien = (string) $personne['nom'];
+        $homonyme = $this->personneNommee($userId, $nom);
+        if ($homonyme !== null && (int) $homonyme['id'] !== $id) {
+            Session::flash('erreur', '« ' . $nom . ' » est déjà au carnet : fusionnez à la main '
+                . 'en changeant les opérations concernées.');
+            redirect('budget/personnes');
+        }
+
+        Database::run('UPDATE personnes SET nom = ? WHERE id = ? AND user_id = ?', [$nom, $id, $userId]);
+        $touchees = Database::run(
+            'UPDATE operations SET rembourse_par = ? WHERE user_id = ? AND rembourse_par = ?',
+            [$nom, $userId, $ancien]
+        )->rowCount();
+
+        Session::flash('succes', $ancien === $nom
+            ? 'Rien à changer.'
+            : '« ' . $ancien .' » renommée « ' . $nom . ' »'
+                . ($touchees > 0 ? ', sur ' . $touchees . ' opération' . ($touchees > 1 ? 's' : '') : '')
+                . '.');
+        redirect('budget/personnes');
+    }
+
+    /**
+     * Retire une personne du carnet.
+     *
+     * Les opérations qui la nomment gardent ce nom : c'est ce qui était vrai le
+     * jour de la dépense, et l'effacer fausserait les relevés passés. Elles
+     * cessent simplement d'être proposées à la saisie.
+     */
+    public function personneSupprimer(int $id): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $userId = Auth::id();
+
+        $personne = Database::one('SELECT nom FROM personnes WHERE id = ? AND user_id = ?', [$id, $userId]);
+        if ($personne === null) {
+            $this->introuvable();
+        }
+
+        $nommees = (int) Database::valeur(
+            'SELECT COUNT(*) FROM operations WHERE user_id = ? AND rembourse_par = ?',
+            [$userId, $personne['nom']]
+        );
+
+        Database::run('DELETE FROM personnes WHERE id = ? AND user_id = ?', [$id, $userId]);
+
+        Session::flash('succes', '« ' . $personne['nom'] . ' » retirée du carnet.'
+            . ($nommees > 0
+                ? ' Les ' . $nommees . ' opération' . ($nommees > 1 ? 's' : '')
+                    . ' qui la nomme' . ($nommees > 1 ? 'nt' : '') . ' gardent ce nom.'
+                : ''));
+        redirect('budget/personnes');
+    }
+
+    /** Cette personne est-elle déjà au carnet ? La collation ignore la casse. */
+    private function personneNommee(int $userId, string $nom): ?array
+    {
+        return Database::one(
+            'SELECT id, nom FROM personnes WHERE user_id = ? AND nom = ?',
+            [$userId, $nom]
+        );
     }
 
     private function personneParDefaut(int $userId): ?string

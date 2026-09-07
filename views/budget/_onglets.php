@@ -1,7 +1,8 @@
 <?php
 /**
  * Sous-navigation de la section Budget.
- * @var string $onglet  operations | previsions | remboursements | import | categories
+ * @var string $onglet  operations | previsions | remboursements | personnes |
+ *                      import | categories
  */
 ?>
 <nav class="onglets" aria-label="Sections du budget">
@@ -13,6 +14,9 @@
   </a>
   <a href="<?= url('budget/remboursements') ?>"<?= $onglet === 'remboursements' ? ' aria-current="page"' : '' ?>>
     <span aria-hidden="true">🧾</span> Remboursements
+  </a>
+  <a href="<?= url('budget/personnes') ?>"<?= $onglet === 'personnes' ? ' aria-current="page"' : '' ?>>
+    <span aria-hidden="true">👥</span> Personnes
   </a>
   <a href="<?= url('budget/import') ?>"<?= $onglet === 'import' ? ' aria-current="page"' : '' ?>>
     <span aria-hidden="true">📥</span> Import

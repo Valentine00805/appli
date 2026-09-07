@@ -185,6 +185,20 @@ CREATE TABLE IF NOT EXISTS `recurrences` (
   CONSTRAINT `fk_rec_categorie` FOREIGN KEY (`categorie_id`) REFERENCES `categories_budget`(`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Les personnes qui vous remboursent, tenues à part des opérations : une
+-- personne existe même sans dépense en cours, et la renommer ne demande pas de
+-- reprendre chaque ligne. Les opérations gardent malgré tout le nom écrit,
+-- puisque c'est ce qui était vrai le jour de la dépense.
+CREATE TABLE IF NOT EXISTS `personnes` (
+  `id`         INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `user_id`    INT UNSIGNED NOT NULL,
+  `nom`        VARCHAR(80) NOT NULL,
+  `created_at` DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_personne_nom` (`user_id`, `nom`),
+  CONSTRAINT `fk_personne_user` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS `operations` (
   `id`             INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `user_id`        INT UNSIGNED NOT NULL,
