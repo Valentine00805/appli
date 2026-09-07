@@ -37,7 +37,8 @@ final class CartesController
             'SELECT c.id, c.titre, m.nom AS matiere_nom, m.couleur AS matiere_couleur,
                     COUNT(k.id) AS total,
                     SUM(k.revoir_le <= CURDATE()) AS a_revoir,
-                    SUM(k.boite >= 5) AS sues
+                    SUM(k.boite >= 5) AS sues,
+                    AVG(k.boite) AS boite_moyenne
              FROM cartes k
              JOIN cours c ON c.id = k.cours_id
              LEFT JOIN matieres m ON m.id = c.matiere_id

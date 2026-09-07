@@ -99,9 +99,21 @@
 
         <h3 class="fiche-carte__titre"><?= e($p['titre']) ?></h3>
 
-        <p class="fiche-carte__compteurs">
-          <?= $nb ?> carte<?= $nb > 1 ? 's' : '' ?>
-          <?php if ($sues > 0): ?>· <?= $sues ?> sue<?= $sues > 1 ? 's' : '' ?><?php endif; ?>
+        <?php
+        /*
+         * Le même anneau que sur la fiche : la boîte moyenne du paquet, de 1 à 5,
+         * ramenée en pourcentage. Un paquet neuf est vide, un paquet su est plein.
+         */
+        ?>
+        <p class="fiche-carte__ecoute">
+          <?= Vue::rendre('cours/_anneau', [
+              'pourcentage' => avancement_cartes($nb, (float) $p['boite_moyenne']),
+              'titre'       => 'Avancement des cartes',
+          ]) ?>
+          <span class="discret">
+            <?= $nb ?> carte<?= $nb > 1 ? 's' : '' ?>
+            <?php if ($sues > 0): ?>· <?= $sues ?> sue<?= $sues > 1 ? 's' : '' ?><?php endif; ?>
+          </span>
         </p>
       </a>
     <?php endforeach; ?>
