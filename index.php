@@ -217,6 +217,7 @@ $routes = [
     ['GET',  'budget/personnes',           [RemboursementsController::class, 'personnesIndex']],
     ['POST', 'budget/personnes',           [RemboursementsController::class, 'personneCreer']],
     ['POST', 'budget/personnes/{id}/renommer',  [RemboursementsController::class, 'personneRenommer']],
+    ['POST', 'budget/personnes/{id}/fusionner', [RemboursementsController::class, 'personneFusionner']],
     ['POST', 'budget/personnes/{id}/supprimer', [RemboursementsController::class, 'personneSupprimer']],
 
     ['GET',  'budget/categories',          [BudgetController::class, 'categoriesIndex']],

@@ -640,23 +640,181 @@ final class RemboursementsController
         $ancien = (string) $personne['nom'];
         $homonyme = $this->personneNommee($userId, $nom);
         if ($homonyme !== null && (int) $homonyme['id'] !== $id) {
-            Session::flash('erreur', '« ' . $nom . ' » est déjà au carnet : fusionnez à la main '
-                . 'en changeant les opérations concernées.');
+            Session::flash('erreur', '« ' . $nom . ' » est déjà au carnet. Pour n\'en faire '
+                . 'qu\'une seule personne, utilisez « Fusionner ».');
             redirect('budget/personnes');
         }
 
-        Database::run('UPDATE personnes SET nom = ? WHERE id = ? AND user_id = ?', [$nom, $id, $userId]);
-        $touchees = Database::run(
-            'UPDATE operations SET rembourse_par = ? WHERE user_id = ? AND rembourse_par = ?',
-            [$nom, $userId, $ancien]
-        )->rowCount();
+        if ($ancien === $nom) {
+            Session::flash('info', 'Rien à changer.');
+            redirect('budget/personnes');
+        }
 
-        Session::flash('succes', $ancien === $nom
-            ? 'Rien à changer.'
-            : '« ' . $ancien .' » renommée « ' . $nom . ' »'
-                . ($touchees > 0 ? ', sur ' . $touchees . ' opération' . ($touchees > 1 ? 's' : '') : '')
-                . '.');
+        /*
+         * Un mois déjà réglé sous les deux noms ne peut pas être reporté : la
+         * clé du règlement tient au couple mois + personne, et chacun a créé sa
+         * recette en retour. Mieux vaut le dire que d'en perdre une.
+         */
+        $collisions = $this->moisDejaRegles($userId, $ancien, $nom);
+        if ($collisions !== []) {
+            Session::flash('erreur', 'Impossible : ' . $this->direLesMois($collisions)
+                . ' déjà réglé' . (count($collisions) > 1 ? 's' : '')
+                . ' sous les deux noms. Annulez l\'un des règlements, puis recommencez.');
+            redirect('budget/personnes');
+        }
+
+        $reportees = $this->reporterSur($userId, $ancien, $nom, static function () use ($nom, $id, $userId): void {
+            Database::run('UPDATE personnes SET nom = ? WHERE id = ? AND user_id = ?', [$nom, $id, $userId]);
+        });
+
+        Session::flash('succes', '« ' . $ancien . ' » renommée « ' . $nom . ' »'
+            . $this->direLeReport($reportees) . '.');
         redirect('budget/personnes');
+    }
+
+    /**
+     * Fusionne une personne dans une autre.
+     *
+     * Tout ce qui portait son nom passe à l'autre, puis elle quitte le carnet.
+     * C'est le geste qu'il faut quand la même personne s'est retrouvée écrite
+     * de deux façons — « Théo » et « Théo M. », par exemple.
+     */
+    public function personneFusionner(int $id): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $userId = Auth::id();
+
+        $source = Database::one('SELECT * FROM personnes WHERE id = ? AND user_id = ?', [$id, $userId]);
+        $cibleId = entier_ou_null($_POST['cible'] ?? null);
+        $cible = $cibleId === null ? null
+            : Database::one('SELECT * FROM personnes WHERE id = ? AND user_id = ?', [$cibleId, $userId]);
+
+        if ($source === null || $cible === null) {
+            $this->introuvable();
+        }
+        if ((int) $source['id'] === (int) $cible['id']) {
+            Session::flash('erreur', 'Choisissez une autre personne.');
+            redirect('budget/personnes');
+        }
+
+        $partant = (string) $source['nom'];
+        $restant = (string) $cible['nom'];
+
+        $collisions = $this->moisDejaRegles($userId, $partant, $restant);
+        if ($collisions !== []) {
+            Session::flash('erreur', 'Impossible : ' . $this->direLesMois($collisions)
+                . ' déjà réglé' . (count($collisions) > 1 ? 's' : '')
+                . ' pour les deux, chacun avec sa recette en retour. Annulez l\'un des '
+                . 'règlements, puis recommencez.');
+            redirect('budget/personnes');
+        }
+
+        $reportees = $this->reporterSur($userId, $partant, $restant, static function () use ($id, $userId): void {
+            Database::run('DELETE FROM personnes WHERE id = ? AND user_id = ?', [$id, $userId]);
+        });
+
+        Session::flash('succes', '« ' . $partant . ' » fusionnée dans « ' . $restant . ' »'
+            . $this->direLeReport($reportees) . '.');
+        redirect('budget/personnes');
+    }
+
+    /**
+     * Reporte sur un autre nom tout ce qui portait le premier.
+     *
+     * Les opérations, les règlements et le carnet bougent ensemble ou pas du
+     * tout : à moitié fait, le compte d'une personne serait faux.
+     *
+     * @param  callable $carnet  ce qu'il faut faire au carnet lui-même
+     * @return array{operations: int, reglements: int}
+     */
+    private function reporterSur(int $userId, string $ancien, string $nouveau, callable $carnet): array
+    {
+        $pdo = Database::pdo();
+        $pdo->beginTransaction();
+
+        try {
+            $operations = Database::run(
+                'UPDATE operations SET rembourse_par = ? WHERE user_id = ? AND rembourse_par = ?',
+                [$nouveau, $userId, $ancien]
+            )->rowCount();
+
+            $reglements = Database::run(
+                'UPDATE reglements SET personne = ? WHERE user_id = ? AND personne = ?',
+                [$nouveau, $userId, $ancien]
+            )->rowCount();
+
+            $carnet();
+            $pdo->commit();
+        } catch (Throwable $e) {
+            $pdo->rollBack();
+            throw $e;
+        }
+
+        return ['operations' => $operations, 'reglements' => $reglements];
+    }
+
+    /**
+     * Les mois réglés sous les deux noms à la fois.
+     *
+     * @return list<string>  périodes au format AAAA-MM
+     */
+    private function moisDejaRegles(int $userId, string $un, string $autre): array
+    {
+        return array_column(Database::all(
+            'SELECT a.periode FROM reglements a
+               JOIN reglements b ON b.user_id = a.user_id AND b.periode = a.periode
+              WHERE a.user_id = ? AND a.personne = ? AND b.personne = ?
+              ORDER BY a.periode',
+            [$userId, $un, $autre]
+        ), 'periode');
+    }
+
+    /** « septembre 2026 », ou la liste, comme on le dirait. */
+    private function direLesMois(array $periodes): string
+    {
+        $noms = array_map(
+            static fn (string $p): string =>
+                strtolower(nom_mois((int) substr($p, 5, 2))) . ' ' . substr($p, 0, 4),
+            $periodes
+        );
+
+        if (count($noms) === 1) {
+            return $noms[0] . ' est';
+        }
+        $dernier = array_pop($noms);
+
+        return implode(', ', $noms) . ' et ' . $dernier . ' sont';
+    }
+
+    /**
+     * Ce qui a suivi le nom, dit d'une traite.
+     *
+     * Le participe s'accorde : féminin quand seules des opérations ont bougé,
+     * masculin dès qu'un règlement s'en mêle.
+     */
+    private function direLeReport(array $reportees): string
+    {
+        $ops = $reportees['operations'];
+        $regs = $reportees['reglements'];
+        if ($ops === 0 && $regs === 0) {
+            return '';
+        }
+
+        $bouts = [];
+        if ($ops > 0) {
+            $bouts[] = $ops . ' opération' . ($ops > 1 ? 's' : '');
+        }
+        if ($regs > 0) {
+            $bouts[] = $regs . ' règlement' . ($regs > 1 ? 's' : '');
+        }
+
+        $participe = $regs > 0 ? 'reporté' : 'reportée';
+        if ($ops + $regs > 1) {
+            $participe .= 's';
+        }
+
+        return ' : ' . implode(' et ', $bouts) . ' ' . $participe;
     }
 
     /**
@@ -688,6 +846,7 @@ final class RemboursementsController
             . ($nommees > 0
                 ? ' Les ' . $nommees . ' opération' . ($nommees > 1 ? 's' : '')
                     . ' qui la nomme' . ($nommees > 1 ? 'nt' : '') . ' gardent ce nom.'
+                    . ' Pour les rattacher à quelqu\'un d\'autre, il fallait fusionner.'
                 : ''));
         redirect('budget/personnes');
     }

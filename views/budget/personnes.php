@@ -13,7 +13,8 @@ $csrf = Session::jetonCsrf();
 <div class="entete-page">
   <div>
     <h1>👥 Personnes</h1>
-    <p>Celles qui vous remboursent. Les renommer ici change aussi vos opérations.</p>
+    <p>Celles qui vous remboursent. Les renommer ou les fusionner ici change
+      aussi vos opérations.</p>
   </div>
 </div>
 
@@ -79,6 +80,40 @@ $csrf = Session::jetonCsrf();
             <button class="bouton bouton--petit" type="submit">Renommer</button>
           </form>
 
+          <?php if (count($personnes) > 1): ?>
+            <hr class="separateur" style="margin:.9rem 0">
+
+            <?php
+            /*
+             * Fusionner, pour la même personne écrite de deux façons. Tout ce
+             * qui porte ce nom-ci passe à l'autre, et celle-ci quitte le
+             * carnet : c'est ce que « renommer » ne peut pas faire, un nom déjà
+             * pris ne pouvant pas l'être deux fois.
+             */
+            ?>
+            <form method="post" action="<?= url('budget/personnes/' . $p['id'] . '/fusionner') ?>"
+                  data-confirmation="Fusionner « <?= e($p['nom']) ?> » dans une autre personne ?<?= $nb > 0
+                      ? ' Ses ' . $nb . ' opération' . ($nb > 1 ? 's changeront' : ' changera') . ' de nom.'
+                      : '' ?>">
+              <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+              <div class="champ">
+                <label for="cible-<?= (int) $p['id'] ?>">Fusionner dans</label>
+                <select id="cible-<?= (int) $p['id'] ?>" name="cible" required>
+                  <option value="">— Choisir une personne —</option>
+                  <?php foreach ($personnes as $autre): ?>
+                    <?php if ((int) $autre['id'] === (int) $p['id']) { continue; } ?>
+                    <option value="<?= (int) $autre['id'] ?>"><?= e($autre['nom']) ?></option>
+                  <?php endforeach; ?>
+                </select>
+                <span class="champ__aide">
+                  « <?= e($p['nom']) ?> » disparaîtra du carnet, et tout ce qui la nomme
+                  passera à l'autre.
+                </span>
+              </div>
+              <button class="bouton bouton--secondaire bouton--petit" type="submit">Fusionner</button>
+            </form>
+          <?php endif; ?>
+
           <hr class="separateur" style="margin:.9rem 0">
 
           <?php
@@ -131,7 +166,8 @@ $csrf = Session::jetonCsrf();
         <h2>Noms hors carnet</h2>
         <p class="champ__aide">
           Portés par des opérations, mais absents du carnet : ils ne sont plus
-          proposés quand vous saisissez une dépense.
+          proposés quand vous saisissez une dépense. Ajoutez-les ici ; pour les
+          rattacher à quelqu'un du carnet, fusionnez-les ensuite.
         </p>
         <?php foreach ($oublies as $nom): ?>
           <form method="post" action="<?= url('budget/personnes') ?>" class="en-ligne"
