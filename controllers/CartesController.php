@@ -17,8 +17,13 @@ final class CartesController
     /** Combien de jours avant de revoir une carte, selon sa boîte. */
     private const DELAIS = [1 => 0, 2 => 1, 3 => 3, 4 => 7, 5 => 21];
 
-    /** Au-delà, une séance devient une corvée : on s'arrête là. */
-    private const SEANCE_MAX = 40;
+    /**
+     * Au-delà, une séance devient une corvée : on s'arrête là.
+     *
+     * Publique parce que la fiche prépare sa propre séance et doit s'arrêter au
+     * même endroit — et parce que les vues annoncent le reste à l'utilisateur.
+     */
+    public const SEANCE_MAX = 40;
 
     // --- Voir ses cartes -----------------------------------------------------
 
@@ -544,6 +549,12 @@ final class CartesController
         Vue::afficher('cartes/seance', [
             'cartes' => $cartes,
             'cours'  => $cours,
+            // Combien sont dues en tout, pour dire ce que la séance laisse de côté.
+            'duesEnTout' => (int) Database::valeur(
+                'SELECT COUNT(*) FROM cartes WHERE user_id = ? AND revoir_le <= CURDATE()'
+                . ($cours === null ? '' : ' AND cours_id = ?'),
+                $cours === null ? [$userId] : [$userId, (int) $cours['id']]
+            ),
             'rezeroTotal' => $cours === null ? 0 : (int) Database::valeur(
                 'SELECT COUNT(*) FROM cartes WHERE cours_id = ? AND user_id = ?',
                 [(int) $cours['id'], $userId]

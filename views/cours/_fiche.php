@@ -329,6 +329,7 @@ $avancementFiche = avancement_anneaux(fichiers_suivis($fichiersFiche));
             'cartes' => $cartes['dues'],
             'rezeroCours'    => (int) $cours['id'],
             'rezeroTotal'    => $cartes['total'],
+            'duesEnTout'     => $cartes['a_revoir'],
             'rezeroRetour'   => $surPage ? 'fiche' : 'volet',
         ]) ?>
       </div>

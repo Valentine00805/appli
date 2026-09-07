@@ -365,7 +365,7 @@ final class CoursController
             'dues'     => $aRevoir === 0 ? [] : Database::all(
                 'SELECT id, question, reponse FROM cartes
                   WHERE cours_id = ? AND user_id = ? AND revoir_le <= CURDATE()
-                  ORDER BY revoir_le, boite, RAND() LIMIT 40',
+                  ORDER BY revoir_le, boite, RAND() LIMIT ' . CartesController::SEANCE_MAX,
                 [$coursId, $userId]
             ),
         ];

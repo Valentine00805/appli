@@ -15,12 +15,14 @@
  * @var ?int $rezeroCours   le cours dont on peut remettre le paquet à zéro
  * @var int $rezeroTotal    combien de cartes il compte
  * @var ?string $rezeroRetour  où revenir ensuite : 'fiche', 'volet', ou null
+ * @var int $duesEnTout  cartes dues en tout, séance plafonnée comprise
  */
 $avecCours = $avecCours ?? false;
 $retour = $retour ?? null;
 $rezeroCours = $rezeroCours ?? null;
 $rezeroTotal = $rezeroTotal ?? 0;
 $rezeroRetour = $rezeroRetour ?? null;
+$duesEnTout = $duesEnTout ?? count($cartes);
 ?>
 <div class="seance" data-seance data-jeton="<?= e(Session::jetonCsrf()) ?>">
   <div class="seance__entete">
@@ -88,6 +90,19 @@ $rezeroRetour = $rezeroRetour ?? null;
       </span>
     </p>
   </div>
+
+  <?php if ($duesEnTout > count($cartes)): ?>
+    <?php
+    /*
+     * Une séance s'arrête à un nombre tenable. Sans cette phrase, l'écart entre
+     * « 42 cartes à revoir » sur la fiche et « 40 » ici passe pour une erreur.
+     */
+    ?>
+    <p class="champ__aide seance__plafond">
+      Séance de <?= count($cartes) ?> cartes sur les <?= $duesEnTout ?> à revoir.
+      Les <?= $duesEnTout - count($cartes) ?> autres attendront la prochaine.
+    </p>
+  <?php endif; ?>
 
   <?php foreach ($cartes as $c): ?>
     <section class="carte seance__carte" data-carte="<?= (int) $c['id'] ?>"
