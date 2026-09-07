@@ -90,10 +90,6 @@ final class CoursController
         Vue::afficher('cours/afficher', [
             'cours'      => $cours,
             'revision'   => $revision,
-            'nbCartes'   => (int) Database::valeur(
-                'SELECT COUNT(*) FROM cartes WHERE cours_id = ? AND user_id = ?',
-                [$id, $userId]
-            ),
             'fichiers'   => Database::all(
                 'SELECT * FROM fichiers WHERE cours_id = ? AND pour_fiche = 0 ORDER BY created_at',
                 [$id]
