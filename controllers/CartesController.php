@@ -66,6 +66,10 @@ final class CartesController
                 [$userId]
             ),
             'total'    => (int) Database::valeur('SELECT COUNT(*) FROM cartes WHERE user_id = ?', [$userId]),
+            // Les propositions passent par la session : elles ne sont pas encore
+            // des cartes, et rien ne doit les enregistrer avant validation.
+            'propositions' => (array) (Session::reprendre('propositions_cartes') ?? []),
+            'coursPropose' => Session::reprendre('cours_propose'),
         ], 'Cartes');
     }
 
@@ -87,7 +91,6 @@ final class CartesController
                 'SELECT * FROM cartes WHERE cours_id = ? AND user_id = ? ORDER BY boite, revoir_le, id',
                 [$id, $userId]
             ),
-            'propositions' => (array) (Session::reprendre('propositions_cartes') ?? []),
         ], 'Cartes — ' . $cours['titre']);
     }
 
@@ -141,11 +144,30 @@ final class CartesController
         $this->signalerLesMuets($muets);
 
         if ($propositions === []) {
-            redirect('cours/' . $id . '/cartes');
+            redirect('cartes');
         }
 
         Session::garder('propositions_cartes', $propositions);
-        redirect('cours/' . $id . '/cartes');
+        Session::garder('cours_propose', ['id' => $id, 'titre' => $cours['titre']]);
+        redirect('cartes');
+    }
+
+    /**
+     * Le cours désigné par le formulaire, ou l'onglet si rien n'est choisi.
+     *
+     * Les cartes se fabriquent depuis l'onglet Cartes, où le cours est un champ
+     * du formulaire et non un morceau de l'adresse.
+     */
+    private function coursDemande(int $userId): int
+    {
+        $id = entier_ou_null($_POST['cours'] ?? null);
+        if ($id === null) {
+            Session::flash('erreur', 'Choisissez un cours.');
+            redirect('cartes');
+        }
+        $this->cours($id, $userId);
+
+        return $id;
     }
 
     /**
@@ -260,12 +282,12 @@ final class CartesController
     }
 
     /** Retient les propositions cochées. */
-    public function retenir(int $id): void
+    public function retenir(): void
     {
         Auth::exiger();
         Session::verifierCsrf();
         $userId = Auth::id();
-        $this->cours($id, $userId);
+        $id = $this->coursDemande($userId);
 
         $gardees = (array) ($_POST['carte'] ?? []);
         $ajoutees = 0;
@@ -309,16 +331,17 @@ final class CartesController
                 ? $sansReponse . ' cartes laissées de côté : leur réponse était vide.'
                 : 'Une carte laissée de côté : sa réponse était vide.');
         }
-        redirect('cours/' . $id . '/cartes');
+
+        redirect('cartes');
     }
 
     /** Une carte écrite à la main. */
-    public function ajouterUne(int $id): void
+    public function ajouterUne(): void
     {
         Auth::exiger();
         Session::verifierCsrf();
         $userId = Auth::id();
-        $this->cours($id, $userId);
+        $id = $this->coursDemande($userId);
 
         $question = trim(post('question'));
         $reponse = trim(post('reponse'));
@@ -331,7 +354,7 @@ final class CartesController
             Session::flash('erreur', 'Cette question est déjà dans le paquet.');
         }
 
-        redirect('cours/' . $id . '/cartes');
+        redirect('cartes');
     }
 
     /**

@@ -318,8 +318,11 @@ $avancementFiche = avancement_anneaux(
           <a class="bouton bouton--petit" data-ouvrir-seance
              href="<?= url('cartes/seance', ['cours' => $cours['id']]) ?>">Réviser</a>
         <?php endif; ?>
+        <?php // Les cartes se fabriquent dans l'onglet Cartes, et nulle part ailleurs. ?>
         <a class="bouton bouton--secondaire bouton--petit"
-           href="<?= url('cours/' . $cours['id'] . '/cartes') ?>">
+           href="<?= $cartes['total'] === 0
+               ? url('cartes')
+               : url('cours/' . $cours['id'] . '/cartes') ?>">
           <?= $cartes['total'] === 0 ? 'En fabriquer' : 'Voir le paquet' ?>
         </a>
 

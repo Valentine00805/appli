@@ -4,7 +4,6 @@
  *
  * @var array $cours
  * @var array $cartes
- * @var array $propositions  ce que le générateur vient de trouver, à valider
  */
 $dues = 0;
 foreach ($cartes as $c) {
@@ -40,101 +39,13 @@ $provenance = static function (array $c): string {
   </div>
 
   <div class="actions">
+    <a class="bouton bouton--secondaire" href="<?= url('cartes') ?>">Fabriquer des cartes</a>
     <?php if ($dues > 0): ?>
       <a class="bouton" href="<?= url('cartes/seance', ['cours' => $cours['id']]) ?>">Réviser</a>
     <?php endif; ?>
     <a class="bouton bouton--secondaire" href="<?= url('cours/' . $cours['id']) ?>">Voir le cours</a>
   </div>
 </div>
-
-<?php if ($propositions !== []): ?>
-  <?php
-  /*
-   * Les propositions ne sont pas encore des cartes : rien n'est enregistré tant
-   * que l'utilisateur n'a pas coché. Chaque question et chaque réponse reste
-   * modifiable ici, parce qu'une règle se trompe parfois de découpe.
-   */
-  ?>
-  <form class="carte propositions" method="post" action="<?= url('cours/' . $cours['id'] . '/cartes/retenir') ?>">
-    <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
-
-    <div class="propositions__entete">
-      <h2><?= count($propositions) ?> proposition<?= count($propositions) > 1 ? 's' : '' ?></h2>
-      <span class="discret">Décochez ce qui ne vous sert pas, corrigez le reste.</span>
-    </div>
-
-    <ul class="propositions__liste">
-      <?php foreach ($propositions as $rang => $p): ?>
-        <li class="proposition">
-          <label class="proposition__garder">
-            <input type="checkbox" name="carte[<?= $rang ?>][garder]" value="1" checked>
-            <span class="proposition__source">
-              <?= e(match ($p['origine']) {
-                  'cours'   => 'du cours',
-                  'fiche'   => 'de la fiche',
-                  'fichier' => $p['source'] !== '' ? 'de ' . $p['source'] : 'd\'un document',
-                  default   => '',
-              }) ?>
-            </span>
-            <?php $genre = $p['genre'] ?? 'definition'; ?>
-            <?php if ($genre !== 'definition'): ?>
-              <span class="proposition__genre proposition__genre--<?= e($genre) ?>">
-                <?= $genre === 'devoir' ? 'question du devoir — écrivez la réponse' : 'texte à trous' ?>
-              </span>
-            <?php endif; ?>
-          </label>
-          <div class="proposition__couple">
-            <input type="text" name="carte[<?= $rang ?>][question]" value="<?= e($p['question']) ?>"
-                   aria-label="Question" maxlength="500">
-            <input type="text" name="carte[<?= $rang ?>][reponse]" value="<?= e($p['reponse']) ?>"
-                   aria-label="Réponse" placeholder="<?= $p['reponse'] === '' ? 'À écrire — sans réponse, la carte est ignorée' : '' ?>">
-          </div>
-          <input type="hidden" name="carte[<?= $rang ?>][origine]" value="<?= e($p['origine']) ?>">
-          <input type="hidden" name="carte[<?= $rang ?>][source]" value="<?= e($p['source']) ?>">
-        </li>
-      <?php endforeach; ?>
-    </ul>
-
-    <div class="actions">
-      <button class="bouton" type="submit">Ajouter les cartes cochées</button>
-      <a class="bouton bouton--discret" href="<?= url('cours/' . $cours['id'] . '/cartes') ?>">Abandonner</a>
-    </div>
-  </form>
-<?php endif; ?>
-
-<div class="colonnes colonnes--cartes">
-  <section class="carte">
-    <h2>Fabriquer des cartes</h2>
-    <p class="champ__aide">
-      L'application relit le texte du cours, sa fiche de révision et ses documents
-      (PDF, Word, OpenDocument, PowerPoint, tableurs, texte), et propose une carte
-      partout où elle trouve un terme suivi de sa définition — « Terme : définition »,
-      « Terme = définition », « Terme — définition ». Elle ne devine rien : ce
-      qu'elle propose, vous le gardez ou vous le jetez. Un PDF scanné, lui, n'est
-      qu'une suite d'images : elle vous dira qu'elle n'a rien pu y lire.
-    </p>
-    <form method="post" action="<?= url('cours/' . $cours['id'] . '/cartes/proposer') ?>">
-      <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
-      <?= Vue::rendre('cartes/_sources', ['cours' => $cours]) ?>
-      <button class="bouton bouton--secondaire" type="submit">Proposer des cartes</button>
-    </form>
-
-    <hr class="separateur">
-
-    <h3>Ou écrire la vôtre</h3>
-    <form method="post" action="<?= url('cours/' . $cours['id'] . '/cartes') ?>" class="pile">
-      <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
-      <div class="champ">
-        <label for="question">Question</label>
-        <input type="text" id="question" name="question" maxlength="500" required>
-      </div>
-      <div class="champ">
-        <label for="reponse">Réponse</label>
-        <textarea id="reponse" name="reponse" rows="3" required></textarea>
-      </div>
-      <button class="bouton bouton--secondaire" type="submit">Ajouter la carte</button>
-    </form>
-  </section>
 
   <section class="carte">
     <h2>Le paquet</h2>
@@ -187,7 +98,6 @@ $provenance = static function (array $c): string {
       </ul>
     <?php endif; ?>
   </section>
-</div>
 
 <?php if ($cartes !== []): ?>
   <?php
