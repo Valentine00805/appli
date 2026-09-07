@@ -785,6 +785,8 @@
     var rang = 0;
     var sues = 0;
     var rates = 0;
+    // Ce qu'on a répondu à chaque carte, pour défaire le compte en revenant.
+    var verdicts = [];
     var affichageSu = seance.querySelector("[data-score-su]");
     var affichageRate = seance.querySelector("[data-score-rate]");
 
@@ -799,6 +801,8 @@
           montrer.textContent = "Voir la réponse";
           montrer.setAttribute("aria-expanded", "false");
           carte.querySelectorAll("[data-verdict]").forEach(function (b) { b.hidden = true; });
+          var arriere = carte.querySelector("[data-precedente]");
+          if (arriere) { arriere.hidden = rang === 0; }
         }
       });
 
@@ -810,6 +814,28 @@
       if (melanger) { melanger.disabled = reste < 2; }
     };
 
+    var peindreScore = function () {
+      if (affichageSu) { affichageSu.textContent = String(sues); }
+      if (affichageRate) { affichageRate.textContent = String(rates); }
+    };
+
+    /*
+     * Revenir en arrière retire du score le verdict de la carte qu'on rouvre :
+     * le compte doit dire ce qu'on a répondu, pas ce qu'on a répondu puis repris.
+     * Le serveur, lui, a déjà noté ce premier verdict ; répondre de nouveau le
+     * remplace.
+     */
+    var revenir = function () {
+      if (rang === 0) { return; }
+      rang--;
+
+      if (verdicts[rang] !== undefined) {
+        if (verdicts[rang]) { sues--; } else { rates--; }
+        verdicts[rang] = undefined;
+        peindreScore();
+      }
+      montrerCarte();
+    };
     var terminer = function () {
       cartesSeance.forEach(function (carte) { carte.hidden = true; });
       if (compteur) { compteur.hidden = true; }
@@ -829,9 +855,9 @@
         method: "POST", body: corps, credentials: "same-origin", keepalive: true,
       });
 
+      verdicts[rang] = sue;
       if (sue) { sues++; } else { rates++; }
-      if (affichageSu) { affichageSu.textContent = String(sues); }
-      if (affichageRate) { affichageRate.textContent = String(rates); }
+      peindreScore();
       rang++;
       if (rang >= cartesSeance.length) { terminer(); } else { montrerCarte(); }
     };
@@ -887,6 +913,7 @@
         rang = 0;
         sues = 0;
         rates = 0;
+        verdicts = [];
         if (affichageSu) { affichageSu.textContent = "0"; }
         if (affichageRate) { affichageRate.textContent = "0"; }
         if (fin) { fin.hidden = true; }
@@ -915,6 +942,9 @@
         // pour se réciter la carte une dernière fois.
         carte.querySelectorAll("[data-verdict]").forEach(function (b) { b.hidden = false; });
       });
+
+      var arriere = carte.querySelector("[data-precedente]");
+      if (arriere) { arriere.addEventListener("click", revenir); }
 
       carte.querySelectorAll("[data-verdict]").forEach(function (bouton) {
         bouton.addEventListener("click", function () {

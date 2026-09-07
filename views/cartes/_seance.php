@@ -116,6 +116,9 @@ $duesEnTout = $duesEnTout ?? count($cartes);
       <div class="seance__reponse" data-reponse><?= nl2br(e($c['reponse'])) ?></div>
 
       <div class="actions seance__actions">
+        <?php // Revenir en arrière : caché sur la première carte, où il n'irait nulle part. ?>
+        <button class="bouton bouton--discret bouton--petit" type="button"
+                data-precedente title="Revenir à la carte précédente" hidden>◀</button>
         <?php // Le même bouton montre et recache : on peut se reprendre avant de trancher. ?>
         <button class="bouton" type="button" data-montrer aria-expanded="false">
           Voir la réponse
