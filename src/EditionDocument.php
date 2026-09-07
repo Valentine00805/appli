@@ -47,23 +47,6 @@ final class EditionDocument
     /** Les tailles proposées, en points. Au-delà, on quitte le « basique ». */
     public const TAILLES = [8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 32, 40];
 
-    /**
-     * Les couleurs proposées, en hexadécimal sans le croisillon.
-     *
-     * Une liste courte plutôt qu'un nuancier : sept couleurs qui se lisent
-     * toutes sur du papier blanc, ce qu'un rouge pâle choisi à la souris ne
-     * garantit pas. Une couleur déjà dans le document est gardée telle quelle,
-     * même si elle n'est pas ici.
-     */
-    public const COULEURS = [
-        '000000' => 'Noir',
-        '6B7280' => 'Gris',
-        'DC2626' => 'Rouge',
-        'EA580C' => 'Orange',
-        '16A34A' => 'Vert',
-        '2563EB' => 'Bleu',
-        '7C3AED' => 'Violet',
-    ];
 
     /**
      * Où trouver le texte modifiable : la partie de l'archive à réécrire,

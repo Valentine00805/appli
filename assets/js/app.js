@@ -601,6 +601,7 @@
      * la barre restait alors sans effet.
      */
     var zoneChoisie = null;
+    var plageChoisie = null;
 
     var zoneDeLaSelection = function () {
       var selection = document.getSelection();
@@ -613,8 +614,27 @@
 
     document.addEventListener("selectionchange", function () {
       var zone = zoneDeLaSelection();
-      if (zone) { zoneChoisie = zone; }
+      if (!zone) { return; }
+      zoneChoisie = zone;
+      // La plage est retenue, et pas seulement la zone : cliquer dans un
+      // nuancier fait perdre la sélection, et il faut pouvoir la remettre.
+      var selection = document.getSelection();
+      plageChoisie = selection.rangeCount > 0 ? selection.getRangeAt(0).cloneRange() : null;
     });
+
+    /** La zone visée, sa sélection remise en place si un clic l'a défaite. */
+    var reprendreLaSelection = function () {
+      var zone = zoneDeLaSelection();
+      if (zone !== null) { return zone; }
+      if (zoneChoisie === null || plageChoisie === null) { return null; }
+
+      zoneChoisie.focus();
+      var selection = document.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(plageChoisie);
+
+      return zoneChoisie;
+    };
 
     var enrichir = function (ligne) {
       var champ = ligne.querySelector("textarea");
@@ -676,7 +696,7 @@
       };
 
       var agir = function (commande, valeur) {
-        var zone = zoneDeLaSelection() || zoneChoisie;
+        var zone = reprendreLaSelection();
         if (zone === null) { return; }
         if (document.activeElement !== zone) { zone.focus(); }
         document.execCommand(commande, false, valeur);
@@ -701,7 +721,7 @@
        * cadre englobant sans en poser de nouvelle.
        */
       var marquerLaSelection = function (habiller) {
-        var zone = zoneDeLaSelection() || zoneChoisie;
+        var zone = reprendreLaSelection();
         if (zone === null) { return; }
         if (document.activeElement !== zone) { zone.focus(); }
 
@@ -731,20 +751,29 @@
       var choixCouleur = barreOutils.querySelector("[data-couleur-texte]");
       if (choixCouleur) {
         choixCouleur.addEventListener("change", function () {
-          var couleur = choixCouleur.value;
+          var couleur = choixCouleur.value.replace("#", "").toUpperCase();
+          if (!/^[0-9A-F]{6}$/.test(couleur)) { return; }
           marquerLaSelection(function (span) {
-            // Sans couleur choisie, on le dit : le passage reprend celle du
-            // document, même s'il était dans un morceau coloré. Une classe
-            // plutôt qu'un style, pour que la zone le montre sans qu'une
-            // couleur en dur se retrouve dans ce qu'on enverra.
-            span.setAttribute("data-couleur", couleur || "auto");
-            if (couleur) {
-              span.style.color = "#" + couleur;
-            } else {
-              span.className = "riche-couleur-auto";
-            }
+            span.setAttribute("data-couleur", couleur);
+            span.style.color = "#" + couleur;
           });
-          choixCouleur.selectedIndex = 0;
+        });
+      }
+
+      /*
+       * Revenir à la couleur du document. C'est un choix, et non une absence :
+       * le passage sort du morceau coloré qui l'englobait. Une classe plutôt
+       * qu'un style, pour que la zone le montre sans qu'une couleur en dur se
+       * retrouve dans ce qu'on enverra.
+       */
+      var retourCouleur = barreOutils.querySelector("[data-couleur-defaut]");
+      if (retourCouleur) {
+        retourCouleur.addEventListener("mousedown", function (evenement) {
+          evenement.preventDefault();
+          marquerLaSelection(function (span) {
+            span.setAttribute("data-couleur", "auto");
+            span.className = "riche-couleur-auto";
+          });
         });
       }
 

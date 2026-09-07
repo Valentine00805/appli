@@ -4,7 +4,6 @@
  * @var array $paragraphes  le texte nu, un paragraphe par entrée
  * @var array $enrichis     le même texte, mise en forme comprise, en HTML
  * @var list<int> $tailles  les tailles proposées, en points
- * @var array<string, string> $couleurs  la palette, hexadécimal => nom
  * @var string $format
  * @var ?string $erreur
  */
@@ -67,14 +66,11 @@
       </label>
       <label class="barre-outils__taille">
         <span class="discret">Couleur</span>
-        <select data-couleur-texte>
-          <option value="">Celle du document</option>
-          <?php foreach ($couleurs as $hexa => $nom): ?>
-            <?php // Certains navigateurs colorent l'entrée : autant s'en servir. ?>
-            <option value="<?= e($hexa) ?>" style="color:#<?= e($hexa) ?>"><?= e($nom) ?></option>
-          <?php endforeach; ?>
-        </select>
+        <?php // Le nuancier du système : n'importe quelle couleur, sans liste. ?>
+        <input type="color" class="barre-outils__couleur" data-couleur-texte value="#000000">
       </label>
+      <button type="button" class="barre-outils__bouton" data-couleur-defaut
+              title="Remettre la couleur du document">⌫</button>
       <span class="champ__aide barre-outils__aide">
         Sélectionnez du texte, puis choisissez.
       </span>

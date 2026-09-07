@@ -1000,7 +1000,6 @@ final class CoursController
             'paragraphes' => $paragraphes,
             'enrichis'    => $enrichis,
             'tailles'     => EditionDocument::TAILLES,
-            'couleurs'    => EditionDocument::COULEURS,
             'format'      => ApercuDocument::format($nom),
             'erreur'      => $erreur,
         ], 'Modifier ' . $nom);

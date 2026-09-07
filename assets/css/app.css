@@ -1364,6 +1364,11 @@ input.depot__champ {
 .barre-outils__bouton:hover { border-color: var(--accent); color: var(--accent); }
 .barre-outils__taille { display: inline-flex; align-items: center; gap: .4rem; margin-left: .4rem; }
 .barre-outils__taille select { width: auto; }
+.barre-outils__couleur {
+  width: 2.4rem; height: 2.1rem; padding: .15rem;
+  border: 1px solid var(--bordure); border-radius: var(--rayon-s);
+  background: var(--fond-carte); cursor: pointer;
+}
 .barre-outils__aide { margin: 0 0 0 auto; }
 
 /* --- Fiche de révision : le volet d'un cours ------------------------------ */
