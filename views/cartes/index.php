@@ -8,6 +8,7 @@
  * @var array $cours     tous les cours, pour choisir où puiser
  * @var array $propositions   ce que le générateur vient de trouver, à valider
  * @var ?array $coursPropose  le cours dont elles viennent
+ * @var array $cartesParCours  les cartes de chaque paquet, par cours
  */
 ?>
 
@@ -169,46 +170,60 @@
        l'application vous en proposer.</p>
   </div>
 <?php else: ?>
-  <div class="grille grille--fiches">
+  <div class="pile pile--paquets">
     <?php foreach ($paquets as $p): ?>
       <?php
       $dues = (int) $p['a_revoir'];
       $sues = (int) $p['sues'];
       $nb = (int) $p['total'];
       ?>
-      <a class="carte fiche-carte" href="<?= url('cours/' . $p['id'] . '/cartes') ?>">
-        <p class="fiche-carte__entete">
-          <?php if ($p['matiere_nom'] !== null): ?>
-            <span class="pastille" style="background:<?= e($p['matiere_couleur']) ?>;color:<?= e(couleur_texte($p['matiere_couleur'])) ?>">
-              <?= e($p['matiere_nom']) ?>
-            </span>
-          <?php else: ?>
-            <span class="discret">Sans matière</span>
-          <?php endif; ?>
-          <?php if ($dues > 0): ?>
-            <span class="carte-du"><?= $dues ?> à revoir</span>
-          <?php endif; ?>
-        </p>
-
-        <h3 class="fiche-carte__titre"><?= e($p['titre']) ?></h3>
-
-        <?php
-        /*
-         * Le même anneau que sur la fiche : la boîte moyenne du paquet, de 1 à 5,
-         * ramenée en pourcentage. Un paquet neuf est vide, un paquet su est plein.
-         */
-        ?>
-        <p class="fiche-carte__ecoute">
-          <?= Vue::rendre('cours/_anneau', [
-              'pourcentage' => avancement_cartes($nb, (float) $p['boite_moyenne']),
-              'titre'       => 'Avancement des cartes',
-          ]) ?>
-          <span class="discret">
-            <?= $nb ?> carte<?= $nb > 1 ? 's' : '' ?>
-            <?php if ($sues > 0): ?>· <?= $sues ?> sue<?= $sues > 1 ? 's' : '' ?><?php endif; ?>
+      <?php
+      /*
+       * Le paquet s'ouvre ici même : « details » le fait sans une ligne de
+       * script, et sans quitter l'onglet où l'on est en train de travailler.
+       */
+      ?>
+      <details class="carte paquet-bloc">
+        <summary class="paquet-bloc__entete">
+          <span class="paquet-bloc__titre">
+            <?php if ($p['matiere_nom'] !== null): ?>
+              <span class="pastille" style="background:<?= e($p['matiere_couleur']) ?>;color:<?= e(couleur_texte($p['matiere_couleur'])) ?>">
+                <?= e($p['matiere_nom']) ?>
+              </span>
+            <?php else: ?>
+              <span class="discret">Sans matière</span>
+            <?php endif; ?>
+            <strong><?= e($p['titre']) ?></strong>
+            <?php if ($dues > 0): ?>
+              <span class="carte-du"><?= $dues ?> à revoir</span>
+            <?php endif; ?>
           </span>
+
+          <span class="paquet-bloc__mesure">
+            <?= Vue::rendre('cours/_anneau', [
+                'pourcentage' => avancement_cartes($nb, (float) $p['boite_moyenne']),
+                'titre'       => 'Avancement des cartes',
+            ]) ?>
+            <span class="discret">
+              <?= $nb ?> carte<?= $nb > 1 ? 's' : '' ?>
+              <?php if ($sues > 0): ?>· <?= $sues ?> sue<?= $sues > 1 ? 's' : '' ?><?php endif; ?>
+            </span>
+          </span>
+        </summary>
+
+        <p class="actions paquet-bloc__actions">
+          <?php if ($dues > 0): ?>
+            <a class="bouton bouton--petit" href="<?= url('cartes/seance', ['cours' => $p['id']]) ?>">Réviser</a>
+          <?php endif; ?>
+          <a class="bouton bouton--secondaire bouton--petit" href="<?= url('cours/' . $p['id']) ?>">Voir le cours</a>
         </p>
-      </a>
+
+        <?= Vue::rendre('cartes/_paquet', [
+            'cours'  => $p,
+            'cartes' => $cartesParCours[(int) $p['id']] ?? [],
+            'retour' => 'onglet',
+        ]) ?>
+      </details>
     <?php endforeach; ?>
   </div>
 <?php endif; ?>

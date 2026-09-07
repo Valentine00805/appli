@@ -48,8 +48,19 @@ final class CartesController
             [$userId]
         );
 
+        // Les cartes de tous les paquets : l'onglet les déplie sur place, il n'y
+        // a donc pas d'autre page à charger.
+        $cartesParCours = [];
+        foreach (Database::all(
+            'SELECT * FROM cartes WHERE user_id = ? ORDER BY cours_id, boite, revoir_le, id',
+            [$userId]
+        ) as $carte) {
+            $cartesParCours[(int) $carte['cours_id']][] = $carte;
+        }
+
         Vue::afficher('cartes/index', [
             'paquets'  => $paquets,
+            'cartesParCours' => $cartesParCours,
             // De quoi fabriquer sans passer par la page d'un cours.
             'cours'    => Database::all(
                 'SELECT c.id, c.titre, m.nom AS matiere_nom,
@@ -503,6 +514,9 @@ final class CartesController
         }
         if ($retour === 'volet') {
             redirect('cours/' . $coursId, ['revision' => 1]);
+        }
+        if ($retour === 'onglet') {
+            redirect('cartes');
         }
 
         redirect('cours/' . $coursId . '/cartes');

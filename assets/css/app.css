@@ -433,6 +433,20 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
 }
 .proposition__garder { display: flex; align-items: center; gap: .45rem; cursor: pointer; }
 .proposition__source { font-size: .75rem; color: var(--texte-doux); }
+/* Un paquet se déplie dans l'onglet, sans changer de page. */
+.pile--paquets { display: grid; gap: .8rem; }
+.paquet-bloc summary { cursor: pointer; list-style: none; }
+.paquet-bloc summary::-webkit-details-marker { display: none; }
+.paquet-bloc__entete {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 1rem; flex-wrap: wrap;
+}
+.paquet-bloc__titre { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; min-width: 0; }
+.paquet-bloc__mesure { display: flex; align-items: center; gap: .5rem; font-size: .85rem; }
+.paquet-bloc__mesure .anneau { width: 40px; height: 40px; }
+.paquet-bloc__actions { margin: .9rem 0 .2rem; }
+.paquet-bloc[open] .paquet-bloc__entete { margin-bottom: .3rem; }
+
 /* Choisir un cours et ce qu'on y relit. */
 .fabrique { margin-bottom: 1.5rem; }
 .fabrique__form { display: grid; gap: .9rem; max-width: 34rem; }
