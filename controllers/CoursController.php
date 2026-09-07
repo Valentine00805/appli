@@ -121,6 +121,36 @@ final class CoursController
         ], $cours['titre']);
     }
 
+    /**
+     * Enregistre le seul texte du cours, depuis sa page.
+     *
+     * Corriger une phrase ne devrait pas obliger à rouvrir la fiche entière,
+     * avec le titre, la matière et le dossier : c'est beaucoup de champs à
+     * traverser, et autant d'occasions d'en changer un par mégarde.
+     */
+    public function enregistrerContenu(int $id): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $userId = Auth::id();
+
+        $existe = Database::valeur('SELECT id FROM cours WHERE id = ? AND user_id = ?', [$id, $userId]);
+        if ($existe === null) {
+            $this->introuvable();
+        }
+
+        $contenu = trim((string) ($_POST['contenu'] ?? ''));
+
+        Database::run(
+            'UPDATE cours SET contenu = ? WHERE id = ? AND user_id = ?',
+            // Un texte effacé redevient absent, comme une fiche vidée.
+            [$contenu === '' ? null : $contenu, $id, $userId]
+        );
+
+        Session::flash('succes', $contenu === '' ? 'Contenu du cours vidé.' : 'Contenu du cours enregistré.');
+        redirect('cours/' . $id, ($_POST['revision'] ?? '') === '1' ? ['revision' => 1] : []);
+    }
+
     /** Enregistre la fiche de révision d'un cours, depuis son volet. */
     public function enregistrerRevision(int $id): void
     {

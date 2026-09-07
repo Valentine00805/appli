@@ -461,6 +461,21 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
 .sources__choix .discret { font-size: .78rem; margin-left: .35rem; }
 .sources__choix--vide { cursor: default; opacity: .55; }
 
+/* Corriger le texte d'un cours sans quitter sa page. Replié, le bloc ne doit
+   pas peser plus qu'un lien. */
+.edition-contenu { margin-top: 1rem; }
+.edition-contenu[open] { border-top: 1px solid var(--bordure); padding-top: .9rem; }
+.edition-contenu__ouvrir {
+  cursor: pointer; width: fit-content;
+  font-size: .85rem; color: var(--texte-doux);
+}
+.edition-contenu__ouvrir:hover { color: var(--accent); }
+.edition-contenu[open] .edition-contenu__ouvrir { margin-bottom: .7rem; }
+.edition-contenu__texte {
+  min-height: 16rem; resize: vertical;
+  font-family: inherit; line-height: 1.6;
+}
+
 /* Nommer quelqu'un que la liste ne connaît pas encore : le champ se glisse
    sous elle, et n'apparaît que si on le demande. */
 .qui-rembourse__autre { margin-top: .4rem; }

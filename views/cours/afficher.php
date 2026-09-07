@@ -55,13 +55,44 @@ $nbElements = count($elements) + count($fichiersFiche);
 <div class="colonnes<?= $revision ? ' colonnes--volet' : '' ?>">
   <?php // Contenu du cours et cartes qui en dependent : une seule colonne. ?>
   <div class="cours-colonne">
+    <?php $sansContenu = trim((string) $cours['contenu']) === ''; ?>
     <article class="carte">
-      <?php if (trim((string) $cours['contenu']) === ''): ?>
-        <p class="discret">Ce cours n'a pas encore de contenu écrit.
-          <a href="<?= url('cours/' . $cours['id'] . '/modifier') ?>">En ajouter</a>.</p>
+      <?php if ($sansContenu): ?>
+        <p class="discret">Ce cours n'a pas encore de contenu écrit.</p>
       <?php else: ?>
         <div class="contenu-cours"><?= e($cours['contenu']) ?></div>
       <?php endif; ?>
+
+      <?php
+      /*
+       * Le texte se corrige ici même : « Modifier » en haut de page ouvre la
+       * fiche entière — titre, matière, dossier —, ce qui est beaucoup pour une
+       * faute de frappe. « details » suffit à déplier, sans une ligne de script.
+       */
+      ?>
+      <details class="edition-contenu"<?= $sansContenu ? ' open' : '' ?>>
+        <summary class="edition-contenu__ouvrir">
+          ✏️ <?= $sansContenu ? 'Écrire le contenu' : 'Modifier le contenu' ?>
+        </summary>
+
+        <form method="post" action="<?= url('cours/' . $cours['id'] . '/contenu') ?>">
+          <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
+          <?php // Revenir là où l'on était : le volet de révision reste ouvert. ?>
+          <?php if ($revision): ?>
+            <input type="hidden" name="revision" value="1">
+          <?php endif; ?>
+
+          <div class="champ">
+            <label for="contenu-cours" class="legende">Le cours lui-même</label>
+            <textarea id="contenu-cours" name="contenu" class="edition-contenu__texte"
+                      placeholder="Le plan, les notes prises en amphi, ce que le professeur a dicté…"><?= e($cours['contenu']) ?></textarea>
+          </div>
+
+          <p class="actions">
+            <button class="bouton bouton--petit" type="submit">Enregistrer le contenu</button>
+          </p>
+        </form>
+      </details>
     </article>
 
     <div class="pile">
