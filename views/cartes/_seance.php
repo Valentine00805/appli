@@ -100,7 +100,7 @@ $duesEnTout = $duesEnTout ?? count($cartes);
     ?>
     <p class="champ__aide seance__plafond">
       Séance de <?= count($cartes) ?> cartes sur les <?= $duesEnTout ?> à revoir.
-      Les <?= $duesEnTout - count($cartes) ?> autres attendront la prochaine.
+      Les <?= $duesEnTout - count($cartes) ?> autres attendront la prochaine séance.
     </p>
   <?php endif; ?>
 
