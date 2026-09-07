@@ -188,3 +188,28 @@ $provenance = static function (array $c): string {
     <?php endif; ?>
   </section>
 </div>
+
+<?php if ($cartes !== []): ?>
+  <?php
+  /*
+   * Vider le paquet efface aussi ce qu'on savait de chaque carte : la boîte
+   * où elle était montée, les fois où on l'a sue. Le bouton le dit, et la
+   * confirmation le redit avec le compte.
+   */
+  ?>
+  <section class="carte zone-danger">
+    <div>
+      <h2>Vider le paquet</h2>
+      <p class="champ__aide">
+        Les <?= count($cartes) ?> cartes de ce cours seront supprimées, ainsi que
+        votre avancement sur chacune. Le cours, sa fiche et ses documents ne
+        sont pas touchés : vous pourrez en refabriquer des cartes.
+      </p>
+    </div>
+    <form method="post" action="<?= url('cours/' . $cours['id'] . '/cartes/vider') ?>"
+          data-confirmation="Supprimer les <?= count($cartes) ?> cartes de ce cours, et votre avancement sur chacune ?">
+      <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
+      <button class="bouton bouton--danger" type="submit">Supprimer les <?= count($cartes) ?> cartes</button>
+    </form>
+  </section>
+<?php endif; ?>

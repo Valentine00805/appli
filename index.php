@@ -20,7 +20,7 @@ date_default_timezone_set('Europe/Paris');
 
 /* --- Les classes de l'application --- */
 require __DIR__ . '/src/Config.php';
-require __DIR__ . '/src/Database.php';
+require __DIR__ . '/src/BaseDeDonnees.php';
 require __DIR__ . '/src/Session.php';
 require __DIR__ . '/src/Auth.php';
 require __DIR__ . '/src/LimiteurConnexion.php';
@@ -249,6 +249,7 @@ $routes = [
     ['POST', 'cours/{id}/cartes',            [CartesController::class, 'ajouterUne']],
     ['POST', 'cours/{id}/cartes/proposer',   [CartesController::class, 'proposer']],
     ['POST', 'cours/{id}/cartes/retenir',    [CartesController::class, 'retenir']],
+    ['POST', 'cours/{id}/cartes/vider',      [CartesController::class, 'viderPaquet']],
 
     ['GET',  'tableau',                      [KanbanController::class, 'index']],
     ['POST', 'tableau/deplacer',             [KanbanController::class, 'deplacer']],

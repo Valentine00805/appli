@@ -414,6 +414,39 @@ final class CartesController
         redirect('cours/' . $carte['cours_id'] . '/cartes');
     }
 
+    /**
+     * Vide le paquet d'un cours.
+     *
+     * La suppression est bornée au cours et à son propriétaire : deux
+     * conditions, pas une. Ce qui disparaît n'est pas seulement les cartes mais
+     * ce qu'on savait d'elles — la boîte où chacune était montée, le nombre de
+     * fois qu'on l'a sue. Le compte est donc annoncé avant, et redit après.
+     */
+    public function viderPaquet(int $id): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $userId = Auth::id();
+        $cours = $this->cours($id, $userId);
+
+        $combien = (int) Database::valeur(
+            'SELECT COUNT(*) FROM cartes WHERE cours_id = ? AND user_id = ?',
+            [$id, $userId]
+        );
+
+        if ($combien === 0) {
+            Session::flash('erreur', 'Ce paquet est déjà vide.');
+            redirect('cours/' . $id . '/cartes');
+        }
+
+        Database::run('DELETE FROM cartes WHERE cours_id = ? AND user_id = ?', [$id, $userId]);
+
+        Session::flash('succes', $combien > 1
+            ? 'Les ' . $combien . ' cartes de « ' . $cours['titre'] . ' » ont été supprimées.'
+            : 'La carte de « ' . $cours['titre'] . ' » a été supprimée.');
+        redirect('cartes');
+    }
+
     // --- Réviser -------------------------------------------------------------
 
     /**

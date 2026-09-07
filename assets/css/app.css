@@ -473,6 +473,14 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
 .carte-ligne__boite { flex: none; font-size: .7rem; letter-spacing: .1em; color: var(--accent); }
 .carte-ligne__edition { margin: .6rem 0; }
 
+/* Ce qui efface pour de bon se tient à l'écart du reste. */
+.zone-danger {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 1rem; flex-wrap: wrap; margin-top: 1.5rem;
+}
+.zone-danger h2 { margin: 0 0 .25rem; font-size: 1rem; }
+.zone-danger .champ__aide { margin: 0; max-width: 42rem; }
+
 /* La séance : une carte à la fois, au milieu de la page. */
 .seance { max-width: 44rem; margin: 0 auto; }
 .seance__compteur { margin: 0 0 .8rem; color: var(--texte-doux); font-size: .88rem; text-align: center; }
