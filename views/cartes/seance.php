@@ -9,6 +9,7 @@
  *
  * @var array $cartes
  * @var ?array $cours  le cours, si la séance ne porte que sur lui
+ * @var int $rezero  cartes du paquet, si une remise à zéro a du sens ; 0 sinon
  */
 $retour = $cours !== null ? url('cours/' . $cours['id'] . '/cartes') : url('cartes');
 ?>
@@ -25,6 +26,8 @@ $retour = $cours !== null ? url('cours/' . $cours['id'] . '/cartes') : url('cart
 
   <?= Vue::rendre('cartes/_seance', [
       'cartes' => $cartes, 'avecCours' => $cours === null, 'retour' => $retour,
+      'rezeroCours' => $rezero > 0 ? (int) $cours['id'] : null,
+      'rezeroTotal' => $rezero,
   ]) ?>
 
 <?php endif; ?>

@@ -12,9 +12,15 @@
  * @var bool $avecCours  vrai quand la séance mêle plusieurs cours, et qu'il
  *                       faut donc dire d'où vient chaque carte
  * @var ?string $retour  l'adresse du bouton de fin ; null pour rester sur place
+ * @var ?int $rezeroCours   le cours dont on peut remettre le paquet à zéro
+ * @var int $rezeroTotal    combien de cartes il compte
+ * @var ?string $rezeroRetour  où revenir ensuite : 'fiche', 'volet', ou null
  */
 $avecCours = $avecCours ?? false;
 $retour = $retour ?? null;
+$rezeroCours = $rezeroCours ?? null;
+$rezeroTotal = $rezeroTotal ?? 0;
+$rezeroRetour = $rezeroRetour ?? null;
 ?>
 <div class="seance" data-seance data-jeton="<?= e(Session::jetonCsrf()) ?>">
   <div class="seance__entete">
@@ -32,6 +38,26 @@ $retour = $retour ?? null;
       <button class="bouton bouton--discret bouton--petit" type="button" data-melanger>
         🔀 Mélanger
       </button>
+    <?php endif; ?>
+
+    <?php if ($rezeroCours !== null): ?>
+      <?php
+      /*
+       * Remettre tout le paquet à revoir sans quitter la séance des yeux. Elle
+       * repartira du début, ce que la demande de confirmation annonce.
+       */
+      ?>
+      <form method="post" action="<?= url('cours/' . $rezeroCours . '/cartes/rezero') ?>"
+            class="en-ligne"
+            data-confirmation="Remettre les <?= $rezeroTotal ?> cartes de ce cours à revoir aujourd'hui ? La séance en cours repartira du début.">
+        <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
+        <?php if ($rezeroRetour !== null): ?>
+          <input type="hidden" name="retour" value="<?= e($rezeroRetour) ?>">
+        <?php endif; ?>
+        <button class="bouton bouton--discret bouton--petit" type="submit">
+          🔁 Tout remettre à revoir
+        </button>
+      </form>
     <?php endif; ?>
 
     <?php

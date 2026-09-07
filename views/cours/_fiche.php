@@ -330,7 +330,12 @@ $avancementFiche = avancement_anneaux(fichiers_suivis($fichiersFiche));
 
     <?php if (($cartes['dues'] ?? []) !== []): ?>
       <div class="fiche__seance" data-seance-sur-place hidden>
-        <?= Vue::rendre('cartes/_seance', ['cartes' => $cartes['dues']]) ?>
+        <?= Vue::rendre('cartes/_seance', [
+            'cartes' => $cartes['dues'],
+            'rezeroCours'  => $cartes['total'] > $cartes['a_revoir'] ? (int) $cours['id'] : null,
+            'rezeroTotal'  => $cartes['total'],
+            'rezeroRetour' => $surPage ? 'fiche' : 'volet',
+        ]) ?>
       </div>
     <?php endif; ?>
   </div>

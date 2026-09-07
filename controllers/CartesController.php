@@ -415,6 +415,26 @@ final class CartesController
     }
 
     /**
+     * Combien de cartes compte ce paquet, s'il y a de quoi le reprendre.
+     *
+     * Zéro quand tout est déjà en boîte 1 et dû : le bouton n'aurait rien à
+     * faire, et mieux vaut ne pas le montrer que le montrer inerte.
+     */
+    private function paquetAReprendre(int $coursId, int $userId): int
+    {
+        $aBouger = (int) Database::valeur(
+            'SELECT COUNT(*) FROM cartes
+              WHERE cours_id = ? AND user_id = ? AND (boite > 1 OR revoir_le > CURDATE())',
+            [$coursId, $userId]
+        );
+
+        return $aBouger === 0 ? 0 : (int) Database::valeur(
+            'SELECT COUNT(*) FROM cartes WHERE cours_id = ? AND user_id = ?',
+            [$coursId, $userId]
+        );
+    }
+
+    /**
      * Ramène tout un paquet au début du cycle.
      *
      * Les cartes ne bougent pas, ni ce qu'on sait d'elles : seul l'échéancier
@@ -544,6 +564,8 @@ final class CartesController
         Vue::afficher('cartes/seance', [
             'cartes' => $cartes,
             'cours'  => $cours,
+            // Proposer la remise à zéro seulement si elle changerait quelque chose.
+            'rezero' => $cours === null ? 0 : $this->paquetAReprendre((int) $cours['id'], $userId),
         ], $cours !== null ? 'Réviser — ' . $cours['titre'] : 'Réviser');
     }
 
