@@ -746,24 +746,45 @@
         }
       };
 
+      /* Le greffon ne relit pas un fragment changé sur place : on remplace le cadre. */
+      var afficherPage = function (numero) {
+        var source = cadre.getAttribute("src").split("#")[0];
+        var remplacant = cadre.cloneNode(false);
+        remplacant.setAttribute("src", source + "#page=" + numero + "&navpanes=0&view=FitH");
+        cadre.replaceWith(remplacant);
+        cadre = remplacant;
+      };
+
       var aller = function (voulue) {
         var neuve = Math.max(1, Math.min(pages, voulue));
         if (neuve === page) { return; }
         page = neuve;
         atteinte = neuve;
 
-        var source = cadre.getAttribute("src").split("#")[0];
-        var remplacant = cadre.cloneNode(false);
-        remplacant.setAttribute("src", source + "#page=" + page + "&navpanes=0&view=FitH");
-        cadre.replaceWith(remplacant);
-        cadre = remplacant;
+        afficherPage(page);
+        peindre();
+        envoyer();
+      };
 
+      /*
+       * Déclarer le document lu. On ne passe pas par aller() : depuis la dernière
+       * page, il n'aurait rien à faire, alors qu'un document ouvert sans être
+       * parcouru doit tout de même pouvoir être marqué fini.
+       */
+      var finir = function () {
+        if (page !== pages) {
+          page = pages;
+          afficherPage(page);
+        }
+        atteinte = pages;
         peindre();
         envoyer();
       };
 
       if (recule) { recule.addEventListener("click", function () { aller(page - 1); }); }
       if (avance) { avance.addEventListener("click", function () { aller(page + 1); }); }
+      var fini = bloc.querySelector("[data-pdf-fini]");
+      if (fini) { fini.addEventListener("click", finir); }
       peindre();
     });
   }

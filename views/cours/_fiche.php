@@ -241,6 +241,9 @@ $avancementFiche = avancement_anneaux(
                     </span>
                     <button class="bouton bouton--discret bouton--petit" type="button"
                             data-pdf-avance title="Page suivante">▶</button>
+                    <?php // Lu en diagonale, ou déjà connu : on le déclare fini sans tourner les pages. ?>
+                    <button class="bouton bouton--discret bouton--petit" type="button"
+                            data-pdf-fini title="Marquer ce document comme lu">Terminer</button>
                   </span>
                 <?php endif; ?>
 
