@@ -28,8 +28,8 @@
 <?php else: ?>
 
   <div class="flash flash--info" style="margin-bottom:1.25rem">
-    <strong>Le gras, l'italique, le souligné, la taille et la couleur se
-    modifient ici.</strong> Le reste de la mise en forme — styles, polices,
+    <strong>Le gras, l'italique, le souligné, la taille, la couleur et le
+    surlignage se modifient ici.</strong> Le reste de la mise en forme — styles, polices,
     alignements, images, tableaux — reste dans le document sans passer par
     cette page, et n'est donc pas perdu. Une copie du document d'origine est
     gardée avant la première modification.
@@ -85,6 +85,19 @@
                aria-label="Choisir une autre couleur">
         <button type="button" class="barre-outils__bouton" data-couleur-defaut
                 title="Remettre la couleur du document">⌫</button>
+      </span>
+      <span class="barre-outils__couleurs">
+        <span class="discret">Surlignage</span>
+        <button type="button" class="barre-outils__bouton barre-outils__surligner"
+                data-fond-appliquer title="Surligner le texte choisi">
+          <span aria-hidden="true">🖍</span>
+          <span class="sr-only">Surligner</span>
+        </button>
+        <input type="color" class="barre-outils__couleur" data-fond-texte
+               value="#FFFF00" title="Choisir une autre couleur de surlignage"
+               aria-label="Choisir une autre couleur de surlignage">
+        <button type="button" class="barre-outils__bouton" data-fond-defaut
+                title="Retirer le surlignage">⌫</button>
       </span>
       <span class="champ__aide barre-outils__aide">
         Sélectionnez du texte, puis cliquez sur une commande.

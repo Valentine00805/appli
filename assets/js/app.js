@@ -788,6 +788,53 @@
       }
 
       /*
+       * Le surlignage suit la même mécanique que la couleur du texte : un
+       * nuancier pour choisir, un bouton pour poser, un autre pour retirer.
+       */
+      var choixFond = barreOutils.querySelector("[data-fond-texte]");
+      var appliquerFond = barreOutils.querySelector("[data-fond-appliquer]");
+
+      var poserLeFond = function () {
+        if (!choixFond) { return; }
+        var fond = choixFond.value.replace("#", "").toUpperCase();
+        if (!/^[0-9A-F]{6}$/.test(fond)) { return; }
+        marquerLaSelection(function (span) {
+          span.setAttribute("data-fond", fond);
+          span.style.backgroundColor = "#" + fond;
+        });
+      };
+
+      if (choixFond) {
+        var montrerLeFond = function () {
+          if (appliquerFond) { appliquerFond.style.backgroundColor = choixFond.value; }
+        };
+        montrerLeFond();
+        choixFond.addEventListener("input", montrerLeFond);
+        choixFond.addEventListener("change", function () {
+          montrerLeFond();
+          poserLeFond();
+        });
+      }
+
+      if (appliquerFond) {
+        appliquerFond.addEventListener("mousedown", function (evenement) {
+          evenement.preventDefault();
+          poserLeFond();
+        });
+      }
+
+      var retourFond = barreOutils.querySelector("[data-fond-defaut]");
+      if (retourFond) {
+        retourFond.addEventListener("mousedown", function (evenement) {
+          evenement.preventDefault();
+          marquerLaSelection(function (span) {
+            span.setAttribute("data-fond", "auto");
+            span.className = "riche-fond-auto";
+          });
+        });
+      }
+
+      /*
        * Revenir à la couleur du document. C'est un choix, et non une absence :
        * le passage sort du morceau coloré qui l'englobait. Une classe plutôt
        * qu'un style, pour que la zone le montre sans qu'une couleur en dur se

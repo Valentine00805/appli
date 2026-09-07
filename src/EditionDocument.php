@@ -44,6 +44,22 @@ final class EditionDocument
         'cs' => 33, 'em' => 34, 'lang' => 35, 'eastAsianLayout' => 36,
     ];
 
+    /**
+     * Les couleurs du surligneur de Word, qui n'en connaît pas d'autres.
+     *
+     * Quand la couleur choisie tombe sur l'une d'elles, on écrit un vrai
+     * surlignage — celui que Word retire d'un clic sur son propre bouton. Sinon
+     * on écrit une trame de fond, qui accepte n'importe quelle teinte.
+     */
+    private const SURLIGNAGES = [
+        '000000' => 'black',    '0000FF' => 'blue',        '00FFFF' => 'cyan',
+        '000080' => 'darkBlue', '008080' => 'darkCyan',    '808080' => 'darkGray',
+        '008000' => 'darkGreen','800080' => 'darkMagenta', '800000' => 'darkRed',
+        '808000' => 'darkYellow','00FF00' => 'green',      'C0C0C0' => 'lightGray',
+        'FF00FF' => 'magenta',  'FF0000' => 'red',         'FFFFFF' => 'white',
+        'FFFF00' => 'yellow',
+    ];
+
     /** Les tailles proposées, en points. Au-delà, on quitte le « basique ». */
     public const TAILLES = [8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 32, 40];
 
@@ -543,6 +559,10 @@ final class EditionDocument
                 continue;
             }
             $morceau = htmlspecialchars($passage['texte'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+            if ($passage['fond'] !== null) {
+                $morceau = '<span data-fond="' . $passage['fond']
+                    . '" style="background-color:#' . $passage['fond'] . '">' . $morceau . '</span>';
+            }
             if ($passage['couleur'] !== null) {
                 $morceau = '<span data-couleur="' . $passage['couleur']
                     . '" style="color:#' . $passage['couleur'] . '">' . $morceau . '</span>';
@@ -592,7 +612,8 @@ final class EditionDocument
         $passages = [];
         if ($racine !== null) {
             self::parcourirHtml($racine, ['gras' => false, 'italique' => false,
-                'souligne' => false, 'taille' => null, 'couleur' => null], $passages);
+                'souligne' => false, 'taille' => null, 'couleur' => null,
+                'fond' => null], $passages);
         }
 
         return self::fondrePassages($passages);
@@ -642,6 +663,12 @@ final class EditionDocument
             } elseif ($couleur !== null) {
                 $sien['couleur'] = $couleur;
             }
+            $fond = self::fondDemande($enfant);
+            if ($fond === 'auto') {
+                $sien['fond'] = null;
+            } elseif ($fond !== null) {
+                $sien['fond'] = $fond;
+            }
             $sien = self::styleEnLigne($enfant, $sien);
 
             self::parcourirHtml($enfant, $sien, $passages);
@@ -676,16 +703,45 @@ final class EditionDocument
      */
     private static function couleurDemandee(DOMElement $element): ?string
     {
-        $brut = trim($element->getAttribute('data-couleur'));
+        return self::hexa(
+            $element->getAttribute('data-couleur'),
+            $element->getAttribute('style'),
+            '/(?<![-\w])color\s*:\s*([^;]+)/i'
+        );
+    }
 
-        if ($brut === '' && preg_match('/(?<![-\w])color\s*:\s*([^;]+)/i',
-            $element->getAttribute('style'), $m) === 1) {
+    /**
+     * Le fond écrit sur cette balise.
+     *
+     * @return ?string  six chiffres hexadécimaux, « auto », ou null
+     */
+    private static function fondDemande(DOMElement $element): ?string
+    {
+        return self::hexa(
+            $element->getAttribute('data-fond'),
+            $element->getAttribute('style'),
+            '/background(?:-color)?\s*:\s*([^;]+)/i'
+        );
+    }
+
+    /**
+     * Une couleur, lue d'abord dans notre attribut puis dans le style CSS.
+     *
+     * @return ?string  six chiffres hexadécimaux, « auto », ou null
+     */
+    private static function hexa(string $attribut, string $style, string $motif): ?string
+    {
+        $brut = trim($attribut);
+
+        if ($brut === '' && preg_match($motif, $style, $m) === 1) {
             $brut = trim($m[1]);
         }
         if ($brut === '') {
             return null;
         }
-        if (strtolower($brut) === 'auto' || strtolower($brut) === 'inherit') {
+        // « auto » est le mot que l'éditeur envoie pour dire « celle du
+        // document » ; les deux autres sont ceux qu'un navigateur écrit.
+        if (in_array(strtolower($brut), ['auto', 'inherit', 'transparent'], true)) {
             return 'auto';
         }
 
@@ -742,13 +798,15 @@ final class EditionDocument
                 && $fondus[$dernier]['souligne'] === $passage['souligne']
                 && $fondus[$dernier]['taille'] === $passage['taille']
                 && $fondus[$dernier]['couleur'] === $passage['couleur']
+                && $fondus[$dernier]['fond'] === $passage['fond']
             ) {
                 $fondus[$dernier]['texte'] .= $passage['texte'];
                 continue;
             }
             $fondus[] = ['texte' => $passage['texte'], 'gras' => $passage['gras'],
                 'italique' => $passage['italique'], 'souligne' => $passage['souligne'],
-                'taille' => $passage['taille'], 'couleur' => $passage['couleur']];
+                'taille' => $passage['taille'], 'couleur' => $passage['couleur'],
+                'fond' => $passage['fond']];
         }
 
         return array_values(array_filter($fondus, static fn (array $p): bool => $p['texte'] !== ''));
@@ -792,6 +850,7 @@ final class EditionDocument
                 'souligne' => self::souligneWord($rPr),
                 'taille'   => self::tailleWord($rPr),
                 'couleur'  => self::couleurWord($rPr),
+                'fond'     => self::fondWord($rPr),
             ];
         }
 
@@ -843,6 +902,34 @@ final class EditionDocument
         $val = strtoupper(ltrim($color->getAttributeNS(self::NS_W, 'val'), '#'));
 
         return preg_match('/^[0-9A-F]{6}$/', $val) === 1 ? $val : null;
+    }
+
+    /**
+     * Le fond du passage : un surlignage nommé, ou une trame de fond.
+     *
+     * Word écrit l'un ou l'autre selon l'outil employé ; l'éditeur les montre
+     * de la même façon.
+     */
+    private static function fondWord(?DOMElement $rPr): ?string
+    {
+        $surlignage = self::enfantWord($rPr, 'highlight');
+        if ($surlignage !== null) {
+            $nom = $surlignage->getAttributeNS(self::NS_W, 'val');
+            $hexa = array_search($nom, self::SURLIGNAGES, true);
+            if ($hexa !== false) {
+                return $hexa;
+            }
+        }
+
+        $trame = self::enfantWord($rPr, 'shd');
+        if ($trame !== null) {
+            $fill = strtoupper(ltrim($trame->getAttributeNS(self::NS_W, 'fill'), '#'));
+            if (preg_match('/^[0-9A-F]{6}$/', $fill) === 1) {
+                return $fill;
+            }
+        }
+
+        return null;
     }
 
     private static function enfantWord(?DOMElement $parent, string $nom): ?DOMElement
@@ -926,7 +1013,8 @@ final class EditionDocument
     private static function marquesUtiles(array $passage): bool
     {
         return $passage['gras'] || $passage['italique'] || $passage['souligne']
-            || $passage['taille'] !== null || $passage['couleur'] !== null;
+            || $passage['taille'] !== null || $passage['couleur'] !== null
+            || $passage['fond'] !== null;
     }
 
     /**
@@ -938,7 +1026,7 @@ final class EditionDocument
      */
     private static function marquerRpr(DOMDocument $doc, DOMElement $rPr, array $passage): void
     {
-        foreach (['b', 'bCs', 'i', 'iCs', 'u', 'sz', 'szCs', 'color'] as $nom) {
+        foreach (['b', 'bCs', 'i', 'iCs', 'u', 'sz', 'szCs', 'color', 'highlight', 'shd'] as $nom) {
             $ancien = self::enfantWord($rPr, $nom);
             if ($ancien !== null) {
                 $rPr->removeChild($ancien);
@@ -964,6 +1052,20 @@ final class EditionDocument
         if ($passage['couleur'] !== null) {
             self::poserDansRpr($doc, $rPr, 'color', $passage['couleur']);
         }
+        if ($passage['fond'] !== null) {
+            $nomme = self::SURLIGNAGES[$passage['fond']] ?? null;
+            if ($nomme !== null) {
+                self::poserDansRpr($doc, $rPr, 'highlight', $nomme);
+            } else {
+                // Le surligneur de Word ne connaît que ses seize couleurs : pour
+                // les autres, une trame de fond, qui accepte tout.
+                $trame = $doc->createElementNS(self::NS_W, 'w:shd');
+                $trame->setAttributeNS(self::NS_W, 'w:val', 'clear');
+                $trame->setAttributeNS(self::NS_W, 'w:color', 'auto');
+                $trame->setAttributeNS(self::NS_W, 'w:fill', $passage['fond']);
+                self::rangerDansRpr($rPr, $trame);
+            }
+        }
     }
 
     /** Insère un enfant de <w:rPr> à la place que le schéma lui réserve. */
@@ -977,8 +1079,13 @@ final class EditionDocument
         if ($valeur !== null) {
             $element->setAttributeNS(self::NS_W, 'w:val', $valeur);
         }
+        self::rangerDansRpr($rPr, $element);
+    }
 
-        $rang = self::ORDRE_RPR[$nom] ?? PHP_INT_MAX;
+    /** Glisse un élément déjà bâti à la place que le schéma lui réserve. */
+    private static function rangerDansRpr(DOMElement $rPr, DOMElement $element): void
+    {
+        $rang = self::ORDRE_RPR[$element->localName] ?? PHP_INT_MAX;
         foreach ($rPr->childNodes as $enfant) {
             if (!$enfant instanceof DOMElement) {
                 continue;
@@ -1019,6 +1126,7 @@ final class EditionDocument
             }
 
             $couleur = strtoupper(ltrim($proprietes->getAttributeNS(self::NS_FO, 'color'), '#'));
+            $fond = strtoupper(ltrim($proprietes->getAttributeNS(self::NS_FO, 'background-color'), '#'));
             $souligne = $proprietes->getAttributeNS(self::NS_STYLE, 'text-underline-style');
             $styles[$nom] = [
                 'gras'     => $proprietes->getAttributeNS(self::NS_FO, 'font-weight') === 'bold',
@@ -1026,6 +1134,7 @@ final class EditionDocument
                 'souligne' => $souligne !== '' && $souligne !== 'none',
                 'taille'   => $taille,
                 'couleur'  => preg_match('/^[0-9A-F]{6}$/', $couleur) === 1 ? $couleur : null,
+                'fond'     => preg_match('/^[0-9A-F]{6}$/', $fond) === 1 ? $fond : null,
             ];
         }
 
@@ -1042,7 +1151,7 @@ final class EditionDocument
         $passages = [];
         self::parcourirOdf($paragraphe,
             ['gras' => false, 'italique' => false, 'souligne' => false,
-             'taille' => null, 'couleur' => null],
+             'taille' => null, 'couleur' => null, 'fond' => null],
             $styles, $passages);
 
         return self::fondrePassages($passages);
@@ -1082,6 +1191,7 @@ final class EditionDocument
                         'souligne' => $etat['souligne'] || $styles[$nom]['souligne'],
                         'taille'   => $styles[$nom]['taille'] ?? $etat['taille'],
                         'couleur'  => $styles[$nom]['couleur'] ?? $etat['couleur'],
+                        'fond'     => $styles[$nom]['fond'] ?? $etat['fond'],
                     ];
                 }
             }
@@ -1103,12 +1213,13 @@ final class EditionDocument
 
         // Un nom qui décrit ce qu'il porte : deux passages identiques
         // retrouvent le même style, sans en accumuler des centaines.
-        $nom = sprintf('MesCours_%s%s%s%s%s',
+        $nom = sprintf('MesCours_%s%s%s%s%s%s',
             $passage['gras'] ? 'g' : '',
             $passage['italique'] ? 'i' : '',
             $passage['souligne'] ? 's' : '',
             $passage['taille'] !== null ? 't' . $passage['taille'] : '',
-            $passage['couleur'] !== null ? 'c' . $passage['couleur'] : '');
+            $passage['couleur'] !== null ? 'c' . $passage['couleur'] : '',
+            $passage['fond'] !== null ? 'f' . $passage['fond'] : '');
 
         foreach ($doc->getElementsByTagNameNS(self::NS_STYLE, 'style') as $style) {
             if ($style->getAttributeNS(self::NS_STYLE, 'name') === $nom) {
@@ -1150,6 +1261,9 @@ final class EditionDocument
         }
         if ($passage['couleur'] !== null) {
             $proprietes->setAttributeNS(self::NS_FO, 'fo:color', '#' . $passage['couleur']);
+        }
+        if ($passage['fond'] !== null) {
+            $proprietes->setAttributeNS(self::NS_FO, 'fo:background-color', '#' . $passage['fond']);
         }
 
         $style->appendChild($proprietes);

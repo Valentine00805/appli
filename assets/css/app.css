@@ -1341,6 +1341,8 @@ input.depot__champ {
 /* Un passage remis à « la couleur du document » : dans la zone, c'est celle du
    texte ordinaire, et rien n'est écrit en dur dans ce qui partira. */
 .paragraphe__riche .riche-couleur-auto { color: var(--texte); }
+/* Et un passage dont on vient de retirer le surlignage. */
+.paragraphe__riche .riche-fond-auto { background: none; }
 
 .paragraphe__riche:focus {
   outline: 2px solid var(--accent); outline-offset: -1px;
@@ -1376,6 +1378,9 @@ input.depot__champ {
   display: block; width: 1.1rem; height: .2rem; border-radius: 1px;
   background: currentColor;
 }
+
+/* Le surligneur montre sa teinte en fond, comme un vrai marqueur. */
+.barre-outils__surligner { padding: .3rem .5rem; }
 
 .barre-outils__couleur {
   width: 2.4rem; height: 2.1rem; padding: .15rem;
