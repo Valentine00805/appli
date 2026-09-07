@@ -139,16 +139,25 @@ function fichiers_suivis(array $fichiers): array
  * ouvert compte pour zéro : ne pas l'avoir commencé, c'est ne pas l'avoir révisé.
  *
  * @param array<int, array> $fichiers lignes de « fichiers » (audio, vidéo ou PDF)
+ * @param list<int> $enPlus  d'autres anneaux déjà calculés, en pourcentage
  * @return array{pourcentage: int, total: int, finis: int, commences: int, a_faire: int}
  */
-function avancement_anneaux(array $fichiers): array
+function avancement_anneaux(array $fichiers, array $enPlus = []): array
 {
+    $parts = [];
+    foreach ($fichiers as $fichier) {
+        $parts[] = avancement_lecture($fichier) ?? 0;
+    }
+    // Un paquet de cartes est un anneau comme un autre : il rejoint la moyenne.
+    foreach ($enPlus as $part) {
+        $parts[] = max(0, min(100, (int) $part));
+    }
+
     $somme = 0;
     $finis = 0;
     $commences = 0;
 
-    foreach ($fichiers as $fichier) {
-        $part = avancement_lecture($fichier) ?? 0;
+    foreach ($parts as $part) {
         $somme += $part;
         if ($part >= 100) {
             $finis++;
@@ -157,7 +166,7 @@ function avancement_anneaux(array $fichiers): array
         }
     }
 
-    $total = count($fichiers);
+    $total = count($parts);
 
     return [
         'pourcentage' => $total === 0 ? 0 : (int) round($somme / $total),
@@ -166,6 +175,27 @@ function avancement_anneaux(array $fichiers): array
         'commences'   => $commences,
         'a_faire'     => $total - $finis - $commences,
     ];
+}
+
+/**
+ * L'avancement d'un paquet de cartes, en pourcentage entier.
+ *
+ * La mesure est la boîte moyenne : une carte en boîte 1 n'est pas apprise, une
+ * carte en boîte 5 l'est. Un paquet tout neuf vaut donc zéro, et un paquet dont
+ * chaque carte est montée au bout vaut cent — comme un enregistrement écouté
+ * jusqu'au silence.
+ *
+ * @param int $total    combien de cartes compte le paquet
+ * @param float $moyenne la boîte moyenne, entre 1 et 5
+ */
+function avancement_cartes(int $total, float $moyenne): ?int
+{
+    if ($total === 0) {
+        return null;
+    }
+    $part = (max(1.0, min(5.0, $moyenne)) - 1) / 4 * 100;
+
+    return (int) round($part);
 }
 
 /**

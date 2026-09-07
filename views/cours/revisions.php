@@ -8,6 +8,7 @@
  * @var ?int $matiereId   la matière retenue, null pour toutes
  * @var string $tri       'matiere', 'recent' ou 'ancien'
  * @var array $anneaux    ce qui se lit ou s'écoute dans chaque fiche, par cours
+ * @var array $paquets    l'avancement du paquet de cartes de chaque cours
  */
 $matiereChoisie = null;
 foreach ($matieres as $m) {
@@ -176,15 +177,16 @@ $compteurs = static function (array $c): array {
         <h3 class="fiche-carte__titre"><?= surligner(e($c['titre']), $termes) ?></h3>
 
         <?php $mediasFiche = $anneaux[(int) $c['id']] ?? []; ?>
-        <?php if ($mediasFiche !== []): ?>
-          <?php $a = avancement_anneaux($mediasFiche); ?>
+        <?php $paquet = $paquets[(int) $c['id']] ?? null; ?>
+        <?php if ($mediasFiche !== [] || $paquet !== null): ?>
+          <?php $a = avancement_anneaux($mediasFiche, $paquet === null ? [] : [$paquet]); ?>
           <p class="fiche-carte__ecoute">
             <?= Vue::rendre('cours/_anneau', [
                  'pourcentage' => $a['pourcentage'],
                  'titre'       => 'Écoute de cette fiche',
                ]) ?>
             <span class="discret">
-              <?= $a['total'] ?> document<?= $a['total'] > 1 ? 's' : '' ?>
+              <?= $a['total'] ?> élément<?= $a['total'] > 1 ? 's' : '' ?>
               <?php if ($a['finis'] > 0): ?>· <?= $a['finis'] ?> terminé<?= $a['finis'] > 1 ? 's' : '' ?><?php endif; ?>
             </span>
           </p>

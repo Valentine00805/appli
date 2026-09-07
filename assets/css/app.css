@@ -480,7 +480,12 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
 .fiche__seance .seance__question { font-size: 1.1rem; }
 
 /* Le renvoi vers le paquet, depuis la fiche de révision. */
-.fiche__cartes { margin: 0 0 .6rem; font-size: .9rem; }
+/* L'anneau du paquet côtoie son compte, comme pour un enregistrement. */
+.fiche__cartes {
+  display: flex; align-items: center; gap: .55rem;
+  margin: 0 0 .6rem; font-size: .9rem;
+}
+.fiche__cartes .anneau { width: 40px; height: 40px; }
 .fiche__cartes-actions { margin: 0; }
 .fiche-carte__du { margin: .5rem 0 0; }
 

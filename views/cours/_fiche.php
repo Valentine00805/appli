@@ -21,8 +21,14 @@ $champPage = $surPage ? '<input type="hidden" name="page" value="fiche">' : '';
 // jeton, que les formulaires portent déjà mais qu'aucun ne lui prête.
 $jetonLecture = Session::jetonCsrf();
 
-// L'avancement de la fiche entière : la moyenne des anneaux qu'elle contient.
-$avancementFiche = avancement_anneaux(fichiers_suivis($fichiersFiche));
+$cartes = $cartes ?? ['total' => 0, 'a_revoir' => 0, 'dues' => [], 'avancement' => null];
+
+// L'avancement de la fiche entière : la moyenne des anneaux qu'elle contient,
+// le paquet de cartes compris — il se mesure comme un enregistrement.
+$avancementFiche = avancement_anneaux(
+    fichiers_suivis($fichiersFiche),
+    $cartes['avancement'] === null ? [] : [$cartes['avancement']]
+);
 ?>
 <span hidden data-jeton-lecture="<?= e($jetonLecture) ?>"></span>
 
@@ -50,7 +56,7 @@ $avancementFiche = avancement_anneaux(fichiers_suivis($fichiersFiche));
             'titre'       => 'Avancement de cette fiche',
         ]) ?>
         <span class="fiche__total-mot">
-          <?= $avancementFiche['total'] ?> document<?= $avancementFiche['total'] > 1 ? 's' : '' ?><br>
+          <?= $avancementFiche['total'] ?> élément<?= $avancementFiche['total'] > 1 ? 's' : '' ?><br>
           suivi<?= $avancementFiche['total'] > 1 ? 's' : '' ?>
         </span>
       </span>
@@ -272,7 +278,6 @@ $avancementFiche = avancement_anneaux(fichiers_suivis($fichiersFiche));
    * sont dues aujourd'hui, et de quoi s'y mettre. Le paquet lui-même se gère
    * ailleurs — ici, on ne fait que le rejoindre.
    */
-  $cartes = $cartes ?? ['total' => 0, 'a_revoir' => 0, 'dues' => []];
   ?>
   <div class="fiche__rayon<?= $cartes['total'] === 0 ? ' fiche__rayon--vide' : '' ?>">
     <h4 class="fiche__titre">🃏 Cartes</h4>
@@ -282,12 +287,19 @@ $avancementFiche = avancement_anneaux(fichiers_suivis($fichiersFiche));
         <p class="discret fiche__vide">Aucune carte pour ce cours.</p>
       <?php else: ?>
         <p class="fiche__cartes">
-          <strong><?= $cartes['total'] ?></strong> carte<?= $cartes['total'] > 1 ? 's' : '' ?>
+          <?php // L'anneau du paquet : la boîte moyenne, de 1 à 5, ramenée en pourcentage. ?>
+          <?= Vue::rendre('cours/_anneau', [
+              'pourcentage' => $cartes['avancement'],
+              'titre'       => 'Avancement des cartes',
+          ]) ?>
+          <span>
+            <strong><?= $cartes['total'] ?></strong> carte<?= $cartes['total'] > 1 ? 's' : '' ?>
           <?php if ($cartes['a_revoir'] > 0): ?>
             · <span class="carte-du"><?= $cartes['a_revoir'] ?> à revoir</span>
           <?php else: ?>
             · <span class="discret">rien à revoir aujourd'hui</span>
           <?php endif; ?>
+          </span>
         </p>
       <?php endif; ?>
 

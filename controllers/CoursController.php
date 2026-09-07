@@ -297,13 +297,16 @@ final class CoursController
             }
         }
 
-        // Chaque carte porte l'anneau de sa fiche : ce qui en a été écouté ou lu.
+        // Chaque carte porte l'anneau de sa fiche : ce qui en a été écouté, lu,
+        // et où en est son paquet de cartes.
         $anneaux = $this->anneauxDesFiches(array_merge($garnies, $vides), $userId);
+        $paquets = $this->paquetsDesFiches($userId);
 
         Vue::afficher('cours/revisions', [
             'garnies'   => $garnies,
             'vides'     => $vides,
             'anneaux'   => $anneaux,
+            'paquets'   => $paquets,
             'recherche' => $recherche,
             'termes'    => $termes,
             'matieres'  => $matieres,
@@ -350,16 +353,19 @@ final class CoursController
     private function cartesDuCours(int $coursId, int $userId): array
     {
         $ligne = Database::one(
-            'SELECT COUNT(*) AS total, SUM(revoir_le <= CURDATE()) AS a_revoir
+            'SELECT COUNT(*) AS total, SUM(revoir_le <= CURDATE()) AS a_revoir,
+                    AVG(boite) AS boite_moyenne
                FROM cartes WHERE cours_id = ? AND user_id = ?',
             [$coursId, $userId]
         );
 
         $aRevoir = (int) ($ligne['a_revoir'] ?? 0);
+        $total = (int) ($ligne['total'] ?? 0);
 
         return [
-            'total'    => (int) ($ligne['total'] ?? 0),
+            'total'    => $total,
             'a_revoir' => $aRevoir,
+            'avancement' => avancement_cartes($total, (float) ($ligne['boite_moyenne'] ?? 1)),
             // Les cartes dues voyagent avec le compte : la fiche les déplie
             // sur place, sans aller les chercher ailleurs.
             'dues'     => $aRevoir === 0 ? [] : Database::all(
@@ -409,6 +415,30 @@ final class CoursController
 
         return $fichiers;
     }
+    /**
+     * L'avancement du paquet de cartes de chaque cours, par cours.
+     *
+     * @return array<int, int> identifiant du cours => pourcentage
+     */
+    private function paquetsDesFiches(int $userId): array
+    {
+        $paquets = [];
+
+        $lignes = Database::all(
+            'SELECT cours_id, COUNT(*) AS total, AVG(boite) AS boite_moyenne
+               FROM cartes WHERE user_id = ? GROUP BY cours_id',
+            [$userId]
+        );
+        foreach ($lignes as $ligne) {
+            $part = avancement_cartes((int) $ligne['total'], (float) $ligne['boite_moyenne']);
+            if ($part !== null) {
+                $paquets[(int) $ligne['cours_id']] = $part;
+            }
+        }
+
+        return $paquets;
+    }
+
     /** Ce texte contient-il au moins un des termes cherchés ? */
     private function contient(string $texte, array $termes): bool
     {
