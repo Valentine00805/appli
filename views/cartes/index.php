@@ -9,6 +9,7 @@
  * @var array $propositions   ce que le générateur vient de trouver, à valider
  * @var ?array $coursPropose  le cours dont elles viennent
  * @var array $cartesParCours  les cartes de chaque paquet, par cours
+ * @var array $documentsParCours  les fichiers de chaque cours, par cours
  */
 ?>
 
@@ -123,6 +124,20 @@
       </div>
 
       <?= Vue::rendre('cartes/_sources', ['cours' => null]) ?>
+
+      <?php
+      /*
+       * Les documents de chaque cours attendent déjà dans la page : choisir un
+       * cours fait apparaître les siens, sans rien redemander au serveur. Ils
+       * arrivent tous cochés — décocher sert à écarter un document précis.
+       */
+      ?>
+      <?php foreach ($cours as $c): ?>
+        <?= Vue::rendre('cartes/_documents', [
+            'coursId'   => (int) $c['id'],
+            'documents' => $documentsParCours[(int) $c['id']] ?? [],
+        ]) ?>
+      <?php endforeach; ?>
 
       <button class="bouton" type="submit">Proposer des cartes</button>
     </form>

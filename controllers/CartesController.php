@@ -58,9 +58,21 @@ final class CartesController
             $cartesParCours[(int) $carte['cours_id']][] = $carte;
         }
 
+        // Les documents de chaque cours : le formulaire de fabrication montre
+        // ceux du cours choisi, et il les a donc tous sous la main.
+        $documentsParCours = [];
+        foreach (Database::all(
+            'SELECT id, cours_id, nom_origine, mime, taille, pour_fiche
+               FROM fichiers WHERE user_id = ? ORDER BY pour_fiche, created_at',
+            [$userId]
+        ) as $fichier) {
+            $documentsParCours[(int) $fichier['cours_id']][] = $fichier;
+        }
+
         Vue::afficher('cartes/index', [
             'paquets'  => $paquets,
             'cartesParCours' => $cartesParCours,
+            'documentsParCours' => $documentsParCours,
             // De quoi fabriquer sans passer par la page d'un cours.
             'cours'    => Database::all(
                 'SELECT c.id, c.titre, m.nom AS matiere_nom,
@@ -128,6 +140,20 @@ final class CartesController
         }
         $cours = $this->cours($id, $userId);
         $sources = $this->sourcesDemandees();
+        $documents = $this->documentsDemandes($id);
+
+        /*
+         * Une liste ouverte puis entièrement décochée dit « pas les documents ».
+         * L'annoncer quand même comme une source relue rendrait le message
+         * d'échec faux : on la retire.
+         */
+        if ($documents === []) {
+            $sources = array_values(array_diff($sources, ['documents']));
+            if ($sources === []) {
+                Session::flash('erreur', 'Aucun document coché : il n\'y a rien à relire.');
+                redirect('cartes');
+            }
+        }
 
         $muets = [];
         $brutes = array_merge(
@@ -136,7 +162,7 @@ final class CartesController
             in_array('fiche', $sources, true)
                 ? GenerateurCartes::depuisTexte((string) $cours['fiche_revision'], 'fiche') : [],
             in_array('documents', $sources, true)
-                ? $this->depuisLesFichiers($id, $userId, $muets) : []
+                ? $this->depuisLesFichiers($id, $userId, $muets, $documents) : []
         );
 
         $dejaLa = array_column(Database::all(
@@ -147,7 +173,7 @@ final class CartesController
 
         if ($propositions === []) {
             Session::flash('erreur', $dejaLa === []
-                ? 'Rien à tirer de ' . $this->nommerLesSources($sources) . '.'
+                ? 'Rien à lire dans ' . $this->nommerLesSources($sources) . '.'
                 : 'Aucune nouvelle carte dans ' . $this->nommerLesSources($sources)
                     . ' : tout ce qui était repérable est déjà dans le paquet.');
         }
@@ -197,6 +223,34 @@ final class CartesController
         return $demandees === [] ? $connues : $demandees;
     }
 
+    /**
+     * Les documents que l'utilisateur a retenus, quand il a eu la liste.
+     *
+     * Elle n'apparaît que si le script a pu l'ouvrir. Sans lui, le formulaire
+     * ne dit rien des documents, et « les documents joints » garde son sens
+     * d'origine : tous ceux du cours. Le champ caché dit de quel cours vient la
+     * liste, ce qui évite de prendre pour un choix une liste restée sur un
+     * autre cours.
+     *
+     * @return ?list<int>  null quand aucune liste n'a été soumise : on prend tout
+     */
+    private function documentsDemandes(int $coursId): ?array
+    {
+        if (entier_ou_null($_POST['documents_de'] ?? null) !== $coursId) {
+            return null;
+        }
+
+        $retenus = [];
+        foreach ((array) ($_POST['documents'] ?? []) as $brut) {
+            $id = entier_ou_null($brut);
+            if ($id !== null) {
+                $retenus[] = $id;
+            }
+        }
+
+        return $retenus;
+    }
+
     /** Les sources, dites comme on les dirait à voix haute. */
     private function nommerLesSources(array $sources): string
     {
@@ -224,17 +278,31 @@ final class CartesController
      * Les PDF muets — ceux dont on n'a rien pu tirer, un scan par exemple —
      * sont retenus au passage : mieux vaut le dire que laisser croire que le
      * document ne contenait rien.
+     *
+     * @param ?list<int> $seulement  les documents retenus ; null pour tous
      */
-    private function depuisLesFichiers(int $coursId, int $userId, array &$muets = []): array
-    {
+    private function depuisLesFichiers(
+        int $coursId,
+        int $userId,
+        array &$muets = [],
+        ?array $seulement = null
+    ): array {
         $cartes = [];
 
         $fichiers = Database::all(
-            'SELECT nom_origine, nom_stocke FROM fichiers WHERE cours_id = ? AND user_id = ? ORDER BY created_at',
+            'SELECT id, nom_origine, nom_stocke FROM fichiers
+              WHERE cours_id = ? AND user_id = ? ORDER BY pour_fiche, created_at',
             [$coursId, $userId]
         );
 
         foreach ($fichiers as $fichier) {
+            // Le tri se fait ici, sur des fichiers déjà rattachés au cours et à
+            // son propriétaire : un identifiant inventé ne peut que ne rien
+            // désigner, jamais atteindre le document d'un autre.
+            if ($seulement !== null && !in_array((int) $fichier['id'], $seulement, true)) {
+                continue;
+            }
+
             $nom = (string) $fichier['nom_origine'];
             $genre = ApercuDocument::genre($nom);
             $chemin = Config::get('app', 'dossier_uploads') . DIRECTORY_SEPARATOR . $fichier['nom_stocke'];

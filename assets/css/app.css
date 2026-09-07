@@ -461,6 +461,24 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
 .sources__choix .discret { font-size: .78rem; margin-left: .35rem; }
 .sources__choix--vide { cursor: default; opacity: .55; }
 
+/* Les documents du cours choisi, sous les sources qu'ils détaillent. Un
+   « fieldset » désactivé se grise seul : on ne le repeint pas. */
+.documents {
+  margin-top: .2rem; padding: .7rem .8rem;
+  border: 1px solid var(--bordure); border-radius: var(--rayon-s);
+  background: var(--fond-doux);
+}
+/* « .sources » pose un display, qui l'emporterait sur celui du navigateur :
+   la liste d'un autre cours resterait visible. */
+.documents[hidden] { display: none; }
+.documents:disabled { opacity: .55; }
+.documents__place {
+  margin: .5rem 0 .1rem; font-size: .78rem; font-weight: 600;
+  color: var(--texte-doux);
+}
+.documents__place:first-of-type { margin-top: 0; }
+.documents .champ__aide { margin: 0; }
+
 /* Ce qui n'est pas une définition se signale : on ne les lit pas pareil. */
 .proposition__genre {
   margin-left: auto; padding: .1rem .5rem; border-radius: 999px;
