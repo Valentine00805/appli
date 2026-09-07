@@ -33,6 +33,9 @@ final class Sauvegarde
         'types_evenement'   => ['portee' => 'user',  'liens' => []],
         'categories_budget' => ['portee' => 'user',  'liens' => []],
         'personnes'         => ['portee' => 'user',  'liens' => []],
+        'groupes'           => ['portee' => 'user',  'liens' => []],
+        'groupe_personne'   => ['portee' => 'user',  'liens' => [
+            'groupe_id' => 'groupes', 'personne_id' => 'personnes']],
         'cours'             => ['portee' => 'user',  'liens' => [
             'matiere_id' => 'matieres', 'dossier_id' => 'dossiers']],
         'cours_tag'         => ['portee' => 'cours', 'liens' => ['cours_id' => 'cours', 'tag_id' => 'tags']],

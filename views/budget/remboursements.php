@@ -6,6 +6,8 @@
  * @var array $lignes, $rubriques, $totaux, $moisRenseignes, $personnes, $statuts, $recettes
  * @var ?array $reglement
  * @var string $personne
+ * @var ?array $groupe   le groupe regardé, s'il y en a un
+ * @var array $groupes   tous les groupes du compte, avec leurs membres
  * @var ?string $statut
  * @var float $aReclamerGlobal
  */
@@ -13,15 +15,18 @@ $csrf = Session::jetonCsrf();
 $periode = $mois->format('Y-m');
 $moisCourant = (new DateTimeImmutable('today'))->format('Y-m');
 
+// Sur qui l'on regarde, dit d'un seul paramètre : « p:Nom » ou « g:12 ».
+$qui = $groupe !== null ? 'g:' . $groupe['id'] : ($personne !== '' ? 'p:' . $personne : '');
+
 $filtres = array_filter([
-    'mois'     => $periode,
-    'personne' => $personne !== '' ? $personne : null,
-    'statut'   => $statut,
+    'mois'   => $periode,
+    'qui'    => $qui !== '' ? $qui : null,
+    'statut' => $statut,
 ], static fn ($v): bool => $v !== null && $v !== '');
 
 $titrePeriode = strtolower(nom_mois((int) $mois->format('n'))) . ' ' . $mois->format('Y');
 $lien = static fn (string $m): string => url('budget/remboursements',
-    array_filter(['mois' => $m, 'personne' => $personne ?: null, 'statut' => $statut]));
+    array_filter(['mois' => $m, 'qui' => $qui ?: null, 'statut' => $statut]));
 ?>
 
 <?= Vue::rendre('budget/_onglets', ['onglet' => 'remboursements']) ?>
@@ -69,16 +74,44 @@ $lien = static fn (string $m): string => url('budget/remboursements',
     <label for="f-mois">Mois</label>
     <input type="month" id="f-mois" name="mois" value="<?= e($periode) ?>">
   </div>
-  <?php if ($personnes !== []): ?>
+  <?php if ($personnes !== [] || $groupes !== []): ?>
     <div class="champ">
-      <label for="f-personne">Qui rembourse</label>
-      <select id="f-personne" name="personne">
+      <label for="f-qui">Qui rembourse</label>
+      <select id="f-qui" name="qui">
         <option value="">Tout le monde</option>
-        <?php foreach ($personnes as $p): ?>
-          <option value="<?= e($p) ?>"<?= $personne === $p ? ' selected' : '' ?>><?= e($p) ?></option>
-        <?php endforeach; ?>
+        <?php if ($groupes !== []): ?>
+          <optgroup label="Groupes">
+            <?php foreach ($groupes as $g): ?>
+              <?php if ($g['membres'] === []) { continue; } ?>
+              <option value="g:<?= (int) $g['id'] ?>"<?= $groupe !== null && $groupe['id'] === $g['id'] ? ' selected' : '' ?>>
+                <?= e($g['nom']) ?> (<?= count($g['membres']) ?>)
+              </option>
+            <?php endforeach; ?>
+          </optgroup>
+        <?php endif; ?>
+        <?php if ($personnes !== []): ?>
+          <optgroup label="Personnes">
+            <?php foreach ($personnes as $p): ?>
+              <option value="p:<?= e($p) ?>"<?= $personne === $p ? ' selected' : '' ?>><?= e($p) ?></option>
+            <?php endforeach; ?>
+          </optgroup>
+        <?php endif; ?>
       </select>
     </div>
+  <?php endif; ?>
+
+  <?php if ($groupe !== null): ?>
+    <?php
+    /*
+     * Un groupe ne se règle pas d'un bloc : un règlement se rattache à une
+     * personne et crée sa recette en retour. Le dire ici évite de chercher le
+     * bouton qui, plus bas, ne s'affichera pas.
+     */
+    ?>
+    <p class="champ__aide" style="flex-basis:100%;margin:0">
+      Groupe « <?= e($groupe['nom']) ?> » : <?= e(implode(', ', $groupe['membres'])) ?>.
+      Le règlement, lui, se fait personne par personne.
+    </p>
   <?php endif; ?>
   <div class="champ">
     <label for="f-statut">Statut</label>
@@ -119,7 +152,7 @@ $lien = static fn (string $m): string => url('budget/remboursements',
     </div>
   </section>
 
-<?php elseif ($totaux['attente'] > 0): ?>
+<?php elseif ($totaux['attente'] > 0 && $groupe === null): ?>
   <section class="carte sans-impression" style="margin-bottom:1.25rem;border-color:var(--accent)">
     <h2 style="margin:0">Ce mois vous a-t-il été remboursé ?</h2>
     <p class="discret" style="margin:.35rem 0 .9rem">

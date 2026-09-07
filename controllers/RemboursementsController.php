@@ -25,10 +25,11 @@ final class RemboursementsController
         $userId = Auth::id();
 
         [$debut, $fin, $mois] = $this->mois();
-        $personne = trim((string) ($_GET['personne'] ?? ''));
+        $portee = $this->portee($userId);
+        $personne = $portee['personne'];
         $statut = array_key_exists($_GET['statut'] ?? '', self::STATUTS) ? (string) $_GET['statut'] : null;
 
-        $lignes = $this->lignes($userId, $debut, $fin, $personne, $statut);
+        $lignes = $this->lignes($userId, $debut, $fin, $portee['noms'], $statut);
 
         Vue::afficher('budget/remboursements', [
             'lignes'      => $lignes,
@@ -36,7 +37,12 @@ final class RemboursementsController
             'totaux'      => $this->totaux($lignes),
             'mois'        => $mois,
             'moisRenseignes' => $this->moisRenseignes($userId),
-            'reglement'   => $this->reglementDuMois($userId, $mois->format('Y-m'), $personne),
+            // Un règlement se fait personne par personne : un groupe n'en a pas.
+            'reglement'   => $portee['groupe'] !== null
+                ? null
+                : $this->reglementDuMois($userId, $mois->format('Y-m'), $personne),
+            'groupe'      => $portee['groupe'],
+            'groupes'     => $this->groupes($userId),
             'recettes'    => Database::all(
                 "SELECT id, nom, icone FROM categories_budget
                   WHERE user_id = ? AND sens = 'recette' ORDER BY position, nom",
@@ -66,10 +72,11 @@ final class RemboursementsController
         $userId = Auth::id();
 
         [$debut, $fin, $mois] = $this->mois();
-        $personne = trim((string) ($_GET['personne'] ?? ''));
+        $portee = $this->portee($userId);
+        $personne = $portee['titre'];
         $statut = array_key_exists($_GET['statut'] ?? '', self::STATUTS) ? (string) $_GET['statut'] : null;
 
-        $lignes = $this->lignes($userId, $debut, $fin, $personne, $statut);
+        $lignes = $this->lignes($userId, $debut, $fin, $portee['noms'], $statut);
         if ($lignes === []) {
             Session::flash('erreur', 'Rien à exporter pour ce mois.');
             redirect('budget/remboursements', $this->parametresRetour());
@@ -438,7 +445,12 @@ final class RemboursementsController
     // --- Lecture -------------------------------------------------------------
 
     /** Les lignes cochées d'une période, éventuellement filtrées. */
-    private function lignes(int $userId, string $debut, string $fin, string $personne, ?string $statut): array
+    /**
+     * Les dépenses cochées du mois.
+     *
+     * @param list<string> $noms  sur qui porter ; vide pour tout le monde
+     */
+    private function lignes(int $userId, string $debut, string $fin, array $noms, ?string $statut): array
     {
         $sql = "SELECT o.*, c.nom AS categorie_nom, c.icone AS categorie_icone, c.couleur AS categorie_couleur,
                        COALESCE(o.part_rembourser, o.montant) AS montant_reclame
@@ -448,9 +460,9 @@ final class RemboursementsController
                   AND o.date_operation BETWEEN ? AND ?";
         $params = [$userId, $debut, $fin];
 
-        if ($personne !== '') {
-            $sql .= ' AND o.rembourse_par = ?';
-            $params[] = $personne;
+        if ($noms !== []) {
+            $sql .= ' AND o.rembourse_par IN (' . implode(',', array_fill(0, count($noms), '?')) . ')';
+            $params = array_merge($params, $noms);
         }
         if ($statut !== null) {
             $sql .= ' AND o.statut_remb = ?';
@@ -588,7 +600,8 @@ final class RemboursementsController
                   ORDER BY o.rembourse_par",
                 [$userId]
             ), 'rembourse_par'),
-        ], 'Personnes');
+            'groupes' => $this->groupes($userId),
+        ], 'Personnes et groupes');
     }
 
     /** Ajoute une personne au carnet, sans attendre une dépense. */
@@ -851,6 +864,202 @@ final class RemboursementsController
         redirect('budget/personnes');
     }
 
+    // --- Les groupes ---------------------------------------------------------
+
+    /**
+     * Sur qui porte l'affichage : une personne, un groupe, ou tout le monde.
+     *
+     * Le filtre tient dans un seul champ, « qui » : « p:Nom » pour une
+     * personne, « g:12 » pour un groupe. L'ancien paramètre « personne » reste
+     * lu, pour que les liens déjà écrits ailleurs continuent de marcher.
+     *
+     * @return array{personne: string, groupe: ?array, noms: list<string>, titre: string, filtre: array}
+     */
+    private function portee(int $userId): array
+    {
+        $vide = ['personne' => '', 'groupe' => null, 'noms' => [], 'titre' => '', 'filtre' => []];
+        $qui = trim((string) ($_GET['qui'] ?? ''));
+
+        if (str_starts_with($qui, 'g:')) {
+            $groupe = $this->groupe($userId, (int) substr($qui, 2));
+            if ($groupe === null) {
+                return $vide;
+            }
+
+            return [
+                'personne' => '',
+                'groupe'   => $groupe,
+                'noms'     => $groupe['membres'],
+                'titre'    => $groupe['nom'],
+                'filtre'   => ['qui' => $qui],
+            ];
+        }
+
+        $personne = str_starts_with($qui, 'p:')
+            ? trim(substr($qui, 2))
+            : trim((string) ($_GET['personne'] ?? ''));
+        if ($personne === '') {
+            return $vide;
+        }
+
+        return [
+            'personne' => $personne,
+            'groupe'   => null,
+            'noms'     => [$personne],
+            'titre'    => $personne,
+            'filtre'   => ['qui' => 'p:' . $personne],
+        ];
+    }
+
+    /**
+     * Les groupes du compte, chacun avec les noms de ses membres.
+     *
+     * @return list<array{id: int, nom: string, membres: list<string>}>
+     */
+    private function groupes(int $userId): array
+    {
+        $groupes = [];
+        foreach (Database::all(
+            'SELECT g.id, g.nom, p.nom AS membre
+               FROM groupes g
+               LEFT JOIN groupe_personne gp ON gp.groupe_id = g.id AND gp.user_id = g.user_id
+               LEFT JOIN personnes p ON p.id = gp.personne_id
+              WHERE g.user_id = ?
+              ORDER BY g.nom, p.nom',
+            [$userId]
+        ) as $ligne) {
+            $id = (int) $ligne['id'];
+            $groupes[$id] ??= ['id' => $id, 'nom' => (string) $ligne['nom'], 'membres' => []];
+            if ($ligne['membre'] !== null) {
+                $groupes[$id]['membres'][] = (string) $ligne['membre'];
+            }
+        }
+
+        return array_values($groupes);
+    }
+
+    /** Un groupe du compte, ou null s'il n'est pas le vôtre. */
+    private function groupe(int $userId, int $id): ?array
+    {
+        foreach ($this->groupes($userId) as $groupe) {
+            if ($groupe['id'] === $id) {
+                return $groupe;
+            }
+        }
+
+        return null;
+    }
+
+    /** Crée un groupe, vide : on y met des personnes ensuite. */
+    public function groupeCreer(): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $userId = Auth::id();
+
+        $nom = mb_substr(trim(post('nom')), 0, 80);
+        if ($nom === '') {
+            Session::flash('erreur', 'Écrivez un nom de groupe.');
+            redirect('budget/personnes');
+        }
+        if (Database::valeur('SELECT id FROM groupes WHERE user_id = ? AND nom = ?', [$userId, $nom]) !== null) {
+            Session::flash('erreur', 'Le groupe « ' . $nom . ' » existe déjà.');
+            redirect('budget/personnes');
+        }
+
+        Database::run('INSERT INTO groupes (user_id, nom) VALUES (?, ?)', [$userId, $nom]);
+        Session::flash('succes', 'Groupe « ' . $nom . ' » créé. Cochez qui en fait partie.');
+        redirect('budget/personnes');
+    }
+
+    /** Renomme un groupe et refait la liste de ses membres. */
+    public function groupeModifier(int $id): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $userId = Auth::id();
+
+        $groupe = Database::one('SELECT * FROM groupes WHERE id = ? AND user_id = ?', [$id, $userId]);
+        if ($groupe === null) {
+            $this->introuvable();
+        }
+
+        $nom = mb_substr(trim(post('nom')), 0, 80);
+        if ($nom === '') {
+            Session::flash('erreur', 'Écrivez un nom de groupe.');
+            redirect('budget/personnes');
+        }
+        $homonyme = Database::valeur('SELECT id FROM groupes WHERE user_id = ? AND nom = ?', [$userId, $nom]);
+        if ($homonyme !== null && (int) $homonyme !== $id) {
+            Session::flash('erreur', 'Le groupe « ' . $nom . ' » existe déjà.');
+            redirect('budget/personnes');
+        }
+
+        /*
+         * Les membres sont refaits d'un bloc : la page envoie la liste entière,
+         * cases cochées comprises, et une case décochée doit sortir du groupe.
+         * Chaque identifiant est vérifié au passage — un membre venu d'ailleurs
+         * ne peut pas se glisser dans le groupe.
+         */
+        $membres = [];
+        foreach ((array) ($_POST['membres'] ?? []) as $brut) {
+            $personneId = entier_ou_null($brut);
+            if ($personneId === null || in_array($personneId, $membres, true)) {
+                continue;
+            }
+            if (Database::valeur('SELECT id FROM personnes WHERE id = ? AND user_id = ?',
+                [$personneId, $userId]) !== null) {
+                $membres[] = $personneId;
+            }
+        }
+
+        $pdo = Database::pdo();
+        $pdo->beginTransaction();
+        try {
+            Database::run('UPDATE groupes SET nom = ? WHERE id = ? AND user_id = ?', [$nom, $id, $userId]);
+            Database::run('DELETE FROM groupe_personne WHERE groupe_id = ? AND user_id = ?', [$id, $userId]);
+            foreach ($membres as $personneId) {
+                Database::run(
+                    'INSERT INTO groupe_personne (user_id, groupe_id, personne_id) VALUES (?, ?, ?)',
+                    [$userId, $id, $personneId]
+                );
+            }
+            $pdo->commit();
+        } catch (Throwable $e) {
+            $pdo->rollBack();
+            throw $e;
+        }
+
+        Session::flash('succes', 'Groupe « ' . $nom . ' » : '
+            . (count($membres) === 0
+                ? 'plus personne dedans.'
+                : count($membres) . ' personne' . (count($membres) > 1 ? 's' : '') . ' dedans.'));
+        redirect('budget/personnes');
+    }
+
+    /**
+     * Supprime un groupe.
+     *
+     * Ses membres restent au carnet : un groupe n'est qu'une façon de les
+     * regarder ensemble, il ne les possède pas.
+     */
+    public function groupeSupprimer(int $id): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $userId = Auth::id();
+
+        $groupe = Database::one('SELECT nom FROM groupes WHERE id = ? AND user_id = ?', [$id, $userId]);
+        if ($groupe === null) {
+            $this->introuvable();
+        }
+
+        Database::run('DELETE FROM groupes WHERE id = ? AND user_id = ?', [$id, $userId]);
+        Session::flash('succes', 'Groupe « ' . $groupe['nom'] . ' » supprimé. '
+            . 'Ses membres restent au carnet.');
+        redirect('budget/personnes');
+    }
+
     /** Cette personne est-elle déjà au carnet ? La collation ignore la casse. */
     private function personneNommee(int $userId, string $nom): ?array
     {
@@ -907,7 +1116,7 @@ final class RemboursementsController
     private function parametresRetour(): array
     {
         $params = [];
-        foreach (['mois', 'personne', 'statut'] as $cle) {
+        foreach (['mois', 'qui', 'personne', 'statut'] as $cle) {
             $valeur = $_POST[$cle] ?? $_GET[$cle] ?? '';
             if (is_string($valeur) && $valeur !== '') {
                 $params[$cle] = $valeur;

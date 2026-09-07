@@ -199,6 +199,31 @@ CREATE TABLE IF NOT EXISTS `personnes` (
   CONSTRAINT `fk_personne_user` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Des groupes de personnes, pour lire plusieurs comptes d'un coup. Un groupe ne
+-- se choisit pas sur une dépense : celle-ci reste due par une personne, et une
+-- seule. Le groupe sert à regarder l'ensemble.
+CREATE TABLE IF NOT EXISTS `groupes` (
+  `id`         INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `user_id`    INT UNSIGNED NOT NULL,
+  `nom`        VARCHAR(80) NOT NULL,
+  `created_at` DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_groupe_nom` (`user_id`, `nom`),
+  CONSTRAINT `fk_groupe_user` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `groupe_personne` (
+  `user_id`     INT UNSIGNED NOT NULL,
+  `groupe_id`   INT UNSIGNED NOT NULL,
+  `personne_id` INT UNSIGNED NOT NULL,
+  PRIMARY KEY (`groupe_id`, `personne_id`),
+  KEY `idx_gp_user` (`user_id`),
+  KEY `idx_gp_personne` (`personne_id`),
+  CONSTRAINT `fk_gp_user`     FOREIGN KEY (`user_id`)     REFERENCES `users`(`id`)     ON DELETE CASCADE,
+  CONSTRAINT `fk_gp_groupe`   FOREIGN KEY (`groupe_id`)   REFERENCES `groupes`(`id`)   ON DELETE CASCADE,
+  CONSTRAINT `fk_gp_personne` FOREIGN KEY (`personne_id`) REFERENCES `personnes`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS `operations` (
   `id`             INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `user_id`        INT UNSIGNED NOT NULL,
