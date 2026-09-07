@@ -811,6 +811,37 @@
     var affichageSu = seance.querySelector("[data-score-su]");
     var affichageRate = seance.querySelector("[data-score-rate]");
 
+    /*
+     * L'anneau du paquet entier. Une carte sue monte d'une boîte, une carte
+     * ratée retombe en boîte 1 : la moyenne des boîtes bouge à chaque verdict,
+     * et l'anneau avec elle, sans rien redemander au serveur. Chaque carte
+     * porte la sienne, ce qui survit au mélange des cartes.
+     */
+    var mesurePaquet = seance.querySelector("[data-anneau-paquet]");
+    var totalPaquet = mesurePaquet ? parseInt(mesurePaquet.getAttribute("data-total"), 10) : 0;
+    var sommePaquet = mesurePaquet ? parseInt(mesurePaquet.getAttribute("data-somme"), 10) : 0;
+
+    var boiteDe = function (carte) {
+      return parseInt(carte.getAttribute("data-boite"), 10) || 1;
+    };
+
+    var peindrePaquet = function () {
+      if (!mesurePaquet || !totalPaquet) { return; }
+      var moyenne = Math.max(1, Math.min(5, sommePaquet / totalPaquet));
+      var part = Math.round((moyenne - 1) / 4 * 100);
+      var anneau = mesurePaquet.querySelector(".anneau");
+      var trait = anneau ? anneau.querySelector(".anneau__part") : null;
+      var texte = anneau ? anneau.querySelector(".anneau__texte") : null;
+
+      if (trait) { trait.setAttribute("stroke-dasharray", part + " 100"); }
+      if (texte) { texte.innerHTML = part + "<span class='anneau__pourcent'>%</span>"; }
+      if (anneau) {
+        anneau.classList.remove("anneau--inconnu");
+        anneau.classList.toggle("anneau--fini", part >= 100);
+        anneau.setAttribute("aria-label", "Avancement du paquet : " + part + " %");
+      }
+    };
+
     var montrerCarte = function () {
       cartesSeance.forEach(function (carte, i) {
         carte.hidden = i !== rang;
@@ -854,6 +885,17 @@
         if (verdicts[rang]) { sues--; } else { rates--; }
         verdicts[rang] = undefined;
         peindreScore();
+
+        // Et la carte retrouve la boîte qu'elle avait : répondre de nouveau
+        // repartira de là, comme au serveur.
+        var rouverte = cartesSeance[rang];
+        var revenue = parseInt(rouverte.getAttribute("data-boite-avant"), 10);
+        if (!isNaN(revenue)) {
+          sommePaquet += revenue - boiteDe(rouverte);
+          rouverte.setAttribute("data-boite", String(revenue));
+          rouverte.removeAttribute("data-boite-avant");
+          peindrePaquet();
+        }
       }
       montrerCarte();
     };
@@ -868,13 +910,39 @@
       if (fin) { fin.hidden = false; }
     };
 
-    var repondre = function (carte, sue) {
+    /*
+     * Les verdicts partent à la file, et non tous à la fois. Revenir sur une
+     * carte pour changer d'avis en envoie deux coup sur coup, et c'est le
+     * dernier qui doit l'emporter : deux requêtes lâchées ensemble n'arrivent
+     * pas forcément dans l'ordre où on les a lancées, et la carte finirait dans
+     * la mauvaise boîte — ce que l'anneau du paquet montrerait au rechargement.
+     */
+    var file = Promise.resolve();
+
+    var envoyer = function (carte, sue) {
       var corps = new URLSearchParams();
       corps.set("_csrf", jetonSeance);
       corps.set("sue", sue ? "1" : "0");
-      fetch(carte.getAttribute("data-url"), {
-        method: "POST", body: corps, credentials: "same-origin", keepalive: true,
+      file = file.then(function () {
+        return fetch(carte.getAttribute("data-url"), {
+          method: "POST", body: corps, credentials: "same-origin", keepalive: true,
+        });
+      }).catch(function () {
+        // Le réseau a lâché : la séance continue, les suivantes passeront.
       });
+    };
+
+    var repondre = function (carte, sue) {
+      envoyer(carte, sue);
+
+      // La carte change de boîte à l'instant même, comme au serveur : l'anneau
+      // du paquet le montre sans attendre la réponse de celui-ci.
+      var avant = boiteDe(carte);
+      var apres = sue ? Math.min(5, avant + 1) : 1;
+      carte.setAttribute("data-boite-avant", String(avant));
+      carte.setAttribute("data-boite", String(apres));
+      sommePaquet += apres - avant;
+      peindrePaquet();
 
       verdicts[rang] = sue;
       if (sue) { sues++; } else { rates++; }
@@ -935,6 +1003,9 @@
         sues = 0;
         rates = 0;
         verdicts = [];
+        // Les boîtes, elles, restent où la séance les a mises : refaire le tour
+        // fait remonter les cartes une seconde fois, et c'est bien le but.
+        cartesSeance.forEach(function (c) { c.removeAttribute("data-boite-avant"); });
         if (affichageSu) { affichageSu.textContent = "0"; }
         if (affichageRate) { affichageRate.textContent = "0"; }
         if (fin) { fin.hidden = true; }

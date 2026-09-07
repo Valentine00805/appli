@@ -16,6 +16,8 @@
  * @var int $rezeroTotal    combien de cartes il compte
  * @var ?string $rezeroRetour  où revenir ensuite : 'fiche', 'volet', ou null
  * @var int $duesEnTout  cartes dues en tout, séance plafonnée comprise
+ * @var int $paquetTotal  combien de cartes compte le paquet entier
+ * @var int $paquetSomme  la somme de leurs boîtes, d'où se tire l'anneau
  */
 $avecCours = $avecCours ?? false;
 $retour = $retour ?? null;
@@ -23,6 +25,8 @@ $rezeroCours = $rezeroCours ?? null;
 $rezeroTotal = $rezeroTotal ?? 0;
 $rezeroRetour = $rezeroRetour ?? null;
 $duesEnTout = $duesEnTout ?? count($cartes);
+$paquetTotal = $paquetTotal ?? 0;
+$paquetSomme = $paquetSomme ?? 0;
 ?>
 <div class="seance" data-seance data-jeton="<?= e(Session::jetonCsrf()) ?>">
   <div class="seance__entete">
@@ -89,6 +93,25 @@ $duesEnTout = $duesEnTout ?? count($cartes);
         <span class="score__mot">sues</span>
       </span>
     </p>
+
+    <?php if ($paquetTotal > 0): ?>
+      <?php
+      /*
+       * L'avancement du paquet entier, boîte moyenne ramenée sur cent. Il se lit
+       * ici plutôt que dans le résumé de la fiche, qui se replie pendant la
+       * séance ; le script le redessine à chaque verdict, la carte tranchée
+       * changeant de boîte à l'instant même.
+       */
+      ?>
+      <span class="seance__paquet" data-anneau-paquet
+            data-total="<?= $paquetTotal ?>" data-somme="<?= $paquetSomme ?>">
+        <?= Vue::rendre('cours/_anneau', [
+            'pourcentage' => avancement_cartes($paquetTotal, $paquetSomme / $paquetTotal),
+            'titre'       => 'Avancement du paquet',
+        ]) ?>
+        <span class="score__mot">du paquet</span>
+      </span>
+    <?php endif; ?>
   </div>
 
   <?php if ($duesEnTout > count($cartes)): ?>
@@ -106,6 +129,7 @@ $duesEnTout = $duesEnTout ?? count($cartes);
 
   <?php foreach ($cartes as $c): ?>
     <section class="carte seance__carte" data-carte="<?= (int) $c['id'] ?>"
+             data-boite="<?= (int) ($c['boite'] ?? 1) ?>"
              data-url="<?= url('cartes/' . $c['id'] . '/reponse') ?>">
       <?php if ($avecCours): ?>
         <p class="seance__cours"><?= e((string) ($c['cours_titre'] ?? '')) ?></p>

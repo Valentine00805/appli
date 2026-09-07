@@ -350,7 +350,7 @@ final class CoursController
     {
         $ligne = Database::one(
             'SELECT COUNT(*) AS total, SUM(revoir_le <= CURDATE()) AS a_revoir,
-                    AVG(boite) AS boite_moyenne
+                    AVG(boite) AS boite_moyenne, SUM(boite) AS somme_boites
                FROM cartes WHERE cours_id = ? AND user_id = ?',
             [$coursId, $userId]
         );
@@ -362,10 +362,13 @@ final class CoursController
             'total'    => $total,
             'a_revoir' => $aRevoir,
             'avancement' => avancement_cartes($total, (float) ($ligne['boite_moyenne'] ?? 1)),
+            // La somme des boîtes suit la séance : l'anneau de l'en-tête la
+            // recalcule à chaque verdict, sans repasser par le serveur.
+            'somme_boites' => (int) ($ligne['somme_boites'] ?? 0),
             // Les cartes dues voyagent avec le compte : la fiche les déplie
             // sur place, sans aller les chercher ailleurs.
             'dues'     => $aRevoir === 0 ? [] : Database::all(
-                'SELECT id, question, reponse FROM cartes
+                'SELECT id, question, reponse, boite FROM cartes
                   WHERE cours_id = ? AND user_id = ? AND revoir_le <= CURDATE()
                   ORDER BY revoir_le, boite, RAND() LIMIT ' . CartesController::SEANCE_MAX,
                 [$coursId, $userId]

@@ -348,6 +348,8 @@ $avancementFiche = avancement_anneaux(
             'rezeroCours'    => (int) $cours['id'],
             'rezeroTotal'    => $cartes['total'],
             'duesEnTout'     => $cartes['a_revoir'],
+            'paquetTotal'    => $cartes['total'],
+            'paquetSomme'    => $cartes['somme_boites'],
             'rezeroRetour'   => $surPage ? 'fiche' : 'volet',
         ]) ?>
       </div>

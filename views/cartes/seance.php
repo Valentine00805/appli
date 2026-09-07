@@ -11,6 +11,8 @@
  * @var ?array $cours  le cours, si la séance ne porte que sur lui
  * @var int $duesEnTout  cartes dues en tout, avant le plafond
  * @var int $rezeroTotal  combien le paquet en compte en tout
+ * @var int $paquetTotal  cartes du paquet entier ; 0 hors d'un cours
+ * @var int $paquetSomme  la somme de leurs boîtes, pour l'anneau
  */
 $retour = $cours !== null ? url('cours/' . $cours['id'] . '/cartes') : url('cartes');
 ?>
@@ -28,6 +30,8 @@ $retour = $cours !== null ? url('cours/' . $cours['id'] . '/cartes') : url('cart
   <?= Vue::rendre('cartes/_seance', [
       'cartes' => $cartes, 'avecCours' => $cours === null, 'retour' => $retour,
       'duesEnTout' => $duesEnTout,
+      'paquetTotal' => $paquetTotal,
+      'paquetSomme' => $paquetSomme,
       'rezeroCours'    => $cours === null ? null : (int) $cours['id'],
       'rezeroTotal'    => $rezeroTotal,
   ]) ?>

@@ -584,6 +584,12 @@ final class CartesController
             $params
         );
 
+        $paquet = $cours === null ? ['total' => 0, 'somme' => 0] : Database::one(
+            'SELECT COUNT(*) AS total, COALESCE(SUM(boite), 0) AS somme
+               FROM cartes WHERE cours_id = ? AND user_id = ?',
+            [(int) $cours['id'], $userId]
+        );
+
         Vue::afficher('cartes/seance', [
             'cartes' => $cartes,
             'cours'  => $cours,
@@ -593,10 +599,11 @@ final class CartesController
                 . ($cours === null ? '' : ' AND cours_id = ?'),
                 $cours === null ? [$userId] : [$userId, (int) $cours['id']]
             ),
-            'rezeroTotal' => $cours === null ? 0 : (int) Database::valeur(
-                'SELECT COUNT(*) FROM cartes WHERE cours_id = ? AND user_id = ?',
-                [(int) $cours['id'], $userId]
-            ),
+            'rezeroTotal' => $cours === null ? 0 : (int) $paquet['total'],
+            // L'anneau ne vaut que pour un paquet : une séance qui mêle
+            // plusieurs cours n'en mesure aucun, et n'en montre donc pas.
+            'paquetTotal' => (int) $paquet['total'],
+            'paquetSomme' => (int) $paquet['somme'],
         ], $cours !== null ? 'Réviser — ' . $cours['titre'] : 'Réviser');
     }
 
