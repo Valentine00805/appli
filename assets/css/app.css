@@ -494,7 +494,23 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
 
 /* La séance : une carte à la fois, au milieu de la page. */
 .seance { max-width: 44rem; margin: 0 auto; }
-.seance__compteur { margin: 0 0 .8rem; color: var(--texte-doux); font-size: .88rem; text-align: center; }
+.seance__entete {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 1rem; flex-wrap: wrap; margin-bottom: .8rem;
+}
+.seance__compteur { margin: 0; color: var(--texte-doux); font-size: .88rem; }
+
+/* Le score du moment : ce qui reste à revoir à gauche, ce qui est su à droite. */
+.score { display: flex; align-items: center; gap: .5rem; margin: 0; }
+.score__part {
+  display: inline-flex; align-items: center; gap: .35rem;
+  padding: .3rem .7rem; border-radius: 999px;
+  background: var(--fond-carte); border: 1px solid var(--bordure);
+  font-size: .9rem; font-variant-numeric: tabular-nums;
+}
+.score__part--rate { color: var(--erreur); }
+.score__part--su { color: var(--succes); }
+.score__mot { color: var(--texte-doux); font-size: .78rem; }
 .seance__carte { text-align: center; padding: 2rem 1.25rem; }
 .seance__cours { margin: 0 0 .6rem; font-size: .78rem; color: var(--texte-doux); }
 .seance__question {

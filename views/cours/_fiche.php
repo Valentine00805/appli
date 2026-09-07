@@ -277,36 +277,38 @@ $avancementFiche = avancement_anneaux(fichiers_suivis($fichiersFiche));
   <div class="fiche__rayon<?= $cartes['total'] === 0 ? ' fiche__rayon--vide' : '' ?>">
     <h4 class="fiche__titre">🃏 Cartes</h4>
 
-    <?php if ($cartes['total'] === 0): ?>
-      <p class="discret fiche__vide">Aucune carte pour ce cours.</p>
-    <?php else: ?>
-      <p class="fiche__cartes">
-        <strong><?= $cartes['total'] ?></strong> carte<?= $cartes['total'] > 1 ? 's' : '' ?>
-        <?php if ($cartes['a_revoir'] > 0): ?>
-          · <span class="carte-du"><?= $cartes['a_revoir'] ?> à revoir</span>
-        <?php else: ?>
-          · <span class="discret">rien à revoir aujourd'hui</span>
-        <?php endif; ?>
-      </p>
-    <?php endif; ?>
-
-    <p class="actions fiche__cartes-actions" data-cartes-resume>
-      <?php if ($cartes['a_revoir'] > 0): ?>
-        <?php
-        /*
-         * Le lien mène à la page de révision : sans JavaScript, c'est ce qui
-         * se passe. Avec, le script l'intercepte et déplie la séance ici même,
-         * sans quitter la fiche qu'on est en train de relire.
-         */
-        ?>
-        <a class="bouton bouton--petit" data-ouvrir-seance
-           href="<?= url('cartes/seance', ['cours' => $cours['id']]) ?>">Réviser</a>
+    <div data-cartes-resume>
+      <?php if ($cartes['total'] === 0): ?>
+        <p class="discret fiche__vide">Aucune carte pour ce cours.</p>
+      <?php else: ?>
+        <p class="fiche__cartes">
+          <strong><?= $cartes['total'] ?></strong> carte<?= $cartes['total'] > 1 ? 's' : '' ?>
+          <?php if ($cartes['a_revoir'] > 0): ?>
+            · <span class="carte-du"><?= $cartes['a_revoir'] ?> à revoir</span>
+          <?php else: ?>
+            · <span class="discret">rien à revoir aujourd'hui</span>
+          <?php endif; ?>
+        </p>
       <?php endif; ?>
-      <a class="bouton bouton--secondaire bouton--petit"
-         href="<?= url('cours/' . $cours['id'] . '/cartes') ?>">
-        <?= $cartes['total'] === 0 ? 'En fabriquer' : 'Voir le paquet' ?>
-      </a>
-    </p>
+
+      <p class="actions fiche__cartes-actions">
+        <?php if ($cartes['a_revoir'] > 0): ?>
+          <?php
+          /*
+           * Le lien mène à la page de révision : sans JavaScript, c'est ce qui
+           * se passe. Avec, le script l'intercepte et déplie la séance ici même,
+           * sans quitter la fiche qu'on est en train de relire.
+           */
+          ?>
+          <a class="bouton bouton--petit" data-ouvrir-seance
+             href="<?= url('cartes/seance', ['cours' => $cours['id']]) ?>">Réviser</a>
+        <?php endif; ?>
+        <a class="bouton bouton--secondaire bouton--petit"
+           href="<?= url('cours/' . $cours['id'] . '/cartes') ?>">
+          <?= $cartes['total'] === 0 ? 'En fabriquer' : 'Voir le paquet' ?>
+        </a>
+      </p>
+    </div>
 
     <?php if (($cartes['dues'] ?? []) !== []): ?>
       <div class="fiche__seance" data-seance-sur-place hidden>

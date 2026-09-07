@@ -783,6 +783,9 @@
     var jetonSeance = seance.getAttribute("data-jeton");
     var rang = 0;
     var sues = 0;
+    var rates = 0;
+    var affichageSu = seance.querySelector("[data-score-su]");
+    var affichageRate = seance.querySelector("[data-score-rate]");
 
     var montrerCarte = function () {
       cartesSeance.forEach(function (carte, i) {
@@ -805,8 +808,9 @@
       cartesSeance.forEach(function (carte) { carte.hidden = true; });
       if (compteur) { compteur.hidden = true; }
       if (bilan) {
-        bilan.textContent = sues + " carte" + (sues > 1 ? "s" : "") + " sur "
-          + cartesSeance.length + " sue" + (sues > 1 ? "s" : "") + " du premier coup.";
+        bilan.textContent = sues + " sue" + (sues > 1 ? "s" : "") + ", "
+          + rates + " à revoir, sur " + cartesSeance.length + " carte"
+          + (cartesSeance.length > 1 ? "s" : "") + ".";
       }
       if (fin) { fin.hidden = false; }
     };
@@ -819,7 +823,9 @@
         method: "POST", body: corps, credentials: "same-origin", keepalive: true,
       });
 
-      if (sue) { sues++; }
+      if (sue) { sues++; } else { rates++; }
+      if (affichageSu) { affichageSu.textContent = String(sues); }
+      if (affichageRate) { affichageRate.textContent = String(rates); }
       rang++;
       if (rang >= cartesSeance.length) { terminer(); } else { montrerCarte(); }
     };

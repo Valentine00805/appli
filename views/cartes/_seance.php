@@ -17,9 +17,31 @@ $avecCours = $avecCours ?? false;
 $retour = $retour ?? null;
 ?>
 <div class="seance" data-seance data-jeton="<?= e(Session::jetonCsrf()) ?>">
-  <p class="seance__compteur" data-seance-compteur>
-    <?= count($cartes) ?> carte<?= count($cartes) > 1 ? 's' : '' ?> à revoir
-  </p>
+  <div class="seance__entete">
+    <p class="seance__compteur" data-seance-compteur>
+      <?= count($cartes) ?> carte<?= count($cartes) > 1 ? 's' : '' ?> à revoir
+    </p>
+
+    <?php
+    /*
+     * Le compte des verdicts donnés, qui monte au fil de la séance. Il part de
+     * zéro à chaque fois : c'est le score du moment, pas un historique — celui-ci
+     * se lit carte par carte dans le paquet.
+     */
+    ?>
+    <p class="score" role="status">
+      <span class="score__part score__part--rate">
+        <span aria-hidden="true">✕</span>
+        <strong data-score-rate>0</strong>
+        <span class="score__mot">à revoir</span>
+      </span>
+      <span class="score__part score__part--su">
+        <strong data-score-su>0</strong>
+        <span aria-hidden="true">✓</span>
+        <span class="score__mot">sues</span>
+      </span>
+    </p>
+  </div>
 
   <?php foreach ($cartes as $c): ?>
     <section class="carte seance__carte" data-carte="<?= (int) $c['id'] ?>"
