@@ -790,30 +790,33 @@
   }
 
   /*
-   * Fabriquer des cartes : le cours choisi montre ses documents.
+   * Fabriquer des cartes : les cours cochés montrent leurs documents.
    *
    * Les listes des différents cours attendent toutes dans la page, cachées et
-   * désactivées ; on n'allume que celle du cours retenu. Un « fieldset »
+   * désactivées ; on n'allume que celles des cours retenus. Un « fieldset »
    * désactivé n'envoie rien, ce qui suffit à ce que le formulaire ne parle que
-   * du bon cours. La liste s'éteint aussi quand on décoche « les documents
-   * joints » : elle n'aurait alors plus rien à dire, et les cases gardent
+   * des bons cours. Elles s'éteignent aussi quand on décoche « les documents
+   * joints » : elles n'auraient alors plus rien à dire, et les cases gardent
    * malgré tout ce qu'on y avait mis.
    */
-  var choixCours = document.getElementById("cours");
+  var choixCours = [].slice.call(document.querySelectorAll("[data-choix-cours]"));
   var listesDocuments = [].slice.call(document.querySelectorAll("[data-documents]"));
   var caseDocuments = document.querySelector("input[name='sources[]'][value='documents']");
 
-  if (choixCours && listesDocuments.length > 0) {
+  if (choixCours.length > 0 && listesDocuments.length > 0) {
     var montrerLesDocuments = function () {
       var utile = !caseDocuments || caseDocuments.checked;
+      var retenus = choixCours.filter(function (c) { return c.checked; })
+        .map(function (c) { return c.value; });
+
       listesDocuments.forEach(function (liste) {
-        var sien = liste.getAttribute("data-documents") === choixCours.value;
+        var sien = retenus.indexOf(liste.getAttribute("data-documents")) >= 0;
         liste.hidden = !sien;
         liste.disabled = !sien || !utile;
       });
     };
 
-    choixCours.addEventListener("change", montrerLesDocuments);
+    choixCours.forEach(function (c) { c.addEventListener("change", montrerLesDocuments); });
     if (caseDocuments) { caseDocuments.addEventListener("change", montrerLesDocuments); }
     montrerLesDocuments();
   }

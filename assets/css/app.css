@@ -477,6 +477,25 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
   color: var(--texte-doux);
 }
 .documents__place:first-of-type { margin-top: 0; }
+
+/* Le choix des cours : les mêmes cases que les sources, encadrées comme les
+   documents, puisqu'on y coche aussi bien plusieurs lignes qu'une seule. */
+.choix-cours {
+  padding: .7rem .8rem;
+  border: 1px solid var(--bordure); border-radius: var(--rayon-s);
+  background: var(--fond-doux);
+  max-height: 15rem; overflow-y: auto;
+}
+.choix-cours .documents__place { margin-top: .6rem; }
+.choix-cours .documents__place:first-of-type { margin-top: 0; }
+
+/* D'où vient un groupe de propositions, quand la fournée mêle des cours. */
+.propositions__cours {
+  margin: .9rem 0 .2rem; padding: 0;
+  font-size: .8rem; font-weight: 600; color: var(--texte-doux);
+  list-style: none;
+}
+.propositions__cours:first-child { margin-top: 0; }
 .documents .champ__aide { margin: 0; }
 
 /* Ce qui n'est pas une définition se signale : on ne les lit pas pareil. */

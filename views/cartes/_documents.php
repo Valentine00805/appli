@@ -9,6 +9,7 @@
  * d'origine — tous les documents du cours.
  *
  * @var int $coursId     le cours dont on liste les documents
+ * @var string $coursTitre  son titre : plusieurs listes peuvent s'afficher
  * @var array $documents ses fichiers, ceux du cours d'abord
  */
 $parPlace = [0 => [], 1 => []];
@@ -18,19 +19,19 @@ foreach ($documents as $document) {
 $places = [0 => 'Joints au cours', 1 => 'Joints à la fiche de révision'];
 ?>
 <fieldset class="sources documents" data-documents="<?= $coursId ?>" hidden disabled>
-  <legend>Documents de ce cours</legend>
+  <legend>Documents de « <?= e($coursTitre) ?> »</legend>
 
   <?php
   /*
-   * De quel cours vient la liste : sans ce repère, le serveur prendrait pour un
-   * choix une liste restée affichée sur un autre cours, et lirait les mauvais
-   * documents — ou plus aucun.
+   * De quels cours viennent les listes : sans ce repère, le serveur prendrait
+   * pour un choix une liste restée affichée sur un cours entre-temps décoché,
+   * et lirait les mauvais documents — ou plus aucun.
    */
   ?>
-  <input type="hidden" name="documents_de" value="<?= $coursId ?>">
+  <input type="hidden" name="documents_de[]" value="<?= $coursId ?>">
 
   <?php if ($documents === []): ?>
-    <p class="champ__aide">Rien n'est joint à ce cours, ni à sa fiche de révision.</p>
+    <p class="champ__aide">Rien n'y est joint, ni à sa fiche de révision.</p>
   <?php endif; ?>
 
   <?php foreach ($places as $place => $titre): ?>

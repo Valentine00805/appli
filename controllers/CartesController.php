@@ -25,6 +25,14 @@ final class CartesController
      */
     public const SEANCE_MAX = 40;
 
+    /**
+     * Au-delà, une fournée de propositions devient illisible : on s'arrête là.
+     *
+     * Le plafond vaut pour la fournée entière, et non par cours : en choisir
+     * dix ne doit pas produire une page interminable.
+     */
+    public const PROPOSITIONS_MAX = 200;
+
     // --- Voir ses cartes -----------------------------------------------------
 
     /** Ce qu'il y a à revoir aujourd'hui, tous cours confondus. */
@@ -92,7 +100,6 @@ final class CartesController
             // Les propositions passent par la session : elles ne sont pas encore
             // des cartes, et rien ne doit les enregistrer avant validation.
             'propositions' => (array) (Session::reprendre('propositions_cartes') ?? []),
-            'coursPropose' => Session::reprendre('cours_propose'),
         ], 'Cartes');
     }
 
@@ -120,80 +127,175 @@ final class CartesController
     // --- Fabriquer des cartes ------------------------------------------------
 
     /**
-     * Propose des cartes tirées de tout ce que le cours contient de lisible.
+     * Propose des cartes tirées de ce que les cours choisis ont de lisible.
      *
      * Rien n'est enregistré : les propositions passent par la session, et
-     * l'utilisateur coche celles qu'il garde.
+     * l'utilisateur coche celles qu'il garde. Chacune sait de quel cours elle
+     * vient, puisqu'une même fournée peut en mêler plusieurs.
      */
-    public function proposer(?int $id = null): void
+    public function proposer(): void
     {
         Auth::exiger();
         Session::verifierCsrf();
         $userId = Auth::id();
 
-        // Depuis l'onglet Cartes, le cours est choisi dans une liste ; depuis un
-        // paquet, il est déjà dans l'adresse.
-        $id ??= entier_ou_null($_POST['cours'] ?? null);
-        if ($id === null) {
-            Session::flash('erreur', 'Choisissez un cours.');
-            redirect('cartes');
-        }
-        $cours = $this->cours($id, $userId);
+        $ids = $this->coursDemandes($userId);
         $sources = $this->sourcesDemandees();
-        $documents = $this->documentsDemandes($id);
 
-        /*
-         * Une liste ouverte puis entièrement décochée dit « pas les documents ».
-         * L'annoncer quand même comme une source relue rendrait le message
-         * d'échec faux : on la retire.
-         */
-        if ($documents === []) {
-            $sources = array_values(array_diff($sources, ['documents']));
-            if ($sources === []) {
-                Session::flash('erreur', 'Aucun document coché : il n\'y a rien à relire.');
-                redirect('cartes');
+        $muets = [];
+        $parCours = [];
+        $relus = [];
+        $sansSource = 0;
+
+        foreach ($ids as $id) {
+            $cours = $this->cours($id, $userId);
+            $documents = $this->documentsDemandes($id);
+
+            /*
+             * Une liste ouverte puis entièrement décochée dit « pas les
+             * documents de ce cours-là ». L'annoncer quand même comme une
+             * source relue rendrait le message d'échec faux : on la retire.
+             */
+            $siennes = $documents === []
+                ? array_values(array_diff($sources, ['documents']))
+                : $sources;
+            if ($siennes === []) {
+                $sansSource++;
+                continue;
+            }
+            $relus = array_values(array_unique(array_merge($relus, $siennes)));
+
+            $brutes = array_merge(
+                in_array('cours', $siennes, true)
+                    ? GenerateurCartes::depuisTexte((string) $cours['contenu'], 'cours') : [],
+                in_array('fiche', $siennes, true)
+                    ? GenerateurCartes::depuisTexte((string) $cours['fiche_revision'], 'fiche') : [],
+                in_array('documents', $siennes, true)
+                    ? $this->depuisLesFichiers($id, $userId, $muets, $documents) : []
+            );
+
+            $dejaLa = array_column(Database::all(
+                'SELECT empreinte FROM cartes WHERE cours_id = ? AND user_id = ?',
+                [$id, $userId]
+            ), 'empreinte');
+
+            // Le tri se fait cours par cours : deux paquets peuvent porter la
+            // même carte sans que l'un empêche l'autre.
+            $trouvees = GenerateurCartes::trier($brutes, $dejaLa);
+            foreach (array_keys($trouvees) as $rang) {
+                $trouvees[$rang]['cours_id'] = $id;
+                $trouvees[$rang]['cours_titre'] = (string) $cours['titre'];
+            }
+            if ($trouvees !== []) {
+                $parCours[$id] = $trouvees;
             }
         }
 
-        $muets = [];
-        $brutes = array_merge(
-            in_array('cours', $sources, true)
-                ? GenerateurCartes::depuisTexte((string) $cours['contenu'], 'cours') : [],
-            in_array('fiche', $sources, true)
-                ? GenerateurCartes::depuisTexte((string) $cours['fiche_revision'], 'fiche') : [],
-            in_array('documents', $sources, true)
-                ? $this->depuisLesFichiers($id, $userId, $muets, $documents) : []
-        );
-
-        $dejaLa = array_column(Database::all(
-            'SELECT empreinte FROM cartes WHERE cours_id = ? AND user_id = ?',
-            [$id, $userId]
-        ), 'empreinte');
-        $propositions = GenerateurCartes::trier($brutes, $dejaLa);
+        $laissees = 0;
+        $propositions = $this->partagerLePlafond($parCours, $laissees);
 
         if ($propositions === []) {
-            Session::flash('erreur', $dejaLa === []
-                ? 'Rien à lire dans ' . $this->nommerLesSources($sources) . '.'
-                : 'Aucune nouvelle carte dans ' . $this->nommerLesSources($sources)
-                    . ' : tout ce qui était repérable est déjà dans le paquet.');
+            Session::flash('erreur', match (true) {
+                $sansSource === count($ids) => 'Aucun document coché : il n\'y a rien à relire.',
+                count($ids) > 1 => 'Aucune nouvelle carte dans ' . $this->nommerLesSources($relus)
+                    . ', pour aucun des ' . count($ids) . ' cours choisis.',
+                default => 'Aucune nouvelle carte dans ' . $this->nommerLesSources($relus)
+                    . ' : ce qui était repérable est déjà dans le paquet.',
+            });
         }
 
         $this->signalerLesMuets($muets);
+
+        if ($laissees > 0) {
+            Session::flash('erreur', $laissees . ' propositions laissées de côté : une fournée '
+                . 'en compte au plus ' . self::PROPOSITIONS_MAX
+                . '. Relancez après avoir trié celles-ci.');
+        }
 
         if ($propositions === []) {
             redirect('cartes');
         }
 
         Session::garder('propositions_cartes', $propositions);
-        Session::garder('cours_propose', ['id' => $id, 'titre' => $cours['titre']]);
         redirect('cartes');
     }
 
     /**
-     * Le cours désigné par le formulaire, ou l'onglet si rien n'est choisi.
+     * Les cours désignés par le formulaire de fabrication.
      *
-     * Les cartes se fabriquent depuis l'onglet Cartes, où le cours est un champ
-     * du formulaire et non un morceau de l'adresse.
+     * @return list<int>
+     */
+    private function coursDemandes(int $userId): array
+    {
+        $ids = [];
+        foreach ((array) ($_POST['cours'] ?? []) as $brut) {
+            $id = entier_ou_null($brut);
+            // Chacun est vérifié au passage : un cours qui n'est pas le vôtre
+            // ne va pas plus loin, et un doublon ne fait pas le travail deux fois.
+            if ($id !== null && !in_array($id, $ids, true)) {
+                $this->cours($id, $userId);
+                $ids[] = $id;
+            }
+        }
+
+        if ($ids === []) {
+            Session::flash('erreur', 'Choisissez au moins un cours.');
+            redirect('cartes');
+        }
+
+        return $ids;
+    }
+
+    /**
+     * Les propositions des différents cours, le plafond partagé entre eux.
+     *
+     * Chacun se voit accorder une carte à tour de rôle jusqu'à épuisement :
+     * sans cela, un cours bavard mangerait tout le plafond et les suivants
+     * n'auraient rien. L'ordre des cours est conservé, pour que la page les
+     * présente groupés.
+     *
+     * @param  array<int, list<array>> $parCours
+     * @param  int $laissees  ce que le plafond a écarté, pour pouvoir le dire
+     * @return list<array>
+     */
+    private function partagerLePlafond(array $parCours, int &$laissees = 0): array
+    {
+        $parts = array_fill_keys(array_keys($parCours), 0);
+        $place = self::PROPOSITIONS_MAX;
+
+        $encore = true;
+        while ($place > 0 && $encore) {
+            $encore = false;
+            foreach ($parCours as $id => $liste) {
+                if ($parts[$id] >= count($liste)) {
+                    continue;
+                }
+                $parts[$id]++;
+                $place--;
+                $encore = true;
+                if ($place === 0) {
+                    break;
+                }
+            }
+        }
+
+        $retenues = [];
+        $laissees = 0;
+        foreach ($parCours as $id => $liste) {
+            foreach (array_slice($liste, 0, $parts[$id]) as $proposition) {
+                $retenues[] = $proposition;
+            }
+            $laissees += count($liste) - $parts[$id];
+        }
+
+        return $retenues;
+    }
+
+    /**
+     * Le cours désigné par un formulaire qui n'en vise qu'un.
+     *
+     * C'est le cas d'une carte écrite à la main : elle rejoint un paquet, et un
+     * seul.
      */
     private function coursDemande(int $userId): int
     {
@@ -228,15 +330,19 @@ final class CartesController
      *
      * Elle n'apparaît que si le script a pu l'ouvrir. Sans lui, le formulaire
      * ne dit rien des documents, et « les documents joints » garde son sens
-     * d'origine : tous ceux du cours. Le champ caché dit de quel cours vient la
-     * liste, ce qui évite de prendre pour un choix une liste restée sur un
-     * autre cours.
+     * d'origine : tous ceux du cours. Le champ caché dit de quels cours
+     * viennent les listes ouvertes, ce qui évite de prendre pour un choix une
+     * liste restée sur un cours entre-temps décoché.
      *
      * @return ?list<int>  null quand aucune liste n'a été soumise : on prend tout
      */
     private function documentsDemandes(int $coursId): ?array
     {
-        if (entier_ou_null($_POST['documents_de'] ?? null) !== $coursId) {
+        $listes = [];
+        foreach ((array) ($_POST['documents_de'] ?? []) as $brut) {
+            $listes[] = entier_ou_null($brut);
+        }
+        if (!in_array($coursId, $listes, true)) {
             return null;
         }
 
@@ -366,11 +472,14 @@ final class CartesController
         Auth::exiger();
         Session::verifierCsrf();
         $userId = Auth::id();
-        $id = $this->coursDemande($userId);
 
         $gardees = (array) ($_POST['carte'] ?? []);
         $ajoutees = 0;
         $sansReponse = 0;
+        // Les cours déjà vérifiés : une fournée en mêle plusieurs, et il serait
+        // inutile de redemander le même à la base à chaque carte.
+        $connus = [];
+        $paquets = [];
 
         foreach ($gardees as $carte) {
             // Les champs d'une proposition décochée sont envoyés quand même :
@@ -389,18 +498,34 @@ final class CartesController
                 $sansReponse++;
                 continue;
             }
-            $ajoutees += $this->ajouter(
-                $id,
+            // Chaque proposition porte son cours : c'est lui qui décide du
+            // paquet, et il est vérifié comme n'importe quelle entrée.
+            $coursId = entier_ou_null($carte['cours'] ?? null);
+            if ($coursId === null) {
+                continue;
+            }
+            if (!isset($connus[$coursId])) {
+                $this->cours($coursId, $userId);
+                $connus[$coursId] = true;
+            }
+
+            $retenue = $this->ajouter(
+                $coursId,
                 $userId,
                 $question,
                 $reponse,
                 (string) ($carte['origine'] ?? 'main'),
                 (string) ($carte['source'] ?? '')
-            ) ? 1 : 0;
+            );
+            if ($retenue) {
+                $ajoutees++;
+                $paquets[$coursId] = true;
+            }
         }
 
+        $ou = count($paquets) > 1 ? ' aux ' . count($paquets) . ' paquets.' : ' au paquet.';
         Session::flash($ajoutees > 0 ? 'succes' : 'erreur', match (true) {
-            $ajoutees > 1  => $ajoutees . ' cartes ajoutées au paquet.',
+            $ajoutees > 1  => $ajoutees . ' cartes ajoutées' . $ou,
             $ajoutees === 1 => 'Carte ajoutée au paquet.',
             default        => 'Aucune carte retenue.',
         });

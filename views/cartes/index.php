@@ -6,8 +6,8 @@
  * @var int $aRevoir    cartes dues, tous cours confondus
  * @var int $total      cartes existantes
  * @var array $cours     tous les cours, pour choisir où puiser
- * @var array $propositions   ce que le générateur vient de trouver, à valider
- * @var ?array $coursPropose  le cours dont elles viennent
+ * @var array $propositions   ce que le générateur vient de trouver, à valider,
+ *                            chacune sachant de quel cours elle vient
  * @var array $cartesParCours  les cartes de chaque paquet, par cours
  * @var array $documentsParCours  les fichiers de chaque cours, par cours
  */
@@ -41,18 +41,33 @@
    * modifiable ici, parce qu'une règle se trompe parfois de découpe.
    */
   ?>
+  <?php
+  /*
+   * Chaque proposition porte son cours : une même fournée peut venir de
+   * plusieurs, et chaque carte doit rejoindre le bon paquet.
+   */
+  $titres = array_values(array_unique(array_column($propositions, 'cours_titre')));
+  ?>
   <form class="carte propositions" method="post" action="<?= url('cartes/retenir') ?>">
     <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
-    <input type="hidden" name="cours" value="<?= (int) $coursPropose['id'] ?>">
 
     <div class="propositions__entete">
       <h2><?= count($propositions) ?> proposition<?= count($propositions) > 1 ? 's' : '' ?>
-        <span class="discret">pour « <?= e($coursPropose['titre']) ?> »</span></h2>
+        <span class="discret">
+          <?= count($titres) === 1
+              ? 'pour « ' . e($titres[0]) . ' »'
+              : 'pour ' . count($titres) . ' cours' ?>
+        </span></h2>
       <span class="discret">Décochez ce qui ne vous sert pas, corrigez le reste.</span>
     </div>
 
     <ul class="propositions__liste">
+      <?php $venuDe = null; ?>
       <?php foreach ($propositions as $rang => $p): ?>
+        <?php if (count($titres) > 1 && $p['cours_titre'] !== $venuDe): ?>
+          <?php $venuDe = $p['cours_titre']; ?>
+          <li class="propositions__cours"><?= e($venuDe) ?></li>
+        <?php endif; ?>
         <li class="proposition">
           <label class="proposition__garder">
             <input type="checkbox" name="carte[<?= $rang ?>][garder]" value="1" checked>
@@ -77,6 +92,7 @@
             <input type="text" name="carte[<?= $rang ?>][reponse]" value="<?= e($p['reponse']) ?>"
                    aria-label="Réponse" placeholder="<?= $p['reponse'] === '' ? 'À écrire — sans réponse, la carte est ignorée' : '' ?>">
           </div>
+          <input type="hidden" name="carte[<?= $rang ?>][cours]" value="<?= (int) $p['cours_id'] ?>">
           <input type="hidden" name="carte[<?= $rang ?>][origine]" value="<?= e($p['origine']) ?>">
           <input type="hidden" name="carte[<?= $rang ?>][source]" value="<?= e($p['source']) ?>">
         </li>
@@ -97,45 +113,54 @@
       <a href="<?= url('cours/nouveau') ?>">En créer un</a>.</p>
   <?php else: ?>
     <p class="champ__aide">
-      Choisissez un cours et ce que l'application doit relire. Elle propose une
-      carte partout où elle reconnaît un terme suivi de sa définition, une
-      question de devoir, ou une phrase dont un élément mérite d'être caché.
-      Rien n'est enregistré : vous validez ensuite ce que vous gardez.
+      Choisissez un ou plusieurs cours, et ce que l'application doit relire.
+      Elle propose une carte partout où elle reconnaît un terme suivi de sa
+      définition, une question de devoir, ou une phrase dont un élément mérite
+      d'être caché. Rien n'est enregistré : vous validez ensuite ce que vous
+      gardez.
     </p>
     <form method="post" action="<?= url('cartes/proposer') ?>" class="fabrique__form">
       <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
-      <div class="champ">
-        <label for="cours">Cours</label>
-        <select id="cours" name="cours" required>
-          <?php $matiere = false; ?>
-          <?php foreach ($cours as $c): ?>
-            <?php if ($c['matiere_nom'] !== $matiere): ?>
-              <?php if ($matiere !== false): ?></optgroup><?php endif; ?>
-              <?php $matiere = $c['matiere_nom']; ?>
-              <optgroup label="<?= e($matiere ?? 'Sans matière') ?>">
-            <?php endif; ?>
-            <option value="<?= (int) $c['id'] ?>">
+      <?php
+      /*
+       * Des cases plutôt qu'une liste déroulante : on peut puiser dans
+       * plusieurs cours d'un coup, et les voir tous sans dérouler quoi que ce
+       * soit. Le premier est coché, pour que le formulaire serve tel quel.
+       */
+      ?>
+      <fieldset class="sources choix-cours">
+        <legend>Cours</legend>
+        <?php $matiere = false; ?>
+        <?php foreach ($cours as $rang => $c): ?>
+          <?php if ($c['matiere_nom'] !== $matiere): ?>
+            <?php $matiere = $c['matiere_nom']; ?>
+            <p class="documents__place"><?= e($matiere ?? 'Sans matière') ?></p>
+          <?php endif; ?>
+          <label class="sources__choix">
+            <input type="checkbox" name="cours[]" value="<?= (int) $c['id'] ?>"
+                   data-choix-cours <?= $rang === 0 ? 'checked' : '' ?>>
+            <span>
               <?= e($c['titre']) ?>
-              <?php if (!$c['a_fiche']): ?> — sans fiche<?php endif; ?>
-            </option>
-          <?php endforeach; ?>
-          <?php if ($matiere !== false): ?></optgroup><?php endif; ?>
-        </select>
-      </div>
+              <?php if (!$c['a_fiche']): ?><span class="discret">sans fiche</span><?php endif; ?>
+            </span>
+          </label>
+        <?php endforeach; ?>
+      </fieldset>
 
       <?= Vue::rendre('cartes/_sources', ['cours' => null]) ?>
 
       <?php
       /*
-       * Les documents de chaque cours attendent déjà dans la page : choisir un
+       * Les documents de chaque cours attendent déjà dans la page : cocher un
        * cours fait apparaître les siens, sans rien redemander au serveur. Ils
        * arrivent tous cochés — décocher sert à écarter un document précis.
        */
       ?>
       <?php foreach ($cours as $c): ?>
         <?= Vue::rendre('cartes/_documents', [
-            'coursId'   => (int) $c['id'],
-            'documents' => $documentsParCours[(int) $c['id']] ?? [],
+            'coursId'    => (int) $c['id'],
+            'coursTitre' => (string) $c['titre'],
+            'documents'  => $documentsParCours[(int) $c['id']] ?? [],
         ]) ?>
       <?php endforeach; ?>
 
