@@ -461,6 +461,10 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
 .sources__choix .discret { font-size: .78rem; margin-left: .35rem; }
 .sources__choix--vide { cursor: default; opacity: .55; }
 
+/* Nommer quelqu'un que la liste ne connaît pas encore : le champ se glisse
+   sous elle, et n'apparaît que si on le demande. */
+.qui-rembourse__autre { margin-top: .4rem; }
+
 /* Les documents du cours choisi, sous les sources qu'ils détaillent. Un
    « fieldset » désactivé se grise seul : on ne le repeint pas. */
 .documents {

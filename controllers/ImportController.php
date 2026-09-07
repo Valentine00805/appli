@@ -372,7 +372,7 @@ final class ImportController
     {
         $operations = $releve['operations'];
         $mapping = (array) ($_POST['rubrique'] ?? []);
-        $personne = mb_substr(post('rembourse_par'), 0, 80) ?: null;
+        $personne = RemboursementsController::quiRembourse();
         $dejaRegle = isset($_POST['deja_rembourse']);
         $categoriesValides = array_column($this->categories($userId), 'sens', 'id');
 

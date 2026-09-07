@@ -64,6 +64,31 @@
     majRemb();
   }
 
+  /*
+   * Qui rembourse : le champ libre ne sert qu'à nommer quelqu'un de nouveau.
+   *
+   * Il est écrit visible, pour que la page marche sans script ; on le replie
+   * ici, et on ne le rouvre que sur « Quelqu'un d'autre ». On le vide en le
+   * repliant : le serveur fait passer le nom écrit avant la liste, et un reste
+   * oublié là écraserait le choix.
+   */
+  document.querySelectorAll('[data-qui-rembourse]').forEach(function (choix) {
+    var cle = choix.getAttribute('data-qui-rembourse');
+    var autre = document.querySelector('[data-qui-autre="' + cle + '"]');
+    if (!autre) { return; }
+
+    var majQui = function (ouvertPar) {
+      var nouveau = choix.value === '+';
+      autre.hidden = !nouveau;
+      if (!nouveau) { autre.value = ''; }
+      // Nommer quelqu'un enchaîne sur la frappe : le champ prend la main.
+      if (nouveau && ouvertPar) { autre.focus(); }
+    };
+
+    choix.addEventListener('change', function () { majQui(true); });
+    majQui(false);
+  });
+
   // Édition rapide d'une matière
   document.querySelectorAll('[data-bascule]').forEach(function (bouton) {
     bouton.addEventListener('click', function () {

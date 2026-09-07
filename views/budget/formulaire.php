@@ -108,12 +108,10 @@ $retour = url('budget', ['mois' => substr((string) $operation['date_operation'],
         </label>
 
         <div id="bloc-remboursement" style="margin-top:.9rem">
-          <div class="champ">
-            <label for="rembourse_par">Par qui</label>
-            <input type="text" id="rembourse_par" name="rembourse_par" maxlength="80"
-                   list="liste-personnes" placeholder="Parents"
-                   value="<?= e((string) $operation['rembourse_par']) ?>">
-          </div>
+          <?= Vue::rendre('budget/_qui_rembourse', [
+              'personnes' => $personnes,
+              'valeur'    => $operation['rembourse_par'],
+          ]) ?>
 
           <div class="champ">
             <label for="part_rembourser">Part à réclamer</label>
@@ -147,11 +145,6 @@ $retour = url('budget', ['mois' => substr((string) $operation['date_operation'],
           </div>
         </div>
 
-        <datalist id="liste-personnes">
-          <?php foreach ($personnes as $p): ?>
-            <option value="<?= e($p) ?>"></option>
-          <?php endforeach; ?>
-        </datalist>
       </div>
 
       <button class="bouton bouton--bloc" type="submit">Enregistrer</button>

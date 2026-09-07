@@ -121,15 +121,12 @@ $ecarts = array_filter($controles, static fn (array $c): bool => $c['ecart'] !==
   <section class="carte" style="margin-bottom:1.25rem">
     <h2>Réglages de la reprise</h2>
     <div class="grille grille--2">
-      <div class="champ" style="margin:0">
-        <label for="rembourse_par">Qui devait vous rembourser</label>
-        <input type="text" id="rembourse_par" name="rembourse_par" maxlength="80"
-               list="liste-personnes" value="Parents">
-        <datalist id="liste-personnes">
-          <?php foreach ($personnes as $p): ?>
-            <option value="<?= e($p) ?>"></option>
-          <?php endforeach; ?>
-        </datalist>
+      <div>
+        <?= Vue::rendre('budget/_qui_rembourse', [
+            'personnes' => $personnes,
+            'valeur'    => 'Parents',
+            'libelle'   => 'Qui devait vous rembourser',
+        ]) ?>
         <span class="champ__aide">Toutes les lignes reprises seront cochées « à me faire rembourser ».</span>
       </div>
       <div class="champ" style="margin:0">

@@ -256,12 +256,13 @@ $lien = static fn (string $m): string => url('budget/remboursements',
                           Vide = tout. Moitié : <?= e(montant_fr(round((float) $l['montant'] / 2, 2), false)) ?>
                         </span>
                       </div>
-                      <div class="champ">
-                        <label for="qui-<?= (int) $l['id'] ?>">Qui rembourse</label>
-                        <input type="text" id="qui-<?= (int) $l['id'] ?>" form="f-<?= (int) $l['id'] ?>"
-                               name="rembourse_par" maxlength="80" list="liste-personnes"
-                               value="<?= e((string) $l['rembourse_par']) ?>">
-                      </div>
+                      <?= Vue::rendre('budget/_qui_rembourse', [
+                          'personnes' => $personnes,
+                          'valeur'    => $l['rembourse_par'],
+                          'libelle'   => 'Qui rembourse',
+                          'cle'       => '-' . (int) $l['id'],
+                          'form'      => 'f-' . (int) $l['id'],
+                      ]) ?>
                       <div class="champ">
                         <label for="st-<?= (int) $l['id'] ?>">Statut</label>
                         <select id="st-<?= (int) $l['id'] ?>" form="f-<?= (int) $l['id'] ?>" name="statut_remb">
@@ -325,12 +326,6 @@ $lien = static fn (string $m): string => url('budget/remboursements',
       <?php endforeach; ?>
     </form>
   <?php endforeach; ?>
-
-  <datalist id="liste-personnes">
-    <?php foreach ($personnes as $p): ?>
-      <option value="<?= e($p) ?>"></option>
-    <?php endforeach; ?>
-  </datalist>
 <?php endif; ?>
 
 <?php if ($moisRenseignes !== []): ?>

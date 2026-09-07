@@ -390,7 +390,7 @@ final class RemboursementsController
              WHERE id = ? AND user_id = ?',
             [
                 $part === null ? null : number_format($part, 2, '.', ''),
-                mb_substr(post('rembourse_par'), 0, 80) ?: null,
+                self::quiRembourse(),
                 $statut,
                 $statut === 'rembourse' ? ($date ?? date('Y-m-d')) : null,
                 $id,
@@ -504,7 +504,25 @@ final class RemboursementsController
         return $t;
     }
 
-    /** Noms déjà utilisés, pour les suggestions et le filtre. */
+    /**
+     * Qui doit rembourser, d'après le formulaire.
+     *
+     * On choisit dans la liste des personnes déjà nommées, ou l'on écrit un
+     * nouveau nom à côté. Le nom écrit l'emporte dès qu'il y en a un : sans
+     * JavaScript le champ reste visible, et ce qu'on y met doit compter.
+     */
+    public static function quiRembourse(): ?string
+    {
+        $ecrit = trim(post('rembourse_par_autre'));
+        // « + » est l'entrée « quelqu'un d'autre » : sans nom à côté, elle ne
+        // désigne encore personne.
+        $choisi = trim(post('rembourse_par'));
+        $nom = $ecrit !== '' ? $ecrit : ($choisi === '+' ? '' : $choisi);
+
+        return $nom === '' ? null : mb_substr($nom, 0, 80);
+    }
+
+    /** Noms déjà utilisés, pour la liste du formulaire et le filtre. */
     public static function personnes(int $userId): array
     {
         return array_column(Database::all(

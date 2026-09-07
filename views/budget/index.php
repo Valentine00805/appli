@@ -254,11 +254,7 @@ $plafondHistorique = max(array_merge([1.0], array_map(
           </label>
 
           <div id="bloc-remboursement" style="margin-top:.75rem">
-            <div class="champ" style="margin-bottom:.6rem">
-              <label for="rembourse_par">Par qui</label>
-              <input type="text" id="rembourse_par" name="rembourse_par" maxlength="80"
-                     list="liste-personnes" placeholder="Parents">
-            </div>
+            <?= Vue::rendre('budget/_qui_rembourse', ['personnes' => $personnes]) ?>
             <div class="champ" style="margin:0">
               <label for="part_rembourser">Part à réclamer</label>
               <input type="text" id="part_rembourser" name="part_rembourser" inputmode="decimal"
@@ -269,12 +265,6 @@ $plafondHistorique = max(array_merge([1.0], array_map(
             </div>
           </div>
         </fieldset>
-
-        <datalist id="liste-personnes">
-          <?php foreach ($personnes as $p): ?>
-            <option value="<?= e($p) ?>"></option>
-          <?php endforeach; ?>
-        </datalist>
 
         <button class="bouton bouton--bloc" type="submit">Enregistrer</button>
       </form>

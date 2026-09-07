@@ -541,7 +541,7 @@ final class BudgetController
         $dateRemb = null;
 
         if ($aRembourser === 1) {
-            $par = mb_substr(post('rembourse_par'), 0, 80) ?: null;
+            $par = RemboursementsController::quiRembourse();
 
             $saisiePart = montant_depuis_saisie(post('part_rembourser'));
             if ($saisiePart !== null) {
