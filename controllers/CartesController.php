@@ -566,6 +566,10 @@ final class CartesController
             'cours'  => $cours,
             // Proposer la remise à zéro seulement si elle changerait quelque chose.
             'rezero' => $cours === null ? 0 : $this->paquetAReprendre((int) $cours['id'], $userId),
+            'rezeroTotal' => $cours === null ? 0 : (int) Database::valeur(
+                'SELECT COUNT(*) FROM cartes WHERE cours_id = ? AND user_id = ?',
+                [(int) $cours['id'], $userId]
+            ),
         ], $cours !== null ? 'Réviser — ' . $cours['titre'] : 'Réviser');
     }
 

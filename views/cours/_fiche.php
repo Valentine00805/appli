@@ -308,19 +308,18 @@ $avancementFiche = avancement_anneaux(fichiers_suivis($fichiersFiche));
           <?= $cartes['total'] === 0 ? 'En fabriquer' : 'Voir le paquet' ?>
         </a>
 
-        <?php
-        /*
-         * Ne proposer de reprendre à zéro que s'il y a de quoi : quand toutes
-         * les cartes sont déjà dues, le bouton ne ferait rien.
-         */
-        ?>
-        <?php if ($cartes['total'] > $cartes['a_revoir']): ?>
+        <?php $rezeroUtile = $cartes['total'] > $cartes['a_revoir']; ?>
+        <?php if ($cartes['total'] > 0): ?>
           <form method="post" action="<?= url('cours/' . $cours['id'] . '/cartes/rezero') ?>"
                 class="en-ligne"
                 data-confirmation="Remettre les <?= $cartes['total'] ?> cartes de ce cours à revoir aujourd'hui ?">
             <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
             <input type="hidden" name="retour" value="<?= $surPage ? 'fiche' : 'volet' ?>">
-            <button class="bouton bouton--discret bouton--petit" type="submit">
+            <button class="bouton bouton--discret bouton--petit" type="submit"
+                    <?= $rezeroUtile ? '' : 'disabled' ?>
+                    title="<?= $rezeroUtile
+                        ? 'Ramener toutes les cartes de ce cours en boîte 1'
+                        : 'Toutes les cartes sont déjà à revoir aujourd\'hui' ?>">
               Tout remettre à revoir
             </button>
           </form>
@@ -332,9 +331,10 @@ $avancementFiche = avancement_anneaux(fichiers_suivis($fichiersFiche));
       <div class="fiche__seance" data-seance-sur-place hidden>
         <?= Vue::rendre('cartes/_seance', [
             'cartes' => $cartes['dues'],
-            'rezeroCours'  => $cartes['total'] > $cartes['a_revoir'] ? (int) $cours['id'] : null,
-            'rezeroTotal'  => $cartes['total'],
-            'rezeroRetour' => $surPage ? 'fiche' : 'volet',
+            'rezeroCours'    => (int) $cours['id'],
+            'rezeroTotal'    => $cartes['total'],
+            'rezeroRetour'   => $surPage ? 'fiche' : 'volet',
+            'rezeroPossible' => $cartes['total'] > $cartes['a_revoir'],
         ]) ?>
       </div>
     <?php endif; ?>
