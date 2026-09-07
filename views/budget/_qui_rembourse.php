@@ -2,10 +2,14 @@
 /**
  * Qui doit vous rembourser : à choisir dans la liste, ou à nommer.
  *
- * Un champ libre obligeait à se rappeler l'orthographe exacte, et « Papa » y
- * faisait un créancier différent de « papa » : les totaux se scindaient en
- * deux sans qu'on comprenne pourquoi. La liste rassemble les personnes déjà
- * nommées ; « Quelqu'un d'autre » ouvre le champ pour en ajouter une.
+ * Un champ libre obligeait à retaper le nom, avec des suggestions qui
+ * n'apparaissaient qu'une fois la frappe commencée. La liste rassemble les
+ * personnes déjà nommées ; « Quelqu'un d'autre » ouvre le champ pour en
+ * ajouter une.
+ *
+ * Elle n'est pas tenue à part : elle se relit à chaque fois dans les
+ * opérations elles-mêmes. Une personne n'existe donc qu'aussi longtemps
+ * qu'une opération la nomme.
  *
  * Sans JavaScript, ce champ reste visible : le nom qu'on y écrit l'emporte
  * alors sur la liste, et rien n'est perdu.
