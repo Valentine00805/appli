@@ -792,8 +792,11 @@
         carte.hidden = i !== rang;
         if (i === rang) {
           // Chaque carte repart cachée : on ne triche pas d'une carte à l'autre.
+          var montrer = carte.querySelector("[data-montrer]");
           carte.querySelector("[data-reponse]").hidden = true;
-          carte.querySelector("[data-montrer]").hidden = false;
+          montrer.hidden = false;
+          montrer.textContent = "Voir la réponse";
+          montrer.setAttribute("aria-expanded", "false");
           carte.querySelectorAll("[data-verdict]").forEach(function (b) { b.hidden = true; });
         }
       });
@@ -855,8 +858,16 @@
     }
     cartesSeance.forEach(function (carte) {
       carte.querySelector("[data-montrer]").addEventListener("click", function (e) {
-        carte.querySelector("[data-reponse]").hidden = false;
-        e.currentTarget.hidden = true;
+        var reponse = carte.querySelector("[data-reponse]");
+        var bouton = e.currentTarget;
+        var visible = reponse.hidden;
+
+        reponse.hidden = !visible;
+        bouton.textContent = visible ? "Cacher la réponse" : "Voir la réponse";
+        bouton.setAttribute("aria-expanded", visible ? "true" : "false");
+
+        // Une fois la réponse vue, on peut trancher, même en la recachant
+        // pour se réciter la carte une dernière fois.
         carte.querySelectorAll("[data-verdict]").forEach(function (b) { b.hidden = false; });
       });
 

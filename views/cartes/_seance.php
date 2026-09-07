@@ -55,7 +55,10 @@ $retour = $retour ?? null;
       <div class="seance__reponse" data-reponse><?= nl2br(e($c['reponse'])) ?></div>
 
       <div class="actions seance__actions">
-        <button class="bouton" type="button" data-montrer>Voir la réponse</button>
+        <?php // Le même bouton montre et recache : on peut se reprendre avant de trancher. ?>
+        <button class="bouton" type="button" data-montrer aria-expanded="false">
+          Voir la réponse
+        </button>
         <button class="bouton bouton--secondaire" type="button" data-verdict="0" hidden>À revoir</button>
         <button class="bouton" type="button" data-verdict="1" hidden>Je la savais</button>
       </div>
