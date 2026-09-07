@@ -824,6 +824,29 @@
       if (rang >= cartesSeance.length) { terminer(); } else { montrerCarte(); }
     };
 
+    /*
+     * Sur une fiche de révision, la séance est repliée : le lien « Réviser »
+     * mène à la page de révision, et le script l'intercepte pour la déplier ici
+     * même. Sans lui, le lien fait ce qu'il annonce, et rien n'est perdu.
+     */
+    var repli = document.querySelector("[data-seance-sur-place]");
+    var resume = document.querySelector("[data-cartes-resume]");
+    var ouvrir = document.querySelector("[data-ouvrir-seance]");
+
+    if (repli && ouvrir) {
+      ouvrir.addEventListener("click", function (e) {
+        e.preventDefault();
+        repli.hidden = false;
+        if (resume) { resume.hidden = true; }
+        repli.scrollIntoView({ block: "nearest" });
+      });
+    }
+
+    var fermer = seance.querySelector("[data-fermer-seance]");
+    if (fermer) {
+      // Les compteurs de la page ont vieilli pendant la séance : on repart du serveur.
+      fermer.addEventListener("click", function () { window.location.reload(); });
+    }
     cartesSeance.forEach(function (carte) {
       carte.querySelector("[data-montrer]").addEventListener("click", function (e) {
         carte.querySelector("[data-reponse]").hidden = false;

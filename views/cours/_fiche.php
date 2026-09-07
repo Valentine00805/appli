@@ -272,7 +272,7 @@ $avancementFiche = avancement_anneaux(fichiers_suivis($fichiersFiche));
    * sont dues aujourd'hui, et de quoi s'y mettre. Le paquet lui-même se gère
    * ailleurs — ici, on ne fait que le rejoindre.
    */
-  $cartes = $cartes ?? ['total' => 0, 'a_revoir' => 0];
+  $cartes = $cartes ?? ['total' => 0, 'a_revoir' => 0, 'dues' => []];
   ?>
   <div class="fiche__rayon<?= $cartes['total'] === 0 ? ' fiche__rayon--vide' : '' ?>">
     <h4 class="fiche__titre">🃏 Cartes</h4>
@@ -290,9 +290,16 @@ $avancementFiche = avancement_anneaux(fichiers_suivis($fichiersFiche));
       </p>
     <?php endif; ?>
 
-    <p class="actions fiche__cartes-actions">
+    <p class="actions fiche__cartes-actions" data-cartes-resume>
       <?php if ($cartes['a_revoir'] > 0): ?>
-        <a class="bouton bouton--petit"
+        <?php
+        /*
+         * Le lien mène à la page de révision : sans JavaScript, c'est ce qui
+         * se passe. Avec, le script l'intercepte et déplie la séance ici même,
+         * sans quitter la fiche qu'on est en train de relire.
+         */
+        ?>
+        <a class="bouton bouton--petit" data-ouvrir-seance
            href="<?= url('cartes/seance', ['cours' => $cours['id']]) ?>">Réviser</a>
       <?php endif; ?>
       <a class="bouton bouton--secondaire bouton--petit"
@@ -300,6 +307,12 @@ $avancementFiche = avancement_anneaux(fichiers_suivis($fichiersFiche));
         <?= $cartes['total'] === 0 ? 'En fabriquer' : 'Voir le paquet' ?>
       </a>
     </p>
+
+    <?php if (($cartes['dues'] ?? []) !== []): ?>
+      <div class="fiche__seance" data-seance-sur-place hidden>
+        <?= Vue::rendre('cartes/_seance', ['cartes' => $cartes['dues']]) ?>
+      </div>
+    <?php endif; ?>
   </div>
 
   <?php // --- Liens web ----------------------------------------------- ?>

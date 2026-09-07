@@ -473,6 +473,12 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
 .carte-ligne__boite { flex: none; font-size: .7rem; letter-spacing: .1em; color: var(--accent); }
 .carte-ligne__edition { margin: .6rem 0; }
 
+/* Dépliée dans la fiche, la séance reste dans la colonne : pas de pleine page. */
+.fiche__seance { margin-top: .6rem; }
+.fiche__seance .seance { max-width: none; }
+.fiche__seance .seance__carte { padding: 1.2rem 1rem; }
+.fiche__seance .seance__question { font-size: 1.1rem; }
+
 /* Le renvoi vers le paquet, depuis la fiche de révision. */
 .fiche__cartes { margin: 0 0 .6rem; font-size: .9rem; }
 .fiche__cartes-actions { margin: 0; }

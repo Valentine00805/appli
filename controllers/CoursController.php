@@ -355,9 +355,19 @@ final class CoursController
             [$coursId, $userId]
         );
 
+        $aRevoir = (int) ($ligne['a_revoir'] ?? 0);
+
         return [
             'total'    => (int) ($ligne['total'] ?? 0),
-            'a_revoir' => (int) ($ligne['a_revoir'] ?? 0),
+            'a_revoir' => $aRevoir,
+            // Les cartes dues voyagent avec le compte : la fiche les déplie
+            // sur place, sans aller les chercher ailleurs.
+            'dues'     => $aRevoir === 0 ? [] : Database::all(
+                'SELECT id, question, reponse FROM cartes
+                  WHERE cours_id = ? AND user_id = ? AND revoir_le <= CURDATE()
+                  ORDER BY revoir_le, boite, RAND() LIMIT 40',
+                [$coursId, $userId]
+            ),
         ];
     }
 

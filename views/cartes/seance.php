@@ -23,35 +23,8 @@ $retour = $cours !== null ? url('cours/' . $cours['id'] . '/cartes') : url('cart
   </div>
 <?php else: ?>
 
-  <div class="seance" data-seance data-jeton="<?= e(Session::jetonCsrf()) ?>" data-retour="<?= e($retour) ?>">
-    <p class="seance__compteur" data-seance-compteur>
-      <?= count($cartes) ?> carte<?= count($cartes) > 1 ? 's' : '' ?> à revoir
-    </p>
-
-    <?php foreach ($cartes as $rang => $c): ?>
-      <section class="carte seance__carte" data-carte="<?= (int) $c['id'] ?>"
-               data-url="<?= url('cartes/' . $c['id'] . '/reponse') ?>">
-        <?php if ($cours === null): ?>
-          <p class="seance__cours"><?= e($c['cours_titre']) ?></p>
-        <?php endif; ?>
-
-        <p class="seance__question"><?= e($c['question']) ?></p>
-
-        <div class="seance__reponse" data-reponse><?= nl2br(e($c['reponse'])) ?></div>
-
-        <div class="actions seance__actions">
-          <button class="bouton" type="button" data-montrer>Voir la réponse</button>
-          <button class="bouton bouton--secondaire" type="button" data-verdict="0" hidden>À revoir</button>
-          <button class="bouton" type="button" data-verdict="1" hidden>Je la savais</button>
-        </div>
-      </section>
-    <?php endforeach; ?>
-
-    <div class="vide seance__fin" data-seance-fin hidden>
-      <span class="vide__icone">✅</span>
-      <p data-seance-bilan>Séance terminée.</p>
-      <a class="bouton bouton--secondaire" href="<?= e($retour) ?>">Retour</a>
-    </div>
-  </div>
+  <?= Vue::rendre('cartes/_seance', [
+      'cartes' => $cartes, 'avecCours' => $cours === null, 'retour' => $retour,
+  ]) ?>
 
 <?php endif; ?>
