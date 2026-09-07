@@ -691,29 +691,60 @@
         });
       });
 
+      /*
+       * La taille et la couleur passent par le même détour.
+       *
+       * « fontSize » ne connaît que sept crans et écrit une balise <font>. On
+       * s'en sert comme d'un marqueur — le cran 7 ne servant à rien d'autre
+       * ici — puis on remplace ces balises par ce qu'on voulait vraiment.
+       * « Celle du document » laisse une balise nue, qui efface la marque d'un
+       * cadre englobant sans en poser de nouvelle.
+       */
+      var marquerLaSelection = function (habiller) {
+        var zone = zoneDeLaSelection() || zoneChoisie;
+        if (zone === null) { return; }
+        if (document.activeElement !== zone) { zone.focus(); }
+
+        document.execCommand("fontSize", false, "7");
+        [].slice.call(zone.querySelectorAll("font[size='7']")).forEach(function (marque) {
+          var remplacant = document.createElement("span");
+          habiller(remplacant);
+          while (marque.firstChild) { remplacant.appendChild(marque.firstChild); }
+          marque.parentNode.replaceChild(remplacant, marque);
+        });
+        recopier();
+      };
+
       var choixTaille = barreOutils.querySelector("[data-taille-texte]");
       if (choixTaille) {
         choixTaille.addEventListener("change", function () {
-          var zone = zoneDeLaSelection() || zoneChoisie;
-          if (zone === null) { return; }
-          if (document.activeElement !== zone) { zone.focus(); }
-          /*
-           * « fontSize » ne connaît que sept crans et écrit une balise <font>.
-           * On s'en sert comme d'un marqueur — le cran 7 ne servant à rien
-           * d'autre ici — puis on remplace ces balises par la taille voulue.
-           */
-          document.execCommand("fontSize", false, "7");
-          [].slice.call(zone.querySelectorAll("font[size='7']")).forEach(function (marque) {
-            var remplacant = document.createElement("span");
-            if (choixTaille.value) {
-              remplacant.setAttribute("data-taille", choixTaille.value);
-              remplacant.style.fontSize = choixTaille.value + "pt";
-            }
-            while (marque.firstChild) { remplacant.appendChild(marque.firstChild); }
-            marque.parentNode.replaceChild(remplacant, marque);
+          var taille = choixTaille.value;
+          marquerLaSelection(function (span) {
+            if (!taille) { return; }
+            span.setAttribute("data-taille", taille);
+            span.style.fontSize = taille + "pt";
           });
           choixTaille.selectedIndex = 0;
-          recopier();
+        });
+      }
+
+      var choixCouleur = barreOutils.querySelector("[data-couleur-texte]");
+      if (choixCouleur) {
+        choixCouleur.addEventListener("change", function () {
+          var couleur = choixCouleur.value;
+          marquerLaSelection(function (span) {
+            // Sans couleur choisie, on le dit : le passage reprend celle du
+            // document, même s'il était dans un morceau coloré. Une classe
+            // plutôt qu'un style, pour que la zone le montre sans qu'une
+            // couleur en dur se retrouve dans ce qu'on enverra.
+            span.setAttribute("data-couleur", couleur || "auto");
+            if (couleur) {
+              span.style.color = "#" + couleur;
+            } else {
+              span.className = "riche-couleur-auto";
+            }
+          });
+          choixCouleur.selectedIndex = 0;
         });
       }
 

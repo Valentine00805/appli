@@ -4,6 +4,7 @@
  * @var array $paragraphes  le texte nu, un paragraphe par entrée
  * @var array $enrichis     le même texte, mise en forme comprise, en HTML
  * @var list<int> $tailles  les tailles proposées, en points
+ * @var array<string, string> $couleurs  la palette, hexadécimal => nom
  * @var string $format
  * @var ?string $erreur
  */
@@ -28,10 +29,11 @@
 <?php else: ?>
 
   <div class="flash flash--info" style="margin-bottom:1.25rem">
-    <strong>Le gras, l'italique, le souligné et la taille se modifient ici.</strong>
-    Le reste de la mise en forme — styles, couleurs, polices, images, tableaux —
-    reste dans le document sans passer par cette page, et n'est donc pas perdu.
-    Une copie du document d'origine est gardée avant la première modification.
+    <strong>Le gras, l'italique, le souligné, la taille et la couleur se
+    modifient ici.</strong> Le reste de la mise en forme — styles, polices,
+    alignements, images, tableaux — reste dans le document sans passer par
+    cette page, et n'est donc pas perdu. Une copie du document d'origine est
+    gardée avant la première modification.
   </div>
 
   <form method="post" action="<?= url('fichiers/' . $fichier['id'] . '/modifier') ?>"
@@ -60,6 +62,16 @@
           <option value="">Celle du document</option>
           <?php foreach ($tailles as $taille): ?>
             <option value="<?= (int) $taille ?>"><?= (int) $taille ?> pt</option>
+          <?php endforeach; ?>
+        </select>
+      </label>
+      <label class="barre-outils__taille">
+        <span class="discret">Couleur</span>
+        <select data-couleur-texte>
+          <option value="">Celle du document</option>
+          <?php foreach ($couleurs as $hexa => $nom): ?>
+            <?php // Certains navigateurs colorent l'entrée : autant s'en servir. ?>
+            <option value="<?= e($hexa) ?>" style="color:#<?= e($hexa) ?>"><?= e($nom) ?></option>
           <?php endforeach; ?>
         </select>
       </label>

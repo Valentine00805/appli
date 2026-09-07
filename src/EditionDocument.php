@@ -48,6 +48,24 @@ final class EditionDocument
     public const TAILLES = [8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 32, 40];
 
     /**
+     * Les couleurs proposées, en hexadécimal sans le croisillon.
+     *
+     * Une liste courte plutôt qu'un nuancier : sept couleurs qui se lisent
+     * toutes sur du papier blanc, ce qu'un rouge pâle choisi à la souris ne
+     * garantit pas. Une couleur déjà dans le document est gardée telle quelle,
+     * même si elle n'est pas ici.
+     */
+    public const COULEURS = [
+        '000000' => 'Noir',
+        '6B7280' => 'Gris',
+        'DC2626' => 'Rouge',
+        'EA580C' => 'Orange',
+        '16A34A' => 'Vert',
+        '2563EB' => 'Bleu',
+        '7C3AED' => 'Violet',
+    ];
+
+    /**
      * Où trouver le texte modifiable : la partie de l'archive à réécrire,
      * l'élément qui contient le corps, et ce qui compte pour un paragraphe.
      */
@@ -542,6 +560,10 @@ final class EditionDocument
                 continue;
             }
             $morceau = htmlspecialchars($passage['texte'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+            if ($passage['couleur'] !== null) {
+                $morceau = '<span data-couleur="' . $passage['couleur']
+                    . '" style="color:#' . $passage['couleur'] . '">' . $morceau . '</span>';
+            }
             if ($passage['taille'] !== null) {
                 $morceau = '<span data-taille="' . $passage['taille'] . '">' . $morceau . '</span>';
             }
@@ -587,7 +609,7 @@ final class EditionDocument
         $passages = [];
         if ($racine !== null) {
             self::parcourirHtml($racine, ['gras' => false, 'italique' => false,
-                'souligne' => false, 'taille' => null], $passages);
+                'souligne' => false, 'taille' => null, 'couleur' => null], $passages);
         }
 
         return self::fondrePassages($passages);
@@ -629,6 +651,14 @@ final class EditionDocument
             if ($taille !== null) {
                 $sien['taille'] = $taille;
             }
+            // « auto » veut dire « celle du document » : c'est un choix, pas
+            // une absence, et il efface donc la couleur d'un cadre englobant.
+            $couleur = self::couleurDemandee($enfant);
+            if ($couleur === 'auto') {
+                $sien['couleur'] = null;
+            } elseif ($couleur !== null) {
+                $sien['couleur'] = $couleur;
+            }
             $sien = self::styleEnLigne($enfant, $sien);
 
             self::parcourirHtml($enfant, $sien, $passages);
@@ -654,6 +684,40 @@ final class EditionDocument
         $taille = (int) $brut;
 
         return in_array($taille, self::TAILLES, true) ? $taille : null;
+    }
+
+    /**
+     * La couleur écrite sur cette balise.
+     *
+     * @return ?string  six chiffres hexadécimaux, « auto », ou null
+     */
+    private static function couleurDemandee(DOMElement $element): ?string
+    {
+        $brut = trim($element->getAttribute('data-couleur'));
+
+        if ($brut === '' && preg_match('/(?<![-\w])color\s*:\s*([^;]+)/i',
+            $element->getAttribute('style'), $m) === 1) {
+            $brut = trim($m[1]);
+        }
+        if ($brut === '') {
+            return null;
+        }
+        if (strtolower($brut) === 'auto' || strtolower($brut) === 'inherit') {
+            return 'auto';
+        }
+
+        // Un navigateur écrit volontiers « rgb(220, 38, 38) ».
+        if (preg_match('/^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/i', $brut, $m) === 1) {
+            return strtoupper(sprintf('%02X%02X%02X',
+                min(255, (int) $m[1]), min(255, (int) $m[2]), min(255, (int) $m[3])));
+        }
+
+        $hexa = ltrim($brut, '#');
+        if (preg_match('/^[0-9a-f]{3}$/i', $hexa) === 1) {
+            $hexa = $hexa[0] . $hexa[0] . $hexa[1] . $hexa[1] . $hexa[2] . $hexa[2];
+        }
+
+        return preg_match('/^[0-9a-f]{6}$/i', $hexa) === 1 ? strtoupper($hexa) : null;
     }
 
     /** Le gras, l'italique et le souligné écrits en CSS plutôt qu'en balise. */
@@ -694,13 +758,14 @@ final class EditionDocument
                 && $fondus[$dernier]['italique'] === $passage['italique']
                 && $fondus[$dernier]['souligne'] === $passage['souligne']
                 && $fondus[$dernier]['taille'] === $passage['taille']
+                && $fondus[$dernier]['couleur'] === $passage['couleur']
             ) {
                 $fondus[$dernier]['texte'] .= $passage['texte'];
                 continue;
             }
             $fondus[] = ['texte' => $passage['texte'], 'gras' => $passage['gras'],
                 'italique' => $passage['italique'], 'souligne' => $passage['souligne'],
-                'taille' => $passage['taille']];
+                'taille' => $passage['taille'], 'couleur' => $passage['couleur']];
         }
 
         return array_values(array_filter($fondus, static fn (array $p): bool => $p['texte'] !== ''));
@@ -743,6 +808,7 @@ final class EditionDocument
                 'italique' => self::marqueWord($rPr, 'i'),
                 'souligne' => self::souligneWord($rPr),
                 'taille'   => self::tailleWord($rPr),
+                'couleur'  => self::couleurWord($rPr),
             ];
         }
 
@@ -782,6 +848,18 @@ final class EditionDocument
         $points = (int) round(((int) $val) / 2);
 
         return in_array($points, self::TAILLES, true) ? $points : null;
+    }
+
+    /** La couleur du passage. « auto » veut dire celle du style, donc aucune. */
+    private static function couleurWord(?DOMElement $rPr): ?string
+    {
+        $color = self::enfantWord($rPr, 'color');
+        if ($color === null) {
+            return null;
+        }
+        $val = strtoupper(ltrim($color->getAttributeNS(self::NS_W, 'val'), '#'));
+
+        return preg_match('/^[0-9A-F]{6}$/', $val) === 1 ? $val : null;
     }
 
     private static function enfantWord(?DOMElement $parent, string $nom): ?DOMElement
@@ -864,8 +942,8 @@ final class EditionDocument
 
     private static function marquesUtiles(array $passage): bool
     {
-        return $passage['gras'] || $passage['italique']
-            || $passage['souligne'] || $passage['taille'] !== null;
+        return $passage['gras'] || $passage['italique'] || $passage['souligne']
+            || $passage['taille'] !== null || $passage['couleur'] !== null;
     }
 
     /**
@@ -877,7 +955,7 @@ final class EditionDocument
      */
     private static function marquerRpr(DOMDocument $doc, DOMElement $rPr, array $passage): void
     {
-        foreach (['b', 'bCs', 'i', 'iCs', 'u', 'sz', 'szCs'] as $nom) {
+        foreach (['b', 'bCs', 'i', 'iCs', 'u', 'sz', 'szCs', 'color'] as $nom) {
             $ancien = self::enfantWord($rPr, $nom);
             if ($ancien !== null) {
                 $rPr->removeChild($ancien);
@@ -899,6 +977,9 @@ final class EditionDocument
             $demi = (string) ($passage['taille'] * 2);
             self::poserDansRpr($doc, $rPr, 'sz', $demi);
             self::poserDansRpr($doc, $rPr, 'szCs', $demi);
+        }
+        if ($passage['couleur'] !== null) {
+            self::poserDansRpr($doc, $rPr, 'color', $passage['couleur']);
         }
     }
 
@@ -954,12 +1035,14 @@ final class EditionDocument
                 $taille = (int) round((float) $m[1]);
             }
 
+            $couleur = strtoupper(ltrim($proprietes->getAttributeNS(self::NS_FO, 'color'), '#'));
             $souligne = $proprietes->getAttributeNS(self::NS_STYLE, 'text-underline-style');
             $styles[$nom] = [
                 'gras'     => $proprietes->getAttributeNS(self::NS_FO, 'font-weight') === 'bold',
                 'italique' => $proprietes->getAttributeNS(self::NS_FO, 'font-style') === 'italic',
                 'souligne' => $souligne !== '' && $souligne !== 'none',
                 'taille'   => $taille,
+                'couleur'  => preg_match('/^[0-9A-F]{6}$/', $couleur) === 1 ? $couleur : null,
             ];
         }
 
@@ -975,7 +1058,8 @@ final class EditionDocument
     {
         $passages = [];
         self::parcourirOdf($paragraphe,
-            ['gras' => false, 'italique' => false, 'souligne' => false, 'taille' => null],
+            ['gras' => false, 'italique' => false, 'souligne' => false,
+             'taille' => null, 'couleur' => null],
             $styles, $passages);
 
         return self::fondrePassages($passages);
@@ -1014,6 +1098,7 @@ final class EditionDocument
                         'italique' => $etat['italique'] || $styles[$nom]['italique'],
                         'souligne' => $etat['souligne'] || $styles[$nom]['souligne'],
                         'taille'   => $styles[$nom]['taille'] ?? $etat['taille'],
+                        'couleur'  => $styles[$nom]['couleur'] ?? $etat['couleur'],
                     ];
                 }
             }
@@ -1035,11 +1120,12 @@ final class EditionDocument
 
         // Un nom qui décrit ce qu'il porte : deux passages identiques
         // retrouvent le même style, sans en accumuler des centaines.
-        $nom = sprintf('MesCours_%s%s%s%s',
+        $nom = sprintf('MesCours_%s%s%s%s%s',
             $passage['gras'] ? 'g' : '',
             $passage['italique'] ? 'i' : '',
             $passage['souligne'] ? 's' : '',
-            $passage['taille'] !== null ? 't' . $passage['taille'] : '');
+            $passage['taille'] !== null ? 't' . $passage['taille'] : '',
+            $passage['couleur'] !== null ? 'c' . $passage['couleur'] : '');
 
         foreach ($doc->getElementsByTagNameNS(self::NS_STYLE, 'style') as $style) {
             if ($style->getAttributeNS(self::NS_STYLE, 'name') === $nom) {
@@ -1078,6 +1164,9 @@ final class EditionDocument
         }
         if ($passage['taille'] !== null) {
             $proprietes->setAttributeNS(self::NS_FO, 'fo:font-size', $passage['taille'] . 'pt');
+        }
+        if ($passage['couleur'] !== null) {
+            $proprietes->setAttributeNS(self::NS_FO, 'fo:color', '#' . $passage['couleur']);
         }
 
         $style->appendChild($proprietes);

@@ -1338,6 +1338,10 @@ input.depot__champ {
   font-size: 1rem; line-height: 1.55;
   overflow-wrap: anywhere;
 }
+/* Un passage remis à « la couleur du document » : dans la zone, c'est celle du
+   texte ordinaire, et rien n'est écrit en dur dans ce qui partira. */
+.paragraphe__riche .riche-couleur-auto { color: var(--texte); }
+
 .paragraphe__riche:focus {
   outline: 2px solid var(--accent); outline-offset: -1px;
   border-color: var(--accent);
