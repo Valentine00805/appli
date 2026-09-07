@@ -524,6 +524,7 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
 }
 .seance__actions { justify-content: center; margin-top: 1.4rem; }
 .seance__fin { margin-top: 1rem; }
+.seance__fin-actions { justify-content: center; margin: 0; }
 
 @media print {
   .entete, .pied, .actions, .filtres, .cal-jour__ajout { display: none !important; }

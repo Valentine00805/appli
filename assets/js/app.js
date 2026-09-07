@@ -876,6 +876,26 @@
       });
     }
 
+    /*
+     * Refaire le tour : on remet le rang et le score à zéro, et la première
+     * carte revient. Les cartes elles-mêmes n'ont pas bougé de la page, il n'y
+     * a donc rien à recharger.
+     */
+    var recommencer = seance.querySelector("[data-recommencer]");
+    if (recommencer) {
+      recommencer.addEventListener("click", function () {
+        rang = 0;
+        sues = 0;
+        rates = 0;
+        if (affichageSu) { affichageSu.textContent = "0"; }
+        if (affichageRate) { affichageRate.textContent = "0"; }
+        if (fin) { fin.hidden = true; }
+        if (compteur) { compteur.hidden = false; }
+        montrerCarte();
+        seance.scrollIntoView({ block: "nearest" });
+      });
+    }
+
     var fermer = seance.querySelector("[data-fermer-seance]");
     if (fermer) {
       // Les compteurs de la page ont vieilli pendant la séance : on repart du serveur.

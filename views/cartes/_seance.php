@@ -80,11 +80,22 @@ $retour = $retour ?? null;
   <div class="vide seance__fin" data-seance-fin hidden>
     <span class="vide__icone">✅</span>
     <p data-seance-bilan>Séance terminée.</p>
-    <?php if ($retour !== null): ?>
-      <a class="bouton bouton--secondaire" href="<?= e($retour) ?>">Retour</a>
-    <?php else: ?>
-      <?php // Sur la fiche, on recharge : les compteurs doivent dire le vrai. ?>
-      <button class="bouton bouton--secondaire" type="button" data-fermer-seance>Terminer</button>
-    <?php endif; ?>
+
+    <?php
+    /*
+     * Refaire le tour des mêmes cartes. Les verdicts comptent de nouveau :
+     * savoir une carte deux fois de suite la fait monter deux fois, et c'est
+     * bien ce qu'on veut dire en la revoyant.
+     */
+    ?>
+    <p class="actions seance__fin-actions">
+      <button class="bouton" type="button" data-recommencer>🔄 Recommencer</button>
+      <?php if ($retour !== null): ?>
+        <a class="bouton bouton--secondaire" href="<?= e($retour) ?>">Retour</a>
+      <?php else: ?>
+        <?php // Sur la fiche, on recharge : les compteurs doivent dire le vrai. ?>
+        <button class="bouton bouton--secondaire" type="button" data-fermer-seance>Terminer</button>
+      <?php endif; ?>
+    </p>
   </div>
 </div>
