@@ -192,6 +192,31 @@ $provenance = static function (array $c): string {
 <?php if ($cartes !== []): ?>
   <?php
   /*
+   * Reprendre à zéro ne supprime rien : les cartes restent, leur histoire
+   * aussi. C'est l'échéancier qui repart, quand on veut refaire tout le tour
+   * avant un examen plutôt que d'attendre son tour boîte par boîte.
+   */
+  ?>
+  <section class="carte reprise">
+    <div>
+      <h2>Reprendre le paquet à zéro</h2>
+      <p class="champ__aide">
+        Les <?= count($cartes) ?> cartes reviennent en boîte 1, toutes à revoir
+        aujourd'hui. Rien n'est supprimé : les questions, les réponses et le
+        nombre de fois où vous les avez sues restent tels quels.
+      </p>
+    </div>
+    <form method="post" action="<?= url('cours/' . $cours['id'] . '/cartes/rezero') ?>"
+          data-confirmation="Remettre les <?= count($cartes) ?> cartes de ce cours à revoir aujourd'hui ?">
+      <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
+      <button class="bouton bouton--secondaire" type="submit">Tout remettre à revoir</button>
+    </form>
+  </section>
+<?php endif; ?>
+
+<?php if ($cartes !== []): ?>
+  <?php
+  /*
    * Vider le paquet efface aussi ce qu'on savait de chaque carte : la boîte
    * où elle était montée, les fois où on l'a sue. Le bouton le dit, et la
    * confirmation le redit avec le compte.

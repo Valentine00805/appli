@@ -415,6 +415,51 @@ final class CartesController
     }
 
     /**
+     * Ramène tout un paquet au début du cycle.
+     *
+     * Les cartes ne bougent pas, ni ce qu'on sait d'elles : seul l'échéancier
+     * repart de zéro — toutes en boîte 1, toutes dues aujourd'hui. Le compte des
+     * passages est gardé, parce qu'il dit quelque chose qu'aucune boîte ne dit :
+     * celle qu'on a ratée six fois n'est pas celle qu'on découvre.
+     */
+    public function reinitialiser(int $id): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $userId = Auth::id();
+        $cours = $this->cours($id, $userId);
+
+        // Deux comptes différents : ce qui bougerait, et ce qu'on annoncera.
+        $aBouger = (int) Database::valeur(
+            'SELECT COUNT(*) FROM cartes
+              WHERE cours_id = ? AND user_id = ? AND (boite > 1 OR revoir_le > CURDATE())',
+            [$id, $userId]
+        );
+
+        if ($aBouger === 0) {
+            Session::flash('erreur', 'Ce paquet est déjà au début : rien à remettre à zéro.');
+            redirect('cours/' . $id . '/cartes');
+        }
+
+        Database::run(
+            'UPDATE cartes SET boite = 1, revoir_le = CURDATE() WHERE cours_id = ? AND user_id = ?',
+            [$id, $userId]
+        );
+
+        // Le message parle du paquet entier, comme le bouton qui l'a déclenché :
+        // annoncer « 2 cartes » quand le bouton en promettait 3 sèmerait le doute.
+        $total = (int) Database::valeur(
+            'SELECT COUNT(*) FROM cartes WHERE cours_id = ? AND user_id = ?',
+            [$id, $userId]
+        );
+
+        Session::flash('succes', $total > 1
+            ? 'Les ' . $total . ' cartes de « ' . $cours['titre'] . ' » sont de nouveau à revoir aujourd\'hui.'
+            : 'La carte de « ' . $cours['titre'] . ' » est de nouveau à revoir aujourd\'hui.');
+        redirect('cours/' . $id . '/cartes');
+    }
+
+    /**
      * Vide le paquet d'un cours.
      *
      * La suppression est bornée au cours et à son propriétaire : deux

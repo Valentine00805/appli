@@ -249,6 +249,7 @@ $routes = [
     ['POST', 'cours/{id}/cartes',            [CartesController::class, 'ajouterUne']],
     ['POST', 'cours/{id}/cartes/proposer',   [CartesController::class, 'proposer']],
     ['POST', 'cours/{id}/cartes/retenir',    [CartesController::class, 'retenir']],
+    ['POST', 'cours/{id}/cartes/rezero',     [CartesController::class, 'reinitialiser']],
     ['POST', 'cours/{id}/cartes/vider',      [CartesController::class, 'viderPaquet']],
 
     ['GET',  'tableau',                      [KanbanController::class, 'index']],

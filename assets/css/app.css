@@ -484,6 +484,14 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
 .fiche__cartes-actions { margin: 0; }
 .fiche-carte__du { margin: .5rem 0 0; }
 
+/* Reprendre à zéro : la même mise en page, sans la mise en garde. */
+.reprise {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 1rem; flex-wrap: wrap; margin-top: 1.5rem;
+}
+.reprise h2 { margin: 0 0 .25rem; font-size: 1rem; }
+.reprise .champ__aide { margin: 0; max-width: 42rem; }
+
 /* Ce qui efface pour de bon se tient à l'écart du reste. */
 .zone-danger {
   display: flex; align-items: center; justify-content: space-between;
