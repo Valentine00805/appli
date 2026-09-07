@@ -438,7 +438,7 @@ final class CartesController
 
         if ($aBouger === 0) {
             Session::flash('erreur', 'Ce paquet est déjà au début : rien à remettre à zéro.');
-            redirect('cours/' . $id . '/cartes');
+            $this->retourPaquet($id);
         }
 
         Database::run(
@@ -456,7 +456,27 @@ final class CartesController
         Session::flash('succes', $total > 1
             ? 'Les ' . $total . ' cartes de « ' . $cours['titre'] . ' » sont de nouveau à revoir aujourd\'hui.'
             : 'La carte de « ' . $cours['titre'] . ' » est de nouveau à revoir aujourd\'hui.');
-        redirect('cours/' . $id . '/cartes');
+        $this->retourPaquet($id);
+    }
+
+    /**
+     * Ramène là d'où l'on a cliqué.
+     *
+     * Le même bouton figure sur la page du paquet et dans le rayon Cartes d'une
+     * fiche : renvoyer toujours au paquet ferait quitter la fiche qu'on relisait.
+     */
+    private function retourPaquet(int $coursId): never
+    {
+        $retour = $_POST['retour'] ?? '';
+
+        if ($retour === 'fiche') {
+            redirect('revision/' . $coursId);
+        }
+        if ($retour === 'volet') {
+            redirect('cours/' . $coursId, ['revision' => 1]);
+        }
+
+        redirect('cours/' . $coursId . '/cartes');
     }
 
     /**

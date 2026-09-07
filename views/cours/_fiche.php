@@ -307,6 +307,24 @@ $avancementFiche = avancement_anneaux(fichiers_suivis($fichiersFiche));
            href="<?= url('cours/' . $cours['id'] . '/cartes') ?>">
           <?= $cartes['total'] === 0 ? 'En fabriquer' : 'Voir le paquet' ?>
         </a>
+
+        <?php
+        /*
+         * Ne proposer de reprendre à zéro que s'il y a de quoi : quand toutes
+         * les cartes sont déjà dues, le bouton ne ferait rien.
+         */
+        ?>
+        <?php if ($cartes['total'] > $cartes['a_revoir']): ?>
+          <form method="post" action="<?= url('cours/' . $cours['id'] . '/cartes/rezero') ?>"
+                class="en-ligne"
+                data-confirmation="Remettre les <?= $cartes['total'] ?> cartes de ce cours à revoir aujourd'hui ?">
+            <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
+            <input type="hidden" name="retour" value="<?= $surPage ? 'fiche' : 'volet' ?>">
+            <button class="bouton bouton--discret bouton--petit" type="submit">
+              Tout remettre à revoir
+            </button>
+          </form>
+        <?php endif; ?>
       </p>
     </div>
 
