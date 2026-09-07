@@ -23,6 +23,29 @@ final class EditionDocument
     private const NS_XML    = 'http://www.w3.org/XML/1998/namespace';
     private const NS_OFFICE = 'urn:oasis:names:tc:opendocument:xmlns:office:1.0';
     private const NS_TEXT   = 'urn:oasis:names:tc:opendocument:xmlns:text:1.0';
+    private const NS_STYLE  = 'urn:oasis:names:tc:opendocument:xmlns:style:1.0';
+    private const NS_FO     = 'urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0';
+
+    /**
+     * L'ordre imposé aux enfants de <w:rPr> par le schéma d'OOXML.
+     *
+     * Word lit un rPr désordonné, mais le document devient invalide et
+     * d'autres logiciels le refusent. On ne cite que ce qu'on touche, plus les
+     * voisins immédiats qui servent de repères.
+     */
+    private const ORDRE_RPR = [
+        'rStyle' => 0, 'rFonts' => 1, 'b' => 2, 'bCs' => 3, 'i' => 4, 'iCs' => 5,
+        'caps' => 6, 'smallCaps' => 7, 'strike' => 8, 'dstrike' => 9, 'outline' => 10,
+        'shadow' => 11, 'emboss' => 12, 'imprint' => 13, 'noProof' => 14,
+        'snapToGrid' => 15, 'vanish' => 16, 'webHidden' => 17, 'color' => 18,
+        'spacing' => 19, 'w' => 20, 'kern' => 21, 'position' => 22,
+        'sz' => 23, 'szCs' => 24, 'highlight' => 25, 'u' => 26, 'effect' => 27,
+        'bdr' => 28, 'shd' => 29, 'fitText' => 30, 'vertAlign' => 31, 'rtl' => 32,
+        'cs' => 33, 'em' => 34, 'lang' => 35, 'eastAsianLayout' => 36,
+    ];
+
+    /** Les tailles proposées, en points. Au-delà, on quitte le « basique ». */
+    public const TAILLES = [8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 32, 40];
 
     /**
      * Où trouver le texte modifiable : la partie de l'archive à réécrire,
@@ -68,6 +91,32 @@ final class EditionDocument
     }
 
     /**
+     * Les paragraphes, mise en forme comprise, en HTML restreint.
+     *
+     * Seuls le gras, l'italique, le souligné et la taille sont rendus : ce que
+     * l'éditeur sait remettre dans le document. Le reste — couleurs, polices,
+     * styles de titre — reste dans le fichier sans passer par ici, et n'est
+     * donc pas perdu.
+     *
+     * @return array<int, string>
+     * @throws RuntimeException si le fichier est illisible
+     */
+    public static function lireRiche(string $chemin, string $nomOrigine): array
+    {
+        [$doc, , $paragraphes] = self::ouvrir($chemin, $nomOrigine);
+        $stylesOdf = self::stylesDeTexteOdf($doc);
+
+        return array_map(
+            static fn (DOMElement $p): string => self::html(
+                $p->namespaceURI === self::NS_W
+                    ? self::passagesWord($p)
+                    : self::passagesOdf($p, $stylesOdf)
+            ),
+            $paragraphes
+        );
+    }
+
+    /**
      * Réécrit le corps du document avec les paragraphes fournis, dans l'ordre.
      *
      * Chaque entrée porte le rang du paragraphe d'origine dont elle reprend la
@@ -76,11 +125,21 @@ final class EditionDocument
      * deux paragraphes de même allure, ce qui arrive quand on coupe un
      * paragraphe en deux.
      *
+     * Le texte arrive en HTML restreint quand $riche vaut vrai : chaque
+     * paragraphe est alors découpé en passages, et l'absence de balise veut
+     * dire « pas de gras » plutôt que « on ne sait pas ». Sans JavaScript le
+     * formulaire envoie du texte nu, et l'ancienne règle s'applique : le
+     * paragraphe garde l'allure de son premier passage.
+     *
      * @param array<int, array{origine: ?int, texte: string}> $entrees
      * @throws RuntimeException si le document ne peut être ni lu ni réécrit
      */
-    public static function enregistrer(string $chemin, string $nomOrigine, array $entrees): void
-    {
+    public static function enregistrer(
+        string $chemin,
+        string $nomOrigine,
+        array $entrees,
+        bool $riche = false
+    ): void {
         foreach ($entrees as $entree) {
             // Un XML n'accepte que de l'UTF-8. Mieux vaut refuser d'écrire que
             // de glisser des caractères abîmés dans le document de quelqu'un.
@@ -114,7 +173,7 @@ final class EditionDocument
                 $noeud = $doc->createElementNS($ns, $nom);
             }
 
-            self::remplacerTexte($doc, $noeud, $entree['texte'], $gabarit);
+            self::remplacerTexte($doc, $noeud, $entree['texte'], $gabarit, $riche);
             $nouveaux[] = $noeud;
             $modele = $noeud;
         }
@@ -267,10 +326,13 @@ final class EditionDocument
         DOMDocument $doc,
         DOMElement $paragraphe,
         string $texte,
-        ?DOMElement $gabarit
+        ?DOMElement $gabarit,
+        bool $riche = false
     ): void {
+        $passages = $riche ? self::passagesDuHtml($texte) : null;
+
         if ($paragraphe->namespaceURI === self::NS_W) {
-            self::remplacerTexteWord($doc, $paragraphe, $texte, $gabarit);
+            self::remplacerTexteWord($doc, $paragraphe, $texte, $gabarit, $passages);
             return;
         }
 
@@ -279,17 +341,46 @@ final class EditionDocument
         while ($paragraphe->firstChild !== null) {
             $paragraphe->removeChild($paragraphe->firstChild);
         }
-        if ($texte !== '') {
-            $paragraphe->appendChild($doc->createTextNode($texte));
+
+        if ($passages === null) {
+            if ($texte !== '') {
+                $paragraphe->appendChild($doc->createTextNode($texte));
+            }
+            return;
+        }
+
+        foreach ($passages as $passage) {
+            if ($passage['texte'] === '') {
+                continue;
+            }
+            $noeud = $doc->createTextNode($passage['texte']);
+            $style = self::styleOdf($doc, $passage);
+            if ($style === null) {
+                $paragraphe->appendChild($noeud);
+                continue;
+            }
+            $span = $doc->createElementNS(self::NS_TEXT, 'text:span');
+            $span->setAttributeNS(self::NS_TEXT, 'text:style-name', $style);
+            $span->appendChild($noeud);
+            $paragraphe->appendChild($span);
         }
     }
 
+    /**
+     * @param ?list<array{texte: string, gras: bool, italique: bool, souligne: bool, taille: ?int}> $passages
+     */
     private static function remplacerTexteWord(
         DOMDocument $doc,
         DOMElement $paragraphe,
         string $texte,
-        ?DOMElement $gabarit
+        ?DOMElement $gabarit,
+        ?array $passages = null
     ): void {
+        if ($passages !== null) {
+            self::ecrirePassagesWord($doc, $paragraphe, $passages, $gabarit);
+            return;
+        }
+
         /*
          * <w:pPr> porte le style du paragraphe : il reste tel quel. Le premier
          * <w:r> porte la police, la taille et la couleur : on le garde comme
@@ -434,5 +525,564 @@ final class EditionDocument
     private static function extension(string $nom): string
     {
         return strtolower(pathinfo($nom, PATHINFO_EXTENSION));
+    }
+
+    /* --- Le texte enrichi : gras, italique, souligné, taille ------------- */
+
+    /**
+     * Le HTML restreint d'une suite de passages.
+     *
+     * @param list<array{texte: string, gras: bool, italique: bool, souligne: bool, taille: ?int}> $passages
+     */
+    private static function html(array $passages): string
+    {
+        $html = '';
+        foreach ($passages as $passage) {
+            if ($passage['texte'] === '') {
+                continue;
+            }
+            $morceau = htmlspecialchars($passage['texte'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+            if ($passage['taille'] !== null) {
+                $morceau = '<span data-taille="' . $passage['taille'] . '">' . $morceau . '</span>';
+            }
+            if ($passage['souligne']) {
+                $morceau = '<u>' . $morceau . '</u>';
+            }
+            if ($passage['italique']) {
+                $morceau = '<i>' . $morceau . '</i>';
+            }
+            if ($passage['gras']) {
+                $morceau = '<b>' . $morceau . '</b>';
+            }
+            $html .= $morceau;
+        }
+
+        return $html;
+    }
+
+    /**
+     * Découpe le HTML de l'éditeur en passages.
+     *
+     * Tout ce qui n'est pas reconnu ne laisse que son texte : le document ne
+     * peut donc pas recevoir de balise venue d'ailleurs, quoi qu'on envoie.
+     *
+     * @return list<array{texte: string, gras: bool, italique: bool, souligne: bool, taille: ?int}>
+     */
+    private static function passagesDuHtml(string $html): array
+    {
+        if (trim(strip_tags($html)) === '' && !str_contains($html, '&nbsp;')) {
+            return [];
+        }
+
+        $avant = libxml_use_internal_errors(true);
+        $doc = new DOMDocument();
+        $doc->loadHTML(
+            '<?xml encoding="UTF-8"><div id="racine">' . $html . '</div>',
+            LIBXML_NONET | LIBXML_HTML_NODEFDTD | LIBXML_HTML_NOIMPLIED
+        );
+        libxml_clear_errors();
+        libxml_use_internal_errors($avant);
+
+        $racine = $doc->getElementById('racine');
+        $passages = [];
+        if ($racine !== null) {
+            self::parcourirHtml($racine, ['gras' => false, 'italique' => false,
+                'souligne' => false, 'taille' => null], $passages);
+        }
+
+        return self::fondrePassages($passages);
+    }
+
+    /** Descend dans le HTML en tenant à jour la mise en forme du moment. */
+    private static function parcourirHtml(DOMNode $noeud, array $etat, array &$passages): void
+    {
+        foreach ($noeud->childNodes as $enfant) {
+            if ($enfant instanceof DOMText) {
+                $texte = str_replace("\u{00a0}", ' ', $enfant->data);
+                if ($texte !== '') {
+                    $passages[] = $etat + ['texte' => $texte];
+                }
+                continue;
+            }
+            if (!$enfant instanceof DOMElement) {
+                continue;
+            }
+
+            $sien = $etat;
+            $nom = strtolower($enfant->localName);
+            if (in_array($nom, ['b', 'strong'], true)) {
+                $sien['gras'] = true;
+            }
+            if (in_array($nom, ['i', 'em'], true)) {
+                $sien['italique'] = true;
+            }
+            if ($nom === 'u') {
+                $sien['souligne'] = true;
+            }
+            if ($nom === 'br') {
+                $passages[] = $etat + ['texte' => ' '];
+                continue;
+            }
+            // La taille voyage soit dans notre attribut, soit dans le style que
+            // le navigateur a écrit tout seul.
+            $taille = self::tailleDemandee($enfant);
+            if ($taille !== null) {
+                $sien['taille'] = $taille;
+            }
+            $sien = self::styleEnLigne($enfant, $sien);
+
+            self::parcourirHtml($enfant, $sien, $passages);
+        }
+    }
+
+    /** La taille écrite sur cette balise, ramenée aux valeurs proposées. */
+    private static function tailleDemandee(DOMElement $element): ?int
+    {
+        $brut = $element->getAttribute('data-taille');
+
+        if ($brut === '' && preg_match('/font-size\s*:\s*([\d.]+)\s*(pt|px)?/i',
+            $element->getAttribute('style'), $m) === 1) {
+            // Un navigateur écrit volontiers des pixels : 1 point en vaut 4/3.
+            $points = strtolower($m[2] ?? 'pt') === 'px' ? (float) $m[1] * 0.75 : (float) $m[1];
+            $brut = (string) (int) round($points);
+        }
+
+        if ($brut === '' || !ctype_digit($brut)) {
+            return null;
+        }
+
+        $taille = (int) $brut;
+
+        return in_array($taille, self::TAILLES, true) ? $taille : null;
+    }
+
+    /** Le gras, l'italique et le souligné écrits en CSS plutôt qu'en balise. */
+    private static function styleEnLigne(DOMElement $element, array $etat): array
+    {
+        $style = strtolower($element->getAttribute('style'));
+        if ($style === '') {
+            return $etat;
+        }
+        if (preg_match('/font-weight\s*:\s*(bold|[6-9]00)/', $style) === 1) {
+            $etat['gras'] = true;
+        }
+        if (preg_match('/font-style\s*:\s*italic/', $style) === 1) {
+            $etat['italique'] = true;
+        }
+        if (preg_match('/text-decoration[^:]*:\s*[^;]*underline/', $style) === 1) {
+            $etat['souligne'] = true;
+        }
+
+        return $etat;
+    }
+
+    /**
+     * Recolle les passages voisins de même allure.
+     *
+     * Un navigateur découpe volontiers un mot en trois nœuds ; sans cela, le
+     * document se remplirait de passages d'une lettre.
+     *
+     * @return list<array{texte: string, gras: bool, italique: bool, souligne: bool, taille: ?int}>
+     */
+    private static function fondrePassages(array $passages): array
+    {
+        $fondus = [];
+        foreach ($passages as $passage) {
+            $dernier = $fondus === [] ? null : count($fondus) - 1;
+            if ($dernier !== null
+                && $fondus[$dernier]['gras'] === $passage['gras']
+                && $fondus[$dernier]['italique'] === $passage['italique']
+                && $fondus[$dernier]['souligne'] === $passage['souligne']
+                && $fondus[$dernier]['taille'] === $passage['taille']
+            ) {
+                $fondus[$dernier]['texte'] .= $passage['texte'];
+                continue;
+            }
+            $fondus[] = ['texte' => $passage['texte'], 'gras' => $passage['gras'],
+                'italique' => $passage['italique'], 'souligne' => $passage['souligne'],
+                'taille' => $passage['taille']];
+        }
+
+        return array_values(array_filter($fondus, static fn (array $p): bool => $p['texte'] !== ''));
+    }
+
+    /* --- Côté Word ------------------------------------------------------- */
+
+    /**
+     * Les passages d'un paragraphe Word, lus dans ses <w:r>.
+     *
+     * @return list<array{texte: string, gras: bool, italique: bool, souligne: bool, taille: ?int}>
+     */
+    private static function passagesWord(DOMElement $paragraphe): array
+    {
+        $passages = [];
+        foreach ($paragraphe->getElementsByTagNameNS(self::NS_W, 'r') as $run) {
+            $texte = '';
+            foreach ($run->childNodes as $enfant) {
+                if (self::estElement($enfant, 't')) {
+                    $texte .= $enfant->textContent;
+                } elseif (self::estElement($enfant, 'tab')) {
+                    $texte .= "\t";
+                }
+            }
+            if ($texte === '') {
+                continue;
+            }
+
+            $rPr = null;
+            foreach ($run->childNodes as $enfant) {
+                if (self::estElement($enfant, 'rPr')) {
+                    $rPr = $enfant;
+                    break;
+                }
+            }
+
+            $passages[] = [
+                'texte'    => $texte,
+                'gras'     => self::marqueWord($rPr, 'b'),
+                'italique' => self::marqueWord($rPr, 'i'),
+                'souligne' => self::souligneWord($rPr),
+                'taille'   => self::tailleWord($rPr),
+            ];
+        }
+
+        return self::fondrePassages($passages);
+    }
+
+    /** Un <w:b/> sans valeur veut dire « oui » ; « 0 » et « false » disent non. */
+    private static function marqueWord(?DOMElement $rPr, string $nom): bool
+    {
+        $element = self::enfantWord($rPr, $nom);
+        if ($element === null) {
+            return false;
+        }
+        $val = $element->getAttributeNS(self::NS_W, 'val');
+
+        return !in_array($val, ['0', 'false', 'off'], true);
+    }
+
+    private static function souligneWord(?DOMElement $rPr): bool
+    {
+        $u = self::enfantWord($rPr, 'u');
+
+        return $u !== null && $u->getAttributeNS(self::NS_W, 'val') !== 'none';
+    }
+
+    /** La taille de Word est en demi-points. */
+    private static function tailleWord(?DOMElement $rPr): ?int
+    {
+        $sz = self::enfantWord($rPr, 'sz');
+        if ($sz === null) {
+            return null;
+        }
+        $val = $sz->getAttributeNS(self::NS_W, 'val');
+        if (!ctype_digit($val)) {
+            return null;
+        }
+        $points = (int) round(((int) $val) / 2);
+
+        return in_array($points, self::TAILLES, true) ? $points : null;
+    }
+
+    private static function enfantWord(?DOMElement $parent, string $nom): ?DOMElement
+    {
+        if ($parent === null) {
+            return null;
+        }
+        foreach ($parent->childNodes as $enfant) {
+            if (self::estElement($enfant, $nom)) {
+                /** @var DOMElement $enfant */
+                return $enfant;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Réécrit un paragraphe Word en un <w:r> par passage.
+     *
+     * Le premier passage existant sert de moule : sa police, sa couleur et son
+     * style restent, seules les quatre marques que l'éditeur connaît sont
+     * posées ou retirées.
+     *
+     * @param list<array{texte: string, gras: bool, italique: bool, souligne: bool, taille: ?int}> $passages
+     */
+    private static function ecrirePassagesWord(
+        DOMDocument $doc,
+        DOMElement $paragraphe,
+        array $passages,
+        ?DOMElement $gabarit
+    ): void {
+        $moule = null;
+        foreach (iterator_to_array($paragraphe->childNodes) as $enfant) {
+            if (self::estElement($enfant, 'pPr')) {
+                continue;
+            }
+            if ($moule === null && self::estElement($enfant, 'r')) {
+                /** @var DOMElement $enfant */
+                $moule = $enfant->cloneNode(true);
+            }
+            $paragraphe->removeChild($enfant);
+        }
+
+        foreach ($passages as $passage) {
+            $run = $moule !== null
+                ? $moule->cloneNode(true)
+                : $doc->createElementNS(self::NS_W, 'w:r');
+            /** @var DOMElement $run */
+
+            $rPr = null;
+            foreach (iterator_to_array($run->childNodes) as $enfant) {
+                if (self::estElement($enfant, 'rPr')) {
+                    /** @var DOMElement $enfant */
+                    $rPr = $enfant;
+                    continue;
+                }
+                $run->removeChild($enfant);
+            }
+            if ($rPr === null && self::marquesUtiles($passage)) {
+                $rPr = $doc->createElementNS(self::NS_W, 'w:rPr');
+                $run->insertBefore($rPr, $run->firstChild);
+            }
+            if ($rPr !== null) {
+                self::marquerRpr($doc, $rPr, $passage);
+            }
+
+            $t = $gabarit !== null
+                ? $gabarit->cloneNode(false)
+                : $doc->createElementNS(self::NS_W, 'w:t');
+            /** @var DOMElement $t */
+            // Sans cet attribut, Word rogne les espaces de début et de fin.
+            $t->setAttributeNS(self::NS_XML, 'xml:space', 'preserve');
+            $t->appendChild($doc->createTextNode($passage['texte']));
+            $run->appendChild($t);
+
+            $paragraphe->appendChild($run);
+        }
+    }
+
+    private static function marquesUtiles(array $passage): bool
+    {
+        return $passage['gras'] || $passage['italique']
+            || $passage['souligne'] || $passage['taille'] !== null;
+    }
+
+    /**
+     * Pose les marques du passage dans un <w:rPr>, sans toucher au reste.
+     *
+     * Rien n'est écrit pour ce qui est absent : forcer « pas de gras » sur un
+     * paragraphe dont le style le met en gras changerait l'allure du document
+     * alors que l'éditeur n'a jamais montré ce gras-là.
+     */
+    private static function marquerRpr(DOMDocument $doc, DOMElement $rPr, array $passage): void
+    {
+        foreach (['b', 'bCs', 'i', 'iCs', 'u', 'sz', 'szCs'] as $nom) {
+            $ancien = self::enfantWord($rPr, $nom);
+            if ($ancien !== null) {
+                $rPr->removeChild($ancien);
+            }
+        }
+
+        if ($passage['gras']) {
+            self::poserDansRpr($doc, $rPr, 'b', null);
+            self::poserDansRpr($doc, $rPr, 'bCs', null);
+        }
+        if ($passage['italique']) {
+            self::poserDansRpr($doc, $rPr, 'i', null);
+            self::poserDansRpr($doc, $rPr, 'iCs', null);
+        }
+        if ($passage['souligne']) {
+            self::poserDansRpr($doc, $rPr, 'u', 'single');
+        }
+        if ($passage['taille'] !== null) {
+            $demi = (string) ($passage['taille'] * 2);
+            self::poserDansRpr($doc, $rPr, 'sz', $demi);
+            self::poserDansRpr($doc, $rPr, 'szCs', $demi);
+        }
+    }
+
+    /** Insère un enfant de <w:rPr> à la place que le schéma lui réserve. */
+    private static function poserDansRpr(
+        DOMDocument $doc,
+        DOMElement $rPr,
+        string $nom,
+        ?string $valeur
+    ): void {
+        $element = $doc->createElementNS(self::NS_W, 'w:' . $nom);
+        if ($valeur !== null) {
+            $element->setAttributeNS(self::NS_W, 'w:val', $valeur);
+        }
+
+        $rang = self::ORDRE_RPR[$nom] ?? PHP_INT_MAX;
+        foreach ($rPr->childNodes as $enfant) {
+            if (!$enfant instanceof DOMElement) {
+                continue;
+            }
+            $sien = self::ORDRE_RPR[$enfant->localName] ?? PHP_INT_MAX;
+            if ($sien > $rang) {
+                $rPr->insertBefore($element, $enfant);
+                return;
+            }
+        }
+        $rPr->appendChild($element);
+    }
+
+    /* --- Côté LibreOffice ------------------------------------------------ */
+
+    /**
+     * Les styles de texte du document, par nom.
+     *
+     * @return array<string, array{gras: bool, italique: bool, souligne: bool, taille: ?int}>
+     */
+    private static function stylesDeTexteOdf(DOMDocument $doc): array
+    {
+        $styles = [];
+        foreach ($doc->getElementsByTagNameNS(self::NS_STYLE, 'style') as $style) {
+            if ($style->getAttributeNS(self::NS_STYLE, 'family') !== 'text') {
+                continue;
+            }
+            $nom = $style->getAttributeNS(self::NS_STYLE, 'name');
+            $proprietes = $style->getElementsByTagNameNS(self::NS_STYLE, 'text-properties')->item(0);
+            if ($nom === '' || !$proprietes instanceof DOMElement) {
+                continue;
+            }
+
+            $taille = null;
+            if (preg_match('/^([\d.]+)pt$/', $proprietes->getAttributeNS(self::NS_FO, 'font-size'), $m) === 1
+                && in_array((int) round((float) $m[1]), self::TAILLES, true)) {
+                $taille = (int) round((float) $m[1]);
+            }
+
+            $souligne = $proprietes->getAttributeNS(self::NS_STYLE, 'text-underline-style');
+            $styles[$nom] = [
+                'gras'     => $proprietes->getAttributeNS(self::NS_FO, 'font-weight') === 'bold',
+                'italique' => $proprietes->getAttributeNS(self::NS_FO, 'font-style') === 'italic',
+                'souligne' => $souligne !== '' && $souligne !== 'none',
+                'taille'   => $taille,
+            ];
+        }
+
+        return $styles;
+    }
+
+    /**
+     * Les passages d'un paragraphe ODF.
+     *
+     * @return list<array{texte: string, gras: bool, italique: bool, souligne: bool, taille: ?int}>
+     */
+    private static function passagesOdf(DOMElement $paragraphe, array $styles): array
+    {
+        $passages = [];
+        self::parcourirOdf($paragraphe,
+            ['gras' => false, 'italique' => false, 'souligne' => false, 'taille' => null],
+            $styles, $passages);
+
+        return self::fondrePassages($passages);
+    }
+
+    private static function parcourirOdf(DOMNode $noeud, array $etat, array $styles, array &$passages): void
+    {
+        foreach ($noeud->childNodes as $enfant) {
+            if ($enfant instanceof DOMText) {
+                if ($enfant->data !== '') {
+                    $passages[] = $etat + ['texte' => $enfant->data];
+                }
+                continue;
+            }
+            if (!$enfant instanceof DOMElement || $enfant->namespaceURI !== self::NS_TEXT) {
+                continue;
+            }
+
+            // Les espaces répétés et les tabulations ont leur propre balise.
+            if ($enfant->localName === 's') {
+                $combien = (int) ($enfant->getAttributeNS(self::NS_TEXT, 'c') ?: '1');
+                $passages[] = $etat + ['texte' => str_repeat(' ', max(1, $combien))];
+                continue;
+            }
+            if ($enfant->localName === 'tab') {
+                $passages[] = $etat + ['texte' => "\t"];
+                continue;
+            }
+
+            $sien = $etat;
+            if ($enfant->localName === 'span') {
+                $nom = $enfant->getAttributeNS(self::NS_TEXT, 'style-name');
+                if (isset($styles[$nom])) {
+                    $sien = [
+                        'gras'     => $etat['gras'] || $styles[$nom]['gras'],
+                        'italique' => $etat['italique'] || $styles[$nom]['italique'],
+                        'souligne' => $etat['souligne'] || $styles[$nom]['souligne'],
+                        'taille'   => $styles[$nom]['taille'] ?? $etat['taille'],
+                    ];
+                }
+            }
+
+            self::parcourirOdf($enfant, $sien, $styles, $passages);
+        }
+    }
+
+    /**
+     * Le nom du style automatique qui porte cette mise en forme, créé au besoin.
+     *
+     * @return ?string  null quand le passage n'a rien de particulier
+     */
+    private static function styleOdf(DOMDocument $doc, array $passage): ?string
+    {
+        if (!self::marquesUtiles($passage)) {
+            return null;
+        }
+
+        // Un nom qui décrit ce qu'il porte : deux passages identiques
+        // retrouvent le même style, sans en accumuler des centaines.
+        $nom = sprintf('MesCours_%s%s%s%s',
+            $passage['gras'] ? 'g' : '',
+            $passage['italique'] ? 'i' : '',
+            $passage['souligne'] ? 's' : '',
+            $passage['taille'] !== null ? 't' . $passage['taille'] : '');
+
+        foreach ($doc->getElementsByTagNameNS(self::NS_STYLE, 'style') as $style) {
+            if ($style->getAttributeNS(self::NS_STYLE, 'name') === $nom) {
+                return $nom;
+            }
+        }
+
+        $automatiques = $doc->getElementsByTagNameNS(self::NS_OFFICE, 'automatic-styles')->item(0);
+        if (!$automatiques instanceof DOMElement) {
+            $automatiques = $doc->createElementNS(self::NS_OFFICE, 'office:automatic-styles');
+            $corps = $doc->getElementsByTagNameNS(self::NS_OFFICE, 'body')->item(0);
+            if ($corps instanceof DOMElement && $corps->parentNode !== null) {
+                $corps->parentNode->insertBefore($automatiques, $corps);
+            } elseif ($doc->documentElement !== null) {
+                $doc->documentElement->appendChild($automatiques);
+            } else {
+                return null;
+            }
+        }
+
+        $style = $doc->createElementNS(self::NS_STYLE, 'style:style');
+        $style->setAttributeNS(self::NS_STYLE, 'style:name', $nom);
+        $style->setAttributeNS(self::NS_STYLE, 'style:family', 'text');
+
+        $proprietes = $doc->createElementNS(self::NS_STYLE, 'style:text-properties');
+        if ($passage['gras']) {
+            $proprietes->setAttributeNS(self::NS_FO, 'fo:font-weight', 'bold');
+        }
+        if ($passage['italique']) {
+            $proprietes->setAttributeNS(self::NS_FO, 'fo:font-style', 'italic');
+        }
+        if ($passage['souligne']) {
+            $proprietes->setAttributeNS(self::NS_STYLE, 'style:text-underline-style', 'solid');
+            $proprietes->setAttributeNS(self::NS_STYLE, 'style:text-underline-width', 'auto');
+            $proprietes->setAttributeNS(self::NS_STYLE, 'style:text-underline-color', 'font-color');
+        }
+        if ($passage['taille'] !== null) {
+            $proprietes->setAttributeNS(self::NS_FO, 'fo:font-size', $passage['taille'] . 'pt');
+        }
+
+        $style->appendChild($proprietes);
+        $automatiques->appendChild($style);
+
+        return $nom;
     }
 }

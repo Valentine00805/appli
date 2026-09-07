@@ -1328,6 +1328,40 @@ input.depot__champ {
 
 .paragraphe [data-supprimer-paragraphe] { margin-top: .3rem; }
 
+/* La zone modifiable prend la place du champ de texte, et lui ressemble : on
+   ne doit pas voir qu'on écrit ailleurs. */
+.paragraphe__riche {
+  min-height: 2.6rem;
+  padding: .6rem .75rem;
+  border: 1px solid var(--bordure-forte); border-radius: var(--rayon-s);
+  background: var(--fond-carte);
+  font-size: 1rem; line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+.paragraphe__riche:focus {
+  outline: 2px solid var(--accent); outline-offset: -1px;
+  border-color: var(--accent);
+}
+
+/* La barre d'outils, collée en haut pendant qu'on descend dans le document. */
+.barre-outils {
+  position: sticky; top: 0; z-index: 5;
+  display: flex; align-items: center; gap: .4rem; flex-wrap: wrap;
+  margin-bottom: .8rem; padding: .5rem .7rem;
+  border: 1px solid var(--bordure); border-radius: var(--rayon-s);
+  background: var(--fond);
+}
+.barre-outils__bouton {
+  min-width: 2.2rem; padding: .35rem .6rem;
+  border: 1px solid var(--bordure); border-radius: var(--rayon-s);
+  background: var(--fond-carte); color: var(--texte);
+  font-size: .95rem; cursor: pointer;
+}
+.barre-outils__bouton:hover { border-color: var(--accent); color: var(--accent); }
+.barre-outils__taille { display: inline-flex; align-items: center; gap: .4rem; margin-left: .4rem; }
+.barre-outils__taille select { width: auto; }
+.barre-outils__aide { margin: 0 0 0 auto; }
+
 /* --- Fiche de révision : le volet d'un cours ------------------------------ */
 
 /*

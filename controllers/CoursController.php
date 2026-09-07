@@ -983,16 +983,23 @@ final class CoursController
         $nom = (string) $fichier['nom_origine'];
 
         try {
-            $paragraphes = EditionDocument::lire($this->cheminDe($fichier), $nom);
+            $chemin = $this->cheminDe($fichier);
+            // Deux lectures du même document : le texte nu pour le formulaire
+            // sans JavaScript, la mise en forme pour l'éditeur.
+            $paragraphes = EditionDocument::lire($chemin, $nom);
+            $enrichis = EditionDocument::lireRiche($chemin, $nom);
             $erreur = null;
         } catch (Throwable $e) {
             $paragraphes = [];
+            $enrichis = [];
             $erreur = $e->getMessage();
         }
 
         Vue::afficher('cours/modifier-document', [
             'fichier'     => $fichier,
             'paragraphes' => $paragraphes,
+            'enrichis'    => $enrichis,
+            'tailles'     => EditionDocument::TAILLES,
             'format'      => ApercuDocument::format($nom),
             'erreur'      => $erreur,
         ], 'Modifier ' . $nom);
@@ -1013,7 +1020,9 @@ final class CoursController
         }
 
         try {
-            EditionDocument::enregistrer($chemin, $nom, $entrees);
+            // « riche » n'est envoyé que par l'éditeur : sans lui, le texte est
+            // nu et l'absence de gras ne veut pas dire qu'il faut l'enlever.
+            EditionDocument::enregistrer($chemin, $nom, $entrees, ($_POST['riche'] ?? '') === '1');
         } catch (Throwable $e) {
             Session::flash('erreur', 'Le document n’a pas été modifié : ' . $e->getMessage());
             redirect('fichiers/' . $id . '/modifier');

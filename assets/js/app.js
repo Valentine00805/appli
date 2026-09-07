@@ -572,7 +572,152 @@
         renumeroter();
         var zone = ligne.querySelector("textarea");
         if (zone) { ajusterHauteur(zone); zone.focus(); }
+        if (typeof enrichir === "function") {
+          enrichir(ligne);
+          var riche = ligne.querySelector("[data-zone-riche]");
+          if (riche) { riche.focus(); }
+        }
       });
+    }
+
+    /*
+     * Le gras, l'italique, le souligné et la taille.
+     *
+     * Chaque paragraphe reçoit une zone modifiable par-dessus son champ de
+     * texte, qui reste là, caché : c'est lui que le formulaire envoie, et on y
+     * recopie le balisage juste avant de partir. Sans ce script, le champ se
+     * montre tel quel et la page fait ce qu'elle a toujours fait — on modifie
+     * le texte, pas sa forme.
+     */
+    var formulaireDocument = document.querySelector("[data-edition-document]");
+    var barreOutils = document.querySelector("[data-barre-outils]");
+    var drapeauRiche = document.querySelector("[data-riche]");
+
+    /*
+     * Sur quelle zone la barre agit : celle où se trouve la sélection.
+     *
+     * On la relit à chaque changement de sélection plutôt qu'au moment où une
+     * zone prend le focus : cet événement-là ne se déclenche pas toujours, et
+     * la barre restait alors sans effet.
+     */
+    var zoneChoisie = null;
+
+    var zoneDeLaSelection = function () {
+      var selection = document.getSelection();
+      if (!selection || selection.rangeCount === 0) { return null; }
+      var noeud = selection.getRangeAt(0).commonAncestorContainer;
+      if (noeud.nodeType === 3) { noeud = noeud.parentNode; }
+
+      return noeud && noeud.closest ? noeud.closest("[data-zone-riche]") : null;
+    };
+
+    document.addEventListener("selectionchange", function () {
+      var zone = zoneDeLaSelection();
+      if (zone) { zoneChoisie = zone; }
+    });
+
+    var enrichir = function (ligne) {
+      var champ = ligne.querySelector("textarea");
+      if (!champ || ligne.querySelector("[data-zone-riche]")) { return; }
+
+      var zone = document.createElement("div");
+      zone.className = "paragraphe__riche";
+      zone.setAttribute("data-zone-riche", "");
+      zone.setAttribute("contenteditable", "true");
+      zone.setAttribute("role", "textbox");
+      zone.setAttribute("aria-multiline", "false");
+      zone.setAttribute("aria-label", champ.getAttribute("aria-label") || "Paragraphe");
+
+      var balise = ligne.getAttribute("data-riche-html");
+      // Rien de balisé : on part du texte, que le navigateur échappe pour nous.
+      if (balise) { zone.innerHTML = balise; } else { zone.textContent = champ.value; }
+
+      champ.hidden = true;
+      champ.parentNode.insertBefore(zone, champ.nextSibling);
+
+      /*
+       * Le champ que le formulaire envoie est recopié à chaque frappe, et dès
+       * maintenant. Attendre l'envoi ne suffisait pas : un formulaire soumis
+       * autrement que par son bouton ne déclenche pas cet événement-là, et le
+       * document repartait alors sans sa mise en forme.
+       */
+      var synchroniser = function () { champ.value = zone.innerHTML; };
+      synchroniser();
+      zone.addEventListener("input", synchroniser);
+      zone.addEventListener("focus", function () { zoneChoisie = zone; });
+      // Entrée ne doit pas glisser un saut de ligne au milieu d'un paragraphe :
+      // ici, une zone vaut un paragraphe.
+      zone.addEventListener("keydown", function (evenement) {
+        if (evenement.key === "Enter") { evenement.preventDefault(); }
+      });
+      // Un collage apporterait la mise en forme du site d'origine, polices et
+      // couleurs comprises : on ne garde que le texte.
+      zone.addEventListener("paste", function (evenement) {
+        evenement.preventDefault();
+        var texte = (evenement.clipboardData || window.clipboardData).getData("text");
+        document.execCommand("insertText", false, texte.replace(/\s*\n\s*/g, " "));
+      });
+    };
+
+    if (formulaireDocument && barreOutils && drapeauRiche) {
+      try { document.execCommand("styleWithCSS", false, false); } catch (e) { /* vieux navigateur */ }
+
+      [].slice.call(zoneParagraphes.querySelectorAll("[data-paragraphe]")).forEach(enrichir);
+      barreOutils.hidden = false;
+      drapeauRiche.value = "1";
+
+      /** Recopie chaque zone dans le champ que le formulaire enverra. */
+      var recopier = function () {
+        [].slice.call(zoneParagraphes.querySelectorAll("[data-paragraphe]")).forEach(function (ligne) {
+          var champ = ligne.querySelector("textarea");
+          var zone = ligne.querySelector("[data-zone-riche]");
+          if (champ && zone) { champ.value = zone.innerHTML; }
+        });
+      };
+
+      var agir = function (commande, valeur) {
+        var zone = zoneDeLaSelection() || zoneChoisie;
+        if (zone === null) { return; }
+        if (document.activeElement !== zone) { zone.focus(); }
+        document.execCommand(commande, false, valeur);
+        recopier();
+      };
+
+      [].slice.call(barreOutils.querySelectorAll("[data-commande]")).forEach(function (bouton) {
+        // « mousedown » plutôt que « click » : la sélection survit au clic.
+        bouton.addEventListener("mousedown", function (evenement) {
+          evenement.preventDefault();
+          agir(bouton.getAttribute("data-commande"));
+        });
+      });
+
+      var choixTaille = barreOutils.querySelector("[data-taille-texte]");
+      if (choixTaille) {
+        choixTaille.addEventListener("change", function () {
+          var zone = zoneDeLaSelection() || zoneChoisie;
+          if (zone === null) { return; }
+          if (document.activeElement !== zone) { zone.focus(); }
+          /*
+           * « fontSize » ne connaît que sept crans et écrit une balise <font>.
+           * On s'en sert comme d'un marqueur — le cran 7 ne servant à rien
+           * d'autre ici — puis on remplace ces balises par la taille voulue.
+           */
+          document.execCommand("fontSize", false, "7");
+          [].slice.call(zone.querySelectorAll("font[size='7']")).forEach(function (marque) {
+            var remplacant = document.createElement("span");
+            if (choixTaille.value) {
+              remplacant.setAttribute("data-taille", choixTaille.value);
+              remplacant.style.fontSize = choixTaille.value + "pt";
+            }
+            while (marque.firstChild) { remplacant.appendChild(marque.firstChild); }
+            marque.parentNode.replaceChild(remplacant, marque);
+          });
+          choixTaille.selectedIndex = 0;
+          recopier();
+        });
+      }
+
+      formulaireDocument.addEventListener("submit", recopier);
     }
   }
 

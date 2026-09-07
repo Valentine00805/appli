@@ -1,7 +1,9 @@
 <?php
 /**
  * @var array $fichier
- * @var array $paragraphes
+ * @var array $paragraphes  le texte nu, un paragraphe par entrée
+ * @var array $enrichis     le même texte, mise en forme comprise, en HTML
+ * @var list<int> $tailles  les tailles proposées, en points
  * @var string $format
  * @var ?string $erreur
  */
@@ -26,21 +28,51 @@
 <?php else: ?>
 
   <div class="flash flash--info" style="margin-bottom:1.25rem">
-    <strong>Vous modifiez le texte, pas la mise en forme.</strong>
-    Les styles, les images et les tableaux du document restent en place.
-    Sur un paragraphe que vous changez, une mise en forme qui variait à
-    l'intérieur — un mot en gras au milieu d'une phrase — reprend celle du
-    début du paragraphe. Une copie du document d'origine est gardée avant la
-    première modification.
+    <strong>Le gras, l'italique, le souligné et la taille se modifient ici.</strong>
+    Le reste de la mise en forme — styles, couleurs, polices, images, tableaux —
+    reste dans le document sans passer par cette page, et n'est donc pas perdu.
+    Une copie du document d'origine est gardée avant la première modification.
   </div>
 
-  <form method="post" action="<?= url('fichiers/' . $fichier['id'] . '/modifier') ?>">
+  <form method="post" action="<?= url('fichiers/' . $fichier['id'] . '/modifier') ?>"
+        data-edition-document>
     <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
+    <?php // Posé par le script : il dit au serveur que le texte arrive balisé. ?>
+    <input type="hidden" name="riche" value="" data-riche>
+
+    <?php
+    /*
+     * La barre d'outils ne sert qu'avec JavaScript : sans lui, les zones
+     * restent de simples champs de texte, et la page garde le comportement
+     * qu'elle avait — on modifie le texte, pas sa forme.
+     */
+    ?>
+    <div class="barre-outils" data-barre-outils hidden>
+      <button type="button" class="barre-outils__bouton" data-commande="bold"
+              title="Gras (Ctrl+B)"><strong>G</strong></button>
+      <button type="button" class="barre-outils__bouton" data-commande="italic"
+              title="Italique (Ctrl+I)"><em>I</em></button>
+      <button type="button" class="barre-outils__bouton" data-commande="underline"
+              title="Souligné (Ctrl+U)"><u>S</u></button>
+      <label class="barre-outils__taille">
+        <span class="discret">Taille</span>
+        <select data-taille-texte>
+          <option value="">Celle du document</option>
+          <?php foreach ($tailles as $taille): ?>
+            <option value="<?= (int) $taille ?>"><?= (int) $taille ?> pt</option>
+          <?php endforeach; ?>
+        </select>
+      </label>
+      <span class="champ__aide barre-outils__aide">
+        Sélectionnez du texte, puis choisissez.
+      </span>
+    </div>
 
     <div class="carte">
       <div class="paragraphes" data-paragraphes>
         <?php foreach ($paragraphes as $rang => $paragraphe): ?>
-          <div class="paragraphe" data-paragraphe>
+          <div class="paragraphe" data-paragraphe
+               data-riche-html="<?= e($enrichis[$rang] ?? '') ?>">
             <span class="paragraphe__rang" aria-hidden="true"><?= $rang + 1 ?></span>
             <input type="hidden" name="origine[]" value="<?= (int) $rang ?>">
             <textarea name="texte[]" rows="1" class="paragraphe__texte"
@@ -79,7 +111,7 @@
 
   <?php // Modèle recopié par le bouton d'ajout. ?>
   <template data-modele-paragraphe>
-    <div class="paragraphe" data-paragraphe>
+    <div class="paragraphe" data-paragraphe data-riche-html="">
       <span class="paragraphe__rang" aria-hidden="true">+</span>
       <input type="hidden" name="origine[]" value="">
       <textarea name="texte[]" rows="1" class="paragraphe__texte" aria-label="Nouveau paragraphe"></textarea>
