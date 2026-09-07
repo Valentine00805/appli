@@ -308,7 +308,6 @@ $avancementFiche = avancement_anneaux(fichiers_suivis($fichiersFiche));
           <?= $cartes['total'] === 0 ? 'En fabriquer' : 'Voir le paquet' ?>
         </a>
 
-        <?php $rezeroUtile = $cartes['total'] > $cartes['a_revoir']; ?>
         <?php if ($cartes['total'] > 0): ?>
           <form method="post" action="<?= url('cours/' . $cours['id'] . '/cartes/rezero') ?>"
                 class="en-ligne"
@@ -316,10 +315,7 @@ $avancementFiche = avancement_anneaux(fichiers_suivis($fichiersFiche));
             <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
             <input type="hidden" name="retour" value="<?= $surPage ? 'fiche' : 'volet' ?>">
             <button class="bouton bouton--discret bouton--petit" type="submit"
-                    <?= $rezeroUtile ? '' : 'disabled' ?>
-                    title="<?= $rezeroUtile
-                        ? 'Ramener toutes les cartes de ce cours en boîte 1'
-                        : 'Toutes les cartes sont déjà à revoir aujourd\'hui' ?>">
+                    title="Ramener toutes les cartes de ce cours en boîte 1">
               Tout remettre à revoir
             </button>
           </form>
@@ -334,7 +330,6 @@ $avancementFiche = avancement_anneaux(fichiers_suivis($fichiersFiche));
             'rezeroCours'    => (int) $cours['id'],
             'rezeroTotal'    => $cartes['total'],
             'rezeroRetour'   => $surPage ? 'fiche' : 'volet',
-            'rezeroPossible' => $cartes['total'] > $cartes['a_revoir'],
         ]) ?>
       </div>
     <?php endif; ?>

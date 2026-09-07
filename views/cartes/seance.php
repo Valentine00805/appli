@@ -9,7 +9,6 @@
  *
  * @var array $cartes
  * @var ?array $cours  le cours, si la séance ne porte que sur lui
- * @var int $rezero       combien de cartes bougeraient ; 0 si aucune
  * @var int $rezeroTotal  combien le paquet en compte en tout
  */
 $retour = $cours !== null ? url('cours/' . $cours['id'] . '/cartes') : url('cartes');
@@ -29,7 +28,6 @@ $retour = $cours !== null ? url('cours/' . $cours['id'] . '/cartes') : url('cart
       'cartes' => $cartes, 'avecCours' => $cours === null, 'retour' => $retour,
       'rezeroCours'    => $cours === null ? null : (int) $cours['id'],
       'rezeroTotal'    => $rezeroTotal,
-      'rezeroPossible' => $rezero > 0,
   ]) ?>
 
 <?php endif; ?>

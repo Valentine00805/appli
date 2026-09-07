@@ -15,14 +15,12 @@
  * @var ?int $rezeroCours   le cours dont on peut remettre le paquet à zéro
  * @var int $rezeroTotal    combien de cartes il compte
  * @var ?string $rezeroRetour  où revenir ensuite : 'fiche', 'volet', ou null
- * @var bool $rezeroPossible  faux quand tout est déjà au début
  */
 $avecCours = $avecCours ?? false;
 $retour = $retour ?? null;
 $rezeroCours = $rezeroCours ?? null;
 $rezeroTotal = $rezeroTotal ?? 0;
 $rezeroRetour = $rezeroRetour ?? null;
-$rezeroPossible = $rezeroPossible ?? true;
 ?>
 <div class="seance" data-seance data-jeton="<?= e(Session::jetonCsrf()) ?>">
   <div class="seance__entete">
@@ -58,15 +56,13 @@ $rezeroPossible = $rezeroPossible ?? true;
         <?php endif; ?>
         <?php
         /*
-         * Éteint plutôt qu'absent : un bouton qui disparaît laisse croire que
-         * la fonction n'existe pas, alors qu'elle n'a simplement rien à faire.
+         * Toujours cliquable : pendant une séance, les cartes tranchées partent
+         * dans des boîtes supérieures, et l'état calculé au chargement mentirait
+         * une minute plus tard. Si rien n'a à bouger, le serveur le dit.
          */
         ?>
         <button class="bouton bouton--discret bouton--petit" type="submit"
-                <?= $rezeroPossible ? '' : 'disabled' ?>
-                title="<?= $rezeroPossible
-                    ? 'Ramener toutes les cartes de ce cours en boîte 1'
-                    : 'Toutes les cartes sont déjà à revoir aujourd\'hui' ?>">
+                title="Ramener toutes les cartes de ce cours en boîte 1">
           🔁 Tout remettre à revoir
         </button>
       </form>
