@@ -236,9 +236,20 @@ $avancementFiche = avancement_anneaux(
                     </span>
                     <button class="bouton bouton--discret bouton--petit" type="button"
                             data-pdf-avance title="Page suivante">▶</button>
-                    <?php // Lu en diagonale, ou déjà connu : on le déclare fini sans tourner les pages. ?>
+                    <?php
+                    /*
+                     * Lu en diagonale, ou déjà connu : on le déclare fini sans
+                     * tourner les pages. Une fois fini, le même bouton défait
+                     * ce qu'il a fait — se tromper de document arrive.
+                     */
+                    $luEnEntier = $pageAtteinte >= $pages;
+                    ?>
                     <button class="bouton bouton--discret bouton--petit" type="button"
-                            data-pdf-fini title="Marquer ce document comme lu">Terminer</button>
+                            data-pdf-fini
+                            title="<?= $luEnEntier
+                                ? 'Remettre ce document comme non lu'
+                                : 'Marquer ce document comme lu' ?>"><?=
+                        $luEnEntier ? 'Annuler' : 'Terminer' ?></button>
                   </span>
                 <?php endif; ?>
 
@@ -321,9 +332,20 @@ $avancementFiche = avancement_anneaux(
               <button class="bouton bouton--discret bouton--petit" type="button"
                       data-images-avance title="Image suivante">▶</button>
             <?php endif; ?>
-            <?php // Déjà connues, ou parcourues d'un coup d'œil : on les déclare vues. ?>
+            <?php
+            /*
+             * Déjà connues, ou parcourues d'un coup d'œil : on les déclare
+             * vues. Une fois toutes vues, le même bouton les remet à zéro.
+             */
+            ?>
             <button class="bouton bouton--discret bouton--petit" type="button"
-                    data-images-fini title="Marquer toutes les images comme vues">Terminer</button>
+                    data-images-fini
+                    title="<?= $vues >= $total
+                        ? ($total > 1 ? 'Remettre toutes les images comme non vues'
+                                      : 'Remettre cette image comme non vue')
+                        : ($total > 1 ? 'Marquer toutes les images comme vues'
+                                      : 'Marquer cette image comme vue') ?>"><?=
+                $vues >= $total ? 'Annuler' : 'Terminer' ?></button>
           </span>
         </div>
       <?php endif; ?>

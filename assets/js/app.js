@@ -1287,6 +1287,17 @@
   }
 
   /*
+   * Le bouton qui termine une lecture défait aussi ce qu'il a fait : une fois
+   * tout lu, il propose de remettre à zéro. Se tromper de document, ou vouloir
+   * relire, arrive plus souvent qu'on ne croit.
+   */
+  var direLeBouton = function (bouton, fini, aFaire, aDefaire) {
+    if (!bouton) { return; }
+    bouton.textContent = fini ? "Annuler" : "Terminer";
+    bouton.title = fini ? aDefaire : aFaire;
+  };
+
+  /*
    * L'avancement dans un enregistrement : le lecteur reprend là où on s'était
    * arrêté, et prévient le serveur quand on le quitte. L'anneau suit en direct.
    */
@@ -1438,6 +1449,7 @@
       var trait = anneau ? anneau.querySelector(".anneau__part") : null;
       var texte = anneau ? anneau.querySelector(".anneau__texte") : null;
       var minutage = mesure ? mesure.querySelector(".fichier__minutage") : null;
+      var fini = bloc.querySelector("[data-pdf-fini]");
 
       var peindre = function () {
         var part = Math.max(0, Math.min(100, Math.round(atteinte / pages * 100)));
@@ -1453,13 +1465,17 @@
         }
         if (recule) { recule.disabled = page <= 1; }
         if (avance) { avance.disabled = page >= pages; }
+        direLeBouton(fini, atteinte >= pages,
+          "Marquer ce document comme lu", "Remettre ce document comme non lu");
         majTotalFiche();
       };
 
       var envoyer = function () {
         var corps = new URLSearchParams();
         corps.set("_csrf", jeton);
-        corps.set("position", String(page));
+        // C'est la page atteinte qu'on garde, et non celle qu'on regarde :
+        // les deux ne diffèrent qu'après avoir tout remis à zéro.
+        corps.set("position", String(atteinte));
         corps.set("duree", String(pages));
         var url = bloc.getAttribute("data-position-url");
         if (navigator.sendBeacon) {
@@ -1504,10 +1520,24 @@
         envoyer();
       };
 
+      // Et le défaire : le document redevient à lire, ouvert à sa première page.
+      var defaire = function () {
+        if (page !== 1) {
+          page = 1;
+          afficherPage(page);
+        }
+        atteinte = 0;
+        peindre();
+        envoyer();
+      };
+
       if (recule) { recule.addEventListener("click", function () { aller(page - 1); }); }
       if (avance) { avance.addEventListener("click", function () { aller(page + 1); }); }
-      var fini = bloc.querySelector("[data-pdf-fini]");
-      if (fini) { fini.addEventListener("click", finir); }
+      if (fini) {
+        fini.addEventListener("click", function () {
+          if (atteinte >= pages) { defaire(); } else { finir(); }
+        });
+      }
       peindre();
     });
   }
@@ -1537,6 +1567,7 @@
       var anneau = bloc.querySelector(".anneau");
       var trait = anneau ? anneau.querySelector(".anneau__part") : null;
       var texte = anneau ? anneau.querySelector(".anneau__texte") : null;
+      var fini = bloc.querySelector("[data-images-fini]");
 
       var comptees = function () {
         return vues.filter(function (v) { return v.getAttribute("data-vue") === "1"; }).length;
@@ -1561,14 +1592,17 @@
         }
         if (recule) { recule.disabled = rang <= 0; }
         if (avance) { avance.disabled = rang >= total - 1; }
+        direLeBouton(fini, lues >= total,
+          total > 1 ? "Marquer toutes les images comme vues" : "Marquer cette image comme vue",
+          total > 1 ? "Remettre toutes les images comme non vues" : "Remettre cette image comme non vue");
         majTotalFiche();
       };
 
-      var envoyer = function (image) {
+      var envoyer = function (image, vue) {
         var corps = new URLSearchParams();
         corps.set("_csrf", jeton);
         // Une image tient en une « page », vue ou pas vue.
-        corps.set("position", "1");
+        corps.set("position", vue ? "1" : "0");
         corps.set("duree", "1");
         var url = image.getAttribute("data-position-url");
         if (navigator.sendBeacon) {
@@ -1583,9 +1617,19 @@
         for (var i = 0; i <= jusqua; i++) {
           if (vues[i].getAttribute("data-vue") !== "1") {
             vues[i].setAttribute("data-vue", "1");
-            envoyer(vues[i]);
+            envoyer(vues[i], true);
           }
         }
+      };
+
+      // Et l'inverse : tout redevient à voir, depuis la première.
+      var oublier = function () {
+        vues.forEach(function (image) {
+          if (image.getAttribute("data-vue") === "1") {
+            image.setAttribute("data-vue", "");
+            envoyer(image, false);
+          }
+        });
       };
 
       var aller = function (voulu) {
@@ -1604,11 +1648,15 @@
        * image, il n'aurait rien à faire, alors qu'une fiche parcourue d'un
        * coup d'oeil doit tout de même pouvoir être marquée finie.
        */
-      var fini = bloc.querySelector("[data-images-fini]");
       if (fini) {
         fini.addEventListener("click", function () {
-          rang = total - 1;
-          marquer(total - 1);
+          if (comptees() >= total) {
+            rang = 0;
+            oublier();
+          } else {
+            rang = total - 1;
+            marquer(total - 1);
+          }
           peindre();
         });
       }
