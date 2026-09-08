@@ -87,6 +87,13 @@ Config::charger([
         'extensions_autorisees' => [
             'pdf', 'doc', 'docx', 'odt', 'ppt', 'pptx', 'odp', 'xls', 'xlsx', 'ods',
             'txt', 'md', 'csv', 'rtf',
+            /*
+             * Les carnets OneNote : gardés et retéléchargeables, mais rien de
+             * plus. Leur format est fermé, et personne d'autre que OneNote ne
+             * sait les ouvrir — pour lire une section dans l'application, il
+             * faut l'exporter en PDF ou en Word.
+             */
+            'one', 'onepkg',
             'png', 'jpg', 'jpeg', 'gif', 'webp', 'svg', 'heic',
             'zip',
             'mp3', 'm4a', 'wav', 'ogg', 'oga', 'opus', 'aac', 'weba',
