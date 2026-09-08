@@ -1416,6 +1416,28 @@ input.depot__champ {
 .apercu-titre--2 { font-size: 1.2rem; }
 .apercu-titre--3 { font-size: 1.05rem; }
 
+/*
+ * Le titre où mène le sommaire se signale, et le reste tant qu'on y est.
+ *
+ * Amener le titre en haut de la fenêtre ne suffit pas : sur un grand écran,
+ * la page a souvent trop peu à défiler pour cela, le navigateur s'arrête où
+ * il peut, et le titre se pose au milieu de l'écran sans qu'on sache si l'on
+ * a bougé. La marque, elle, se voit où que le titre atterrisse.
+ */
+.apercu-titre:target {
+  background: var(--accent-doux); border-radius: 3px;
+  /* Débordé de part et d'autre : la marque se lit comme un bandeau. */
+  box-shadow: -.5rem 0 0 var(--accent-doux), .5rem 0 0 var(--accent-doux);
+  animation: titre-vise 2.4s ease-out;
+}
+@keyframes titre-vise {
+  from { background: color-mix(in srgb, var(--accent) 45%, transparent); }
+  to   { background: var(--accent-doux); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .apercu-titre:target { animation: none; }
+}
+
 /* Le porteur d'une sous-liste orpheline — un sous-point qui suit un
    paragraphe ordinaire — n'existe que pour la loger : il ne se voit pas. */
 .apercu-liste__porteur { list-style: none; }
