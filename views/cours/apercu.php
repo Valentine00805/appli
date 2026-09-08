@@ -42,8 +42,8 @@
       <strong>Contenu du fichier</strong>, tel qu'il est enregistré.
     <?php elseif ($enrichis !== []): ?>
       <strong>Aperçu du texte.</strong> Le gras, l'italique, le souligné, la taille,
-      la couleur, le surlignage et l'alignement sont rendus ; les images, les
-      tableaux et la pagination ne le sont pas — un navigateur ne sait pas afficher un
+      la couleur, le surlignage, l'alignement et les puces sont rendus ; les images,
+      les tableaux et la pagination ne le sont pas — un navigateur ne sait pas afficher un
       <?= e($format) ?>. Téléchargez le fichier pour l'ouvrir tel quel dans Word
       ou LibreOffice.
     <?php else: ?>
@@ -152,9 +152,15 @@
       $riche = $enrichis[$rang] ?? null;
       $aligne = ['gauche' => 'left', 'centre' => 'center',
                  'droite' => 'right', 'justifie' => 'justify'][$riche['alignement'] ?? ''] ?? null;
+      $style = $aligne === null ? '' : ' style="text-align:' . $aligne . '"';
+      $corps = $riche === null ? e($paragraphe) : $riche['html'];
       ?>
-      <p<?= $aligne === null ? '' : ' style="text-align:' . $aligne . '"' ?>><?=
-          $riche === null ? e($paragraphe) : $riche['html'] ?></p>
+      <?php if (($riche['puce'] ?? false) === true): ?>
+        <?php // Une puce par paragraphe : le document ne dit rien de plus. ?>
+        <ul class="apercu-puces"><li<?= $style ?>><?= $corps ?></li></ul>
+      <?php else: ?>
+        <p<?= $style ?>><?= $corps ?></p>
+      <?php endif; ?>
     <?php endforeach; ?>
   </article>
   <p class="champ__aide" style="margin-top:.6rem">

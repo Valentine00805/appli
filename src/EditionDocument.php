@@ -26,6 +26,25 @@ final class EditionDocument
     private const NS_STYLE  = 'urn:oasis:names:tc:opendocument:xmlns:style:1.0';
     private const NS_FO     = 'urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0';
 
+    /* --- Les listes à puces ---------------------------------------------- */
+
+    /** Où Word range la définition de ses listes, et comment on l'y annonce. */
+    private const PART_NUM   = 'word/numbering.xml';
+    private const PART_TYPES = '[Content_Types].xml';
+    private const PART_RELS  = 'word/_rels/document.xml.rels';
+
+    private const NS_TYPES = 'http://schemas.openxmlformats.org/package/2006/content-types';
+    private const NS_RELS  = 'http://schemas.openxmlformats.org/package/2006/relationships';
+
+    private const TYPE_NUM = 'application/vnd.openxmlformats-officedocument.wordprocessingml.numbering+xml';
+    private const REL_NUM  = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/numbering';
+
+    /** Le nom de notre définition, pour la retrouver d'une fois sur l'autre. */
+    private const NOM_PUCE = 'MesCoursPuce';
+
+    /** Le style de liste ODF que l'application pose sur ses puces. */
+    private const LISTE_ODF = 'LMesCoursPuce';
+
     /**
      * L'ordre imposé aux enfants de <w:rPr> par le schéma d'OOXML.
      *
@@ -146,7 +165,7 @@ final class EditionDocument
      * styles de titre — reste dans le fichier sans passer par ici, et n'est
      * donc pas perdu.
      *
-     * @return list<array{html: string, alignement: ?string}>
+     * @return list<array{html: string, alignement: ?string, puce: ?bool}>
      * @throws RuntimeException si le fichier est illisible
      */
     public static function lireRiche(string $chemin, string $nomOrigine): array
@@ -154,6 +173,8 @@ final class EditionDocument
         [$doc, , $paragraphes] = self::ouvrir($chemin, $nomOrigine);
         $stylesOdf = self::stylesDeTexteOdf($doc);
         $alignementsOdf = self::stylesDeParagrapheOdf($doc);
+        $listesOdf = self::listesOdf($doc);
+        $numsWord = self::numsWord($chemin);
 
         return array_map(
             static fn (DOMElement $p): array => [
@@ -161,6 +182,7 @@ final class EditionDocument
                     ? self::passagesWord($p)
                     : self::passagesOdf($p, $stylesOdf)),
                 'alignement' => self::alignement($p, $alignementsOdf),
+                'puce' => self::puce($p, $numsWord, $listesOdf),
             ],
             $paragraphes
         );
@@ -176,7 +198,7 @@ final class EditionDocument
      * un paragraphe à la place d'un autre : celle-ci suit la règle de l'aperçu,
      * pour que les deux listes se correspondent une à une.
      *
-     * @return list<array{html: string, alignement: ?string}>
+     * @return list<array{html: string, alignement: ?string, puce: ?bool}>
      * @throws RuntimeException si le fichier est illisible
      */
     public static function apercuRiche(string $chemin, string $nomOrigine): array
@@ -184,6 +206,8 @@ final class EditionDocument
         [$doc, , , $format] = self::ouvrir($chemin, $nomOrigine);
         $stylesOdf = self::stylesDeTexteOdf($doc);
         $alignementsOdf = self::stylesDeParagrapheOdf($doc);
+        $listesOdf = self::listesOdf($doc);
+        $numsWord = self::numsWord($chemin);
 
         $rendus = [];
         foreach ($doc->getElementsByTagName('*') as $noeud) {
@@ -199,6 +223,7 @@ final class EditionDocument
                 $rendus[] = [
                     'html' => self::html($passages),
                     'alignement' => self::alignement($noeud, $alignementsOdf),
+                    'puce' => self::puce($noeud, $numsWord, $listesOdf),
                 ];
             }
         }
@@ -251,7 +276,7 @@ final class EditionDocument
      * formulaire envoie du texte nu, et l'ancienne règle s'applique : le
      * paragraphe garde l'allure de son premier passage.
      *
-     * @param array<int, array{origine: ?int, texte: string, alignement?: ?string}> $entrees
+     * @param array<int, array{origine: ?int, texte: string, alignement?: ?string, puce?: ?bool}> $entrees
      * @throws RuntimeException si le document ne peut être ni lu ni réécrit
      */
     public static function enregistrer(
@@ -269,6 +294,24 @@ final class EditionDocument
         }
 
         [$doc, $corps, $paragraphes, $format] = self::ouvrir($chemin, $nomOrigine);
+        $parties = [];
+
+        /*
+         * Word range la définition de ses listes dans une autre partie de
+         * l'archive : il faut l'y écrire, et l'annoncer, avant de pouvoir
+         * accrocher un paragraphe dessus.
+         */
+        $numeroPuce = null;
+        $veutDesPuces = false;
+        foreach ($entrees as $entree) {
+            if (($entree['puce'] ?? false) === true) {
+                $veutDesPuces = true;
+                break;
+            }
+        }
+        if ($veutDesPuces && $doc->documentElement?->namespaceURI === self::NS_W) {
+            $numeroPuce = self::numerotationWord($chemin, $parties);
+        }
 
         // Un paragraphe neuf reprend la forme de celui qui le précède : créé
         // de zéro, il n'aurait ni style ni police et détonnerait dans la page.
@@ -295,18 +338,25 @@ final class EditionDocument
 
             self::remplacerTexte($doc, $noeud, $entree['texte'], $gabarit, $riche);
             self::alignerParagraphe($doc, $noeud, $entree['alignement'] ?? null);
-            $nouveaux[] = $noeud;
+
+            $puce = $entree['puce'] ?? null;
+            if ($puce !== null && $noeud->namespaceURI === self::NS_W) {
+                self::pucerWord($doc, $noeud, $puce === true ? $numeroPuce : null);
+            }
+
+            $nouveaux[] = ['noeud' => $noeud, 'puce' => $puce === true];
             $modele = $noeud;
         }
 
-        self::replacer($doc, $corps, $paragraphes, $nouveaux);
+        self::replacer($doc, $corps, $paragraphes, $nouveaux, $format);
 
         $xml = $doc->saveXML();
         if ($xml === false) {
             throw new RuntimeException('Le document n’a pas pu être réécrit.');
         }
 
-        self::ecrire($chemin, $nomOrigine, (string) $format['partie'], $xml);
+        $parties[(string) $format['partie']] = $xml;
+        self::ecrire($chemin, $nomOrigine, $parties);
     }
 
     /* --- Écriture ------------------------------------------------------- */
@@ -315,7 +365,8 @@ final class EditionDocument
      * Remplace une partie de l'archive, sans jamais toucher à l'original tant
      * que la nouvelle version n'a pas été relue sans erreur.
      */
-    private static function ecrire(string $chemin, string $nomOrigine, string $partie, string $xml): void
+    /** @param array<string, string> $parties  le contenu de chacune, par nom */
+    private static function ecrire(string $chemin, string $nomOrigine, array $parties): void
     {
         $temporaire = $chemin . '.edition';
         if (!copy($chemin, $temporaire)) {
@@ -327,7 +378,10 @@ final class EditionDocument
             if ($zip->open($temporaire) !== true) {
                 throw new RuntimeException('Le fichier est illisible : ce n’est pas une archive valide.');
             }
-            $ajoute = $zip->addFromString($partie, $xml);
+            $ajoute = true;
+            foreach ($parties as $nom => $xml) {
+                $ajoute = $zip->addFromString($nom, $xml) && $ajoute;
+            }
             $ferme = $zip->close();
             if (!$ajoute || !$ferme) {
                 throw new RuntimeException('Le document n’a pas pu être réécrit.');
@@ -378,20 +432,37 @@ final class EditionDocument
     /**
      * Met la nouvelle suite de paragraphes à la place de l'ancienne.
      *
+     * En ODF, une puce n'est pas une marque posée sur le paragraphe mais un
+     * emballage autour : les paragraphes à puce qui se suivent forment une
+     * liste, les autres restent nus. On reconstruit donc cet emballage à
+     * chaque enregistrement, ce qui évite d'avoir à réparer celui d'avant.
+     *
      * @param array<int, DOMElement> $anciens
-     * @param array<int, DOMElement> $nouveaux
+     * @param array<int, array{noeud: DOMElement, puce: bool}> $nouveaux
      */
-    private static function replacer(DOMDocument $doc, DOMElement $corps, array $anciens, array $nouveaux): void
-    {
-        // Un repère tient la place pendant l'échange : dans un .docx, <w:sectPr>
-        // décrit la mise en page et doit rester le dernier enfant du corps.
-        $repere = $doc->createComment(' texte ');
+    private static function replacer(
+        DOMDocument $doc,
+        DOMElement $corps,
+        array $anciens,
+        array $nouveaux,
+        array $format
+    ): void {
+        $odf = ($format['corps'][0] ?? null) === self::NS_OFFICE;
 
+        /*
+         * L'ordre des trois gestes compte. Le repère se pose d'abord, sur les
+         * emplacements d'origine. Les anciens paragraphes sont ensuite retirés,
+         * emballages vidés compris — et non après, car les nouveaux sont bien
+         * souvent les mêmes noeuds, et on les reprendrait à la liste qu'on
+         * vient de leur donner.
+         */
+        $repere = $doc->createComment(' texte ');
         if ($anciens !== []) {
-            $corps->insertBefore($repere, $anciens[0]);
+            $corps->insertBefore($repere, self::enfantDu($corps, $anciens[0]));
         } else {
             $fin = $corps->lastChild;
-            if ($fin instanceof DOMElement && $fin->namespaceURI === self::NS_W && $fin->localName === 'sectPr') {
+            if ($fin instanceof DOMElement && $fin->namespaceURI === self::NS_W
+                && $fin->localName === 'sectPr') {
                 $corps->insertBefore($repere, $fin);
             } else {
                 $corps->appendChild($repere);
@@ -403,11 +474,53 @@ final class EditionDocument
                 $ancien->parentNode->removeChild($ancien);
             }
         }
-        foreach ($nouveaux as $noeud) {
-            $corps->insertBefore($noeud, $repere);
+        foreach (iterator_to_array($corps->childNodes) as $enfant) {
+            if ($enfant instanceof DOMElement
+                && $enfant->namespaceURI === self::NS_TEXT
+                && $enfant->localName === 'list'
+                && $enfant->getElementsByTagNameNS(self::NS_TEXT, 'p')->length === 0
+            ) {
+                $corps->removeChild($enfant);
+            }
         }
 
+        $aPoser = [];
+        $liste = null;
+
+        foreach ($nouveaux as $entree) {
+            if (!$odf || !$entree['puce']) {
+                $liste = null;
+                $aPoser[] = $entree['noeud'];
+                continue;
+            }
+            if ($liste === null) {
+                $liste = $doc->createElementNS(self::NS_TEXT, 'text:list');
+                $liste->setAttributeNS(self::NS_TEXT, 'text:style-name', self::LISTE_ODF);
+                $aPoser[] = $liste;
+            }
+            $item = $doc->createElementNS(self::NS_TEXT, 'text:list-item');
+            $item->appendChild($entree['noeud']);
+            $liste->appendChild($item);
+        }
+
+        if ($odf && $liste !== null) {
+            self::styleDeListeOdf($doc);
+        }
+
+        foreach ($aPoser as $noeud) {
+            $corps->insertBefore($noeud, $repere);
+        }
         $corps->removeChild($repere);
+    }
+
+    /** L'ancêtre de ce noeud qui est enfant direct du corps, ou lui-même. */
+    private static function enfantDu(DOMElement $corps, DOMNode $noeud): DOMNode
+    {
+        while ($noeud->parentNode !== null && $noeud->parentNode !== $corps) {
+            $noeud = $noeud->parentNode;
+        }
+
+        return $noeud;
     }
 
     /**
@@ -621,13 +734,33 @@ final class EditionDocument
         }
 
         $paragraphes = [];
-        foreach ($corps->childNodes as $enfant) {
-            if (self::estParagraphe($enfant, $format)) {
-                $paragraphes[] = $enfant;
-            }
-        }
+        self::recueillir($corps, $format, $paragraphes);
 
         return [$doc, $corps, $paragraphes, $format];
+    }
+
+    /**
+     * Les paragraphes du corps, dans l'ordre, emballages de liste compris.
+     *
+     * On ne descend que dans les listes : un paragraphe de tableau appartient
+     * à sa cellule, et le sortir de là défigurerait le document.
+     *
+     * @param array<int, DOMElement> $paragraphes
+     */
+    private static function recueillir(DOMNode $parent, array $format, array &$paragraphes): void
+    {
+        foreach ($parent->childNodes as $enfant) {
+            if (self::estParagraphe($enfant, $format)) {
+                $paragraphes[] = $enfant;
+                continue;
+            }
+            if ($enfant instanceof DOMElement
+                && $enfant->namespaceURI === self::NS_TEXT
+                && in_array($enfant->localName, ['list', 'list-item', 'list-header'], true)
+            ) {
+                self::recueillir($enfant, $format, $paragraphes);
+            }
+        }
     }
 
     private static function estParagraphe(DOMNode $noeud, array $format): bool
@@ -1583,5 +1716,383 @@ final class EditionDocument
         }
 
         return null;
+    }
+
+    /* --- Les puces -------------------------------------------------------- */
+
+    /**
+     * Ce paragraphe est-il une puce ?
+     *
+     * @param array<string, string> $listesOdf  les styles de liste, par nom
+     * @return ?bool  vrai pour une puce, faux pour un paragraphe ordinaire,
+     *                null pour une liste numérotée — que l'éditeur ne propose
+     *                pas et ne doit surtout pas convertir en points
+     */
+    private static function puce(DOMElement $paragraphe, array $numsWord, array $listesOdf): ?bool
+    {
+        $sorte = self::sorteDeListe($paragraphe, $numsWord, $listesOdf);
+
+        return match ($sorte) {
+            'puce'   => true,
+            'numero' => null,
+            default  => false,
+        };
+    }
+
+    /**
+     * De quelle liste ce paragraphe fait partie : « puce », « numero », ou
+     * rien du tout.
+     */
+    private static function sorteDeListe(DOMElement $paragraphe, array $numsWord, array $listesOdf): ?string
+    {
+        if ($paragraphe->namespaceURI === self::NS_W) {
+            $pPr = self::enfantWord($paragraphe, 'pPr');
+            $numPr = self::enfantWord($pPr, 'numPr');
+            $numId = self::enfantWord($numPr, 'numId');
+            if ($numId === null) {
+                return null;
+            }
+            $numero = $numId->getAttributeNS(self::NS_W, 'val');
+
+            // Un renvoi vers une liste que le document ne définit pas : mieux
+            // vaut le tenir pour une numérotation et n'y pas toucher.
+            return $numsWord[$numero] ?? 'numero';
+        }
+
+        $liste = $paragraphe->parentNode;
+        while ($liste instanceof DOMElement) {
+            if ($liste->namespaceURI === self::NS_TEXT && $liste->localName === 'list') {
+                $nom = $liste->getAttributeNS(self::NS_TEXT, 'style-name');
+
+                return $listesOdf[$nom] ?? 'numero';
+            }
+            $liste = $liste->parentNode;
+        }
+
+        return null;
+    }
+
+    /**
+     * Les listes d'un document Word, par numéro : « puce » ou « numero ».
+     *
+     * @return array<string, string>
+     */
+    private static function numsWord(string $chemin): array
+    {
+        $xml = self::partie($chemin, self::PART_NUM);
+        if ($xml === null) {
+            return [];
+        }
+        $doc = self::analyser($xml);
+        if ($doc === null) {
+            return [];
+        }
+
+        $abstraits = [];
+        foreach ($doc->getElementsByTagNameNS(self::NS_W, 'abstractNum') as $abstrait) {
+            $id = $abstrait->getAttributeNS(self::NS_W, 'abstractNumId');
+            foreach ($abstrait->getElementsByTagNameNS(self::NS_W, 'lvl') as $niveau) {
+                if ($niveau->getAttributeNS(self::NS_W, 'ilvl') !== '0') {
+                    continue;
+                }
+                $format = self::enfantWord($niveau, 'numFmt');
+                $abstraits[$id] = $format !== null
+                    && $format->getAttributeNS(self::NS_W, 'val') === 'bullet'
+                        ? 'puce' : 'numero';
+                break;
+            }
+        }
+
+        $nums = [];
+        foreach ($doc->getElementsByTagNameNS(self::NS_W, 'num') as $num) {
+            $renvoi = self::enfantWord($num, 'abstractNumId');
+            if ($renvoi === null) {
+                continue;
+            }
+            $id = $renvoi->getAttributeNS(self::NS_W, 'val');
+            $nums[$num->getAttributeNS(self::NS_W, 'numId')] = $abstraits[$id] ?? 'numero';
+        }
+
+        return $nums;
+    }
+
+    /**
+     * Les styles de liste d'un document ODF : « puce » ou « numero ».
+     *
+     * @return array<string, string>
+     */
+    private static function listesOdf(DOMDocument $doc): array
+    {
+        $listes = [];
+        foreach ($doc->getElementsByTagNameNS(self::NS_TEXT, 'list-style') as $style) {
+            $nom = $style->getAttributeNS(self::NS_STYLE, 'name');
+            if ($nom === '') {
+                continue;
+            }
+            $listes[$nom] = $style->getElementsByTagNameNS(self::NS_TEXT, 'list-level-style-bullet')->length > 0
+                || $style->getElementsByTagNameNS(self::NS_TEXT, 'list-level-style-image')->length > 0
+                    ? 'puce' : 'numero';
+        }
+
+        return $listes;
+    }
+
+    /** Accroche ou décroche un paragraphe Word de la liste à puces. */
+    private static function pucerWord(DOMDocument $doc, DOMElement $paragraphe, ?int $numero): void
+    {
+        $pPr = self::enfantWord($paragraphe, 'pPr');
+
+        if ($numero === null) {
+            $numPr = self::enfantWord($pPr, 'numPr');
+            if ($pPr !== null && $numPr !== null) {
+                $pPr->removeChild($numPr);
+            }
+            return;
+        }
+
+        if ($pPr === null) {
+            $pPr = $doc->createElementNS(self::NS_W, 'w:pPr');
+            $paragraphe->insertBefore($pPr, $paragraphe->firstChild);
+        }
+        $ancien = self::enfantWord($pPr, 'numPr');
+        if ($ancien !== null) {
+            $pPr->removeChild($ancien);
+        }
+
+        $numPr = $doc->createElementNS(self::NS_W, 'w:numPr');
+        $ilvl = $doc->createElementNS(self::NS_W, 'w:ilvl');
+        $ilvl->setAttributeNS(self::NS_W, 'w:val', '0');
+        $numId = $doc->createElementNS(self::NS_W, 'w:numId');
+        $numId->setAttributeNS(self::NS_W, 'w:val', (string) $numero);
+        $numPr->appendChild($ilvl);
+        $numPr->appendChild($numId);
+
+        self::ranger($pPr, $numPr, self::ORDRE_PPR);
+    }
+
+    /**
+     * Le numéro de notre liste à puces dans le document Word, créée au besoin.
+     *
+     * Word garde ses listes dans une partie à part, qu'il faut aussi déclarer
+     * dans les types du paquet et dans les liens du document. Les trois sont
+     * préparées ici, et écrites en même temps que le texte.
+     *
+     * @param array<string, string> $parties  ce qu'il faudra écrire, complété ici
+     */
+    private static function numerotationWord(string $chemin, array &$parties): ?int
+    {
+        $xml = self::partie($chemin, self::PART_NUM);
+        $doc = $xml === null ? null : self::analyser($xml);
+
+        if ($doc === null) {
+            $doc = new DOMDocument('1.0', 'UTF-8');
+            $doc->appendChild($doc->createElementNS(self::NS_W, 'w:numbering'));
+        }
+        $racine = $doc->documentElement;
+        if ($racine === null) {
+            return null;
+        }
+
+        // Déjà posée lors d'un enregistrement précédent : on la retrouve.
+        foreach ($racine->getElementsByTagNameNS(self::NS_W, 'abstractNum') as $abstrait) {
+            $nom = self::enfantWord($abstrait, 'name');
+            if ($nom === null || $nom->getAttributeNS(self::NS_W, 'val') !== self::NOM_PUCE) {
+                continue;
+            }
+            $id = $abstrait->getAttributeNS(self::NS_W, 'abstractNumId');
+            foreach ($racine->getElementsByTagNameNS(self::NS_W, 'num') as $num) {
+                $renvoi = self::enfantWord($num, 'abstractNumId');
+                if ($renvoi !== null && $renvoi->getAttributeNS(self::NS_W, 'val') === $id) {
+                    return (int) $num->getAttributeNS(self::NS_W, 'numId');
+                }
+            }
+        }
+
+        // Des numéros que le document n'emploie pas encore.
+        $libre = static function (DOMElement $racine, string $balise, string $attribut): int {
+            $pris = [];
+            foreach ($racine->getElementsByTagNameNS(self::NS_W, $balise) as $element) {
+                $pris[] = (int) $element->getAttributeNS(self::NS_W, $attribut);
+            }
+            return $pris === [] ? 1 : max($pris) + 1;
+        };
+        $abstraitId = $libre($racine, 'abstractNum', 'abstractNumId');
+        $numeroId = $libre($racine, 'num', 'numId');
+
+        $abstrait = $doc->createElementNS(self::NS_W, 'w:abstractNum');
+        $abstrait->setAttributeNS(self::NS_W, 'w:abstractNumId', (string) $abstraitId);
+
+        $type = $doc->createElementNS(self::NS_W, 'w:multiLevelType');
+        $type->setAttributeNS(self::NS_W, 'w:val', 'hybridMultilevel');
+        $abstrait->appendChild($type);
+
+        $nom = $doc->createElementNS(self::NS_W, 'w:name');
+        $nom->setAttributeNS(self::NS_W, 'w:val', self::NOM_PUCE);
+        $abstrait->appendChild($nom);
+
+        $niveau = $doc->createElementNS(self::NS_W, 'w:lvl');
+        $niveau->setAttributeNS(self::NS_W, 'w:ilvl', '0');
+        foreach ([
+            'start'   => '1',
+            'numFmt'  => 'bullet',
+            // Le rond plein de la police Symbol : la puce de Word par défaut.
+            'lvlText' => "\u{F0B7}",
+            'lvlJc'   => 'left',
+        ] as $balise => $valeur) {
+            $element = $doc->createElementNS(self::NS_W, 'w:' . $balise);
+            $element->setAttributeNS(self::NS_W, 'w:val', $valeur);
+            $niveau->appendChild($element);
+        }
+
+        $pPr = $doc->createElementNS(self::NS_W, 'w:pPr');
+        $ind = $doc->createElementNS(self::NS_W, 'w:ind');
+        $ind->setAttributeNS(self::NS_W, 'w:left', '720');
+        $ind->setAttributeNS(self::NS_W, 'w:hanging', '360');
+        $pPr->appendChild($ind);
+        $niveau->appendChild($pPr);
+
+        $rPr = $doc->createElementNS(self::NS_W, 'w:rPr');
+        $polices = $doc->createElementNS(self::NS_W, 'w:rFonts');
+        $polices->setAttributeNS(self::NS_W, 'w:ascii', 'Symbol');
+        $polices->setAttributeNS(self::NS_W, 'w:hAnsi', 'Symbol');
+        $polices->setAttributeNS(self::NS_W, 'w:hint', 'default');
+        $rPr->appendChild($polices);
+        $niveau->appendChild($rPr);
+
+        $abstrait->appendChild($niveau);
+
+        $num = $doc->createElementNS(self::NS_W, 'w:num');
+        $num->setAttributeNS(self::NS_W, 'w:numId', (string) $numeroId);
+        $renvoi = $doc->createElementNS(self::NS_W, 'w:abstractNumId');
+        $renvoi->setAttributeNS(self::NS_W, 'w:val', (string) $abstraitId);
+        $num->appendChild($renvoi);
+
+        // Le schéma veut tous les <w:abstractNum> avant tous les <w:num>.
+        $premierNum = $racine->getElementsByTagNameNS(self::NS_W, 'num')->item(0);
+        if ($premierNum instanceof DOMElement) {
+            $racine->insertBefore($abstrait, $premierNum);
+        } else {
+            $racine->appendChild($abstrait);
+        }
+        $racine->appendChild($num);
+
+        $ecrit = $doc->saveXML();
+        if ($ecrit === false) {
+            return null;
+        }
+        $parties[self::PART_NUM] = $ecrit;
+
+        self::declarerNumerotation($chemin, $parties);
+
+        return $numeroId;
+    }
+
+    /**
+     * Annonce la partie des listes : son type dans le paquet, son lien dans le
+     * document. Sans ces deux lignes, Word tient l'archive pour abîmée.
+     *
+     * @param array<string, string> $parties  complété au besoin
+     */
+    private static function declarerNumerotation(string $chemin, array &$parties): void
+    {
+        $types = self::partie($chemin, self::PART_TYPES);
+        $doc = $types === null ? null : self::analyser($types);
+        if ($doc !== null && $doc->documentElement !== null) {
+            $deja = false;
+            foreach ($doc->getElementsByTagNameNS(self::NS_TYPES, 'Override') as $entree) {
+                if ($entree->getAttribute('PartName') === '/' . self::PART_NUM) {
+                    $deja = true;
+                    break;
+                }
+            }
+            if (!$deja) {
+                $entree = $doc->createElementNS(self::NS_TYPES, 'Override');
+                $entree->setAttribute('PartName', '/' . self::PART_NUM);
+                $entree->setAttribute('ContentType', self::TYPE_NUM);
+                $doc->documentElement->appendChild($entree);
+                $ecrit = $doc->saveXML();
+                if ($ecrit !== false) {
+                    $parties[self::PART_TYPES] = $ecrit;
+                }
+            }
+        }
+
+        $rels = self::partie($chemin, self::PART_RELS);
+        $doc = $rels === null ? null : self::analyser($rels);
+        if ($doc === null || $doc->documentElement === null) {
+            return;
+        }
+        $identifiants = [];
+        foreach ($doc->getElementsByTagNameNS(self::NS_RELS, 'Relationship') as $lien) {
+            if ($lien->getAttribute('Type') === self::REL_NUM) {
+                return;
+            }
+            $identifiants[] = (int) ltrim($lien->getAttribute('Id'), 'rId');
+        }
+
+        $lien = $doc->createElementNS(self::NS_RELS, 'Relationship');
+        $lien->setAttribute('Id', 'rId' . ($identifiants === [] ? 1 : max($identifiants) + 1));
+        $lien->setAttribute('Type', self::REL_NUM);
+        $lien->setAttribute('Target', 'numbering.xml');
+        $doc->documentElement->appendChild($lien);
+
+        $ecrit = $doc->saveXML();
+        if ($ecrit !== false) {
+            $parties[self::PART_RELS] = $ecrit;
+        }
+    }
+
+    /** Le style de liste que l'application pose sur ses puces ODF. */
+    private static function styleDeListeOdf(DOMDocument $doc): void
+    {
+        foreach ($doc->getElementsByTagNameNS(self::NS_TEXT, 'list-style') as $style) {
+            if ($style->getAttributeNS(self::NS_STYLE, 'name') === self::LISTE_ODF) {
+                return;
+            }
+        }
+        $automatiques = self::automatiquesOdf($doc);
+        if ($automatiques === null) {
+            return;
+        }
+
+        $style = $doc->createElementNS(self::NS_TEXT, 'text:list-style');
+        $style->setAttributeNS(self::NS_STYLE, 'style:name', self::LISTE_ODF);
+
+        $niveau = $doc->createElementNS(self::NS_TEXT, 'text:list-level-style-bullet');
+        $niveau->setAttributeNS(self::NS_TEXT, 'text:level', '1');
+        $niveau->setAttributeNS(self::NS_TEXT, 'text:bullet-char', '•');
+
+        $proprietes = $doc->createElementNS(self::NS_STYLE, 'style:list-level-properties');
+        $proprietes->setAttributeNS(self::NS_TEXT, 'text:space-before', '0.25in');
+        $proprietes->setAttributeNS(self::NS_TEXT, 'text:min-label-width', '0.25in');
+        $niveau->appendChild($proprietes);
+
+        $style->appendChild($niveau);
+        $automatiques->appendChild($style);
+    }
+
+    /** Le contenu d'une partie de l'archive, ou null si elle n'y est pas. */
+    private static function partie(string $chemin, string $nom): ?string
+    {
+        $zip = new ZipArchive();
+        if ($zip->open($chemin, ZipArchive::RDONLY) !== true) {
+            return null;
+        }
+        $xml = $zip->getFromName($nom);
+        $zip->close();
+
+        return $xml === false ? null : $xml;
+    }
+
+    /** Un XML relu sans jamais aller sur le réseau, ou null s'il est abîmé. */
+    private static function analyser(string $xml): ?DOMDocument
+    {
+        $avant = libxml_use_internal_errors(true);
+        $doc = new DOMDocument();
+        $ok = $doc->loadXML($xml, LIBXML_NONET);
+        libxml_clear_errors();
+        libxml_use_internal_errors($avant);
+
+        return $ok ? $doc : null;
     }
 }

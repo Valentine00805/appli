@@ -843,6 +843,29 @@
       });
 
       /*
+       * La puce se met et se retire sur le paragraphe où l'on a le curseur.
+       * Un paragraphe venu d'une liste numérotée n'a pas d'état ici : le
+       * bouton lui en donne un, et il rejoint alors les puces — sinon il
+       * faudrait refuser sans pouvoir l'expliquer.
+       */
+      var boutonPuce = barreOutils.querySelector("[data-puce]");
+      if (boutonPuce) {
+        boutonPuce.addEventListener("mousedown", function (evenement) {
+          evenement.preventDefault();
+          var zone = reprendreLaSelection();
+          if (zone === null) { return; }
+
+          var ligne = zone.closest("[data-paragraphe]");
+          var champ = ligne ? ligne.querySelector("input[name='puce[]']") : null;
+          if (!ligne || !champ) { return; }
+
+          var pose = ligne.getAttribute("data-puce") !== "1";
+          ligne.setAttribute("data-puce", pose ? "1" : "0");
+          champ.value = pose ? "1" : "0";
+        });
+      }
+
+      /*
        * Le surlignage suit la même mécanique que la couleur du texte : un
        * nuancier pour choisir, un bouton pour poser, un autre pour retirer.
        */
