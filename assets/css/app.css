@@ -1349,20 +1349,33 @@ input.depot__champ {
 /* Et un passage dont on vient de retirer le surlignage. */
 .paragraphe__riche .riche-fond-auto { background: none; }
 
-/* Un paragraphe de liste se reconnaît à sa marque, devant sa zone. Le numéro
-   est celui du rang dans le document, faute de savoir compter en CSS ce qui
-   n'est pas une vraie liste : il dit « numéroté », pas « numéro tant ». */
+/*
+ * Un paragraphe de liste se reconnaît à sa marque, devant sa zone.
+ *
+ * Les paragraphes ne sont pas une vraie liste — chacun est une ligne du
+ * formulaire — mais un compteur CSS sait quand même les numéroter : chaque
+ * paragraphe numéroté l'avance d'un, et tout paragraphe qui ne l'est pas le
+ * remet à zéro. La suite repart donc de 1 après chaque interruption, comme
+ * elle le fera dans le document.
+ */
+.paragraphes { counter-reset: element-liste; }
+.paragraphe:not([data-liste="numero"]) { counter-reset: element-liste; }
+.paragraphe[data-liste="numero"] { counter-increment: element-liste; }
+
 .paragraphe[data-liste="puce"] .paragraphe__riche,
 .paragraphe[data-liste="numero"] .paragraphe__riche {
-  position: relative; padding-left: 1.6rem;
+  position: relative; padding-left: 1.9rem;
 }
 .paragraphe[data-liste="puce"] .paragraphe__riche::before,
 .paragraphe[data-liste="numero"] .paragraphe__riche::before {
-  position: absolute; left: .55rem; top: .6rem;
+  position: absolute; left: .3rem; top: .6rem;
+  width: 1.3rem; text-align: right;
   color: var(--texte-doux); font-weight: 700; font-size: .9rem;
 }
 .paragraphe[data-liste="puce"] .paragraphe__riche::before { content: "•"; }
-.paragraphe[data-liste="numero"] .paragraphe__riche::before { content: "1."; }
+.paragraphe[data-liste="numero"] .paragraphe__riche::before {
+  content: counter(element-liste) ".";
+}
 
 /* Les listes de l'aperçu, serrées comme dans le document. */
 .apercu-liste { margin: 0 0 .8rem; padding-left: 1.8rem; }
