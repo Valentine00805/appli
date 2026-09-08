@@ -73,6 +73,14 @@ mark { background: #fde68a; color: #422006; border-radius: 3px; padding: 0 .15em
 
 /* --- En-tête / navigation ------------------------------------------- */
 
+/*
+ * L'en-tête reste collé en haut de la page. Un lien qui mène à une ancre —
+ * une entrée du sommaire, par exemple — amenait donc le titre visé juste
+ * dessous, où il disparaissait : on avait sauté au bon endroit sans le voir.
+ * On réserve sa hauteur, un peu d'air en plus.
+ */
+html { scroll-padding-top: 4.5rem; }
+
 .entete {
   position: sticky; top: 0; z-index: 40;
   background: color-mix(in srgb, var(--fond-carte) 92%, transparent);
