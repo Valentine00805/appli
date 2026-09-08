@@ -1328,6 +1328,11 @@ input.depot__champ {
 
 .paragraphe [data-supprimer-paragraphe] { margin-top: .3rem; }
 
+/* L'aperçu rend la mise en forme : un surlignage ou un mot plus grand ne doit
+   pas venir toucher la ligne du dessus. */
+.apercu-document p { line-height: 1.9; }
+.apercu-document [data-fond] { padding: .05em .1em; border-radius: 2px; }
+
 /* La zone modifiable prend la place du champ de texte, et lui ressemble : on
    ne doit pas voir qu'on écrit ailleurs. */
 .paragraphe__riche {

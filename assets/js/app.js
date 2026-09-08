@@ -686,6 +686,38 @@
       barreOutils.hidden = false;
       drapeauRiche.value = "1";
 
+      /*
+       * Remet l'apparence d'après les attributs.
+       *
+       * En découpant un passage, le navigateur recopie nos attributs mais jette
+       * parfois le style qui les accompagnait : la marque restait dans ce qu'on
+       * enregistre — c'est l'attribut qui fait foi — mais ne se voyait plus à
+       * l'écran, ce qui est le meilleur moyen de la poser deux fois.
+       */
+      var repeindre = function (zone) {
+        [].slice.call(zone.querySelectorAll("[data-taille]")).forEach(function (span) {
+          span.style.fontSize = span.getAttribute("data-taille") + "pt";
+        });
+        [].slice.call(zone.querySelectorAll("[data-couleur]")).forEach(function (span) {
+          var teinte = span.getAttribute("data-couleur");
+          if (teinte === "auto") {
+            span.style.color = "";
+            span.classList.add("riche-couleur-auto");
+          } else {
+            span.style.color = "#" + teinte;
+          }
+        });
+        [].slice.call(zone.querySelectorAll("[data-fond]")).forEach(function (span) {
+          var teinte = span.getAttribute("data-fond");
+          if (teinte === "auto") {
+            span.style.backgroundColor = "";
+            span.classList.add("riche-fond-auto");
+          } else {
+            span.style.backgroundColor = "#" + teinte;
+          }
+        });
+      };
+
       /** Recopie chaque zone dans le champ que le formulaire enverra. */
       var recopier = function () {
         [].slice.call(zoneParagraphes.querySelectorAll("[data-paragraphe]")).forEach(function (ligne) {
@@ -700,6 +732,7 @@
         if (zone === null) { return; }
         if (document.activeElement !== zone) { zone.focus(); }
         document.execCommand(commande, false, valeur);
+        repeindre(zone);
         recopier();
       };
 
@@ -732,6 +765,7 @@
           while (marque.firstChild) { remplacant.appendChild(marque.firstChild); }
           marque.parentNode.replaceChild(remplacant, marque);
         });
+        repeindre(zone);
         recopier();
       };
 

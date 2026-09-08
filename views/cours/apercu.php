@@ -1,6 +1,7 @@
 <?php
 /**
  * @var array $fichier, $paragraphes, $lignes
+ * @var array $enrichis  les mêmes paragraphes, mise en forme comprise
  * @var string $genre, $texte, $format
  * @var bool $tronque
  * @var bool $estTableur
@@ -39,6 +40,12 @@
       Téléchargez le fichier pour l'ouvrir tel quel dans Excel ou LibreOffice.
     <?php elseif ($genre === 'brut'): ?>
       <strong>Contenu du fichier</strong>, tel qu'il est enregistré.
+    <?php elseif ($enrichis !== []): ?>
+      <strong>Aperçu du texte.</strong> Le gras, l'italique, le souligné, la taille,
+      la couleur et le surlignage sont rendus ; les images, les tableaux et la
+      pagination ne le sont pas — un navigateur ne sait pas afficher un
+      <?= e($format) ?>. Téléchargez le fichier pour l'ouvrir tel quel dans Word
+      ou LibreOffice.
     <?php else: ?>
       <strong>Aperçu du texte.</strong> La mise en forme, les images et la pagination
       ne sont pas reproduites — un navigateur ne sait pas afficher un <?= e($format) ?>.
@@ -132,8 +139,16 @@
   </div>
 <?php else: ?>
   <article class="carte apercu-document">
-    <?php foreach ($paragraphes as $paragraphe): ?>
-      <p><?= e($paragraphe) ?></p>
+    <?php
+    /*
+     * Le HTML n'est pas échappé ici, et c'est voulu : il ne vient pas du
+     * document mais de l'application, qui le rebâtit balise par balise à partir
+     * des seules six marques qu'elle connaît. Tout ce que le fichier contient
+     * d'autre n'en ressort que sous forme de texte, déjà échappé.
+     */
+    ?>
+    <?php foreach ($paragraphes as $rang => $paragraphe): ?>
+      <p><?= $enrichis[$rang] ?? e($paragraphe) ?></p>
     <?php endforeach; ?>
   </article>
   <p class="champ__aide" style="margin-top:.6rem">

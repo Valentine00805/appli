@@ -568,7 +568,11 @@ final class EditionDocument
                     . '" style="color:#' . $passage['couleur'] . '">' . $morceau . '</span>';
             }
             if ($passage['taille'] !== null) {
-                $morceau = '<span data-taille="' . $passage['taille'] . '">' . $morceau . '</span>';
+                // Le style accompagne l'attribut : c'est lui qui fait voir la
+                // taille, dans l'éditeur comme dans l'aperçu. À la relecture,
+                // c'est l'attribut qui fait foi.
+                $morceau = '<span data-taille="' . $passage['taille']
+                    . '" style="font-size:' . $passage['taille'] . 'pt">' . $morceau . '</span>';
             }
             if ($passage['souligne']) {
                 $morceau = '<u>' . $morceau . '</u>';

@@ -669,6 +669,7 @@ final class CoursController
         $genre = (string) ApercuDocument::genre($nom);
 
         $paragraphes = [];
+        $enrichis = [];
         $lignes = [];
         $texte = '';
         $tronque = false;
@@ -685,6 +686,19 @@ final class CoursController
                     break;
                 case 'document':
                     $paragraphes = ApercuDocument::paragraphes((string) $chemin, $nom);
+                    /*
+                     * Le même texte, mise en forme comprise, quand le format se
+                     * laisse relire. L'aperçu montre alors ce que l'éditeur a
+                     * enregistré ; sinon il reste au texte nu, ce qui vaut
+                     * mieux que rien.
+                     */
+                    if (EditionDocument::modifiable($nom)) {
+                        try {
+                            $enrichis = EditionDocument::lireRiche((string) $chemin, $nom);
+                        } catch (Throwable) {
+                            $enrichis = [];
+                        }
+                    }
                     break;
                 // Un PDF et une image sont affichés tels quels : rien à lire ici.
             }
@@ -697,6 +711,7 @@ final class CoursController
             'genre'       => $genre,
             'estTableur'  => $genre === 'tableur',
             'paragraphes' => $paragraphes,
+            'enrichis'    => $enrichis,
             'lignes'      => $lignes,
             'texte'       => $texte,
             'tronque'     => $tronque,
