@@ -1375,6 +1375,7 @@ input.depot__champ {
 }
 /* Une sous-liste se décale, comme elle le sera dans le document. */
 .paragraphe[data-niveau="1"] .paragraphe__riche { margin-left: 1.7rem; }
+.paragraphe[data-niveau="2"] .paragraphe__riche { margin-left: 3.4rem; }
 
 /* Les listes de l'aperçu, serrées comme dans le document. */
 .apercu-liste { margin: 0 0 .8rem; padding-left: 1.8rem; }
@@ -1382,10 +1383,13 @@ input.depot__champ {
 /* Le porteur d'une sous-liste orpheline — un sous-point qui suit un
    paragraphe ordinaire — n'existe que pour la loger : il ne se voit pas. */
 .apercu-liste__porteur { list-style: none; }
-/* Une sous-liste compte en lettres, ou pointe un rond creux. */
-.apercu-liste .apercu-liste--sous { margin-bottom: 0; }
-ol.apercu-liste--sous { list-style-type: lower-alpha; }
-ul.apercu-liste--sous { list-style-type: circle; }
+/* Chaque étage a sa marque : chiffres, lettres, chiffres romains — et pour
+   les puces, rond plein, rond creux, carré. C'est ce que Word emploie. */
+.apercu-liste .apercu-liste { margin-bottom: 0; }
+ol.apercu-liste--n1 { list-style-type: lower-alpha; }
+ol.apercu-liste--n2 { list-style-type: lower-roman; }
+ul.apercu-liste--n1 { list-style-type: circle; }
+ul.apercu-liste--n2 { list-style-type: square; }
 
 /* L'alignement se voit dans la zone, comme il se verra dans le document. */
 .paragraphe[data-aligne="gauche"] .paragraphe__riche { text-align: left; }

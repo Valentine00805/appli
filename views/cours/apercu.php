@@ -191,7 +191,7 @@
                 echo '<li class="apercu-liste__porteur">';
                 $porte[count($porte) - 1] = true;
             }
-            $classe = 'apercu-liste' . ($pile === [] ? '' : ' apercu-liste--sous');
+            $classe = 'apercu-liste apercu-liste--n' . count($pile);
             echo '<' . $balise . ' class="' . $classe . '">';
             $pile[] = $balise;
             $porte[] = false;

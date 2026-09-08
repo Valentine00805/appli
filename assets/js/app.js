@@ -700,8 +700,9 @@
       choix.addRange(debut);
     };
 
-    // Jusqu'où l'éditeur descend : le premier niveau et sa sous-liste.
-    var NIVEAU_MAX = 1;
+    // Jusqu'où l'éditeur descend : trois étages, comme un plan de cours.
+    // Le serveur en dit autant, dans EditionDocument::NIVEAU_MAX.
+    var NIVEAU_MAX = 2;
 
     /** Le rang d'une sous-liste, en lettres : a, b, … z, aa, ab. */
     var enLettres = function (rang) {
@@ -714,6 +715,21 @@
       return mot;
     };
 
+    /** Le rang d'un troisième étage, en chiffres romains : i, ii, iii. */
+    var ROMAINS = [[1000, "m"], [900, "cm"], [500, "d"], [400, "cd"], [100, "c"], [90, "xc"],
+                   [50, "l"], [40, "xl"], [10, "x"], [9, "ix"], [5, "v"], [4, "iv"], [1, "i"]];
+    var enRomain = function (rang) {
+      var mot = "";
+      ROMAINS.forEach(function (paire) {
+        while (rang >= paire[0]) { mot += paire[1]; rang -= paire[0]; }
+      });
+      return mot;
+    };
+
+    // La marque d'un rang, selon l'étage où il se trouve.
+    var MARQUES = [String, enLettres, enRomain];
+    var PUCES = ["•", "◦", "▪"];
+
     /**
      * Renumérote les éléments de liste.
      *
@@ -724,7 +740,7 @@
      * devant son texte.
      */
     var renumeroterListes = function () {
-      var compteurs = [0, 0];
+      var compteurs = [0, 0, 0];
       [].slice.call(zoneParagraphes.querySelectorAll("[data-paragraphe]")).forEach(function (ligne) {
         var zone = ligne.querySelector("[data-zone-riche]");
         var sorte = ligne.getAttribute("data-liste") || "";
@@ -733,11 +749,12 @@
 
         if (sorte === "numero") {
           compteurs[niveau]++;
-          if (niveau === 0) { compteurs[1] = 0; }
-          marque = (niveau > 0 ? enLettres(compteurs[niveau]) : compteurs[niveau]) + ".";
+          // Ce qui est plus profond repart de zéro sous ce nouveau point.
+          for (var etage = niveau + 1; etage < compteurs.length; etage++) { compteurs[etage] = 0; }
+          marque = MARQUES[niveau](compteurs[niveau]) + ".";
           ligne.setAttribute("data-numero", String(compteurs[niveau]));
         } else {
-          if (sorte === "puce") { marque = niveau > 0 ? "◦" : "•"; }
+          if (sorte === "puce") { marque = PUCES[niveau]; }
           ligne.setAttribute("data-numero", "0");
         }
 
@@ -797,12 +814,13 @@
     /**
      * Ce que la frappe transforme d'elle-même en liste, comme un traitement de
      * texte : « 1. » ou « 1) » ouvrent une numérotation, « a. » une sous-liste,
-     * « - » et « * » une suite de puces. La marque tapée disparaît, c'est la
-     * liste qui la porte.
+     * « i. » une sous-sous-liste, « - » et « * » une suite de puces. La marque
+     * tapée disparaît, c'est la liste qui la porte.
      */
     var DEBUTS = [
       { motif: /^1[.)]\s$/, sorte: "numero", niveau: 0 },
       { motif: /^a[.)]\s$/, sorte: "numero", niveau: 1 },
+      { motif: /^i[.)]\s$/, sorte: "numero", niveau: 2 },
       { motif: /^[-*]\s$/,  sorte: "puce",   niveau: 0 },
     ];
 
@@ -842,7 +860,9 @@
           if (DEBUTS[i].motif.test(zone.textContent)) {
             zone.textContent = "";
             marquerLaLigne(ligne, DEBUTS[i].sorte);
-            if (DEBUTS[i].niveau > 0) { changerNiveau(ligne, DEBUTS[i].niveau); }
+            // On descend cran par cran jusqu'à l'étage que la marque annonce.
+            while (Number(ligne.getAttribute("data-niveau") || 0) < DEBUTS[i].niveau
+              && changerNiveau(ligne, 1)) { /* jusqu'au bon étage */ }
             synchroniser();
             zone.focus();
             return;

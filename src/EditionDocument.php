@@ -53,9 +53,14 @@ final class EditionDocument
     /**
      * La marque de chaque niveau, dans l'un et l'autre format.
      *
-     * Le premier niveau numérote en chiffres, le second en lettres : c'est le
-     * plan « 1. a. b. 2. » qu'on attend d'un traitement de texte. Les puces
-     * suivent la même règle, du rond plein au rond creux.
+     * Chiffres, puis lettres, puis chiffres romains : c'est le plan
+     * « 1. a. i. ii. b. 2. » qu'on attend d'un traitement de texte, et ce que
+     * Word emploie de lui-même. Les puces suivent la même descente, du rond
+     * plein au rond creux puis au carré.
+     *
+     * Les romains se cadrent à droite, comme le fait Word : sans cela leurs
+     * points ne s'aligneraient pas, « i. » et « viii. » n'ayant pas la même
+     * largeur.
      */
     private const NIVEAUX = [
         'puce' => [
@@ -63,21 +68,25 @@ final class EditionDocument
                   'odf'  => ['puce' => '•']],
             1 => ['word' => ['numFmt' => 'bullet', 'lvlText' => 'o', 'police' => 'Courier New'],
                   'odf'  => ['puce' => '◦']],
+            2 => ['word' => ['numFmt' => 'bullet', 'lvlText' => "\u{F0A7}", 'police' => 'Wingdings'],
+                  'odf'  => ['puce' => '▪']],
         ],
         'numero' => [
             0 => ['word' => ['numFmt' => 'decimal',     'lvlText' => '%1.'], 'odf' => ['format' => '1']],
             1 => ['word' => ['numFmt' => 'lowerLetter', 'lvlText' => '%2.'], 'odf' => ['format' => 'a']],
+            2 => ['word' => ['numFmt' => 'lowerRoman',  'lvlText' => '%3.', 'cadre' => 'right'],
+                  'odf'  => ['format' => 'i']],
         ],
     ];
 
     /**
-     * Jusqu'où l'éditeur descend : le premier niveau et sa sous-liste.
+     * Jusqu'où l'éditeur descend : trois étages, comme un plan de cours.
      *
      * Un document peut en compter davantage ; ce qui est plus profond se
-     * montre ici comme une sous-liste et garde son étage tant qu'on n'y
+     * montre ici au dernier étage connu et garde le sien tant qu'on n'y
      * touche pas.
      */
-    public const NIVEAU_MAX = 1;
+    public const NIVEAU_MAX = 2;
 
     /**
      * L'ordre imposé aux enfants de <w:rPr> par le schéma d'OOXML.
@@ -2151,7 +2160,7 @@ final class EditionDocument
             'start'   => '1',
             'numFmt'  => $reglage['numFmt'],
             'lvlText' => $reglage['lvlText'],
-            'lvlJc'   => 'left',
+            'lvlJc'   => $reglage['cadre'] ?? 'left',
         ] as $balise => $valeur) {
             $element = $doc->createElementNS(self::NS_W, 'w:' . $balise);
             $element->setAttributeNS(self::NS_W, 'w:val', $valeur);
@@ -2444,23 +2453,6 @@ final class EditionDocument
         return max(0, $niveau);
     }
 
-    /**
-     * Le rang d'une sous-liste, en lettres : a, b, … z, aa, ab.
-     *
-     * C'est ainsi que les navigateurs comptent une liste en « lower-alpha » :
-     * l'aperçu et l'éditeur disent donc la même chose sans se concerter.
-     */
-    public static function lettre(int $rang): string
-    {
-        $lettres = '';
-        while ($rang > 0) {
-            $rang--;
-            $lettres = chr(97 + $rang % 26) . $lettres;
-            $rang = intdiv($rang, 26);
-        }
-
-        return $lettres;
-    }
 
     /** Ce qui distingue une liste d'une autre, dans l'un et l'autre format. */
     private static function identiteDeListe(DOMElement $paragraphe): string
