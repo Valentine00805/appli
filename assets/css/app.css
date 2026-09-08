@@ -1583,18 +1583,26 @@ ul.apercu-liste--n2 { list-style-type: square; }
 }
 
 /*
- * Une image se regarde dans la fiche, comme un PDF : on ne quitte pas la page
- * pour un schéma. Elle garde ses proportions, ne s'étire pas au-delà de sa
- * taille et ne prend pas plus que la hauteur de l'écran ; un clic l'ouvre en
- * grand pour ce qui demande à être lu de près.
+ * Les images de la fiche se feuillettent comme les pages d'un PDF, et se
+ * regardent sur place : on ne quitte pas la page pour un schéma. Chacune garde
+ * ses proportions, ne s'étire pas au-delà de sa taille et ne prend pas plus que
+ * la hauteur de l'écran ; un clic l'ouvre en grand pour ce qui demande à être
+ * lu de près.
  */
-.fichier__image { flex: 0 0 100%; margin-top: .45rem; }
-.fichier__image a { display: block; }
-.fichier__image img {
+.fichier__images { margin-top: .8rem; }
+.fichier__vue { margin: 0; }
+/* Le script n'en montre qu'une : sans lui, elles s'affichent toutes. */
+.fichier__vue[hidden] { display: none; }
+.fichier__vue a { display: block; }
+.fichier__vue img {
   display: block; margin: 0 auto;
   max-width: 100%; max-height: 70vh; height: auto;
   border: 1px solid var(--bordure); border-radius: var(--rayon-s);
   background: var(--fond-doux);
+}
+.fichier__vue figcaption {
+  margin-top: .35rem; text-align: center;
+  font-size: .78rem; color: var(--texte-doux); overflow-wrap: anywhere;
 }
 
 /*
@@ -1707,6 +1715,10 @@ ul.apercu-liste--n2 { list-style-type: square; }
   .fiche-grille__elements--vide,
   .fiche .champ__aide { display: none !important; }
   .fichier__lecteur, .fichier__pdf, .fiche__total { display: none !important; }
+
+  /* Une image s'imprime, et toutes : on ne feuillette pas une feuille. */
+  .fichier__vue[hidden] { display: block !important; }
+  .fichier__pages { display: none !important; }
 
   /* Une adresse ne se clique pas sur papier : elle s'écrit. */
   .fiche__liste a[href^="http"]::after { content: " — " attr(href); font-weight: 400; }

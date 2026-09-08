@@ -1513,6 +1513,111 @@
   }
 
   /*
+   * Les images de la fiche : une suite qu'on feuillette, comme les pages d'un
+   * PDF. Sans script elles s'affichent toutes à la file ; ici on n'en montre
+   * qu'une, et l'anneau compte celles qu'on a vues.
+   *
+   * Ouvrir la fiche ne compte pour rien : c'est en passant d'une image à la
+   * suivante qu'on les déclare vues, comme on tourne les pages d'un document.
+   */
+  var galeries = [].slice.call(document.querySelectorAll("[data-images]"));
+
+  if (jetonLecture && galeries.length) {
+    galeries.forEach(function (bloc) {
+      var vues = [].slice.call(bloc.querySelectorAll("[data-image]"));
+      var total = vues.length;
+      if (!total) { return; }
+
+      var rang = Math.max(0, Math.min(total - 1,
+        parseInt(bloc.getAttribute("data-depart") || "0", 10)));
+      var libelle = bloc.querySelector("[data-images-libelle]");
+      var recule = bloc.querySelector("[data-images-recule]");
+      var avance = bloc.querySelector("[data-images-avance]");
+      var compte = bloc.querySelector("[data-images-compte]");
+      var anneau = bloc.querySelector(".anneau");
+      var trait = anneau ? anneau.querySelector(".anneau__part") : null;
+      var texte = anneau ? anneau.querySelector(".anneau__texte") : null;
+
+      var comptees = function () {
+        return vues.filter(function (v) { return v.getAttribute("data-vue") === "1"; }).length;
+      };
+
+      var peindre = function () {
+        vues.forEach(function (v, i) { v.hidden = i !== rang; });
+
+        var lues = comptees();
+        var part = Math.max(0, Math.min(100, Math.round(lues / total * 100)));
+        if (trait) { trait.setAttribute("stroke-dasharray", part + " 100"); }
+        if (texte) { texte.innerHTML = part + "<span class='anneau__pourcent'>%</span>"; }
+        if (anneau) {
+          anneau.classList.remove("anneau--inconnu");
+          anneau.classList.toggle("anneau--fini", part >= 100);
+        }
+        if (libelle) { libelle.textContent = "Image " + (rang + 1) + " sur " + total; }
+        if (compte) {
+          compte.textContent = lues === 0
+            ? "pas encore vue"
+            : lues + (lues > 1 ? " images vues sur " : " image vue sur ") + total;
+        }
+        if (recule) { recule.disabled = rang <= 0; }
+        if (avance) { avance.disabled = rang >= total - 1; }
+        majTotalFiche();
+      };
+
+      var envoyer = function (image) {
+        var corps = new URLSearchParams();
+        corps.set("_csrf", jeton);
+        // Une image tient en une « page », vue ou pas vue.
+        corps.set("position", "1");
+        corps.set("duree", "1");
+        var url = image.getAttribute("data-position-url");
+        if (navigator.sendBeacon) {
+          navigator.sendBeacon(url, corps);
+        } else {
+          fetch(url, { method: "POST", body: corps, credentials: "same-origin", keepalive: true });
+        }
+      };
+
+      // Arriver sur une image, c'est avoir vu celles qu'on a traversées.
+      var marquer = function (jusqua) {
+        for (var i = 0; i <= jusqua; i++) {
+          if (vues[i].getAttribute("data-vue") !== "1") {
+            vues[i].setAttribute("data-vue", "1");
+            envoyer(vues[i]);
+          }
+        }
+      };
+
+      var aller = function (voulu) {
+        var neuf = Math.max(0, Math.min(total - 1, voulu));
+        if (neuf === rang) { return; }
+        rang = neuf;
+        marquer(rang);
+        peindre();
+      };
+
+      if (recule) { recule.addEventListener("click", function () { aller(rang - 1); }); }
+      if (avance) { avance.addEventListener("click", function () { aller(rang + 1); }); }
+
+      /*
+       * Tout déclarer vu. On ne passe pas par aller() : depuis la dernière
+       * image, il n'aurait rien à faire, alors qu'une fiche parcourue d'un
+       * coup d'oeil doit tout de même pouvoir être marquée finie.
+       */
+      var fini = bloc.querySelector("[data-images-fini]");
+      if (fini) {
+        fini.addEventListener("click", function () {
+          rang = total - 1;
+          marquer(total - 1);
+          peindre();
+        });
+      }
+
+      peindre();
+    });
+  }
+
+  /*
    * Fabriquer des cartes : les cours cochés montrent leurs documents.
    *
    * Les listes des différents cours attendent toutes dans la page, cachées et

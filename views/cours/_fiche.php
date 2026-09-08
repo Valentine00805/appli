@@ -129,7 +129,7 @@ $avancementFiche = avancement_anneaux(
           $pageAtteinte = $pages > 0 ? min(max(0, (int) $f['position_lecture']), $pages) : 0;
           $pageLue = max(1, $pageAtteinte);
           ?>
-          <li class="fichier<?= $estAudio || $estVideo || $estPdf || $estImage ? ' fichier--media' : '' ?>">
+          <li class="fichier<?= $estAudio || $estVideo || $estPdf ? ' fichier--media' : '' ?>">
             <?php // L'image se voit en entier plus bas : la vignette ferait double emploi. ?>
             <span class="fichier__icone" aria-hidden="true"><?= Fichiers::icone($f['mime'], $f['nom_origine']) ?></span>
             <span style="min-width:0">
@@ -204,23 +204,6 @@ $avancementFiche = avancement_anneaux(
               </video>
             <?php endif; ?>
 
-            <?php if ($estImage): ?>
-              <?php
-              /*
-               * L'image dans la fiche même, comme le PDF : on ne quitte pas
-               * la page pour regarder un schéma. Un clic l'ouvre en grand,
-               * pour ce qui demande à être lu de près.
-               */
-              ?>
-              <span class="fichier__image">
-                <a href="<?= url('fichiers/' . $f['id']) ?>" target="_blank" rel="noopener"
-                   title="Ouvrir l'image en grand">
-                  <img src="<?= url('fichiers/' . $f['id']) ?>" loading="lazy"
-                       alt="<?= e($f['nom_origine']) ?>">
-                </a>
-              </span>
-            <?php endif; ?>
-
             <?php if ($estPdf): ?>
               <?php
               /*
@@ -270,6 +253,80 @@ $avancementFiche = avancement_anneaux(
           </li>
         <?php endforeach; ?>
       </ul>
+
+      <?php
+      /*
+       * Les images d'une fiche forment une suite, comme les pages d'un PDF :
+       * on les feuillette sur place plutôt que de les empiler, l'anneau dit
+       * combien on en a vues, et « Terminer » les déclare toutes revues.
+       *
+       * Sans JavaScript, elles s'affichent toutes à la file : c'est le
+       * script qui n'en montre qu'une à la fois.
+       */
+      $images = array_values(array_filter(
+          $fichiersFiche,
+          static fn (array $image): bool => Fichiers::estImage($image['mime'])
+      ));
+      ?>
+      <?php if ($images !== []): ?>
+        <?php
+        $total = count($images);
+        $vues = count(array_filter(
+            $images,
+            static fn (array $image): bool => (int) $image['position_lecture'] >= 1
+        ));
+        // On rouvre sur la première image qu'on n'a pas encore vue.
+        $depart = 0;
+        foreach ($images as $rang => $image) {
+            if ((int) $image['position_lecture'] < 1) {
+                $depart = $rang;
+                break;
+            }
+        }
+        $compte = $vues === 0
+            ? 'pas encore vue'
+            : $vues . ' image' . ($vues > 1 ? 's' : '') . ' vue' . ($vues > 1 ? 's' : '')
+              . ' sur ' . $total;
+        ?>
+        <div class="fichier__images" data-images data-total="<?= $total ?>"
+             data-depart="<?= $depart ?>">
+          <?php foreach ($images as $rang => $image): ?>
+            <figure class="fichier__vue" data-image="<?= $rang ?>"
+                    data-vue="<?= (int) $image['position_lecture'] >= 1 ? '1' : '' ?>"
+                    data-position-url="<?= url('fichiers/' . $image['id'] . '/position') ?>">
+              <a href="<?= url('fichiers/' . $image['id']) ?>" target="_blank" rel="noopener"
+                 title="Ouvrir l'image en grand">
+                <img src="<?= url('fichiers/' . $image['id']) ?>" loading="lazy"
+                     alt="<?= e($image['nom_origine']) ?>">
+              </a>
+              <figcaption><?= e($image['nom_origine']) ?></figcaption>
+            </figure>
+          <?php endforeach; ?>
+
+          <span class="fichier__avancement" data-avancement="images">
+            <?= Vue::rendre('cours/_anneau', [
+                'pourcentage' => $total > 0 ? (int) round($vues / $total * 100) : null,
+                'titre'       => 'Images vues de la fiche',
+            ]) ?>
+            <span class="fichier__minutage" data-images-compte><?= e($compte) ?></span>
+          </span>
+
+          <span class="fichier__pages">
+            <?php if ($total > 1): ?>
+              <button class="bouton bouton--discret bouton--petit" type="button"
+                      data-images-recule title="Image précédente">◀</button>
+              <span class="fichier__page" data-images-libelle aria-live="polite">
+                Image <?= $depart + 1 ?> sur <?= $total ?>
+              </span>
+              <button class="bouton bouton--discret bouton--petit" type="button"
+                      data-images-avance title="Image suivante">▶</button>
+            <?php endif; ?>
+            <?php // Déjà connues, ou parcourues d'un coup d'œil : on les déclare vues. ?>
+            <button class="bouton bouton--discret bouton--petit" type="button"
+                    data-images-fini title="Marquer toutes les images comme vues">Terminer</button>
+          </span>
+        </div>
+      <?php endif; ?>
     <?php endif; ?>
 
     <form method="post" action="<?= url('cours/' . $cours['id'] . '/revision/fichiers') ?>"
