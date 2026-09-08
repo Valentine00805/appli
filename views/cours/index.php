@@ -174,7 +174,7 @@ $descendanceDe = static function (int $id) use (&$descendanceDe, $enfantsDe): ar
      */
     ?>
     <div class="dossier-rang">
-      <span class="dossier-plier dossier-plier--vide" aria-hidden="true" hidden></span>
+      <span class="dossier-rang__plier dossier-rang__plier--vide" aria-hidden="true" hidden></span>
       <a class="dossier-cible<?= $dossierId === null ? ' dossier-cible--active' : '' ?>"
          href="<?= $lienDossier(null) ?>">
         <span aria-hidden="true">🗃️</span>
@@ -194,10 +194,10 @@ $descendanceDe = static function (int $id) use (&$descendanceDe, $enfantsDe): ar
              data-nom="<?= e($d['nom']) ?>"
              style="padding-left:<?= $profondeur * 0.9 ?>rem">
           <?php if ($enfants !== []): ?>
-            <button type="button" class="dossier-plier" data-plier="<?= (int) $d['id'] ?>"
+            <button type="button" class="dossier-rang__plier" data-plier-rang="<?= (int) $d['id'] ?>"
                     aria-expanded="true" hidden>▾</button>
           <?php else: ?>
-            <span class="dossier-plier dossier-plier--vide" aria-hidden="true" hidden></span>
+            <span class="dossier-rang__plier dossier-rang__plier--vide" aria-hidden="true" hidden></span>
           <?php endif; ?>
           <a class="dossier-cible<?= $dossierId === (int) $d['id'] ? ' dossier-cible--active' : '' ?>"
              href="<?= $lienDossier((int) $d['id']) ?>"
@@ -291,7 +291,7 @@ $descendanceDe = static function (int $id) use (&$descendanceDe, $enfantsDe): ar
     ?>
 
     <div class="dossier-rang">
-      <span class="dossier-plier dossier-plier--vide" aria-hidden="true" hidden></span>
+      <span class="dossier-rang__plier dossier-rang__plier--vide" aria-hidden="true" hidden></span>
       <a class="dossier-cible" href="<?= $lienDossier(null) ?>" data-dossier=""
          title="Déposez un cours ici pour le sortir de son dossier">
         <span aria-hidden="true">➖</span>

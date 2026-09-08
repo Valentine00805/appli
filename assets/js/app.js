@@ -597,7 +597,7 @@
     var CLE_PLIS = "mescours.dossiers-replies";
 
     // Les boutons ne servent qu'ici : sans script, la place reste vide.
-    [].slice.call(colonnePlis.querySelectorAll(".dossier-plier")).forEach(function (marque) {
+    [].slice.call(colonnePlis.querySelectorAll(".dossier-rang__plier")).forEach(function (marque) {
       marque.hidden = false;
     });
 
@@ -639,9 +639,9 @@
         }
         rang.hidden = couvert;
 
-        var bouton = rang.querySelector("[data-plier]");
+        var bouton = rang.querySelector("[data-plier-rang]");
         if (!bouton) { return; }
-        var plie = !!replies[bouton.getAttribute("data-plier")];
+        var plie = !!replies[bouton.getAttribute("data-plier-rang")];
         bouton.setAttribute("aria-expanded", plie ? "false" : "true");
         bouton.textContent = plie ? "▸" : "▾";
         bouton.setAttribute("aria-label",
@@ -650,11 +650,11 @@
     };
 
     colonnePlis.addEventListener("click", function (evenement) {
-      var bouton = evenement.target.closest && evenement.target.closest("[data-plier]");
+      var bouton = evenement.target.closest && evenement.target.closest("[data-plier-rang]");
       if (!bouton) { return; }
       evenement.preventDefault();
 
-      var id = bouton.getAttribute("data-plier");
+      var id = bouton.getAttribute("data-plier-rang");
       if (replies[id]) { delete replies[id]; } else { replies[id] = true; }
       garderLesPlis();
       peindreLesPlis();
