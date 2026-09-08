@@ -81,6 +81,12 @@ final class SynchroOutlook
 
         $venus = self::lire($userId, $depuis, $jusqua);
         $connus = self::liens($userId);
+        /*
+         * Ce que l'application a elle-même écrit dans « Mes Cours ». On le
+         * croise en relisant ce calendrier, et le rapatrier ferait de chaque
+         * évènement son propre double — puis le double d'un double.
+         */
+        $ecrits = self::ecritsParNous($userId);
 
         $bilan = ['ajoutes' => 0, 'modifies' => 0, 'retires' => 0,
                   'inchanges' => 0, 'occupe' => false];
@@ -93,6 +99,9 @@ final class SynchroOutlook
             }
 
             $outlookId = (string) $brut['id'];
+            if (isset($ecrits[$outlookId])) {
+                continue;
+            }
             $vus[$outlookId] = true;
             $empreinte = md5(json_encode($champs, JSON_THROW_ON_ERROR));
             $lien = $connus[$outlookId] ?? null;
@@ -423,12 +432,15 @@ final class SynchroOutlook
      * calendrier principal : c'est le comportement d'avant, et il vaut mieux
      * lire trop peu que se mettre à remplir un calendrier sans prévenir.
      *
+     * « Mes Cours » — celui que l'application remplit — est lu lui aussi, mais
+     * à part : il n'est pas à cocher, puisqu'on ne choisit pas de suivre son
+     * propre reflet. Ce qu'on y trouve et qu'on n'y a pas écrit soi-même est
+     * un évènement créé depuis Outlook, et il a sa place ici.
+     *
      * @return array<int, ?array>  null désigne le calendrier principal
      */
     private static function aLire(int $userId): array
     {
-        // Le calendrier que l'application remplit n'est jamais relu : elle y
-        // retrouverait ses propres évènements et les prendrait pour neufs.
         $ecriture = EnvoiOutlook::calendrierConnu($userId);
 
         $suivis = Database::all(
@@ -436,8 +448,15 @@ final class SynchroOutlook
               WHERE user_id = ? AND suivi = 1 AND empreinte <> ?',
             [$userId, $ecriture === null ? '' : md5($ecriture)]
         );
+        if ($suivis === []) {
+            $suivis = [null];
+        }
 
-        return $suivis === [] ? [null] : $suivis;
+        if ($ecriture !== null) {
+            $suivis[] = ['calendrier_id' => $ecriture, 'nom' => 'Mes Cours'];
+        }
+
+        return $suivis;
     }
 
     /**
@@ -556,6 +575,22 @@ final class SynchroOutlook
     }
 
     /* --- Écrire ici -------------------------------------------------------- */
+
+    /**
+     * Les identifiants des évènements que l'application a écrits dans Outlook.
+     *
+     * @return array<string, true>
+     */
+    private static function ecritsParNous(int $userId): array
+    {
+        $par = [];
+        foreach (Database::all('SELECT outlook_id FROM outlook_envois WHERE user_id = ?',
+            [$userId]) as $ligne) {
+            $par[(string) $ligne['outlook_id']] = true;
+        }
+
+        return $par;
+    }
 
     /** Ce que l'application sait déjà, rangé par identifiant Outlook. */
     private static function liens(int $userId): array
