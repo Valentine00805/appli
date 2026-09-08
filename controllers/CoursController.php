@@ -670,7 +670,7 @@ final class CoursController
 
         $paragraphes = [];
         $enrichis = [];
-        $sommaire = false;
+        $sommaire = 0;
         $lignes = [];
         $texte = '';
         $tronque = false;
@@ -711,7 +711,7 @@ final class CoursController
                         }
                         // Le sommaire du document n'est pas montré tel quel :
                         // l'aperçu le refait à partir des titres, à jour.
-                        $sommaire = EditionDocument::aUnSommaire((string) $chemin, $nom);
+                        $sommaire = EditionDocument::profondeurDuSommaire((string) $chemin, $nom);
                     }
                     break;
                 // Un PDF et une image sont affichés tels quels : rien à lire ici.
@@ -1018,12 +1018,12 @@ final class CoursController
             // sans JavaScript, la mise en forme pour l'éditeur.
             $paragraphes = EditionDocument::lire($chemin, $nom);
             $enrichis = EditionDocument::lireRiche($chemin, $nom);
-            $sommaire = EditionDocument::aUnSommaire($chemin, $nom);
+            $sommaire = EditionDocument::profondeurDuSommaire($chemin, $nom);
             $erreur = null;
         } catch (Throwable $e) {
             $paragraphes = [];
             $enrichis = [];
-            $sommaire = false;
+            $sommaire = 0;
             $erreur = $e->getMessage();
         }
 
@@ -1032,6 +1032,7 @@ final class CoursController
             'paragraphes' => $paragraphes,
             'enrichis'    => $enrichis,
             'sommaire'    => $sommaire,
+            'titreMax'    => EditionDocument::TITRE_MAX,
             'tailles'     => EditionDocument::TAILLES,
             'format'      => ApercuDocument::format($nom),
             'erreur'      => $erreur,
@@ -1055,8 +1056,15 @@ final class CoursController
         try {
             // « riche » n'est envoyé que par l'éditeur : sans lui, le texte est
             // nu et l'absence de gras ne veut pas dire qu'il faut l'enlever.
+            // Un envoi qui ne dit rien du sommaire ne doit pas l'effacer :
+            // seule une valeur reçue vaut décision.
+            $profondeur = $_POST['sommaire'] ?? null;
+            $profondeur = is_numeric($profondeur)
+                ? max(0, min((int) $profondeur, EditionDocument::TITRE_MAX))
+                : null;
+
             EditionDocument::enregistrer($chemin, $nom, $entrees, ($_POST['riche'] ?? '') === '1',
-                ($_POST['sommaire'] ?? '') === '1');
+                $profondeur);
         } catch (Throwable $e) {
             Session::flash('erreur', 'Le document n’a pas été modifié : ' . $e->getMessage());
             redirect('fichiers/' . $id . '/modifier');

@@ -2,7 +2,7 @@
 /**
  * @var array $fichier, $paragraphes, $lignes
  * @var array $enrichis  les mêmes paragraphes, mise en forme comprise
- * @var bool $sommaire   le document porte-t-il un sommaire ?
+ * @var int $sommaire    jusqu'à quel niveau de titre il descend, zéro s'il n'y en a pas
  * @var string $genre, $texte, $format
  * @var bool $tronque
  * @var bool $estTableur
@@ -152,12 +152,14 @@
       }
       $niveau = (int) ($enrichis[$rang]['titre'] ?? 0);
       $intitule = trim((string) preg_replace('/\s+/u', ' ', (string) $paragraphe));
-      if ($niveau > 0 && $intitule !== '') {
+      // Le sommaire s'arrête au niveau choisi : ce qui est plus profond
+      // reste dans le texte, mais n'y figure pas.
+      if ($niveau > 0 && $niveau <= $sommaire && $intitule !== '') {
           $plan[$rang] = ['niveau' => $niveau, 'texte' => $intitule];
       }
   }
   ?>
-  <?php if ($sommaire && $plan !== []): ?>
+  <?php if ($sommaire > 0 && $plan !== []): ?>
     <nav class="carte apercu-sommaire" aria-labelledby="apercu-sommaire-titre">
       <h2 id="apercu-sommaire-titre" class="apercu-sommaire__titre">Sommaire</h2>
       <ul class="apercu-sommaire__liste">

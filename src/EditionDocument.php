@@ -50,11 +50,15 @@ final class EditionDocument
     /**
      * Ce qu'on écrit dans le document pour qu'il porte un sommaire.
      *
-     * « \o "1-3" » prend les titres 1 à 3, « \h » en fait des liens, « \z »
-     * cache les numéros de page en mode Web, « \u » suit le plan du document.
-     * C'est l'instruction que Word écrit lui-même.
+     * « \o "1-2" » prend les titres 1 à 2 — c'est là que se lit la profondeur
+     * du sommaire —, « \h » en fait des liens, « \z » cache les numéros de
+     * page en mode Web, « \u » suit le plan du document. C'est l'instruction
+     * que Word écrit lui-même.
      */
-    private const INSTRUCTION_TOC = ' TOC \o "1-3" \h \z \u ';
+    private static function instructionToc(int $profondeur): string
+    {
+        return ' TOC \o "1-' . $profondeur . '" \h \z \u ';
+    }
 
     /** Le retrait de chaque niveau dans le sommaire, en vingtièmes de point. */
     private const RETRAITS_TOC = [1 => 0, 2 => 220, 3 => 440];
@@ -397,7 +401,8 @@ final class EditionDocument
      *
      * @param array<int, array{origine: ?int, texte: string, alignement?: ?string,
      *                         liste?: string, niveau?: int, titre?: int}> $entrees
-     * @param ?bool $sommaire  poser ou retirer le sommaire ; null pour n'y pas toucher
+     * @param ?int $sommaire  jusqu'où le sommaire descend, zéro pour le retirer,
+     *                        null pour n'y pas toucher
      * @throws RuntimeException si le document ne peut être ni lu ni réécrit
      */
     public static function enregistrer(
@@ -405,7 +410,7 @@ final class EditionDocument
         string $nomOrigine,
         array $entrees,
         bool $riche = false,
-        ?bool $sommaire = null
+        ?int $sommaire = null
     ): void {
         foreach ($entrees as $entree) {
             // Un XML n'accepte que de l'UTF-8. Mieux vaut refuser d'écrire que
@@ -1103,16 +1108,45 @@ final class EditionDocument
         return $vus;
     }
 
-    /** Ce document porte-t-il déjà un sommaire ? */
-    public static function aUnSommaire(string $chemin, string $nomOrigine): bool
+    /**
+     * Jusqu'à quel niveau de titre descend le sommaire du document.
+     *
+     * Zéro quand il n'y en a pas. Un sommaire dont on ne sait pas lire la
+     * profondeur est tenu pour complet : mieux vaut en proposer trop que le
+     * raccourcir au dos de celui qui l'a écrit.
+     */
+    public static function profondeurDuSommaire(string $chemin, string $nomOrigine): int
     {
         try {
-            [, , , , $sommaire] = self::ouvrir($chemin, $nomOrigine);
+            [$doc, , , , $lignes] = self::ouvrir($chemin, $nomOrigine);
         } catch (RuntimeException) {
-            return false;
+            return 0;
+        }
+        if ($lignes === []) {
+            return 0;
         }
 
-        return $sommaire !== [];
+        foreach ($doc->getElementsByTagNameNS(self::NS_TEXT, 'table-of-content-source') as $source) {
+            $rang = (int) $source->getAttributeNS(self::NS_TEXT, 'outline-level');
+            if ($rang > 0) {
+                return min($rang, self::TITRE_MAX);
+            }
+        }
+
+        // Chez Word, la profondeur est écrite dans l'instruction du champ.
+        $motif = '/\bTOC\b.*?\\\\o\s*"\s*\d+\s*-\s*(\d+)/i';
+        foreach ($doc->getElementsByTagNameNS(self::NS_W, 'instrText') as $instruction) {
+            if (preg_match($motif, $instruction->textContent, $m) === 1) {
+                return min((int) $m[1], self::TITRE_MAX);
+            }
+        }
+        foreach ($doc->getElementsByTagNameNS(self::NS_W, 'fldSimple') as $simple) {
+            if (preg_match($motif, $simple->getAttributeNS(self::NS_W, 'instr'), $m) === 1) {
+                return min((int) $m[1], self::TITRE_MAX);
+            }
+        }
+
+        return self::TITRE_MAX;
     }
 
     /**
@@ -2544,13 +2578,14 @@ final class EditionDocument
      * s'en va d'abord, pour qu'il n'y en ait jamais deux.
      *
      * @param list<array{niveau: int, texte: string}> $plan
+     * @param int $profondeur  jusqu'à quel niveau de titre descendre ; zéro pour rien
      * @param array<string, string> $parties  complété au besoin
      */
     private static function sommaire(
         DOMDocument $doc,
         DOMElement $corps,
         array $plan,
-        bool $veut,
+        int $profondeur,
         string $chemin,
         array &$parties
     ): void {
@@ -2561,13 +2596,19 @@ final class EditionDocument
                 $ancien->parentNode->removeChild($ancien);
             }
         }
-        if (!$veut) {
+        $profondeur = max(0, min($profondeur, self::TITRE_MAX));
+        if ($profondeur === 0) {
             return;
         }
 
+        $plan = array_values(array_filter(
+            $plan,
+            static fn (array $entree): bool => $entree['niveau'] <= $profondeur
+        ));
+
         $bloc = $word
-            ? self::sommaireWord($doc, $plan)
-            : self::sommaireOdf($doc, $plan);
+            ? self::sommaireWord($doc, $plan, $profondeur)
+            : self::sommaireOdf($doc, $plan, $profondeur);
         $corps->insertBefore($bloc, self::premierBloc($corps));
 
         if ($word) {
@@ -2642,7 +2683,7 @@ final class EditionDocument
      *
      * @param list<array{niveau: int, texte: string}> $plan
      */
-    private static function sommaireWord(DOMDocument $doc, array $plan): DOMElement
+    private static function sommaireWord(DOMDocument $doc, array $plan, int $profondeur): DOMElement
     {
         $bloc = $doc->createElementNS(self::NS_W, 'w:sdt');
         $proprietes = $doc->createElementNS(self::NS_W, 'w:sdtPr');
@@ -2732,7 +2773,7 @@ final class EditionDocument
                 $noeud = $doc->createElementNS(self::NS_W, 'w:r');
                 $instruction = $doc->createElementNS(self::NS_W, 'w:instrText');
                 $instruction->setAttributeNS(self::NS_XML, 'xml:space', 'preserve');
-                $instruction->appendChild($doc->createTextNode(self::INSTRUCTION_TOC));
+                $instruction->appendChild($doc->createTextNode(self::instructionToc($profondeur)));
                 $noeud->appendChild($instruction);
             }
             $premiere->insertBefore($noeud, $reference);
@@ -2751,13 +2792,13 @@ final class EditionDocument
      *
      * @param list<array{niveau: int, texte: string}> $plan
      */
-    private static function sommaireOdf(DOMDocument $doc, array $plan): DOMElement
+    private static function sommaireOdf(DOMDocument $doc, array $plan, int $profondeur): DOMElement
     {
         $sommaire = $doc->createElementNS(self::NS_TEXT, 'text:table-of-content');
         $sommaire->setAttributeNS(self::NS_TEXT, 'text:name', 'Sommaire');
 
         $source = $doc->createElementNS(self::NS_TEXT, 'text:table-of-content-source');
-        $source->setAttributeNS(self::NS_TEXT, 'text:outline-level', (string) self::TITRE_MAX);
+        $source->setAttributeNS(self::NS_TEXT, 'text:outline-level', (string) $profondeur);
         $source->setAttributeNS(self::NS_TEXT, 'text:use-outline-level', 'true');
         $source->setAttributeNS(self::NS_TEXT, 'text:use-index-marks', 'false');
 
@@ -2767,7 +2808,7 @@ final class EditionDocument
 
         // Chaque niveau affiche son texte, puis une tabulation jusqu'au numéro
         // de page que LibreOffice remplira en refaisant l'index.
-        for ($niveau = 1; $niveau <= self::TITRE_MAX; $niveau++) {
+        for ($niveau = 1; $niveau <= $profondeur; $niveau++) {
             $modele = $doc->createElementNS(self::NS_TEXT, 'text:table-of-content-entry-template');
             $modele->setAttributeNS(self::NS_TEXT, 'text:outline-level', (string) $niveau);
             $modele->setAttributeNS(self::NS_TEXT, 'text:style-name', 'Contents_20_' . $niveau);

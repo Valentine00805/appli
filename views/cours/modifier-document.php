@@ -4,7 +4,8 @@
  * @var array $paragraphes  le texte nu, un paragraphe par entrée
  * @var array $enrichis     le même texte, mise en forme comprise, en HTML
  * @var list<int> $tailles  les tailles proposées, en points
- * @var bool $sommaire      le document en porte-t-il un ?
+ * @var int $sommaire       jusqu'à quel niveau de titre il descend, zéro s'il n'y en a pas
+ * @var int $titreMax       le niveau de titre le plus profond que l'on propose
  * @var string $format
  * @var ?string $erreur
  */
@@ -42,15 +43,7 @@
     <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
     <?php // Posé par le script : il dit au serveur que le texte arrive balisé. ?>
     <input type="hidden" name="riche" value="" data-riche>
-    <?php
-    /*
-     * Le sommaire ne se modifie pas ligne à ligne : c'est une propriété du
-     * document. Le champ garde ce qu'il en est, et repart tel quel même sans
-     * JavaScript — un enregistrement ne le fait donc ni apparaître ni
-     * disparaître par surprise.
-     */
-    ?>
-    <input type="hidden" name="sommaire" value="<?= $sommaire ? '1' : '0' ?>" data-sommaire-champ>
+
 
     <?php
     /*
@@ -116,16 +109,28 @@
                 title="Mettre ou retirer le Titre 2">T2</button>
         <button type="button" class="barre-outils__bouton" data-titre="3"
                 title="Mettre ou retirer le Titre 3">T3</button>
-        <?php
-        /*
-         * Le sommaire est refait à chaque enregistrement, à partir des titres
-         * du moment : il n'y a rien à tenir à jour à la main.
-         */
-        ?>
-        <button type="button" class="barre-outils__bouton" data-sommaire
-                aria-pressed="<?= $sommaire ? 'true' : 'false' ?>"
-                title="Mettre ou retirer le sommaire, en tête du document">Sommaire</button>
       </span>
+      <?php
+      /*
+       * Le sommaire ne se modifie pas ligne à ligne : c'est une propriété du
+       * document. Il est refait à chaque enregistrement, à partir des titres
+       * du moment — il n'y a rien à tenir à jour à la main. La liste part de
+       * ce que le document porte déjà, et repart telle quelle même sans
+       * JavaScript : un enregistrement ne le fait donc ni apparaître ni
+       * disparaître par surprise.
+       */
+      ?>
+      <label class="barre-outils__taille">
+        <span class="discret">Sommaire</span>
+        <select name="sommaire" title="Jusqu'à quel niveau de titre le sommaire descend">
+          <option value="0"<?= $sommaire === 0 ? ' selected' : '' ?>>Aucun</option>
+          <?php for ($niveau = 1; $niveau <= $titreMax; $niveau++): ?>
+            <option value="<?= $niveau ?>"<?= $sommaire === $niveau ? ' selected' : '' ?>>
+              <?= $niveau === 1 ? 'Titres 1' : 'Jusqu\'aux Titres ' . $niveau ?>
+            </option>
+          <?php endfor; ?>
+        </select>
+      </label>
       <label class="barre-outils__taille">
         <span class="discret">Taille</span>
         <select data-taille-texte>
