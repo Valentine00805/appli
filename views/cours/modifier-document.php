@@ -103,6 +103,8 @@
                 title="Mettre ou retirer le Titre 1">T1</button>
         <button type="button" class="barre-outils__bouton" data-titre="2"
                 title="Mettre ou retirer le Titre 2">T2</button>
+        <button type="button" class="barre-outils__bouton" data-titre="3"
+                title="Mettre ou retirer le Titre 3">T3</button>
       </span>
       <label class="barre-outils__taille">
         <span class="discret">Taille</span>

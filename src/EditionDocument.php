@@ -54,10 +54,11 @@ final class EditionDocument
     private const TITRES = [
         1 => ['nom' => 'Titre1', 'odf' => 'Heading_20_1', 'pt' => 16],
         2 => ['nom' => 'Titre2', 'odf' => 'Heading_20_2', 'pt' => 13],
+        3 => ['nom' => 'Titre3', 'odf' => 'Heading_20_3', 'pt' => 12],
     ];
 
     /** Jusqu'où vont les titres proposés. */
-    public const TITRE_MAX = 2;
+    public const TITRE_MAX = 3;
 
     /**
      * Les deux sortes de liste, et ce qui les nomme dans chaque format.

@@ -1375,9 +1375,11 @@ input.depot__champ {
 }
 /* Un titre se voit dans sa zone, comme il se verra dans le document. */
 .paragraphe[data-titre="1"] .paragraphe__riche,
-.paragraphe[data-titre="2"] .paragraphe__riche { font-weight: 700; line-height: 1.35; }
+.paragraphe[data-titre="2"] .paragraphe__riche,
+.paragraphe[data-titre="3"] .paragraphe__riche { font-weight: 700; line-height: 1.35; }
 .paragraphe[data-titre="1"] .paragraphe__riche { font-size: 1.4rem; }
 .paragraphe[data-titre="2"] .paragraphe__riche { font-size: 1.15rem; }
+.paragraphe[data-titre="3"] .paragraphe__riche { font-size: 1.03rem; }
 
 /* Une sous-liste se décale, comme elle le sera dans le document. */
 .paragraphe[data-niveau="1"] .paragraphe__riche { margin-left: 1.7rem; }
@@ -1392,6 +1394,7 @@ input.depot__champ {
 .apercu-document > .apercu-titre:first-child { margin-top: 0; }
 .apercu-titre--1 { font-size: 1.45rem; }
 .apercu-titre--2 { font-size: 1.2rem; }
+.apercu-titre--3 { font-size: 1.05rem; }
 
 /* Le porteur d'une sous-liste orpheline — un sous-point qui suit un
    paragraphe ordinaire — n'existe que pour la loger : il ne se voit pas. */
