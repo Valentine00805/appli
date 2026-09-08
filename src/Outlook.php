@@ -311,6 +311,17 @@ final class Outlook
             // qui garantit qu'on parle bien à Microsoft.
             CURLOPT_SSL_VERIFYPEER => true,
             CURLOPT_SSL_VERIFYHOST => 2,
+            /*
+             * Encore faut-il savoir à qui se fier. WAMP ne livre aucune liste
+             * d'autorités de certification et n'en désigne aucune dans
+             * php.ini : sans cela, la vérification échoue faute de pouvoir
+             * s'exercer, et rien ne part chez Microsoft.
+             *
+             * Windows, lui, tient cette liste et la met à jour. On lui demande
+             * la sienne. Ailleurs — un hébergeur Linux —, l'option est
+             * ignorée et la liste du système sert, comme d'habitude.
+             */
+            CURLOPT_SSL_OPTIONS    => defined('CURLSSLOPT_NATIVE_CA') ? CURLSSLOPT_NATIVE_CA : 0,
             CURLOPT_HEADERFUNCTION => static function ($ch, string $ligne) use (&$recues): int {
                 $coupe = strpos($ligne, ':');
                 if ($coupe !== false) {
