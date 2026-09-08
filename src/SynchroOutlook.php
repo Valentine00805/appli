@@ -137,6 +137,153 @@ final class SynchroOutlook
         return $retires;
     }
 
+    /* --- Les calendriers -------------------------------------------------- */
+
+    /**
+     * Les calendriers connus de l'application, tels qu'elle les a vus.
+     *
+     * @return array<int, array>
+     */
+    public static function calendriers(int $userId): array
+    {
+        return Database::all(
+            'SELECT id, empreinte, nom, proprietaire, partage, principal, suivi
+               FROM outlook_calendriers
+              WHERE user_id = ?
+              ORDER BY principal DESC, partage ASC, nom ASC',
+            [$userId]
+        );
+    }
+
+    /**
+     * Redemande à Microsoft la liste des calendriers du compte.
+     *
+     * Les calendriers vivent dans des groupes — « Mes calendriers », « Autres
+     * calendriers » —, et c'est dans le second que Microsoft range ceux qu'on
+     * nous a partagés. Les demander groupe par groupe est le seul moyen de ne
+     * pas passer à côté de la moitié d'un agenda.
+     *
+     * Un calendrier vu pour la première fois n'est pas suivi, sauf le
+     * principal : on ne remplit pas le calendrier de quelqu'un sans qu'il l'ait
+     * demandé.
+     *
+     * @return int  combien de calendriers sont désormais connus
+     * @throws RuntimeException si Microsoft refuse
+     */
+    public static function rafraichirLesCalendriers(int $userId): int
+    {
+        $moi = mb_strtolower((string) (Outlook::compte($userId)['compte'] ?? ''));
+        $trouves = [];
+
+        foreach (self::sourcesDeCalendriers($userId) as $chemin) {
+            $reponse = Outlook::appeler($userId, 'GET', $chemin);
+            if ($reponse['code'] >= 400) {
+                // Un groupe inaccessible ne doit pas emporter les autres :
+                // certains comptes n'ont pas tous les groupes.
+                continue;
+            }
+            foreach (($reponse['corps']['value'] ?? []) as $cal) {
+                if (isset($cal['id'])) {
+                    $trouves[(string) $cal['id']] = $cal;
+                }
+            }
+        }
+
+        if ($trouves === []) {
+            throw new RuntimeException('Microsoft n’a donné aucun calendrier.');
+        }
+
+        $connus = [];
+        foreach (self::calendriers($userId) as $ligne) {
+            $connus[(string) $ligne['empreinte']] = true;
+        }
+
+        foreach ($trouves as $id => $cal) {
+            $empreinte = md5($id);
+            $adresse = mb_strtolower((string) ($cal['owner']['address'] ?? ''));
+            $principal = ($cal['isDefaultCalendar'] ?? false) === true ? 1 : 0;
+            $partage = ($adresse !== '' && $moi !== '' && $adresse !== $moi) ? 1 : 0;
+
+            if (isset($connus[$empreinte])) {
+                // Le choix de l'utilisateur ne se réécrit pas : seul le
+                // signalement change.
+                Database::run(
+                    'UPDATE outlook_calendriers
+                        SET nom = ?, proprietaire = ?, partage = ?, principal = ?, vu_le = NOW()
+                      WHERE user_id = ? AND empreinte = ?',
+                    [
+                        mb_substr((string) ($cal['name'] ?? 'Calendrier'), 0, 190),
+                        mb_substr((string) ($cal['owner']['name'] ?? $adresse), 0, 190),
+                        $partage, $principal, $userId, $empreinte,
+                    ]
+                );
+                continue;
+            }
+
+            Database::run(
+                'INSERT INTO outlook_calendriers
+                     (user_id, calendrier_id, empreinte, nom, proprietaire, partage, principal, suivi)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+                [
+                    $userId, $id, $empreinte,
+                    mb_substr((string) ($cal['name'] ?? 'Calendrier'), 0, 190),
+                    mb_substr((string) ($cal['owner']['name'] ?? $adresse), 0, 190),
+                    $partage, $principal, $principal,
+                ]
+            );
+        }
+
+        return count($trouves);
+    }
+
+    /**
+     * Retient les calendriers à lire.
+     *
+     * @param  array<int, string> $empreintes  ceux que l'utilisateur a cochés
+     * @return int  combien sont suivis
+     */
+    public static function choisir(int $userId, array $empreintes): int
+    {
+        $garder = [];
+        foreach ($empreintes as $empreinte) {
+            if (is_string($empreinte) && preg_match('/^[0-9a-f]{32}$/', $empreinte) === 1) {
+                $garder[$empreinte] = true;
+            }
+        }
+
+        foreach (self::calendriers($userId) as $ligne) {
+            $veut = isset($garder[(string) $ligne['empreinte']]) ? 1 : 0;
+            if ((int) $ligne['suivi'] === $veut) {
+                continue;
+            }
+            Database::run(
+                'UPDATE outlook_calendriers SET suivi = ? WHERE user_id = ? AND empreinte = ?',
+                [$veut, $userId, (string) $ligne['empreinte']]
+            );
+        }
+
+        return count($garder);
+    }
+
+    /** Où Microsoft range les calendriers d'un compte. */
+    private static function sourcesDeCalendriers(int $userId): array
+    {
+        $chemins = ['/me/calendars?$select=id,name,owner,isDefaultCalendar&$top=100'];
+
+        $groupes = Outlook::appeler($userId, 'GET', '/me/calendarGroups?$select=id&$top=50');
+        if ($groupes['code'] < 400) {
+            foreach (($groupes['corps']['value'] ?? []) as $groupe) {
+                if (!isset($groupe['id'])) {
+                    continue;
+                }
+                $chemins[] = '/me/calendarGroups/' . rawurlencode((string) $groupe['id'])
+                    . '/calendars?$select=id,name,owner,isDefaultCalendar&$top=100';
+            }
+        }
+
+        return $chemins;
+    }
+
     /* --- Lire chez Microsoft --------------------------------------------- */
 
     /**
@@ -146,13 +293,59 @@ final class SynchroOutlook
      */
     private static function lire(int $userId, DateTimeImmutable $depuis, DateTimeImmutable $jusqua): array
     {
-        $chemin = '/me/calendarView?' . http_build_query([
+        $question = http_build_query([
             'startDateTime' => $depuis->format('c'),
             'endDateTime'   => $jusqua->format('c'),
             '$select'       => self::CHAMPS,
             '$orderby'      => 'start/dateTime',
             '$top'          => self::PAR_PAGE,
         ]);
+
+        $tout = [];
+        foreach (self::aLire($userId) as $calendrier) {
+            foreach (self::unCalendrier($userId, $calendrier, $question) as $evenement) {
+                // Un évènement partagé entre deux calendriers ne compte qu'une
+                // fois : son identifiant tranche.
+                $tout[(string) ($evenement['id'] ?? '')] = $evenement;
+            }
+        }
+        unset($tout['']);
+
+        return array_values($tout);
+    }
+
+    /**
+     * Les calendriers à parcourir.
+     *
+     * Tant que la liste n'a jamais été demandée à Microsoft, on s'en tient au
+     * calendrier principal : c'est le comportement d'avant, et il vaut mieux
+     * lire trop peu que se mettre à remplir un calendrier sans prévenir.
+     *
+     * @return array<int, ?array>  null désigne le calendrier principal
+     */
+    private static function aLire(int $userId): array
+    {
+        $suivis = Database::all(
+            'SELECT calendrier_id, nom FROM outlook_calendriers WHERE user_id = ? AND suivi = 1',
+            [$userId]
+        );
+
+        return $suivis === [] ? [null] : $suivis;
+    }
+
+    /**
+     * Les occurrences d'un calendrier, page après page.
+     *
+     * @param  ?array $calendrier  null pour le calendrier principal
+     * @return array<int, array>
+     */
+    private static function unCalendrier(int $userId, ?array $calendrier, string $question): array
+    {
+        $base = $calendrier === null
+            ? '/me/calendarView?'
+            : '/me/calendars/' . rawurlencode((string) $calendrier['calendrier_id']) . '/calendarView?';
+        $chemin = $base . $question;
+        $nom = $calendrier === null ? 'l’agenda' : '« ' . (string) $calendrier['nom'] . ' »';
 
         /*
          * « Prefer » demande que les heures reviennent déjà dans notre fuseau.
@@ -165,12 +358,18 @@ final class SynchroOutlook
         for ($page = 0; $page < self::PAGES_MAX && $chemin !== ''; $page++) {
             $reponse = Outlook::appeler($userId, 'GET', $chemin, null, $entetes);
 
+            if ($reponse['code'] === 403) {
+                throw new RuntimeException(
+                    'Microsoft refuse l’accès à ' . $nom . '. Si c’est un calendrier '
+                    . 'partagé par quelqu’un d’autre, réautorisez l’application : '
+                    . 'la permission qui les ouvre est plus récente que votre liaison.'
+                );
+            }
             if ($reponse['code'] >= 400) {
                 $dit = (string) ($reponse['corps']['error']['message'] ?? '');
 
-                throw new RuntimeException($dit === ''
-                    ? 'Microsoft a refusé de donner l’agenda.'
-                    : 'Microsoft a refusé de donner l’agenda : ' . mb_substr($dit, 0, 200));
+                throw new RuntimeException('Microsoft a refusé de donner ' . $nom
+                    . ($dit === '' ? '.' : ' : ' . mb_substr($dit, 0, 200)));
             }
 
             foreach (($reponse['corps']['value'] ?? []) as $evenement) {

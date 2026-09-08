@@ -18,8 +18,18 @@ declare(strict_types=1);
  */
 final class Outlook
 {
-    /** Ce que l'application demande : lire et écrire l'agenda, et revenir plus tard. */
-    private const PERMISSIONS = 'offline_access openid email User.Read Calendars.ReadWrite';
+    /**
+     * Ce que l'application demande : lire et écrire l'agenda, et revenir plus tard.
+     *
+     * « .Shared » ouvre en plus les calendriers qu'on nous a partagés — celui
+     * d'un proche, d'un groupe — que Microsoft tient à part des siens. Sans
+     * cette permission, ils sont visibles dans Outlook et invisibles ici.
+     */
+    private const PERMISSIONS = 'offline_access openid email User.Read '
+        . 'Calendars.ReadWrite Calendars.ReadWrite.Shared';
+
+    /** La permission qui ouvre les calendriers d'autrui. */
+    private const PARTAGE = 'Calendars.ReadWrite.Shared';
 
     private const AUTORISATION = 'https://login.microsoftonline.com/%s/oauth2/v2.0/authorize';
     private const JETONS       = 'https://login.microsoftonline.com/%s/oauth2/v2.0/token';
@@ -75,6 +85,22 @@ final class Outlook
     public static function compte(int $userId): ?array
     {
         return Database::one('SELECT * FROM outlook_comptes WHERE user_id = ?', [$userId]);
+    }
+
+    /**
+     * L'autorisation obtenue couvre-t-elle les calendriers partagés ?
+     *
+     * Une autorisation donnée avant que l'application ne demande cette
+     * permission-là ne la contient pas : le compte reste relié, mais les
+     * calendriers d'autrui échoueraient sans qu'on sache dire pourquoi. On
+     * préfère le voir venir et proposer de réautoriser.
+     */
+    public static function partageAutorise(int $userId): bool
+    {
+        $compte = self::compte($userId);
+        $eues = (string) ($compte['permissions'] ?? '');
+
+        return $eues !== '' && str_contains($eues, self::PARTAGE);
     }
 
     /** Le compte est-il relié, c'est-à-dire y a-t-il de quoi revenir sans lui ? */
@@ -281,13 +307,18 @@ final class Outlook
         $acces = (string) $reponse['access_token'];
         $renouvellement = isset($reponse['refresh_token']) ? (string) $reponse['refresh_token'] : null;
 
+        // Ce que Microsoft dit avoir accordé, qui n'est pas forcément ce qu'on
+        // a demandé : c'est cette liste-là qui fait foi.
+        $permissions = isset($reponse['scope']) ? (string) $reponse['scope'] : null;
+
         Database::run(
-            'INSERT INTO outlook_comptes (user_id, jeton, renouvellement, expire_le)
-             VALUES (?, ?, ?, ?)
+            'INSERT INTO outlook_comptes (user_id, jeton, renouvellement, permissions, expire_le)
+             VALUES (?, ?, ?, ?, ?)
              ON DUPLICATE KEY UPDATE jeton = VALUES(jeton),
                  renouvellement = COALESCE(VALUES(renouvellement), renouvellement),
+                 permissions = COALESCE(VALUES(permissions), permissions),
                  expire_le = VALUES(expire_le)',
-            [$userId, $acces, $renouvellement, $expire]
+            [$userId, $acces, $renouvellement, $permissions, $expire]
         );
     }
 

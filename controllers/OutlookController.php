@@ -24,7 +24,48 @@ final class OutlookController
             'retour'     => Outlook::adresseDeRetour(),
             'derniere'   => SynchroOutlook::derniereFois($userId),
             'combien'    => SynchroOutlook::combien($userId),
+            'calendriers' => SynchroOutlook::calendriers($userId),
+            'partage'    => Outlook::partageAutorise($userId),
         ], 'Calendrier Outlook');
+    }
+
+    /**
+     * Redemande à Microsoft quels calendriers possède le compte.
+     *
+     * On ne devine pas la liste : un calendrier ajouté ou partagé hier n'a
+     * aucune raison d'être connu, et rien ne remplace le fait d'aller voir.
+     */
+    public function calendriers(): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+
+        try {
+            $combien = SynchroOutlook::rafraichirLesCalendriers(Auth::id());
+        } catch (Throwable $e) {
+            Session::flash('erreur', $e->getMessage());
+            redirect('outlook');
+        }
+
+        Session::flash('succes', $combien . ' calendrier' . ($combien > 1 ? 's trouvés' : ' trouvé')
+            . ' sur votre compte. Cochez ceux que l’application doit lire.');
+        redirect('outlook');
+    }
+
+    /** Retient les calendriers cochés. */
+    public function suivre(): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+
+        $coches = $_POST['calendriers'] ?? [];
+        $suivis = SynchroOutlook::choisir(Auth::id(), is_array($coches) ? $coches : []);
+
+        Session::flash('succes', $suivis === 0
+            ? 'Aucun calendrier suivi : plus rien ne viendra d’Outlook.'
+            : $suivis . ' calendrier' . ($suivis > 1 ? 's suivis' : ' suivi')
+              . '. Relisez l’agenda pour en voir les évènements.');
+        redirect('outlook');
     }
 
     /**

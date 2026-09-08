@@ -158,6 +158,8 @@ $routes = [
     ['POST', 'outlook/connexion',          [OutlookController::class, 'connexion']],
     ['GET',  'outlook/retour',             [OutlookController::class, 'retour']],
     ['POST', 'outlook/synchroniser',       [OutlookController::class, 'synchroniser']],
+    ['POST', 'outlook/calendriers',        [OutlookController::class, 'calendriers']],
+    ['POST', 'outlook/suivre',             [OutlookController::class, 'suivre']],
     ['POST', 'outlook/retirer',            [OutlookController::class, 'retirer']],
     ['POST', 'outlook/deconnexion',        [OutlookController::class, 'deconnexion']],
 

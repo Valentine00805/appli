@@ -395,6 +395,7 @@ CREATE TABLE IF NOT EXISTS `outlook_comptes` (
   `compte`         VARCHAR(190) NULL,
   `jeton`          TEXT         NULL,
   `renouvellement` TEXT         NULL,
+  `permissions`    TEXT         NULL,
   `expire_le`      DATETIME     NULL,
   `calendrier_id`  VARCHAR(255) NULL,
   `calendrier_nom` VARCHAR(190) NULL,
@@ -428,4 +429,23 @@ CREATE TABLE IF NOT EXISTS `outlook_liens` (
     REFERENCES `users`(`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_lien_evenement` FOREIGN KEY (`evenement_id`)
     REFERENCES `evenements`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Les calendriers Outlook d'un compte, et ceux que l'application lit.
+-- (voir sql/migration-outlook-calendriers.sql)
+CREATE TABLE IF NOT EXISTS `outlook_calendriers` (
+  `id`            INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `user_id`       INT UNSIGNED NOT NULL,
+  `calendrier_id` TEXT         NOT NULL,
+  `empreinte`     CHAR(32)     NOT NULL,
+  `nom`           VARCHAR(190) NULL,
+  `proprietaire`  VARCHAR(190) NULL,
+  `partage`       TINYINT(1)   NOT NULL DEFAULT 0,
+  `principal`     TINYINT(1)   NOT NULL DEFAULT 0,
+  `suivi`         TINYINT(1)   NOT NULL DEFAULT 0,
+  `vu_le`         DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_calendrier` (`user_id`, `empreinte`),
+  CONSTRAINT `fk_cal_user` FOREIGN KEY (`user_id`)
+    REFERENCES `users`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
