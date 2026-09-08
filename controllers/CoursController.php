@@ -694,8 +694,18 @@ final class CoursController
                      */
                     if (EditionDocument::modifiable($nom)) {
                         try {
-                            $enrichis = EditionDocument::lireRiche((string) $chemin, $nom);
+                            $enrichis = EditionDocument::apercuRiche((string) $chemin, $nom);
                         } catch (Throwable) {
+                            $enrichis = [];
+                        }
+                        /*
+                         * Les deux lectures doivent donner autant de
+                         * paragraphes l'une que l'autre : sinon leurs rangs ne
+                         * se correspondent plus, et la page montrerait un
+                         * paragraphe à la place d'un autre. Au moindre écart,
+                         * on s'en tient au texte nu.
+                         */
+                        if (count($enrichis) !== count($paragraphes)) {
                             $enrichis = [];
                         }
                     }

@@ -134,6 +134,72 @@ final class EditionDocument
     }
 
     /**
+     * Les paragraphes tels que l'aperçu les compte, mise en forme comprise.
+     *
+     * L'éditeur ne travaille que sur les paragraphes du corps, et garde les
+     * vides — ce sont les lignes blanches du document. L'aperçu, lui, montre
+     * aussi ceux des tableaux et laisse les vides de côté. Les deux lectures
+     * ne rendent donc pas la même liste, et confondre leurs rangs afficherait
+     * un paragraphe à la place d'un autre : celle-ci suit la règle de l'aperçu,
+     * pour que les deux listes se correspondent une à une.
+     *
+     * @return list<string>
+     * @throws RuntimeException si le fichier est illisible
+     */
+    public static function apercuRiche(string $chemin, string $nomOrigine): array
+    {
+        [$doc, , , $format] = self::ouvrir($chemin, $nomOrigine);
+        $stylesOdf = self::stylesDeTexteOdf($doc);
+
+        $rendus = [];
+        foreach ($doc->getElementsByTagName('*') as $noeud) {
+            if (!self::estParagraphe($noeud, $format)) {
+                continue;
+            }
+            /** @var DOMElement $noeud */
+            $passages = self::resserrer($noeud->namespaceURI === self::NS_W
+                ? self::passagesWord($noeud)
+                : self::passagesOdf($noeud, $stylesOdf));
+
+            if ($passages !== []) {
+                $rendus[] = self::html($passages);
+            }
+        }
+
+        return $rendus;
+    }
+
+    /**
+     * Ramène les blancs d'un paragraphe à ce que l'aperçu en fait : les suites
+     * d'espaces réduites à une, et rien qui dépasse aux deux bouts.
+     *
+     * @param  list<array> $passages
+     * @return list<array>  vide quand il ne reste rien à montrer
+     */
+    private static function resserrer(array $passages): array
+    {
+        foreach ($passages as $rang => $passage) {
+            $passages[$rang]['texte'] = (string) preg_replace('/\s+/u', ' ', $passage['texte']);
+        }
+        $passages = array_values(array_filter(
+            $passages,
+            static fn (array $p): bool => $p['texte'] !== ''
+        ));
+        if ($passages === []) {
+            return [];
+        }
+
+        $passages[0]['texte'] = ltrim($passages[0]['texte']);
+        $dernier = count($passages) - 1;
+        $passages[$dernier]['texte'] = rtrim($passages[$dernier]['texte']);
+
+        return array_values(array_filter(
+            $passages,
+            static fn (array $p): bool => $p['texte'] !== ''
+        ));
+    }
+
+    /**
      * Réécrit le corps du document avec les paragraphes fournis, dans l'ordre.
      *
      * Chaque entrée porte le rang du paragraphe d'origine dont elle reprend la
