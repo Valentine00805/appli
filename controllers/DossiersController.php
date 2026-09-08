@@ -138,11 +138,11 @@ final class DossiersController
         $nom = mb_substr(post('nom'), 0, 120);
         if ($nom === '') {
             Session::flash('erreur', 'Donnez un nom à votre dossier.');
-            redirect('organisation/dossiers');
+            repartir_vers('organisation/dossiers');
         }
         if (Database::valeur('SELECT id FROM dossiers WHERE user_id = ? AND nom = ?', [$userId, $nom]) !== null) {
             Session::flash('erreur', 'Vous avez déjà un dossier nommé « ' . $nom . ' ».');
-            redirect('organisation/dossiers');
+            repartir_vers('organisation/dossiers');
         }
 
         $parent = self::valide($userId, $_POST['parent_id'] ?? null);
@@ -162,7 +162,8 @@ final class DossiersController
         );
 
         Session::flash('succes', 'Dossier « ' . $nom . ' » créé.');
-        redirect('organisation/dossiers');
+        // Créer depuis la colonne des cours ne doit pas déporter ailleurs.
+        repartir_vers('organisation/dossiers');
     }
 
     public function modifier(int $id): void

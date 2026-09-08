@@ -1257,6 +1257,21 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
 .dossier-renommer__ligne { display: flex; gap: .35rem; align-items: center; }
 .dossier-renommer__panneau input[type="text"] { flex: 1; min-width: 0; }
 
+/* Créer un dossier depuis la colonne : le bouton, puis son petit formulaire. */
+.nouveau-dossier { margin-top: .6rem; }
+.nouveau-dossier > summary { list-style: none; text-align: center; }
+.nouveau-dossier > summary::-webkit-details-marker { display: none; }
+.nouveau-dossier > summary::marker { content: ""; }
+.nouveau-dossier__panneau {
+  display: grid; gap: .35rem; margin-top: .45rem; padding: .55rem;
+  border: 1px solid var(--bordure); border-radius: var(--rayon-s);
+  background: var(--fond-carte);
+}
+.nouveau-dossier__panneau label {
+  font-size: .75rem; color: var(--texte-doux);
+}
+.nouveau-dossier__panneau input, .nouveau-dossier__panneau select { width: 100%; }
+
 /* Sur un écran tactile, le survol n'existe pas : le crayon reste visible. */
 @media (hover: none) {
   .dossier-renommer > summary { opacity: .55; }

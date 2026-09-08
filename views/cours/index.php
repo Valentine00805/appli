@@ -258,6 +258,38 @@ foreach ($dossiers as $d) {
       </a>
     </div>
 
+    <?php
+    /*
+     * Créer un dossier sans quitter la page. « Ranger dans » part du dossier
+     * ouvert, qui est presque toujours le bon : on crée un sous-dossier là où
+     * l'on se trouve. La liste reste modifiable, pour les fois où ce n'est pas
+     * le cas — et elle dit, du même coup, où le dossier ira.
+     */
+    ?>
+    <details class="nouveau-dossier">
+      <summary class="bouton bouton--secondaire bouton--petit bouton--bloc">＋ Nouveau dossier</summary>
+      <form class="nouveau-dossier__panneau" method="post" action="<?= url('dossiers') ?>">
+        <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
+        <input type="hidden" name="retour" value="<?= e((string) ($_SERVER['REQUEST_URI'] ?? '')) ?>">
+
+        <label class="sr-only" for="nouveau-dossier-nom">Nom du dossier</label>
+        <input type="text" id="nouveau-dossier-nom" name="nom" maxlength="120"
+               placeholder="Nom du dossier" required>
+
+        <label for="nouveau-dossier-parent">Ranger dans</label>
+        <select id="nouveau-dossier-parent" name="parent_id">
+          <option value="">— À la racine</option>
+          <?php foreach ($dossiers as $d): ?>
+            <option value="<?= (int) $d['id'] ?>"<?= $dossierId === (int) $d['id'] ? ' selected' : '' ?>>
+              <?= retrait_dossier($d) ?><?= e($d['nom']) ?>
+            </option>
+          <?php endforeach; ?>
+        </select>
+
+        <button class="bouton bouton--petit bouton--bloc" type="submit">Créer le dossier</button>
+      </form>
+    </details>
+
     <p class="champ__aide" style="margin:.6rem .2rem 0">
       Faites glisser un cours sur un dossier pour l'y ranger. Un fichier déposé
       sur un dossier y crée un cours qui le contient.
