@@ -86,6 +86,23 @@ $actif = static function (string $prefixe) use ($route): string {
   <p><?= e((string) Config::get('app', 'nom')) ?> — vos cours et votre planning, en local.</p>
 </footer>
 
+<?php
+/*
+ * La relecture de l'agenda Outlook, sans qu'on ait à la demander.
+ *
+ * Le repère n'apparaît que lorsqu'il y a lieu de relire : compte relié,
+ * calendriers choisis, dernière lecture assez ancienne. C'est le serveur qui
+ * en juge, et il le rejuge à la réception — la page ne fait que réveiller.
+ *
+ * Sans JavaScript, il ne se passe rien de plus qu'avant : le bouton de la
+ * page Outlook reste la voie sûre.
+ */
+?>
+<?php if (Auth::connecte() && SynchroOutlook::aBesoinDEtreRelu(Auth::id())): ?>
+  <div hidden data-outlook-relire="<?= e(url('outlook/synchroniser')) ?>"
+       data-csrf="<?= e(Session::jetonCsrf()) ?>"></div>
+<?php endif; ?>
+
 <script src="<?= asset('assets/js/app.js') ?>" defer></script>
 </body>
 </html>

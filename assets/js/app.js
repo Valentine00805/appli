@@ -2159,3 +2159,39 @@
     montrerCarte();
   }
 })();
+
+/* ==========================================================================
+   Relire l'agenda Outlook sans qu'on ait à le demander.
+
+   Le serveur ne pose le repère que lorsqu'il estime qu'il est temps, et il
+   le rejuge à la réception : la page ne décide de rien, elle réveille. Si
+   quelque chose a changé, on recharge — c'est le seul moyen honnête de
+   montrer un calendrier à jour sans le redessiner à moitié.
+
+   Un échec reste silencieux : le bouton de la page Outlook est là pour
+   provoquer l'erreur et la lire. Une relecture qu'on n'a pas demandée n'a
+   pas à interrompre ce qu'on est en train de faire.
+   ========================================================================== */
+(function () {
+  var repere = document.querySelector("[data-outlook-relire]");
+  if (!repere || !window.fetch) { return; }
+
+  var corps = new FormData();
+  corps.append("_csrf", repere.getAttribute("data-csrf") || "");
+  corps.append("seul", "1");
+
+  fetch(repere.getAttribute("data-outlook-relire"), {
+    method: "POST",
+    body: corps,
+    headers: { Accept: "application/json" },
+    credentials: "same-origin"
+  })
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (bilan) {
+      if (!bilan || !bilan.fait || !bilan.change) { return; }
+      // Les formulaires renvoyés se rejoueraient au rechargement : on remet
+      // l'adresse telle quelle plutôt que de repasser par l'envoi.
+      window.location.replace(window.location.href);
+    })
+    .catch(function () { /* silence : rien n'était promis à l'écran */ });
+})();

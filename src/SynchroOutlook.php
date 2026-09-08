@@ -35,12 +35,43 @@ final class SynchroOutlook
     private const FUSEAU = 'Europe/Paris';
 
     /**
+     * Le repos entre deux lectures automatiques, en secondes.
+     *
+     * Un quart d'heure : assez court pour qu'un rendez-vous ajouté depuis le
+     * téléphone arrive avant qu'on l'ait oublié, assez long pour ne pas
+     * harceler Microsoft à chaque page ouverte.
+     */
+    private const REPOS = 900;
+
+    /**
      * Va chercher les évènements et met l'application à jour.
      *
      * @return array{ajoutes: int, modifies: int, retires: int, inchanges: int}
      * @throws RuntimeException si le compte n'est pas relié, ou si Microsoft refuse
      */
     public static function tirer(int $userId): array
+    {
+        /*
+         * Deux lectures en même temps — un onglet qui se réveille pendant
+         * qu'on clique — créeraient les mêmes évènements deux fois : chacune
+         * les croirait nouveaux. Le verrou est demandé sans attendre ; la
+         * seconde repart les mains vides plutôt que de faire la queue.
+         */
+        $verrou = 'mescours_outlook_' . $userId;
+        if ((int) Database::valeur('SELECT GET_LOCK(?, 0)', [$verrou]) !== 1) {
+            return ['ajoutes' => 0, 'modifies' => 0, 'retires' => 0,
+                    'inchanges' => 0, 'occupe' => true];
+        }
+
+        try {
+            return self::vraimentTirer($userId);
+        } finally {
+            Database::run('SELECT RELEASE_LOCK(?)', [$verrou]);
+        }
+    }
+
+    /** @return array{ajoutes: int, modifies: int, retires: int, inchanges: int, occupe: bool} */
+    private static function vraimentTirer(int $userId): array
     {
         $fuseau = new DateTimeZone(self::FUSEAU);
         $maintenant = new DateTimeImmutable('now', $fuseau);
@@ -50,7 +81,8 @@ final class SynchroOutlook
         $venus = self::lire($userId, $depuis, $jusqua);
         $connus = self::liens($userId);
 
-        $bilan = ['ajoutes' => 0, 'modifies' => 0, 'retires' => 0, 'inchanges' => 0];
+        $bilan = ['ajoutes' => 0, 'modifies' => 0, 'retires' => 0,
+                  'inchanges' => 0, 'occupe' => false];
         $vus = [];
 
         foreach ($venus as $brut) {
@@ -83,6 +115,37 @@ final class SynchroOutlook
         Database::run('UPDATE outlook_comptes SET synchro_le = NOW() WHERE user_id = ?', [$userId]);
 
         return $bilan;
+    }
+
+    /**
+     * Est-il temps de relire l'agenda de son propre chef ?
+     *
+     * Faux si le compte n'est pas relié, si aucun calendrier n'est suivi, ou
+     * si la dernière lecture est trop fraîche.
+     */
+    public static function aBesoinDEtreRelu(int $userId): bool
+    {
+        if (!Outlook::configuree() || !Outlook::relie($userId)) {
+            return false;
+        }
+
+        $connus = (int) Database::valeur(
+            'SELECT COUNT(*) FROM outlook_calendriers WHERE user_id = ?', [$userId]);
+        $suivis = (int) Database::valeur(
+            'SELECT COUNT(*) FROM outlook_calendriers WHERE user_id = ? AND suivi = 1', [$userId]);
+        if ($connus > 0 && $suivis === 0) {
+            // Tout a été décoché : il n'y a plus rien à aller chercher.
+            return false;
+        }
+
+        $quand = self::derniereFois($userId);
+        if ($quand === null) {
+            // Jamais lu : c'est à l'utilisateur de lancer la première fois,
+            // pour qu'il voie arriver ce qu'il a demandé.
+            return false;
+        }
+
+        return (time() - (int) strtotime($quand)) >= self::REPOS;
     }
 
     /** La date de la dernière synchronisation, ou null s'il n'y en a jamais eu. */

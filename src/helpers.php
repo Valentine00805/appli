@@ -508,6 +508,30 @@ function asset(string $chemin): string
 }
 
 /**
+ * Répond en JSON et s'arrête là.
+ *
+ * Pour les appels que le navigateur passe seul, en arrière-plan : ils
+ * n'attendent pas une page, et une page les ferait échouer sans le dire.
+ */
+function repondre_json(array $donnees): never
+{
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode($donnees, JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+/**
+ * L'appel vient-il du script de la page plutôt que d'un formulaire ?
+ *
+ * Le formulaire reste la voie principale : sans JavaScript, tout continue
+ * de fonctionner, en moins commode.
+ */
+function veut_du_json(): bool
+{
+    return str_contains((string) ($_SERVER['HTTP_ACCEPT'] ?? ''), 'application/json');
+}
+
+/**
  * Repart vers la page d'où venait l'envoi, ou vers une page par défaut.
  *
  * L'adresse de retour vient du formulaire, donc de l'extérieur : on n'accepte

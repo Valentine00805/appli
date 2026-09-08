@@ -80,10 +80,37 @@ final class OutlookController
         Auth::exiger();
         Session::verifierCsrf();
 
+        $userId = Auth::id();
+        /*
+         * Deux appelants : le bouton, et le script de la page qui relit de
+         * lui-même. Le second n'insiste pas — s'il n'est pas l'heure, il
+         * repart sans rien faire, et c'est le serveur qui en décide.
+         */
+        $seul = ($_POST['seul'] ?? '') === '1';
+        if ($seul && !SynchroOutlook::aBesoinDEtreRelu($userId)) {
+            repondre_json(['fait' => false, 'change' => 0]);
+        }
+
         try {
-            $bilan = SynchroOutlook::tirer(Auth::id());
+            $bilan = SynchroOutlook::tirer($userId);
         } catch (Throwable $e) {
+            if ($seul || veut_du_json()) {
+                // En arrière-plan, un échec ne doit pas s'imposer à l'écran :
+                // le bouton reste là pour le provoquer et lire le message.
+                repondre_json(['fait' => false, 'change' => 0, 'souci' => $e->getMessage()]);
+            }
             Session::flash('erreur', $e->getMessage());
+            redirect('outlook');
+        }
+
+        $change = $bilan['ajoutes'] + $bilan['modifies'] + $bilan['retires'];
+
+        if ($seul || veut_du_json()) {
+            repondre_json(['fait' => !$bilan['occupe'], 'change' => $change]);
+        }
+
+        if ($bilan['occupe']) {
+            Session::flash('succes', 'Une lecture était déjà en cours : rien n’a été fait deux fois.');
             redirect('outlook');
         }
 

@@ -89,6 +89,12 @@ $aReautoriser = !($partage ?? true) && $partagesEnAttente > 0;
             </button>
           </form>
           <p class="champ__aide" style="margin-top:.6rem">
+            L'agenda est <strong>relu tout seul</strong> quand vous ouvrez
+            l'application, si la dernière lecture remonte à plus d'un quart
+            d'heure. Le bouton reste là pour ne pas attendre, et pour voir le
+            message en cas de refus.
+          </p>
+          <p class="champ__aide">
             La lecture porte sur le mois écoulé et l'année à venir, séries
             récurrentes comprises. Le sens est unique pour l'instant :
             <strong>Outlook fait foi</strong>. Un évènement importé que vous
