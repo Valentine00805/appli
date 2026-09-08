@@ -137,7 +137,9 @@
           <div class="paragraphe" data-paragraphe
                data-riche-html="<?= e($enrichis[$rang]['html'] ?? '') ?>"
                data-aligne="<?= e($aligne) ?>" data-liste="<?= e($liste) ?>"
-               data-numero="<?= (int) ($enrichis[$rang]['numero'] ?? 0) ?>">
+               data-numero="<?= (int) ($enrichis[$rang]['numero'] ?? 0) ?>"
+               <?php // Une sous-liste se compte à part : le script la laisse. ?>
+               data-profond="<?= ($enrichis[$rang]['profond'] ?? false) ? '1' : '' ?>">
             <span class="paragraphe__rang" aria-hidden="true"><?= $rang + 1 ?></span>
             <input type="hidden" name="origine[]" value="<?= (int) $rang ?>">
             <?php // Sans script, ils repartent tels quels : rien n'est perdu. ?>

@@ -170,7 +170,8 @@ final class EditionDocument
      * styles de titre — reste dans le fichier sans passer par ici, et n'est
      * donc pas perdu.
      *
-     * @return list<array{html: string, alignement: ?string, liste: string, numero: ?int}>
+     * @return list<array{html: string, alignement: ?string, liste: string,
+     *                    numero: ?int, profond: bool}>
      * @throws RuntimeException si le fichier est illisible
      */
     public static function lireRiche(string $chemin, string $nomOrigine): array
@@ -191,6 +192,7 @@ final class EditionDocument
                 'alignement' => self::alignement($p, $alignementsOdf),
                 'liste' => (string) self::sorteDeListe($p, $numsWord, $listesOdf),
                 'numero' => $numeros[$rang],
+                'profond' => self::niveauDeListe($p) > 0,
             ];
         }
 
@@ -326,17 +328,23 @@ final class EditionDocument
          * réellement demandées.
          */
         /*
-         * Un élément qu'on ajoute rejoint la liste de ses voisins plutôt que
-         * d'en ouvrir une nouvelle : sans cela, Word repart à 1 — deux listes
-         * côte à côte sont deux listes, quoi qu'en dise leur voisinage.
+         * Tous les éléments d'une même sorte forment une seule liste, celle du
+         * premier d'entre eux. Deux listes côte à côte sont deux listes pour
+         * Word, et la seconde repartirait à 1 : ce que l'on voit à l'écran ne
+         * serait pas ce que l'on obtiendrait à l'impression.
          */
-        $voisins = $word ? self::voisinsWord($entrees, $paragraphes, $numsWord) : [];
+        $commune = $word
+            ? self::listeCommuneWord($entrees, $paragraphes, $numsWord)
+            : ['cibles' => [], 'actuels' => [], 'niveaux' => []];
 
         $numeros = [];
         if ($word) {
             foreach (array_keys(self::LISTES) as $sorte) {
-                foreach ($entrees as $rang => $entree) {
-                    if (($entree['liste'] ?? '') === $sorte && ($voisins[$rang] ?? null) === null) {
+                if (isset($commune['cibles'][$sorte])) {
+                    continue;
+                }
+                foreach ($entrees as $entree) {
+                    if (($entree['liste'] ?? '') === $sorte) {
                         $numeros[$sorte] = self::numerotationWord($chemin, $parties, $sorte);
                         break;
                     }
@@ -382,11 +390,20 @@ final class EditionDocument
                 : (string) self::sorteDeListe($existant, $numsWord, $listesOdf);
             $inchangee = $sorte === $avant;
 
-            if ($word && !$inchangee) {
-                $repris = $voisins[$rang] ?? null;
-                self::listerWord($doc, $noeud, $sorte === ''
+            if ($word) {
+                /*
+                 * Un élément d'un niveau plus profond ne se touche pas : le
+                 * ramener au premier niveau écraserait un plan à deux étages
+                 * que l'éditeur ne sait de toute façon pas montrer.
+                 */
+                $profond = ($commune['niveaux'][$rang] ?? 0) > 0;
+                $cible = $sorte === ''
                     ? null
-                    : (is_int($repris) ? $repris : ($numeros[$sorte] ?? null)));
+                    : ($commune['cibles'][$sorte] ?? $numeros[$sorte] ?? null);
+
+                if (!$profond && ($commune['actuels'][$rang] ?? null) !== $cible) {
+                    self::listerWord($doc, $noeud, $cible);
+                }
             }
 
             $nouveaux[] = [
@@ -538,6 +555,7 @@ final class EditionDocument
         $liste = null;
         $styleEnCours = null;
         $sortesPosees = [];
+        $ouvertes = [];
 
         foreach ($nouveaux as $entree) {
             if (!$odf || $entree['sorte'] === '') {
@@ -558,6 +576,13 @@ final class EditionDocument
             if ($liste === null || $styleEnCours !== $style) {
                 $liste = $doc->createElementNS(self::NS_TEXT, 'text:list');
                 $liste->setAttributeNS(self::NS_TEXT, 'text:style-name', $style);
+                // Une liste qui en reprend une autre poursuit sa numérotation
+                // au lieu de repartir à 1, comme le fait Word par-dessus un
+                // paragraphe ordinaire.
+                if (isset($ouvertes[$style])) {
+                    $liste->setAttributeNS(self::NS_TEXT, 'text:continue-numbering', 'true');
+                }
+                $ouvertes[$style] = true;
                 $styleEnCours = $style;
                 $aPoser[] = $liste;
             }
@@ -2209,6 +2234,25 @@ final class EditionDocument
         return $numeros;
     }
 
+    /**
+     * À quel niveau se trouve cet élément de liste.
+     *
+     * Au-delà du premier, l'éditeur n'y touche pas et ne le compte pas avec
+     * les autres : c'est une sous-liste, qui a sa propre numérotation.
+     */
+    private static function niveauDeListe(DOMElement $paragraphe): int
+    {
+        if ($paragraphe->namespaceURI !== self::NS_W) {
+            return 0;
+        }
+        $ilvl = self::enfantWord(
+            self::enfantWord(self::enfantWord($paragraphe, 'pPr'), 'numPr'),
+            'ilvl'
+        );
+
+        return $ilvl === null ? 0 : (int) $ilvl->getAttributeNS(self::NS_W, 'val');
+    }
+
     /** Ce qui distingue une liste d'une autre, dans l'un et l'autre format. */
     private static function identiteDeListe(DOMElement $paragraphe): string
     {
@@ -2224,68 +2268,60 @@ final class EditionDocument
         return 'odf:' . (self::styleDeSaListe($paragraphe) ?? '');
     }
 
+
     /**
-     * Le numéro de liste que chaque entrée doit reprendre à ses voisins.
+     * La liste que tous les éléments d'une même sorte vont partager.
      *
-     * On regarde d'abord vers le haut, puis vers le bas : un élément ajouté au
-     * bout d'une liste, ou glissé au milieu, rejoint celle qui l'entoure. Un
-     * paragraphe ordinaire ne coupe pas la recherche, puisqu'il ne coupe pas
-     * la liste non plus.
+     * Word numérote par définition de liste : deux définitions côte à côte
+     * donnent deux listes, et la seconde repart à 1. Pour que l'écran et le
+     * document disent la même chose, tous les éléments d'une sorte rejoignent
+     * la première liste rencontrée — celle du premier élément du document, ce
+     * qui garde au passage son format s'il était en lettres.
      *
      * @param  array<int, array> $entrees
      * @param  array<int, DOMElement> $paragraphes
-     * @return array<int, int|string|null>  un numéro à reprendre, « garde »
-     *         pour ce qui conserve le sien, null pour ce qui attend le nôtre
+     * @return array{cibles: array<string, int>, actuels: array<int, ?int>, niveaux: array<int, int>}
      */
-    private static function voisinsWord(array $entrees, array $paragraphes, array $numsWord): array
+    private static function listeCommuneWord(array $entrees, array $paragraphes, array $numsWord): array
     {
-        // Ce que chaque entrée porte déjà : sa sorte, et son numéro s'il existe.
-        $sortes = [];
-        $numeros = [];
+        $cibles = [];
+        $actuels = [];
+        $niveaux = [];
+
         foreach ($entrees as $rang => $entree) {
             $origine = $entree['origine'] ?? null;
             $existant = $origine !== null && isset($paragraphes[$origine]) ? $paragraphes[$origine] : null;
-            $sortes[$rang] = (string) ($entree['liste'] ?? '');
+            $actuels[$rang] = null;
+            $niveaux[$rang] = 0;
 
-            $avant = $existant === null ? '' : (string) self::sorteDeListe($existant, $numsWord, []);
-            $numeros[$rang] = null;
-            if ($existant !== null && $avant !== '' && $avant === $sortes[$rang]) {
-                $numId = self::enfantWord(
-                    self::enfantWord(self::enfantWord($existant, 'pPr'), 'numPr'),
-                    'numId'
-                );
-                if ($numId !== null) {
-                    $numeros[$rang] = (int) $numId->getAttributeNS(self::NS_W, 'val');
-                }
+            if ($existant === null) {
+                continue;
+            }
+            $numPr = self::enfantWord(self::enfantWord($existant, 'pPr'), 'numPr');
+            $numId = self::enfantWord($numPr, 'numId');
+            $ilvl = self::enfantWord($numPr, 'ilvl');
+
+            if ($ilvl !== null) {
+                $niveaux[$rang] = (int) $ilvl->getAttributeNS(self::NS_W, 'val');
+            }
+            if ($numId === null) {
+                continue;
+            }
+            $actuels[$rang] = (int) $numId->getAttributeNS(self::NS_W, 'val');
+
+            /*
+             * La première liste rencontrée fait référence, à condition d'être
+             * de la sorte demandée : reprendre une numérotation pour en faire
+             * des puces n'aurait pas de sens.
+             */
+            $sorte = (string) ($entree['liste'] ?? '');
+            $sienne = $numsWord[(string) $actuels[$rang]] ?? null;
+            if ($sorte !== '' && $sienne === $sorte && $niveaux[$rang] === 0
+                && !isset($cibles[$sorte])) {
+                $cibles[$sorte] = $actuels[$rang];
             }
         }
 
-        $voisins = [];
-        foreach ($entrees as $rang => $entree) {
-            $voisins[$rang] = null;
-            if ($sortes[$rang] === '') {
-                continue;
-            }
-            if ($numeros[$rang] !== null) {
-                // Elle garde la sienne : rien à chercher, et surtout pas de
-                // définition à créer pour elle.
-                $voisins[$rang] = 'garde';
-                continue;
-            }
-            $cherche = static function (array $rangs) use ($sortes, $numeros, $rang): ?int {
-                foreach ($rangs as $autre) {
-                    if ($sortes[$autre] === $sortes[$rang] && $numeros[$autre] !== null) {
-                        return $numeros[$autre];
-                    }
-                }
-                return null;
-            };
-
-            $avant = array_reverse(array_filter(array_keys($entrees), static fn ($r) => $r < $rang));
-            $apres = array_filter(array_keys($entrees), static fn ($r) => $r > $rang);
-            $voisins[$rang] = $cherche($avant) ?? $cherche(array_values($apres));
-        }
-
-        return $voisins;
+        return ['cibles' => $cibles, 'actuels' => $actuels, 'niveaux' => $niveaux];
     }
 }

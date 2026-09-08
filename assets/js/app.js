@@ -704,11 +704,18 @@
     var renumeroterListes = function () {
       var compte = 0;
       [].slice.call(zoneParagraphes.querySelectorAll("[data-paragraphe]")).forEach(function (ligne) {
-        var numerote = ligne.getAttribute("data-liste") === "numero";
-        if (numerote) { compte++; }
-
-        ligne.setAttribute("data-numero", numerote ? String(compte) : "0");
         var zone = ligne.querySelector("[data-zone-riche]");
+        var numerote = ligne.getAttribute("data-liste") === "numero";
+
+        // Une sous-liste garde le numéro que le document lui donne : elle a sa
+        // propre suite, que l'éditeur ne sait ni montrer ni modifier.
+        if (ligne.getAttribute("data-profond") === "1") {
+          if (zone) { zone.setAttribute("data-numero", ligne.getAttribute("data-numero") || ""); }
+          return;
+        }
+
+        if (numerote) { compte++; }
+        ligne.setAttribute("data-numero", numerote ? String(compte) : "0");
         if (zone) { zone.setAttribute("data-numero", numerote ? String(compte) : ""); }
       });
     };
