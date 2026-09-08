@@ -172,7 +172,9 @@ final class DossiersController
         Session::verifierCsrf();
         $userId = Auth::id();
 
-        if (Database::valeur('SELECT id FROM dossiers WHERE id = ? AND user_id = ?', [$id, $userId]) === null) {
+        $avant = Database::one('SELECT nom, parent_id FROM dossiers WHERE id = ? AND user_id = ?',
+            [$id, $userId]);
+        if ($avant === null) {
             $this->introuvable();
         }
 
@@ -204,8 +206,23 @@ final class DossiersController
              $this->iconeValide(post('icone')), $id, $userId]
         );
 
-        Session::flash('succes', 'Dossier « ' . $nom . ' » renommé.');
-        // Renommer depuis la colonne des cours ne doit pas déporter ailleurs.
+        /*
+         * Un même formulaire sert à renommer et à déplacer : le message dit ce
+         * qui a bougé, plutôt que d'annoncer un renommage qui n'a pas eu lieu.
+         */
+        $renomme = (string) $avant['nom'] !== $nom;
+        $deplace = ($avant['parent_id'] === null ? null : (int) $avant['parent_id']) !== $parent;
+        $ou = $parent === null
+            ? 'à la racine'
+            : 'dans « ' . (string) Database::valeur('SELECT nom FROM dossiers WHERE id = ?', [$parent]) . ' »';
+
+        Session::flash('succes', match (true) {
+            $renomme && $deplace => 'Dossier « ' . $nom . ' » renommé et rangé ' . $ou . '.',
+            $deplace             => 'Dossier « ' . $nom . ' » rangé ' . $ou . '.',
+            $renomme             => 'Dossier « ' . $nom . ' » renommé.',
+            default              => 'Dossier « ' . $nom . ' » inchangé.',
+        });
+        // Modifier depuis la colonne des cours ne doit pas déporter ailleurs.
         repartir_vers('organisation/dossiers');
     }
 

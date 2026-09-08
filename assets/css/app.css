@@ -1254,8 +1254,12 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
   border: 1px solid var(--bordure-forte); border-radius: var(--rayon-s);
   background: var(--fond-carte); box-shadow: 0 6px 18px rgba(15, 23, 42, .12);
 }
-.dossier-renommer__ligne { display: flex; gap: .35rem; align-items: center; }
-.dossier-renommer__panneau input[type="text"] { flex: 1; min-width: 0; }
+.dossier-renommer__ligne { display: grid; gap: .3rem; }
+.dossier-renommer__ligne label {
+  font-size: .75rem; color: var(--texte-doux);
+}
+.dossier-renommer__panneau input[type="text"],
+.dossier-renommer__panneau select { width: 100%; }
 
 /* Créer un dossier depuis la colonne : le bouton, puis son petit formulaire. */
 .nouveau-dossier { margin-top: .6rem; }

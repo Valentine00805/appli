@@ -139,6 +139,19 @@ foreach ($dossiers as $d) {
     $dossierParId[(int) $d['id']] = $d;
     $enfantsDe[(int) ($d['parent_id'] ?? 0)][] = $d;
 }
+
+/*
+ * Un dossier ne peut être rangé ni dans lui-même, ni dans ce qui descend de
+ * lui : la branche se refermerait sur elle-même. Le serveur le refuse ; la
+ * liste, elle, ne le propose même pas.
+ */
+$descendanceDe = static function (int $id) use (&$descendanceDe, $enfantsDe): array {
+    $tous = [$id => true];
+    foreach ($enfantsDe[$id] ?? [] as $enfant) {
+        $tous += $descendanceDe((int) $enfant['id']);
+    }
+    return $tous;
+};
 ?>
 
 <div class="<?= $dossiers === [] ? '' : 'cours-vue' ?>">
@@ -171,7 +184,9 @@ foreach ($dossiers as $d) {
     </div>
 
     <?php
-    $rendreCible = function (array $d, int $profondeur) use (&$rendreCible, $parNiveau, $dossierId, $lienDossier): void {
+    $rendreCible = function (array $d, int $profondeur) use (
+        &$rendreCible, $parNiveau, $dossierId, $lienDossier, $dossiers, $descendanceDe
+    ): void {
         $enfants = $parNiveau[(int) $d['id']] ?? [];
         ?>
         <div class="dossier-rang" data-rang="<?= (int) $d['id'] ?>"
@@ -205,23 +220,36 @@ foreach ($dossiers as $d) {
            */
           ?>
           <details class="dossier-renommer">
-            <summary title="Renommer « <?= e($d['nom']) ?> »">
+            <summary title="Renommer, déplacer ou supprimer « <?= e($d['nom']) ?> »">
               <span aria-hidden="true">✎</span>
-              <span class="sr-only">Renommer <?= e($d['nom']) ?></span>
+              <span class="sr-only">Modifier <?= e($d['nom']) ?></span>
             </summary>
             <div class="dossier-renommer__panneau">
               <form class="dossier-renommer__ligne" method="post"
                     action="<?= url('dossiers/' . (int) $d['id'] . '/modifier') ?>">
                 <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
                 <input type="hidden" name="retour" value="<?= e((string) ($_SERVER['REQUEST_URI'] ?? '')) ?>">
-                <input type="hidden" name="parent_id"
-                       value="<?= $d['parent_id'] === null ? '' : (int) $d['parent_id'] ?>">
                 <input type="hidden" name="couleur" value="<?= e($d['couleur']) ?>">
                 <input type="hidden" name="icone" value="<?= e($d['icone']) ?>">
-                <label class="sr-only" for="renommer-<?= (int) $d['id'] ?>">Nouveau nom</label>
+
+                <label class="sr-only" for="renommer-<?= (int) $d['id'] ?>">Nom du dossier</label>
                 <input type="text" id="renommer-<?= (int) $d['id'] ?>" name="nom"
                        value="<?= e($d['nom']) ?>" maxlength="120" required>
-                <button class="bouton bouton--petit" type="submit">Renommer</button>
+
+                <?php $siens = $descendanceDe((int) $d['id']); ?>
+                <label for="ranger-<?= (int) $d['id'] ?>">Ranger dans</label>
+                <select id="ranger-<?= (int) $d['id'] ?>" name="parent_id">
+                  <option value="">— À la racine</option>
+                  <?php foreach ($dossiers as $ailleurs): ?>
+                    <?php if (isset($siens[(int) $ailleurs['id']])) { continue; } ?>
+                    <option value="<?= (int) $ailleurs['id'] ?>"<?=
+                        (int) ($d['parent_id'] ?? 0) === (int) $ailleurs['id'] ? ' selected' : '' ?>>
+                      <?= retrait_dossier($ailleurs) ?><?= e($ailleurs['nom']) ?>
+                    </option>
+                  <?php endforeach; ?>
+                </select>
+
+                <button class="bouton bouton--petit bouton--bloc" type="submit">Enregistrer</button>
               </form>
 
               <?php
