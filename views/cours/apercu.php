@@ -160,7 +160,8 @@
   }
   ?>
   <?php if ($sommaire > 0 && $plan !== []): ?>
-    <nav class="carte apercu-sommaire" aria-labelledby="apercu-sommaire-titre">
+    <nav class="carte apercu-sommaire" aria-labelledby="apercu-sommaire-titre"
+         data-apercu-sommaire>
       <h2 id="apercu-sommaire-titre" class="apercu-sommaire__titre">Sommaire</h2>
       <ul class="apercu-sommaire__liste">
         <?php foreach ($plan as $rang => $entree): ?>

@@ -12,6 +12,63 @@
     });
   }
 
+  /*
+   * Réserver la hauteur de l'en-tête pour les liens qui mènent à une ancre.
+   *
+   * L'en-tête reste collé en haut de la page, et un saut d'ancre pose sa
+   * cible à zéro pixel du haut : elle se retrouve dessous, invisible. La
+   * feuille de style en réserve une hauteur par défaut, mais l'en-tête n'a
+   * pas toujours la même : passé une certaine largeur, la barre de
+   * navigation passe à la ligne et il triple de hauteur. On le mesure donc,
+   * et on tient le réglage à jour quand la fenêtre change de taille.
+   */
+  var sousLentete = function () {
+    var entete = document.querySelector('.entete');
+    if (!entete || getComputedStyle(entete).position !== 'sticky') { return 20; }
+
+    return Math.round(entete.getBoundingClientRect().height) + 20;
+  };
+  var reserverLentete = function () {
+    document.documentElement.style.scrollPaddingTop = sousLentete() + 'px';
+  };
+  reserverLentete();
+  window.addEventListener('resize', reserverLentete);
+
+  /*
+   * Le sommaire de l'aperçu : amener le titre visé juste sous l'en-tête.
+   *
+   * Le saut du navigateur suffirait, maintenant qu'il sait quelle hauteur
+   * réserver ; on le refait tout de même à la main, pour que le titre se
+   * pose au même endroit quel que soit le navigateur.
+   */
+  var sommaireApercu = document.querySelector('[data-apercu-sommaire]');
+  if (sommaireApercu) {
+    sommaireApercu.addEventListener('click', function (evenement) {
+      var lien = evenement.target.closest && evenement.target.closest('a[href^="#"]');
+      if (!lien) { return; }
+
+      var nom = decodeURIComponent(lien.getAttribute('href').slice(1));
+      var titre = document.getElementById(nom);
+      if (!titre) { return; }
+
+      evenement.preventDefault();
+
+      // Où s'arrêter, mesuré avant de bouger : une position dans la page,
+      // que le saut du navigateur ne changera pas.
+      var haut = Math.max(0, Math.round(
+        titre.getBoundingClientRect().top + window.pageYOffset - sousLentete()
+      ));
+
+      /*
+       * L'ancre est posée dans l'adresse, et non par « pushState » : c'est
+       * elle qui marque le titre visé, et tous les navigateurs ne relisent
+       * pas la marque quand l'adresse change sans saut.
+       */
+      window.location.hash = nom;
+      window.scrollTo(0, haut);
+    });
+  }
+
   // Confirmation avant les suppressions
   document.addEventListener('submit', function (evenement) {
     var formulaire = evenement.target;
