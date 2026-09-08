@@ -1278,10 +1278,14 @@ final class CoursController
             $params[] = $tagId;
         }
         if ($dossierId !== null) {
-            // Ouvrir un dossier montre aussi ce que contiennent ses sous-dossiers.
-            $branche = DossiersController::avecDescendants($userId, $dossierId);
-            $sql .= ' AND c.dossier_id IN (' . implode(',', array_fill(0, count($branche), '?')) . ')';
-            array_push($params, ...$branche);
+            /*
+             * Un dossier ne montre que ce qu'il tient lui-même. Ce que ses
+             * sous-dossiers contiennent s'y trouve, pas ici : on descend en
+             * les ouvrant, comme dans un explorateur de fichiers. Le compte
+             * annoncé à côté de chaque dossier est ainsi celui qu'on y verra.
+             */
+            $sql .= ' AND c.dossier_id = ?';
+            $params[] = $dossierId;
         }
         if ($favoris) {
             $sql .= ' AND c.favori = 1';
