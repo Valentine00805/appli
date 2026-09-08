@@ -178,6 +178,37 @@ foreach ($dossiers as $d) {
             <span style="flex:1;min-width:0"><?= e($d['nom']) ?></span>
             <span class="dossier-cible__compte"><?= (int) $d['nb_cours'] ?></span>
           </a>
+
+          <?php
+          /*
+           * Renommer sur place. Le formulaire renvoie aussi le parent, la
+           * couleur et l'icône : la mise à jour réécrit toute la ligne, et ce
+           * qu'on ne lui redonne pas serait perdu — le dossier remonterait à
+           * la racine avec les couleurs d'origine.
+           *
+           * Un « details » plutôt qu'un script : le champ s'ouvre et se ferme
+           * sans JavaScript, comme partout ailleurs dans l'application.
+           */
+          ?>
+          <details class="dossier-renommer">
+            <summary title="Renommer « <?= e($d['nom']) ?> »">
+              <span aria-hidden="true">✎</span>
+              <span class="sr-only">Renommer <?= e($d['nom']) ?></span>
+            </summary>
+            <form class="dossier-renommer__panneau" method="post"
+                  action="<?= url('dossiers/' . (int) $d['id'] . '/modifier') ?>">
+              <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
+              <input type="hidden" name="retour" value="<?= e((string) ($_SERVER['REQUEST_URI'] ?? '')) ?>">
+              <input type="hidden" name="parent_id"
+                     value="<?= $d['parent_id'] === null ? '' : (int) $d['parent_id'] ?>">
+              <input type="hidden" name="couleur" value="<?= e($d['couleur']) ?>">
+              <input type="hidden" name="icone" value="<?= e($d['icone']) ?>">
+              <label class="sr-only" for="renommer-<?= (int) $d['id'] ?>">Nouveau nom</label>
+              <input type="text" id="renommer-<?= (int) $d['id'] ?>" name="nom"
+                     value="<?= e($d['nom']) ?>" maxlength="120" required>
+              <button class="bouton bouton--petit" type="submit">Renommer</button>
+            </form>
+          </details>
         </div>
         <?php
         foreach ($enfants as $enfant) {

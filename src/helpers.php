@@ -507,6 +507,30 @@ function asset(string $chemin): string
     return url($chemin) . '?v=' . (is_file($absolu) ? (string) filemtime($absolu) : '0');
 }
 
+/**
+ * Repart vers la page d'où venait l'envoi, ou vers une page par défaut.
+ *
+ * L'adresse de retour vient du formulaire, donc de l'extérieur : on n'accepte
+ * qu'un chemin de cette application — pas d'adresse absolue, pas de double
+ * barre qui mènerait ailleurs, pas de saut de ligne qui glisserait un en-tête.
+ */
+function repartir_vers(string $defaut): never
+{
+    $retour = $_POST['retour'] ?? '';
+
+    if (is_string($retour) && $retour !== ''
+        && $retour[0] === '/'
+        && !str_starts_with($retour, '//')
+        && !preg_match('/[\r\n]/', $retour)
+        && (BASE_URL === '' || str_starts_with($retour, BASE_URL . '/'))
+    ) {
+        header('Location: ' . $retour);
+        exit;
+    }
+
+    redirect($defaut);
+}
+
 /** Emoji proposés pour un dossier de cours. */
 function icones_dossiers(): array
 {

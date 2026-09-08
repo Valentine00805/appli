@@ -203,8 +203,9 @@ final class DossiersController
              $this->iconeValide(post('icone')), $id, $userId]
         );
 
-        Session::flash('succes', 'Dossier mis à jour.');
-        redirect('organisation/dossiers');
+        Session::flash('succes', 'Dossier « ' . $nom . ' » renommé.');
+        // Renommer depuis la colonne des cours ne doit pas déporter ailleurs.
+        repartir_vers('organisation/dossiers');
     }
 
     public function supprimer(int $id): void

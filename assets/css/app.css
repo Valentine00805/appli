@@ -1232,6 +1232,35 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
 .dossier-plier:hover { background: var(--fond-carte); color: var(--texte); }
 .dossier-plier--vide { cursor: default; }
 
+/* Le crayon reste discret, et se montre quand on passe sur la ligne. */
+.dossier-renommer { position: relative; flex: none; }
+.dossier-renommer > summary {
+  list-style: none; cursor: pointer;
+  width: 1.35rem; height: 1.35rem; border-radius: 3px;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: .8rem; color: var(--texte-doux); opacity: 0;
+}
+.dossier-renommer > summary::-webkit-details-marker { display: none; }
+.dossier-renommer > summary::marker { content: ""; }
+.dossier-rang:hover .dossier-renommer > summary,
+.dossier-renommer > summary:focus-visible,
+.dossier-renommer[open] > summary { opacity: 1; }
+.dossier-renommer > summary:hover { background: var(--fond-carte); color: var(--texte); }
+
+.dossier-renommer__panneau {
+  position: absolute; right: 0; top: calc(100% + .25rem); z-index: 20;
+  display: flex; gap: .35rem; align-items: center;
+  padding: .5rem; width: 16rem;
+  border: 1px solid var(--bordure-forte); border-radius: var(--rayon-s);
+  background: var(--fond-carte); box-shadow: 0 6px 18px rgba(15, 23, 42, .12);
+}
+.dossier-renommer__panneau input[type="text"] { flex: 1; min-width: 0; }
+
+/* Sur un écran tactile, le survol n'existe pas : le crayon reste visible. */
+@media (hover: none) {
+  .dossier-renommer > summary { opacity: .55; }
+}
+
 .dossier-cible {
   display: flex; align-items: center; gap: .5rem;
   padding: .4rem .7rem; border-radius: var(--rayon-s);

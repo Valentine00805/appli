@@ -903,7 +903,7 @@ final class CoursController
 
         if (!is_array($noms) || $noms === []) {
             Session::flash('erreur', 'Aucun fichier reçu.');
-            $this->repartirVers('cours');
+            repartir_vers('cours');
         }
 
         $crees = 0;
@@ -954,7 +954,7 @@ final class CoursController
                 : $crees . ' cours créés' . $ou . ', un par fichier.');
         }
 
-        $this->repartirVers('cours');
+        repartir_vers('cours');
     }
 
     /**
@@ -1026,26 +1026,10 @@ final class CoursController
             ? '« ' . $cours['titre'] . ' » ne fait plus partie d’un dossier.'
             : '« ' . $cours['titre'] . ' » rangé dans « ' . $nom . ' ».');
 
-        $this->repartirVers('cours');
+        repartir_vers('cours');
     }
 
     /** Ne suit qu'une adresse interne, comme ailleurs dans l'application. */
-    private function repartirVers(string $defaut): never
-    {
-        $retour = $_POST['retour'] ?? '';
-
-        if (is_string($retour) && $retour !== ''
-            && $retour[0] === '/'
-            && !str_starts_with($retour, '//')
-            && !preg_match('/[\r\n]/', $retour)
-            && (BASE_URL === '' || str_starts_with($retour, BASE_URL . '/'))
-        ) {
-            header('Location: ' . $retour);
-            exit;
-        }
-
-        redirect($defaut);
-    }
 
     public function creer(): void
     {
