@@ -1266,6 +1266,11 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
 .dossier-renommer__panneau input[type="text"],
 .dossier-renommer__panneau select { width: 100%; }
 
+/* La marche à suivre chez Microsoft : une liste numérotée ordinaire. */
+.outlook-marche { margin: .6rem 0 .8rem; padding-left: 1.4rem; line-height: 1.7; }
+.outlook-marche li { margin-bottom: .35rem; }
+.outlook-retour { display: inline-block; margin-top: .2rem; overflow-wrap: anywhere; }
+
 /* Créer un dossier depuis la colonne : le bouton, puis son petit formulaire. */
 .nouveau-dossier { margin-top: .6rem; }
 .nouveau-dossier > summary { list-style: none; text-align: center; }

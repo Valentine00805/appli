@@ -66,6 +66,7 @@ $puce = static function (array $evt) use ($destination): string {
     <p>Vos évènements et les échéances de vos tâches, au même endroit.</p>
   </div>
   <div class="actions">
+    <a class="bouton bouton--secondaire" href="<?= url('outlook') ?>">📆 Outlook</a>
     <a class="bouton bouton--secondaire" href="<?= url('organisation/types') ?>">Gérer les types</a>
     <a class="bouton" href="<?= url('evenements/nouveau') ?>">+ Évènement</a>
   </div>

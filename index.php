@@ -35,6 +35,7 @@ require __DIR__ . '/src/ClasseurLecteur.php';
 require __DIR__ . '/src/ReleveExcel.php';
 require __DIR__ . '/src/TextePdf.php';
 require __DIR__ . '/src/GenerateurCartes.php';
+require __DIR__ . '/src/Outlook.php';
 require __DIR__ . '/src/Requete.php';
 require __DIR__ . '/src/helpers.php';
 require __DIR__ . '/src/Vue.php';
@@ -49,6 +50,7 @@ require __DIR__ . '/controllers/TagsController.php';
 require __DIR__ . '/controllers/OrganisationController.php';
 require __DIR__ . '/controllers/BudgetController.php';
 require __DIR__ . '/controllers/PrevisionsController.php';
+require __DIR__ . '/controllers/OutlookController.php';
 require __DIR__ . '/controllers/ImportController.php';
 require __DIR__ . '/controllers/RemboursementsController.php';
 require __DIR__ . '/controllers/SauvegardeController.php';
@@ -124,6 +126,12 @@ $routes = [
     ['POST', 'deconnexion',               [AuthController::class, 'deconnecter']],
     ['GET',  'compte',                    [AuthController::class, 'compte']],
     ['POST', 'compte/mot-de-passe',       [AuthController::class, 'changerMotDePasse']],
+    ['GET',  'outlook',                    [OutlookController::class, 'index']],
+    ['POST', 'outlook/enregistrer',        [OutlookController::class, 'enregistrer']],
+    ['POST', 'outlook/connexion',          [OutlookController::class, 'connexion']],
+    ['GET',  'outlook/retour',             [OutlookController::class, 'retour']],
+    ['POST', 'outlook/deconnexion',        [OutlookController::class, 'deconnexion']],
+
     ['GET',  'compte/sauvegarde',           [SauvegardeController::class, 'index']],
     ['GET',  'compte/sauvegarde/export',    [SauvegardeController::class, 'exporter']],
     ['POST', 'compte/sauvegarde/restaurer', [SauvegardeController::class, 'restaurer']],

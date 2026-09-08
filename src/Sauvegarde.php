@@ -26,6 +26,12 @@ final class Sauvegarde
      * Pour chacune : comment retrouver les lignes du compte, et quelles
      * colonnes pointent vers une autre table.
      */
+    /*
+     * « outlook_comptes » et « outlook_liens » ne figurent pas ici, et c'est
+     * voulu : la première garde des jetons qui ouvrent l'agenda Microsoft du
+     * compte relié, et une archive se partage ou se dépose n'importe où. La
+     * seconde ne dit rien sans la première.
+     */
     private const TABLES = [
         'matieres'          => ['portee' => 'user',  'liens' => []],
         'dossiers'          => ['portee' => 'user',  'liens' => ['parent_id' => 'dossiers']],
