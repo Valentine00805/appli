@@ -636,6 +636,92 @@
       return zoneChoisie;
     };
 
+    /**
+     * Ouvre le paragraphe suivant, à partir du curseur.
+     *
+     * Sur un élément de liste resté vide, Entrée sort de la liste plutôt que
+     * d'en ajouter un de plus : c'est ainsi qu'on la termine sans avoir à
+     * chercher un bouton.
+     */
+    var alaLigne = function (ligne, zone) {
+      var sorte = ligne.getAttribute("data-liste") || "";
+      if (sorte !== "" && zone.textContent.trim() === "") {
+        marquerLaLigne(ligne, "");
+        return;
+      }
+      if (!modeleParagraphe || !modeleParagraphe.content) { return; }
+
+      // Ce qui suit le curseur s'en va dans le paragraphe qui s'ouvre.
+      var reste = null;
+      var selection = document.getSelection();
+      if (selection && selection.rangeCount > 0) {
+        var coupe = selection.getRangeAt(0);
+        var apres = coupe.cloneRange();
+        apres.selectNodeContents(zone);
+        apres.setStart(coupe.endContainer, coupe.endOffset);
+        reste = apres.extractContents();
+      }
+
+      var suivante = modeleParagraphe.content.firstElementChild.cloneNode(true);
+      suivante.setAttribute("data-liste", sorte);
+      suivante.setAttribute("data-aligne", ligne.getAttribute("data-aligne") || "");
+      ligne.parentNode.insertBefore(suivante, ligne.nextSibling);
+
+      var champListe = suivante.querySelector("input[name='liste[]']");
+      var champAligne = suivante.querySelector("input[name='alignement[]']");
+      if (champListe) { champListe.value = sorte; }
+      if (champAligne) { champAligne.value = ligne.getAttribute("data-aligne") || ""; }
+
+      enrichir(suivante);
+      renumeroter();
+
+      var neuve = suivante.querySelector("[data-zone-riche]");
+      var champTexte = suivante.querySelector("textarea");
+      if (!neuve) { return; }
+      if (reste !== null) { neuve.appendChild(reste); }
+      if (champTexte) { champTexte.value = neuve.innerHTML; }
+      var ancien = ligne.querySelector("textarea");
+      if (ancien) { ancien.value = zone.innerHTML; }
+
+      neuve.focus();
+      var debut = document.createRange();
+      debut.selectNodeContents(neuve);
+      debut.collapse(true);
+      var choix = document.getSelection();
+      choix.removeAllRanges();
+      choix.addRange(debut);
+    };
+
+    /** Met, change ou retire la sorte de liste d'un paragraphe. */
+    var marquerLaLigne = function (ligne, sorte) {
+      var champ = ligne.querySelector("input[name='liste[]']");
+      if (!champ) { return; }
+      ligne.setAttribute("data-liste", sorte);
+      champ.value = sorte;
+    };
+
+    /** Le curseur est-il au tout début de la zone, sans rien de sélectionné ? */
+    var auDebutDe = function (zone) {
+      var selection = document.getSelection();
+      if (!selection || selection.rangeCount === 0 || !selection.isCollapsed) { return false; }
+
+      var avant = selection.getRangeAt(0).cloneRange();
+      avant.selectNodeContents(zone);
+      avant.setEnd(selection.getRangeAt(0).startContainer, selection.getRangeAt(0).startOffset);
+
+      return avant.toString() === "";
+    };
+
+    /**
+     * Ce que la frappe transforme d'elle-même en liste, comme un traitement de
+     * texte : « 1. » ou « 1) » ouvrent une numérotation, « - » et « * » une
+     * suite de puces. La marque tapée disparaît, c'est la liste qui la porte.
+     */
+    var DEBUTS = [
+      { motif: /^1[.)]\s$/, sorte: "numero" },
+      { motif: /^[-*]\s$/,  sorte: "puce" },
+    ];
+
     var enrichir = function (ligne) {
       var champ = ligne.querySelector("textarea");
       if (!champ || ligne.querySelector("[data-zone-riche]")) { return; }
@@ -665,10 +751,42 @@
       synchroniser();
       zone.addEventListener("input", synchroniser);
       zone.addEventListener("focus", function () { zoneChoisie = zone; });
-      // Entrée ne doit pas glisser un saut de ligne au milieu d'un paragraphe :
-      // ici, une zone vaut un paragraphe.
+
+      zone.addEventListener("input", function () {
+        if (ligne.getAttribute("data-liste")) { return; }
+        for (var i = 0; i < DEBUTS.length; i++) {
+          if (DEBUTS[i].motif.test(zone.textContent)) {
+            zone.textContent = "";
+            marquerLaLigne(ligne, DEBUTS[i].sorte);
+            synchroniser();
+            zone.focus();
+            return;
+          }
+        }
+      });
+
       zone.addEventListener("keydown", function (evenement) {
-        if (evenement.key === "Enter") { evenement.preventDefault(); }
+        /*
+         * Entrée ouvre le paragraphe suivant : ici, une zone vaut un
+         * paragraphe, et un saut de ligne au milieu n'aurait pas de sens. Le
+         * nouveau reprend la liste et l'alignement du précédent — c'est ce qui
+         * fait qu'une numérotation se poursuit toute seule.
+         */
+        if (evenement.key === "Enter") {
+          evenement.preventDefault();
+          alaLigne(ligne, zone);
+          return;
+        }
+
+        // Revenir en arrière au tout début sort de la liste : c'est le geste
+        // qui défait ce que « 1. » vient de faire.
+        if (evenement.key === "Backspace"
+          && ligne.getAttribute("data-liste")
+          && auDebutDe(zone)
+        ) {
+          evenement.preventDefault();
+          marquerLaLigne(ligne, "");
+        }
       });
       // Un collage apporterait la mise en forme du site d'origine, polices et
       // couleurs comprises : on ne garde que le texte.
@@ -855,13 +973,10 @@
           if (zone === null) { return; }
 
           var ligne = zone.closest("[data-paragraphe]");
-          var champ = ligne ? ligne.querySelector("input[name='liste[]']") : null;
-          if (!ligne || !champ) { return; }
+          if (!ligne) { return; }
 
           var sorte = bouton.getAttribute("data-liste");
-          var pose = ligne.getAttribute("data-liste") !== sorte ? sorte : "";
-          ligne.setAttribute("data-liste", pose);
-          champ.value = pose;
+          marquerLaLigne(ligne, ligne.getAttribute("data-liste") !== sorte ? sorte : "");
         });
       });
 
