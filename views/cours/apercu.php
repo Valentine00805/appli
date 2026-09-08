@@ -42,8 +42,8 @@
       <strong>Contenu du fichier</strong>, tel qu'il est enregistré.
     <?php elseif ($enrichis !== []): ?>
       <strong>Aperçu du texte.</strong> Le gras, l'italique, le souligné, la taille,
-      la couleur et le surlignage sont rendus ; les images, les tableaux et la
-      pagination ne le sont pas — un navigateur ne sait pas afficher un
+      la couleur, le surlignage et l'alignement sont rendus ; les images, les
+      tableaux et la pagination ne le sont pas — un navigateur ne sait pas afficher un
       <?= e($format) ?>. Téléchargez le fichier pour l'ouvrir tel quel dans Word
       ou LibreOffice.
     <?php else: ?>
@@ -148,7 +148,13 @@
      */
     ?>
     <?php foreach ($paragraphes as $rang => $paragraphe): ?>
-      <p><?= $enrichis[$rang] ?? e($paragraphe) ?></p>
+      <?php
+      $riche = $enrichis[$rang] ?? null;
+      $aligne = ['gauche' => 'left', 'centre' => 'center',
+                 'droite' => 'right', 'justifie' => 'justify'][$riche['alignement'] ?? ''] ?? null;
+      ?>
+      <p<?= $aligne === null ? '' : ' style="text-align:' . $aligne . '"' ?>><?=
+          $riche === null ? e($paragraphe) : $riche['html'] ?></p>
     <?php endforeach; ?>
   </article>
   <p class="champ__aide" style="margin-top:.6rem">

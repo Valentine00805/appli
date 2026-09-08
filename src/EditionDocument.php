@@ -60,6 +60,37 @@ final class EditionDocument
         'FFFF00' => 'yellow',
     ];
 
+    /**
+     * Les alignements, du nom que l'application leur donne à ceux des formats.
+     *
+     * « justifie » ne se choisit pas dans la barre d'outils, mais se lit et se
+     * réécrit : un paragraphe déjà justifié dans le document ne doit pas perdre
+     * sa justification en passant par ici.
+     */
+    private const ALIGNEMENTS = [
+        'gauche'   => ['both' => 'left',   'odf' => 'start'],
+        'centre'   => ['both' => 'center', 'odf' => 'center'],
+        'droite'   => ['both' => 'right',  'odf' => 'end'],
+        'justifie' => ['both' => 'both',   'odf' => 'justify'],
+    ];
+
+    /**
+     * L'ordre imposé aux enfants de <w:pPr>, autour de <w:jc>.
+     *
+     * Même règle que pour <w:rPr> : Word tolère le désordre, le schéma non.
+     */
+    private const ORDRE_PPR = [
+        'pStyle' => 0, 'keepNext' => 1, 'keepLines' => 2, 'pageBreakBefore' => 3,
+        'framePr' => 4, 'widowControl' => 5, 'numPr' => 6, 'suppressLineNumbers' => 7,
+        'pBdr' => 8, 'shd' => 9, 'tabs' => 10, 'suppressAutoHyphens' => 11,
+        'kinsoku' => 12, 'wordWrap' => 13, 'overflowPunct' => 14, 'topLinePunct' => 15,
+        'autoSpaceDE' => 16, 'autoSpaceDN' => 17, 'bidi' => 18, 'adjustRightInd' => 19,
+        'snapToGrid' => 20, 'spacing' => 21, 'ind' => 22, 'contextualSpacing' => 23,
+        'mirrorIndents' => 24, 'suppressOverlap' => 25, 'jc' => 26, 'textDirection' => 27,
+        'textAlignment' => 28, 'textboxTightWrap' => 29, 'outlineLvl' => 30,
+        'divId' => 31, 'cnfStyle' => 32, 'rPr' => 33, 'sectPr' => 34, 'pPrChange' => 35,
+    ];
+
     /** Les tailles proposées, en points. Au-delà, on quitte le « basique ». */
     public const TAILLES = [8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 32, 40];
 
@@ -115,20 +146,22 @@ final class EditionDocument
      * styles de titre — reste dans le fichier sans passer par ici, et n'est
      * donc pas perdu.
      *
-     * @return array<int, string>
+     * @return list<array{html: string, alignement: ?string}>
      * @throws RuntimeException si le fichier est illisible
      */
     public static function lireRiche(string $chemin, string $nomOrigine): array
     {
         [$doc, , $paragraphes] = self::ouvrir($chemin, $nomOrigine);
         $stylesOdf = self::stylesDeTexteOdf($doc);
+        $alignementsOdf = self::stylesDeParagrapheOdf($doc);
 
         return array_map(
-            static fn (DOMElement $p): string => self::html(
-                $p->namespaceURI === self::NS_W
+            static fn (DOMElement $p): array => [
+                'html' => self::html($p->namespaceURI === self::NS_W
                     ? self::passagesWord($p)
-                    : self::passagesOdf($p, $stylesOdf)
-            ),
+                    : self::passagesOdf($p, $stylesOdf)),
+                'alignement' => self::alignement($p, $alignementsOdf),
+            ],
             $paragraphes
         );
     }
@@ -143,13 +176,14 @@ final class EditionDocument
      * un paragraphe à la place d'un autre : celle-ci suit la règle de l'aperçu,
      * pour que les deux listes se correspondent une à une.
      *
-     * @return list<string>
+     * @return list<array{html: string, alignement: ?string}>
      * @throws RuntimeException si le fichier est illisible
      */
     public static function apercuRiche(string $chemin, string $nomOrigine): array
     {
         [$doc, , , $format] = self::ouvrir($chemin, $nomOrigine);
         $stylesOdf = self::stylesDeTexteOdf($doc);
+        $alignementsOdf = self::stylesDeParagrapheOdf($doc);
 
         $rendus = [];
         foreach ($doc->getElementsByTagName('*') as $noeud) {
@@ -162,7 +196,10 @@ final class EditionDocument
                 : self::passagesOdf($noeud, $stylesOdf));
 
             if ($passages !== []) {
-                $rendus[] = self::html($passages);
+                $rendus[] = [
+                    'html' => self::html($passages),
+                    'alignement' => self::alignement($noeud, $alignementsOdf),
+                ];
             }
         }
 
@@ -214,7 +251,7 @@ final class EditionDocument
      * formulaire envoie du texte nu, et l'ancienne règle s'applique : le
      * paragraphe garde l'allure de son premier passage.
      *
-     * @param array<int, array{origine: ?int, texte: string}> $entrees
+     * @param array<int, array{origine: ?int, texte: string, alignement?: ?string}> $entrees
      * @throws RuntimeException si le document ne peut être ni lu ni réécrit
      */
     public static function enregistrer(
@@ -257,6 +294,7 @@ final class EditionDocument
             }
 
             self::remplacerTexte($doc, $noeud, $entree['texte'], $gabarit, $riche);
+            self::alignerParagraphe($doc, $noeud, $entree['alignement'] ?? null);
             $nouveaux[] = $noeud;
             $modele = $noeud;
         }
@@ -1133,7 +1171,7 @@ final class EditionDocument
                 $trame->setAttributeNS(self::NS_W, 'w:val', 'clear');
                 $trame->setAttributeNS(self::NS_W, 'w:color', 'auto');
                 $trame->setAttributeNS(self::NS_W, 'w:fill', $passage['fond']);
-                self::rangerDansRpr($rPr, $trame);
+                self::ranger($rPr, $trame, self::ORDRE_RPR);
             }
         }
     }
@@ -1149,24 +1187,28 @@ final class EditionDocument
         if ($valeur !== null) {
             $element->setAttributeNS(self::NS_W, 'w:val', $valeur);
         }
-        self::rangerDansRpr($rPr, $element);
+        self::ranger($rPr, $element, self::ORDRE_RPR);
     }
 
-    /** Glisse un élément déjà bâti à la place que le schéma lui réserve. */
-    private static function rangerDansRpr(DOMElement $rPr, DOMElement $element): void
+    /**
+     * Glisse un élément déjà bâti à la place que le schéma lui réserve.
+     *
+     * @param array<string, int> $ordre  la suite imposée aux enfants du parent
+     */
+    private static function ranger(DOMElement $parent, DOMElement $element, array $ordre): void
     {
-        $rang = self::ORDRE_RPR[$element->localName] ?? PHP_INT_MAX;
-        foreach ($rPr->childNodes as $enfant) {
+        $rang = $ordre[$element->localName] ?? PHP_INT_MAX;
+        foreach ($parent->childNodes as $enfant) {
             if (!$enfant instanceof DOMElement) {
                 continue;
             }
-            $sien = self::ORDRE_RPR[$enfant->localName] ?? PHP_INT_MAX;
+            $sien = $ordre[$enfant->localName] ?? PHP_INT_MAX;
             if ($sien > $rang) {
-                $rPr->insertBefore($element, $enfant);
+                $parent->insertBefore($element, $enfant);
                 return;
             }
         }
-        $rPr->appendChild($element);
+        $parent->appendChild($element);
     }
 
     /* --- Côté LibreOffice ------------------------------------------------ */
@@ -1340,5 +1382,206 @@ final class EditionDocument
         $automatiques->appendChild($style);
 
         return $nom;
+    }
+
+    /* --- L'alignement d'un paragraphe ------------------------------------ */
+
+    /**
+     * Comment ce paragraphe est aligné.
+     *
+     * @param array<string, string> $stylesOdf  les styles de paragraphe, par nom
+     * @return ?string  null quand le document n'en dit rien
+     */
+    private static function alignement(DOMElement $paragraphe, array $stylesOdf): ?string
+    {
+        if ($paragraphe->namespaceURI === self::NS_W) {
+            $pPr = self::enfantWord($paragraphe, 'pPr');
+            $jc = self::enfantWord($pPr, 'jc');
+            if ($jc === null) {
+                return null;
+            }
+            $val = $jc->getAttributeNS(self::NS_W, 'val');
+            foreach (self::ALIGNEMENTS as $nom => $formats) {
+                // « start » et « end » sont les noms récents de « left » et « right ».
+                if ($val === $formats['both']
+                    || ($val === 'start' && $nom === 'gauche')
+                    || ($val === 'end' && $nom === 'droite')) {
+                    return $nom;
+                }
+            }
+
+            return null;
+        }
+
+        $nom = $paragraphe->getAttributeNS(self::NS_TEXT, 'style-name');
+
+        return $stylesOdf[$nom] ?? null;
+    }
+
+    /**
+     * Les styles de paragraphe d'un document ODF, réduits à leur alignement.
+     *
+     * @return array<string, string>
+     */
+    private static function stylesDeParagrapheOdf(DOMDocument $doc): array
+    {
+        $styles = [];
+        foreach ($doc->getElementsByTagNameNS(self::NS_STYLE, 'style') as $style) {
+            if ($style->getAttributeNS(self::NS_STYLE, 'family') !== 'paragraph') {
+                continue;
+            }
+            $nom = $style->getAttributeNS(self::NS_STYLE, 'name');
+            $proprietes = $style->getElementsByTagNameNS(self::NS_STYLE, 'paragraph-properties')->item(0);
+            if ($nom === '' || !$proprietes instanceof DOMElement) {
+                continue;
+            }
+
+            $aligne = $proprietes->getAttributeNS(self::NS_FO, 'text-align');
+            foreach (self::ALIGNEMENTS as $cle => $formats) {
+                if ($aligne === $formats['odf']
+                    || ($aligne === 'left' && $cle === 'gauche')
+                    || ($aligne === 'right' && $cle === 'droite')) {
+                    $styles[$nom] = $cle;
+                    break;
+                }
+            }
+        }
+
+        return $styles;
+    }
+
+    /**
+     * Pose l'alignement demandé sur un paragraphe.
+     *
+     * Rien n'est écrit quand l'éditeur n'en dit rien : c'est le cas des envois
+     * sans JavaScript, et le paragraphe garde alors l'alignement qu'il avait.
+     */
+    private static function alignerParagraphe(
+        DOMDocument $doc,
+        DOMElement $paragraphe,
+        ?string $alignement
+    ): void {
+        if ($alignement === null || !isset(self::ALIGNEMENTS[$alignement])) {
+            return;
+        }
+
+        if ($paragraphe->namespaceURI === self::NS_W) {
+            self::alignerWord($doc, $paragraphe, $alignement);
+            return;
+        }
+        self::alignerOdf($doc, $paragraphe, $alignement);
+    }
+
+    private static function alignerWord(
+        DOMDocument $doc,
+        DOMElement $paragraphe,
+        string $alignement
+    ): void {
+        $pPr = self::enfantWord($paragraphe, 'pPr');
+        if ($pPr === null) {
+            // <w:pPr> ouvre toujours le paragraphe : le schéma l'exige avant
+            // le moindre passage.
+            $pPr = $doc->createElementNS(self::NS_W, 'w:pPr');
+            $paragraphe->insertBefore($pPr, $paragraphe->firstChild);
+        }
+
+        $ancien = self::enfantWord($pPr, 'jc');
+        if ($ancien !== null) {
+            $pPr->removeChild($ancien);
+        }
+
+        $jc = $doc->createElementNS(self::NS_W, 'w:jc');
+        $jc->setAttributeNS(self::NS_W, 'w:val', self::ALIGNEMENTS[$alignement]['both']);
+        self::ranger($pPr, $jc, self::ORDRE_PPR);
+    }
+
+    /**
+     * Aligne un paragraphe ODF, sans lui faire perdre son style.
+     *
+     * Le style qu'il porte décrit aussi ses marges, son interligne, sa police :
+     * on ne le remplace pas, on en fabrique une variante qui ajoute
+     * l'alignement — copie du style automatique s'il en avait un, sinon
+     * héritage du style commun qu'il nommait.
+     */
+    private static function alignerOdf(
+        DOMDocument $doc,
+        DOMElement $paragraphe,
+        string $alignement
+    ): void {
+        $ancien = $paragraphe->getAttributeNS(self::NS_TEXT, 'style-name');
+        $nom = 'MesCoursP_' . $alignement . ($ancien === '' ? '' : '_' . $ancien);
+
+        $existe = false;
+        foreach ($doc->getElementsByTagNameNS(self::NS_STYLE, 'style') as $style) {
+            if ($style->getAttributeNS(self::NS_STYLE, 'name') === $nom) {
+                $existe = true;
+                break;
+            }
+        }
+
+        if (!$existe) {
+            $automatiques = self::automatiquesOdf($doc);
+            if ($automatiques === null) {
+                return;
+            }
+
+            $source = null;
+            foreach ($automatiques->getElementsByTagNameNS(self::NS_STYLE, 'style') as $style) {
+                if ($style->getAttributeNS(self::NS_STYLE, 'name') === $ancien
+                    && $style->getAttributeNS(self::NS_STYLE, 'family') === 'paragraph') {
+                    $source = $style;
+                    break;
+                }
+            }
+
+            if ($source !== null) {
+                /** @var DOMElement $nouveau */
+                $nouveau = $source->cloneNode(true);
+            } else {
+                $nouveau = $doc->createElementNS(self::NS_STYLE, 'style:style');
+                $nouveau->setAttributeNS(self::NS_STYLE, 'style:family', 'paragraph');
+                if ($ancien !== '') {
+                    $nouveau->setAttributeNS(self::NS_STYLE, 'style:parent-style-name', $ancien);
+                }
+            }
+            $nouveau->setAttributeNS(self::NS_STYLE, 'style:name', $nom);
+
+            $proprietes = $nouveau->getElementsByTagNameNS(self::NS_STYLE, 'paragraph-properties')->item(0);
+            if (!$proprietes instanceof DOMElement) {
+                $proprietes = $doc->createElementNS(self::NS_STYLE, 'style:paragraph-properties');
+                $nouveau->insertBefore($proprietes, $nouveau->firstChild);
+            }
+            $proprietes->setAttributeNS(self::NS_FO, 'fo:text-align',
+                self::ALIGNEMENTS[$alignement]['odf']);
+            // Sans cela, LibreOffice aligne le texte mais laisse la dernière
+            // ligne d'un paragraphe justifié là où elle était.
+            $proprietes->setAttributeNS(self::NS_STYLE, 'style:justify-single-word', 'false');
+
+            $automatiques->appendChild($nouveau);
+        }
+
+        $paragraphe->setAttributeNS(self::NS_TEXT, 'text:style-name', $nom);
+    }
+
+    /** Le bloc des styles automatiques, créé au besoin. */
+    private static function automatiquesOdf(DOMDocument $doc): ?DOMElement
+    {
+        $automatiques = $doc->getElementsByTagNameNS(self::NS_OFFICE, 'automatic-styles')->item(0);
+        if ($automatiques instanceof DOMElement) {
+            return $automatiques;
+        }
+
+        $automatiques = $doc->createElementNS(self::NS_OFFICE, 'office:automatic-styles');
+        $corps = $doc->getElementsByTagNameNS(self::NS_OFFICE, 'body')->item(0);
+        if ($corps instanceof DOMElement && $corps->parentNode !== null) {
+            $corps->parentNode->insertBefore($automatiques, $corps);
+            return $automatiques;
+        }
+        if ($doc->documentElement !== null) {
+            $doc->documentElement->appendChild($automatiques);
+            return $automatiques;
+        }
+
+        return null;
     }
 }

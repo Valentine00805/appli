@@ -822,6 +822,27 @@
       }
 
       /*
+       * L'alignement porte sur le paragraphe entier : il suffit d'avoir le
+       * curseur dedans, sans rien sélectionner. Il ne passe pas par
+       * « execCommand », qui alignerait aussi les zones voisines si la
+       * sélection les touchait.
+       */
+      [].slice.call(barreOutils.querySelectorAll("[data-aligner]")).forEach(function (bouton) {
+        bouton.addEventListener("mousedown", function (evenement) {
+          evenement.preventDefault();
+          var zone = reprendreLaSelection();
+          if (zone === null) { return; }
+
+          var ligne = zone.closest("[data-paragraphe]");
+          var champ = ligne ? ligne.querySelector("input[name='alignement[]']") : null;
+          if (!ligne || !champ) { return; }
+
+          ligne.setAttribute("data-aligne", bouton.getAttribute("data-aligner"));
+          champ.value = bouton.getAttribute("data-aligner");
+        });
+      });
+
+      /*
        * Le surlignage suit la même mécanique que la couleur du texte : un
        * nuancier pour choisir, un bouton pour poser, un autre pour retirer.
        */

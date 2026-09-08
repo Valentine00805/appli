@@ -28,11 +28,11 @@
 <?php else: ?>
 
   <div class="flash flash--info" style="margin-bottom:1.25rem">
-    <strong>Le gras, l'italique, le souligné, la taille, la couleur et le
-    surlignage se modifient ici.</strong> Le reste de la mise en forme — styles, polices,
-    alignements, images, tableaux — reste dans le document sans passer par
-    cette page, et n'est donc pas perdu. Une copie du document d'origine est
-    gardée avant la première modification.
+    <strong>Le gras, l'italique, le souligné, la taille, la couleur, le
+    surlignage et l'alignement se modifient ici.</strong> Le reste de la mise en
+    forme — styles, polices, retraits, images, tableaux — reste dans le document
+    sans passer par cette page, et n'est donc pas perdu. Une copie du document
+    d'origine est gardée avant la première modification.
   </div>
 
   <form method="post" action="<?= url('fichiers/' . $fichier['id'] . '/modifier') ?>"
@@ -55,6 +55,23 @@
               title="Italique (Ctrl+I)"><em>I</em></button>
       <button type="button" class="barre-outils__bouton" data-commande="underline"
               title="Souligné (Ctrl+U)"><u>S</u></button>
+      <?php
+      /*
+       * L'alignement porte sur le paragraphe entier, et non sur ce qui est
+       * sélectionné : il suffit d'avoir le curseur dedans.
+       */
+      ?>
+      <span class="barre-outils__couleurs">
+        <button type="button" class="barre-outils__bouton" data-aligner="gauche"
+                title="Aligner à gauche"><span aria-hidden="true">◧</span>
+          <span class="sr-only">Aligner à gauche</span></button>
+        <button type="button" class="barre-outils__bouton" data-aligner="centre"
+                title="Centrer"><span aria-hidden="true">▣</span>
+          <span class="sr-only">Centrer</span></button>
+        <button type="button" class="barre-outils__bouton" data-aligner="droite"
+                title="Aligner à droite"><span aria-hidden="true">◨</span>
+          <span class="sr-only">Aligner à droite</span></button>
+      </span>
       <label class="barre-outils__taille">
         <span class="discret">Taille</span>
         <select data-taille-texte>
@@ -107,10 +124,14 @@
     <div class="carte">
       <div class="paragraphes" data-paragraphes>
         <?php foreach ($paragraphes as $rang => $paragraphe): ?>
+          <?php $aligne = (string) ($enrichis[$rang]['alignement'] ?? ''); ?>
           <div class="paragraphe" data-paragraphe
-               data-riche-html="<?= e($enrichis[$rang] ?? '') ?>">
+               data-riche-html="<?= e($enrichis[$rang]['html'] ?? '') ?>"
+               data-aligne="<?= e($aligne) ?>">
             <span class="paragraphe__rang" aria-hidden="true"><?= $rang + 1 ?></span>
             <input type="hidden" name="origine[]" value="<?= (int) $rang ?>">
+            <?php // Sans script, il repart tel quel : l'alignement n'est pas perdu. ?>
+            <input type="hidden" name="alignement[]" value="<?= e($aligne) ?>">
             <textarea name="texte[]" rows="1" class="paragraphe__texte"
                       aria-label="Paragraphe <?= $rang + 1 ?>"><?= e($paragraphe) ?></textarea>
             <button type="button" class="bouton bouton--discret bouton--petit"
@@ -125,6 +146,7 @@
           <div class="paragraphe">
             <span class="paragraphe__rang" aria-hidden="true">+</span>
             <input type="hidden" name="origine[]" value="">
+            <input type="hidden" name="alignement[]" value="">
             <textarea name="texte[]" rows="1" class="paragraphe__texte"
                       aria-label="Nouveau paragraphe"></textarea>
           </div>
@@ -147,9 +169,10 @@
 
   <?php // Modèle recopié par le bouton d'ajout. ?>
   <template data-modele-paragraphe>
-    <div class="paragraphe" data-paragraphe data-riche-html="">
+    <div class="paragraphe" data-paragraphe data-riche-html="" data-aligne="">
       <span class="paragraphe__rang" aria-hidden="true">+</span>
       <input type="hidden" name="origine[]" value="">
+      <input type="hidden" name="alignement[]" value="">
       <textarea name="texte[]" rows="1" class="paragraphe__texte" aria-label="Nouveau paragraphe"></textarea>
       <button type="button" class="bouton bouton--discret bouton--petit"
               data-supprimer-paragraphe title="Supprimer ce paragraphe">🗑</button>

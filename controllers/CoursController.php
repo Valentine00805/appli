@@ -1334,8 +1334,10 @@ final class CoursController
      */
     private function paragraphesSoumis(): array
     {
-        $textes   = array_values((array) ($_POST['texte'] ?? []));
-        $origines = array_values((array) ($_POST['origine'] ?? []));
+        $textes    = array_values((array) ($_POST['texte'] ?? []));
+        $origines  = array_values((array) ($_POST['origine'] ?? []));
+        $alignements = array_values((array) ($_POST['alignement'] ?? []));
+        $connus    = ['gauche', 'centre', 'droite', 'justifie'];
 
         $entrees = [];
         foreach ($textes as $rang => $texte) {
@@ -1345,6 +1347,11 @@ final class CoursController
             $reference = $origines[$rang] ?? '';
             $origine = is_numeric($reference) ? (int) $reference : null;
 
+            // Un alignement inconnu ne dit rien plutôt que n'importe quoi : le
+            // paragraphe garde alors celui du document.
+            $aligne = $alignements[$rang] ?? '';
+            $aligne = is_string($aligne) && in_array($aligne, $connus, true) ? $aligne : null;
+
             // Découpage octet par octet : les fins de ligne sont de l'ASCII,
             // et un motif Unicode échouerait en silence sur un texte mal encodé
             // — au prix d'un paragraphe vidé sans prévenir.
@@ -1353,7 +1360,7 @@ final class CoursController
                 if ($ligne === '' && $origine === null) {
                     continue;
                 }
-                $entrees[] = ['origine' => $origine, 'texte' => $ligne];
+                $entrees[] = ['origine' => $origine, 'texte' => $ligne, 'alignement' => $aligne];
             }
         }
         return $entrees;

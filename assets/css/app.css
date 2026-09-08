@@ -1349,6 +1349,12 @@ input.depot__champ {
 /* Et un passage dont on vient de retirer le surlignage. */
 .paragraphe__riche .riche-fond-auto { background: none; }
 
+/* L'alignement se voit dans la zone, comme il se verra dans le document. */
+.paragraphe[data-aligne="gauche"] .paragraphe__riche { text-align: left; }
+.paragraphe[data-aligne="centre"] .paragraphe__riche { text-align: center; }
+.paragraphe[data-aligne="droite"] .paragraphe__riche { text-align: right; }
+.paragraphe[data-aligne="justifie"] .paragraphe__riche { text-align: justify; }
+
 .paragraphe__riche:focus {
   outline: 2px solid var(--accent); outline-offset: -1px;
   border-color: var(--accent);
