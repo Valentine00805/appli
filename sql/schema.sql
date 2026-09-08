@@ -405,6 +405,7 @@ CREATE TABLE IF NOT EXISTS `outlook_comptes` (
   `delta`          TEXT         NULL,
   `synchro_le`     DATETIME     NULL,
   `envoi_le`       DATETIME     NULL,
+  `empreinte_envoi` VARCHAR(64) NULL,
   `souci`          TEXT         NULL,
   `souci_le`       DATETIME     NULL,
   `cree_le`        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,

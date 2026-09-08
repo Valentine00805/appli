@@ -90,20 +90,31 @@ final class OutlookController
          * repart sans rien faire, et c'est le serveur qui en décide.
          */
         $seul = ($_POST['seul'] ?? '') === '1';
-        if ($seul && !SynchroOutlook::aBesoinDEtreRelu($userId)) {
+        $rien = ['crees' => 0, 'majs' => 0, 'retires' => 0, 'inchanges' => 0];
+
+        /*
+         * Le bouton fait les deux sens sans discuter. La relecture de fond,
+         * elle, ne fait que ce qui sert : relire quand l'heure est venue,
+         * envoyer dès qu'il y a quelque chose à envoyer — un évènement qu'on
+         * vient de créer part ainsi tout de suite, sans attendre le tour de la
+         * lecture.
+         */
+        $lire = !$seul || SynchroOutlook::aBesoinDEtreRelu($userId);
+        $envoyer = !$seul || EnvoiOutlook::aPousser($userId);
+        if (!$lire && !$envoyer) {
             repondre_json(['fait' => false, 'change' => 0]);
         }
 
         try {
-            $bilan = SynchroOutlook::tirer($userId);
+            $bilan = $lire
+                ? SynchroOutlook::tirer($userId)
+                : ['ajoutes' => 0, 'modifies' => 0, 'retires' => 0, 'inchanges' => 0, 'occupe' => false];
             /*
-             * L'envoi ne part que si la lecture a eu lieu : sur un verrou
-             * occupé, quelqu'un d'autre fait déjà les deux, et écrire par
-             * dessus créerait les doublons que le verrou évite.
+             * L'envoi ne part que si la lecture n'a pas buté sur le verrou :
+             * quelqu'un d'autre fait alors déjà les deux, et écrire par dessus
+             * créerait les doublons que le verrou évite.
              */
-            $envoi = $bilan['occupe']
-                ? ['crees' => 0, 'majs' => 0, 'retires' => 0, 'inchanges' => 0]
-                : EnvoiOutlook::pousser($userId);
+            $envoi = ($envoyer && !$bilan['occupe']) ? EnvoiOutlook::pousser($userId) : $rien;
         } catch (Throwable $e) {
             /*
              * Noté en base, pas seulement affiché : une synchronisation de

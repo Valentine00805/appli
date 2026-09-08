@@ -98,7 +98,8 @@ $actif = static function (string $prefixe) use ($route): string {
  * page Outlook reste la voie sûre.
  */
 ?>
-<?php if (Auth::connecte() && SynchroOutlook::aBesoinDEtreRelu(Auth::id())): ?>
+<?php if (Auth::connecte()
+    && (SynchroOutlook::aBesoinDEtreRelu(Auth::id()) || EnvoiOutlook::aPousser(Auth::id()))): ?>
   <div hidden data-outlook-relire="<?= e(url('outlook/synchroniser')) ?>"
        data-csrf="<?= e(Session::jetonCsrf()) ?>"></div>
 <?php endif; ?>

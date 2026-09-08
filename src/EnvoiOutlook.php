@@ -42,10 +42,7 @@ final class EnvoiOutlook
     {
         $calendrier = self::calendrierDEnvoi($userId);
 
-        $fuseau = new DateTimeZone(self::FUSEAU);
-        $maintenant = new DateTimeImmutable('now', $fuseau);
-        $depuis = $maintenant->modify(self::AVANT)->setTime(0, 0);
-        $jusqua = $maintenant->modify(self::APRES)->setTime(23, 59, 59);
+        [$depuis, $jusqua] = self::fenetre();
 
         $aEnvoyer = self::aEnvoyer($userId, $depuis, $jusqua);
         $partis = self::partis($userId);
@@ -80,9 +77,83 @@ final class EnvoiOutlook
             $bilan['retires']++;
         }
 
-        Database::run('UPDATE outlook_comptes SET envoi_le = NOW() WHERE user_id = ?', [$userId]);
+        Database::run(
+            'UPDATE outlook_comptes SET envoi_le = NOW(), empreinte_envoi = ? WHERE user_id = ?',
+            [self::signature($userId), $userId]
+        );
 
         return $bilan;
+    }
+
+    /** La période envoyée : la même partout, sans quoi rien ne concorderait. */
+    private static function fenetre(): array
+    {
+        $maintenant = new DateTimeImmutable('now', new DateTimeZone(self::FUSEAU));
+
+        return [
+            $maintenant->modify(self::AVANT)->setTime(0, 0),
+            $maintenant->modify(self::APRES)->setTime(23, 59, 59),
+        ];
+    }
+
+    /**
+     * Y a-t-il quelque chose de neuf à porter là-bas ?
+     *
+     * Un drapeau posé à chaque création d'évènement ou de tâche aurait obligé
+     * à toucher tous les contrôleurs qui les écrivent, et à n'en oublier aucun
+     * — ni aujourd'hui, ni dans six mois. On constate l'écart plutôt que de
+     * le faire déclarer : une empreinte de ce qui devrait être là-bas,
+     * comparée à celle du dernier envoi.
+     *
+     * Deux agrégats sur des index existants : c'est assez léger pour être
+     * demandé à chaque page.
+     */
+    public static function aPousser(int $userId): bool
+    {
+        if (!Outlook::configuree() || !Outlook::relie($userId)) {
+            return false;
+        }
+
+        $connue = Database::valeur(
+            'SELECT empreinte_envoi FROM outlook_comptes WHERE user_id = ?', [$userId]);
+
+        return (string) $connue !== self::signature($userId);
+    }
+
+    /**
+     * Une empreinte de tout ce qui devrait se trouver dans Outlook.
+     *
+     * Le compte et la somme suffisent : ce n'est qu'un signal — au pire on
+     * envoie pour rien, ou l'on attend cinq minutes de plus. Le vrai travail
+     * de comparaison reste celui de « pousser », ligne par ligne.
+     */
+    private static function signature(int $userId): string
+    {
+        [$depuis, $jusqua] = self::fenetre();
+
+        $evts = Database::one(
+            'SELECT COUNT(*) AS n, COALESCE(SUM(CRC32(CONCAT_WS("|",
+                        e.id, e.titre, COALESCE(e.description, ""), COALESCE(e.lieu, ""),
+                        e.debut, e.fin, e.journee_entiere))), 0) AS s
+               FROM evenements e
+               LEFT JOIN outlook_liens l ON l.evenement_id = e.id AND l.user_id = e.user_id
+              WHERE e.user_id = ? AND l.id IS NULL AND e.debut BETWEEN ? AND ?',
+            [$userId, $depuis->format('Y-m-d H:i:s'), $jusqua->format('Y-m-d H:i:s')]
+        );
+
+        $taches = Database::one(
+            'SELECT COUNT(*) AS n, COALESCE(SUM(CRC32(CONCAT_WS("|",
+                        t.id, t.titre, COALESCE(t.note, ""), t.echeance, l.nom))), 0) AS s
+               FROM taches t
+               JOIN listes_taches l ON l.id = t.liste_id
+              WHERE t.user_id = ? AND t.faite = 0 AND t.echeance BETWEEN ? AND ?',
+            [$userId, $depuis->format('Y-m-d'), $jusqua->format('Y-m-d')]
+        );
+
+        return implode(':', [
+            (int) ($evts['n'] ?? 0), (int) ($evts['s'] ?? 0),
+            (int) ($taches['n'] ?? 0), (int) ($taches['s'] ?? 0),
+        ]);
     }
 
     /** La date du dernier envoi, ou null s'il n'y en a jamais eu. */
@@ -127,7 +198,8 @@ final class EnvoiOutlook
             $retires++;
         }
 
-        Database::run('UPDATE outlook_comptes SET envoi_le = NULL WHERE user_id = ?', [$userId]);
+        Database::run('UPDATE outlook_comptes SET envoi_le = NULL, empreinte_envoi = NULL
+                       WHERE user_id = ?', [$userId]);
 
         return $retires;
     }
