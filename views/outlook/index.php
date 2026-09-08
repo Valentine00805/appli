@@ -21,6 +21,21 @@
   </div>
 </div>
 
+<?php
+/*
+ * Un calendrier partagé qu'on a coché mais qu'on n'a pas le droit de lire :
+ * c'est la seule situation où la page doit insister. Cocher une case et ne
+ * rien voir venir, sans que rien ne l'explique, est la pire des réponses.
+ */
+$partagesEnAttente = 0;
+foreach (($calendriers ?? []) as $unCal) {
+    if ((int) $unCal['suivi'] === 1 && (int) $unCal['partage'] === 1) {
+        $partagesEnAttente++;
+    }
+}
+$aReautoriser = !($partage ?? true) && $partagesEnAttente > 0;
+?>
+
 <?php if (!$configuree): ?>
   <?php
   /*
@@ -57,6 +72,15 @@
               <?= $combien === 0 ? 'aucun évènement suivi' : $combien . ' évènement' . ($combien > 1 ? 's' : '') . ' suivi' . ($combien > 1 ? 's' : '') ?>.
             <?php endif; ?>
           </p>
+          <?php if ($aReautoriser): ?>
+            <p class="outlook-attention">
+              <strong>La lecture échouera en l'état.</strong>
+              Vous suivez <?= $partagesEnAttente ?> calendrier<?= $partagesEnAttente > 1 ? 's' : '' ?>
+              partagé<?= $partagesEnAttente > 1 ? 's' : '' ?> par quelqu'un d'autre, et votre
+              autorisation ne les couvre pas encore. Réautorisez l'application
+              d'abord — le bouton est plus bas, dans « Les calendriers à lire ».
+            </p>
+          <?php endif; ?>
           <form method="post" action="<?= url('outlook/synchroniser') ?>">
             <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
             <button class="bouton" type="submit">
@@ -129,9 +153,7 @@
           </p>
           <form method="post" action="<?= url('outlook/connexion') ?>" style="margin-bottom:.9rem">
             <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
-            <button class="bouton bouton--secondaire bouton--petit" type="submit">
-              Réautoriser l'application
-            </button>
+            <button class="bouton" type="submit">Réautoriser l'application</button>
           </form>
         <?php endif; ?>
 
