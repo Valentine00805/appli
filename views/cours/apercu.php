@@ -171,9 +171,14 @@
             $ouverte = $balise;
         }
 
+        // « value » dit le numéro plutôt que de le faire compter au navigateur :
+        // une liste que le document poursuit après un paragraphe ordinaire
+        // repart alors au bon rang, et non à un.
+        $numero = $liste === 'numero' ? (int) ($riche['numero'] ?? 0) : 0;
         echo $balise === ''
             ? '<p' . $style . '>' . $corps . '</p>'
-            : '<li' . $style . '>' . $corps . '</li>';
+            : '<li' . ($numero > 0 ? ' value="' . $numero . '"' : '') . $style . '>'
+                . $corps . '</li>';
     endforeach;
 
     if ($ouverte !== '') {

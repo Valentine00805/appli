@@ -562,6 +562,7 @@
       if (!ligne) { return; }
       ligne.parentNode.removeChild(ligne);
       renumeroter();
+      if (typeof renumeroterListes === "function") { renumeroterListes(); }
     });
 
     if (ajoutParagraphe && modeleParagraphe && modeleParagraphe.content) {
@@ -674,6 +675,7 @@
 
       enrichir(suivante);
       renumeroter();
+      renumeroterListes();
 
       var neuve = suivante.querySelector("[data-zone-riche]");
       var champTexte = suivante.querySelector("textarea");
@@ -692,12 +694,32 @@
       choix.addRange(debut);
     };
 
+    /**
+     * Renumérote les éléments de liste.
+     *
+     * Un paragraphe ordinaire n'interrompt pas la numérotation : le document
+     * la poursuit par-dessus, et l'écran doit dire la même chose. Le numéro
+     * est porté par la zone, seule à pouvoir l'afficher devant son texte.
+     */
+    var renumeroterListes = function () {
+      var compte = 0;
+      [].slice.call(zoneParagraphes.querySelectorAll("[data-paragraphe]")).forEach(function (ligne) {
+        var numerote = ligne.getAttribute("data-liste") === "numero";
+        if (numerote) { compte++; }
+
+        ligne.setAttribute("data-numero", numerote ? String(compte) : "0");
+        var zone = ligne.querySelector("[data-zone-riche]");
+        if (zone) { zone.setAttribute("data-numero", numerote ? String(compte) : ""); }
+      });
+    };
+
     /** Met, change ou retire la sorte de liste d'un paragraphe. */
     var marquerLaLigne = function (ligne, sorte) {
       var champ = ligne.querySelector("input[name='liste[]']");
       if (!champ) { return; }
       ligne.setAttribute("data-liste", sorte);
       champ.value = sorte;
+      renumeroterListes();
     };
 
     /** Le curseur est-il au tout début de la zone, sans rien de sélectionné ? */
@@ -801,6 +823,7 @@
       try { document.execCommand("styleWithCSS", false, false); } catch (e) { /* vieux navigateur */ }
 
       [].slice.call(zoneParagraphes.querySelectorAll("[data-paragraphe]")).forEach(enrichir);
+      renumeroterListes();
       barreOutils.hidden = false;
       drapeauRiche.value = "1";
 

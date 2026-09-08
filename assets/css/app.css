@@ -1352,16 +1352,11 @@ input.depot__champ {
 /*
  * Un paragraphe de liste se reconnaît à sa marque, devant sa zone.
  *
- * Les paragraphes ne sont pas une vraie liste — chacun est une ligne du
- * formulaire — mais un compteur CSS sait quand même les numéroter : chaque
- * paragraphe numéroté l'avance d'un, et tout paragraphe qui ne l'est pas le
- * remet à zéro. La suite repart donc de 1 après chaque interruption, comme
- * elle le fera dans le document.
+ * Le numéro est celui que le document donnera : calculé à la lecture, puis
+ * tenu à jour par le script, plutôt que compté par le navigateur. Un compteur
+ * CSS repartirait à un dès qu'un paragraphe ordinaire s'intercale, alors
+ * qu'une liste, elle, se poursuit par-dessus.
  */
-.paragraphes { counter-reset: element-liste; }
-.paragraphe:not([data-liste="numero"]) { counter-reset: element-liste; }
-.paragraphe[data-liste="numero"] { counter-increment: element-liste; }
-
 .paragraphe[data-liste="puce"] .paragraphe__riche,
 .paragraphe[data-liste="numero"] .paragraphe__riche {
   position: relative; padding-left: 1.9rem;
@@ -1374,7 +1369,7 @@ input.depot__champ {
 }
 .paragraphe[data-liste="puce"] .paragraphe__riche::before { content: "•"; }
 .paragraphe[data-liste="numero"] .paragraphe__riche::before {
-  content: counter(element-liste) ".";
+  content: attr(data-numero) ".";
 }
 
 /* Les listes de l'aperçu, serrées comme dans le document. */

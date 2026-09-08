@@ -136,7 +136,8 @@
           ?>
           <div class="paragraphe" data-paragraphe
                data-riche-html="<?= e($enrichis[$rang]['html'] ?? '') ?>"
-               data-aligne="<?= e($aligne) ?>" data-liste="<?= e($liste) ?>">
+               data-aligne="<?= e($aligne) ?>" data-liste="<?= e($liste) ?>"
+               data-numero="<?= (int) ($enrichis[$rang]['numero'] ?? 0) ?>">
             <span class="paragraphe__rang" aria-hidden="true"><?= $rang + 1 ?></span>
             <input type="hidden" name="origine[]" value="<?= (int) $rang ?>">
             <?php // Sans script, ils repartent tels quels : rien n'est perdu. ?>
@@ -180,7 +181,8 @@
 
   <?php // Modèle recopié par le bouton d'ajout. ?>
   <template data-modele-paragraphe>
-    <div class="paragraphe" data-paragraphe data-riche-html="" data-aligne="" data-liste="">
+    <div class="paragraphe" data-paragraphe data-riche-html="" data-aligne=""
+         data-liste="" data-numero="0">
       <span class="paragraphe__rang" aria-hidden="true">+</span>
       <input type="hidden" name="origine[]" value="">
       <input type="hidden" name="alignement[]" value="">
