@@ -74,11 +74,12 @@ $aReautoriser = !($partage ?? true) && $partagesEnAttente > 0;
           </p>
           <?php if ($aReautoriser): ?>
             <p class="outlook-attention">
-              <strong>La lecture échouera en l'état.</strong>
+              <strong>Si Microsoft refuse les calendriers partagés, c'est l'autorisation.</strong>
               Vous suivez <?= $partagesEnAttente ?> calendrier<?= $partagesEnAttente > 1 ? 's' : '' ?>
               partagé<?= $partagesEnAttente > 1 ? 's' : '' ?> par quelqu'un d'autre, et votre
-              autorisation ne les couvre pas encore. Réautorisez l'application
-              d'abord — le bouton est plus bas, dans « Les calendriers à lire ».
+              autorisation date d'avant que l'application ne sache les lire.
+              Essayez : selon le compte, cela passe. Si la lecture est refusée,
+              réautorisez l'application — le bouton est plus bas.
             </p>
           <?php endif; ?>
           <form method="post" action="<?= url('outlook/synchroniser') ?>">
