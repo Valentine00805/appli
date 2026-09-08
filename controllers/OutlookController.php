@@ -28,6 +28,7 @@ final class OutlookController
             'partage'    => Outlook::partageAutorise($userId),
             'envoyes'    => EnvoiOutlook::combien($userId),
             'envoiLe'    => EnvoiOutlook::derniereFois($userId),
+            'souci'      => SynchroOutlook::dernierSouci($userId),
         ], 'Calendrier Outlook');
     }
 
@@ -104,14 +105,23 @@ final class OutlookController
                 ? ['crees' => 0, 'majs' => 0, 'retires' => 0, 'inchanges' => 0]
                 : EnvoiOutlook::pousser($userId);
         } catch (Throwable $e) {
+            /*
+             * Noté en base, pas seulement affiché : une synchronisation de
+             * fond n'a personne devant elle, et son échec doit survivre à la
+             * requête qui l'a rencontré.
+             */
+            SynchroOutlook::retenirLeSouci($userId, $e->getMessage());
+
             if ($seul || veut_du_json()) {
-                // En arrière-plan, un échec ne doit pas s'imposer à l'écran :
-                // le bouton reste là pour le provoquer et lire le message.
+                // En arrière-plan, un échec ne s'impose pas à l'écran : la
+                // page Outlook le montrera, et le bouton le fera reparaître.
                 repondre_json(['fait' => false, 'change' => 0, 'souci' => $e->getMessage()]);
             }
             Session::flash('erreur', $e->getMessage());
             repartir_vers('outlook');
         }
+
+        SynchroOutlook::retenirLeSouci($userId, null);
 
         $change = $bilan['ajoutes'] + $bilan['modifies'] + $bilan['retires']
             + $envoi['crees'] + $envoi['majs'] + $envoi['retires'];

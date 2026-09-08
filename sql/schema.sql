@@ -405,6 +405,8 @@ CREATE TABLE IF NOT EXISTS `outlook_comptes` (
   `delta`          TEXT         NULL,
   `synchro_le`     DATETIME     NULL,
   `envoi_le`       DATETIME     NULL,
+  `souci`          TEXT         NULL,
+  `souci_le`       DATETIME     NULL,
   `cree_le`        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`user_id`),
   CONSTRAINT `fk_outlook_user` FOREIGN KEY (`user_id`)

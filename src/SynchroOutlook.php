@@ -149,6 +149,42 @@ final class SynchroOutlook
         return (time() - (int) strtotime($quand)) >= self::REPOS;
     }
 
+    /**
+     * Retient le dernier échec, ou l'efface quand tout est rentré dans l'ordre.
+     *
+     * La synchronisation tourne aussi seule, en arrière-plan, où elle ne peut
+     * rien dire sans interrompre. Muette, elle laisserait quelqu'un attendre
+     * des jours des évènements qui ne viennent plus.
+     */
+    public static function retenirLeSouci(int $userId, ?string $souci): void
+    {
+        $texte = $souci === null ? null : mb_substr($souci, 0, 500);
+
+        Database::run(
+            'UPDATE outlook_comptes
+                SET souci = ?, souci_le = IF(? IS NULL, NULL, NOW())
+              WHERE user_id = ?',
+            [$texte, $texte, $userId]
+        );
+    }
+
+    /**
+     * Le dernier échec, s'il n'a pas été suivi d'une réussite.
+     *
+     * @return ?array{quoi: string, quand: string}
+     */
+    public static function dernierSouci(int $userId): ?array
+    {
+        $ligne = Database::one(
+            'SELECT souci, souci_le FROM outlook_comptes WHERE user_id = ? AND souci IS NOT NULL',
+            [$userId]
+        );
+
+        return $ligne === null
+            ? null
+            : ['quoi' => (string) $ligne['souci'], 'quand' => (string) $ligne['souci_le']];
+    }
+
     /** La date de la dernière synchronisation, ou null s'il n'y en a jamais eu. */
     public static function derniereFois(int $userId): ?string
     {

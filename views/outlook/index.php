@@ -9,6 +9,7 @@
  * @var bool $partage     l'autorisation couvre-t-elle les calendriers partagés ?
  * @var int $envoyes      combien d'éléments d'ici vivent dans Outlook
  * @var ?string $envoiLe  le dernier envoi, ou null
+ * @var ?array $souci     le dernier échec, s'il n'a pas été suivi d'une réussite
  * @var string $retour    l'adresse à déclarer chez Microsoft
  */
 ?>
@@ -57,6 +58,21 @@ $aReautoriser = !($partage ?? true) && $partagesEnAttente > 0;
 <?php else: ?>
   <div class="colonnes">
     <div>
+      <?php
+      /*
+       * Le dernier échec, quel que soit l'état où il a laissé le compte : une
+       * synchronisation de fond n'a personne devant elle, et c'est ici qu'on
+       * vient chercher pourquoi rien n'arrive plus.
+       */
+      ?>
+      <?php if ($souci !== null): ?>
+        <p class="outlook-attention">
+          <strong>La dernière synchronisation a échoué</strong>
+          (le <?= e(date('d/m/Y à H:i', strtotime($souci['quand']))) ?>) :
+          <?= e($souci['quoi']) ?>
+        </p>
+      <?php endif; ?>
+
       <?php if ($relie): ?>
         <section class="carte">
           <h2 style="margin-top:0">✅ Votre compte est relié</h2>
