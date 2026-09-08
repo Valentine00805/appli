@@ -1349,16 +1349,24 @@ input.depot__champ {
 /* Et un passage dont on vient de retirer le surlignage. */
 .paragraphe__riche .riche-fond-auto { background: none; }
 
-/* Un paragraphe à puce se reconnaît à son point, devant sa zone. */
-.paragraphe[data-puce="1"] .paragraphe__riche { position: relative; padding-left: 1.6rem; }
-.paragraphe[data-puce="1"] .paragraphe__riche::before {
-  content: "•"; position: absolute; left: .7rem; top: .6rem;
-  color: var(--texte-doux); font-weight: 700;
+/* Un paragraphe de liste se reconnaît à sa marque, devant sa zone. Le numéro
+   est celui du rang dans le document, faute de savoir compter en CSS ce qui
+   n'est pas une vraie liste : il dit « numéroté », pas « numéro tant ». */
+.paragraphe[data-liste="puce"] .paragraphe__riche,
+.paragraphe[data-liste="numero"] .paragraphe__riche {
+  position: relative; padding-left: 1.6rem;
 }
+.paragraphe[data-liste="puce"] .paragraphe__riche::before,
+.paragraphe[data-liste="numero"] .paragraphe__riche::before {
+  position: absolute; left: .55rem; top: .6rem;
+  color: var(--texte-doux); font-weight: 700; font-size: .9rem;
+}
+.paragraphe[data-liste="puce"] .paragraphe__riche::before { content: "•"; }
+.paragraphe[data-liste="numero"] .paragraphe__riche::before { content: "1."; }
 
-/* Les puces de l'aperçu : une liste par paragraphe, sans blanc entre elles. */
-.apercu-puces { margin: 0; padding-left: 1.6rem; }
-.apercu-puces li { line-height: 1.9; }
+/* Les listes de l'aperçu, serrées comme dans le document. */
+.apercu-liste { margin: 0 0 .8rem; padding-left: 1.8rem; }
+.apercu-liste li { line-height: 1.9; }
 
 /* L'alignement se voit dans la zone, comme il se verra dans le document. */
 .paragraphe[data-aligne="gauche"] .paragraphe__riche { text-align: left; }

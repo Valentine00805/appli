@@ -42,7 +42,7 @@
       <strong>Contenu du fichier</strong>, tel qu'il est enregistré.
     <?php elseif ($enrichis !== []): ?>
       <strong>Aperçu du texte.</strong> Le gras, l'italique, le souligné, la taille,
-      la couleur, le surlignage, l'alignement et les puces sont rendus ; les images,
+      la couleur, le surlignage, l'alignement et les listes sont rendus ; les images,
       les tableaux et la pagination ne le sont pas — un navigateur ne sait pas afficher un
       <?= e($format) ?>. Téléchargez le fichier pour l'ouvrir tel quel dans Word
       ou LibreOffice.
@@ -143,25 +143,43 @@
     /*
      * Le HTML n'est pas échappé ici, et c'est voulu : il ne vient pas du
      * document mais de l'application, qui le rebâtit balise par balise à partir
-     * des seules six marques qu'elle connaît. Tout ce que le fichier contient
+     * des seules marques qu'elle connaît. Tout ce que le fichier contient
      * d'autre n'en ressort que sous forme de texte, déjà échappé.
      */
     ?>
-    <?php foreach ($paragraphes as $rang => $paragraphe): ?>
-      <?php
-      $riche = $enrichis[$rang] ?? null;
-      $aligne = ['gauche' => 'left', 'centre' => 'center',
-                 'droite' => 'right', 'justifie' => 'justify'][$riche['alignement'] ?? ''] ?? null;
-      $style = $aligne === null ? '' : ' style="text-align:' . $aligne . '"';
-      $corps = $riche === null ? e($paragraphe) : $riche['html'];
-      ?>
-      <?php if (($riche['puce'] ?? false) === true): ?>
-        <?php // Une puce par paragraphe : le document ne dit rien de plus. ?>
-        <ul class="apercu-puces"><li<?= $style ?>><?= $corps ?></li></ul>
-      <?php else: ?>
-        <p<?= $style ?>><?= $corps ?></p>
-      <?php endif; ?>
-    <?php endforeach; ?>
+    <?php
+    /*
+     * Les paragraphes d'une même liste se suivent dans une seule balise :
+     * sinon une numérotation reprendrait à un à chaque ligne.
+     */
+    $ouverte = '';
+    foreach ($paragraphes as $rang => $paragraphe):
+        $riche = $enrichis[$rang] ?? null;
+        $aligne = ['gauche' => 'left', 'centre' => 'center',
+                   'droite' => 'right', 'justifie' => 'justify'][$riche['alignement'] ?? ''] ?? null;
+        $style = $aligne === null ? '' : ' style="text-align:' . $aligne . '"';
+        $corps = $riche === null ? e($paragraphe) : $riche['html'];
+        $liste = (string) ($riche['liste'] ?? '');
+        $balise = ['puce' => 'ul', 'numero' => 'ol'][$liste] ?? '';
+
+        if ($ouverte !== '' && $ouverte !== $balise) {
+            echo '</' . $ouverte . '>';
+            $ouverte = '';
+        }
+        if ($balise !== '' && $ouverte === '') {
+            echo '<' . $balise . ' class="apercu-liste">';
+            $ouverte = $balise;
+        }
+
+        echo $balise === ''
+            ? '<p' . $style . '>' . $corps . '</p>'
+            : '<li' . $style . '>' . $corps . '</li>';
+    endforeach;
+
+    if ($ouverte !== '') {
+        echo '</' . $ouverte . '>';
+    }
+    ?>
   </article>
   <p class="champ__aide" style="margin-top:.6rem">
     <?= count($paragraphes) ?> paragraphe<?= count($paragraphes) > 1 ? 's' : '' ?> lu<?= count($paragraphes) > 1 ? 's' : '' ?>.

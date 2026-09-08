@@ -1337,7 +1337,7 @@ final class CoursController
         $textes    = array_values((array) ($_POST['texte'] ?? []));
         $origines  = array_values((array) ($_POST['origine'] ?? []));
         $alignements = array_values((array) ($_POST['alignement'] ?? []));
-        $puces = array_values((array) ($_POST['puce'] ?? []));
+        $listes = array_values((array) ($_POST['liste'] ?? []));
         $connus    = ['gauche', 'centre', 'droite', 'justifie'];
 
         $entrees = [];
@@ -1353,16 +1353,9 @@ final class CoursController
             $aligne = $alignements[$rang] ?? '';
             $aligne = is_string($aligne) && in_array($aligne, $connus, true) ? $aligne : null;
 
-            /*
-             * Trois états : une puce, pas de puce, ou rien dit. Le dernier
-             * couvre les listes numérotées, que l'éditeur ne propose pas et ne
-             * doit surtout pas convertir, et les envois sans JavaScript.
-             */
-            $puce = match ($puces[$rang] ?? '') {
-                '1' => true,
-                '0' => false,
-                default => null,
-            };
+            // Une puce, une numérotation, ou rien. Tout autre mot ne dit rien.
+            $liste = $listes[$rang] ?? '';
+            $liste = in_array($liste, ['puce', 'numero'], true) ? $liste : '';
 
             // Découpage octet par octet : les fins de ligne sont de l'ASCII,
             // et un motif Unicode échouerait en silence sur un texte mal encodé
@@ -1373,7 +1366,7 @@ final class CoursController
                     continue;
                 }
                 $entrees[] = ['origine' => $origine, 'texte' => $ligne,
-                    'alignement' => $aligne, 'puce' => $puce];
+                    'alignement' => $aligne, 'liste' => $liste];
             }
         }
         return $entrees;

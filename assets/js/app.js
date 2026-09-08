@@ -843,27 +843,27 @@
       });
 
       /*
-       * La puce se met et se retire sur le paragraphe où l'on a le curseur.
-       * Un paragraphe venu d'une liste numérotée n'a pas d'état ici : le
-       * bouton lui en donne un, et il rejoint alors les puces — sinon il
-       * faudrait refuser sans pouvoir l'expliquer.
+       * La liste se met et se retire sur le paragraphe où l'on a le curseur.
+       * Chaque bouton bascule sa propre sorte : cliquer sur la numérotation
+       * d'un paragraphe à puce le fait passer d'une sorte à l'autre, et
+       * recliquer sur la sienne l'en sort.
        */
-      var boutonPuce = barreOutils.querySelector("[data-puce]");
-      if (boutonPuce) {
-        boutonPuce.addEventListener("mousedown", function (evenement) {
+      [].slice.call(barreOutils.querySelectorAll("[data-liste]")).forEach(function (bouton) {
+        bouton.addEventListener("mousedown", function (evenement) {
           evenement.preventDefault();
           var zone = reprendreLaSelection();
           if (zone === null) { return; }
 
           var ligne = zone.closest("[data-paragraphe]");
-          var champ = ligne ? ligne.querySelector("input[name='puce[]']") : null;
+          var champ = ligne ? ligne.querySelector("input[name='liste[]']") : null;
           if (!ligne || !champ) { return; }
 
-          var pose = ligne.getAttribute("data-puce") !== "1";
-          ligne.setAttribute("data-puce", pose ? "1" : "0");
-          champ.value = pose ? "1" : "0";
+          var sorte = bouton.getAttribute("data-liste");
+          var pose = ligne.getAttribute("data-liste") !== sorte ? sorte : "";
+          ligne.setAttribute("data-liste", pose);
+          champ.value = pose;
         });
-      }
+      });
 
       /*
        * Le surlignage suit la même mécanique que la couleur du texte : un

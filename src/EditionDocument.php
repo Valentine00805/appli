@@ -39,11 +39,16 @@ final class EditionDocument
     private const TYPE_NUM = 'application/vnd.openxmlformats-officedocument.wordprocessingml.numbering+xml';
     private const REL_NUM  = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/numbering';
 
-    /** Le nom de notre définition, pour la retrouver d'une fois sur l'autre. */
-    private const NOM_PUCE = 'MesCoursPuce';
-
-    /** Le style de liste ODF que l'application pose sur ses puces. */
-    private const LISTE_ODF = 'LMesCoursPuce';
+    /**
+     * Les deux sortes de liste, et ce qui les nomme dans chaque format.
+     *
+     * Le nom sert de repère : on retrouve ainsi d'un enregistrement à l'autre
+     * la définition que l'application a déjà posée, au lieu d'en accumuler.
+     */
+    private const LISTES = [
+        'puce'   => ['nom' => 'MesCoursPuce',   'style' => 'LMesCoursPuce'],
+        'numero' => ['nom' => 'MesCoursNumero', 'style' => 'LMesCoursNumero'],
+    ];
 
     /**
      * L'ordre imposé aux enfants de <w:rPr> par le schéma d'OOXML.
@@ -165,7 +170,7 @@ final class EditionDocument
      * styles de titre — reste dans le fichier sans passer par ici, et n'est
      * donc pas perdu.
      *
-     * @return list<array{html: string, alignement: ?string, puce: ?bool}>
+     * @return list<array{html: string, alignement: ?string, liste: string}>
      * @throws RuntimeException si le fichier est illisible
      */
     public static function lireRiche(string $chemin, string $nomOrigine): array
@@ -182,7 +187,7 @@ final class EditionDocument
                     ? self::passagesWord($p)
                     : self::passagesOdf($p, $stylesOdf)),
                 'alignement' => self::alignement($p, $alignementsOdf),
-                'puce' => self::puce($p, $numsWord, $listesOdf),
+                'liste' => (string) self::sorteDeListe($p, $numsWord, $listesOdf),
             ],
             $paragraphes
         );
@@ -198,7 +203,7 @@ final class EditionDocument
      * un paragraphe à la place d'un autre : celle-ci suit la règle de l'aperçu,
      * pour que les deux listes se correspondent une à une.
      *
-     * @return list<array{html: string, alignement: ?string, puce: ?bool}>
+     * @return list<array{html: string, alignement: ?string, liste: string}>
      * @throws RuntimeException si le fichier est illisible
      */
     public static function apercuRiche(string $chemin, string $nomOrigine): array
@@ -223,7 +228,7 @@ final class EditionDocument
                 $rendus[] = [
                     'html' => self::html($passages),
                     'alignement' => self::alignement($noeud, $alignementsOdf),
-                    'puce' => self::puce($noeud, $numsWord, $listesOdf),
+                    'liste' => (string) self::sorteDeListe($noeud, $numsWord, $listesOdf),
                 ];
             }
         }
@@ -276,7 +281,7 @@ final class EditionDocument
      * formulaire envoie du texte nu, et l'ancienne règle s'applique : le
      * paragraphe garde l'allure de son premier passage.
      *
-     * @param array<int, array{origine: ?int, texte: string, alignement?: ?string, puce?: ?bool}> $entrees
+     * @param array<int, array{origine: ?int, texte: string, alignement?: ?string, liste?: string}> $entrees
      * @throws RuntimeException si le document ne peut être ni lu ni réécrit
      */
     public static function enregistrer(
@@ -296,21 +301,26 @@ final class EditionDocument
         [$doc, $corps, $paragraphes, $format] = self::ouvrir($chemin, $nomOrigine);
         $parties = [];
 
+        $word = $doc->documentElement?->namespaceURI === self::NS_W;
+        $numsWord = $word ? self::numsWord($chemin) : [];
+        $listesOdf = $word ? [] : self::listesOdf($doc);
+
         /*
          * Word range la définition de ses listes dans une autre partie de
          * l'archive : il faut l'y écrire, et l'annoncer, avant de pouvoir
-         * accrocher un paragraphe dessus.
+         * accrocher un paragraphe dessus. On ne le fait que pour les sortes
+         * réellement demandées.
          */
-        $numeroPuce = null;
-        $veutDesPuces = false;
-        foreach ($entrees as $entree) {
-            if (($entree['puce'] ?? false) === true) {
-                $veutDesPuces = true;
-                break;
+        $numeros = [];
+        if ($word) {
+            foreach (array_keys(self::LISTES) as $sorte) {
+                foreach ($entrees as $entree) {
+                    if (($entree['liste'] ?? '') === $sorte) {
+                        $numeros[$sorte] = self::numerotationWord($chemin, $parties, $sorte);
+                        break;
+                    }
+                }
             }
-        }
-        if ($veutDesPuces && $doc->documentElement?->namespaceURI === self::NS_W) {
-            $numeroPuce = self::numerotationWord($chemin, $parties);
         }
 
         // Un paragraphe neuf reprend la forme de celui qui le précède : créé
@@ -339,12 +349,28 @@ final class EditionDocument
             self::remplacerTexte($doc, $noeud, $entree['texte'], $gabarit, $riche);
             self::alignerParagraphe($doc, $noeud, $entree['alignement'] ?? null);
 
-            $puce = $entree['puce'] ?? null;
-            if ($puce !== null && $noeud->namespaceURI === self::NS_W) {
-                self::pucerWord($doc, $noeud, $puce === true ? $numeroPuce : null);
+            /*
+             * La sorte de liste ne se réécrit que si elle change : une
+             * numérotation en « a) », une liste à plusieurs niveaux, tout ce
+             * que l'éditeur ne sait pas dire garde ainsi sa définition
+             * d'origine tant qu'on n'y touche pas.
+             */
+            $sorte = (string) ($entree['liste'] ?? '');
+            $avant = $existant === null
+                ? ''
+                : (string) self::sorteDeListe($existant, $numsWord, $listesOdf);
+            $inchangee = $sorte === $avant;
+
+            if ($word && !$inchangee) {
+                self::listerWord($doc, $noeud, $numeros[$sorte] ?? null);
             }
 
-            $nouveaux[] = ['noeud' => $noeud, 'puce' => $puce === true];
+            $nouveaux[] = [
+                'noeud' => $noeud,
+                'sorte' => $sorte,
+                // Le style d'origine, pour remballer à l'identique en ODF.
+                'style' => $inchangee && $existant !== null ? self::styleDeSaListe($existant) : null,
+            ];
             $modele = $noeud;
         }
 
@@ -486,16 +512,29 @@ final class EditionDocument
 
         $aPoser = [];
         $liste = null;
+        $styleEnCours = null;
+        $sortesPosees = [];
 
         foreach ($nouveaux as $entree) {
-            if (!$odf || !$entree['puce']) {
+            if (!$odf || $entree['sorte'] === '') {
                 $liste = null;
+                $styleEnCours = null;
                 $aPoser[] = $entree['noeud'];
                 continue;
             }
-            if ($liste === null) {
+
+            // Le style d'origine quand rien n'a changé, le nôtre sinon.
+            $style = $entree['style'] ?? self::LISTES[$entree['sorte']]['style'];
+            if ($entree['style'] === null) {
+                $sortesPosees[$entree['sorte']] = true;
+            }
+
+            // Deux listes voisines de styles différents ne se mélangent pas :
+            // une numérotation reprendrait à un.
+            if ($liste === null || $styleEnCours !== $style) {
                 $liste = $doc->createElementNS(self::NS_TEXT, 'text:list');
-                $liste->setAttributeNS(self::NS_TEXT, 'text:style-name', self::LISTE_ODF);
+                $liste->setAttributeNS(self::NS_TEXT, 'text:style-name', $style);
+                $styleEnCours = $style;
                 $aPoser[] = $liste;
             }
             $item = $doc->createElementNS(self::NS_TEXT, 'text:list-item');
@@ -503,8 +542,8 @@ final class EditionDocument
             $liste->appendChild($item);
         }
 
-        if ($odf && $liste !== null) {
-            self::styleDeListeOdf($doc);
+        foreach (array_keys($sortesPosees) as $sorte) {
+            self::styleDeListeOdf($doc, $sorte);
         }
 
         foreach ($aPoser as $noeud) {
@@ -1723,22 +1762,6 @@ final class EditionDocument
     /**
      * Ce paragraphe est-il une puce ?
      *
-     * @param array<string, string> $listesOdf  les styles de liste, par nom
-     * @return ?bool  vrai pour une puce, faux pour un paragraphe ordinaire,
-     *                null pour une liste numérotée — que l'éditeur ne propose
-     *                pas et ne doit surtout pas convertir en points
-     */
-    private static function puce(DOMElement $paragraphe, array $numsWord, array $listesOdf): ?bool
-    {
-        $sorte = self::sorteDeListe($paragraphe, $numsWord, $listesOdf);
-
-        return match ($sorte) {
-            'puce'   => true,
-            'numero' => null,
-            default  => false,
-        };
-    }
-
     /**
      * De quelle liste ce paragraphe fait partie : « puce », « numero », ou
      * rien du tout.
@@ -1837,8 +1860,24 @@ final class EditionDocument
         return $listes;
     }
 
-    /** Accroche ou décroche un paragraphe Word de la liste à puces. */
-    private static function pucerWord(DOMDocument $doc, DOMElement $paragraphe, ?int $numero): void
+    /** Le style de la liste ODF qui enveloppe ce paragraphe, s'il y en a une. */
+    private static function styleDeSaListe(DOMElement $paragraphe): ?string
+    {
+        $liste = $paragraphe->parentNode;
+        while ($liste instanceof DOMElement) {
+            if ($liste->namespaceURI === self::NS_TEXT && $liste->localName === 'list') {
+                $nom = $liste->getAttributeNS(self::NS_TEXT, 'style-name');
+
+                return $nom === '' ? null : $nom;
+            }
+            $liste = $liste->parentNode;
+        }
+
+        return null;
+    }
+
+    /** Accroche ou décroche un paragraphe Word d'une de nos listes. */
+    private static function listerWord(DOMDocument $doc, DOMElement $paragraphe, ?int $numero): void
     {
         $pPr = self::enfantWord($paragraphe, 'pPr');
 
@@ -1879,9 +1918,15 @@ final class EditionDocument
      *
      * @param array<string, string> $parties  ce qu'il faudra écrire, complété ici
      */
-    private static function numerotationWord(string $chemin, array &$parties): ?int
+    private static function numerotationWord(string $chemin, array &$parties, string $sorte): ?int
     {
-        $xml = self::partie($chemin, self::PART_NUM);
+        $reglage = self::LISTES[$sorte] ?? null;
+        if ($reglage === null) {
+            return null;
+        }
+        // La partie déjà réécrite au tour précédent, s'il y en a eu un : sans
+        // cela, la deuxième sorte effacerait la première.
+        $xml = $parties[self::PART_NUM] ?? self::partie($chemin, self::PART_NUM);
         $doc = $xml === null ? null : self::analyser($xml);
 
         if ($doc === null) {
@@ -1896,7 +1941,7 @@ final class EditionDocument
         // Déjà posée lors d'un enregistrement précédent : on la retrouve.
         foreach ($racine->getElementsByTagNameNS(self::NS_W, 'abstractNum') as $abstrait) {
             $nom = self::enfantWord($abstrait, 'name');
-            if ($nom === null || $nom->getAttributeNS(self::NS_W, 'val') !== self::NOM_PUCE) {
+            if ($nom === null || $nom->getAttributeNS(self::NS_W, 'val') !== $reglage['nom']) {
                 continue;
             }
             $id = $abstrait->getAttributeNS(self::NS_W, 'abstractNumId');
@@ -1927,16 +1972,17 @@ final class EditionDocument
         $abstrait->appendChild($type);
 
         $nom = $doc->createElementNS(self::NS_W, 'w:name');
-        $nom->setAttributeNS(self::NS_W, 'w:val', self::NOM_PUCE);
+        $nom->setAttributeNS(self::NS_W, 'w:val', $reglage['nom']);
         $abstrait->appendChild($nom);
 
         $niveau = $doc->createElementNS(self::NS_W, 'w:lvl');
         $niveau->setAttributeNS(self::NS_W, 'w:ilvl', '0');
         foreach ([
             'start'   => '1',
-            'numFmt'  => 'bullet',
-            // Le rond plein de la police Symbol : la puce de Word par défaut.
-            'lvlText' => "\u{F0B7}",
+            'numFmt'  => $sorte === 'puce' ? 'bullet' : 'decimal',
+            // Le rond plein de la police Symbol pour les puces ; « %1. », soit
+            // le numéro du premier niveau suivi d'un point, pour les autres.
+            'lvlText' => $sorte === 'puce' ? "\u{F0B7}" : '%1.',
             'lvlJc'   => 'left',
         ] as $balise => $valeur) {
             $element = $doc->createElementNS(self::NS_W, 'w:' . $balise);
@@ -1951,13 +1997,16 @@ final class EditionDocument
         $pPr->appendChild($ind);
         $niveau->appendChild($pPr);
 
-        $rPr = $doc->createElementNS(self::NS_W, 'w:rPr');
-        $polices = $doc->createElementNS(self::NS_W, 'w:rFonts');
-        $polices->setAttributeNS(self::NS_W, 'w:ascii', 'Symbol');
-        $polices->setAttributeNS(self::NS_W, 'w:hAnsi', 'Symbol');
-        $polices->setAttributeNS(self::NS_W, 'w:hint', 'default');
-        $rPr->appendChild($polices);
-        $niveau->appendChild($rPr);
+        if ($sorte === 'puce') {
+            // Le rond plein n'existe que dans la police Symbol.
+            $rPr = $doc->createElementNS(self::NS_W, 'w:rPr');
+            $polices = $doc->createElementNS(self::NS_W, 'w:rFonts');
+            $polices->setAttributeNS(self::NS_W, 'w:ascii', 'Symbol');
+            $polices->setAttributeNS(self::NS_W, 'w:hAnsi', 'Symbol');
+            $polices->setAttributeNS(self::NS_W, 'w:hint', 'default');
+            $rPr->appendChild($polices);
+            $niveau->appendChild($rPr);
+        }
 
         $abstrait->appendChild($niveau);
 
@@ -2042,11 +2091,15 @@ final class EditionDocument
         }
     }
 
-    /** Le style de liste que l'application pose sur ses puces ODF. */
-    private static function styleDeListeOdf(DOMDocument $doc): void
+    /** Le style de liste que l'application pose sur les siennes, en ODF. */
+    private static function styleDeListeOdf(DOMDocument $doc, string $sorte): void
     {
+        $reglage = self::LISTES[$sorte] ?? null;
+        if ($reglage === null) {
+            return;
+        }
         foreach ($doc->getElementsByTagNameNS(self::NS_TEXT, 'list-style') as $style) {
-            if ($style->getAttributeNS(self::NS_STYLE, 'name') === self::LISTE_ODF) {
+            if ($style->getAttributeNS(self::NS_STYLE, 'name') === $reglage['style']) {
                 return;
             }
         }
@@ -2056,11 +2109,19 @@ final class EditionDocument
         }
 
         $style = $doc->createElementNS(self::NS_TEXT, 'text:list-style');
-        $style->setAttributeNS(self::NS_STYLE, 'style:name', self::LISTE_ODF);
+        $style->setAttributeNS(self::NS_STYLE, 'style:name', $reglage['style']);
 
-        $niveau = $doc->createElementNS(self::NS_TEXT, 'text:list-level-style-bullet');
-        $niveau->setAttributeNS(self::NS_TEXT, 'text:level', '1');
-        $niveau->setAttributeNS(self::NS_TEXT, 'text:bullet-char', '•');
+        if ($sorte === 'puce') {
+            $niveau = $doc->createElementNS(self::NS_TEXT, 'text:list-level-style-bullet');
+            $niveau->setAttributeNS(self::NS_TEXT, 'text:level', '1');
+            $niveau->setAttributeNS(self::NS_TEXT, 'text:bullet-char', '•');
+        } else {
+            $niveau = $doc->createElementNS(self::NS_TEXT, 'text:list-level-style-number');
+            $niveau->setAttributeNS(self::NS_TEXT, 'text:level', '1');
+            $niveau->setAttributeNS(self::NS_STYLE, 'style:num-format', '1');
+            $niveau->setAttributeNS(self::NS_STYLE, 'style:num-suffix', '.');
+            $niveau->setAttributeNS(self::NS_TEXT, 'text:start-value', '1');
+        }
 
         $proprietes = $doc->createElementNS(self::NS_STYLE, 'style:list-level-properties');
         $proprietes->setAttributeNS(self::NS_TEXT, 'text:space-before', '0.25in');

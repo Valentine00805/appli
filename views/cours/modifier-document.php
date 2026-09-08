@@ -29,11 +29,10 @@
 
   <div class="flash flash--info" style="margin-bottom:1.25rem">
     <strong>Le gras, l'italique, le souligné, la taille, la couleur, le
-    surlignage, l'alignement et les puces se modifient ici.</strong> Le reste de
-    la mise en forme — styles, polices, retraits, images, tableaux, listes
-    numérotées — reste dans le document sans passer par cette page, et n'est
-    donc pas perdu. Une copie du document d'origine est gardée avant la
-    première modification.
+    surlignage, l'alignement et les listes se modifient ici.</strong> Le reste de
+    la mise en forme — styles, polices, retraits, images, tableaux — reste dans
+    le document sans passer par cette page, et n'est donc pas perdu. Une copie
+    du document d'origine est gardée avant la première modification.
   </div>
 
   <form method="post" action="<?= url('fichiers/' . $fichier['id'] . '/modifier') ?>"
@@ -72,9 +71,12 @@
         <button type="button" class="barre-outils__bouton" data-aligner="droite"
                 title="Aligner à droite"><span aria-hidden="true">◨</span>
           <span class="sr-only">Aligner à droite</span></button>
-        <button type="button" class="barre-outils__bouton" data-puce
+        <button type="button" class="barre-outils__bouton" data-liste="puce"
                 title="Mettre ou retirer la puce"><span aria-hidden="true">•—</span>
           <span class="sr-only">Puce</span></button>
+        <button type="button" class="barre-outils__bouton" data-liste="numero"
+                title="Mettre ou retirer la numérotation"><span aria-hidden="true">1—</span>
+          <span class="sr-only">Liste numérotée</span></button>
       </span>
       <label class="barre-outils__taille">
         <span class="discret">Taille</span>
@@ -130,18 +132,16 @@
         <?php foreach ($paragraphes as $rang => $paragraphe): ?>
           <?php
           $aligne = (string) ($enrichis[$rang]['alignement'] ?? '');
-          // Vide pour une liste numérotée : l'éditeur n'y touche pas.
-          $puce = $enrichis[$rang]['puce'] ?? null;
-          $puce = $puce === null ? '' : ($puce ? '1' : '0');
+          $liste = (string) ($enrichis[$rang]['liste'] ?? '');
           ?>
           <div class="paragraphe" data-paragraphe
                data-riche-html="<?= e($enrichis[$rang]['html'] ?? '') ?>"
-               data-aligne="<?= e($aligne) ?>" data-puce="<?= e($puce) ?>">
+               data-aligne="<?= e($aligne) ?>" data-liste="<?= e($liste) ?>">
             <span class="paragraphe__rang" aria-hidden="true"><?= $rang + 1 ?></span>
             <input type="hidden" name="origine[]" value="<?= (int) $rang ?>">
             <?php // Sans script, ils repartent tels quels : rien n'est perdu. ?>
             <input type="hidden" name="alignement[]" value="<?= e($aligne) ?>">
-            <input type="hidden" name="puce[]" value="<?= e($puce) ?>">
+            <input type="hidden" name="liste[]" value="<?= e($liste) ?>">
             <textarea name="texte[]" rows="1" class="paragraphe__texte"
                       aria-label="Paragraphe <?= $rang + 1 ?>"><?= e($paragraphe) ?></textarea>
             <button type="button" class="bouton bouton--discret bouton--petit"
@@ -157,7 +157,7 @@
             <span class="paragraphe__rang" aria-hidden="true">+</span>
             <input type="hidden" name="origine[]" value="">
             <input type="hidden" name="alignement[]" value="">
-            <input type="hidden" name="puce[]" value="">
+            <input type="hidden" name="liste[]" value="">
             <textarea name="texte[]" rows="1" class="paragraphe__texte"
                       aria-label="Nouveau paragraphe"></textarea>
           </div>
@@ -180,11 +180,11 @@
 
   <?php // Modèle recopié par le bouton d'ajout. ?>
   <template data-modele-paragraphe>
-    <div class="paragraphe" data-paragraphe data-riche-html="" data-aligne="" data-puce="0">
+    <div class="paragraphe" data-paragraphe data-riche-html="" data-aligne="" data-liste="">
       <span class="paragraphe__rang" aria-hidden="true">+</span>
       <input type="hidden" name="origine[]" value="">
       <input type="hidden" name="alignement[]" value="">
-      <input type="hidden" name="puce[]" value="0">
+      <input type="hidden" name="liste[]" value="">
       <textarea name="texte[]" rows="1" class="paragraphe__texte" aria-label="Nouveau paragraphe"></textarea>
       <button type="button" class="bouton bouton--discret bouton--petit"
               data-supprimer-paragraphe title="Supprimer ce paragraphe">🗑</button>
