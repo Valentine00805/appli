@@ -1249,11 +1249,12 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
 
 .dossier-renommer__panneau {
   position: absolute; right: 0; top: calc(100% + .25rem); z-index: 20;
-  display: flex; gap: .35rem; align-items: center;
+  display: grid; gap: .45rem;
   padding: .5rem; width: 16rem;
   border: 1px solid var(--bordure-forte); border-radius: var(--rayon-s);
   background: var(--fond-carte); box-shadow: 0 6px 18px rgba(15, 23, 42, .12);
 }
+.dossier-renommer__ligne { display: flex; gap: .35rem; align-items: center; }
 .dossier-renommer__panneau input[type="text"] { flex: 1; min-width: 0; }
 
 /* Sur un écran tactile, le survol n'existe pas : le crayon reste visible. */

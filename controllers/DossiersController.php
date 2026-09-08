@@ -240,7 +240,8 @@ final class DossiersController
 
         Session::flash('succes', 'Dossier « ' . $dossier['nom'] . ' » supprimé'
             . ($details === [] ? '.' : ' : ' . implode(', ', $details) . '.'));
-        redirect('organisation/dossiers');
+        // Supprimer depuis la colonne des cours ne doit pas déporter ailleurs.
+        repartir_vers('organisation/dossiers');
     }
 
     /**

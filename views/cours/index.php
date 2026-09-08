@@ -195,19 +195,47 @@ foreach ($dossiers as $d) {
               <span aria-hidden="true">✎</span>
               <span class="sr-only">Renommer <?= e($d['nom']) ?></span>
             </summary>
-            <form class="dossier-renommer__panneau" method="post"
-                  action="<?= url('dossiers/' . (int) $d['id'] . '/modifier') ?>">
-              <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
-              <input type="hidden" name="retour" value="<?= e((string) ($_SERVER['REQUEST_URI'] ?? '')) ?>">
-              <input type="hidden" name="parent_id"
-                     value="<?= $d['parent_id'] === null ? '' : (int) $d['parent_id'] ?>">
-              <input type="hidden" name="couleur" value="<?= e($d['couleur']) ?>">
-              <input type="hidden" name="icone" value="<?= e($d['icone']) ?>">
-              <label class="sr-only" for="renommer-<?= (int) $d['id'] ?>">Nouveau nom</label>
-              <input type="text" id="renommer-<?= (int) $d['id'] ?>" name="nom"
-                     value="<?= e($d['nom']) ?>" maxlength="120" required>
-              <button class="bouton bouton--petit" type="submit">Renommer</button>
-            </form>
+            <div class="dossier-renommer__panneau">
+              <form class="dossier-renommer__ligne" method="post"
+                    action="<?= url('dossiers/' . (int) $d['id'] . '/modifier') ?>">
+                <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
+                <input type="hidden" name="retour" value="<?= e((string) ($_SERVER['REQUEST_URI'] ?? '')) ?>">
+                <input type="hidden" name="parent_id"
+                       value="<?= $d['parent_id'] === null ? '' : (int) $d['parent_id'] ?>">
+                <input type="hidden" name="couleur" value="<?= e($d['couleur']) ?>">
+                <input type="hidden" name="icone" value="<?= e($d['icone']) ?>">
+                <label class="sr-only" for="renommer-<?= (int) $d['id'] ?>">Nouveau nom</label>
+                <input type="text" id="renommer-<?= (int) $d['id'] ?>" name="nom"
+                       value="<?= e($d['nom']) ?>" maxlength="120" required>
+                <button class="bouton bouton--petit" type="submit">Renommer</button>
+              </form>
+
+              <?php
+              /*
+               * Supprimer un dossier n'emporte rien : ses cours restent, sans
+               * dossier, et ses sous-dossiers remontent à la racine. La
+               * question le dit, pour qu'on ne l'imagine pas plus grave qu'il
+               * n'est — ni moins.
+               */
+              $garde = ['Supprimer le dossier « ' . $d['nom'] . ' » ?'];
+              if ((int) $d['nb_cours'] > 0) {
+                  $garde[] = 'Ses ' . (int) $d['nb_cours'] . ' cours '
+                      . ((int) $d['nb_cours'] > 1 ? 'seront conservés' : 'sera conservé') . ', sans dossier.';
+              }
+              if ($enfants !== []) {
+                  $garde[] = 'Ses ' . count($enfants) . ' sous-dossier'
+                      . (count($enfants) > 1 ? 's remonteront' : ' remontera') . ' à la racine.';
+              }
+              ?>
+              <form method="post" action="<?= url('dossiers/' . (int) $d['id'] . '/supprimer') ?>"
+                    data-confirmation="<?= e(implode(' ', $garde)) ?>">
+                <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
+                <input type="hidden" name="retour" value="<?= e((string) ($_SERVER['REQUEST_URI'] ?? '')) ?>">
+                <button class="bouton bouton--petit bouton--danger bouton--bloc" type="submit">
+                  Supprimer le dossier
+                </button>
+              </form>
+            </div>
           </details>
         </div>
         <?php
