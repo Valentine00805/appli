@@ -737,6 +737,153 @@ final class CoursController
         ], $nom);
     }
 
+    /** Jusqu'où l'on recrée l'arborescence d'un dossier déposé. */
+    private const DOSSIERS_MAX = 4;
+
+    /**
+     * Dépose un dossier entier : un cours par fichier, l'arborescence reprise.
+     *
+     * Le navigateur n'accepte qu'une poignée de fichiers par envoi — vingt le
+     * plus souvent — et le script découpe donc le dépôt en paquets qu'il
+     * enchaîne. Chaque fichier arrive avec son chemin à côté de lui : un envoi
+     * ordinaire ne transmet que le nom, jamais le chemin.
+     *
+     * La réponse est en JSON, car c'est le script qui mène le dépôt et fait la
+     * somme des paquets.
+     */
+    public function deposerDossier(): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $userId = Auth::id();
+
+        $racine = DossiersController::valide($userId, $_POST['dossier'] ?? null);
+        $chemins = array_values((array) ($_POST['chemins'] ?? []));
+        $noms = $_FILES['fichiers']['name'] ?? null;
+
+        if (!is_array($noms)) {
+            $this->repondreJson(['cours' => 0, 'dossiers' => 0, 'erreurs' => ['Aucun fichier reçu.']]);
+        }
+
+        $cours = 0;
+        $dossiers = 0;
+        $erreurs = [];
+
+        foreach (array_keys($noms) as $i) {
+            if ((int) ($_FILES['fichiers']['error'][$i] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) {
+                continue;
+            }
+            $nom = (string) $noms[$i];
+            $chemin = $chemins[$i] ?? '';
+            [$parent, $nes] = $this->dossierDuChemin($userId, $racine, is_string($chemin) ? $chemin : '');
+            $dossiers += $nes;
+
+            $titre = trim(mb_substr(pathinfo($nom, PATHINFO_FILENAME) ?: $nom, 0, 200));
+            if ($titre === '') {
+                $titre = 'Document';
+            }
+
+            Database::run(
+                'INSERT INTO cours (user_id, matiere_id, dossier_id, titre, contenu) VALUES (?, NULL, ?, ?, NULL)',
+                [$userId, $parent, $titre]
+            );
+            $coursId = Database::dernierId();
+
+            // Le fichier de rang $i, présenté seul au service d'enregistrement.
+            $unSeul = [];
+            foreach (['name', 'type', 'tmp_name', 'error', 'size'] as $cle) {
+                $unSeul[$cle] = [$_FILES['fichiers'][$cle][$i] ?? null];
+            }
+            $refus = Fichiers::enregistrer($unSeul, $coursId, $userId);
+
+            // Fichier refusé : on ne laisse pas un cours vide derrière.
+            if ((int) Database::valeur('SELECT COUNT(*) FROM fichiers WHERE cours_id = ?', [$coursId]) < 1) {
+                Database::run('DELETE FROM cours WHERE id = ? AND user_id = ?', [$coursId, $userId]);
+                foreach ($refus as $refuse) {
+                    $erreurs[] = $refuse;
+                }
+                continue;
+            }
+            $cours++;
+        }
+
+        $this->repondreJson(['cours' => $cours, 'dossiers' => $dossiers, 'erreurs' => $erreurs]);
+    }
+
+    /**
+     * Le dossier où ranger un fichier, d'après son chemin dans le dépôt.
+     *
+     * Ce chemin vient du navigateur : il ne sert qu'à nommer des dossiers, et
+     * jamais à écrire où que ce soit — le fichier, lui, est rangé sous un nom
+     * tiré au sort. « .. », les noms vides et les caractères de contrôle sont
+     * écartés, et on ne descend pas au-delà de quelques étages : un dossier
+     * peut en cacher de très profonds.
+     *
+     * @return array{0: ?int, 1: int}  le dossier d'arrivée, et combien sont nés
+     */
+    private function dossierDuChemin(int $userId, ?int $racine, string $chemin): array
+    {
+        $morceaux = preg_split('#[\\\\/]+#', $chemin) ?: [];
+        array_pop($morceaux); // le dernier morceau est le nom du fichier
+
+        $parent = $racine;
+        $nes = 0;
+        $etage = 0;
+
+        foreach ($morceaux as $morceau) {
+            if ($etage >= self::DOSSIERS_MAX) {
+                break;
+            }
+            $nom = trim((string) preg_replace('/[\x00-\x1F\x7F]+/u', '', $morceau));
+            if ($nom === '' || $nom === '.' || $nom === '..') {
+                continue;
+            }
+            [$parent, $ne] = $this->dossierNomme($userId, $parent, mb_substr($nom, 0, 120));
+            $nes += $ne;
+            $etage++;
+        }
+
+        return [$parent, $nes];
+    }
+
+    /**
+     * Un dossier de ce nom, créé s'il n'existait pas.
+     *
+     * L'application ne permet qu'un dossier par nom : celui qui existe déjà
+     * sert de destination, où qu'il se trouve. Deux dossiers « TD » ne se
+     * distingueraient pas l'un de l'autre dans la liste.
+     *
+     * @return array{0: int, 1: int}  le dossier, et 1 s'il vient d'être créé
+     */
+    private function dossierNomme(int $userId, ?int $parent, string $nom): array
+    {
+        $existe = Database::valeur('SELECT id FROM dossiers WHERE user_id = ? AND nom = ?', [$userId, $nom]);
+        if ($existe !== null) {
+            return [(int) $existe, 0];
+        }
+
+        // Un nouveau dossier se range à la fin de ses frères.
+        $rang = (int) Database::valeur(
+            'SELECT COALESCE(MAX(position), 0) + 1 FROM dossiers
+             WHERE user_id = ? AND parent_id ' . ($parent === null ? 'IS NULL' : '= ?'),
+            $parent === null ? [$userId] : [$userId, $parent]
+        );
+        Database::run(
+            'INSERT INTO dossiers (user_id, parent_id, nom, position) VALUES (?, ?, ?, ?)',
+            [$userId, $parent, $nom, $rang]
+        );
+
+        return [(int) Database::dernierId(), 1];
+    }
+
+    /** Répond en JSON et s'arrête là : c'est le script qui attend cela. */
+    private function repondreJson(array $donnees): never
+    {
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode($donnees, JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+
     /**
      * Crée un cours par fichier déposé sur un dossier.
      *

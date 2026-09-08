@@ -461,6 +461,127 @@
     });
   }
 
+  /*
+   * Importer un dossier entier : un cours par fichier, l'arborescence reprise.
+   *
+   * Deux raisons de passer par le script plutôt que par un envoi ordinaire.
+   * Le chemin de chaque fichier, d'abord : un formulaire ne transmet que le
+   * nom, et les sous-dossiers seraient perdus. Le nombre, ensuite : PHP
+   * n'accepte qu'une vingtaine de fichiers par requête, et un dossier en
+   * compte souvent davantage — on les envoie donc par paquets, l'un après
+   * l'autre, en disant où l'on en est.
+   */
+  var importDossier = document.querySelector("[data-import-dossier]");
+  var champImport = importDossier ? importDossier.querySelector("[data-import-champ]") : null;
+
+  if (importDossier && champImport && "webkitdirectory" in champImport && window.FormData) {
+    importDossier.hidden = false;
+    var etatImport = importDossier.querySelector("[data-import-etat]");
+
+    // En deçà de ce que PHP accepte, et sans charger la requête à l'excès.
+    var PAQUET_MAX = 15;
+    var POIDS_MAX = 40 * 1024 * 1024;
+
+    var dire = function (texte) {
+      if (etatImport) { etatImport.textContent = texte; }
+    };
+
+    var envoyerLePaquet = function (paquet) {
+      var corps = new FormData();
+      corps.append("_csrf", importDossier.getAttribute("data-jeton"));
+      corps.append("dossier", importDossier.getAttribute("data-dossier") || "");
+      paquet.forEach(function (fichier) {
+        corps.append("fichiers[]", fichier);
+        // Le chemin voyage à côté du fichier : l'envoi ne le porte pas.
+        corps.append("chemins[]", fichier.webkitRelativePath || fichier.name);
+      });
+
+      return fetch(importDossier.getAttribute("data-url"),
+        { method: "POST", body: corps, credentials: "same-origin" })
+        .then(function (reponse) {
+          return reponse.ok ? reponse.json() : null;
+        })
+        .catch(function () { return null; });
+    };
+
+    /* Quinze fichiers au plus par paquet, et pas trop de poids d'un coup. */
+    var enPaquets = function (fichiers) {
+      var paquets = [];
+      var courant = [];
+      var poids = 0;
+      fichiers.forEach(function (fichier) {
+        if (courant.length >= PAQUET_MAX || (courant.length && poids + fichier.size > POIDS_MAX)) {
+          paquets.push(courant);
+          courant = [];
+          poids = 0;
+        }
+        courant.push(fichier);
+        poids += fichier.size;
+      });
+      if (courant.length) { paquets.push(courant); }
+      return paquets;
+    };
+
+    var resumer = function (total, ecartes) {
+      var mots = total.cours + (total.cours > 1 ? " cours créés" : " cours créé");
+      if (total.dossiers > 0) {
+        mots += " dans " + total.dossiers
+          + (total.dossiers > 1 ? " nouveaux dossiers" : " nouveau dossier");
+      }
+      if (ecartes > 0) {
+        mots += " · " + ecartes + (ecartes > 1 ? " fichiers écartés" : " fichier écarté");
+      }
+      dire(mots + ".");
+
+      if (total.cours > 0 && etatImport) {
+        // Le texte est posé en clair : ce qui vient du serveur ne devient
+        // jamais du balisage.
+        var lien = document.createElement("button");
+        lien.type = "button";
+        lien.className = "bouton bouton--discret bouton--petit";
+        lien.style.marginTop = ".4rem";
+        lien.textContent = "Voir les cours";
+        lien.addEventListener("click", function () { window.location.reload(); });
+        etatImport.parentNode.appendChild(lien);
+      }
+    };
+
+    champImport.addEventListener("change", function () {
+      var fichiers = [].slice.call(champImport.files || []);
+      if (!fichiers.length) { return; }
+
+      var paquets = enPaquets(fichiers);
+      var total = { cours: 0, dossiers: 0 };
+      var ecartes = 0;
+      var faits = 0;
+      champImport.disabled = true;
+      dire("Import en cours…");
+
+      var suite = Promise.resolve();
+      paquets.forEach(function (paquet) {
+        suite = suite.then(function () {
+          return envoyerLePaquet(paquet).then(function (reponse) {
+            if (reponse === null) {
+              ecartes += paquet.length;
+            } else {
+              total.cours += reponse.cours || 0;
+              total.dossiers += reponse.dossiers || 0;
+              ecartes += (reponse.erreurs || []).length;
+            }
+            faits += paquet.length;
+            dire("Import en cours… " + faits + " fichiers sur " + fichiers.length);
+          });
+        });
+      });
+
+      suite.then(function () {
+        champImport.disabled = false;
+        champImport.value = "";
+        resumer(total, ecartes);
+      });
+    });
+  }
+
   // Glisser un dossier dans un autre.
   // Sans JavaScript, le champ « Range dans » du formulaire fait le meme travail.
   var arbreDossiers = document.querySelector("[data-dossiers-arbre]");

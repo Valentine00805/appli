@@ -14,6 +14,31 @@
     <p><?= count($cours) ?> cours affiché<?= count($cours) > 1 ? 's' : '' ?></p>
   </div>
   <div class="actions">
+    <?php
+    /*
+     * Déposer un dossier entier : un cours par fichier, l'arborescence reprise.
+     *
+     * Le bloc ne se montre qu'avec JavaScript, car un envoi ordinaire ne
+     * transmet que le nom des fichiers et jamais leur chemin : les
+     * sous-dossiers seraient perdus. Sans script, le dépôt fichier par fichier
+     * fait le même travail, en plus long.
+     *
+     * Il est ici, et non dans la colonne des dossiers, parce que celle-ci ne
+     * paraît qu'une fois qu'on a des dossiers — et l'import est justement ce
+     * qui en crée les premiers.
+     */
+    ?>
+    <span class="import-dossier" data-import-dossier hidden
+          data-url="<?= url('cours/depot-dossier') ?>"
+          data-jeton="<?= e(Session::jetonCsrf()) ?>"
+          data-dossier="<?= $dossierId === null ? '' : (int) $dossierId ?>">
+      <label class="bouton bouton--secondaire" for="import-dossier-champ">📁 Importer un dossier</label>
+      <input type="file" id="import-dossier-champ" class="sr-only"
+             data-import-champ webkitdirectory directory multiple>
+      <span class="import-dossier__etat" data-import-etat>
+        Un cours par fichier, vos sous-dossiers repris.
+      </span>
+    </span>
     <a class="bouton" href="<?= url('cours/nouveau') ?>">+ Nouveau cours</a>
   </div>
 </div>
