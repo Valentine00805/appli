@@ -1202,6 +1202,24 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
   text-transform: uppercase; letter-spacing: .04em; color: var(--texte-doux);
 }
 
+/*
+ * Une ligne de la colonne : la place du bouton qui replie, puis le dossier.
+ * Le décalage est porté par le rang, et non par le lien, pour que les
+ * boutons de tous les étages restent alignés sur la même colonne.
+ */
+.dossier-rang { display: flex; align-items: center; gap: .15rem; }
+.dossier-rang[hidden] { display: none; }
+.dossier-rang > .dossier-cible { flex: 1; min-width: 0; }
+
+.dossier-plier {
+  flex: none; width: 1.15rem; height: 1.15rem; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 0; border-radius: 3px; background: none; cursor: pointer;
+  color: var(--texte-doux); font-size: .68rem; line-height: 1;
+}
+.dossier-plier:hover { background: var(--fond-carte); color: var(--texte); }
+.dossier-plier--vide { cursor: default; }
+
 .dossier-cible {
   display: flex; align-items: center; gap: .5rem;
   padding: .4rem .7rem; border-radius: var(--rayon-s);

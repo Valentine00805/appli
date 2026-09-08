@@ -582,6 +582,87 @@
     });
   }
 
+  /*
+   * Replier un dossier de la colonne, et le rouvrir.
+   *
+   * La colonne est une suite de lignes à plat, et non des listes emboîtées :
+   * replier revient donc à cacher toutes les lignes dont un aïeul est replié.
+   * Ce qu'on a replié est gardé dans le navigateur — retrouver sa colonne
+   * comme on l'avait laissée fait toute l'utilité de la chose.
+   */
+  var colonnePlis = document.querySelector("[data-dossiers-cibles]");
+  var rangsDossiers = colonnePlis ? [].slice.call(colonnePlis.querySelectorAll("[data-rang]")) : [];
+
+  if (colonnePlis && rangsDossiers.length) {
+    var CLE_PLIS = "mescours.dossiers-replies";
+
+    // Les boutons ne servent qu'ici : sans script, la place reste vide.
+    [].slice.call(colonnePlis.querySelectorAll(".dossier-plier")).forEach(function (marque) {
+      marque.hidden = false;
+    });
+
+    var replies = {};
+    try {
+      (JSON.parse(window.localStorage.getItem(CLE_PLIS)) || []).forEach(function (id) {
+        replies[String(id)] = true;
+      });
+    } catch (e) { replies = {}; }
+
+    var parentDe = {};
+    rangsDossiers.forEach(function (rang) {
+      parentDe[rang.getAttribute("data-rang")] = rang.getAttribute("data-parent");
+    });
+
+    // Le dossier ouvert ne doit pas rester caché : on déplie ce qui le couvre.
+    var actif = colonnePlis.querySelector(".dossier-cible--active[data-dossier]");
+    if (actif) {
+      var aieul = parentDe[actif.getAttribute("data-dossier")];
+      while (aieul && aieul !== "0") {
+        delete replies[aieul];
+        aieul = parentDe[aieul];
+      }
+    }
+
+    var garderLesPlis = function () {
+      try {
+        window.localStorage.setItem(CLE_PLIS, JSON.stringify(Object.keys(replies)));
+      } catch (e) { /* navigation privée, ou stockage plein : tant pis */ }
+    };
+
+    var peindreLesPlis = function () {
+      rangsDossiers.forEach(function (rang) {
+        var couvert = false;
+        var dessus = rang.getAttribute("data-parent");
+        while (dessus && dessus !== "0") {
+          if (replies[dessus]) { couvert = true; break; }
+          dessus = parentDe[dessus];
+        }
+        rang.hidden = couvert;
+
+        var bouton = rang.querySelector("[data-plier]");
+        if (!bouton) { return; }
+        var plie = !!replies[bouton.getAttribute("data-plier")];
+        bouton.setAttribute("aria-expanded", plie ? "false" : "true");
+        bouton.textContent = plie ? "▸" : "▾";
+        bouton.setAttribute("aria-label",
+          (plie ? "Déplier « " : "Replier « ") + (rang.getAttribute("data-nom") || "") + " »");
+      });
+    };
+
+    colonnePlis.addEventListener("click", function (evenement) {
+      var bouton = evenement.target.closest && evenement.target.closest("[data-plier]");
+      if (!bouton) { return; }
+      evenement.preventDefault();
+
+      var id = bouton.getAttribute("data-plier");
+      if (replies[id]) { delete replies[id]; } else { replies[id] = true; }
+      garderLesPlis();
+      peindreLesPlis();
+    });
+
+    peindreLesPlis();
+  }
+
   // Glisser un dossier dans un autre.
   // Sans JavaScript, le champ « Range dans » du formulaire fait le meme travail.
   var arbreDossiers = document.querySelector("[data-dossiers-arbre]");

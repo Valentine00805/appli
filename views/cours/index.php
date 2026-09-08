@@ -139,27 +139,48 @@ foreach ($dossiers as $d) {
   <aside class="cours-dossiers" data-dossiers-cibles>
     <p class="cours-dossiers__titre">Dossiers</p>
 
-    <a class="dossier-cible<?= $dossierId === null ? ' dossier-cible--active' : '' ?>"
-       href="<?= $lienDossier(null) ?>">
-      <span aria-hidden="true">🗃️</span>
-      <span style="flex:1;min-width:0">Tous les cours</span>
-      <span class="dossier-cible__compte"><?= (int) $total ?></span>
-    </a>
+    <?php
+    /*
+     * Chaque ligne tient dans un rang, avec devant elle la place du bouton
+     * qui replie. Le bouton ne paraît qu'avec JavaScript : sans lui, la
+     * colonne reste dépliée, et la place reste vide pour que tout s'aligne.
+     */
+    ?>
+    <div class="dossier-rang">
+      <span class="dossier-plier dossier-plier--vide" aria-hidden="true" hidden></span>
+      <a class="dossier-cible<?= $dossierId === null ? ' dossier-cible--active' : '' ?>"
+         href="<?= $lienDossier(null) ?>">
+        <span aria-hidden="true">🗃️</span>
+        <span style="flex:1;min-width:0">Tous les cours</span>
+        <span class="dossier-cible__compte"><?= (int) $total ?></span>
+      </a>
+    </div>
 
     <?php
     $rendreCible = function (array $d, int $profondeur) use (&$rendreCible, $parNiveau, $dossierId, $lienDossier): void {
+        $enfants = $parNiveau[(int) $d['id']] ?? [];
         ?>
-        <a class="dossier-cible<?= $dossierId === (int) $d['id'] ? ' dossier-cible--active' : '' ?>"
-           href="<?= $lienDossier((int) $d['id']) ?>"
-           style="padding-left:<?= 0.7 + $profondeur * 0.9 ?>rem"
-           data-dossier="<?= (int) $d['id'] ?>"
-           title="Déposez un cours ici pour le ranger dans « <?= e($d['nom']) ?> »">
-          <span aria-hidden="true"><?= e($d['icone']) ?></span>
-          <span style="flex:1;min-width:0"><?= e($d['nom']) ?></span>
-          <span class="dossier-cible__compte"><?= (int) $d['nb_cours'] ?></span>
-        </a>
+        <div class="dossier-rang" data-rang="<?= (int) $d['id'] ?>"
+             data-parent="<?= (int) ($d['parent_id'] ?? 0) ?>"
+             data-nom="<?= e($d['nom']) ?>"
+             style="padding-left:<?= $profondeur * 0.9 ?>rem">
+          <?php if ($enfants !== []): ?>
+            <button type="button" class="dossier-plier" data-plier="<?= (int) $d['id'] ?>"
+                    aria-expanded="true" hidden>▾</button>
+          <?php else: ?>
+            <span class="dossier-plier dossier-plier--vide" aria-hidden="true" hidden></span>
+          <?php endif; ?>
+          <a class="dossier-cible<?= $dossierId === (int) $d['id'] ? ' dossier-cible--active' : '' ?>"
+             href="<?= $lienDossier((int) $d['id']) ?>"
+             data-dossier="<?= (int) $d['id'] ?>"
+             title="Déposez un cours ici pour le ranger dans « <?= e($d['nom']) ?> »">
+            <span aria-hidden="true"><?= e($d['icone']) ?></span>
+            <span style="flex:1;min-width:0"><?= e($d['nom']) ?></span>
+            <span class="dossier-cible__compte"><?= (int) $d['nb_cours'] ?></span>
+          </a>
+        </div>
         <?php
-        foreach ($parNiveau[(int) $d['id']] ?? [] as $enfant) {
+        foreach ($enfants as $enfant) {
             $rendreCible($enfant, $profondeur + 1);
         }
     };
@@ -168,12 +189,15 @@ foreach ($dossiers as $d) {
     }
     ?>
 
-    <a class="dossier-cible" href="<?= $lienDossier(null) ?>" data-dossier=""
-       title="Déposez un cours ici pour le sortir de son dossier">
-      <span aria-hidden="true">➖</span>
-      <span style="flex:1;min-width:0">Sans dossier</span>
-      <span class="dossier-cible__compte"><?= (int) $sansDossier ?></span>
-    </a>
+    <div class="dossier-rang">
+      <span class="dossier-plier dossier-plier--vide" aria-hidden="true" hidden></span>
+      <a class="dossier-cible" href="<?= $lienDossier(null) ?>" data-dossier=""
+         title="Déposez un cours ici pour le sortir de son dossier">
+        <span aria-hidden="true">➖</span>
+        <span style="flex:1;min-width:0">Sans dossier</span>
+        <span class="dossier-cible__compte"><?= (int) $sansDossier ?></span>
+      </a>
+    </div>
 
     <p class="champ__aide" style="margin:.6rem .2rem 0">
       Faites glisser un cours sur un dossier pour l'y ranger. Un fichier déposé
