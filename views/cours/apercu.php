@@ -42,7 +42,7 @@
       <strong>Contenu du fichier</strong>, tel qu'il est enregistré.
     <?php elseif ($enrichis !== []): ?>
       <strong>Aperçu du texte.</strong> Le gras, l'italique, le souligné, la taille,
-      la couleur, le surlignage, l'alignement et les listes sont rendus ; les images,
+      la couleur, le surlignage, l'alignement, les titres et les listes sont rendus ; les images,
       les tableaux et la pagination ne le sont pas — un navigateur ne sait pas afficher un
       <?= e($format) ?>. Téléchargez le fichier pour l'ouvrir tel quel dans Word
       ou LibreOffice.
@@ -170,7 +170,10 @@
         $style = $aligne === null ? '' : ' style="text-align:' . $aligne . '"';
         $corps = $riche === null ? e($paragraphe) : $riche['html'];
         $liste = (string) ($riche['liste'] ?? '');
-        $balise = ['puce' => 'ul', 'numero' => 'ol'][$liste] ?? '';
+        $titre = (int) ($riche['titre'] ?? 0);
+        // Un titre annonce une section : il referme les listes ouvertes et ne
+        // se range pas dedans.
+        $balise = $titre > 0 ? '' : (['puce' => 'ul', 'numero' => 'ol'][$liste] ?? '');
         $vise = $balise === '' ? 0 : (int) ($riche['niveau'] ?? 0) + 1;
 
         // Une liste d'une autre sorte n'en continue pas une : on referme tout
@@ -198,7 +201,11 @@
         }
 
         if ($balise === '') {
-            echo '<p' . $style . '>' . $corps . '</p>';
+            // La page porte déjà son <h1> : les titres du document se rangent
+            // dessous, pour que le plan de la page reste lisible.
+            $rang = $titre > 0 ? 'h' . ($titre + 1) : 'p';
+            $classe = $titre > 0 ? ' class="apercu-titre apercu-titre--' . $titre . '"' : '';
+            echo '<' . $rang . $classe . $style . '>' . $corps . '</' . $rang . '>';
             continue;
         }
 

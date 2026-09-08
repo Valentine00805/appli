@@ -28,16 +28,36 @@ final class EditionDocument
 
     /* --- Les listes à puces ---------------------------------------------- */
 
-    /** Où Word range la définition de ses listes, et comment on l'y annonce. */
-    private const PART_NUM   = 'word/numbering.xml';
-    private const PART_TYPES = '[Content_Types].xml';
-    private const PART_RELS  = 'word/_rels/document.xml.rels';
+    /** Où Word range ses listes et ses styles, et comment on les y annonce. */
+    private const PART_NUM    = 'word/numbering.xml';
+    private const PART_STYLES = 'word/styles.xml';
+    private const PART_TYPES  = '[Content_Types].xml';
+    private const PART_RELS   = 'word/_rels/document.xml.rels';
 
     private const NS_TYPES = 'http://schemas.openxmlformats.org/package/2006/content-types';
     private const NS_RELS  = 'http://schemas.openxmlformats.org/package/2006/relationships';
 
     private const TYPE_NUM = 'application/vnd.openxmlformats-officedocument.wordprocessingml.numbering+xml';
     private const REL_NUM  = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/numbering';
+
+    private const TYPE_STYLES = 'application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml';
+    private const REL_STYLES  = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles';
+
+    /**
+     * Les niveaux de titre proposés, et ce qui les nomme dans chaque format.
+     *
+     * L'identifiant du style est traduit dans le Word français ; c'est son
+     * nom — « heading 1 », toujours en anglais — qui le désigne vraiment.
+     * On garde ici celui qu'emploie le Word français, faute de mieux, pour
+     * les documents où il faut poser le style nous-mêmes.
+     */
+    private const TITRES = [
+        1 => ['nom' => 'Titre1', 'odf' => 'Heading_20_1', 'pt' => 16],
+        2 => ['nom' => 'Titre2', 'odf' => 'Heading_20_2', 'pt' => 13],
+    ];
+
+    /** Jusqu'où vont les titres proposés. */
+    public const TITRE_MAX = 2;
 
     /**
      * Les deux sortes de liste, et ce qui les nomme dans chaque format.
@@ -209,7 +229,7 @@ final class EditionDocument
      * donc pas perdu.
      *
      * @return list<array{html: string, alignement: ?string, liste: string,
-     *                    numero: ?int, niveau: int}>
+     *                    numero: ?int, niveau: int, titre: int}>
      * @throws RuntimeException si le fichier est illisible
      */
     public static function lireRiche(string $chemin, string $nomOrigine): array
@@ -219,6 +239,7 @@ final class EditionDocument
         $alignementsOdf = self::stylesDeParagrapheOdf($doc);
         $listesOdf = self::listesOdf($doc);
         $numsWord = self::numsWord($chemin);
+        $titresWord = self::titresWord($chemin);
         $numeros = self::numeroter($paragraphes, $numsWord, $listesOdf);
 
         $rendus = [];
@@ -231,6 +252,7 @@ final class EditionDocument
                 'liste' => (string) self::sorteDeListe($p, $numsWord, $listesOdf),
                 'numero' => $numeros[$rang],
                 'niveau' => min(self::niveauDeListe($p), self::NIVEAU_MAX),
+                'titre' => min(self::niveauDeTitre($p, $titresWord), self::TITRE_MAX),
             ];
         }
 
@@ -248,7 +270,7 @@ final class EditionDocument
      * pour que les deux listes se correspondent une à une.
      *
      * @return list<array{html: string, alignement: ?string, liste: string,
-     *                    numero: ?int, niveau: int}>
+     *                    numero: ?int, niveau: int, titre: int}>
      * @throws RuntimeException si le fichier est illisible
      */
     public static function apercuRiche(string $chemin, string $nomOrigine): array
@@ -258,6 +280,7 @@ final class EditionDocument
         $alignementsOdf = self::stylesDeParagrapheOdf($doc);
         $listesOdf = self::listesOdf($doc);
         $numsWord = self::numsWord($chemin);
+        $titresWord = self::titresWord($chemin);
 
         /*
          * Le rang se compte sur tous les paragraphes, y compris ceux que
@@ -285,6 +308,7 @@ final class EditionDocument
                     'liste' => (string) self::sorteDeListe($noeud, $numsWord, $listesOdf),
                     'numero' => $numeros[$rang],
                     'niveau' => min(self::niveauDeListe($noeud), self::NIVEAU_MAX),
+                    'titre' => min(self::niveauDeTitre($noeud, $titresWord), self::TITRE_MAX),
                 ];
             }
         }
@@ -338,7 +362,7 @@ final class EditionDocument
      * paragraphe garde l'allure de son premier passage.
      *
      * @param array<int, array{origine: ?int, texte: string, alignement?: ?string,
-     *                         liste?: string, niveau?: int}> $entrees
+     *                         liste?: string, niveau?: int, titre?: int}> $entrees
      * @throws RuntimeException si le document ne peut être ni lu ni réécrit
      */
     public static function enregistrer(
@@ -355,11 +379,20 @@ final class EditionDocument
             }
         }
 
+        // Ce qui est titré ne fait partie d'aucune liste : on l'en retire
+        // avant de décider quelles listes le document va porter.
+        foreach ($entrees as $rang => $entree) {
+            if ((int) ($entree['titre'] ?? 0) > 0) {
+                $entrees[$rang]['liste'] = '';
+            }
+        }
+
         [$doc, $corps, $paragraphes, $format] = self::ouvrir($chemin, $nomOrigine);
         $parties = [];
 
         $word = $doc->documentElement?->namespaceURI === self::NS_W;
         $numsWord = $word ? self::numsWord($chemin) : [];
+        $titresWord = $word ? self::titresWord($chemin) : [];
         $listesOdf = $word ? [] : self::listesOdf($doc);
 
         /*
@@ -418,6 +451,26 @@ final class EditionDocument
                 $noeud = $doc->createElementNS($ns, $nom);
             }
 
+            /*
+             * Le titre se pose d'abord : en ODF il change la balise elle-même,
+             * et tout ce qui suit doit travailler sur la nouvelle. Comme pour
+             * les listes, un niveau plus profond que ceux qu'on propose est
+             * conservé tant qu'on ne le déplace pas.
+             */
+            $titreActuel = self::niveauDeTitre($noeud, $titresWord);
+            $titreVoulu = max(0, min((int) ($entree['titre'] ?? 0), self::TITRE_MAX));
+            $titre = $titreVoulu === min($titreActuel, self::TITRE_MAX) ? $titreActuel : $titreVoulu;
+
+            if ($titre !== $titreActuel) {
+                if ($word) {
+                    self::titrerWord($doc, $noeud, $titre === 0
+                        ? null
+                        : self::styleDeTitreWord($chemin, $parties, $titre));
+                } else {
+                    $noeud = self::titrerOdf($doc, $noeud, $titre);
+                }
+            }
+
             self::remplacerTexte($doc, $noeud, $entree['texte'], $gabarit, $riche);
             self::alignerParagraphe($doc, $noeud, $entree['alignement'] ?? null);
 
@@ -427,7 +480,9 @@ final class EditionDocument
              * l'éditeur ne sait pas dire, garde ainsi la sienne tant qu'on n'y
              * touche pas.
              */
-            $sorte = (string) ($entree['liste'] ?? '');
+            // Un titre annonce une section, il ne se numérote pas avec le
+            // reste : la liste s'efface devant lui.
+            $sorte = $titre > 0 ? '' : (string) ($entree['liste'] ?? '');
             $avant = $existant === null
                 ? ''
                 : (string) self::sorteDeListe($existant, $numsWord, $listesOdf);
@@ -2138,7 +2193,8 @@ final class EditionDocument
         }
         $parties[self::PART_NUM] = $ecrit;
 
-        self::declarerNumerotation($chemin, $parties);
+        self::declarerPartie($chemin, $parties, self::PART_NUM, self::TYPE_NUM,
+            self::REL_NUM, 'numbering.xml');
 
         return $numeroId;
     }
@@ -2252,34 +2308,44 @@ final class EditionDocument
             $ecrit = $doc->saveXML();
             if ($ecrit !== false) {
                 $parties[self::PART_NUM] = $ecrit;
-                self::declarerNumerotation($chemin, $parties);
+                self::declarerPartie($chemin, $parties, self::PART_NUM, self::TYPE_NUM,
+            self::REL_NUM, 'numbering.xml');
             }
             return;
         }
     }
 
     /**
-     * Annonce la partie des listes : son type dans le paquet, son lien dans le
-     * document. Sans ces deux lignes, Word tient l'archive pour abîmée.
+     * Annonce une partie du paquet : son type, et son lien depuis le document.
+     * Sans ces deux lignes, Word tient l'archive pour abîmée.
+     *
+     * Les deux fichiers sont relus depuis ce qu'on a déjà réécrit quand il y
+     * en a : autrement, annoncer les styles effacerait l'annonce des listes.
      *
      * @param array<string, string> $parties  complété au besoin
      */
-    private static function declarerNumerotation(string $chemin, array &$parties): void
-    {
-        $types = self::partie($chemin, self::PART_TYPES);
+    private static function declarerPartie(
+        string $chemin,
+        array &$parties,
+        string $partie,
+        string $type,
+        string $relation,
+        string $cible
+    ): void {
+        $types = $parties[self::PART_TYPES] ?? self::partie($chemin, self::PART_TYPES);
         $doc = $types === null ? null : self::analyser($types);
         if ($doc !== null && $doc->documentElement !== null) {
             $deja = false;
             foreach ($doc->getElementsByTagNameNS(self::NS_TYPES, 'Override') as $entree) {
-                if ($entree->getAttribute('PartName') === '/' . self::PART_NUM) {
+                if ($entree->getAttribute('PartName') === '/' . $partie) {
                     $deja = true;
                     break;
                 }
             }
             if (!$deja) {
                 $entree = $doc->createElementNS(self::NS_TYPES, 'Override');
-                $entree->setAttribute('PartName', '/' . self::PART_NUM);
-                $entree->setAttribute('ContentType', self::TYPE_NUM);
+                $entree->setAttribute('PartName', '/' . $partie);
+                $entree->setAttribute('ContentType', $type);
                 $doc->documentElement->appendChild($entree);
                 $ecrit = $doc->saveXML();
                 if ($ecrit !== false) {
@@ -2288,14 +2354,14 @@ final class EditionDocument
             }
         }
 
-        $rels = self::partie($chemin, self::PART_RELS);
+        $rels = $parties[self::PART_RELS] ?? self::partie($chemin, self::PART_RELS);
         $doc = $rels === null ? null : self::analyser($rels);
         if ($doc === null || $doc->documentElement === null) {
             return;
         }
         $identifiants = [];
         foreach ($doc->getElementsByTagNameNS(self::NS_RELS, 'Relationship') as $lien) {
-            if ($lien->getAttribute('Type') === self::REL_NUM) {
+            if ($lien->getAttribute('Type') === $relation) {
                 return;
             }
             $identifiants[] = (int) ltrim($lien->getAttribute('Id'), 'rId');
@@ -2303,14 +2369,298 @@ final class EditionDocument
 
         $lien = $doc->createElementNS(self::NS_RELS, 'Relationship');
         $lien->setAttribute('Id', 'rId' . ($identifiants === [] ? 1 : max($identifiants) + 1));
-        $lien->setAttribute('Type', self::REL_NUM);
-        $lien->setAttribute('Target', 'numbering.xml');
+        $lien->setAttribute('Type', $relation);
+        $lien->setAttribute('Target', $cible);
         $doc->documentElement->appendChild($lien);
 
         $ecrit = $doc->saveXML();
         if ($ecrit !== false) {
             $parties[self::PART_RELS] = $ecrit;
         }
+    }
+
+    /* --- Les titres ------------------------------------------------------ */
+
+    /**
+     * Les styles de titre d'un document Word : identifiant, puis niveau.
+     *
+     * @return array<string, int>
+     */
+    private static function titresWord(string $chemin): array
+    {
+        $xml = self::partie($chemin, self::PART_STYLES);
+        $doc = $xml === null ? null : self::analyser($xml);
+
+        return $doc === null ? [] : self::titresDeLaFeuille($doc);
+    }
+
+    /**
+     * Les styles de titre d'une feuille de styles déjà ouverte.
+     *
+     * Un style de titre se reconnaît à son nom — « heading 1 », que Word
+     * écrit en anglais quelle que soit la langue de l'interface. Son
+     * identifiant, lui, est traduit : « Titre1 » chez nous, « Heading1 »
+     * ailleurs. On accepte les deux, pour les documents dont le nom manque.
+     *
+     * @return array<string, int>
+     */
+    private static function titresDeLaFeuille(DOMDocument $doc): array
+    {
+        $titres = [];
+        foreach ($doc->getElementsByTagNameNS(self::NS_W, 'style') as $style) {
+            if ($style->getAttributeNS(self::NS_W, 'type') !== 'paragraph') {
+                continue;
+            }
+            $identifiant = $style->getAttributeNS(self::NS_W, 'styleId');
+            if ($identifiant === '') {
+                continue;
+            }
+            $nom = self::enfantWord($style, 'name');
+            $val = $nom === null ? '' : $nom->getAttributeNS(self::NS_W, 'val');
+
+            if (preg_match('/^heading\s*([1-9])$/i', $val, $m) === 1
+                || preg_match('/^(?:heading|titre)\s*([1-9])$/i', $identifiant, $m) === 1) {
+                $titres[$identifiant] = (int) $m[1];
+            }
+        }
+
+        return $titres;
+    }
+
+    /**
+     * De quel niveau de titre est ce paragraphe, ou zéro s'il n'en est pas un.
+     *
+     * @param array<string, int> $titresWord
+     */
+    private static function niveauDeTitre(DOMElement $paragraphe, array $titresWord): int
+    {
+        if ($paragraphe->namespaceURI === self::NS_W) {
+            $pStyle = self::enfantWord(self::enfantWord($paragraphe, 'pPr'), 'pStyle');
+
+            return $pStyle === null
+                ? 0
+                : ($titresWord[$pStyle->getAttributeNS(self::NS_W, 'val')] ?? 0);
+        }
+
+        // En ODF, un titre n'est pas un paragraphe stylé mais une autre
+        // balise : <text:h>, avec son rang dans le plan.
+        if ($paragraphe->localName !== 'h') {
+            return 0;
+        }
+        $rang = (int) $paragraphe->getAttributeNS(self::NS_TEXT, 'outline-level');
+
+        return $rang < 1 ? 1 : $rang;
+    }
+
+    /**
+     * L'identifiant du style de titre à employer, posé au besoin.
+     *
+     * Le style du document passe avant le nôtre : deux styles de titre 1 se
+     * battraient dans le volet des styles, et le sommaire n'en reprendrait
+     * qu'un.
+     *
+     * @param array<string, string> $parties  complété au besoin
+     */
+    private static function styleDeTitreWord(string $chemin, array &$parties, int $niveau): ?string
+    {
+        $reglage = self::TITRES[$niveau] ?? null;
+        if ($reglage === null) {
+            return null;
+        }
+        $xml = $parties[self::PART_STYLES] ?? self::partie($chemin, self::PART_STYLES);
+        $doc = $xml === null ? null : self::analyser($xml);
+
+        if ($doc === null) {
+            $doc = new DOMDocument('1.0', 'UTF-8');
+            $doc->appendChild($doc->createElementNS(self::NS_W, 'w:styles'));
+        }
+        $racine = $doc->documentElement;
+        if ($racine === null) {
+            return null;
+        }
+
+        foreach (self::titresDeLaFeuille($doc) as $identifiant => $rang) {
+            if ($rang === $niveau) {
+                return $identifiant;
+            }
+        }
+
+        // Un identifiant que le document n'emploie pas déjà pour autre chose.
+        $pris = [];
+        foreach ($racine->getElementsByTagNameNS(self::NS_W, 'style') as $style) {
+            $pris[$style->getAttributeNS(self::NS_W, 'styleId')] = true;
+        }
+        $identifiant = isset($pris[$reglage['nom']]) ? 'MesCours' . $reglage['nom'] : $reglage['nom'];
+
+        $style = $doc->createElementNS(self::NS_W, 'w:style');
+        $style->setAttributeNS(self::NS_W, 'w:type', 'paragraph');
+        $style->setAttributeNS(self::NS_W, 'w:styleId', $identifiant);
+
+        $nom = $doc->createElementNS(self::NS_W, 'w:name');
+        $nom->setAttributeNS(self::NS_W, 'w:val', 'heading ' . $niveau);
+        $style->appendChild($nom);
+
+        // Après un titre, on revient au texte courant : c'est ce qu'attend
+        // quiconque appuie sur Entrée au bout d'un titre.
+        $suite = $doc->createElementNS(self::NS_W, 'w:next');
+        $suite->setAttributeNS(self::NS_W, 'w:val', 'Normal');
+        $style->appendChild($suite);
+
+        // Sans cela, le style n'apparaît pas dans la galerie de Word.
+        $style->appendChild($doc->createElementNS(self::NS_W, 'w:qFormat'));
+
+        $pPr = $doc->createElementNS(self::NS_W, 'w:pPr');
+        $pPr->appendChild($doc->createElementNS(self::NS_W, 'w:keepNext'));
+        $espace = $doc->createElementNS(self::NS_W, 'w:spacing');
+        $espace->setAttributeNS(self::NS_W, 'w:before', '240');
+        $espace->setAttributeNS(self::NS_W, 'w:after', '60');
+        $pPr->appendChild($espace);
+        // Le rang dans le plan : c'est lui qui nourrit le sommaire.
+        $plan = $doc->createElementNS(self::NS_W, 'w:outlineLvl');
+        $plan->setAttributeNS(self::NS_W, 'w:val', (string) ($niveau - 1));
+        $pPr->appendChild($plan);
+        $style->appendChild($pPr);
+
+        $rPr = $doc->createElementNS(self::NS_W, 'w:rPr');
+        $rPr->appendChild($doc->createElementNS(self::NS_W, 'w:b'));
+        foreach (['sz', 'szCs'] as $balise) {
+            // Word compte les tailles en demi-points.
+            $taille = $doc->createElementNS(self::NS_W, 'w:' . $balise);
+            $taille->setAttributeNS(self::NS_W, 'w:val', (string) ($reglage['pt'] * 2));
+            $rPr->appendChild($taille);
+        }
+        $style->appendChild($rPr);
+
+        $racine->appendChild($style);
+
+        $ecrit = $doc->saveXML();
+        if ($ecrit === false) {
+            return null;
+        }
+        $parties[self::PART_STYLES] = $ecrit;
+        self::declarerPartie($chemin, $parties, self::PART_STYLES, self::TYPE_STYLES,
+            self::REL_STYLES, 'styles.xml');
+
+        return $identifiant;
+    }
+
+    /** Pose ou retire le style de titre d'un paragraphe Word. */
+    private static function titrerWord(
+        DOMDocument $doc,
+        DOMElement $paragraphe,
+        ?string $identifiant
+    ): void {
+        $pPr = self::enfantWord($paragraphe, 'pPr');
+        $ancien = self::enfantWord($pPr, 'pStyle');
+
+        if ($identifiant === null) {
+            // Le paragraphe retombe sur le style ordinaire du document.
+            if ($pPr !== null && $ancien !== null) {
+                $pPr->removeChild($ancien);
+            }
+            return;
+        }
+
+        if ($pPr === null) {
+            $pPr = $doc->createElementNS(self::NS_W, 'w:pPr');
+            $paragraphe->insertBefore($pPr, $paragraphe->firstChild);
+        }
+        if ($ancien !== null) {
+            $pPr->removeChild($ancien);
+        }
+        $pStyle = $doc->createElementNS(self::NS_W, 'w:pStyle');
+        $pStyle->setAttributeNS(self::NS_W, 'w:val', $identifiant);
+        self::ranger($pPr, $pStyle, self::ORDRE_PPR);
+    }
+
+    /**
+     * Change un paragraphe ODF en titre, ou l'inverse, et rend l'élément.
+     *
+     * En ODF, ce n'est pas un attribut mais la balise elle-même qui fait le
+     * titre : il faut en fabriquer une autre et lui passer le contenu. Le
+     * paragraphe d'origine n'est pas décroché de l'arbre — c'est le
+     * remplacement général qui s'en charge, et le décrocher ici lui ferait
+     * perdre le repère où reposer le texte.
+     */
+    private static function titrerOdf(DOMDocument $doc, DOMElement $paragraphe, int $niveau): DOMElement
+    {
+        $voulue = $niveau > 0 ? 'h' : 'p';
+        $noeud = $paragraphe;
+
+        if ($paragraphe->localName !== $voulue) {
+            $noeud = $doc->createElementNS(self::NS_TEXT, 'text:' . $voulue);
+            foreach (iterator_to_array($paragraphe->attributes) as $attribut) {
+                $noeud->setAttributeNS(
+                    $attribut->namespaceURI,
+                    $attribut->nodeName,
+                    (string) $attribut->nodeValue
+                );
+            }
+            while ($paragraphe->firstChild !== null) {
+                $noeud->appendChild($paragraphe->firstChild);
+            }
+        }
+
+        if ($niveau > 0) {
+            $noeud->setAttributeNS(self::NS_TEXT, 'text:outline-level', (string) $niveau);
+            $noeud->setAttributeNS(self::NS_TEXT, 'text:style-name',
+                self::styleDeTitreOdf($doc, $niveau));
+
+            return $noeud;
+        }
+
+        $noeud->removeAttributeNS(self::NS_TEXT, 'outline-level');
+        // Le style de titre s'en irait avec la balise : on revient au texte
+        // courant plutôt que de garder une apparence de titre.
+        if (preg_match('/^(?:Heading|MesCoursTitre)/',
+            $noeud->getAttributeNS(self::NS_TEXT, 'style-name')) === 1) {
+            $noeud->setAttributeNS(self::NS_TEXT, 'text:style-name', 'Standard');
+        }
+
+        return $noeud;
+    }
+
+    /**
+     * Le style de titre que l'application pose sur les siens, en ODF.
+     *
+     * Il hérite de celui du document quand il existe, pour que le titre
+     * ressemble aux autres ; ce qu'il décrit lui-même sert aux documents qui
+     * n'en ont pas.
+     */
+    private static function styleDeTitreOdf(DOMDocument $doc, int $niveau): string
+    {
+        $reglage = self::TITRES[$niveau];
+        $nom = 'MesCoursTitre' . $niveau;
+
+        foreach ($doc->getElementsByTagNameNS(self::NS_STYLE, 'style') as $style) {
+            if ($style->getAttributeNS(self::NS_STYLE, 'name') === $nom) {
+                return $nom;
+            }
+        }
+        $automatiques = self::automatiquesOdf($doc);
+        if ($automatiques === null) {
+            return $reglage['odf'];
+        }
+
+        $style = $doc->createElementNS(self::NS_STYLE, 'style:style');
+        $style->setAttributeNS(self::NS_STYLE, 'style:name', $nom);
+        $style->setAttributeNS(self::NS_STYLE, 'style:family', 'paragraph');
+        $style->setAttributeNS(self::NS_STYLE, 'style:parent-style-name', $reglage['odf']);
+
+        $proprietes = $doc->createElementNS(self::NS_STYLE, 'style:paragraph-properties');
+        $proprietes->setAttributeNS(self::NS_FO, 'fo:margin-top', '0.25in');
+        $proprietes->setAttributeNS(self::NS_FO, 'fo:margin-bottom', '0.08in');
+        $proprietes->setAttributeNS(self::NS_FO, 'fo:keep-with-next', 'always');
+        $style->appendChild($proprietes);
+
+        $texte = $doc->createElementNS(self::NS_STYLE, 'style:text-properties');
+        $texte->setAttributeNS(self::NS_FO, 'fo:font-size', $reglage['pt'] . 'pt');
+        $texte->setAttributeNS(self::NS_FO, 'fo:font-weight', 'bold');
+        $style->appendChild($texte);
+
+        $automatiques->appendChild($style);
+
+        return $nom;
     }
 
     /** Le style de liste que l'application pose sur les siennes, en ODF. */

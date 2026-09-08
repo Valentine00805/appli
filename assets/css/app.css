@@ -1373,6 +1373,12 @@ input.depot__champ {
 .paragraphe[data-liste="numero"] .paragraphe__riche::before {
   content: attr(data-etiquette);
 }
+/* Un titre se voit dans sa zone, comme il se verra dans le document. */
+.paragraphe[data-titre="1"] .paragraphe__riche,
+.paragraphe[data-titre="2"] .paragraphe__riche { font-weight: 700; line-height: 1.35; }
+.paragraphe[data-titre="1"] .paragraphe__riche { font-size: 1.4rem; }
+.paragraphe[data-titre="2"] .paragraphe__riche { font-size: 1.15rem; }
+
 /* Une sous-liste se décale, comme elle le sera dans le document. */
 .paragraphe[data-niveau="1"] .paragraphe__riche { margin-left: 1.7rem; }
 .paragraphe[data-niveau="2"] .paragraphe__riche { margin-left: 3.4rem; }
@@ -1380,6 +1386,13 @@ input.depot__champ {
 /* Les listes de l'aperçu, serrées comme dans le document. */
 .apercu-liste { margin: 0 0 .8rem; padding-left: 1.8rem; }
 .apercu-liste li { line-height: 1.9; }
+/* Les titres de l'aperçu. Ils ouvrent une section : de l'air au-dessus, et
+   rien en dessous, pour qu'ils restent collés à ce qu'ils annoncent. */
+.apercu-titre { margin: 1.4rem 0 .5rem; line-height: 1.3; }
+.apercu-document > .apercu-titre:first-child { margin-top: 0; }
+.apercu-titre--1 { font-size: 1.45rem; }
+.apercu-titre--2 { font-size: 1.2rem; }
+
 /* Le porteur d'une sous-liste orpheline — un sous-point qui suit un
    paragraphe ordinaire — n'existe que pour la loger : il ne se voit pas. */
 .apercu-liste__porteur { list-style: none; }

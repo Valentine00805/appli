@@ -1339,6 +1339,7 @@ final class CoursController
         $alignements = array_values((array) ($_POST['alignement'] ?? []));
         $listes = array_values((array) ($_POST['liste'] ?? []));
         $niveaux = array_values((array) ($_POST['niveau'] ?? []));
+        $titres = array_values((array) ($_POST['titre'] ?? []));
         $connus    = ['gauche', 'centre', 'droite', 'justifie'];
 
         $entrees = [];
@@ -1365,6 +1366,12 @@ final class CoursController
                 ? 0
                 : max(0, min((int) $niveau, EditionDocument::NIVEAU_MAX));
 
+            // Titre 1, Titre 2, ou du texte ordinaire.
+            $titre = $titres[$rang] ?? 0;
+            $titre = is_numeric($titre)
+                ? max(0, min((int) $titre, EditionDocument::TITRE_MAX))
+                : 0;
+
             // Découpage octet par octet : les fins de ligne sont de l'ASCII,
             // et un motif Unicode échouerait en silence sur un texte mal encodé
             // — au prix d'un paragraphe vidé sans prévenir.
@@ -1374,7 +1381,8 @@ final class CoursController
                     continue;
                 }
                 $entrees[] = ['origine' => $origine, 'texte' => $ligne,
-                    'alignement' => $aligne, 'liste' => $liste, 'niveau' => $niveau];
+                    'alignement' => $aligne, 'liste' => $liste, 'niveau' => $niveau,
+                    'titre' => $titre];
             }
         }
         return $entrees;

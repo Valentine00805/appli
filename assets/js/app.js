@@ -666,6 +666,11 @@
         reste = apres.extractContents();
       }
 
+      /*
+       * Le paragraphe qui s'ouvre ne reprend pas le titre du précédent : après
+       * un titre vient le texte de la section, comme le fait un traitement de
+       * texte. Le modèle est déjà sans titre, il n'y a rien à recopier.
+       */
       var suivante = modeleParagraphe.content.firstElementChild.cloneNode(true);
       suivante.setAttribute("data-liste", sorte);
       suivante.setAttribute("data-niveau", String(niveau));
@@ -776,6 +781,22 @@
         ligne.setAttribute("data-niveau", "0");
         if (etage) { etage.value = "0"; }
       }
+      renumeroterListes();
+    };
+
+    /**
+     * Met, change ou retire le niveau de titre d'un paragraphe.
+     *
+     * Un titre annonce une section : il ne se numérote pas avec le reste, et
+     * sortir de la liste fait donc partie du geste.
+     */
+    var marquerLeTitre = function (ligne, niveau) {
+      var champ = ligne.querySelector("input[name='titre[]']");
+      if (!champ) { return; }
+
+      ligne.setAttribute("data-titre", String(niveau));
+      champ.value = String(niveau);
+      if (niveau > 0 && ligne.getAttribute("data-liste")) { marquerLaLigne(ligne, ""); }
       renumeroterListes();
     };
 
@@ -1095,6 +1116,24 @@
 
           var sorte = bouton.getAttribute("data-liste");
           marquerLaLigne(ligne, ligne.getAttribute("data-liste") !== sorte ? sorte : "");
+        });
+      });
+
+      /*
+       * Titre 1 et Titre 2 se posent sur le paragraphe où l'on a le curseur,
+       * et se retirent en recliquant sur le même bouton.
+       */
+      [].slice.call(barreOutils.querySelectorAll("[data-titre]")).forEach(function (bouton) {
+        bouton.addEventListener("mousedown", function (evenement) {
+          evenement.preventDefault();
+          var zone = reprendreLaSelection();
+          if (zone === null) { return; }
+
+          var ligne = zone.closest("[data-paragraphe]");
+          if (!ligne) { return; }
+
+          var niveau = bouton.getAttribute("data-titre");
+          marquerLeTitre(ligne, ligne.getAttribute("data-titre") !== niveau ? Number(niveau) : 0);
         });
       });
 
