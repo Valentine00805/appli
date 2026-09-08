@@ -43,6 +43,36 @@ final class EditionDocument
     private const TYPE_STYLES = 'application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml';
     private const REL_STYLES  = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles';
 
+    private const PART_REGLAGES = 'word/settings.xml';
+    private const TYPE_REGLAGES = 'application/vnd.openxmlformats-officedocument.wordprocessingml.settings+xml';
+    private const REL_REGLAGES  = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/settings';
+
+    /**
+     * Ce qu'on écrit dans le document pour qu'il porte un sommaire.
+     *
+     * « \o "1-3" » prend les titres 1 à 3, « \h » en fait des liens, « \z »
+     * cache les numéros de page en mode Web, « \u » suit le plan du document.
+     * C'est l'instruction que Word écrit lui-même.
+     */
+    private const INSTRUCTION_TOC = ' TOC \o "1-3" \h \z \u ';
+
+    /** Le retrait de chaque niveau dans le sommaire, en vingtièmes de point. */
+    private const RETRAITS_TOC = [1 => 0, 2 => 220, 3 => 440];
+
+    /**
+     * Ce qui suit « updateFields » dans les réglages de Word.
+     *
+     * Le schéma impose l'ordre : on glisse le réglage devant le premier de
+     * ceux-là, plutôt qu'au bout où il rendrait le fichier invalide.
+     */
+    private const APRES_CHAMPS = [
+        'hdrShapeDefaults', 'footnotePr', 'endnotePr', 'compat', 'docVars', 'rsids',
+        'mathPr', 'uiCompat97To2003', 'attachedSchema', 'themeFontLang',
+        'clrSchemeMapping', 'doNotIncludeSubdocsInStats', 'doNotAutoCompressPictures',
+        'forceUpgrade', 'captions', 'readModeInkLockDown', 'smartTagType',
+        'schemaLibrary', 'shapeDefaults', 'decimalSymbol', 'listSeparator',
+    ];
+
     /**
      * Les niveaux de titre proposés, et ce qui les nomme dans chaque format.
      *
@@ -271,12 +301,12 @@ final class EditionDocument
      * pour que les deux listes se correspondent une à une.
      *
      * @return list<array{html: string, alignement: ?string, liste: string,
-     *                    numero: ?int, niveau: int, titre: int}>
+     *                    numero: ?int, niveau: int, titre: int, sommaire: bool}>
      * @throws RuntimeException si le fichier est illisible
      */
     public static function apercuRiche(string $chemin, string $nomOrigine): array
     {
-        [$doc, , , $format] = self::ouvrir($chemin, $nomOrigine);
+        [$doc, , , $format, $horsTexte] = self::ouvrir($chemin, $nomOrigine);
         $stylesOdf = self::stylesDeTexteOdf($doc);
         $alignementsOdf = self::stylesDeParagrapheOdf($doc);
         $listesOdf = self::listesOdf($doc);
@@ -310,6 +340,9 @@ final class EditionDocument
                     'numero' => $numeros[$rang],
                     'niveau' => min(self::niveauDeListe($noeud), self::NIVEAU_MAX),
                     'titre' => min(self::niveauDeTitre($noeud, $titresWord), self::TITRE_MAX),
+                    // Une ligne du sommaire : la page la saute et refait le
+                    // sien à partir des titres.
+                    'sommaire' => isset($horsTexte[spl_object_id($noeud)]),
                 ];
             }
         }
@@ -364,13 +397,15 @@ final class EditionDocument
      *
      * @param array<int, array{origine: ?int, texte: string, alignement?: ?string,
      *                         liste?: string, niveau?: int, titre?: int}> $entrees
+     * @param ?bool $sommaire  poser ou retirer le sommaire ; null pour n'y pas toucher
      * @throws RuntimeException si le document ne peut être ni lu ni réécrit
      */
     public static function enregistrer(
         string $chemin,
         string $nomOrigine,
         array $entrees,
-        bool $riche = false
+        bool $riche = false,
+        ?bool $sommaire = null
     ): void {
         foreach ($entrees as $entree) {
             // Un XML n'accepte que de l'UTF-8. Mieux vaut refuser d'écrire que
@@ -435,6 +470,8 @@ final class EditionDocument
         $nouveaux = [];
         // Les sous-listes dont il faudra vérifier que la définition les prévoit.
         $aCompleter = [];
+        // Les titres rencontrés, dans l'ordre : c'est le sommaire à venir.
+        $plan = [];
 
         foreach ($entrees as $rang => $entree) {
             $origine = $entree['origine'];
@@ -474,6 +511,13 @@ final class EditionDocument
 
             self::remplacerTexte($doc, $noeud, $entree['texte'], $gabarit, $riche);
             self::alignerParagraphe($doc, $noeud, $entree['alignement'] ?? null);
+
+            // Le texte du titre se relit sur le paragraphe : le formulaire, lui,
+            // envoie du balisage, qui n'a rien à faire dans un sommaire.
+            $intitule = trim((string) preg_replace('/\s+/u', ' ', $noeud->textContent));
+            if ($titre > 0 && $titre <= self::TITRE_MAX && $intitule !== '') {
+                $plan[] = ['niveau' => $titre, 'texte' => $intitule];
+            }
 
             /*
              * En ODF, le style d'origine n'est repris que si la sorte n'a pas
@@ -531,6 +575,10 @@ final class EditionDocument
         }
 
         self::replacer($doc, $corps, $paragraphes, $nouveaux, $format);
+
+        if ($sommaire !== null) {
+            self::sommaire($doc, $corps, $plan, $sommaire, $chemin, $parties);
+        }
 
         $xml = $doc->saveXML();
         if ($xml === false) {
@@ -962,10 +1010,109 @@ final class EditionDocument
             throw new RuntimeException('Le corps du document est introuvable.');
         }
 
-        $paragraphes = [];
-        self::recueillir($corps, $format, $paragraphes);
+        /*
+         * Un sommaire est fait de paragraphes comme les autres, mais les
+         * modifier n'aurait pas de sens : ils sont recalculés à partir des
+         * titres. On les met de côté, ici et à l'aperçu.
+         */
+        $sommaire = self::noeudsDeSommaire($doc, $corps, $format);
 
-        return [$doc, $corps, $paragraphes, $format];
+        $paragraphes = [];
+        self::recueillir($corps, $format, $paragraphes, $sommaire);
+
+        return [$doc, $corps, $paragraphes, $format, $sommaire];
+    }
+
+    /**
+     * Les paragraphes qui appartiennent à un sommaire, par identité d'objet.
+     *
+     * En ODF, le sommaire est une balise à lui : tout ce qu'elle contient en
+     * fait partie. Chez Word, c'est un champ, ouvert et refermé par des
+     * marques posées dans les paragraphes — il faut les suivre à la trace.
+     *
+     * Les noeuds eux-mêmes sont gardés, et pas seulement leur numéro : PHP
+     * recycle celui d'une enveloppe qu'on ne tient plus, et un paragraphe
+     * ordinaire hériterait du numéro d'une ligne de sommaire.
+     *
+     * @return array<int, DOMElement>
+     */
+    private static function noeudsDeSommaire(DOMDocument $doc, DOMElement $corps, array $format): array
+    {
+        $vus = [];
+        $marquer = static function (DOMElement $bloc) use (&$vus, $format): void {
+            if (self::estParagraphe($bloc, $format)) {
+                $vus[spl_object_id($bloc)] = $bloc;
+            }
+            foreach ($bloc->getElementsByTagName('*') as $enfant) {
+                if (self::estParagraphe($enfant, $format)) {
+                    $vus[spl_object_id($enfant)] = $enfant;
+                }
+            }
+        };
+
+        foreach ($doc->getElementsByTagNameNS(self::NS_TEXT, 'table-of-content') as $sommaire) {
+            $marquer($sommaire);
+        }
+
+        // Le sommaire que Word range dans un bloc de contenu : celui qu'il
+        // pose lui-même, et celui que nous posons.
+        foreach ($doc->getElementsByTagNameNS(self::NS_W, 'sdt') as $bloc) {
+            foreach ($bloc->getElementsByTagNameNS(self::NS_W, 'docPartGallery') as $galerie) {
+                if ($galerie->getAttributeNS(self::NS_W, 'val') === 'Table of Contents') {
+                    $marquer($bloc);
+                    break;
+                }
+            }
+        }
+
+        // Le champ nu, posé à même le corps : on le suit d'une marque à l'autre.
+        $dans = false;
+        $profondeur = 0;
+        foreach ($corps->childNodes as $enfant) {
+            if (!$enfant instanceof DOMElement || $enfant->namespaceURI !== self::NS_W
+                || $enfant->localName !== 'p') {
+                continue;
+            }
+            $ouvrent = 0;
+            $ferment = 0;
+            foreach ($enfant->getElementsByTagNameNS(self::NS_W, 'fldChar') as $marque) {
+                $sorte = $marque->getAttributeNS(self::NS_W, 'fldCharType');
+                $ouvrent += (int) ($sorte === 'begin');
+                $ferment += (int) ($sorte === 'end');
+            }
+            if (!$dans) {
+                foreach ($enfant->getElementsByTagNameNS(self::NS_W, 'instrText') as $texte) {
+                    $dans = $dans || preg_match('/^\s*TOC\b/i', $texte->textContent) === 1;
+                }
+                foreach ($enfant->getElementsByTagNameNS(self::NS_W, 'fldSimple') as $simple) {
+                    $dans = $dans
+                        || preg_match('/^\s*TOC\b/i', $simple->getAttributeNS(self::NS_W, 'instr')) === 1;
+                }
+                $profondeur = 0;
+            }
+            if (!$dans) {
+                continue;
+            }
+            $profondeur += $ouvrent - $ferment;
+            $vus[spl_object_id($enfant)] = $enfant;
+            if ($profondeur <= 0) {
+                $dans = false;
+            }
+        }
+
+        return $vus;
+    }
+
+    /** Ce document porte-t-il déjà un sommaire ? */
+    public static function aUnSommaire(string $chemin, string $nomOrigine): bool
+    {
+        try {
+            [, , , , $sommaire] = self::ouvrir($chemin, $nomOrigine);
+        } catch (RuntimeException) {
+            return false;
+        }
+
+        return $sommaire !== [];
     }
 
     /**
@@ -975,19 +1122,26 @@ final class EditionDocument
      * à sa cellule, et le sortir de là défigurerait le document.
      *
      * @param array<int, DOMElement> $paragraphes
+     * @param array<int, DOMElement> $sommaire  ce qui appartient à un sommaire
      */
-    private static function recueillir(DOMNode $parent, array $format, array &$paragraphes): void
-    {
+    private static function recueillir(
+        DOMNode $parent,
+        array $format,
+        array &$paragraphes,
+        array $sommaire = []
+    ): void {
         foreach ($parent->childNodes as $enfant) {
             if (self::estParagraphe($enfant, $format)) {
-                $paragraphes[] = $enfant;
+                if (!isset($sommaire[spl_object_id($enfant)])) {
+                    $paragraphes[] = $enfant;
+                }
                 continue;
             }
             if ($enfant instanceof DOMElement
                 && $enfant->namespaceURI === self::NS_TEXT
                 && in_array($enfant->localName, ['list', 'list-item', 'list-header'], true)
             ) {
-                self::recueillir($enfant, $format, $paragraphes);
+                self::recueillir($enfant, $format, $paragraphes, $sommaire);
             }
         }
     }
@@ -2378,6 +2532,336 @@ final class EditionDocument
         if ($ecrit !== false) {
             $parties[self::PART_RELS] = $ecrit;
         }
+    }
+
+    /* --- Le sommaire ----------------------------------------------------- */
+
+    /**
+     * Pose, refait ou retire le sommaire du document.
+     *
+     * Il est toujours refait de zéro : c'est ce qui le rend automatique, et
+     * cela évite d'avoir à réparer celui d'avant. Un sommaire déjà présent
+     * s'en va d'abord, pour qu'il n'y en ait jamais deux.
+     *
+     * @param list<array{niveau: int, texte: string}> $plan
+     * @param array<string, string> $parties  complété au besoin
+     */
+    private static function sommaire(
+        DOMDocument $doc,
+        DOMElement $corps,
+        array $plan,
+        bool $veut,
+        string $chemin,
+        array &$parties
+    ): void {
+        $word = $corps->namespaceURI === self::NS_W;
+
+        foreach (self::sommairesPoses($doc, $corps) as $ancien) {
+            if ($ancien->parentNode !== null) {
+                $ancien->parentNode->removeChild($ancien);
+            }
+        }
+        if (!$veut) {
+            return;
+        }
+
+        $bloc = $word
+            ? self::sommaireWord($doc, $plan)
+            : self::sommaireOdf($doc, $plan);
+        $corps->insertBefore($bloc, self::premierBloc($corps));
+
+        if ($word) {
+            // Word remplacera notre sommaire par le sien — pages et liens
+            // compris — dès l'ouverture du document.
+            self::champsAJour($chemin, $parties);
+        }
+    }
+
+    /**
+     * Ce qu'il faut retirer avant de reposer un sommaire.
+     *
+     * @return list<DOMNode>
+     */
+    private static function sommairesPoses(DOMDocument $doc, DOMElement $corps): array
+    {
+        $poses = [];
+        foreach ($doc->getElementsByTagNameNS(self::NS_TEXT, 'table-of-content') as $sommaire) {
+            $poses[] = $sommaire;
+        }
+        foreach ($doc->getElementsByTagNameNS(self::NS_W, 'sdt') as $bloc) {
+            foreach ($bloc->getElementsByTagNameNS(self::NS_W, 'docPartGallery') as $galerie) {
+                if ($galerie->getAttributeNS(self::NS_W, 'val') === 'Table of Contents') {
+                    $poses[] = $bloc;
+                    break;
+                }
+            }
+        }
+        // Le champ nu se reconnaît paragraphe par paragraphe : la même lecture
+        // que celle qui l'écarte de l'éditeur.
+        foreach (self::noeudsDeSommaire($doc, $corps, self::FORMATS['docx']) as $ligne) {
+            if ($ligne->parentNode === $corps) {
+                $poses[] = $ligne;
+            }
+        }
+
+        return $poses;
+    }
+
+    /** Devant quoi le sommaire se glisse : le premier bloc de texte du corps. */
+    private static function premierBloc(DOMElement $corps): ?DOMNode
+    {
+        foreach ($corps->childNodes as $enfant) {
+            if (!$enfant instanceof DOMElement) {
+                continue;
+            }
+            if (($enfant->namespaceURI === self::NS_W
+                    && in_array($enfant->localName, ['p', 'tbl', 'sdt'], true))
+                || ($enfant->namespaceURI === self::NS_TEXT
+                    && in_array($enfant->localName, ['p', 'h', 'list'], true))
+            ) {
+                return $enfant;
+            }
+        }
+
+        // Rien que la mise en page : le sommaire passe devant elle.
+        foreach ($corps->childNodes as $enfant) {
+            if (self::estElement($enfant, 'sectPr')) {
+                return $enfant;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Le sommaire de Word : un champ, et ce qu'il affiche en attendant.
+     *
+     * Le champ est ce qui rend le sommaire automatique — Word le recalcule,
+     * avec ses numéros de page et ses liens. Ce qu'on écrit entre ses deux
+     * marques est ce que montrent les logiciels qui ne le recalculent pas.
+     *
+     * @param list<array{niveau: int, texte: string}> $plan
+     */
+    private static function sommaireWord(DOMDocument $doc, array $plan): DOMElement
+    {
+        $bloc = $doc->createElementNS(self::NS_W, 'w:sdt');
+        $proprietes = $doc->createElementNS(self::NS_W, 'w:sdtPr');
+        $objet = $doc->createElementNS(self::NS_W, 'w:docPartObj');
+        $galerie = $doc->createElementNS(self::NS_W, 'w:docPartGallery');
+        $galerie->setAttributeNS(self::NS_W, 'w:val', 'Table of Contents');
+        $objet->appendChild($galerie);
+        $objet->appendChild($doc->createElementNS(self::NS_W, 'w:docPartUnique'));
+        $proprietes->appendChild($objet);
+        $bloc->appendChild($proprietes);
+
+        $contenu = $doc->createElementNS(self::NS_W, 'w:sdtContent');
+        $bloc->appendChild($contenu);
+
+        $ecrire = static function (DOMElement $ou, string $texte) use ($doc): void {
+            $passage = $doc->createElementNS(self::NS_W, 'w:r');
+            $mot = $doc->createElementNS(self::NS_W, 'w:t');
+            $mot->setAttributeNS(self::NS_XML, 'xml:space', 'preserve');
+            $mot->appendChild($doc->createTextNode($texte));
+            $passage->appendChild($mot);
+            $ou->appendChild($passage);
+        };
+        $marque = static function (string $sorte) use ($doc): DOMElement {
+            $passage = $doc->createElementNS(self::NS_W, 'w:r');
+            $champ = $doc->createElementNS(self::NS_W, 'w:fldChar');
+            $champ->setAttributeNS(self::NS_W, 'w:fldCharType', $sorte);
+            $passage->appendChild($champ);
+
+            return $passage;
+        };
+
+        // Le titre du sommaire, sans niveau de plan : il ne se cite pas
+        // lui-même.
+        $entete = $doc->createElementNS(self::NS_W, 'w:p');
+        $pPr = $doc->createElementNS(self::NS_W, 'w:pPr');
+        $espace = $doc->createElementNS(self::NS_W, 'w:spacing');
+        $espace->setAttributeNS(self::NS_W, 'w:after', '120');
+        $pPr->appendChild($espace);
+        $entete->appendChild($pPr);
+        $rPr = $doc->createElementNS(self::NS_W, 'w:rPr');
+        $rPr->appendChild($doc->createElementNS(self::NS_W, 'w:b'));
+        foreach (['sz', 'szCs'] as $balise) {
+            $taille = $doc->createElementNS(self::NS_W, 'w:' . $balise);
+            $taille->setAttributeNS(self::NS_W, 'w:val', '32');
+            $rPr->appendChild($taille);
+        }
+        $passage = $doc->createElementNS(self::NS_W, 'w:r');
+        $passage->appendChild($rPr);
+        $mot = $doc->createElementNS(self::NS_W, 'w:t');
+        $mot->appendChild($doc->createTextNode('Sommaire'));
+        $passage->appendChild($mot);
+        $entete->appendChild($passage);
+        $contenu->appendChild($entete);
+
+        $lignes = [];
+        foreach ($plan as $entree) {
+            $ligne = $doc->createElementNS(self::NS_W, 'w:p');
+            $pPr = $doc->createElementNS(self::NS_W, 'w:pPr');
+            $style = $doc->createElementNS(self::NS_W, 'w:pStyle');
+            $style->setAttributeNS(self::NS_W, 'w:val', 'TOC' . $entree['niveau']);
+            $pPr->appendChild($style);
+            // Le retrait est écrit en clair : le style « TOC » manque à bien
+            // des documents, et l'entrée s'afficherait alors sans décalage.
+            $retrait = $doc->createElementNS(self::NS_W, 'w:ind');
+            $retrait->setAttributeNS(self::NS_W, 'w:left',
+                (string) (self::RETRAITS_TOC[$entree['niveau']] ?? 0));
+            $pPr->appendChild($retrait);
+            $ligne->appendChild($pPr);
+            $ecrire($ligne, $entree['texte']);
+            $lignes[] = $ligne;
+        }
+        if ($lignes === []) {
+            $vide = $doc->createElementNS(self::NS_W, 'w:p');
+            $ecrire($vide, 'Aucun titre dans ce document.');
+            $lignes[] = $vide;
+        }
+
+        /*
+         * Le champ s'ouvre au début de la première entrée et se referme à la
+         * fin de la dernière : glissé dans des paragraphes à lui, il laisserait
+         * deux lignes blanches.
+         */
+        $premiere = $lignes[0];
+        $reference = $premiere->firstChild;
+        foreach ([$marque('begin'), null, $marque('separate')] as $rang => $noeud) {
+            if ($noeud === null) {
+                $noeud = $doc->createElementNS(self::NS_W, 'w:r');
+                $instruction = $doc->createElementNS(self::NS_W, 'w:instrText');
+                $instruction->setAttributeNS(self::NS_XML, 'xml:space', 'preserve');
+                $instruction->appendChild($doc->createTextNode(self::INSTRUCTION_TOC));
+                $noeud->appendChild($instruction);
+            }
+            $premiere->insertBefore($noeud, $reference);
+        }
+        $lignes[count($lignes) - 1]->appendChild($marque('end'));
+
+        foreach ($lignes as $ligne) {
+            $contenu->appendChild($ligne);
+        }
+
+        return $bloc;
+    }
+
+    /**
+     * Le sommaire de LibreOffice : une balise à lui, avec ce qu'elle montre.
+     *
+     * @param list<array{niveau: int, texte: string}> $plan
+     */
+    private static function sommaireOdf(DOMDocument $doc, array $plan): DOMElement
+    {
+        $sommaire = $doc->createElementNS(self::NS_TEXT, 'text:table-of-content');
+        $sommaire->setAttributeNS(self::NS_TEXT, 'text:name', 'Sommaire');
+
+        $source = $doc->createElementNS(self::NS_TEXT, 'text:table-of-content-source');
+        $source->setAttributeNS(self::NS_TEXT, 'text:outline-level', (string) self::TITRE_MAX);
+        $source->setAttributeNS(self::NS_TEXT, 'text:use-outline-level', 'true');
+        $source->setAttributeNS(self::NS_TEXT, 'text:use-index-marks', 'false');
+
+        $entete = $doc->createElementNS(self::NS_TEXT, 'text:index-title-template');
+        $entete->appendChild($doc->createTextNode('Sommaire'));
+        $source->appendChild($entete);
+
+        // Chaque niveau affiche son texte, puis une tabulation jusqu'au numéro
+        // de page que LibreOffice remplira en refaisant l'index.
+        for ($niveau = 1; $niveau <= self::TITRE_MAX; $niveau++) {
+            $modele = $doc->createElementNS(self::NS_TEXT, 'text:table-of-content-entry-template');
+            $modele->setAttributeNS(self::NS_TEXT, 'text:outline-level', (string) $niveau);
+            $modele->setAttributeNS(self::NS_TEXT, 'text:style-name', 'Contents_20_' . $niveau);
+            $modele->appendChild($doc->createElementNS(self::NS_TEXT, 'text:index-entry-chapter'));
+            $modele->appendChild($doc->createElementNS(self::NS_TEXT, 'text:index-entry-text'));
+            $tabulation = $doc->createElementNS(self::NS_TEXT, 'text:index-entry-tab-stop');
+            $tabulation->setAttributeNS(self::NS_STYLE, 'style:type', 'right');
+            $tabulation->setAttributeNS(self::NS_STYLE, 'style:leader-char', '.');
+            $modele->appendChild($tabulation);
+            $modele->appendChild($doc->createElementNS(self::NS_TEXT, 'text:index-entry-page-number'));
+            $source->appendChild($modele);
+        }
+        $sommaire->appendChild($source);
+
+        $corps = $doc->createElementNS(self::NS_TEXT, 'text:index-body');
+        $titre = $doc->createElementNS(self::NS_TEXT, 'text:index-title');
+        $titre->setAttributeNS(self::NS_TEXT, 'text:name', 'Sommaire_Titre');
+        $ligne = $doc->createElementNS(self::NS_TEXT, 'text:p');
+        $ligne->setAttributeNS(self::NS_TEXT, 'text:style-name', 'Contents_20_Heading');
+        $ligne->appendChild($doc->createTextNode('Sommaire'));
+        $titre->appendChild($ligne);
+        $corps->appendChild($titre);
+
+        foreach ($plan as $entree) {
+            $ligne = $doc->createElementNS(self::NS_TEXT, 'text:p');
+            $ligne->setAttributeNS(self::NS_TEXT, 'text:style-name', 'Contents_20_' . $entree['niveau']);
+            $ligne->appendChild($doc->createTextNode($entree['texte']));
+            $corps->appendChild($ligne);
+        }
+        if ($plan === []) {
+            $ligne = $doc->createElementNS(self::NS_TEXT, 'text:p');
+            $ligne->appendChild($doc->createTextNode('Aucun titre dans ce document.'));
+            $corps->appendChild($ligne);
+        }
+        $sommaire->appendChild($corps);
+
+        return $sommaire;
+    }
+
+    /**
+     * Demande à Word de recalculer ses champs à l'ouverture.
+     *
+     * Sans cela, le sommaire resterait celui qu'on a écrit : pas de numéros de
+     * page, pas de liens, et rien qui suive les modifications suivantes.
+     *
+     * @param array<string, string> $parties  complété au besoin
+     */
+    private static function champsAJour(string $chemin, array &$parties): void
+    {
+        $xml = $parties[self::PART_REGLAGES] ?? self::partie($chemin, self::PART_REGLAGES);
+        $doc = $xml === null ? null : self::analyser($xml);
+
+        if ($doc === null) {
+            $doc = new DOMDocument('1.0', 'UTF-8');
+            $doc->appendChild($doc->createElementNS(self::NS_W, 'w:settings'));
+        }
+        $racine = $doc->documentElement;
+        if ($racine === null) {
+            return;
+        }
+
+        foreach ($racine->getElementsByTagNameNS(self::NS_W, 'updateFields') as $deja) {
+            $deja->setAttributeNS(self::NS_W, 'w:val', 'true');
+            $ecrit = $doc->saveXML();
+            if ($ecrit !== false) {
+                $parties[self::PART_REGLAGES] = $ecrit;
+            }
+            return;
+        }
+
+        $reglage = $doc->createElementNS(self::NS_W, 'w:updateFields');
+        $reglage->setAttributeNS(self::NS_W, 'w:val', 'true');
+
+        $suivant = null;
+        foreach ($racine->childNodes as $enfant) {
+            if ($enfant instanceof DOMElement && $enfant->namespaceURI === self::NS_W
+                && in_array($enfant->localName, self::APRES_CHAMPS, true)) {
+                $suivant = $enfant;
+                break;
+            }
+        }
+        if ($suivant === null) {
+            $racine->appendChild($reglage);
+        } else {
+            $racine->insertBefore($reglage, $suivant);
+        }
+
+        $ecrit = $doc->saveXML();
+        if ($ecrit === false) {
+            return;
+        }
+        $parties[self::PART_REGLAGES] = $ecrit;
+        self::declarerPartie($chemin, $parties, self::PART_REGLAGES, self::TYPE_REGLAGES,
+            self::REL_REGLAGES, 'settings.xml');
     }
 
     /* --- Les titres ------------------------------------------------------ */

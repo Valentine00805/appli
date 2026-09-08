@@ -1120,6 +1120,22 @@
       });
 
       /*
+       * Le sommaire ne porte pas sur un paragraphe mais sur le document : le
+       * bouton bascule un simple champ, et le serveur le refait à partir des
+       * titres au moment d'enregistrer.
+       */
+      var boutonSommaire = barreOutils.querySelector("[data-sommaire]");
+      var champSommaire = formulaireDocument.querySelector("[data-sommaire-champ]");
+
+      if (boutonSommaire && champSommaire) {
+        boutonSommaire.addEventListener("click", function () {
+          var pose = champSommaire.value !== "1";
+          champSommaire.value = pose ? "1" : "0";
+          boutonSommaire.setAttribute("aria-pressed", pose ? "true" : "false");
+        });
+      }
+
+      /*
        * Titre 1 et Titre 2 se posent sur le paragraphe où l'on a le curseur,
        * et se retirent en recliquant sur le même bouton.
        */

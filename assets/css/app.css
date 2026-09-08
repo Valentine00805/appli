@@ -1373,6 +1373,23 @@ input.depot__champ {
 .paragraphe[data-liste="numero"] .paragraphe__riche::before {
   content: attr(data-etiquette);
 }
+/* Un bouton qui reste enfoncé : le sommaire est posé ou il ne l'est pas. */
+.barre-outils__bouton[aria-pressed="true"] {
+  background: var(--accent-doux); border-color: var(--accent); color: var(--accent);
+  font-weight: 650;
+}
+
+/* Le sommaire de l'aperçu, refait à partir des titres. */
+.apercu-sommaire { margin-bottom: 1rem; }
+.apercu-sommaire__titre { font-size: 1.1rem; margin: 0 0 .6rem; }
+.apercu-sommaire__liste { list-style: none; margin: 0; padding: 0; }
+.apercu-sommaire__ligne { line-height: 1.75; overflow-wrap: anywhere; }
+.apercu-sommaire__ligne--n2 { padding-left: 1.1rem; }
+.apercu-sommaire__ligne--n3 { padding-left: 2.2rem; font-size: .92rem; }
+.apercu-sommaire__ligne a { color: inherit; text-decoration: none; }
+.apercu-sommaire__ligne a:hover,
+.apercu-sommaire__ligne a:focus-visible { text-decoration: underline; color: var(--accent); }
+
 /* Un titre se voit dans sa zone, comme il se verra dans le document. */
 .paragraphe[data-titre="1"] .paragraphe__riche,
 .paragraphe[data-titre="2"] .paragraphe__riche,

@@ -2,6 +2,7 @@
 /**
  * @var array $fichier, $paragraphes, $lignes
  * @var array $enrichis  les mêmes paragraphes, mise en forme comprise
+ * @var bool $sommaire   le document porte-t-il un sommaire ?
  * @var string $genre, $texte, $format
  * @var bool $tronque
  * @var bool $estTableur
@@ -138,6 +139,41 @@
     </a>
   </div>
 <?php else: ?>
+  <?php
+  /*
+   * Le sommaire est refait ici à partir des titres lus, et non repris du
+   * document : il est ainsi toujours d'accord avec ce qu'on voit dessous,
+   * même si le fichier n'a pas encore été rouvert dans Word.
+   */
+  $plan = [];
+  foreach ($paragraphes as $rang => $paragraphe) {
+      if ($enrichis[$rang]['sommaire'] ?? false) {
+          continue;
+      }
+      $niveau = (int) ($enrichis[$rang]['titre'] ?? 0);
+      $intitule = trim((string) preg_replace('/\s+/u', ' ', (string) $paragraphe));
+      if ($niveau > 0 && $intitule !== '') {
+          $plan[$rang] = ['niveau' => $niveau, 'texte' => $intitule];
+      }
+  }
+  ?>
+  <?php if ($sommaire && $plan !== []): ?>
+    <nav class="carte apercu-sommaire" aria-labelledby="apercu-sommaire-titre">
+      <h2 id="apercu-sommaire-titre" class="apercu-sommaire__titre">Sommaire</h2>
+      <ul class="apercu-sommaire__liste">
+        <?php foreach ($plan as $rang => $entree): ?>
+          <li class="apercu-sommaire__ligne apercu-sommaire__ligne--n<?= $entree['niveau'] ?>">
+            <a href="#titre-<?= (int) $rang ?>"><?= e($entree['texte']) ?></a>
+          </li>
+        <?php endforeach; ?>
+      </ul>
+      <p class="champ__aide" style="margin:.7rem 0 0">
+        Les numéros de page apparaîtront à l'ouverture du document dans Word
+        ou LibreOffice.
+      </p>
+    </nav>
+  <?php endif; ?>
+
   <article class="carte apercu-document">
     <?php
     /*
@@ -165,6 +201,11 @@
 
     foreach ($paragraphes as $rang => $paragraphe):
         $riche = $enrichis[$rang] ?? null;
+        // Le sommaire du document est refait plus haut, à partir des titres :
+        // le montrer ici le donnerait deux fois, dont une périmée.
+        if ($riche['sommaire'] ?? false) {
+            continue;
+        }
         $aligne = ['gauche' => 'left', 'centre' => 'center',
                    'droite' => 'right', 'justifie' => 'justify'][$riche['alignement'] ?? ''] ?? null;
         $style = $aligne === null ? '' : ' style="text-align:' . $aligne . '"';
@@ -203,9 +244,12 @@
         if ($balise === '') {
             // La page porte déjà son <h1> : les titres du document se rangent
             // dessous, pour que le plan de la page reste lisible.
-            $rang = $titre > 0 ? 'h' . ($titre + 1) : 'p';
-            $classe = $titre > 0 ? ' class="apercu-titre apercu-titre--' . $titre . '"' : '';
-            echo '<' . $rang . $classe . $style . '>' . $corps . '</' . $rang . '>';
+            $balise = $titre > 0 ? 'h' . ($titre + 1) : 'p';
+            // L'ancre où mène le sommaire.
+            $classe = $titre > 0
+                ? ' id="titre-' . (int) $rang . '" class="apercu-titre apercu-titre--' . $titre . '"'
+                : '';
+            echo '<' . $balise . $classe . $style . '>' . $corps . '</' . $balise . '>';
             continue;
         }
 

@@ -670,6 +670,7 @@ final class CoursController
 
         $paragraphes = [];
         $enrichis = [];
+        $sommaire = false;
         $lignes = [];
         $texte = '';
         $tronque = false;
@@ -708,6 +709,9 @@ final class CoursController
                         if (count($enrichis) !== count($paragraphes)) {
                             $enrichis = [];
                         }
+                        // Le sommaire du document n'est pas montré tel quel :
+                        // l'aperçu le refait à partir des titres, à jour.
+                        $sommaire = EditionDocument::aUnSommaire((string) $chemin, $nom);
                     }
                     break;
                 // Un PDF et une image sont affichés tels quels : rien à lire ici.
@@ -722,6 +726,7 @@ final class CoursController
             'estTableur'  => $genre === 'tableur',
             'paragraphes' => $paragraphes,
             'enrichis'    => $enrichis,
+            'sommaire'    => $sommaire,
             'lignes'      => $lignes,
             'texte'       => $texte,
             'tronque'     => $tronque,
@@ -1013,10 +1018,12 @@ final class CoursController
             // sans JavaScript, la mise en forme pour l'éditeur.
             $paragraphes = EditionDocument::lire($chemin, $nom);
             $enrichis = EditionDocument::lireRiche($chemin, $nom);
+            $sommaire = EditionDocument::aUnSommaire($chemin, $nom);
             $erreur = null;
         } catch (Throwable $e) {
             $paragraphes = [];
             $enrichis = [];
+            $sommaire = false;
             $erreur = $e->getMessage();
         }
 
@@ -1024,6 +1031,7 @@ final class CoursController
             'fichier'     => $fichier,
             'paragraphes' => $paragraphes,
             'enrichis'    => $enrichis,
+            'sommaire'    => $sommaire,
             'tailles'     => EditionDocument::TAILLES,
             'format'      => ApercuDocument::format($nom),
             'erreur'      => $erreur,
@@ -1047,7 +1055,8 @@ final class CoursController
         try {
             // « riche » n'est envoyé que par l'éditeur : sans lui, le texte est
             // nu et l'absence de gras ne veut pas dire qu'il faut l'enlever.
-            EditionDocument::enregistrer($chemin, $nom, $entrees, ($_POST['riche'] ?? '') === '1');
+            EditionDocument::enregistrer($chemin, $nom, $entrees, ($_POST['riche'] ?? '') === '1',
+                ($_POST['sommaire'] ?? '') === '1');
         } catch (Throwable $e) {
             Session::flash('erreur', 'Le document n’a pas été modifié : ' . $e->getMessage());
             redirect('fichiers/' . $id . '/modifier');
