@@ -222,8 +222,20 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
 
 .cours-carte { display: flex; flex-direction: column; gap: .5rem; text-decoration: none; color: inherit; }
 .cours-carte:hover { border-color: var(--accent); }
-.cours-carte__titre { font-weight: 650; font-size: 1.02rem; }
-.cours-carte__extrait { color: var(--texte-doux); font-size: .9rem; margin: 0; }
+/* Un titre sans espace — « Recommandation_version_entreprise » — n'offre
+   aucun endroit où couper : sans cela, il déborde de sa carte. */
+/* Une pastille ne se coupe pas, elle : un nom de dossier interminable est
+   donc tronqué, et se lit en entier dans son infobulle. */
+.cours-carte .pastille {
+  display: inline-block; max-width: 100%;
+  overflow: hidden; text-overflow: ellipsis;
+}
+.cours-carte__titre {
+  font-weight: 650; font-size: 1.02rem; overflow-wrap: anywhere;
+}
+.cours-carte__extrait {
+  color: var(--texte-doux); font-size: .9rem; margin: 0; overflow-wrap: anywhere;
+}
 .cours-carte__bas {
   display: flex; align-items: center; gap: .5rem; flex-wrap: wrap;
   color: var(--texte-doux); font-size: .8rem; margin-top: auto; padding-top: .35rem;

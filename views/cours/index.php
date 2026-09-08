@@ -303,7 +303,7 @@ for ($haut = $courant; $haut !== null;) {
             <span class="pastille">Sans matière</span>
           <?php endif; ?>
           <?php if ($c['dossier_nom'] !== null): ?>
-            <span class="pastille" title="Dossier"><?= e($c['dossier_icone'] . ' ' . $c['dossier_nom']) ?></span>
+            <span class="pastille" title="Dossier : <?= e((string) $c['dossier_nom']) ?>"><?= e($c['dossier_icone'] . ' ' . $c['dossier_nom']) ?></span>
           <?php endif; ?>
           <?php if ((int) $c['favori'] === 1): ?><span title="Favori">⭐</span><?php endif; ?>
         </div>
