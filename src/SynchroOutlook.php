@@ -37,11 +37,12 @@ final class SynchroOutlook
     /**
      * Le repos entre deux lectures automatiques, en secondes.
      *
-     * Un quart d'heure : assez court pour qu'un rendez-vous ajouté depuis le
-     * téléphone arrive avant qu'on l'ait oublié, assez long pour ne pas
-     * harceler Microsoft à chaque page ouverte.
+     * Cinq minutes. Un quart d'heure paraissait raisonnable jusqu'à ce qu'on
+     * ajoute un rendez-vous et qu'on attende devant l'écran : ce n'est pas la
+     * charge du serveur qui fixe ce délai, c'est la patience de qui regarde.
+     * Pour ne pas attendre du tout, le bouton est là.
      */
-    private const REPOS = 900;
+    private const REPOS = 300;
 
     /**
      * Va chercher les évènements et met l'application à jour.

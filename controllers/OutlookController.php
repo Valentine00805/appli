@@ -100,7 +100,7 @@ final class OutlookController
                 repondre_json(['fait' => false, 'change' => 0, 'souci' => $e->getMessage()]);
             }
             Session::flash('erreur', $e->getMessage());
-            redirect('outlook');
+            repartir_vers('outlook');
         }
 
         $change = $bilan['ajoutes'] + $bilan['modifies'] + $bilan['retires'];
@@ -111,7 +111,7 @@ final class OutlookController
 
         if ($bilan['occupe']) {
             Session::flash('succes', 'Une lecture était déjà en cours : rien n’a été fait deux fois.');
-            redirect('outlook');
+            repartir_vers('outlook');
         }
 
         $dit = [];
@@ -122,7 +122,7 @@ final class OutlookController
         Session::flash('succes', $dit === []
             ? 'Agenda relu : rien de nouveau.'
             : 'Agenda relu : ' . implode(', ', $dit) . '.');
-        redirect('outlook');
+        repartir_vers('outlook');
     }
 
     /** Part demander l'autorisation à Microsoft. */

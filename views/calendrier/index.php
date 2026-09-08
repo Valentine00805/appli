@@ -66,6 +66,21 @@ $puce = static function (array $evt) use ($destination): string {
     <p>Vos évènements et les échéances de vos tâches, au même endroit.</p>
   </div>
   <div class="actions">
+    <?php
+    /*
+     * Relire sans quitter le calendrier : c'est ici qu'on s'aperçoit qu'il
+     * manque un rendez-vous, et faire un détour par une page de réglages pour
+     * appuyer sur un bouton n'a jamais eu de sens.
+     */
+    ?>
+    <?php if (Outlook::configuree() && Outlook::relie(Auth::id())): ?>
+      <form method="post" action="<?= url('outlook/synchroniser') ?>">
+        <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
+        <input type="hidden" name="retour" value="<?= e((string) ($_SERVER['REQUEST_URI'] ?? '')) ?>">
+        <button class="bouton bouton--secondaire" type="submit"
+                title="Relire l'agenda Outlook maintenant">↻</button>
+      </form>
+    <?php endif; ?>
     <a class="bouton bouton--secondaire" href="<?= url('outlook') ?>">📆 Outlook</a>
     <a class="bouton bouton--secondaire" href="<?= url('organisation/types') ?>">Gérer les types</a>
     <a class="bouton" href="<?= url('evenements/nouveau') ?>">+ Évènement</a>
