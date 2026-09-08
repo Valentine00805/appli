@@ -4,11 +4,15 @@ declare(strict_types=1);
 /**
  * La liaison avec un calendrier Outlook, par l'API Microsoft Graph.
  *
- * L'application se présente en « client public » : elle n'a pas de secret à
- * garder, et prouve son identité par PKCE — un code tiré au sort à l'aller,
- * dont seule l'empreinte voyage, et qu'on redonne au retour. C'est ce qui
- * convient à une application posée sur le poste de quelqu'un : un secret
- * inscrit dans ses fichiers n'en serait plus un.
+ * Une seule application est inscrite chez Microsoft : celle-ci. Chacun y relie
+ * ensuite son propre compte et n'a rien à déclarer — demander à chaque
+ * personne d'inscrire une application Azure reviendrait à réserver la
+ * fonctionnalité à qui sait le faire.
+ *
+ * L'identité de l'application se prouve par PKCE : un code tiré au sort à
+ * l'aller, dont seule l'empreinte voyage, et qu'on redonne au retour. Sur une
+ * installation en ligne, Microsoft réclame en plus un secret ; il s'ajoute
+ * alors à la preuve au lieu de la remplacer.
  *
  * Rien ici ne suppose une bibliothèque : curl suffit à parler à Microsoft.
  */
@@ -23,6 +27,47 @@ final class Outlook
 
     /** Un jeton demandé un peu avant son terme : l'horloge n'est jamais parfaite. */
     private const MARGE = 120;
+
+    /* --- L'installation --------------------------------------------------- */
+
+    /** L'application inscrite chez Microsoft, si cette installation en a une. */
+    public static function configuree(): bool
+    {
+        return trim((string) Config::get('outlook', 'client_id')) !== '';
+    }
+
+    private static function clientId(): string
+    {
+        return trim((string) Config::get('outlook', 'client_id'));
+    }
+
+    private static function locataire(): string
+    {
+        $locataire = trim((string) Config::get('outlook', 'locataire'));
+
+        return $locataire === '' ? 'common' : $locataire;
+    }
+
+    /**
+     * Où Microsoft renvoie le navigateur après l'autorisation.
+     *
+     * Cette adresse doit correspondre au mot près à celle déclarée chez
+     * Microsoft. En ligne, on l'inscrit dans la configuration : ce qu'un
+     * navigateur annonce comme hôte ne se croit pas sur parole. Faute de quoi
+     * on la déduit de la requête, ce qui suffit sur un poste.
+     */
+    public static function adresseDeRetour(): string
+    {
+        $posee = trim((string) Config::get('outlook', 'adresse_retour'));
+        if ($posee !== '') {
+            return $posee;
+        }
+
+        $protocole = (($_SERVER['HTTPS'] ?? '') !== '' && ($_SERVER['HTTPS'] ?? '') !== 'off')
+            ? 'https' : 'http';
+
+        return $protocole . '://' . (string) ($_SERVER['HTTP_HOST'] ?? 'localhost') . url('outlook/retour');
+    }
 
     /* --- Le compte relié -------------------------------------------------- */
 
@@ -40,60 +85,14 @@ final class Outlook
         return $compte !== null && (string) $compte['renouvellement'] !== '';
     }
 
-    /**
-     * Enregistre l'application inscrite chez Microsoft.
-     *
-     * Changer d'identifiant délie le compte : les jetons obtenus par l'ancien
-     * ne valent rien pour le nouveau, et les garder ne ferait qu'égarer.
-     */
-    public static function retenirApplication(int $userId, string $clientId, string $locataire): void
-    {
-        $locataire = $locataire === '' ? 'common' : $locataire;
-        $avant = self::compte($userId);
-
-        if ($avant === null) {
-            Database::run(
-                'INSERT INTO outlook_comptes (user_id, client_id, locataire) VALUES (?, ?, ?)',
-                [$userId, $clientId, $locataire]
-            );
-            return;
-        }
-
-        $change = (string) $avant['client_id'] !== $clientId
-            || (string) $avant['locataire'] !== $locataire;
-
-        Database::run(
-            'UPDATE outlook_comptes SET client_id = ?, locataire = ?'
-            . ($change ? ', compte = NULL, jeton = NULL, renouvellement = NULL, expire_le = NULL,
-                          calendrier_id = NULL, calendrier_nom = NULL, delta = NULL, synchro_le = NULL' : '')
-            . ' WHERE user_id = ?',
-            [$clientId, $locataire, $userId]
-        );
-    }
-
-    /** Oublie les jetons, sans oublier l'application inscrite. */
+    /** Oublie les jetons : l'application ne touche plus à cet agenda. */
     public static function delier(int $userId): void
     {
-        Database::run(
-            'UPDATE outlook_comptes SET compte = NULL, jeton = NULL, renouvellement = NULL,
-                    expire_le = NULL, calendrier_id = NULL, calendrier_nom = NULL,
-                    delta = NULL, synchro_le = NULL
-             WHERE user_id = ?',
-            [$userId]
-        );
         Database::run('DELETE FROM outlook_liens WHERE user_id = ?', [$userId]);
+        Database::run('DELETE FROM outlook_comptes WHERE user_id = ?', [$userId]);
     }
 
     /* --- L'aller et le retour -------------------------------------------- */
-
-    /** Où l'application demande à Microsoft de la renvoyer. */
-    public static function adresseDeRetour(): string
-    {
-        $protocole = (($_SERVER['HTTPS'] ?? '') !== '' && ($_SERVER['HTTPS'] ?? '') !== 'off')
-            ? 'https' : 'http';
-
-        return $protocole . '://' . (string) ($_SERVER['HTTP_HOST'] ?? 'localhost') . url('outlook/retour');
-    }
 
     /**
      * L'adresse où envoyer quelqu'un pour qu'il autorise l'application.
@@ -102,7 +101,7 @@ final class Outlook
      * premier prouve au retour que c'est bien nous qui étions partis, le
      * second que la réponse répond à notre demande et non à une autre.
      */
-    public static function adresseDAutorisation(array $compte): string
+    public static function adresseDAutorisation(): string
     {
         $verificateur = self::motDePasseDeVoyage(64);
         $etat = self::motDePasseDeVoyage(24);
@@ -112,8 +111,8 @@ final class Outlook
 
         $empreinte = rtrim(strtr(base64_encode(hash('sha256', $verificateur, true)), '+/', '-_'), '=');
 
-        return sprintf(self::AUTORISATION, rawurlencode((string) $compte['locataire'])) . '?' . http_build_query([
-            'client_id'             => (string) $compte['client_id'],
+        return sprintf(self::AUTORISATION, rawurlencode(self::locataire())) . '?' . http_build_query([
+            'client_id'             => self::clientId(),
             'response_type'         => 'code',
             'redirect_uri'          => self::adresseDeRetour(),
             'response_mode'         => 'query',
@@ -142,13 +141,11 @@ final class Outlook
         if (!is_string($verificateur) || $verificateur === '') {
             return 'La demande a expiré avant le retour de Microsoft. Recommencez.';
         }
-
-        $compte = self::compte($userId);
-        if ($compte === null) {
-            return 'Aucune application Microsoft n’est enregistrée.';
+        if (!self::configuree()) {
+            return 'La liaison Outlook n’est pas configurée sur cette installation.';
         }
 
-        $reponse = self::demanderDesJetons($compte, [
+        $reponse = self::demanderDesJetons([
             'grant_type'    => 'authorization_code',
             'code'          => $code,
             'redirect_uri'  => self::adresseDeRetour(),
@@ -183,7 +180,7 @@ final class Outlook
             return (string) $compte['jeton'];
         }
 
-        $reponse = self::demanderDesJetons($compte, [
+        $reponse = self::demanderDesJetons([
             'grant_type'    => 'refresh_token',
             'refresh_token' => (string) $compte['renouvellement'],
         ]);
@@ -241,17 +238,24 @@ final class Outlook
     /**
      * Demande des jetons, à l'aller comme au renouvellement.
      *
+     * Le secret ne part que s'il y en a un : sans lui, l'application est un
+     * client public et PKCE suffit ; avec lui, Microsoft attend les deux.
+     *
      * @return array|string  la réponse, ou le message d'erreur à montrer
      */
-    private static function demanderDesJetons(array $compte, array $champs): array|string
+    private static function demanderDesJetons(array $champs): array|string
     {
+        $champs += ['client_id' => self::clientId(), 'scope' => self::PERMISSIONS];
+
+        $secret = trim((string) Config::get('outlook', 'secret'));
+        if ($secret !== '') {
+            $champs['client_secret'] = $secret;
+        }
+
         $reponse = self::requete(
-            sprintf(self::JETONS, rawurlencode((string) $compte['locataire'])),
+            sprintf(self::JETONS, rawurlencode(self::locataire())),
             'POST',
-            http_build_query($champs + [
-                'client_id' => (string) $compte['client_id'],
-                'scope'     => self::PERMISSIONS,
-            ]),
+            http_build_query($champs),
             ['Content-Type: application/x-www-form-urlencoded']
         );
 
@@ -266,19 +270,21 @@ final class Outlook
         return $reponse['corps'];
     }
 
+    /** Garde les jetons, en créant la ligne du compte s'il le faut. */
     private static function garderLesJetons(int $userId, array $reponse): void
     {
         $duree = (int) ($reponse['expires_in'] ?? 3600);
+        $expire = date('Y-m-d H:i:s', time() + $duree);
+        $acces = (string) $reponse['access_token'];
+        $renouvellement = isset($reponse['refresh_token']) ? (string) $reponse['refresh_token'] : null;
 
         Database::run(
-            'UPDATE outlook_comptes SET jeton = ?, renouvellement = COALESCE(?, renouvellement),
-                    expire_le = ? WHERE user_id = ?',
-            [
-                (string) $reponse['access_token'],
-                isset($reponse['refresh_token']) ? (string) $reponse['refresh_token'] : null,
-                date('Y-m-d H:i:s', time() + $duree),
-                $userId,
-            ]
+            'INSERT INTO outlook_comptes (user_id, jeton, renouvellement, expire_le)
+             VALUES (?, ?, ?, ?)
+             ON DUPLICATE KEY UPDATE jeton = VALUES(jeton),
+                 renouvellement = COALESCE(VALUES(renouvellement), renouvellement),
+                 expire_le = VALUES(expire_le)',
+            [$userId, $acces, $renouvellement, $expire]
         );
     }
 

@@ -2,54 +2,27 @@
 declare(strict_types=1);
 
 /**
- * Relier — et délier — un calendrier Outlook.
+ * Relier — et délier — son calendrier Outlook.
  *
- * La synchronisation elle-même viendra ensuite : ici, on ne fait qu'obtenir
+ * L'inscription chez Microsoft appartient à l'installation, pas à chacun :
+ * une seule application y est déclarée, et tout le monde y relie son compte.
+ * La synchronisation elle-même viendra ensuite ; ici, on ne fait qu'obtenir
  * puis garder l'autorisation d'y toucher.
  */
 final class OutlookController
 {
-    /** L'écran de la liaison : ce qu'il faut inscrire, et où l'on en est. */
+    /** L'écran de la liaison : où l'on en est, et ce qu'on peut y faire. */
     public function index(): void
     {
         Auth::exiger();
         $userId = Auth::id();
 
         Vue::afficher('outlook/index', [
-            'compte'  => Outlook::compte($userId),
-            'relie'   => Outlook::relie($userId),
-            'retour'  => Outlook::adresseDeRetour(),
+            'configuree' => Outlook::configuree(),
+            'compte'     => Outlook::compte($userId),
+            'relie'      => Outlook::relie($userId),
+            'retour'     => Outlook::adresseDeRetour(),
         ], 'Calendrier Outlook');
-    }
-
-    /** Retient l'application inscrite chez Microsoft. */
-    public function enregistrer(): void
-    {
-        Auth::exiger();
-        Session::verifierCsrf();
-
-        /*
-         * L'identifiant d'une application Azure est un GUID. Le vérifier ici
-         * évite de partir vers Microsoft pour se faire renvoyer une erreur
-         * qu'on aurait pu lire soi-même.
-         */
-        $clientId = post('client_id');
-        if (preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $clientId) !== 1) {
-            Session::flash('erreur', 'L’identifiant d’application attendu ressemble à '
-                . '« 11111111-2222-3333-4444-555555555555 ».');
-            redirect('outlook');
-        }
-
-        // Le locataire : « common » pour tout compte, ou celui d'un établissement.
-        $locataire = post('locataire', 'common');
-        if (preg_match('/^[0-9a-zA-Z._-]{1,64}$/', $locataire) !== 1) {
-            Session::flash('erreur', 'Le locataire ne peut contenir que des lettres, chiffres, points et tirets.');
-            redirect('outlook');
-        }
-
-        Outlook::retenirApplication(Auth::id(), strtolower($clientId), $locataire);
-        Session::flash('succes', 'Application enregistrée. Vous pouvez relier votre compte.');
-        redirect('outlook');
     }
 
     /** Part demander l'autorisation à Microsoft. */
@@ -58,13 +31,12 @@ final class OutlookController
         Auth::exiger();
         Session::verifierCsrf();
 
-        $compte = Outlook::compte(Auth::id());
-        if ($compte === null) {
-            Session::flash('erreur', 'Enregistrez d’abord l’application inscrite chez Microsoft.');
+        if (!Outlook::configuree()) {
+            Session::flash('erreur', 'La liaison Outlook n’est pas configurée sur cette installation.');
             redirect('outlook');
         }
 
-        header('Location: ' . Outlook::adresseDAutorisation($compte));
+        header('Location: ' . Outlook::adresseDAutorisation());
         exit;
     }
 

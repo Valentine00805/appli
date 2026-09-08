@@ -64,9 +64,10 @@ require __DIR__ . '/controllers/CartesController.php';
  * plutôt que dans un fichier à part, que l'antivirus du poste a mis en
  * quarantaine quatre fois de suite, emportant l'application avec lui.
  *
- * Pour d'autres identifiants — un hébergeur, un mot de passe MySQL —, créez
- * config/parametres.php avec le même tableau : il a la priorité et reste hors
- * du dépôt.
+ * Pour d'autres identifiants — un hébergeur, un mot de passe MySQL, une
+ * application Microsoft —, créez config/parametres.php : il n'a besoin d'y
+ * écrire que ce qu'il change, le reste vient d'ici. Il a la priorité et
+ * reste hors du dépôt.
  */
 Config::charger([
     'db' => [
@@ -102,6 +103,32 @@ Config::charger([
             'mp4', 'm4v', 'webm', 'ogv', 'mov',
         ],
     ],
+    /*
+     * La liaison avec Outlook.
+     *
+     * Une seule application est inscrite chez Microsoft : celle-ci. Chacun y
+     * relie ensuite son propre compte, sans rien avoir à inscrire — demander à
+     * chaque personne de créer une application Azure n'aurait aucun sens.
+     *
+     * Tant que « client_id » est vide, la liaison est simplement absente de
+     * l'application, et la page le dit.
+     *
+     * Le secret : en local, l'application se présente en client public et n'en
+     * a pas besoin — elle prouve son identité par PKCE. En ligne, sur un
+     * serveur qu'on tient, la plateforme « Web » de Microsoft en réclame un :
+     * on le pose alors ici, dans config/parametres.php, qui ne va pas au dépôt.
+     *
+     * L'adresse de retour se déduit de la requête, ce qui suffit en local.
+     * En ligne, mieux vaut l'inscrire en clair : ce qu'annonce un navigateur
+     * ne se croit pas sur parole, et cette adresse doit correspondre au mot
+     * près à celle déclarée chez Microsoft.
+     */
+    'outlook' => [
+        'client_id'      => '',
+        'locataire'      => 'common',
+        'secret'         => '',
+        'adresse_retour' => '',
+    ],
 ], __DIR__ . '/config/parametres.php');
 
 /* --- Où l'application est installée, et ce qui lui est demandé --- */
@@ -127,7 +154,6 @@ $routes = [
     ['GET',  'compte',                    [AuthController::class, 'compte']],
     ['POST', 'compte/mot-de-passe',       [AuthController::class, 'changerMotDePasse']],
     ['GET',  'outlook',                    [OutlookController::class, 'index']],
-    ['POST', 'outlook/enregistrer',        [OutlookController::class, 'enregistrer']],
     ['POST', 'outlook/connexion',          [OutlookController::class, 'connexion']],
     ['GET',  'outlook/retour',             [OutlookController::class, 'retour']],
     ['POST', 'outlook/deconnexion',        [OutlookController::class, 'deconnexion']],

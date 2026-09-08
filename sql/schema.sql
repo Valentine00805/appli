@@ -392,10 +392,6 @@ CREATE TABLE IF NOT EXISTS `fiche_elements` (
 -- les emporte pas.
 CREATE TABLE IF NOT EXISTS `outlook_comptes` (
   `user_id`        INT UNSIGNED NOT NULL,
-  -- L'application inscrite chez Microsoft, que l'utilisateur déclare lui-même.
-  `client_id`      VARCHAR(64)  NOT NULL,
-  -- « common » accepte les comptes personnels et les comptes d'établissement.
-  `locataire`      VARCHAR(64)  NOT NULL DEFAULT 'common',
   `compte`         VARCHAR(190) NULL,
   `jeton`          TEXT         NULL,
   `renouvellement` TEXT         NULL,
