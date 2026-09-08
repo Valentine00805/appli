@@ -1636,6 +1636,39 @@ ul.apercu-liste--n2 { list-style-type: square; }
   font-size: .78rem; color: var(--texte-doux);
 }
 
+/*
+ * Un dossier ouvert : le chemin parcouru, puis ce qu'il contient de dossiers.
+ *
+ * La colonne de gauche donne l'arborescence entière ; ces cartes ne montrent
+ * que l'étage où l'on se trouve, comme un explorateur de fichiers.
+ */
+.fil-dossiers {
+  display: flex; align-items: center; flex-wrap: wrap; gap: .35rem;
+  margin-bottom: .8rem; font-size: .85rem; color: var(--texte-doux);
+}
+.fil-dossiers a { color: var(--accent-fonce); text-decoration: none; }
+.fil-dossiers a:hover, .fil-dossiers a:focus-visible { text-decoration: underline; }
+.fil-dossiers [aria-current="page"] { font-weight: 650; color: var(--texte); }
+.fil-dossiers__separateur { color: var(--bordure-forte); }
+
+.dossiers-enfants {
+  display: grid; gap: .6rem; margin-bottom: 1.1rem;
+  grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr));
+}
+.dossier-enfant {
+  display: flex; align-items: center; gap: .6rem;
+  padding: .7rem .8rem; border: 1px solid var(--bordure); border-radius: var(--rayon-s);
+  background: var(--fond-carte); color: var(--texte); text-decoration: none;
+}
+.dossier-enfant:hover, .dossier-enfant:focus-visible {
+  border-color: var(--accent); background: var(--accent-doux);
+}
+.dossier-enfant__icone { font-size: 1.25rem; flex: none; }
+.dossier-enfant__nom { font-weight: 600; overflow-wrap: anywhere; flex: 1; min-width: 0; }
+.dossier-enfant__compte {
+  font-size: .78rem; color: var(--texte-doux); white-space: nowrap; flex: none;
+}
+
 /* Importer un dossier entier : le bouton, et sous lui l'avancement. */
 .import-dossier {
   display: inline-flex; flex-direction: column; align-items: stretch; gap: .25rem;

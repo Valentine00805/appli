@@ -100,21 +100,37 @@
   <?php endif; ?>
 </form>
 
+<?php
+/*
+ * Le lien vers un dossier garde les filtres en cours : changer de dossier ne
+ * doit pas défaire la recherche ou le tri qu'on venait de poser.
+ */
+$lienDossier = static function (?int $id) use ($recherche, $matiereId, $tagId, $tri, $favoris): string {
+    $params = array_filter([
+        'q' => $recherche !== '' ? $recherche : null,
+        'matiere' => $matiereId,
+        'tag' => $tagId,
+        'dossier' => $id,
+        'tri' => $tri !== 'recent' ? $tri : null,
+        'favoris' => $favoris ? '1' : null,
+    ], static fn ($v): bool => $v !== null);
+    return url('cours', $params);
+};
+
+// Les dossiers par identifiant, et les enfants de chacun : de quoi savoir
+// où l'on est, et ce qu'on peut ouvrir depuis là.
+$dossierParId = [];
+$enfantsDe = [];
+foreach ($dossiers as $d) {
+    $dossierParId[(int) $d['id']] = $d;
+    $enfantsDe[(int) ($d['parent_id'] ?? 0)][] = $d;
+}
+?>
+
 <div class="<?= $dossiers === [] ? '' : 'cours-vue' ?>">
 
 <?php if ($dossiers !== []): ?>
   <?php
-  $lienDossier = static function (?int $id) use ($recherche, $matiereId, $tagId, $tri, $favoris): string {
-      $params = array_filter([
-          'q' => $recherche !== '' ? $recherche : null,
-          'matiere' => $matiereId,
-          'tag' => $tagId,
-          'dossier' => $id,
-          'tri' => $tri !== 'recent' ? $tri : null,
-          'favoris' => $favoris ? '1' : null,
-      ], static fn ($v): bool => $v !== null);
-      return url('cours', $params);
-  };
   $parNiveau = [];
   foreach ($dossiers as $d) {
       $parNiveau[(int) ($d['parent_id'] ?? 0)][] = $d;
@@ -184,10 +200,64 @@
 <?php endif; ?>
 
 <div>
+<?php
+/*
+ * Un dossier ouvert montre d'abord ce qu'il contient d'autres dossiers.
+ *
+ * La colonne de gauche donne l'arborescence entière ; ici on ne montre que
+ * l'étage où l'on se trouve, avec de quoi remonter. Sans cela, un dossier qui
+ * ne sert qu'à en ranger d'autres paraissait vide.
+ */
+$courant = $dossierId === null ? null : ($dossierParId[$dossierId] ?? null);
+$sousDossiers = $courant === null ? [] : ($enfantsDe[(int) $courant['id']] ?? []);
+
+$chemin = [];
+for ($haut = $courant; $haut !== null;) {
+    array_unshift($chemin, $haut);
+    $dessus = $haut['parent_id'] === null ? null : (int) $haut['parent_id'];
+    $haut = $dessus === null ? null : ($dossierParId[$dessus] ?? null);
+}
+?>
+<?php if ($courant !== null): ?>
+  <nav class="fil-dossiers" aria-label="Chemin du dossier">
+    <a href="<?= $lienDossier(null) ?>">Tous les cours</a>
+    <?php foreach ($chemin as $rang => $etape): ?>
+      <span class="fil-dossiers__separateur" aria-hidden="true">›</span>
+      <?php if ($rang === count($chemin) - 1): ?>
+        <span aria-current="page"><?= e($etape['icone']) ?> <?= e($etape['nom']) ?></span>
+      <?php else: ?>
+        <a href="<?= $lienDossier((int) $etape['id']) ?>"><?= e($etape['nom']) ?></a>
+      <?php endif; ?>
+    <?php endforeach; ?>
+  </nav>
+<?php endif; ?>
+
+<?php if ($sousDossiers !== []): ?>
+  <div class="dossiers-enfants">
+    <?php foreach ($sousDossiers as $enfant): ?>
+      <?php
+      $dedans = count($enfantsDe[(int) $enfant['id']] ?? []);
+      $lus = (int) $enfant['nb_cours'];
+      ?>
+      <a class="dossier-enfant" href="<?= $lienDossier((int) $enfant['id']) ?>"
+         data-dossier="<?= (int) $enfant['id'] ?>"
+         title="Ouvrir « <?= e($enfant['nom']) ?> »">
+        <span class="dossier-enfant__icone" aria-hidden="true"><?= e($enfant['icone']) ?></span>
+        <span class="dossier-enfant__nom"><?= e($enfant['nom']) ?></span>
+        <span class="dossier-enfant__compte">
+          <?= $lus ?> cours<?= $dedans > 0 ? ' · ' . $dedans . ' dossier' . ($dedans > 1 ? 's' : '') : '' ?>
+        </span>
+      </a>
+    <?php endforeach; ?>
+  </div>
+<?php endif; ?>
+
 <?php if ($cours === []): ?>
   <div class="vide">
     <span class="vide__icone">📄</span>
-    <?php if ($recherche !== '' || $matiereId !== null || $tagId !== null || $dossierId !== null || $favoris): ?>
+    <?php if ($sousDossiers !== []): ?>
+      <p>Ce dossier ne contient que des sous-dossiers. Ouvrez-en un ci-dessus.</p>
+    <?php elseif ($recherche !== '' || $matiereId !== null || $tagId !== null || $dossierId !== null || $favoris): ?>
       <p>Aucun cours ne correspond à ces critères.</p>
       <a class="bouton bouton--secondaire" href="<?= url('cours') ?>">Voir tous les cours</a>
     <?php else: ?>
