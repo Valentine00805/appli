@@ -3,6 +3,8 @@
  * @var bool $configuree  l'installation a-t-elle une application Microsoft ?
  * @var ?array $compte    la ligne « outlook_comptes », ou null
  * @var bool $relie       ce compte-ci est-il relié ?
+ * @var ?string $derniere la dernière synchronisation, ou null
+ * @var int $combien      combien d'évènements viennent d'Outlook
  * @var string $retour    l'adresse à déclarer chez Microsoft
  */
 ?>
@@ -46,14 +48,42 @@
                 ? '' : ', calendrier « ' . e((string) $compte['calendrier_nom']) . ' »' ?>.
           </p>
           <p class="champ__aide">
-            La synchronisation des évènements n'est pas encore en place : pour
-            l'instant, la liaison est faite et l'autorisation obtenue.
+            <?php if ($derniere === null): ?>
+              Vos évènements ne sont pas encore venus : lancez une première lecture.
+            <?php else: ?>
+              Dernière lecture le <?= e(date('d/m/Y à H:i', strtotime($derniere))) ?>,
+              <?= $combien === 0 ? 'aucun évènement suivi' : $combien . ' évènement' . ($combien > 1 ? 's' : '') . ' suivi' . ($combien > 1 ? 's' : '') ?>.
+            <?php endif; ?>
           </p>
-          <form method="post" action="<?= url('outlook/deconnexion') ?>"
-                data-confirmation="Délier votre compte Outlook ? L'application n'accèdera plus à votre agenda.">
+          <form method="post" action="<?= url('outlook/synchroniser') ?>">
             <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
-            <button class="bouton bouton--danger bouton--petit" type="submit">Délier mon compte</button>
+            <button class="bouton" type="submit">
+              <?= $derniere === null ? 'Faire venir mes évènements' : 'Relire mon agenda' ?>
+            </button>
           </form>
+          <p class="champ__aide" style="margin-top:.6rem">
+            La lecture porte sur le mois écoulé et l'année à venir, séries
+            récurrentes comprises. Le sens est unique pour l'instant :
+            <strong>Outlook fait foi</strong>. Un évènement importé que vous
+            modifiez ici sera repris tel qu'il est là-bas à la lecture
+            suivante, et si vous le supprimez ici, il reviendra.
+          </p>
+          <div class="outlook-defaire">
+            <?php if ($combien > 0): ?>
+              <form method="post" action="<?= url('outlook/retirer') ?>"
+                    data-confirmation="Retirer du calendrier les évènements venus d'Outlook ? Ils restent dans votre agenda Microsoft.">
+                <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
+                <button class="bouton bouton--secondaire bouton--petit" type="submit">
+                  Retirer les évènements importés
+                </button>
+              </form>
+            <?php endif; ?>
+            <form method="post" action="<?= url('outlook/deconnexion') ?>"
+                  data-confirmation="Délier votre compte Outlook ? L'application n'accèdera plus à votre agenda, et les évènements importés quitteront le calendrier.">
+              <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
+              <button class="bouton bouton--danger bouton--petit" type="submit">Délier mon compte</button>
+            </form>
+          </div>
         </section>
       <?php else: ?>
         <section class="carte">

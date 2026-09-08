@@ -36,6 +36,7 @@ require __DIR__ . '/src/ReleveExcel.php';
 require __DIR__ . '/src/TextePdf.php';
 require __DIR__ . '/src/GenerateurCartes.php';
 require __DIR__ . '/src/Outlook.php';
+require __DIR__ . '/src/SynchroOutlook.php';
 require __DIR__ . '/src/Requete.php';
 require __DIR__ . '/src/helpers.php';
 require __DIR__ . '/src/Vue.php';
@@ -156,6 +157,8 @@ $routes = [
     ['GET',  'outlook',                    [OutlookController::class, 'index']],
     ['POST', 'outlook/connexion',          [OutlookController::class, 'connexion']],
     ['GET',  'outlook/retour',             [OutlookController::class, 'retour']],
+    ['POST', 'outlook/synchroniser',       [OutlookController::class, 'synchroniser']],
+    ['POST', 'outlook/retirer',            [OutlookController::class, 'retirer']],
     ['POST', 'outlook/deconnexion',        [OutlookController::class, 'deconnexion']],
 
     ['GET',  'compte/sauvegarde',           [SauvegardeController::class, 'index']],

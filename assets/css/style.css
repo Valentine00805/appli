@@ -1,0 +1,8 @@
+
+/* Les deux retours en arrière de la liaison Outlook, côte à côte. */
+.outlook-defaire {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  margin-top: .9rem;
+}

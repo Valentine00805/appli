@@ -196,6 +196,7 @@ final class Outlook
      * Un appel à Microsoft Graph.
      *
      * @param  ?array $corps  envoyé en JSON ; null pour une simple lecture
+     * @param  array<int, string> $enPlus  en-têtes propres à l'appel
      * @return array{code: int, corps: array, entetes: array<string, string>}
      * @throws RuntimeException si l'appel n'aboutit pas du tout
      */
@@ -203,7 +204,8 @@ final class Outlook
         int $userId,
         string $methode,
         string $chemin,
-        ?array $corps = null
+        ?array $corps = null,
+        array $enPlus = []
     ): array {
         $url = str_starts_with($chemin, 'https://') ? $chemin : self::GRAPH . $chemin;
 
@@ -211,6 +213,7 @@ final class Outlook
             'Authorization: Bearer ' . self::jeton($userId),
             'Content-Type: application/json',
             'Accept: application/json',
+            ...$enPlus,
         ]);
     }
 

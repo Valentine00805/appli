@@ -22,7 +22,39 @@ final class OutlookController
             'compte'     => Outlook::compte($userId),
             'relie'      => Outlook::relie($userId),
             'retour'     => Outlook::adresseDeRetour(),
+            'derniere'   => SynchroOutlook::derniereFois($userId),
+            'combien'    => SynchroOutlook::combien($userId),
         ], 'Calendrier Outlook');
+    }
+
+    /**
+     * Va chercher les évènements de l'agenda et met le calendrier à jour.
+     *
+     * Le bilan est rendu en clair — tant d'ajoutés, tant de modifiés, tant de
+     * retirés : une synchronisation qui ne dit rien de ce qu'elle a fait ne se
+     * laisse ni vérifier, ni corriger.
+     */
+    public function synchroniser(): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+
+        try {
+            $bilan = SynchroOutlook::tirer(Auth::id());
+        } catch (Throwable $e) {
+            Session::flash('erreur', $e->getMessage());
+            redirect('outlook');
+        }
+
+        $dit = [];
+        if ($bilan['ajoutes'] > 0)  { $dit[] = $bilan['ajoutes'] . ' ajouté' . ($bilan['ajoutes'] > 1 ? 's' : ''); }
+        if ($bilan['modifies'] > 0) { $dit[] = $bilan['modifies'] . ' mis à jour'; }
+        if ($bilan['retires'] > 0)  { $dit[] = $bilan['retires'] . ' retiré' . ($bilan['retires'] > 1 ? 's' : ''); }
+
+        Session::flash('succes', $dit === []
+            ? 'Agenda relu : rien de nouveau.'
+            : 'Agenda relu : ' . implode(', ', $dit) . '.');
+        redirect('outlook');
     }
 
     /** Part demander l'autorisation à Microsoft. */
@@ -81,14 +113,44 @@ final class OutlookController
         redirect('outlook');
     }
 
-    /** Oublie les jetons : l'application ne touche plus à l'agenda. */
+    /**
+     * Retire les évènements importés, sans délier le compte.
+     *
+     * De quoi essayer sans risque : ce qui a été apporté se reprend d'un
+     * geste, et rien n'est perdu puisque tout est encore dans l'agenda.
+     */
+    public function retirer(): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+
+        $retires = SynchroOutlook::toutRetirer(Auth::id());
+        Session::flash('succes', $retires === 0
+            ? 'Il n’y avait aucun évènement importé.'
+            : $retires . ' évènement' . ($retires > 1 ? 's importés retirés' : ' importé retiré')
+              . ' du calendrier. Ils restent dans votre agenda Outlook.');
+        redirect('outlook');
+    }
+
+    /**
+     * Oublie les jetons : l'application ne touche plus à l'agenda.
+     *
+     * Les évènements importés partent avec. Les garder les rendrait
+     * orphelins — plus rien ne les rattacherait à Outlook — et une
+     * reconnexion les aurait doublés. Ils sont toujours dans l'agenda.
+     */
     public function deconnexion(): void
     {
         Auth::exiger();
         Session::verifierCsrf();
 
-        Outlook::delier(Auth::id());
-        Session::flash('succes', 'Compte Outlook délié. L’application n’accède plus à votre agenda.');
+        $userId = Auth::id();
+        $retires = SynchroOutlook::toutRetirer($userId);
+        Outlook::delier($userId);
+
+        Session::flash('succes', 'Compte Outlook délié. L’application n’accède plus à votre agenda'
+            . ($retires === 0 ? '.' : ', et ' . $retires . ' évènement' . ($retires > 1 ? 's importés ont' : ' importé a')
+               . ' quitté le calendrier.'));
         redirect('outlook');
     }
 }
