@@ -1562,12 +1562,6 @@ ul.apercu-liste--n2 { list-style-type: square; }
 .fiche__liste form { margin-left: .2rem; flex: none; }
 
 /* Une vignette à la place de l'icône, quand le fichier est une image. */
-.fiche__vignette { flex: none; }
-.fiche__vignette img {
-  width: 44px; height: 44px; object-fit: cover;
-  border-radius: var(--rayon-s); display: block;
-}
-
 /* Les formulaires d'ajout restent repliés tant qu'on ne s'en sert pas. */
 .fiche__ajout > summary {
   cursor: pointer; font-size: .88rem; color: var(--accent-fonce);
@@ -1586,6 +1580,21 @@ ul.apercu-liste--n2 { list-style-type: square; }
 .fichier__lecteur--video {
   height: auto; max-height: 60vh; border-radius: var(--rayon-s);
   background: #000;
+}
+
+/*
+ * Une image se regarde dans la fiche, comme un PDF : on ne quitte pas la page
+ * pour un schéma. Elle garde ses proportions, ne s'étire pas au-delà de sa
+ * taille et ne prend pas plus que la hauteur de l'écran ; un clic l'ouvre en
+ * grand pour ce qui demande à être lu de près.
+ */
+.fichier__image { flex: 0 0 100%; margin-top: .45rem; }
+.fichier__image a { display: block; }
+.fichier__image img {
+  display: block; margin: 0 auto;
+  max-width: 100%; max-height: 70vh; height: auto;
+  border: 1px solid var(--bordure); border-radius: var(--rayon-s);
+  background: var(--fond-doux);
 }
 
 /*
