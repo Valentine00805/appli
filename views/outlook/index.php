@@ -36,7 +36,7 @@ foreach (($calendriers ?? []) as $unCal) {
         $partagesEnAttente++;
     }
 }
-$aReautoriser = !($partage ?? true) && $partagesEnAttente > 0;
+$aReautoriser = !($partage ?? true) && $partagesEnAttente > 0 && ($souci ?? null) !== null;
 ?>
 
 <?php if (!$configuree): ?>
@@ -194,10 +194,12 @@ $aReautoriser = !($partage ?? true) && $partagesEnAttente > 0;
 
         <?php if (!$partage): ?>
           <p class="champ__aide" style="margin-top:0">
-            ⚠️ Votre autorisation date d'avant que l'application ne sache lire
-            les calendriers <strong>partagés par quelqu'un d'autre</strong>.
-            Pour y accéder, réautorisez-la : rien n'est perdu, ni votre liaison,
-            ni vos évènements.
+            Votre autorisation date d'avant que l'application ne demande une
+            permission pour les calendriers <strong>partagés par quelqu'un
+            d'autre</strong>. Elle n'est pas toujours nécessaire — selon le
+            compte, Microsoft les donne sans rien de plus. Si l'un d'eux vous
+            est refusé, réautorisez : rien n'est perdu, ni votre liaison, ni
+            vos évènements.
           </p>
           <form method="post" action="<?= url('outlook/connexion') ?>" style="margin-bottom:.9rem">
             <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">

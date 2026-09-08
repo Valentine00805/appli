@@ -162,7 +162,7 @@ final class OutlookController
         if ($partis !== []) { $phrases[] = 'partis vers Outlook : ' . implode(', ', $partis); }
 
         return $phrases === []
-            ? 'Synchronisé : rien de nouveau de part ni d’autre.'
+            ? 'Synchronisé : tout était déjà à jour, de part et d’autre.'
             : 'Synchronisé — ' . implode(' ; ', $phrases) . '.';
     }
 
