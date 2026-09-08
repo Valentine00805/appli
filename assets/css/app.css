@@ -1272,6 +1272,14 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
 }
 .nouveau-dossier__panneau input, .nouveau-dossier__panneau select { width: 100%; }
 
+/* Dans la barre d'actions, le panneau flotte au lieu de pousser la page. */
+.nouveau-dossier--entete { position: relative; margin-top: 0; }
+.nouveau-dossier--entete .nouveau-dossier__panneau {
+  position: absolute; right: 0; top: calc(100% + .35rem); z-index: 20;
+  width: 16rem; box-shadow: 0 6px 18px rgba(15, 23, 42, .12);
+  border-color: var(--bordure-forte);
+}
+
 /* Sur un écran tactile, le survol n'existe pas : le crayon reste visible. */
 @media (hover: none) {
   .dossier-renommer > summary { opacity: .55; }
