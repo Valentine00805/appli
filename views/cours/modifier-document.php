@@ -77,6 +77,19 @@
         <button type="button" class="barre-outils__bouton" data-liste="numero"
                 title="Mettre ou retirer la numérotation"><span aria-hidden="true">1—</span>
           <span class="sr-only">Liste numérotée</span></button>
+        <?php
+        /*
+         * La sous-liste : « a. b. c. » sous un « 1. ». La touche de
+         * tabulation fait la même chose depuis la zone de texte, comme dans
+         * un traitement de texte.
+         */
+        ?>
+        <button type="button" class="barre-outils__bouton" data-niveau-liste="1"
+                title="Sous-liste (Tab)"><span aria-hidden="true">⇥</span>
+          <span class="sr-only">Abaisser d'un niveau</span></button>
+        <button type="button" class="barre-outils__bouton" data-niveau-liste="-1"
+                title="Remonter d'un niveau (Maj+Tab)"><span aria-hidden="true">⇤</span>
+          <span class="sr-only">Remonter d'un niveau</span></button>
       </span>
       <label class="barre-outils__taille">
         <span class="discret">Taille</span>
@@ -133,18 +146,20 @@
           <?php
           $aligne = (string) ($enrichis[$rang]['alignement'] ?? '');
           $liste = (string) ($enrichis[$rang]['liste'] ?? '');
+          $niveau = $liste === '' ? 0 : (int) ($enrichis[$rang]['niveau'] ?? 0);
           ?>
           <div class="paragraphe" data-paragraphe
                data-riche-html="<?= e($enrichis[$rang]['html'] ?? '') ?>"
                data-aligne="<?= e($aligne) ?>" data-liste="<?= e($liste) ?>"
                data-numero="<?= (int) ($enrichis[$rang]['numero'] ?? 0) ?>"
-               <?php // Une sous-liste se compte à part : le script la laisse. ?>
-               data-profond="<?= ($enrichis[$rang]['profond'] ?? false) ? '1' : '' ?>">
+               <?php // Le premier niveau, ou celui d'une sous-liste. ?>
+               data-niveau="<?= $niveau ?>">
             <span class="paragraphe__rang" aria-hidden="true"><?= $rang + 1 ?></span>
             <input type="hidden" name="origine[]" value="<?= (int) $rang ?>">
             <?php // Sans script, ils repartent tels quels : rien n'est perdu. ?>
             <input type="hidden" name="alignement[]" value="<?= e($aligne) ?>">
             <input type="hidden" name="liste[]" value="<?= e($liste) ?>">
+            <input type="hidden" name="niveau[]" value="<?= $niveau ?>">
             <textarea name="texte[]" rows="1" class="paragraphe__texte"
                       aria-label="Paragraphe <?= $rang + 1 ?>"><?= e($paragraphe) ?></textarea>
             <button type="button" class="bouton bouton--discret bouton--petit"
@@ -161,6 +176,7 @@
             <input type="hidden" name="origine[]" value="">
             <input type="hidden" name="alignement[]" value="">
             <input type="hidden" name="liste[]" value="">
+            <input type="hidden" name="niveau[]" value="0">
             <textarea name="texte[]" rows="1" class="paragraphe__texte"
                       aria-label="Nouveau paragraphe"></textarea>
           </div>
@@ -184,11 +200,12 @@
   <?php // Modèle recopié par le bouton d'ajout. ?>
   <template data-modele-paragraphe>
     <div class="paragraphe" data-paragraphe data-riche-html="" data-aligne=""
-         data-liste="" data-numero="0">
+         data-liste="" data-numero="0" data-niveau="0">
       <span class="paragraphe__rang" aria-hidden="true">+</span>
       <input type="hidden" name="origine[]" value="">
       <input type="hidden" name="alignement[]" value="">
       <input type="hidden" name="liste[]" value="">
+      <input type="hidden" name="niveau[]" value="0">
       <textarea name="texte[]" rows="1" class="paragraphe__texte" aria-label="Nouveau paragraphe"></textarea>
       <button type="button" class="bouton bouton--discret bouton--petit"
               data-supprimer-paragraphe title="Supprimer ce paragraphe">🗑</button>

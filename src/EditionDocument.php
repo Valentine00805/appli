@@ -51,6 +51,35 @@ final class EditionDocument
     ];
 
     /**
+     * La marque de chaque niveau, dans l'un et l'autre format.
+     *
+     * Le premier niveau numérote en chiffres, le second en lettres : c'est le
+     * plan « 1. a. b. 2. » qu'on attend d'un traitement de texte. Les puces
+     * suivent la même règle, du rond plein au rond creux.
+     */
+    private const NIVEAUX = [
+        'puce' => [
+            0 => ['word' => ['numFmt' => 'bullet', 'lvlText' => "\u{F0B7}", 'police' => 'Symbol'],
+                  'odf'  => ['puce' => '•']],
+            1 => ['word' => ['numFmt' => 'bullet', 'lvlText' => 'o', 'police' => 'Courier New'],
+                  'odf'  => ['puce' => '◦']],
+        ],
+        'numero' => [
+            0 => ['word' => ['numFmt' => 'decimal',     'lvlText' => '%1.'], 'odf' => ['format' => '1']],
+            1 => ['word' => ['numFmt' => 'lowerLetter', 'lvlText' => '%2.'], 'odf' => ['format' => 'a']],
+        ],
+    ];
+
+    /**
+     * Jusqu'où l'éditeur descend : le premier niveau et sa sous-liste.
+     *
+     * Un document peut en compter davantage ; ce qui est plus profond se
+     * montre ici comme une sous-liste et garde son étage tant qu'on n'y
+     * touche pas.
+     */
+    public const NIVEAU_MAX = 1;
+
+    /**
      * L'ordre imposé aux enfants de <w:rPr> par le schéma d'OOXML.
      *
      * Word lit un rPr désordonné, mais le document devient invalide et
@@ -171,7 +200,7 @@ final class EditionDocument
      * donc pas perdu.
      *
      * @return list<array{html: string, alignement: ?string, liste: string,
-     *                    numero: ?int, profond: bool}>
+     *                    numero: ?int, niveau: int}>
      * @throws RuntimeException si le fichier est illisible
      */
     public static function lireRiche(string $chemin, string $nomOrigine): array
@@ -192,7 +221,7 @@ final class EditionDocument
                 'alignement' => self::alignement($p, $alignementsOdf),
                 'liste' => (string) self::sorteDeListe($p, $numsWord, $listesOdf),
                 'numero' => $numeros[$rang],
-                'profond' => self::niveauDeListe($p) > 0,
+                'niveau' => min(self::niveauDeListe($p), self::NIVEAU_MAX),
             ];
         }
 
@@ -209,7 +238,8 @@ final class EditionDocument
      * un paragraphe à la place d'un autre : celle-ci suit la règle de l'aperçu,
      * pour que les deux listes se correspondent une à une.
      *
-     * @return list<array{html: string, alignement: ?string, liste: string, numero: ?int}>
+     * @return list<array{html: string, alignement: ?string, liste: string,
+     *                    numero: ?int, niveau: int}>
      * @throws RuntimeException si le fichier est illisible
      */
     public static function apercuRiche(string $chemin, string $nomOrigine): array
@@ -245,6 +275,7 @@ final class EditionDocument
                     'alignement' => self::alignement($noeud, $alignementsOdf),
                     'liste' => (string) self::sorteDeListe($noeud, $numsWord, $listesOdf),
                     'numero' => $numeros[$rang],
+                    'niveau' => min(self::niveauDeListe($noeud), self::NIVEAU_MAX),
                 ];
             }
         }
@@ -297,7 +328,8 @@ final class EditionDocument
      * formulaire envoie du texte nu, et l'ancienne règle s'applique : le
      * paragraphe garde l'allure de son premier passage.
      *
-     * @param array<int, array{origine: ?int, texte: string, alignement?: ?string, liste?: string}> $entrees
+     * @param array<int, array{origine: ?int, texte: string, alignement?: ?string,
+     *                         liste?: string, niveau?: int}> $entrees
      * @throws RuntimeException si le document ne peut être ni lu ni réécrit
      */
     public static function enregistrer(
@@ -358,6 +390,8 @@ final class EditionDocument
         $gabarit = self::gabaritTexte($doc);
         $utilises = [];
         $nouveaux = [];
+        // Les sous-listes dont il faudra vérifier que la définition les prévoit.
+        $aCompleter = [];
 
         foreach ($entrees as $rang => $entree) {
             $origine = $entree['origine'];
@@ -379,10 +413,10 @@ final class EditionDocument
             self::alignerParagraphe($doc, $noeud, $entree['alignement'] ?? null);
 
             /*
-             * La sorte de liste ne se réécrit que si elle change : une
-             * numérotation en « a) », une liste à plusieurs niveaux, tout ce
-             * que l'éditeur ne sait pas dire garde ainsi sa définition
-             * d'origine tant qu'on n'y touche pas.
+             * En ODF, le style d'origine n'est repris que si la sorte n'a pas
+             * changé : une numérotation en « i) », ou toute autre forme que
+             * l'éditeur ne sait pas dire, garde ainsi la sienne tant qu'on n'y
+             * touche pas.
              */
             $sorte = (string) ($entree['liste'] ?? '');
             $avant = $existant === null
@@ -392,27 +426,43 @@ final class EditionDocument
 
             if ($word) {
                 /*
-                 * Un élément d'un niveau plus profond ne se touche pas : le
-                 * ramener au premier niveau écraserait un plan à deux étages
-                 * que l'éditeur ne sait de toute façon pas montrer.
+                 * Le niveau demandé ne remplace celui du document que s'il en
+                 * diffère : un plan à trois étages, que l'éditeur montre à
+                 * plat sur deux, garde ainsi ses étages tant qu'on n'y touche
+                 * pas.
                  */
-                $profond = ($commune['niveaux'][$rang] ?? 0) > 0;
+                $actuel = $commune['niveaux'][$rang] ?? 0;
+                $demande = $sorte === ''
+                    ? 0
+                    : max(0, min((int) ($entree['niveau'] ?? 0), self::NIVEAU_MAX));
+                $etage = $demande === min($actuel, self::NIVEAU_MAX) ? $actuel : $demande;
+
                 $cible = $sorte === ''
                     ? null
                     : ($commune['cibles'][$sorte] ?? $numeros[$sorte] ?? null);
 
-                if (!$profond && ($commune['actuels'][$rang] ?? null) !== $cible) {
-                    self::listerWord($doc, $noeud, $cible);
+                if (($commune['actuels'][$rang] ?? null) !== $cible || $actuel !== $etage) {
+                    self::listerWord($doc, $noeud, $cible, $etage);
+                }
+                if ($cible !== null && $etage > 0) {
+                    $aCompleter[$sorte . ':' . $cible . ':' . $etage] = [$sorte, $cible, $etage];
                 }
             }
 
             $nouveaux[] = [
                 'noeud' => $noeud,
                 'sorte' => $sorte,
+                'niveau' => $sorte === ''
+                    ? 0
+                    : max(0, min((int) ($entree['niveau'] ?? 0), self::NIVEAU_MAX)),
                 // Le style d'origine, pour remballer à l'identique en ODF.
                 'style' => $inchangee && $existant !== null ? self::styleDeSaListe($existant) : null,
             ];
             $modele = $noeud;
+        }
+
+        foreach ($aCompleter as [$sorte, $cible, $etage]) {
+            self::assurerNiveauWord($chemin, $parties, $sorte, $cible, $etage);
         }
 
         self::replacer($doc, $corps, $paragraphes, $nouveaux, $format);
@@ -552,15 +602,14 @@ final class EditionDocument
         }
 
         $aPoser = [];
-        $liste = null;
-        $styleEnCours = null;
         $sortesPosees = [];
         $ouvertes = [];
+        // Les listes ouvertes, de la plus large à la plus profonde.
+        $pile = [];
 
         foreach ($nouveaux as $entree) {
             if (!$odf || $entree['sorte'] === '') {
-                $liste = null;
-                $styleEnCours = null;
+                $pile = [];
                 $aPoser[] = $entree['noeud'];
                 continue;
             }
@@ -573,22 +622,49 @@ final class EditionDocument
 
             // Deux listes voisines de styles différents ne se mélangent pas :
             // une numérotation reprendrait à un.
-            if ($liste === null || $styleEnCours !== $style) {
+            if ($pile !== [] && $pile[0]['style'] !== $style) {
+                $pile = [];
+            }
+            $vise = $entree['niveau'] + 1;
+            while (count($pile) > $vise) {
+                array_pop($pile);
+            }
+
+            while (count($pile) < $vise) {
                 $liste = $doc->createElementNS(self::NS_TEXT, 'text:list');
                 $liste->setAttributeNS(self::NS_TEXT, 'text:style-name', $style);
-                // Une liste qui en reprend une autre poursuit sa numérotation
-                // au lieu de repartir à 1, comme le fait Word par-dessus un
-                // paragraphe ordinaire.
-                if (isset($ouvertes[$style])) {
-                    $liste->setAttributeNS(self::NS_TEXT, 'text:continue-numbering', 'true');
+
+                if ($pile === []) {
+                    // Une liste qui en reprend une autre poursuit sa
+                    // numérotation au lieu de repartir à 1, comme le fait Word
+                    // par-dessus un paragraphe ordinaire.
+                    if (isset($ouvertes[$style])) {
+                        $liste->setAttributeNS(self::NS_TEXT, 'text:continue-numbering', 'true');
+                    }
+                    $ouvertes[$style] = true;
+                    $aPoser[] = $liste;
+                } else {
+                    /*
+                     * Une sous-liste se range dans l'élément qui la porte, et
+                     * non à côté de lui : c'est l'emboîtement, et lui seul,
+                     * qui dit la profondeur en ODF. Sans porteur — une
+                     * sous-liste qui ouvrirait le document — on en pose un
+                     * vide plutôt que d'écrire un document invalide.
+                     */
+                    $dernier = count($pile) - 1;
+                    if ($pile[$dernier]['item'] === null) {
+                        $pile[$dernier]['item'] = $doc->createElementNS(self::NS_TEXT, 'text:list-item');
+                        $pile[$dernier]['liste']->appendChild($pile[$dernier]['item']);
+                    }
+                    $pile[$dernier]['item']->appendChild($liste);
                 }
-                $ouvertes[$style] = true;
-                $styleEnCours = $style;
-                $aPoser[] = $liste;
+                $pile[] = ['liste' => $liste, 'style' => $style, 'item' => null];
             }
+
             $item = $doc->createElementNS(self::NS_TEXT, 'text:list-item');
             $item->appendChild($entree['noeud']);
-            $liste->appendChild($item);
+            $pile[count($pile) - 1]['liste']->appendChild($item);
+            $pile[count($pile) - 1]['item'] = $item;
         }
 
         foreach (array_keys($sortesPosees) as $sorte) {
@@ -1926,8 +2002,12 @@ final class EditionDocument
     }
 
     /** Accroche ou décroche un paragraphe Word d'une de nos listes. */
-    private static function listerWord(DOMDocument $doc, DOMElement $paragraphe, ?int $numero): void
-    {
+    private static function listerWord(
+        DOMDocument $doc,
+        DOMElement $paragraphe,
+        ?int $numero,
+        int $niveau = 0
+    ): void {
         $pPr = self::enfantWord($paragraphe, 'pPr');
 
         if ($numero === null) {
@@ -1949,7 +2029,7 @@ final class EditionDocument
 
         $numPr = $doc->createElementNS(self::NS_W, 'w:numPr');
         $ilvl = $doc->createElementNS(self::NS_W, 'w:ilvl');
-        $ilvl->setAttributeNS(self::NS_W, 'w:val', '0');
+        $ilvl->setAttributeNS(self::NS_W, 'w:val', (string) max(0, $niveau));
         $numId = $doc->createElementNS(self::NS_W, 'w:numId');
         $numId->setAttributeNS(self::NS_W, 'w:val', (string) $numero);
         $numPr->appendChild($ilvl);
@@ -2024,40 +2104,9 @@ final class EditionDocument
         $nom->setAttributeNS(self::NS_W, 'w:val', $reglage['nom']);
         $abstrait->appendChild($nom);
 
-        $niveau = $doc->createElementNS(self::NS_W, 'w:lvl');
-        $niveau->setAttributeNS(self::NS_W, 'w:ilvl', '0');
-        foreach ([
-            'start'   => '1',
-            'numFmt'  => $sorte === 'puce' ? 'bullet' : 'decimal',
-            // Le rond plein de la police Symbol pour les puces ; « %1. », soit
-            // le numéro du premier niveau suivi d'un point, pour les autres.
-            'lvlText' => $sorte === 'puce' ? "\u{F0B7}" : '%1.',
-            'lvlJc'   => 'left',
-        ] as $balise => $valeur) {
-            $element = $doc->createElementNS(self::NS_W, 'w:' . $balise);
-            $element->setAttributeNS(self::NS_W, 'w:val', $valeur);
-            $niveau->appendChild($element);
+        for ($ilvl = 0; $ilvl <= self::NIVEAU_MAX; $ilvl++) {
+            $abstrait->appendChild(self::niveauWord($doc, $sorte, $ilvl));
         }
-
-        $pPr = $doc->createElementNS(self::NS_W, 'w:pPr');
-        $ind = $doc->createElementNS(self::NS_W, 'w:ind');
-        $ind->setAttributeNS(self::NS_W, 'w:left', '720');
-        $ind->setAttributeNS(self::NS_W, 'w:hanging', '360');
-        $pPr->appendChild($ind);
-        $niveau->appendChild($pPr);
-
-        if ($sorte === 'puce') {
-            // Le rond plein n'existe que dans la police Symbol.
-            $rPr = $doc->createElementNS(self::NS_W, 'w:rPr');
-            $polices = $doc->createElementNS(self::NS_W, 'w:rFonts');
-            $polices->setAttributeNS(self::NS_W, 'w:ascii', 'Symbol');
-            $polices->setAttributeNS(self::NS_W, 'w:hAnsi', 'Symbol');
-            $polices->setAttributeNS(self::NS_W, 'w:hint', 'default');
-            $rPr->appendChild($polices);
-            $niveau->appendChild($rPr);
-        }
-
-        $abstrait->appendChild($niveau);
 
         $num = $doc->createElementNS(self::NS_W, 'w:num');
         $num->setAttributeNS(self::NS_W, 'w:numId', (string) $numeroId);
@@ -2083,6 +2132,121 @@ final class EditionDocument
         self::declarerNumerotation($chemin, $parties);
 
         return $numeroId;
+    }
+
+    /**
+     * La définition d'un niveau de liste, pour Word.
+     *
+     * Chaque niveau porte sa marque, son retrait, et pour les puces la police
+     * où se trouve le caractère employé — le rond plein n'existe que dans
+     * Symbol, le rond creux que dans Courier New.
+     */
+    private static function niveauWord(DOMDocument $doc, string $sorte, int $ilvl): DOMElement
+    {
+        $reglage = self::NIVEAUX[$sorte][$ilvl]['word'] ?? self::NIVEAUX['numero'][0]['word'];
+
+        $niveau = $doc->createElementNS(self::NS_W, 'w:lvl');
+        $niveau->setAttributeNS(self::NS_W, 'w:ilvl', (string) $ilvl);
+        foreach ([
+            'start'   => '1',
+            'numFmt'  => $reglage['numFmt'],
+            'lvlText' => $reglage['lvlText'],
+            'lvlJc'   => 'left',
+        ] as $balise => $valeur) {
+            $element = $doc->createElementNS(self::NS_W, 'w:' . $balise);
+            $element->setAttributeNS(self::NS_W, 'w:val', $valeur);
+            $niveau->appendChild($element);
+        }
+
+        // Un demi-pouce de retrait de plus par étage, comme le fait Word.
+        $pPr = $doc->createElementNS(self::NS_W, 'w:pPr');
+        $ind = $doc->createElementNS(self::NS_W, 'w:ind');
+        $ind->setAttributeNS(self::NS_W, 'w:left', (string) (720 * ($ilvl + 1)));
+        $ind->setAttributeNS(self::NS_W, 'w:hanging', '360');
+        $pPr->appendChild($ind);
+        $niveau->appendChild($pPr);
+
+        if (isset($reglage['police'])) {
+            $rPr = $doc->createElementNS(self::NS_W, 'w:rPr');
+            $polices = $doc->createElementNS(self::NS_W, 'w:rFonts');
+            $polices->setAttributeNS(self::NS_W, 'w:ascii', $reglage['police']);
+            $polices->setAttributeNS(self::NS_W, 'w:hAnsi', $reglage['police']);
+            $polices->setAttributeNS(self::NS_W, 'w:hint', 'default');
+            $rPr->appendChild($polices);
+            $niveau->appendChild($rPr);
+        }
+
+        return $niveau;
+    }
+
+    /**
+     * S'assure que la liste visée définit bien le niveau demandé.
+     *
+     * Une définition venue d'ailleurs peut n'avoir qu'un seul étage : y
+     * accrocher une sous-liste laisserait des lignes décalées mais sans
+     * marque. On complète alors la définition, ce qui n'enlève rien à ce
+     * qu'elle disait déjà.
+     *
+     * @param array<string, string> $parties  complété au besoin
+     */
+    private static function assurerNiveauWord(
+        string $chemin,
+        array &$parties,
+        string $sorte,
+        int $numero,
+        int $ilvl
+    ): void {
+        $xml = $parties[self::PART_NUM] ?? self::partie($chemin, self::PART_NUM);
+        $doc = $xml === null ? null : self::analyser($xml);
+        if ($doc === null || $doc->documentElement === null) {
+            return;
+        }
+
+        $abstraitId = null;
+        foreach ($doc->getElementsByTagNameNS(self::NS_W, 'num') as $num) {
+            if ((int) $num->getAttributeNS(self::NS_W, 'numId') !== $numero) {
+                continue;
+            }
+            $renvoi = self::enfantWord($num, 'abstractNumId');
+            $abstraitId = $renvoi?->getAttributeNS(self::NS_W, 'val');
+            break;
+        }
+        if ($abstraitId === null) {
+            return;
+        }
+
+        foreach ($doc->getElementsByTagNameNS(self::NS_W, 'abstractNum') as $abstrait) {
+            if ($abstrait->getAttributeNS(self::NS_W, 'abstractNumId') !== $abstraitId) {
+                continue;
+            }
+
+            // Les niveaux se rangent dans l'ordre : on glisse le nôtre à sa
+            // place, ou rien du tout s'il y est déjà.
+            $suivant = null;
+            foreach ($abstrait->getElementsByTagNameNS(self::NS_W, 'lvl') as $niveau) {
+                $rang = (int) $niveau->getAttributeNS(self::NS_W, 'ilvl');
+                if ($rang === $ilvl) {
+                    return;
+                }
+                if ($rang > $ilvl && $suivant === null) {
+                    $suivant = $niveau;
+                }
+            }
+
+            $neuf = self::niveauWord($doc, $sorte, $ilvl);
+            if ($suivant === null) {
+                $abstrait->appendChild($neuf);
+            } else {
+                $abstrait->insertBefore($neuf, $suivant);
+            }
+
+            $ecrit = $doc->saveXML();
+            if ($ecrit !== false) {
+                $parties[self::PART_NUM] = $ecrit;
+                self::declarerNumerotation($chemin, $parties);
+            }
+            return;
+        }
     }
 
     /**
@@ -2160,24 +2324,28 @@ final class EditionDocument
         $style = $doc->createElementNS(self::NS_TEXT, 'text:list-style');
         $style->setAttributeNS(self::NS_STYLE, 'style:name', $reglage['style']);
 
-        if ($sorte === 'puce') {
-            $niveau = $doc->createElementNS(self::NS_TEXT, 'text:list-level-style-bullet');
-            $niveau->setAttributeNS(self::NS_TEXT, 'text:level', '1');
-            $niveau->setAttributeNS(self::NS_TEXT, 'text:bullet-char', '•');
-        } else {
-            $niveau = $doc->createElementNS(self::NS_TEXT, 'text:list-level-style-number');
-            $niveau->setAttributeNS(self::NS_TEXT, 'text:level', '1');
-            $niveau->setAttributeNS(self::NS_STYLE, 'style:num-format', '1');
-            $niveau->setAttributeNS(self::NS_STYLE, 'style:num-suffix', '.');
-            $niveau->setAttributeNS(self::NS_TEXT, 'text:start-value', '1');
+        for ($ilvl = 0; $ilvl <= self::NIVEAU_MAX; $ilvl++) {
+            $marque = self::NIVEAUX[$sorte][$ilvl]['odf'];
+
+            if ($sorte === 'puce') {
+                $niveau = $doc->createElementNS(self::NS_TEXT, 'text:list-level-style-bullet');
+                $niveau->setAttributeNS(self::NS_TEXT, 'text:bullet-char', $marque['puce']);
+            } else {
+                $niveau = $doc->createElementNS(self::NS_TEXT, 'text:list-level-style-number');
+                $niveau->setAttributeNS(self::NS_STYLE, 'style:num-format', $marque['format']);
+                $niveau->setAttributeNS(self::NS_STYLE, 'style:num-suffix', '.');
+                $niveau->setAttributeNS(self::NS_TEXT, 'text:start-value', '1');
+            }
+            // Les étages se comptent à partir de un, en ODF.
+            $niveau->setAttributeNS(self::NS_TEXT, 'text:level', (string) ($ilvl + 1));
+
+            $proprietes = $doc->createElementNS(self::NS_STYLE, 'style:list-level-properties');
+            $proprietes->setAttributeNS(self::NS_TEXT, 'text:space-before', (0.25 * ($ilvl + 1)) . 'in');
+            $proprietes->setAttributeNS(self::NS_TEXT, 'text:min-label-width', '0.25in');
+            $niveau->appendChild($proprietes);
+
+            $style->appendChild($niveau);
         }
-
-        $proprietes = $doc->createElementNS(self::NS_STYLE, 'style:list-level-properties');
-        $proprietes->setAttributeNS(self::NS_TEXT, 'text:space-before', '0.25in');
-        $proprietes->setAttributeNS(self::NS_TEXT, 'text:min-label-width', '0.25in');
-        $niveau->appendChild($proprietes);
-
-        $style->appendChild($niveau);
         $automatiques->appendChild($style);
     }
 
@@ -2227,8 +2395,19 @@ final class EditionDocument
                 continue;
             }
             $liste = self::identiteDeListe($paragraphe);
-            $compteurs[$liste] = ($compteurs[$liste] ?? 0) + 1;
-            $numeros[$rang] = $compteurs[$liste];
+            $niveau = self::niveauDeListe($paragraphe);
+            $cle = $liste . '#' . $niveau;
+            $compteurs[$cle] = ($compteurs[$cle] ?? 0) + 1;
+            $numeros[$rang] = $compteurs[$cle];
+
+            // Une sous-liste repart à « a » sous chacun des éléments qui la
+            // portent : c'est un plan, pas une numérotation continue.
+            foreach (array_keys($compteurs) as $autre) {
+                if (str_starts_with($autre, $liste . '#')
+                    && (int) substr($autre, strlen($liste) + 1) > $niveau) {
+                    unset($compteurs[$autre]);
+                }
+            }
         }
 
         return $numeros;
@@ -2242,15 +2421,45 @@ final class EditionDocument
      */
     private static function niveauDeListe(DOMElement $paragraphe): int
     {
-        if ($paragraphe->namespaceURI !== self::NS_W) {
-            return 0;
-        }
-        $ilvl = self::enfantWord(
-            self::enfantWord(self::enfantWord($paragraphe, 'pPr'), 'numPr'),
-            'ilvl'
-        );
+        if ($paragraphe->namespaceURI === self::NS_W) {
+            $ilvl = self::enfantWord(
+                self::enfantWord(self::enfantWord($paragraphe, 'pPr'), 'numPr'),
+                'ilvl'
+            );
 
-        return $ilvl === null ? 0 : (int) $ilvl->getAttributeNS(self::NS_W, 'val');
+            return $ilvl === null ? 0 : (int) $ilvl->getAttributeNS(self::NS_W, 'val');
+        }
+
+        // En ODF, rien ne le dit : la profondeur se compte sur les listes qui
+        // s'emboîtent au-dessus du paragraphe.
+        $niveau = -1;
+        $noeud = $paragraphe->parentNode;
+        while ($noeud instanceof DOMElement) {
+            if ($noeud->namespaceURI === self::NS_TEXT && $noeud->localName === 'list') {
+                $niveau++;
+            }
+            $noeud = $noeud->parentNode;
+        }
+
+        return max(0, $niveau);
+    }
+
+    /**
+     * Le rang d'une sous-liste, en lettres : a, b, … z, aa, ab.
+     *
+     * C'est ainsi que les navigateurs comptent une liste en « lower-alpha » :
+     * l'aperçu et l'éditeur disent donc la même chose sans se concerter.
+     */
+    public static function lettre(int $rang): string
+    {
+        $lettres = '';
+        while ($rang > 0) {
+            $rang--;
+            $lettres = chr(97 + $rang % 26) . $lettres;
+            $rang = intdiv($rang, 26);
+        }
+
+        return $lettres;
     }
 
     /** Ce qui distingue une liste d'une autre, dans l'un et l'autre format. */

@@ -646,8 +646,11 @@
      */
     var alaLigne = function (ligne, zone) {
       var sorte = ligne.getAttribute("data-liste") || "";
+      var niveau = sorte === "" ? 0 : Number(ligne.getAttribute("data-niveau") || 0);
       if (sorte !== "" && zone.textContent.trim() === "") {
-        marquerLaLigne(ligne, "");
+        // Sur un élément resté vide, Entrée remonte d'abord d'un cran, puis
+        // sort de la liste : la même touche défait ce qu'elle a fait.
+        if (!changerNiveau(ligne, -1)) { marquerLaLigne(ligne, ""); }
         return;
       }
       if (!modeleParagraphe || !modeleParagraphe.content) { return; }
@@ -665,12 +668,15 @@
 
       var suivante = modeleParagraphe.content.firstElementChild.cloneNode(true);
       suivante.setAttribute("data-liste", sorte);
+      suivante.setAttribute("data-niveau", String(niveau));
       suivante.setAttribute("data-aligne", ligne.getAttribute("data-aligne") || "");
       ligne.parentNode.insertBefore(suivante, ligne.nextSibling);
 
       var champListe = suivante.querySelector("input[name='liste[]']");
+      var champNiveau = suivante.querySelector("input[name='niveau[]']");
       var champAligne = suivante.querySelector("input[name='alignement[]']");
       if (champListe) { champListe.value = sorte; }
+      if (champNiveau) { champNiveau.value = String(niveau); }
       if (champAligne) { champAligne.value = ligne.getAttribute("data-aligne") || ""; }
 
       enrichir(suivante);
@@ -694,29 +700,49 @@
       choix.addRange(debut);
     };
 
+    // Jusqu'où l'éditeur descend : le premier niveau et sa sous-liste.
+    var NIVEAU_MAX = 1;
+
+    /** Le rang d'une sous-liste, en lettres : a, b, … z, aa, ab. */
+    var enLettres = function (rang) {
+      var mot = "";
+      while (rang > 0) {
+        rang--;
+        mot = "abcdefghijklmnopqrstuvwxyz".charAt(rang % 26) + mot;
+        rang = Math.floor(rang / 26);
+      }
+      return mot;
+    };
+
     /**
      * Renumérote les éléments de liste.
      *
      * Un paragraphe ordinaire n'interrompt pas la numérotation : le document
-     * la poursuit par-dessus, et l'écran doit dire la même chose. Le numéro
-     * est porté par la zone, seule à pouvoir l'afficher devant son texte.
+     * la poursuit par-dessus, et l'écran doit dire la même chose. Une
+     * sous-liste, elle, repart à « a » sous chacun des éléments qui la
+     * portent. La marque est posée sur la zone, seule à pouvoir l'afficher
+     * devant son texte.
      */
     var renumeroterListes = function () {
-      var compte = 0;
+      var compteurs = [0, 0];
       [].slice.call(zoneParagraphes.querySelectorAll("[data-paragraphe]")).forEach(function (ligne) {
         var zone = ligne.querySelector("[data-zone-riche]");
-        var numerote = ligne.getAttribute("data-liste") === "numero";
+        var sorte = ligne.getAttribute("data-liste") || "";
+        var niveau = sorte === "" ? 0 : Number(ligne.getAttribute("data-niveau") || 0);
+        var marque = "";
 
-        // Une sous-liste garde le numéro que le document lui donne : elle a sa
-        // propre suite, que l'éditeur ne sait ni montrer ni modifier.
-        if (ligne.getAttribute("data-profond") === "1") {
-          if (zone) { zone.setAttribute("data-numero", ligne.getAttribute("data-numero") || ""); }
-          return;
+        if (sorte === "numero") {
+          compteurs[niveau]++;
+          if (niveau === 0) { compteurs[1] = 0; }
+          marque = (niveau > 0 ? enLettres(compteurs[niveau]) : compteurs[niveau]) + ".";
+          ligne.setAttribute("data-numero", String(compteurs[niveau]));
+        } else {
+          if (sorte === "puce") { marque = niveau > 0 ? "◦" : "•"; }
+          ligne.setAttribute("data-numero", "0");
         }
 
-        if (numerote) { compte++; }
-        ligne.setAttribute("data-numero", numerote ? String(compte) : "0");
-        if (zone) { zone.setAttribute("data-numero", numerote ? String(compte) : ""); }
+        ligne.setAttribute("data-etiquette", marque);
+        if (zone) { zone.setAttribute("data-etiquette", marque); }
       });
     };
 
@@ -726,7 +752,34 @@
       if (!champ) { return; }
       ligne.setAttribute("data-liste", sorte);
       champ.value = sorte;
+
+      // Hors d'une liste, la profondeur ne veut plus rien dire.
+      if (sorte === "") {
+        var etage = ligne.querySelector("input[name='niveau[]']");
+        ligne.setAttribute("data-niveau", "0");
+        if (etage) { etage.value = "0"; }
+      }
       renumeroterListes();
+    };
+
+    /**
+     * Décale un élément de liste d'un cran, sans sortir des bornes.
+     *
+     * Rend « faux » quand il n'y avait plus de cran à prendre : l'appelant
+     * sait alors qu'il peut faire autre chose de la touche.
+     */
+    var changerNiveau = function (ligne, pas) {
+      if (!ligne.getAttribute("data-liste")) { return false; }
+
+      var avant = Number(ligne.getAttribute("data-niveau") || 0);
+      var apres = Math.min(NIVEAU_MAX, Math.max(0, avant + pas));
+      if (apres === avant) { return false; }
+
+      var champ = ligne.querySelector("input[name='niveau[]']");
+      ligne.setAttribute("data-niveau", String(apres));
+      if (champ) { champ.value = String(apres); }
+      renumeroterListes();
+      return true;
     };
 
     /** Le curseur est-il au tout début de la zone, sans rien de sélectionné ? */
@@ -743,12 +796,14 @@
 
     /**
      * Ce que la frappe transforme d'elle-même en liste, comme un traitement de
-     * texte : « 1. » ou « 1) » ouvrent une numérotation, « - » et « * » une
-     * suite de puces. La marque tapée disparaît, c'est la liste qui la porte.
+     * texte : « 1. » ou « 1) » ouvrent une numérotation, « a. » une sous-liste,
+     * « - » et « * » une suite de puces. La marque tapée disparaît, c'est la
+     * liste qui la porte.
      */
     var DEBUTS = [
-      { motif: /^1[.)]\s$/, sorte: "numero" },
-      { motif: /^[-*]\s$/,  sorte: "puce" },
+      { motif: /^1[.)]\s$/, sorte: "numero", niveau: 0 },
+      { motif: /^a[.)]\s$/, sorte: "numero", niveau: 1 },
+      { motif: /^[-*]\s$/,  sorte: "puce",   niveau: 0 },
     ];
 
     var enrichir = function (ligne) {
@@ -787,6 +842,7 @@
           if (DEBUTS[i].motif.test(zone.textContent)) {
             zone.textContent = "";
             marquerLaLigne(ligne, DEBUTS[i].sorte);
+            if (DEBUTS[i].niveau > 0) { changerNiveau(ligne, DEBUTS[i].niveau); }
             synchroniser();
             zone.focus();
             return;
@@ -807,14 +863,26 @@
           return;
         }
 
-        // Revenir en arrière au tout début sort de la liste : c'est le geste
-        // qui défait ce que « 1. » vient de faire.
+        /*
+         * La tabulation décale d'un cran dans une liste, comme dans un
+         * traitement de texte. Quand il n'y a plus de cran à prendre, elle
+         * reprend son rôle habituel et passe au champ suivant.
+         */
+        if (evenement.key === "Tab" && ligne.getAttribute("data-liste")) {
+          if (changerNiveau(ligne, evenement.shiftKey ? -1 : 1)) {
+            evenement.preventDefault();
+          }
+          return;
+        }
+
+        // Revenir en arrière au tout début remonte d'un cran, puis sort de la
+        // liste : c'est le geste qui défait ce que « 1. » vient de faire.
         if (evenement.key === "Backspace"
           && ligne.getAttribute("data-liste")
           && auDebutDe(zone)
         ) {
           evenement.preventDefault();
-          marquerLaLigne(ligne, "");
+          if (!changerNiveau(ligne, -1)) { marquerLaLigne(ligne, ""); }
         }
       });
       // Un collage apporterait la mise en forme du site d'origine, polices et
@@ -1007,6 +1075,18 @@
 
           var sorte = bouton.getAttribute("data-liste");
           marquerLaLigne(ligne, ligne.getAttribute("data-liste") !== sorte ? sorte : "");
+        });
+      });
+
+      // Abaisser ou remonter d'un cran, pour qui préfère la barre à la touche.
+      [].slice.call(barreOutils.querySelectorAll("[data-niveau-liste]")).forEach(function (bouton) {
+        bouton.addEventListener("mousedown", function (evenement) {
+          evenement.preventDefault();
+          var zone = reprendreLaSelection();
+          if (zone === null) { return; }
+
+          var ligne = zone.closest("[data-paragraphe]");
+          if (ligne) { changerNiveau(ligne, Number(bouton.getAttribute("data-niveau-liste"))); }
         });
       });
 

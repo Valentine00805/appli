@@ -1367,14 +1367,25 @@ input.depot__champ {
   width: 1.3rem; text-align: right;
   color: var(--texte-doux); font-weight: 700; font-size: .9rem;
 }
-.paragraphe[data-liste="puce"] .paragraphe__riche::before { content: "•"; }
+/* La marque elle-même — « 3. », « b. », « • » — est calculée par le script,
+   qui seul sait où chaque liste et chaque sous-liste en sont. */
+.paragraphe[data-liste="puce"] .paragraphe__riche::before,
 .paragraphe[data-liste="numero"] .paragraphe__riche::before {
-  content: attr(data-numero) ".";
+  content: attr(data-etiquette);
 }
+/* Une sous-liste se décale, comme elle le sera dans le document. */
+.paragraphe[data-niveau="1"] .paragraphe__riche { margin-left: 1.7rem; }
 
 /* Les listes de l'aperçu, serrées comme dans le document. */
 .apercu-liste { margin: 0 0 .8rem; padding-left: 1.8rem; }
 .apercu-liste li { line-height: 1.9; }
+/* Le porteur d'une sous-liste orpheline — un sous-point qui suit un
+   paragraphe ordinaire — n'existe que pour la loger : il ne se voit pas. */
+.apercu-liste__porteur { list-style: none; }
+/* Une sous-liste compte en lettres, ou pointe un rond creux. */
+.apercu-liste .apercu-liste--sous { margin-bottom: 0; }
+ol.apercu-liste--sous { list-style-type: lower-alpha; }
+ul.apercu-liste--sous { list-style-type: circle; }
 
 /* L'alignement se voit dans la zone, comme il se verra dans le document. */
 .paragraphe[data-aligne="gauche"] .paragraphe__riche { text-align: left; }

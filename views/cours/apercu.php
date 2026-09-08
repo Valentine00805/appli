@@ -150,9 +150,19 @@
     <?php
     /*
      * Les paragraphes d'une même liste se suivent dans une seule balise :
-     * sinon une numérotation reprendrait à un à chaque ligne.
+     * sinon une numérotation reprendrait à un à chaque ligne. Une sous-liste
+     * se range dans l'élément qui la porte, comme le veut le HTML.
      */
-    $ouverte = '';
+    $pile = [];       // les listes ouvertes, avec leur balise
+    $porte = [];      // à chaque étage, un <li> reste-t-il à fermer ?
+
+    $fermerUn = static function () use (&$pile, &$porte): void {
+        if (array_pop($porte)) {
+            echo '</li>';
+        }
+        echo '</' . array_pop($pile) . '>';
+    };
+
     foreach ($paragraphes as $rang => $paragraphe):
         $riche = $enrichis[$rang] ?? null;
         $aligne = ['gauche' => 'left', 'centre' => 'center',
@@ -161,28 +171,51 @@
         $corps = $riche === null ? e($paragraphe) : $riche['html'];
         $liste = (string) ($riche['liste'] ?? '');
         $balise = ['puce' => 'ul', 'numero' => 'ol'][$liste] ?? '';
+        $vise = $balise === '' ? 0 : (int) ($riche['niveau'] ?? 0) + 1;
 
-        if ($ouverte !== '' && $ouverte !== $balise) {
-            echo '</' . $ouverte . '>';
-            $ouverte = '';
+        // Une liste d'une autre sorte n'en continue pas une : on referme tout
+        // avant d'ouvrir la sienne.
+        if ($pile !== [] && $pile[0] !== $balise) {
+            while ($pile !== []) {
+                $fermerUn();
+            }
         }
-        if ($balise !== '' && $ouverte === '') {
-            echo '<' . $balise . ' class="apercu-liste">';
-            $ouverte = $balise;
+        while (count($pile) > $vise) {
+            $fermerUn();
+        }
+        while (count($pile) < $vise) {
+            // La sous-liste se glisse dans le dernier élément, qu'on laisse
+            // ouvert ; s'il n'y en a pas, on en pose un vide pour rester
+            // dans un HTML valide.
+            if ($pile !== [] && !$porte[count($porte) - 1]) {
+                echo '<li class="apercu-liste__porteur">';
+                $porte[count($porte) - 1] = true;
+            }
+            $classe = 'apercu-liste' . ($pile === [] ? '' : ' apercu-liste--sous');
+            echo '<' . $balise . ' class="' . $classe . '">';
+            $pile[] = $balise;
+            $porte[] = false;
+        }
+
+        if ($balise === '') {
+            echo '<p' . $style . '>' . $corps . '</p>';
+            continue;
         }
 
         // « value » dit le numéro plutôt que de le faire compter au navigateur :
         // une liste que le document poursuit après un paragraphe ordinaire
         // repart alors au bon rang, et non à un.
         $numero = $liste === 'numero' ? (int) ($riche['numero'] ?? 0) : 0;
-        echo $balise === ''
-            ? '<p' . $style . '>' . $corps . '</p>'
-            : '<li' . ($numero > 0 ? ' value="' . $numero . '"' : '') . $style . '>'
-                . $corps . '</li>';
+        $dernier = count($porte) - 1;
+        if ($porte[$dernier]) {
+            echo '</li>';
+        }
+        echo '<li' . ($numero > 0 ? ' value="' . $numero . '"' : '') . $style . '>' . $corps;
+        $porte[$dernier] = true;
     endforeach;
 
-    if ($ouverte !== '') {
-        echo '</' . $ouverte . '>';
+    while ($pile !== []) {
+        $fermerUn();
     }
     ?>
   </article>
