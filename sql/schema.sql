@@ -399,9 +399,12 @@ CREATE TABLE IF NOT EXISTS `outlook_comptes` (
   `expire_le`      DATETIME     NULL,
   `calendrier_id`  VARCHAR(255) NULL,
   `calendrier_nom` VARCHAR(190) NULL,
+  `calendrier_envoi_id`  VARCHAR(512) NULL,
+  `calendrier_envoi_nom` VARCHAR(190) NULL,
   -- Le repère que Microsoft rend pour ne relire que ce qui a changé.
   `delta`          TEXT         NULL,
   `synchro_le`     DATETIME     NULL,
+  `envoi_le`       DATETIME     NULL,
   `cree_le`        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`user_id`),
   CONSTRAINT `fk_outlook_user` FOREIGN KEY (`user_id`)
@@ -447,5 +450,21 @@ CREATE TABLE IF NOT EXISTS `outlook_calendriers` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `uniq_calendrier` (`user_id`, `empreinte`),
   CONSTRAINT `fk_cal_user` FOREIGN KEY (`user_id`)
+    REFERENCES `users`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Ce que l'application a écrit dans Outlook.
+-- (voir sql/migration-outlook-envoi.sql)
+CREATE TABLE IF NOT EXISTS `outlook_envois` (
+  `id`         INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `user_id`    INT UNSIGNED NOT NULL,
+  `sorte`      ENUM('evenement','tache') NOT NULL,
+  `source_id`  INT UNSIGNED NOT NULL,
+  `outlook_id` VARCHAR(512) NOT NULL,
+  `empreinte`  CHAR(32)     NULL,
+  `maj_le`     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_envoi` (`user_id`, `sorte`, `source_id`),
+  CONSTRAINT `fk_envoi_user` FOREIGN KEY (`user_id`)
     REFERENCES `users`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

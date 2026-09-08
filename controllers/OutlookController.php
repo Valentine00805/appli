@@ -26,6 +26,8 @@ final class OutlookController
             'combien'    => SynchroOutlook::combien($userId),
             'calendriers' => SynchroOutlook::calendriers($userId),
             'partage'    => Outlook::partageAutorise($userId),
+            'envoyes'    => EnvoiOutlook::combien($userId),
+            'envoiLe'    => EnvoiOutlook::derniereFois($userId),
         ], 'Calendrier Outlook');
     }
 
@@ -93,6 +95,14 @@ final class OutlookController
 
         try {
             $bilan = SynchroOutlook::tirer($userId);
+            /*
+             * L'envoi ne part que si la lecture a eu lieu : sur un verrou
+             * occupé, quelqu'un d'autre fait déjà les deux, et écrire par
+             * dessus créerait les doublons que le verrou évite.
+             */
+            $envoi = $bilan['occupe']
+                ? ['crees' => 0, 'majs' => 0, 'retires' => 0, 'inchanges' => 0]
+                : EnvoiOutlook::pousser($userId);
         } catch (Throwable $e) {
             if ($seul || veut_du_json()) {
                 // En arrière-plan, un échec ne doit pas s'imposer à l'écran :
@@ -103,7 +113,8 @@ final class OutlookController
             repartir_vers('outlook');
         }
 
-        $change = $bilan['ajoutes'] + $bilan['modifies'] + $bilan['retires'];
+        $change = $bilan['ajoutes'] + $bilan['modifies'] + $bilan['retires']
+            + $envoi['crees'] + $envoi['majs'] + $envoi['retires'];
 
         if ($seul || veut_du_json()) {
             repondre_json(['fait' => !$bilan['occupe'], 'change' => $change]);
@@ -114,15 +125,35 @@ final class OutlookController
             repartir_vers('outlook');
         }
 
-        $dit = [];
-        if ($bilan['ajoutes'] > 0)  { $dit[] = $bilan['ajoutes'] . ' ajouté' . ($bilan['ajoutes'] > 1 ? 's' : ''); }
-        if ($bilan['modifies'] > 0) { $dit[] = $bilan['modifies'] . ' mis à jour'; }
-        if ($bilan['retires'] > 0)  { $dit[] = $bilan['retires'] . ' retiré' . ($bilan['retires'] > 1 ? 's' : ''); }
-
-        Session::flash('succes', $dit === []
-            ? 'Agenda relu : rien de nouveau.'
-            : 'Agenda relu : ' . implode(', ', $dit) . '.');
+        Session::flash('succes', self::raconter($bilan, $envoi));
         repartir_vers('outlook');
+    }
+
+    /**
+     * Le compte rendu des deux sens, en français.
+     *
+     * Une synchronisation qui ne dit pas ce qu'elle a fait ne se laisse ni
+     * vérifier, ni corriger — et l'on n'ose plus la relancer.
+     */
+    private static function raconter(array $bilan, array $envoi): string
+    {
+        $venus = [];
+        if ($bilan['ajoutes'] > 0)  { $venus[] = $bilan['ajoutes'] . ' ajouté' . ($bilan['ajoutes'] > 1 ? 's' : ''); }
+        if ($bilan['modifies'] > 0) { $venus[] = $bilan['modifies'] . ' mis à jour'; }
+        if ($bilan['retires'] > 0)  { $venus[] = $bilan['retires'] . ' retiré' . ($bilan['retires'] > 1 ? 's' : ''); }
+
+        $partis = [];
+        if ($envoi['crees'] > 0)   { $partis[] = $envoi['crees'] . ' créé' . ($envoi['crees'] > 1 ? 's' : ''); }
+        if ($envoi['majs'] > 0)    { $partis[] = $envoi['majs'] . ' mis à jour'; }
+        if ($envoi['retires'] > 0) { $partis[] = $envoi['retires'] . ' retiré' . ($envoi['retires'] > 1 ? 's' : ''); }
+
+        $phrases = [];
+        if ($venus !== [])  { $phrases[] = 'venus d’Outlook : ' . implode(', ', $venus); }
+        if ($partis !== []) { $phrases[] = 'partis vers Outlook : ' . implode(', ', $partis); }
+
+        return $phrases === []
+            ? 'Synchronisé : rien de nouveau de part ni d’autre.'
+            : 'Synchronisé — ' . implode(' ; ', $phrases) . '.';
     }
 
     /** Part demander l'autorisation à Microsoft. */
@@ -201,6 +232,31 @@ final class OutlookController
     }
 
     /**
+     * Retire d'Outlook ce que l'application y avait mis.
+     *
+     * Le calendrier « Mes Cours » reste : il appartient au compte, pas à
+     * nous, et rien ne dit qu'on n'y a pas ajouté autre chose à la main.
+     */
+    public function retirerEnvoi(): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+
+        try {
+            $retires = EnvoiOutlook::toutRetirer(Auth::id());
+        } catch (Throwable $e) {
+            Session::flash('erreur', $e->getMessage());
+            repartir_vers('outlook');
+        }
+
+        Session::flash('succes', $retires === 0
+            ? 'Il n’y avait rien à retirer d’Outlook.'
+            : $retires . ' élément' . ($retires > 1 ? 's ont quitté' : ' a quitté')
+              . ' votre agenda Outlook. Le calendrier « Mes Cours » y reste, vide.');
+        repartir_vers('outlook');
+    }
+
+    /**
      * Oublie les jetons : l'application ne touche plus à l'agenda.
      *
      * Les évènements importés partent avec. Les garder les rendrait
@@ -213,12 +269,30 @@ final class OutlookController
         Session::verifierCsrf();
 
         $userId = Auth::id();
+
+        /*
+         * On tente d'abord de reprendre ce qu'on avait mis chez Microsoft :
+         * après la coupure, on n'aurait plus de quoi le faire. Si cela échoue,
+         * on délie quand même — l'utilisateur a demandé à partir, on ne le
+         * retient pas pour un agenda qui ne répond pas — mais on le dit.
+         */
+        $reste = false;
+        try {
+            EnvoiOutlook::toutRetirer($userId);
+        } catch (Throwable) {
+            $reste = true;
+        }
+
         $retires = SynchroOutlook::toutRetirer($userId);
         Outlook::delier($userId);
 
         Session::flash('succes', 'Compte Outlook délié. L’application n’accède plus à votre agenda'
             . ($retires === 0 ? '.' : ', et ' . $retires . ' évènement' . ($retires > 1 ? 's importés ont' : ' importé a')
                . ' quitté le calendrier.'));
-        redirect('outlook');
+        if ($reste) {
+            Session::flash('erreur', 'Ce que l’application avait écrit dans Outlook n’a pas pu être '
+                . 'repris : supprimez le calendrier « Mes Cours » depuis Outlook.');
+        }
+        repartir_vers('outlook');
     }
 }

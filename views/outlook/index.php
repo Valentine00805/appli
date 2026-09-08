@@ -7,6 +7,8 @@
  * @var int $combien      combien d'évènements viennent d'Outlook
  * @var array $calendriers les calendriers du compte, tels qu'on les a vus
  * @var bool $partage     l'autorisation couvre-t-elle les calendriers partagés ?
+ * @var int $envoyes      combien d'éléments d'ici vivent dans Outlook
+ * @var ?string $envoiLe  le dernier envoi, ou null
  * @var string $retour    l'adresse à déclarer chez Microsoft
  */
 ?>
@@ -71,6 +73,10 @@ $aReautoriser = !($partage ?? true) && $partagesEnAttente > 0;
               Dernière lecture le <?= e(date('d/m/Y à H:i', strtotime($derniere))) ?>,
               <?= $combien === 0 ? 'aucun évènement suivi' : $combien . ' évènement' . ($combien > 1 ? 's' : '') . ' suivi' . ($combien > 1 ? 's' : '') ?>.
             <?php endif; ?>
+            <?php if ($envoiLe !== null): ?>
+              <br>Dernier envoi le <?= e(date('d/m/Y à H:i', strtotime($envoiLe))) ?>,
+              <?= $envoyes === 0 ? 'rien dans Outlook' : $envoyes . ' élément' . ($envoyes > 1 ? 's' : '') . ' dans « Mes Cours »' ?>.
+            <?php endif; ?>
           </p>
           <?php if ($aReautoriser): ?>
             <p class="outlook-attention">
@@ -84,22 +90,32 @@ $aReautoriser = !($partage ?? true) && $partagesEnAttente > 0;
           <?php endif; ?>
           <form method="post" action="<?= url('outlook/synchroniser') ?>">
             <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
+            <input type="hidden" name="retour" value="<?= e((string) ($_SERVER['REQUEST_URI'] ?? '')) ?>">
             <button class="bouton" type="submit">
-              <?= $derniere === null ? 'Faire venir mes évènements' : 'Relire mon agenda' ?>
+              <?= $derniere === null ? 'Synchroniser mon agenda' : 'Synchroniser maintenant' ?>
             </button>
           </form>
           <p class="champ__aide" style="margin-top:.6rem">
-            L'agenda est <strong>relu tout seul</strong> quand vous ouvrez
-            l'application, si la dernière lecture remonte à plus d'un quart
-            d'heure. Le bouton reste là pour ne pas attendre, et pour voir le
+            La synchronisation se fait <strong>toute seule</strong> quand vous
+            ouvrez l'application, si la dernière remonte à plus de cinq
+            minutes. Le bouton reste là pour ne pas attendre, et pour voir le
             message en cas de refus.
           </p>
           <p class="champ__aide">
-            La lecture porte sur le mois écoulé et l'année à venir, séries
-            récurrentes comprises. Le sens est unique pour l'instant :
-            <strong>Outlook fait foi</strong>. Un évènement importé que vous
-            modifiez ici sera repris tel qu'il est là-bas à la lecture
-            suivante, et si vous le supprimez ici, il reviendra.
+            <strong>D'Outlook vers ici :</strong> les calendriers cochés
+            plus bas, du mois écoulé à l'année à venir, séries récurrentes
+            comprises. Outlook fait foi — un évènement importé que vous
+            modifiez ici sera repris tel qu'il est là-bas, et si vous le
+            supprimez ici, il reviendra.
+          </p>
+          <p class="champ__aide">
+            <strong>D'ici vers Outlook :</strong> vos évènements et les
+            échéances de vos tâches non faites, dans un calendrier
+            <strong>« Mes Cours »</strong> que l'application crée chez
+            Microsoft. Elle n'écrit que là : votre agenda existant n'est
+            jamais touché, et vous pouvez masquer ou supprimer ce calendrier
+            depuis Outlook. Une tâche cochée quitte l'agenda, un évènement
+            supprimé ici disparaît là-bas.
           </p>
           <div class="outlook-defaire">
             <?php if ($combien > 0): ?>
@@ -108,6 +124,15 @@ $aReautoriser = !($partage ?? true) && $partagesEnAttente > 0;
                 <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
                 <button class="bouton bouton--secondaire bouton--petit" type="submit">
                   Retirer les évènements importés
+                </button>
+              </form>
+            <?php endif; ?>
+            <?php if ($envoyes > 0): ?>
+              <form method="post" action="<?= url('outlook/retirer-envoi') ?>"
+                    data-confirmation="Retirer d'Outlook ce que l'application y a mis ? Vos évènements et vos tâches restent ici, intacts.">
+                <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
+                <button class="bouton bouton--secondaire bouton--petit" type="submit">
+                  Retirer mes évènements d'Outlook
                 </button>
               </form>
             <?php endif; ?>

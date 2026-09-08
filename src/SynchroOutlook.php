@@ -210,12 +210,14 @@ final class SynchroOutlook
      */
     public static function calendriers(int $userId): array
     {
+        $ecriture = EnvoiOutlook::calendrierConnu($userId);
+
         return Database::all(
             'SELECT id, empreinte, nom, proprietaire, partage, principal, suivi
                FROM outlook_calendriers
-              WHERE user_id = ?
+              WHERE user_id = ? AND empreinte <> ?
               ORDER BY principal DESC, partage ASC, nom ASC',
-            [$userId]
+            [$userId, $ecriture === null ? '' : md5($ecriture)]
         );
     }
 
@@ -389,9 +391,14 @@ final class SynchroOutlook
      */
     private static function aLire(int $userId): array
     {
+        // Le calendrier que l'application remplit n'est jamais relu : elle y
+        // retrouverait ses propres évènements et les prendrait pour neufs.
+        $ecriture = EnvoiOutlook::calendrierConnu($userId);
+
         $suivis = Database::all(
-            'SELECT calendrier_id, nom FROM outlook_calendriers WHERE user_id = ? AND suivi = 1',
-            [$userId]
+            'SELECT calendrier_id, nom FROM outlook_calendriers
+              WHERE user_id = ? AND suivi = 1 AND empreinte <> ?',
+            [$userId, $ecriture === null ? '' : md5($ecriture)]
         );
 
         return $suivis === [] ? [null] : $suivis;

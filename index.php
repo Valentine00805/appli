@@ -37,6 +37,7 @@ require __DIR__ . '/src/TextePdf.php';
 require __DIR__ . '/src/GenerateurCartes.php';
 require __DIR__ . '/src/Outlook.php';
 require __DIR__ . '/src/SynchroOutlook.php';
+require __DIR__ . '/src/EnvoiOutlook.php';
 require __DIR__ . '/src/Requete.php';
 require __DIR__ . '/src/helpers.php';
 require __DIR__ . '/src/Vue.php';
@@ -161,6 +162,7 @@ $routes = [
     ['POST', 'outlook/calendriers',        [OutlookController::class, 'calendriers']],
     ['POST', 'outlook/suivre',             [OutlookController::class, 'suivre']],
     ['POST', 'outlook/retirer',            [OutlookController::class, 'retirer']],
+    ['POST', 'outlook/retirer-envoi',      [OutlookController::class, 'retirerEnvoi']],
     ['POST', 'outlook/deconnexion',        [OutlookController::class, 'deconnexion']],
 
     ['GET',  'compte/sauvegarde',           [SauvegardeController::class, 'index']],
