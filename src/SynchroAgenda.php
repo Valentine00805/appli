@@ -373,8 +373,17 @@ final class SynchroAgenda
             throw new RuntimeException($this->f->nom() . ' n’a donné aucun calendrier.');
         }
 
+        /*
+         * Tous les calendriers retenus, sans exception — pas la liste
+         * d'affichage, qui met « Mes Cours » de côté. Le prendre pour inconnu
+         * ferait tenter de l'insérer une seconde fois à chaque actualisation,
+         * et l'unicité s'y opposerait, emportant tout le rafraîchissement.
+         */
         $connus = [];
-        foreach ($this->calendriers($userId) as $ligne) {
+        foreach (Database::all(
+            'SELECT empreinte FROM agenda_calendriers WHERE user_id = ? AND fournisseur = ?',
+            [$userId, $this->f->cle()]
+        ) as $ligne) {
             $connus[(string) $ligne['empreinte']] = true;
         }
 
@@ -419,7 +428,11 @@ final class SynchroAgenda
                 'INSERT INTO agenda_calendriers
                      (user_id, fournisseur, calendrier_id, empreinte, nom, proprietaire, partage,
                       peut_ecrire, principal, suivi, couleur)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 ON DUPLICATE KEY UPDATE
+                     nom = VALUES(nom), proprietaire = VALUES(proprietaire),
+                     partage = VALUES(partage), peut_ecrire = VALUES(peut_ecrire),
+                     principal = VALUES(principal), vu_le = NOW()',
                 [
                     $userId, $this->f->cle(), $id, $empreinte,
                     mb_substr($lu['nom'], 0, 190),
