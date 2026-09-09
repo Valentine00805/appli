@@ -117,11 +117,23 @@ final class FournisseurGoogle extends Fournisseur
             return null;
         }
 
+        /*
+         * Un agenda vient d’ailleurs quand on n’en est pas propriétaire.
+         * Comparer son identifiant à l’adresse du compte, comme chez
+         * Microsoft, ferait passer pour partagé chacun de ses propres
+         * agendas secondaires : Google leur donne un identifiant tiré au
+         * sort, jamais l’adresse. C’est « accessRole » qui le dit.
+         */
+        $role = (string) ($brut['accessRole'] ?? 'owner');
+        $aMoi = $role === 'owner';
+
         return [
             'id'           => (string) $brut['id'],
             'nom'          => (string) ($brut['summaryOverride'] ?? $brut['summary'] ?? 'Agenda'),
             'proprietaire' => (string) ($brut['summary'] ?? ''),
-            'adresse'      => (string) $brut['id'],
+            // L’adresse du compte quand l’agenda est à soi : la comparaison
+            // qui suit conclura « pas partagé », ce qui est le cas.
+            'adresse'      => $aMoi ? '' : (string) $brut['id'],
             'principal'    => ($brut['primary'] ?? false) === true,
         ];
     }
