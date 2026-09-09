@@ -106,6 +106,74 @@
   // comme cases à cocher, et sur chaque formulaire qui le demande, non plus
   // seulement le premier : le calendrier en a deux depuis le volet des agendas.
   /*
+   * La grille du calendrier tient dans l'écran.
+   *
+   * Le CSS sait faire tenir une grille sous une hauteur qu'on lui donne, mais
+   * il ne sait pas quelle hauteur prend ce qui est au-dessus : le bandeau du
+   * site, le titre, les filtres, les entêtes de jours, la bande des journées
+   * entières. Cela change avec la largeur de la fenêtre, avec le nombre de
+   * filtres, avec la présence du volet. Une valeur écrite en dur dans la
+   * feuille de style est juste sur un écran et fausse sur le suivant.
+   *
+   * On la mesure donc, une fois la page posée, et on en déduit ce que peut
+   * valoir une heure. Sans JavaScript, le CSS garde son estimation : la grille
+   * s'affiche, un peu trop haute parfois, et l'on fait défiler.
+   */
+  var planning = document.querySelector('.jour-planning, .sem-planning');
+  if (planning) {
+    var grille = planning.querySelector('.jour-planning__grille, .sem-planning__grille');
+
+    var enPixels = function (valeur) {
+      var n = parseFloat(valeur);
+      if (isNaN(n)) { return 0; }
+      return valeur.indexOf('rem') !== -1
+        ? n * parseFloat(getComputedStyle(document.documentElement).fontSize)
+        : n;
+    };
+
+    var ajuster = function () {
+      if (!grille) { return; }
+
+      var style = getComputedStyle(planning);
+      var heures = parseInt(style.getPropertyValue('--heures'), 10);
+      if (!heures) { return; }
+
+      /*
+       * La position du haut de la grille dans la page, indépendante du
+       * défilement : ce qu'on cherche, c'est que tout tienne quand on arrive
+       * en haut de la page, pas là où l'on se trouve à l'instant.
+       */
+      var haut = grille.getBoundingClientRect().top + window.pageYOffset;
+      var reste = window.innerHeight - haut - 12;
+
+      var mini = enPixels(style.getPropertyValue('--heure-min')) || 30;
+      var maxi = enPixels(style.getPropertyValue('--heure-max')) || 50;
+      var heure = Math.min(maxi, Math.max(mini, reste / heures));
+
+      planning.style.setProperty('--heure', heure.toFixed(2) + 'px');
+
+      /*
+       * Sous une trentaine de pixels, une heure ne tient plus deux lignes.
+       * Plutôt que de rogner le titre, on met l'horaire à côté : un
+       * libellé entier sur une ligne vaut mieux que deux moitiés.
+       */
+      if (heure < 34) {
+        planning.setAttribute('data-serre', '');
+      } else {
+        planning.removeAttribute('data-serre');
+      }
+    };
+
+    ajuster();
+
+    var attente = null;
+    window.addEventListener('resize', function () {
+      clearTimeout(attente);
+      attente = setTimeout(ajuster, 120);
+    });
+  }
+
+  /*
    * Le volet retient ses sections repliées.
    *
    * Sans cela, replier « Outlook » puis cocher un agenda le rouvrirait : le

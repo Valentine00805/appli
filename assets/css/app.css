@@ -2129,7 +2129,7 @@ summary.cal-volet__groupe:focus-visible {
    page, les filtres et l'entête des jours. Mesuré, pas deviné. */
 .jour-planning {
   --heure-max: 3.4rem;
-  --heure-min: 2rem;
+  --heure-min: 1.6rem;
   --hors-grille: 30rem;
   --heure: clamp(var(--heure-min),
                  (100svh - var(--hors-grille)) / var(--heures),
@@ -2300,6 +2300,27 @@ summary.cal-volet__groupe:focus-visible {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* Grille serrée : l'horaire passe à côté du titre au lieu d'être au-dessus,
+   et le lieu s'efface. Ce n'est pas une préférence d'affichage mais une
+   nécessité — sous une trentaine de pixels, deux lignes n'entrent pas, et ce
+   qu'on rogne alors, c'est le nom de ce qu'on cherchait. */
+[data-serre] .jour-planning__evt {
+  flex-direction: row;
+  align-items: baseline;
+  gap: .3rem;
+  white-space: nowrap;
+  padding: .1rem .3rem;
+  line-height: 1.15;
+}
+[data-serre] .jour-planning__evt-heure { flex: 0 0 auto; }
+[data-serre] .jour-planning__evt-titre { overflow: hidden; text-overflow: ellipsis; }
+[data-serre] .jour-planning__evt-lieu { display: none; }
+/* Les étiquettes d'heures se resserrent avec les lignes : la première est
+   posée dans sa case et les suivantes chevauchent leur trait, mais de moins
+   haut — sinon les deux premières se touchent. */
+[data-serre] .jour-planning__heure span { top: -.4rem; font-size: .62rem; }
+[data-serre] .jour-planning__heure:first-child span { top: 0; }
+
 .jour-planning__evt--termine { opacity: .55; }
 .jour-planning__evt--termine .jour-planning__evt-titre { text-decoration: line-through; }
 
@@ -2318,7 +2339,7 @@ summary.cal-volet__groupe:focus-visible {
 
 .sem-planning {
   --heure-max: 3.1rem;
-  --heure-min: 1.9rem;
+  --heure-min: 1.4rem;
   --hors-grille: 33rem;
   --heure: clamp(var(--heure-min),
                  (100svh - var(--hors-grille)) / var(--heures),
