@@ -155,27 +155,16 @@ $puce = static function (array $evt) use ($destination): string {
             </label>
             <?php
             /*
-             * Le nuancier reste replié : dix pastilles par agenda rempliraient
-             * le volet et cacheraient ce qu'on vient y chercher — la liste.
-             * La pastille du résumé suffit à dire la couleur.
+             * Le nuancier du navigateur, celui-là même que l'éditeur de
+             * documents ouvre : toutes les teintes plutôt qu'une palette de
+             * dix, et un outil que la personne connaît déjà.
              */
             ?>
-            <details class="cal-volet__teinte">
-              <summary style="background:<?= e($source['couleur']) ?>"
-                       title="Couleur de <?= e($source['nom']) ?>">
-                <span class="sr-only">Changer la couleur de <?= e($source['nom']) ?></span>
-              </summary>
-              <div class="choix-couleurs">
-                <?php foreach (MatieresController::PALETTE as $i => $teinte): ?>
-                  <?php $id = 'teinte-' . e($source['cle']) . '-' . $i; ?>
-                  <input type="radio" id="<?= $id ?>"
-                         name="couleur[<?= e($source['cle']) ?>]" value="<?= e($teinte) ?>"
-                         <?= $source['couleur'] === $teinte ? ' checked' : '' ?>>
-                  <label for="<?= $id ?>" style="background:<?= e($teinte) ?>"
-                         title="<?= e($teinte) ?>"><span class="sr-only"><?= e($teinte) ?></span></label>
-                <?php endforeach; ?>
-              </div>
-            </details>
+            <input type="color" class="cal-volet__teinte"
+                   name="couleur[<?= e($source['cle']) ?>]"
+                   value="<?= e($source['couleur']) ?>"
+                   title="Couleur de <?= e($source['nom']) ?>"
+                   aria-label="Couleur de <?= e($source['nom']) ?>">
           </li>
         <?php endforeach; ?>
       </ul>
