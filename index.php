@@ -198,6 +198,7 @@ $routes = [
     ['POST', 'agenda/{mot}/calendriers',   [AgendaController::class, 'calendriers']],
     ['POST', 'agenda/{mot}/suivre',        [AgendaController::class, 'suivre']],
     ['POST', 'agenda/{mot}/retirer',       [AgendaController::class, 'retirer']],
+    ['POST', 'agenda/{mot}/destination',   [AgendaController::class, 'destination']],
     ['POST', 'agenda/{mot}/retirer-envoi', [AgendaController::class, 'retirerEnvoi']],
     ['POST', 'agenda/{mot}/deconnexion',   [AgendaController::class, 'deconnexion']],
     /*

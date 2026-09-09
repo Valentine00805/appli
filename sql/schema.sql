@@ -424,6 +424,7 @@ CREATE TABLE IF NOT EXISTS `agenda_comptes` (
   `calendrier_nom` VARCHAR(190) NULL,
   `calendrier_envoi_id`  VARCHAR(512) NULL,
   `calendrier_envoi_nom` VARCHAR(190) NULL,
+  `envoi_choisi`         TINYINT(1)   NOT NULL DEFAULT 0,
   -- Le repère que Microsoft rend pour ne relire que ce qui a changé.
   `delta`          TEXT         NULL,
   `synchro_le`     DATETIME     NULL,

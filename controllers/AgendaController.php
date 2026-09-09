@@ -44,6 +44,8 @@ final class AgendaController
             'partage'     => $lien->permissionsCompletes($userId),
             'envoyes'     => EnvoiAgenda::pour($f)->combien($userId),
             'envoiLe'     => EnvoiAgenda::pour($f)->derniereFois($userId),
+            'ouEcrire'    => Agenda::ouEcrire($userId, $f),
+            'destination' => EnvoiAgenda::pour($f)->destination($userId),
             'souci'       => SynchroAgenda::pour($f)->dernierSouci($userId),
             'autres'      => Agenda::tous(),
         ], $f->nom());
@@ -356,6 +358,50 @@ final class AgendaController
             ? 'Il n’y avait aucun évènement importé.'
             : $retires . ' évènement' . ($retires > 1 ? 's importés retirés' : ' importé retiré')
               . ' du calendrier. Ils restent dans votre agenda ' . $f->nom() . '.');
+        repartir_vers('agenda/' . $f->cle());
+    }
+
+    /**
+     * Choisit l'agenda qui reçoit les évènements de l'application.
+     *
+     * Par défaut c'est « Mes Cours », que l'application crée pour elle-même :
+     * son propre calendrier, qu'une erreur de notre part ne peut pas répandre
+     * ailleurs. Mais un agenda que la famille regarde ne sert à rien s'il ne
+     * reçoit rien — d'où ce choix, qui reste le sien.
+     *
+     * Le déménagement est complet : ce qui était parti quitte l'ancien
+     * calendrier tout de suite, et la synchronisation qui suit — elle part
+     * d'elle-même, l'empreinte d'envoi ayant été effacée — le recrée dans le
+     * nouveau. Rien ne reste à cheval entre les deux.
+     */
+    public function destination(string $cle): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $f = $this->fournisseur($cle);
+
+        $voulu = (string) ($_POST['destination'] ?? '');
+        $empreinte = preg_match('/^[0-9a-f]{32}$/', $voulu) === 1 ? $voulu : null;
+
+        try {
+            $fait = EnvoiAgenda::pour($f)->changerDeDestination(Auth::id(), $empreinte);
+        } catch (Throwable $e) {
+            /*
+             * Vider l'ancien calendrier vient avant tout le reste : tant qu'on
+             * n'y arrive pas, changer de destination ne ferait que répandre
+             * les mêmes évènements à deux endroits. Le réglage n'a donc pas
+             * bougé, et c'est la première chose à dire.
+             */
+            Session::flash('erreur', 'La destination n’a pas changé : ' . $e->getMessage());
+            repartir_vers('agenda/' . $f->cle());
+        }
+
+        Session::flash('succes', 'Vos évènements iront désormais dans « ' . $fait['nom'] . ' »'
+            . ($fait['retires'] === 0
+                ? '. Ils y arriveront à la prochaine synchronisation.'
+                : ', et ' . $fait['retires'] . ' élément' . ($fait['retires'] > 1 ? 's ont' : ' a')
+                  . ' quitté l’ancien. La synchronisation suivante '
+                  . ($fait['retires'] > 1 ? 'les y remet' : 'l’y remet') . ', tout de suite.'));
         repartir_vers('agenda/' . $f->cle());
     }
 

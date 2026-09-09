@@ -10,6 +10,8 @@
  * @var bool $partage     l'autorisation couvre-t-elle les calendriers partagés ?
  * @var int $envoyes      combien d'éléments d'ici vivent dans l'agenda
  * @var ?string $envoiLe  le dernier envoi, ou null
+ * @var array $ouEcrire  les agendas à soi qui peuvent recevoir
+ * @var array $destination  celui qui reçoit : [id, nom, choisi]
  * @var ?array $souci     le dernier échec, s'il n'a pas été suivi d'une réussite
  * @var string $retour    l'adresse à déclarer chez Microsoft
  */
@@ -103,7 +105,7 @@ $aReautoriser = !($partage ?? true) && $partagesEnAttente > 0 && ($souci ?? null
             <?php endif; ?>
             <?php if ($envoiLe !== null): ?>
               <br>Dernier envoi le <?= e(date('d/m/Y à H:i', strtotime($envoiLe))) ?>,
-              <?= $envoyes === 0 ? 'rien dans ' . $f->nom() : $envoyes . ' élément' . ($envoyes > 1 ? 's' : '') . ' dans « Mes Cours »' ?>.
+              <?= $envoyes === 0 ? 'rien dans ' . $f->nom() : $envoyes . ' élément' . ($envoyes > 1 ? 's' : '') . ' dans « ' . e($destination['nom']) . ' »' ?>.
             <?php endif; ?>
           </p>
           <?php
@@ -175,13 +177,52 @@ $aReautoriser = !($partage ?? true) && $partagesEnAttente > 0 && ($souci ?? null
           </p>
           <p class="champ__aide">
             <strong>D'ici vers <?= e($f->nom()) ?> :</strong> vos évènements et les
-            échéances de vos tâches non faites, dans un calendrier
-            <strong>« Mes Cours »</strong> que l'application crée chez
-            <?= e($f->nom()) ?>. Elle n'écrit que là : votre agenda existant n'est
-            jamais touché, et vous pouvez masquer ou supprimer ce calendrier
-            depuis <?= e($f->nom()) ?>. Une tâche cochée quitte l'agenda, un évènement
+            échéances de vos tâches non faites, dans
+            <strong>« <?= e($destination['nom']) ?> »</strong><?php
+            ?><?= $destination['choisi'] ? '' : ', un calendrier que l’application crée chez ' . e($f->nom()) ?>.
+            Elle n'écrit que là. Une tâche cochée quitte l'agenda, un évènement
             supprimé ici disparaît là-bas.
           </p>
+
+          <?php
+          /*
+           * Où vont les évènements.
+           *
+           * « Mes Cours » reste le choix par défaut, et le plus sûr : un
+           * calendrier à part, qu'une erreur de notre part ne peut pas
+           * répandre ailleurs. Mais un agenda que la famille regarde ne sert à
+           * rien s'il ne reçoit rien — alors on peut le désigner, en sachant
+           * ce que cela veut dire.
+           */
+          ?>
+          <?php if ($ouEcrire !== []): ?>
+            <form method="post" action="<?= url('agenda/' . $f->cle() . '/destination') ?>"
+                  class="champ" style="max-width:420px"
+                  data-confirmation="Changer d'agenda de destination ? Ce que l'application avait mis dans l'actuel en sera retiré, puis remis dans le nouveau.">
+              <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
+              <label for="destination-<?= e($f->cle()) ?>">L'agenda qui reçoit vos évènements</label>
+              <select id="destination-<?= e($f->cle()) ?>" name="destination">
+                <option value=""<?= $destination['choisi'] ? '' : ' selected' ?>>
+                  Mes Cours — le calendrier de l'application
+                </option>
+                <?php foreach ($ouEcrire as $cal): ?>
+                  <option value="<?= e($cal['cle']) ?>"<?= $destination['choisi']
+                      && $destination['id'] !== null
+                      && md5($destination['id']) === $cal['cle'] ? ' selected' : '' ?>>
+                    <?= e($cal['nom']) ?><?= $cal['principal'] ? ' — votre agenda principal' : '' ?>
+                  </option>
+                <?php endforeach; ?>
+              </select>
+              <span class="champ__aide">
+                Seuls vos agendas à vous sont proposés. En désigner un y déverse
+                vos évènements et les échéances de vos tâches : pratique pour un
+                agenda que d'autres consultent, à condition que ce soit bien ce
+                que vous voulez y voir.
+              </span>
+              <button class="bouton bouton--secondaire bouton--petit" type="submit"
+                      style="margin-top:.5rem">Changer de destination</button>
+            </form>
+          <?php endif; ?>
           <div class="outlook-defaire">
             <?php if ($combien > 0): ?>
               <form method="post" action="<?= url('agenda/' . $f->cle() . '/retirer') ?>"

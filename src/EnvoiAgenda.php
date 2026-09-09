@@ -348,12 +348,113 @@ final class EnvoiAgenda
     private function retenirLeCalendrier(int $userId, string $id): string
     {
         Database::run(
-            'UPDATE agenda_comptes SET calendrier_envoi_id = ?, calendrier_envoi_nom = ?
+            'UPDATE agenda_comptes SET calendrier_envoi_id = ?, calendrier_envoi_nom = ?,
+                    envoi_choisi = 0
               WHERE user_id = ? AND fournisseur = ?',
             [$id, self::CALENDRIER, $userId, $this->f->cle()]
         );
 
         return $id;
+    }
+
+    /**
+     * Où vont les évènements, et si c'est la personne qui l'a voulu.
+     *
+     * La différence n'est pas cosmétique : « Mes Cours » est le reflet de
+     * l'application et se retire des listes qu'on affiche — on ne choisit pas
+     * de suivre son propre reflet. Un calendrier désigné, lui, reste un
+     * calendrier ordinaire, qu'on coche et qu'on colorie comme les autres.
+     *
+     * @return array{id: ?string, nom: string, choisi: bool}
+     */
+    public function destination(int $userId): array
+    {
+        $ligne = Database::one(
+            'SELECT calendrier_envoi_id, calendrier_envoi_nom, envoi_choisi
+               FROM agenda_comptes WHERE user_id = ? AND fournisseur = ?',
+            [$userId, $this->f->cle()]
+        );
+
+        $id = (string) ($ligne['calendrier_envoi_id'] ?? '');
+
+        return [
+            'id'     => $id === '' ? null : $id,
+            'nom'    => (string) ($ligne['calendrier_envoi_nom'] ?? self::CALENDRIER),
+            'choisi' => (int) ($ligne['envoi_choisi'] ?? 0) === 1,
+        ];
+    }
+
+    /**
+     * Change l'agenda qui reçoit les évènements de l'application.
+     *
+     * Ce qui était déjà parti quitte l'ancienne destination avant que la
+     * nouvelle ne s'ouvre : laisser la moitié de ses évènements dans un
+     * calendrier et l'autre moitié ailleurs serait pire que les deux
+     * situations qu'on essaie de départager. La remise en place ne se fait pas
+     * ici — l'empreinte d'envoi est effacée, et la synchronisation suivante,
+     * qui part d'elle-même, les recrée au bon endroit.
+     *
+     * @param  ?string $empreinte  l'empreinte d'un calendrier à soi, ou null
+     *                             pour revenir au « Mes Cours » de l'application
+     * @return array{nom: string, retires: int}
+     * @throws RuntimeException si le calendrier ne s'y prête pas, ou si le
+     *                          fournisseur refuse de rendre ce qu'il détient
+     */
+    public function changerDeDestination(int $userId, ?string $empreinte): array
+    {
+        $cible = null;
+        if ($empreinte !== null) {
+            $cible = Database::one(
+                'SELECT calendrier_id, nom FROM agenda_calendriers
+                  WHERE user_id = ? AND fournisseur = ? AND empreinte = ?
+                    AND partage = 0 AND peut_ecrire = 1',
+                [$userId, $this->f->cle(), $empreinte]
+            );
+            if ($cible === null) {
+                throw new RuntimeException('Cet agenda n’est pas un des vôtres, ou '
+                    . $this->f->nom() . ' n’y autorise pas l’écriture.');
+            }
+        }
+
+        /*
+         * Est-ce le même endroit ? Sans calendrier visé, on désigne « Mes
+         * Cours » — que l'application l'ait déjà trouvé chez le fournisseur ou
+         * non, ce qui se dit de deux façons en base et ne fait qu'une seule
+         * destination.
+         */
+        $avant = $this->destination($userId);
+        $memeEndroit = $cible === null
+            ? !$avant['choisi']
+            : $avant['choisi'] && $avant['id'] === (string) $cible['calendrier_id'];
+
+        if ($memeEndroit) {
+            return ['nom' => $avant['nom'], 'retires' => 0];
+        }
+
+        $retires = $this->toutRetirer($userId);
+
+        if ($cible === null) {
+            // On oublie la destination : le prochain envoi retrouvera « Mes
+            // Cours », ou le recréera s'il a disparu entre-temps.
+            Database::run(
+                'UPDATE agenda_comptes SET calendrier_envoi_id = NULL,
+                        calendrier_envoi_nom = NULL, envoi_choisi = 0
+                  WHERE user_id = ? AND fournisseur = ?',
+                [$userId, $this->f->cle()]
+            );
+
+            return ['nom' => self::CALENDRIER, 'retires' => $retires];
+        }
+
+        Database::run(
+            'UPDATE agenda_comptes SET calendrier_envoi_id = ?, calendrier_envoi_nom = ?,
+                    envoi_choisi = 1
+              WHERE user_id = ? AND fournisseur = ?',
+            [(string) $cible['calendrier_id'], mb_substr((string) $cible['nom'], 0, 190),
+             $userId, $this->f->cle()]
+        );
+
+        return ['nom' => (string) $cible['nom'], 'retires' => $retires];
     }
 
     /* --- Ce qui doit monter ----------------------------------------------- */

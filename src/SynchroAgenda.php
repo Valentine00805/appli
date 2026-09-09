@@ -323,7 +323,7 @@ final class SynchroAgenda
      */
     public function calendriers(int $userId): array
     {
-        $ecriture = EnvoiAgenda::pour($this->f)->calendrierConnu($userId);
+        $ecriture = $this->refletDeLApplication($userId);
 
         return Database::all(
             'SELECT id, empreinte, nom, proprietaire, partage, peut_ecrire,
@@ -333,6 +333,25 @@ final class SynchroAgenda
               ORDER BY principal DESC, partage ASC, nom ASC',
             [$userId, $this->f->cle(), $ecriture === null ? '' : md5($ecriture)]
         );
+    }
+
+    /**
+     * Le calendrier « Mes Cours », quand c'est bien celui-là qui reçoit.
+     *
+     * On le retire des listes qu'on affiche : il n'existe que par cette
+     * application, et cocher son propre reflet n'a pas de sens. Mais depuis
+     * qu'on peut désigner l'un de ses propres agendas pour recevoir les
+     * évènements, la destination n'est plus forcément un reflet : « Famille »
+     * reste un calendrier ordinaire, qu'on doit continuer à cocher, colorier
+     * et masquer comme les autres.
+     *
+     * @return ?string  l'identifiant à taire, ou null s'il n'y a rien à taire
+     */
+    private function refletDeLApplication(int $userId): ?string
+    {
+        $ou = EnvoiAgenda::pour($this->f)->destination($userId);
+
+        return $ou['choisi'] ? null : $ou['id'];
     }
 
     /**
@@ -531,19 +550,36 @@ final class SynchroAgenda
      */
     private function aLire(int $userId): array
     {
-        $ecriture = EnvoiAgenda::pour($this->f)->calendrierConnu($userId);
+        $ou = EnvoiAgenda::pour($this->f)->destination($userId);
+        $reflet = $ou['choisi'] ? null : $ou['id'];
 
         $suivis = Database::all(
             'SELECT calendrier_id, nom FROM agenda_calendriers
               WHERE user_id = ? AND fournisseur = ? AND suivi = 1 AND empreinte <> ?',
-            [$userId, $this->f->cle(), $ecriture === null ? '' : md5($ecriture)]
+            [$userId, $this->f->cle(), $reflet === null ? '' : md5($reflet)]
         );
         if ($suivis === []) {
             $suivis = [null];
         }
 
-        if ($ecriture !== null) {
-            $suivis[] = ['calendrier_id' => $ecriture, 'nom' => 'Mes Cours'];
+        /*
+         * La destination se lit aussi, mais une fois seulement : choisie, elle
+         * est un calendrier comme un autre et se trouve peut-être déjà parmi
+         * ceux qu'on suit. La parcourir deux fois ne créerait pas de doublon —
+         * l'identifiant de l'évènement tranche — mais coûterait une lecture
+         * entière pour rien.
+         */
+        if ($ou['id'] !== null) {
+            $deja = false;
+            foreach ($suivis as $un) {
+                if ($un !== null && (string) $un['calendrier_id'] === $ou['id']) {
+                    $deja = true;
+                    break;
+                }
+            }
+            if (!$deja) {
+                $suivis[] = ['calendrier_id' => $ou['id'], 'nom' => $ou['nom']];
+            }
         }
 
         return $suivis;

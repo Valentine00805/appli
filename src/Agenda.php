@@ -224,6 +224,46 @@ final class Agenda
     }
 
     /**
+     * Les agendas à soi qui peuvent recevoir ce qu'on crée dans l'application.
+     *
+     * L'inverse exact de « ouDeposer » : là-bas les agendas des autres, ici
+     * les siens. Un agenda qu'on nous a partagé n'a pas sa place dans cette
+     * liste — y déverser tous ses évènements et toutes ses échéances de
+     * tâches, sans que le propriétaire l'ait demandé, n'est pas un partage,
+     * c'est une invasion.
+     *
+     * @return array<int, array{cle: string, nom: string, principal: bool}>
+     */
+    public static function ouEcrire(int $userId, Fournisseur $f): array
+    {
+        /*
+         * « Mes Cours » est un agenda à soi comme les autres — il remplit
+         * toutes les conditions de la requête ci-dessous. Mais il est déjà
+         * proposé à part, comme le choix par défaut, et le voir deux fois dans
+         * la même liste ferait douter de ce qu'on est en train de choisir.
+         */
+        $actuelle = EnvoiAgenda::pour($f)->destination($userId);
+        $reflet = $actuelle['choisi'] || $actuelle['id'] === null ? '' : md5($actuelle['id']);
+
+        $ou = [];
+        foreach (Database::all(
+            'SELECT empreinte, nom, principal FROM agenda_calendriers
+              WHERE user_id = ? AND fournisseur = ? AND partage = 0 AND peut_ecrire = 1
+                AND empreinte <> ?
+              ORDER BY principal DESC, nom',
+            [$userId, $f->cle(), $reflet]
+        ) as $cal) {
+            $ou[] = [
+                'cle'       => (string) $cal['empreinte'],
+                'nom'       => (string) ($cal['nom'] ?? 'Agenda'),
+                'principal' => (int) $cal['principal'] === 1,
+            ];
+        }
+
+        return $ou;
+    }
+
+    /**
      * Combien d'agendas partagés on connaît, quel que soit le droit d'écriture.
      *
      * Sert à distinguer deux silences très différents : « personne ne vous a
