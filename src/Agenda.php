@@ -191,6 +191,66 @@ final class Agenda
     }
 
     /**
+     * Les agendas de quelqu'un d'autre où l'on a le droit de déposer.
+     *
+     * Les siens n'y figurent pas : ce qu'on crée ici y arrive déjà tout seul,
+     * par « Mes Cours ». Ne restent que les agendas partagés — et parmi eux,
+     * seulement ceux dont le propriétaire a accordé la modification.
+     *
+     * @return array<int, array{cle: string, nom: string, chez: string,
+     *                          agenda: string, fournisseur: string}>
+     */
+    public static function ouDeposer(int $userId): array
+    {
+        $ou = [];
+        foreach (self::relies($userId) as $f) {
+            foreach (Database::all(
+                'SELECT empreinte, nom, proprietaire FROM agenda_calendriers
+                  WHERE user_id = ? AND fournisseur = ? AND partage = 1 AND peut_ecrire = 1
+                  ORDER BY nom',
+                [$userId, $f->cle()]
+            ) as $cal) {
+                $ou[] = [
+                    'cle'         => (string) $cal['empreinte'],
+                    'nom'         => (string) ($cal['nom'] ?? 'Agenda'),
+                    'chez'        => (string) ($cal['proprietaire'] ?? ''),
+                    'agenda'      => $f->nom(),
+                    'fournisseur' => $f->cle(),
+                ];
+            }
+        }
+
+        return $ou;
+    }
+
+    /**
+     * Combien d'agendas partagés on connaît, quel que soit le droit d'écriture.
+     *
+     * Sert à distinguer deux silences très différents : « personne ne vous a
+     * partagé son agenda » et « on ne vous y laisse pas écrire ».
+     */
+    public static function combienDePartages(int $userId): int
+    {
+        return (int) Database::valeur(
+            'SELECT COUNT(*) FROM agenda_calendriers WHERE user_id = ? AND partage = 1', [$userId]);
+    }
+
+    /**
+     * Ce qui a déjà été déposé pour un évènement.
+     *
+     * @return array<int, array>
+     */
+    public static function depots(int $userId, int $evenementId): array
+    {
+        return Database::all(
+            'SELECT calendrier_empreinte, calendrier_nom, chez, titre, depose_le
+               FROM agenda_depots
+              WHERE user_id = ? AND evenement_id = ?
+              ORDER BY depose_le',
+            [$userId, $evenementId]
+        );
+    }
+    /**
      * Un agenda a-t-il quelque chose à faire, chez n'importe quel fournisseur ?
      *
      * C'est ce qui décide si la page réveille la synchronisation en arrière-plan.

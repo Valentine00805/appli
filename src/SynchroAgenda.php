@@ -326,7 +326,8 @@ final class SynchroAgenda
         $ecriture = EnvoiAgenda::pour($this->f)->calendrierConnu($userId);
 
         return Database::all(
-            'SELECT id, empreinte, nom, proprietaire, partage, principal, suivi, affiche, couleur
+            'SELECT id, empreinte, nom, proprietaire, partage, peut_ecrire,
+                    principal, suivi, affiche, couleur
                FROM agenda_calendriers
               WHERE user_id = ? AND fournisseur = ? AND empreinte <> ?
               ORDER BY principal DESC, partage ASC, nom ASC',
@@ -386,18 +387,21 @@ final class SynchroAgenda
             $adresse = mb_strtolower($lu['adresse']);
             $principal = $lu['principal'] ? 1 : 0;
             $partage = ($adresse !== '' && $moi !== '' && $adresse !== $moi) ? 1 : 0;
+            $ecriture = ($lu['ecriture'] ?? false) ? 1 : 0;
 
             if (isset($connus[$empreinte])) {
                 // Le choix de l'utilisateur ne se réécrit pas : seul le
                 // signalement change.
                 Database::run(
                     'UPDATE agenda_calendriers
-                        SET nom = ?, proprietaire = ?, partage = ?, principal = ?, vu_le = NOW()
+                        SET nom = ?, proprietaire = ?, partage = ?, peut_ecrire = ?,
+                            principal = ?, vu_le = NOW()
                       WHERE user_id = ? AND fournisseur = ? AND empreinte = ?',
                     [
                         mb_substr($lu['nom'], 0, 190),
                         mb_substr($lu['proprietaire'], 0, 190),
-                        $partage, $principal, $userId, $this->f->cle(), $empreinte,
+                        $partage, $ecriture, $principal,
+                        $userId, $this->f->cle(), $empreinte,
                     ]
                 );
                 continue;
@@ -414,13 +418,13 @@ final class SynchroAgenda
             Database::run(
                 'INSERT INTO agenda_calendriers
                      (user_id, fournisseur, calendrier_id, empreinte, nom, proprietaire, partage,
-                      principal, suivi, couleur)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                      peut_ecrire, principal, suivi, couleur)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
                 [
                     $userId, $this->f->cle(), $id, $empreinte,
                     mb_substr($lu['nom'], 0, 190),
                     mb_substr($lu['proprietaire'], 0, 190),
-                    $partage, $principal, $principal,
+                    $partage, $ecriture, $principal, $principal,
                     Agenda::couleurOuDefaut('', $deja + 1),
                 ]
             );
@@ -788,6 +792,17 @@ final class SynchroAgenda
     {
         $par = [];
         foreach (Database::all('SELECT distant_id FROM agenda_envois WHERE user_id = ? AND fournisseur = ?',
+            [$userId, $this->f->cle()]) as $ligne) {
+            $par[(string) $ligne['distant_id']] = true;
+        }
+
+        /*
+         * Les copies déposées dans l'agenda de quelqu'un comptent elles aussi :
+         * si l'on suit cet agenda, on les y relira. Les rapatrier ferait, du
+         * cadeau qu'on vient de faire, un second évènement dans son propre
+         * calendrier — et l'on croirait Fanny plus occupée qu'elle ne l'est.
+         */
+        foreach (Database::all('SELECT distant_id FROM agenda_depots WHERE user_id = ? AND fournisseur = ?',
             [$userId, $this->f->cle()]) as $ligne) {
             $par[(string) $ligne['distant_id']] = true;
         }

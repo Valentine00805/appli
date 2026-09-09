@@ -236,6 +236,75 @@ final class EnvoiAgenda
         return $retires;
     }
 
+    /* --- Déposer chez quelqu'un ------------------------------------------- */
+
+    /**
+     * Dépose une copie d'un évènement dans l'agenda de quelqu'un d'autre.
+     *
+     * C'est la seule écriture de l'application hors de chez soi, et elle ne
+     * fait qu'une chose : ajouter. Pas de lien, pas d'empreinte, pas de
+     * calendrier à part — rien de ce qui permettrait de revenir dessus. La
+     * copie appartient désormais à la personne à qui on l'a donnée : elle peut
+     * la déplacer, la renommer, la jeter, sans que rien d'ici ne la contredise.
+     *
+     * On refuse ce que le fournisseur refuserait de toute façon — un agenda
+     * partagé en simple lecture —, et surtout on refuse de déposer deux fois
+     * le même évènement au même endroit : un double-clic ne doit pas remplir
+     * l'agenda de quelqu'un en double.
+     *
+     * @return array{nom: string, deja: bool}  où c'est parti, et si ça y était déjà
+     * @throws RuntimeException si le calendrier ne s'y prête pas, ou si le
+     *                          fournisseur refuse
+     */
+    public function deposer(int $userId, array $evenement, string $empreinte): array
+    {
+        $cal = Database::one(
+            'SELECT calendrier_id, nom, proprietaire, partage, peut_ecrire
+               FROM agenda_calendriers
+              WHERE user_id = ? AND fournisseur = ? AND empreinte = ?',
+            [$userId, $this->f->cle(), $empreinte]
+        );
+        if ($cal === null) {
+            throw new RuntimeException('Cet agenda n’est plus dans la liste.');
+        }
+        $nom = (string) ($cal['nom'] ?? 'cet agenda');
+
+        if ((int) $cal['peut_ecrire'] !== 1) {
+            throw new RuntimeException($this->f->nom() . ' ne vous donne pas le droit d’ajouter '
+                . 'dans « ' . $nom . ' » : cet agenda vous est partagé en lecture seule.');
+        }
+
+        $vu = Database::valeur(
+            'SELECT id FROM agenda_depots
+              WHERE user_id = ? AND fournisseur = ? AND evenement_id = ? AND calendrier_empreinte = ?',
+            [$userId, $this->f->cle(), (int) $evenement['id'], $empreinte]
+        );
+        if ($vu !== null) {
+            return ['nom' => $nom, 'deja' => true];
+        }
+
+        $reponse = $this->lien()->appeler($userId, 'POST',
+            $this->f->cheminDeCreation((string) $cal['calendrier_id']),
+            $this->corpsDUnEvenement($evenement));
+        $this->verifier($reponse, 'ajouter un évènement dans « ' . $nom . ' »');
+
+        Database::run(
+            'INSERT INTO agenda_depots
+                 (user_id, fournisseur, evenement_id, calendrier_empreinte, calendrier_nom,
+                  chez, distant_id, titre, debut)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [
+                $userId, $this->f->cle(), (int) $evenement['id'], $empreinte,
+                mb_substr($nom, 0, 190),
+                mb_substr((string) ($cal['proprietaire'] ?? ''), 0, 190),
+                (string) ($reponse['corps']['id'] ?? ''),
+                mb_substr((string) $evenement['titre'], 0, 190),
+                (string) $evenement['debut'],
+            ]
+        );
+
+        return ['nom' => $nom, 'deja' => false];
+    }
     /* --- Le calendrier de destination ------------------------------------- */
 
     /**
@@ -342,7 +411,6 @@ final class EnvoiAgenda
         return $tout;
     }
 
-    /** Un évènement de l'application dans les termes de l'agenda. */
     /**
      * Un évènement de l'application dans les termes de l'agenda.
      *

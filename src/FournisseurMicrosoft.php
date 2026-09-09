@@ -98,7 +98,7 @@ final class FournisseurMicrosoft extends Fournisseur
 
     public function cheminsDesCalendriers(int $userId): array
     {
-        $chemins = ['/me/calendars?$select=id,name,owner,isDefaultCalendar&$top=100'];
+        $chemins = ['/me/calendars?$select=id,name,owner,isDefaultCalendar,canEdit&$top=100'];
 
         $groupes = LiaisonAgenda::pour($this)->appeler(
             $userId, 'GET', '/me/calendarGroups?$select=id&$top=50');
@@ -108,7 +108,7 @@ final class FournisseurMicrosoft extends Fournisseur
                     continue;
                 }
                 $chemins[] = '/me/calendarGroups/' . rawurlencode((string) $groupe['id'])
-                    . '/calendars?$select=id,name,owner,isDefaultCalendar&$top=100';
+                    . '/calendars?$select=id,name,owner,isDefaultCalendar,canEdit&$top=100';
             }
         }
 
@@ -129,6 +129,9 @@ final class FournisseurMicrosoft extends Fournisseur
             'proprietaire' => (string) ($brut['owner']['name'] ?? $adresse),
             'adresse'      => $adresse,
             'principal'    => ($brut['isDefaultCalendar'] ?? false) === true,
+            // Graph le dit franchement, pour les siens comme pour ceux
+            // qu'on nous a partagés.
+            'ecriture'     => ($brut['canEdit'] ?? false) === true,
         ];
     }
 

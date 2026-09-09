@@ -245,6 +245,7 @@ $routes = [
     ['GET',  'evenements/{id}/modifier',  [CalendrierController::class, 'formulaire']],
     ['POST', 'evenements/{id}/modifier',  [CalendrierController::class, 'modifier']],
     ['POST', 'evenements/{id}/supprimer', [CalendrierController::class, 'supprimer']],
+    ['POST', 'evenements/{id}/deposer',   [CalendrierController::class, 'deposer']],
     ['POST', 'evenements/{id}/termine',   [CalendrierController::class, 'basculerTermine']],
 
     ['GET',  'organisation',               [OrganisationController::class, 'index']],

@@ -163,7 +163,15 @@ $aReautoriser = !($partage ?? true) && $partagesEnAttente > 0 && ($souci ?? null
             dont vous êtes propriétaire</strong> — les vôtres et « Mes Cours ».
             Venu d'un agenda que quelqu'un vous a partagé, l'évènement se
             retouche ici sans rien changer chez lui, et la lecture suivante
-            rétablit sa version. L'application n'écrit rien chez les autres.
+            rétablit sa version. L'application n'écrit d'elle-même rien chez
+            les autres.
+          </p>
+          <p class="champ__aide">
+            <strong>Une seule exception, et vous la déclenchez :</strong> depuis un
+            évènement, « déposer une copie » l'ajoute dans l'agenda de
+            quelqu'un qui vous a laissé le droit d'y écrire. Une copie,
+            donnée une fois : elle lui appartient ensuite, et l'application
+            n'y reviendra ni pour la corriger ni pour la reprendre.
           </p>
           <p class="champ__aide">
             <strong>D'ici vers <?= e($f->nom()) ?> :</strong> vos évènements et les

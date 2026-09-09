@@ -1,6 +1,8 @@
 <?php
 /**
  * @var ?array $evenement
+ * @var array $ouDeposer, $depots
+ * @var int $partages
  * @var array $matieres, $coursListe, $types
  * @var string $dateDefaut
  * @var ?int $typeDefaut
@@ -297,6 +299,37 @@ $matiereActive = $edition ? entier_ou_null($evenement['matiere_id']) : null;
         </div>
       </div>
 
+      <?php
+      /*
+       * Donner une copie en même temps qu'on crée l'évènement.
+       *
+       * C'est le geste naturel — « je note ça pour Fanny » —, et le seul
+       * endroit où l'application écrit dans l'agenda de quelqu'un d'autre.
+       * Elle n'y écrira qu'une fois : la suite se dit avant, pas après.
+       */
+      ?>
+      <?php if (!$edition && $ouDeposer !== []): ?>
+        <div class="carte">
+          <div class="champ">
+            <span class="legende">Déposer aussi une copie chez</span>
+            <?php foreach ($ouDeposer as $cal): ?>
+              <label class="case" style="display:block">
+                <input type="checkbox" name="deposer[]" value="<?= e($cal['cle']) ?>">
+                <?= e($cal['nom']) ?>
+                <span class="discret">
+                  <?= $cal['chez'] === '' ? '' : '— ' . e($cal['chez']) ?>
+                  (<?= e($cal['agenda']) ?>)
+                </span>
+              </label>
+            <?php endforeach; ?>
+            <span class="champ__aide">
+              Une copie, donnée une fois. Elle leur appartiendra : la modifier
+              ou la supprimer ici n'y changera plus rien.
+            </span>
+          </div>
+        </div>
+      <?php endif; ?>
+
       <button class="bouton bouton--bloc" type="submit">
         <?= $edition ? 'Enregistrer' : 'Ajouter au calendrier' ?>
       </button>
@@ -307,6 +340,85 @@ $matiereActive = $edition ? entier_ou_null($evenement['matiere_id']) : null;
 </form>
 
 <?php if ($edition): ?>
+  <?php
+  /*
+   * Donner une copie de cet évènement.
+   *
+   * L'application ne touche à rien dans l'agenda des autres — sauf ici, et
+   * seulement pour ajouter. Ce que l'on dépose ne sera plus jamais corrigé ni
+   * repris : c'est dit avant le geste, parce qu'après il est trop tard.
+   */
+  ?>
+  <section class="carte" style="margin-top:1rem;max-width:520px">
+    <h2 style="margin-top:0">Déposer une copie chez quelqu'un</h2>
+
+    <?php if ($depots !== []): ?>
+      <ul class="champ__aide" style="margin:0 0 .75rem;padding-left:1.1rem">
+        <?php foreach ($depots as $d): ?>
+          <li>
+            Déposé dans « <?= e((string) $d['calendrier_nom']) ?> »
+            le <?= e(date('d/m/Y à H:i', strtotime((string) $d['depose_le']))) ?>
+            <?php if ((string) $d['titre'] !== (string) $evenement['titre']): ?>
+              — sous le titre « <?= e((string) $d['titre']) ?> »
+            <?php endif; ?>
+          </li>
+        <?php endforeach; ?>
+      </ul>
+    <?php endif; ?>
+
+    <?php if ($ouDeposer === []): ?>
+      <p class="champ__aide" style="margin-top:0">
+        <?php if ($partages === 0): ?>
+          Personne ne vous a partagé son agenda — ou la liste n'a pas encore été
+          relue depuis. Elle se rafraîchit depuis
+          <a href="<?= url('agenda') ?>">Mes agendas</a>.
+        <?php else: ?>
+          Les agendas qu'on vous a partagés le sont en lecture seule, ou leur
+          droit d'écriture n'a pas encore été relevé. Passez par
+          <a href="<?= url('agenda') ?>">Mes agendas</a> et cliquez
+          « Actualiser la liste » : c'est là que ce droit se lit.
+        <?php endif; ?>
+      </p>
+    <?php else: ?>
+      <form method="post" action="<?= url('evenements/' . $evenement['id'] . '/deposer') ?>">
+        <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
+
+        <div class="champ">
+          <span class="legende">Dans l'agenda de</span>
+          <?php foreach ($ouDeposer as $cal): ?>
+            <label class="case" style="display:block">
+              <input type="checkbox" name="deposer[]" value="<?= e($cal['cle']) ?>">
+              <?= e($cal['nom']) ?>
+              <span class="discret">
+                <?= $cal['chez'] === '' ? '' : '— ' . e($cal['chez']) ?>
+                (<?= e($cal['agenda']) ?>)
+              </span>
+            </label>
+          <?php endforeach; ?>
+        </div>
+
+        <?php if ($serie !== null): ?>
+          <div class="champ">
+            <label class="case">
+              <input type="checkbox" name="serie" value="1">
+              Déposer les <?= (int) $serie['occurrences'] ?> séances de la série
+            </label>
+          </div>
+        <?php endif; ?>
+
+        <span class="champ__aide">
+          La copie leur appartiendra. La modifier ici, ou la supprimer ici, n'y
+          changera plus rien : l'application n'y reviendra pas. Pour se
+          reprendre, il faut le leur demander — ou le faire depuis leur agenda.
+        </span>
+
+        <button class="bouton bouton--secondaire" type="submit" style="margin-top:.6rem">
+          Déposer la copie
+        </button>
+      </form>
+    <?php endif; ?>
+  </section>
+
   <form method="post" action="<?= url('evenements/' . $evenement['id'] . '/supprimer') ?>"
         data-confirmation="Supprimer cet évènement ?" style="margin-top:1rem;max-width:320px">
     <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">

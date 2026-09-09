@@ -131,6 +131,9 @@ final class CalendrierController
             'serie'      => $evenement === null || $evenement['serie_id'] === null ? null
                 : Database::one('SELECT * FROM series_evenements WHERE id = ? AND user_id = ?',
                     [(int) $evenement['serie_id'], $userId]),
+            'ouDeposer'  => Agenda::ouDeposer($userId),
+            'partages'   => Agenda::combienDePartages($userId),
+            'depots'     => $evenement === null ? [] : Agenda::depots($userId, (int) $evenement['id']),
         ], $evenement === null ? 'Nouvel événement' : 'Modifier l\'événement');
     }
 
@@ -164,8 +167,9 @@ final class CalendrierController
             $serieId = Database::dernierId();
         }
 
+        $poses = [];
         foreach ($quand === null ? [null] : $quand['dates'] as $decalage) {
-            $this->poser($userId, $donnees, $serieId, $decalage);
+            $poses[] = $this->poser($userId, $donnees, $serieId, $decalage);
         }
 
         $combien = $quand === null ? 1 : count($quand['dates']);
@@ -173,6 +177,14 @@ final class CalendrierController
             ? 'Événement ajouté au calendrier.'
             : $combien . ' occurrences ajoutées au calendrier, jusqu’au '
               . $quand['jusqu_au']->format('d/m/Y') . '.');
+
+        /*
+         * Le dépôt vient après, et à part : l'évènement est écrit ici quoi
+         * qu'il arrive, et un agenda qui refuse la copie ne doit pas faire
+         * perdre ce qu'on venait de saisir.
+         */
+        $this->deposerLesCoches($userId, $poses);
+
         redirect('calendrier', ['date' => substr($donnees['debut'], 0, 10)]);
     }
 
@@ -180,8 +192,9 @@ final class CalendrierController
      * Écrit un évènement, éventuellement décalé d'une occurrence.
      *
      * @param ?array{debut: DateTimeImmutable, fin: DateTimeImmutable} $quand
+     * @return int  l'identifiant écrit, dont le dépôt a besoin
      */
-    private function poser(int $userId, array $donnees, ?int $serieId, ?array $quand): void
+    private function poser(int $userId, array $donnees, ?int $serieId, ?array $quand): int
     {
         Database::run(
             'INSERT INTO evenements (user_id, matiere_id, cours_id, serie_id, type_id, titre,
@@ -201,6 +214,8 @@ final class CalendrierController
                 $donnees['journee_entiere'],
             ]
         );
+
+        return Database::dernierId();
     }
 
     /**
@@ -702,6 +717,185 @@ final class CalendrierController
         return count($occurrences);
     }
 
+    /**
+     * Au-delà, on ne dépose pas : c'est autant d'appels au fournisseur.
+     *
+     * Une série d'un an, déposée d'un clic, tiendrait la page une minute et
+     * laisserait, si elle échouait au milieu, une moitié de série chez
+     * quelqu'un — qu'on ne saurait pas reprendre, puisqu'on ne supprime pas.
+     */
+    private const DEPOTS_MAX = 30;
+
+    /**
+     * Dépose une copie d'un évènement dans l'agenda de quelqu'un d'autre.
+     *
+     * Le seul endroit de l'application qui écrive chez un tiers, et il n'écrit
+     * qu'une fois. Ce qui est déposé ne sera ni suivi, ni corrigé, ni repris :
+     * modifier l'évènement ici ne changera pas la copie, le supprimer ici ne
+     * l'enlèvera pas de là-bas. C'est ce que veut dire donner.
+     *
+     * Le refus d'un agenda n'emporte pas les autres : on dit lesquels ont
+     * abouti, et pourquoi les autres non.
+     */
+    public function deposer(int $id): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $userId = Auth::id();
+
+        $evenement = Database::one(
+            'SELECT id, serie_id, titre, description, lieu, debut, fin, journee_entiere
+               FROM evenements WHERE id = ? AND user_id = ?', [$id, $userId]);
+        if ($evenement === null) {
+            $this->introuvable();
+        }
+
+        $vises = $this->calendriersVises($userId);
+        if ($vises === []) {
+            Session::flash('erreur', 'Choisissez au moins un agenda où déposer la copie.');
+            redirect('evenements/' . $id . '/modifier');
+        }
+
+        $quoi = $this->occurrencesADeposer($userId, $evenement);
+        if (is_string($quoi)) {
+            Session::flash('erreur', $quoi);
+            redirect('evenements/' . $id . '/modifier');
+        }
+
+        $this->porter($userId, $vises, $quoi);
+
+        redirect('evenements/' . $id . '/modifier');
+    }
+
+    /**
+     * Dépose ce qui vient d'être créé, si l'on avait coché quelqu'un.
+     *
+     * @param array<int, int> $ids  les évènements écrits à l'instant
+     */
+    private function deposerLesCoches(int $userId, array $ids): void
+    {
+        $vises = $this->calendriersVises($userId);
+        if ($vises === [] || $ids === []) {
+            return;
+        }
+
+        if (count($ids) > self::DEPOTS_MAX) {
+            Session::flash('erreur', 'Les ' . count($ids) . ' séances ont bien été créées ici, mais '
+                . 'c’est trop pour un seul dépôt (' . self::DEPOTS_MAX . ' au plus) : rien n’a été '
+                . 'déposé. Ouvrez une séance et déposez-la, ou partagez plutôt votre agenda.');
+
+            return;
+        }
+
+        $this->porter($userId, $vises, Database::all(
+            'SELECT id, titre, description, lieu, debut, fin, journee_entiere
+               FROM evenements WHERE user_id = ? AND id IN ('
+            . implode(',', array_fill(0, count($ids), '?')) . ') ORDER BY debut',
+            array_merge([$userId], $ids)
+        ));
+    }
+
+    /**
+     * Porte les copies, et raconte ce qui s'est passé.
+     *
+     * Le refus d'un agenda n'emporte pas les autres, et ce qui est déjà parti
+     * reste parti : c'est justement parce qu'on ne revient pas dessus qu'il
+     * faut le dire précisément.
+     *
+     * @param array<int, array{cle: string, nom: string, fournisseur: string}> $vises
+     * @param array<int, array> $quoi
+     */
+    private function porter(int $userId, array $vises, array $quoi): void
+    {
+        $partis = [];
+        $soucis = [];
+
+        foreach ($vises as $cible) {
+            $agenda = Agenda::pour($cible['fournisseur']);
+            if ($agenda === null) {
+                continue;
+            }
+            $combien = 0;
+            try {
+                foreach ($quoi as $occurrence) {
+                    $fait = EnvoiAgenda::pour($agenda)->deposer($userId, $occurrence, $cible['cle']);
+                    if (!$fait['deja']) {
+                        $combien++;
+                    }
+                }
+            } catch (Throwable $e) {
+                $soucis[] = $e->getMessage();
+            }
+            if ($combien > 0) {
+                $partis[] = $cible['nom'] . ($combien > 1 ? ' (' . $combien . ')' : '');
+            }
+        }
+
+        if ($partis !== []) {
+            Session::flash('succes', (count($quoi) > 1 ? 'Série déposée dans : ' : 'Copie déposée dans : ')
+                . implode(', ', $partis)
+                . '. Elle leur appartient désormais : la modifier ici n’y changera rien.');
+        } elseif ($soucis === []) {
+            Session::flash('succes', 'Cette copie y était déjà : rien n’a été ajouté une seconde fois.');
+        }
+        if ($soucis !== []) {
+            Session::flash('erreur', implode(' ', array_unique($soucis)));
+        }
+    }
+
+    /**
+     * Les agendas cochés, réduits à ceux où l'on a vraiment le droit d'écrire.
+     *
+     * On repart de la liste plutôt que du formulaire : une empreinte soumise à
+     * la main ne doit pas suffire à écrire dans un agenda qu'on ne nous a
+     * jamais ouvert.
+     *
+     * @return array<int, array{cle: string, nom: string, fournisseur: string}>
+     */
+    private function calendriersVises(int $userId): array
+    {
+        $coches = $_POST['deposer'] ?? [];
+        if (!is_array($coches)) {
+            return [];
+        }
+        $veut = [];
+        foreach ($coches as $cle) {
+            if (is_string($cle)) {
+                $veut[$cle] = true;
+            }
+        }
+
+        return array_values(array_filter(
+            Agenda::ouDeposer($userId),
+            static fn (array $cal): bool => isset($veut[$cal['cle']])
+        ));
+    }
+
+    /**
+     * L'évènement seul, ou toute sa série quand on l'a demandé.
+     *
+     * @return array<int, array>|string  un message si la série est trop longue
+     */
+    private function occurrencesADeposer(int $userId, array $evenement): array|string
+    {
+        if (($_POST['serie'] ?? '') !== '1' || $evenement['serie_id'] === null) {
+            return [$evenement];
+        }
+
+        $occurrences = Database::all(
+            'SELECT id, titre, description, lieu, debut, fin, journee_entiere
+               FROM evenements WHERE serie_id = ? AND user_id = ? ORDER BY debut',
+            [(int) $evenement['serie_id'], $userId]
+        );
+
+        if (count($occurrences) > self::DEPOTS_MAX) {
+            return 'Cette série compte ' . count($occurrences) . ' séances : c’est trop pour un '
+                . 'seul dépôt (' . self::DEPOTS_MAX . ' au plus). Déposez les séances une à une, '
+                . 'ou partagez plutôt votre agenda.';
+        }
+
+        return $occurrences;
+    }
     /**
      * Supprime un évènement, ou toute la série dont il fait partie.
      *

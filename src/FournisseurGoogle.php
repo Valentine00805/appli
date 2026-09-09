@@ -135,6 +135,9 @@ final class FournisseurGoogle extends Fournisseur
             // qui suit conclura « pas partagé », ce qui est le cas.
             'adresse'      => $aMoi ? '' : (string) $brut['id'],
             'principal'    => ($brut['primary'] ?? false) === true,
+            // « reader » et « freeBusyReader » regardent sans toucher ;
+            // « writer » ajoute, « owner » fait tout.
+            'ecriture'     => $role === 'owner' || $role === 'writer',
         ];
     }
 

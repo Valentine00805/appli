@@ -77,7 +77,13 @@ abstract class Fournisseur
     /**
      * Un calendrier distant dans les termes de l'application.
      *
-     * @return ?array{id: string, nom: string, proprietaire: string, principal: bool}
+     * « ecriture » dit si le compte a le droit d'y ajouter quelque chose. Un
+     * agenda partagé en lecture et un agenda partagé en modification se
+     * ressemblent tant qu'on ne l'a pas demandé, et proposer de déposer là où
+     * le dépôt sera refusé est la pire des deux erreurs.
+     *
+     * @return ?array{id: string, nom: string, proprietaire: string,
+     *                adresse: string, principal: bool, ecriture: bool}
      */
     abstract public function lireCalendrier(array $brut): ?array;
 
