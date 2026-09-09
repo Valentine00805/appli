@@ -317,7 +317,6 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
 .evt--termine { opacity: .5; text-decoration: line-through; }
 .evt__heure { font-weight: 500; opacity: .85; }
 
-.cal-semaine { display: grid; gap: .75rem; }
 .jour-bloc { border: 1px solid var(--bordure); border-radius: var(--rayon); background: var(--fond-carte); overflow: hidden; }
 .jour-bloc__entete {
   display: flex; align-items: baseline; justify-content: space-between; gap: .5rem;
@@ -2297,4 +2296,110 @@ summary.cal-volet__groupe:focus-visible {
 @media (max-width: 640px) {
   .jour-planning { --heure: 3rem; --colonne-heures: 2.9rem; }
   .jour-planning__evt { font-size: .72rem; padding: .15rem .3rem; }
+}
+/* --- La semaine en grille ------------------------------------------------
+   Les mêmes mesures que la journée — une heure vaut « --heure » — mais sept
+   pistes côte à côte. En dessous d'une certaine largeur, sept colonnes ne
+   tiennent plus : la grille défile horizontalement plutôt que de tasser les
+   titres jusqu'à l'illisible. */
+
+.sem-planning {
+  --heure: 3.1rem;
+  --colonne-heures: 3.4rem;
+  --jour-mini: 6.5rem;
+  background: var(--carte, #fff);
+  border: 1px solid var(--bordure, #e2e8f0);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.sem-planning__defile { overflow-x: auto; }
+.sem-planning__cadre { min-width: calc(var(--colonne-heures) + var(--jours) * var(--jour-mini)); }
+
+/* L'entête des jours, le bandeau et la grille partagent la même trame : la
+   colonne des heures, puis un jour par colonne. */
+.sem-planning__entetes,
+.sem-planning__bandeau,
+.sem-planning__grille {
+  display: grid;
+  grid-template-columns: var(--colonne-heures) repeat(var(--jours), minmax(0, 1fr));
+}
+
+.sem-planning__entetes { border-bottom: 1px solid var(--bordure, #e2e8f0); }
+.sem-planning__coin { border-right: 1px solid var(--bordure, #e2e8f0); }
+.sem-planning__jour {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .1rem;
+  padding: .45rem .2rem;
+  color: inherit;
+  text-decoration: none;
+  border-right: 1px solid var(--bordure, #e2e8f0);
+}
+.sem-planning__jour:last-child { border-right: 0; }
+.sem-planning__jour:hover { background: var(--fond, #f8fafc); }
+.sem-planning__jour-nom {
+  font-size: .68rem;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--texte-doux, #64748b);
+}
+.sem-planning__jour-numero { font-size: 1.05rem; font-weight: 600; line-height: 1; }
+.sem-planning__jour--aujourdhui .sem-planning__jour-nom,
+.sem-planning__jour--aujourdhui .sem-planning__jour-numero { color: var(--accent, #4f46e5); }
+
+.sem-planning__bandeau {
+  border-bottom: 1px solid var(--bordure, #e2e8f0);
+  background: var(--fond, #f8fafc);
+}
+.sem-planning__etiquette {
+  font-size: .65rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--texte-doux, #64748b);
+  padding: .4rem .35rem;
+  text-align: right;
+  border-right: 1px solid var(--bordure, #e2e8f0);
+  /* La colonne est étroite : le mot se coupe plutôt que de déborder sur
+     le premier jour. */
+  overflow: hidden;
+}
+.sem-planning__toutlejour {
+  display: flex;
+  flex-direction: column;
+  gap: .15rem;
+  min-width: 0;
+  padding: .25rem .2rem;
+  border-right: 1px solid var(--bordure, #e2e8f0);
+}
+.sem-planning__toutlejour:last-child { border-right: 0; }
+
+.sem-planning__grille { height: calc(var(--heures) * var(--heure)); }
+.sem-planning__heures { position: relative; }
+.sem-planning__piste {
+  position: relative;
+  border-right: 1px solid var(--bordure, #e2e8f0);
+}
+.sem-planning__piste:last-child { border-right: 0; }
+/* La colonne du jour se signale par un fond, pas par une bordure : une
+   bordure de plus dans une grille qui en compte déjà sept ne se verrait pas. */
+.sem-planning__piste--aujourdhui {
+  background: color-mix(in srgb, var(--accent, #4f46e5) 4%, transparent);
+}
+
+/* Sept colonnes laissent peu de place : l'heure et le titre s'y superposent
+   plutôt que de s'y côtoyer, et le lieu ne tient plus. */
+.sem-planning .jour-planning__evt { font-size: .72rem; padding: .15rem .3rem; }
+.sem-planning .jour-planning__evt-heure { font-size: .65rem; }
+.sem-planning .jour-planning__evt-titre {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sem-planning .jour-planning__evt--court { gap: .25rem; }
+
+@media (max-width: 640px) {
+  .sem-planning { --heure: 2.8rem; --colonne-heures: 3.2rem; --jour-mini: 5.2rem; }
+  .sem-planning__etiquette { font-size: .58rem; letter-spacing: 0; padding: .4rem .2rem; }
 }

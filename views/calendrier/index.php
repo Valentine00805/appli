@@ -341,32 +341,112 @@ $puce = static function (array $evt) use ($destination): string {
 
 <?php elseif ($vue === 'semaine'): ?>
 
-  <div class="cal-semaine">
-    <?php
-    $curseur = $debut;
-    while ($curseur <= $fin):
-        $cle = $curseur->format('Y-m-d');
-        $duJour = $parJour[$cle] ?? [];
-        ?>
-        <section class="jour-bloc<?= $cle === $aujourdhui ? ' jour-bloc--aujourdhui' : '' ?>">
-          <header class="jour-bloc__entete">
-            <span class="jour-bloc__titre"><?= e(date_fr($cle . ' 00:00:00', false)) ?></span>
-            <a class="discret" href="<?= url('evenements/nouveau', ['date' => $cle]) ?>">+ ajouter</a>
-          </header>
-          <div class="jour-bloc__corps">
-            <?php if ($duJour === []): ?>
-              <span class="discret">Rien de prévu.</span>
-            <?php else: ?>
-              <?php foreach ($duJour as $evt): ?>
-                <?= Vue::rendre('calendrier/_ligne', ['evt' => $evt]) ?>
-              <?php endforeach; ?>
-            <?php endif; ?>
+  <?php
+  /*
+   * La semaine, à la même échelle que la journée.
+   *
+   * Les heures montrées sont communes aux sept jours : calculées colonne par
+   * colonne, les lignes ne tomberaient pas en face et la semaine deviendrait
+   * illisible. C'est PlanningJour qui s'en charge, et la vue ne fait ici que
+   * répéter sept fois ce qu'elle fait une fois pour le jour.
+   */
+  $jours = [];
+  $curseur = $debut;
+  while ($curseur <= $fin) {
+      $jours[] = $curseur;
+      $curseur = $curseur->modify('+1 day');
+  }
+  $planning = PlanningJour::semaine($parJour, $jours);
+  $bandeau = false;
+  foreach ($planning['jours'] as $unJour) {
+      $bandeau = $bandeau || $unJour['journee'] !== [];
+  }
+  ?>
+  <div class="sem-planning" style="--jours:<?= count($jours) ?>">
+    <div class="sem-planning__defile">
+      <div class="sem-planning__cadre"
+           style="--heures:<?= (int) ($planning['fin'] - $planning['debut']) ?>">
+
+        <div class="sem-planning__entetes">
+          <div class="sem-planning__coin"></div>
+          <?php foreach ($planning['jours'] as $unJour): ?>
+            <a class="sem-planning__jour<?= $unJour['cle'] === $aujourdhui ? ' sem-planning__jour--aujourdhui' : '' ?>"
+               href="<?= $lien('jour', $unJour['date']) ?>"
+               title="Voir le <?= e($unJour['date']->format('d/m/Y')) ?>">
+              <span class="sem-planning__jour-nom"><?= e(jours_semaine()[(int) $unJour['date']->format('N') - 1]) ?></span>
+              <span class="sem-planning__jour-numero"><?= (int) $unJour['date']->format('j') ?></span>
+            </a>
+          <?php endforeach; ?>
+        </div>
+
+        <?php if ($bandeau): ?>
+          <?php
+          /*
+           * Le bandeau du haut, colonne par colonne : ce qui n'a pas d'heure.
+           * Il n'apparaît que si la semaine en compte — une bande vide sur
+           * sept jours ne dirait rien et prendrait la place du reste.
+           */
+          ?>
+          <div class="sem-planning__bandeau">
+            <span class="sem-planning__etiquette">Journée</span>
+            <?php foreach ($planning['jours'] as $unJour): ?>
+              <div class="sem-planning__toutlejour">
+                <?php foreach ($unJour['journee'] as $evt): ?>
+                  <?= $puce($evt) ?>
+                <?php endforeach; ?>
+              </div>
+            <?php endforeach; ?>
           </div>
-        </section>
-        <?php
-        $curseur = $curseur->modify('+1 day');
-    endwhile;
-    ?>
+        <?php endif; ?>
+
+        <div class="sem-planning__grille">
+          <div class="sem-planning__heures">
+            <?php for ($h = $planning['debut']; $h < $planning['fin']; $h++): ?>
+              <div class="jour-planning__heure">
+                <span><?= str_pad((string) $h, 2, '0', STR_PAD_LEFT) ?>:00</span>
+              </div>
+            <?php endfor; ?>
+          </div>
+
+          <?php foreach ($planning['jours'] as $unJour): ?>
+            <div class="sem-planning__piste<?= $unJour['cle'] === $aujourdhui ? ' sem-planning__piste--aujourdhui' : '' ?>">
+              <?php for ($h = $planning['debut']; $h < $planning['fin']; $h++): ?>
+                <div class="jour-planning__ligne"></div>
+              <?php endfor; ?>
+
+              <?php if ($unJour['maintenant'] !== null): ?>
+                <div class="jour-planning__maintenant"
+                     style="--minute:<?= (float) $unJour['maintenant'] ?>"
+                     aria-hidden="true"></div>
+              <?php endif; ?>
+
+              <?php foreach ($unJour['blocs'] as $bloc): ?>
+                <?php
+                $evt = $bloc['evt'];
+                $couleur = couleur_evenement($evt);
+                $largeur = 100 / $bloc['colonnes'];
+                ?>
+                <a class="jour-planning__evt<?= $evt['termine'] ? ' jour-planning__evt--termine' : ''
+                   ?><?= $bloc['court'] ? ' jour-planning__evt--court' : '' ?>"
+                   href="<?= $destination($evt) ?>"
+                   style="--minute:<?= (float) $bloc['haut'] ?>;--duree:<?= (float) $bloc['hauteur'] ?>;
+                          --gauche:<?= round($bloc['colonne'] * $largeur, 3) ?>%;
+                          --largeur:<?= round($largeur, 3) ?>%;
+                          --teinte:<?= e($couleur) ?>"
+                   title="<?= e(libelle_type($evt) . ' · ' . $evt['titre']) ?>">
+                  <span class="jour-planning__evt-heure">
+                    <?= e(date('H:i', strtotime($evt['debut']))) ?>
+                  </span>
+                  <span class="jour-planning__evt-titre">
+                    <?= e(icone_evenement($evt)) ?> <?= e($evt['titre']) ?>
+                  </span>
+                </a>
+              <?php endforeach; ?>
+            </div>
+          <?php endforeach; ?>
+        </div>
+      </div>
+    </div>
   </div>
 
 <?php else: ?>

@@ -12,6 +12,11 @@ declare(strict_types=1);
  * Ici ne se trouve que le calcul : quelles heures montrer, où poser chaque
  * évènement, comment répartir ceux qui se recouvrent. Le dessin est affaire de
  * CSS, et la vue n'a qu'à traduire des nombres en styles.
+ *
+ * La semaine s'en sert aussi, sur sept colonnes. Une seule différence, mais
+ * elle compte : les heures montrées sont communes aux sept jours. Les calculer
+ * par jour donnerait des colonnes dont les lignes ne s'alignent pas, et une
+ * semaine illisible.
  */
 final class PlanningJour
 {
@@ -45,6 +50,67 @@ final class PlanningJour
      *               maintenant: ?float}
      */
     public static function disposer(array $evenements, DateTimeImmutable $jour): array
+    {
+        ['journee' => $journee, 'poses' => $poses] = self::trier($evenements, $jour);
+        [$debutH, $finH] = self::plage($poses);
+
+        return [
+            'journee'    => $journee,
+            'debut'      => $debutH,
+            'fin'        => $finH,
+            'blocs'      => self::empiler($poses, $debutH),
+            'maintenant' => self::maintenant($jour, $debutH, $finH),
+        ];
+    }
+
+    /**
+     * La semaine : les mêmes journées, mais toutes à la même échelle.
+     *
+     * @param array<string, array<int, array>> $parJour  les évènements, par date
+     * @param array<int, DateTimeImmutable>    $jours    les sept jours, dans l'ordre
+     * @return array{debut: int, fin: int, jours: array<int, array{
+     *             date: DateTimeImmutable, cle: string, journee: array<int, array>,
+     *             blocs: array<int, array>, maintenant: ?float}>}
+     */
+    public static function semaine(array $parJour, array $jours): array
+    {
+        $tries = [];
+        $toutes = [];
+
+        foreach ($jours as $jour) {
+            $cle = $jour->format('Y-m-d');
+            $trie = self::trier($parJour[$cle] ?? [], $jour);
+            $tries[] = ['date' => $jour, 'cle' => $cle] + $trie;
+            foreach ($trie['poses'] as $pose) {
+                $toutes[] = $pose;
+            }
+        }
+
+        // Une seule plage, calculée sur la semaine entière : sept colonnes dont
+        // les lignes d'heures ne tomberaient pas en face ne se lisent pas.
+        [$debutH, $finH] = self::plage($toutes);
+
+        $semaine = [];
+        foreach ($tries as $trie) {
+            $semaine[] = [
+                'date'       => $trie['date'],
+                'cle'        => $trie['cle'],
+                'journee'    => $trie['journee'],
+                'blocs'      => self::empiler($trie['poses'], $debutH),
+                'maintenant' => self::maintenant($trie['date'], $debutH, $finH),
+            ];
+        }
+
+        return ['debut' => $debutH, 'fin' => $finH, 'jours' => $semaine];
+    }
+
+    /**
+     * Sépare ce qui a une heure de ce qui n'en a pas.
+     *
+     * @return array{journee: array<int, array>,
+     *               poses: array<int, array{evt: array, depart: float, arrive: float}>}
+     */
+    private static function trier(array $evenements, DateTimeImmutable $jour): array
     {
         $minuit = $jour->setTime(0, 0);
         $minuitSuivant = $minuit->modify('+1 day');
@@ -84,15 +150,7 @@ final class PlanningJour
             ];
         }
 
-        [$debutH, $finH] = self::plage($poses);
-
-        return [
-            'journee'    => $journee,
-            'debut'      => $debutH,
-            'fin'        => $finH,
-            'blocs'      => self::empiler($poses, $debutH),
-            'maintenant' => self::maintenant($jour, $debutH, $finH),
-        ];
+        return ['journee' => $journee, 'poses' => $poses];
     }
 
     /** Les minutes écoulées entre deux instants. */
