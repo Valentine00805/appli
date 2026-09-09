@@ -74,8 +74,19 @@ $dateFin   = $edition ? substr((string) $evenement['fin'], 0, 10) : $dateDebut;
 $heureDebut = $edition ? substr((string) $evenement['debut'], 11, 5) : '08:00';
 $heureFin   = $edition ? substr((string) $evenement['fin'], 11, 5) : '09:00';
 $journee = $edition ? (int) $evenement['journee_entiere'] === 1 : false;
+/*
+ * Le type coché d'avance.
+ *
+ * À la création, le premier de la liste : on classe presque toujours ce qu'on
+ * écrit, et l'imposer là ne coûte qu'un clic à qui n'en veut pas.
+ *
+ * À la modification, celui de l'évènement — et rien s'il n'en a pas. En
+ * cocher un à sa place changerait sa couleur au premier enregistrement, ce
+ * qui arrive surtout aux évènements venus d'un agenda distant : ils n'ont
+ * jamais de type, et c'est la couleur de leur agenda qui les distingue.
+ */
 $typeActif = $edition ? entier_ou_null($evenement['type_id']) : $typeDefaut;
-if ($typeActif === null && $types !== []) {
+if (!$edition && $typeActif === null && $types !== []) {
     $typeActif = (int) $types[0]['id'];
 }
 $coursActif = $edition ? entier_ou_null($evenement['cours_id']) : entier_ou_null($_GET['cours'] ?? null);
@@ -110,6 +121,10 @@ $matiereActive = $edition ? entier_ou_null($evenement['matiere_id']) : null;
           </p>
         <?php else: ?>
           <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+            <label class="case">
+              <input type="radio" name="type_id" value=""<?= $typeActif === null ? ' checked' : '' ?>>
+              <span class="pastille pastille--muette">Aucun</span>
+            </label>
             <?php foreach ($types as $t): ?>
               <label class="case">
                 <input type="radio" name="type_id" value="<?= (int) $t['id'] ?>"<?= $typeActif === (int) $t['id'] ? ' checked' : '' ?>>
