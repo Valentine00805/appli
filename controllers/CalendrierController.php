@@ -3,6 +3,29 @@ declare(strict_types=1);
 
 final class CalendrierController
 {
+    /**
+     * Le pas de chaque répétition.
+     *
+     * Le mois se traite à part : « +1 month » sur un 31 janvier donne un
+     * 3 mars, ce que personne n'attend d'un rendez-vous mensuel.
+     */
+    private const RYTHMES = [
+        'jour'      => 1,
+        'semaine'   => 7,
+        'quinzaine' => 14,
+        'mois'      => 0,
+    ];
+
+    /**
+     * Ce qu'une série ne dépassera pas.
+     *
+     * Les occurrences sont écrites une par une : sans borne, « chaque jour »
+     * remplirait la base et l'agenda de quelqu'un pour l'éternité. Deux ans et
+     * deux cents occurrences couvrent une année scolaire avec de la marge.
+     */
+    private const SERIE_MAX = 200;
+    private const SERIE_HORIZON = '+2 years';
+
     public function index(): void
     {
         Auth::exiger();
@@ -97,6 +120,9 @@ final class CalendrierController
             'dateDefaut' => $dateDefaut,
             'types'      => TypesEvenementController::pourUtilisateur($userId),
             'typeDefaut' => $this->typeValide($userId, $_GET['type'] ?? null),
+            'serie'      => $evenement === null || $evenement['serie_id'] === null ? null
+                : Database::one('SELECT * FROM series_evenements WHERE id = ? AND user_id = ?',
+                    [(int) $evenement['serie_id'], $userId]),
         ], $evenement === null ? 'Nouvel événement' : 'Modifier l\'événement');
     }
 
@@ -112,25 +138,137 @@ final class CalendrierController
             redirect('evenements/nouveau');
         }
 
+        $quand = $this->repetitionSoumise($donnees['debut'], $donnees['fin']);
+        if (is_string($quand)) {
+            Session::flash('erreur', $quand);
+            redirect('evenements/nouveau');
+        }
+
+        $serieId = null;
+        if ($quand !== null) {
+            Database::run(
+                'INSERT INTO series_evenements (user_id, frequence, jusqu_au, occurrences)
+                 VALUES (?, ?, ?, ?)',
+                [$userId, $quand['frequence'], $quand['jusqu_au']->format('Y-m-d'), count($quand['dates'])]
+            );
+            $serieId = Database::dernierId();
+        }
+
+        foreach ($quand === null ? [null] : $quand['dates'] as $decalage) {
+            $this->poser($userId, $donnees, $serieId, $decalage);
+        }
+
+        $combien = $quand === null ? 1 : count($quand['dates']);
+        Session::flash('succes', $combien === 1
+            ? 'Événement ajouté au calendrier.'
+            : $combien . ' occurrences ajoutées au calendrier, jusqu’au '
+              . $quand['jusqu_au']->format('d/m/Y') . '.');
+        redirect('calendrier', ['date' => substr($donnees['debut'], 0, 10)]);
+    }
+
+    /**
+     * Écrit un évènement, éventuellement décalé d'une occurrence.
+     *
+     * @param ?array{debut: DateTimeImmutable, fin: DateTimeImmutable} $quand
+     */
+    private function poser(int $userId, array $donnees, ?int $serieId, ?array $quand): void
+    {
         Database::run(
-            'INSERT INTO evenements (user_id, matiere_id, cours_id, type_id, titre, description, lieu, debut, fin, journee_entiere)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            'INSERT INTO evenements (user_id, matiere_id, cours_id, serie_id, type_id, titre,
+                                     description, lieu, debut, fin, journee_entiere)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             [
                 $userId,
                 $donnees['matiere_id'],
                 $donnees['cours_id'],
+                $serieId,
                 $donnees['type_id'],
                 $donnees['titre'],
                 $donnees['description'],
                 $donnees['lieu'],
-                $donnees['debut'],
-                $donnees['fin'],
+                $quand === null ? $donnees['debut'] : $quand['debut']->format('Y-m-d H:i:s'),
+                $quand === null ? $donnees['fin'] : $quand['fin']->format('Y-m-d H:i:s'),
                 $donnees['journee_entiere'],
             ]
         );
+    }
 
-        Session::flash('succes', 'Événement ajouté au calendrier.');
-        redirect('calendrier', ['date' => substr($donnees['debut'], 0, 10)]);
+    /**
+     * La répétition demandée, dépliée en dates.
+     *
+     * @return null|string|array{frequence: string, jusqu_au: DateTimeImmutable, dates: array}
+     *         null si l'on ne répète pas, un message si la demande ne tient pas debout
+     */
+    private function repetitionSoumise(string $debut, string $fin): null|string|array
+    {
+        $frequence = (string) ($_POST['repetition'] ?? '');
+        if ($frequence === '' || $frequence === 'jamais') {
+            return null;
+        }
+        if (!isset(self::RYTHMES[$frequence])) {
+            return 'Cette façon de répéter n’existe pas.';
+        }
+
+        $borne = (string) ($_POST['repeter_jusqu_au'] ?? '');
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $borne) !== 1) {
+            return 'Indiquez jusqu’à quelle date l’évènement se répète.';
+        }
+
+        // La durée vient des dates déjà validées, et non d'une seconde lecture
+        // du formulaire : deux lectures finiraient par ne plus dire pareil.
+        $premier = new DateTimeImmutable($debut);
+        $duree = $premier->diff(new DateTimeImmutable($fin));
+        $jusqu = (new DateTimeImmutable($borne))->setTime(23, 59, 59);
+        if ($jusqu < $premier) {
+            return 'La répétition ne peut pas s’arrêter avant de commencer.';
+        }
+
+        $horizon = $premier->modify(self::SERIE_HORIZON);
+        if ($jusqu > $horizon) {
+            $jusqu = $horizon;
+        }
+
+        $dates = [];
+        $rang = 0;
+        while (count($dates) < self::SERIE_MAX) {
+            $quand = $this->occurrence($premier, $frequence, $rang++);
+            if ($quand === null) {
+                // Un 31 dans un mois qui n'en a pas : on passe, sans décaler
+                // le reste de la série sur un autre jour du mois.
+                if ($rang > self::SERIE_MAX * 2) {
+                    break;
+                }
+                continue;
+            }
+            if ($quand > $jusqu) {
+                break;
+            }
+            $dates[] = ['debut' => $quand, 'fin' => $quand->add($duree)];
+        }
+
+        return ['frequence' => $frequence, 'jusqu_au' => $jusqu, 'dates' => $dates];
+    }
+
+
+    /**
+     * La n-ième occurrence, ou null si elle n'existe pas ce mois-là.
+     *
+     * Un rendez-vous mensuel posé un 31 n'a pas lieu en février : il est sauté,
+     * plutôt que déplacé au 3 mars comme le ferait « +1 month ».
+     */
+    private function occurrence(DateTimeImmutable $premier, string $frequence, int $rang): ?DateTimeImmutable
+    {
+        if ($rang === 0) {
+            return $premier;
+        }
+        $jours = self::RYTHMES[$frequence];
+        if ($jours > 0) {
+            return $premier->modify('+' . ($jours * $rang) . ' days');
+        }
+
+        $vise = $premier->modify('+' . $rang . ' months');
+
+        return $vise->format('d') === $premier->format('d') ? $vise : null;
     }
 
     public function modifier(int $id): void
@@ -173,12 +311,36 @@ final class CalendrierController
         redirect('calendrier', ['date' => substr($donnees['debut'], 0, 10)]);
     }
 
+    /**
+     * Supprime un évènement, ou toute la série dont il fait partie.
+     *
+     * Une série de cent occurrences créée par erreur se défait mal une par
+     * une : c'est pour cela que le bouton existe. Il faut le demander
+     * explicitement — sans quoi supprimer un cours annulé effacerait l'année.
+     */
     public function supprimer(int $id): void
     {
         Auth::exiger();
         Session::verifierCsrf();
-        Database::run('DELETE FROM evenements WHERE id = ? AND user_id = ?', [$id, Auth::id()]);
-        Session::flash('succes', 'Événement supprimé.');
+        $userId = Auth::id();
+
+        $serieId = ($_POST['serie'] ?? '') === '1'
+            ? entier_ou_null(Database::valeur(
+                'SELECT serie_id FROM evenements WHERE id = ? AND user_id = ?', [$id, $userId]))
+            : null;
+
+        if ($serieId === null) {
+            Database::run('DELETE FROM evenements WHERE id = ? AND user_id = ?', [$id, $userId]);
+            Session::flash('succes', 'Événement supprimé.');
+            redirect('calendrier');
+        }
+
+        $combien = (int) Database::valeur(
+            'SELECT COUNT(*) FROM evenements WHERE serie_id = ? AND user_id = ?', [$serieId, $userId]);
+        Database::run('DELETE FROM evenements WHERE serie_id = ? AND user_id = ?', [$serieId, $userId]);
+        Database::run('DELETE FROM series_evenements WHERE id = ? AND user_id = ?', [$serieId, $userId]);
+
+        Session::flash('succes', $combien . ' occurrence' . ($combien > 1 ? 's supprimées' : ' supprimée') . '.');
         redirect('calendrier');
     }
 

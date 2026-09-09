@@ -46,8 +46,12 @@ final class Sauvegarde
             'matiere_id' => 'matieres', 'dossier_id' => 'dossiers']],
         'cours_tag'         => ['portee' => 'cours', 'liens' => ['cours_id' => 'cours', 'tag_id' => 'tags']],
         'fichiers'          => ['portee' => 'user',  'liens' => ['cours_id' => 'cours']],
+        // Avant les évènements : une occurrence restaurée sans sa série
+        // perdrait son rattachement, et le bouton « supprimer la série » avec.
+        'series_evenements' => ['portee' => 'user',  'liens' => []],
         'evenements'        => ['portee' => 'user',  'liens' => [
-            'matiere_id' => 'matieres', 'type_id' => 'types_evenement', 'cours_id' => 'cours']],
+            'matiere_id' => 'matieres', 'type_id' => 'types_evenement',
+            'cours_id' => 'cours', 'serie_id' => 'series_evenements']],
         'fiche_elements'    => ['portee' => 'user',  'liens' => [
             'cours_id' => 'cours', 'cible_cours_id' => 'cours', 'cible_evenement_id' => 'evenements']],
         'recurrences'       => ['portee' => 'user',  'liens' => ['categorie_id' => 'categories_budget']],

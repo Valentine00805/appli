@@ -98,6 +98,44 @@ $matiereActive = $edition ? entier_ou_null($evenement['matiere_id']) : null;
         </div>
       </div>
 
+      <?php
+      /*
+       * La répétition ne se propose qu'à la création.
+       *
+       * Les occurrences sont écrites une par une : modifier celle-ci ne touche
+       * pas aux autres, et rouvrir le choix ici laisserait croire le contraire.
+       */
+      ?>
+      <?php if ($edition === false): ?>
+        <div class="ligne-champs">
+          <div class="champ">
+            <label for="repetition">Répéter</label>
+            <select id="repetition" name="repetition">
+              <option value="jamais">Ne pas répéter</option>
+              <option value="jour">Chaque jour</option>
+              <option value="semaine">Chaque semaine</option>
+              <option value="quinzaine">Toutes les deux semaines</option>
+              <option value="mois">Chaque mois</option>
+            </select>
+          </div>
+
+          <div class="champ">
+            <label for="repeter_jusqu_au">Jusqu'au</label>
+            <input type="date" id="repeter_jusqu_au" name="repeter_jusqu_au">
+            <span class="champ__aide">Deux ans au plus, deux cents occurrences au maximum.</span>
+          </div>
+        </div>
+      <?php elseif ($serie !== null): ?>
+        <p class="champ__aide">
+          🔁 Cet évènement fait partie d'une série
+          <?= e(['jour' => 'quotidienne', 'semaine' => 'hebdomadaire',
+                 'quinzaine' => 'toutes les deux semaines', 'mois' => 'mensuelle'][$serie['frequence']] ?? '') ?>
+          de <?= (int) $serie['occurrences'] ?> occurrences, jusqu'au
+          <?= e(date('d/m/Y', strtotime((string) $serie['jusqu_au']))) ?>.
+          Ce que vous modifiez ici ne concerne que cette occurrence.
+        </p>
+      <?php endif; ?>
+
       <div class="champ">
         <label for="lieu">Lieu</label>
         <input type="text" id="lieu" name="lieu" maxlength="160" placeholder="Salle B203, amphi, à la maison…"
@@ -155,4 +193,25 @@ $matiereActive = $edition ? entier_ou_null($evenement['matiere_id']) : null;
     <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
     <button class="bouton bouton--danger" type="submit">Supprimer cet évènement</button>
   </form>
+
+  <?php
+  /*
+   * Défaire toute la série.
+   *
+   * Cent occurrences créées d'un mauvais réglage se reprennent mal une par
+   * une. Le bouton est distinct, et se confirme : supprimer un cours annulé
+   * ne doit pas pouvoir effacer l'année par mégarde.
+   */
+  ?>
+  <?php if ($serie !== null): ?>
+    <form method="post" action="<?= url('evenements/' . $evenement['id'] . '/supprimer') ?>"
+          data-confirmation="Supprimer les <?= (int) $serie['occurrences'] ?> occurrences de cette série ?"
+          style="margin-top:.5rem;max-width:320px">
+      <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
+      <input type="hidden" name="serie" value="1">
+      <button class="bouton bouton--danger bouton--petit" type="submit">
+        Supprimer toute la série (<?= (int) $serie['occurrences'] ?>)
+      </button>
+    </form>
+  <?php endif; ?>
 <?php endif; ?>

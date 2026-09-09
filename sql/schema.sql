@@ -127,12 +127,27 @@ CREATE TABLE IF NOT EXISTS `types_evenement` (
   CONSTRAINT `fk_types_user` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Les séries d'évènements répétés. (voir sql/migration-repetition.sql)
+CREATE TABLE IF NOT EXISTS `series_evenements` (
+  `id`          INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `user_id`     INT UNSIGNED NOT NULL,
+  `frequence`   ENUM('jour','semaine','quinzaine','mois') NOT NULL,
+  `jusqu_au`    DATE         NOT NULL,
+  `occurrences` SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+  `cree_le`     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_serie_user` (`user_id`),
+  CONSTRAINT `fk_serie_user` FOREIGN KEY (`user_id`)
+    REFERENCES `users`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS `evenements` (
   `id`          INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `user_id`     INT UNSIGNED NOT NULL,
   `matiere_id`  INT UNSIGNED DEFAULT NULL,
   `type_id`     INT UNSIGNED DEFAULT NULL,
   `cours_id`    INT UNSIGNED DEFAULT NULL,
+  `serie_id`    INT UNSIGNED DEFAULT NULL,
   `titre`       VARCHAR(200) NOT NULL,
   `description` TEXT         NULL,
   `lieu`        VARCHAR(160) NULL,
@@ -145,10 +160,12 @@ CREATE TABLE IF NOT EXISTS `evenements` (
   PRIMARY KEY (`id`),
   KEY `idx_evt_user_debut` (`user_id`, `debut`),
   KEY `idx_evt_type` (`type_id`),
+  KEY `idx_evt_serie` (`serie_id`),
   CONSTRAINT `fk_evt_user`    FOREIGN KEY (`user_id`)    REFERENCES `users`(`id`)    ON DELETE CASCADE,
   CONSTRAINT `fk_evt_matiere` FOREIGN KEY (`matiere_id`) REFERENCES `matieres`(`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_evt_type`    FOREIGN KEY (`type_id`)    REFERENCES `types_evenement`(`id`) ON DELETE SET NULL,
-  CONSTRAINT `fk_evt_cours`   FOREIGN KEY (`cours_id`)   REFERENCES `cours`(`id`)    ON DELETE SET NULL
+  CONSTRAINT `fk_evt_cours`   FOREIGN KEY (`cours_id`)   REFERENCES `cours`(`id`)    ON DELETE SET NULL,
+  CONSTRAINT `fk_evt_serie`   FOREIGN KEY (`serie_id`)   REFERENCES `series_evenements`(`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Budget : categories et operations, propres a chaque utilisateur.
