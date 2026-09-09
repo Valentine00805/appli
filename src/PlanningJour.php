@@ -13,10 +13,10 @@ declare(strict_types=1);
  * évènement, comment répartir ceux qui se recouvrent. Le dessin est affaire de
  * CSS, et la vue n'a qu'à traduire des nombres en styles.
  *
- * La grille ne montre que les heures qui servent : celles où il se passe
- * quelque chose, et pas les vingt-quatre. Une journée dont les trois quarts
- * sont vides oblige à faire défiler pour voir ce qu'elle contient, ce qui est
- * exactement ce qu'une vue d'ensemble doit éviter.
+ * Les heures montrées vont de six à vingt-et-une, et s'élargissent à ce qui
+ * déborde — un réveil à cinq heures, une soirée qui finit à minuit. Les
+ * vingt-quatre laisseraient un tiers de grille vide ; une plage qui collerait
+ * au contenu changerait de forme à chaque ajout.
  *
  * La semaine s'en sert aussi, sur sept colonnes. Une seule différence, mais
  * elle compte : les heures montrées sont communes aux sept jours. Les calculer
@@ -26,23 +26,17 @@ declare(strict_types=1);
 final class PlanningJour
 {
     /**
-     * Les heures montrées quand il n'y a rien à montrer.
+     * Les heures toujours montrées, quoi qu'il y ait ou n'y ait pas.
      *
-     * Huit heures à dix-huit : une journée plausible, sur laquelle poser un
-     * premier rendez-vous. Elle ne sert qu'à ça — dès qu'il y a quelque chose,
-     * ce sont les heures de ce quelque chose qu'on montre.
+     * Six heures à vingt-et-une : la journée où l'on pose des rendez-vous. Une
+     * grille qui se réduirait à ce qu'elle contient changerait de forme à
+     * chaque fois qu'on y ajoute quelque chose, et l'on ne saurait plus, d'un
+     * coup d'œil, si une case vide est un moment libre ou une heure qu'on ne
+     * montre pas. Cette plage est donc un plancher, jamais un plafond : ce qui
+     * tombe avant six heures ou après vingt-et-une l'élargit.
      */
-    private const DEBUT_A_VIDE = 8;
-    private const FIN_A_VIDE = 18;
-
-    /**
-     * Le nombre d'heures en dessous duquel on n'ira pas.
-     *
-     * Un seul rendez-vous d'une heure ne doit pas donner une grille d'une
-     * ligne : on ne verrait plus ni le matin ni le soir, et la journée n'aurait
-     * plus de forme. Six heures suffisent à en donner une.
-     */
-    private const HEURES_MINIMUM = 6;
+    private const DEBUT_MINIMUM = 6;
+    private const FIN_MINIMUM = 21;
 
     /**
      * La durée minimale qu'occupe un évènement, en minutes.
@@ -181,33 +175,15 @@ final class PlanningJour
      */
     private static function plage(array $poses): array
     {
-        if ($poses === []) {
-            return [self::DEBUT_A_VIDE, self::FIN_A_VIDE];
-        }
+        $debut = self::DEBUT_MINIMUM;
+        $fin = self::FIN_MINIMUM;
 
-        $debut = 24;
-        $fin = 0;
         foreach ($poses as $pose) {
             $debut = min($debut, (int) floor($pose['depart'] / 60));
             $fin = max($fin, (int) ceil($pose['arrive'] / 60));
         }
-        $debut = max(0, $debut);
-        $fin = min(24, max($fin, $debut + 1));
 
-        /*
-         * Trop courte, on l'étire — vers le bas d'abord, parce qu'une journée
-         * se lit du matin vers le soir et qu'on préfère voir arriver ce qui
-         * suit plutôt que revoir ce qui est passé.
-         */
-        while ($fin - $debut < self::HEURES_MINIMUM && ($debut > 0 || $fin < 24)) {
-            if ($fin < 24) {
-                $fin++;
-                continue;
-            }
-            $debut--;
-        }
-
-        return [$debut, $fin];
+        return [max(0, $debut), min(24, $fin)];
     }
 
     /**
