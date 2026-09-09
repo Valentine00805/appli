@@ -421,7 +421,7 @@ final class SynchroAgenda
                     mb_substr($lu['nom'], 0, 190),
                     mb_substr($lu['proprietaire'], 0, 190),
                     $partage, $principal, $principal,
-                    $this->couleurOuDefaut('', $deja + 1),
+                    Agenda::couleurOuDefaut('', $deja + 1),
                 ]
             );
         }
