@@ -13,6 +13,11 @@ declare(strict_types=1);
  * évènement, comment répartir ceux qui se recouvrent. Le dessin est affaire de
  * CSS, et la vue n'a qu'à traduire des nombres en styles.
  *
+ * La grille ne montre que les heures qui servent : celles où il se passe
+ * quelque chose, et pas les vingt-quatre. Une journée dont les trois quarts
+ * sont vides oblige à faire défiler pour voir ce qu'elle contient, ce qui est
+ * exactement ce qu'une vue d'ensemble doit éviter.
+ *
  * La semaine s'en sert aussi, sur sept colonnes. Une seule différence, mais
  * elle compte : les heures montrées sont communes aux sept jours. Les calculer
  * par jour donnerait des colonnes dont les lignes ne s'alignent pas, et une
@@ -21,14 +26,23 @@ declare(strict_types=1);
 final class PlanningJour
 {
     /**
-     * Les heures montrées quand rien n'oblige à en montrer d'autres.
+     * Les heures montrées quand il n'y a rien à montrer.
      *
-     * Sept heures à vingt-et-une : la journée où l'on pose des rendez-vous.
-     * Afficher les vingt-quatre donnerait une colonne vide sur un tiers de sa
-     * hauteur, et l'essentiel serait à faire défiler.
+     * Huit heures à dix-huit : une journée plausible, sur laquelle poser un
+     * premier rendez-vous. Elle ne sert qu'à ça — dès qu'il y a quelque chose,
+     * ce sont les heures de ce quelque chose qu'on montre.
      */
-    private const DEBUT_PAR_DEFAUT = 7;
-    private const FIN_PAR_DEFAUT = 21;
+    private const DEBUT_A_VIDE = 8;
+    private const FIN_A_VIDE = 18;
+
+    /**
+     * Le nombre d'heures en dessous duquel on n'ira pas.
+     *
+     * Un seul rendez-vous d'une heure ne doit pas donner une grille d'une
+     * ligne : on ne verrait plus ni le matin ni le soir, et la journée n'aurait
+     * plus de forme. Six heures suffisent à en donner une.
+     */
+    private const HEURES_MINIMUM = 6;
 
     /**
      * La durée minimale qu'occupe un évènement, en minutes.
@@ -167,15 +181,33 @@ final class PlanningJour
      */
     private static function plage(array $poses): array
     {
-        $debut = self::DEBUT_PAR_DEFAUT;
-        $fin = self::FIN_PAR_DEFAUT;
+        if ($poses === []) {
+            return [self::DEBUT_A_VIDE, self::FIN_A_VIDE];
+        }
 
+        $debut = 24;
+        $fin = 0;
         foreach ($poses as $pose) {
             $debut = min($debut, (int) floor($pose['depart'] / 60));
             $fin = max($fin, (int) ceil($pose['arrive'] / 60));
         }
+        $debut = max(0, $debut);
+        $fin = min(24, max($fin, $debut + 1));
 
-        return [max(0, $debut), min(24, max($fin, $debut + 1))];
+        /*
+         * Trop courte, on l'étire — vers le bas d'abord, parce qu'une journée
+         * se lit du matin vers le soir et qu'on préfère voir arriver ce qui
+         * suit plutôt que revoir ce qui est passé.
+         */
+        while ($fin - $debut < self::HEURES_MINIMUM && ($debut > 0 || $fin < 24)) {
+            if ($fin < 24) {
+                $fin++;
+                continue;
+            }
+            $debut--;
+        }
+
+        return [$debut, $fin];
     }
 
     /**

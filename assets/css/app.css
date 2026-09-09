@@ -2119,8 +2119,21 @@ summary.cal-volet__groupe:focus-visible {
    l'heure qu'il est. Changer cette seule valeur redimensionne la journée
    entière sans rien décaler. */
 
+/* La hauteur d'une heure s'ajuste à ce qui reste d'écran sous les entêtes :
+   une grille qu'il faut faire défiler pour voir la fin de la journée n'est
+   plus une vue d'ensemble. Elle se resserre donc quand les heures sont
+   nombreuses, jusqu'à un plancher en dessous duquel plus rien ne se lit —
+   passé celui-là, mieux vaut défiler que deviner.
+
+   « --hors-grille » est ce que prennent le bandeau du site, le titre de la
+   page, les filtres et l'entête des jours. Mesuré, pas deviné. */
 .jour-planning {
-  --heure: 3.4rem;
+  --heure-max: 3.4rem;
+  --heure-min: 2rem;
+  --hors-grille: 30rem;
+  --heure: clamp(var(--heure-min),
+                 (100svh - var(--hors-grille)) / var(--heures),
+                 var(--heure-max));
   --colonne-heures: 3.6rem;
   background: var(--carte, #fff);
   border: 1px solid var(--bordure, #e2e8f0);
@@ -2294,7 +2307,7 @@ summary.cal-volet__groupe:focus-visible {
    évènement passe sur la même ligne que son titre : la hauteur est ce qui
    manque le plus. */
 @media (max-width: 640px) {
-  .jour-planning { --heure: 3rem; --colonne-heures: 2.9rem; }
+  .jour-planning { --heure-max: 3rem; --colonne-heures: 2.9rem; --hors-grille: 37rem; }
   .jour-planning__evt { font-size: .72rem; padding: .15rem .3rem; }
 }
 /* --- La semaine en grille ------------------------------------------------
@@ -2304,7 +2317,12 @@ summary.cal-volet__groupe:focus-visible {
    titres jusqu'à l'illisible. */
 
 .sem-planning {
-  --heure: 3.1rem;
+  --heure-max: 3.1rem;
+  --heure-min: 1.9rem;
+  --hors-grille: 33rem;
+  --heure: clamp(var(--heure-min),
+                 (100svh - var(--hors-grille)) / var(--heures),
+                 var(--heure-max));
   --colonne-heures: 3.4rem;
   --jour-mini: 6.5rem;
   background: var(--carte, #fff);
@@ -2400,6 +2418,14 @@ summary.cal-volet__groupe:focus-visible {
 .sem-planning .jour-planning__evt--court { gap: .25rem; }
 
 @media (max-width: 640px) {
-  .sem-planning { --heure: 2.8rem; --colonne-heures: 3.2rem; --jour-mini: 5.2rem; }
+  .sem-planning { --heure-max: 2.8rem; --colonne-heures: 3.2rem; --jour-mini: 5.2rem;
+                  --hors-grille: 39rem; }
   .sem-planning__etiquette { font-size: .58rem; letter-spacing: 0; padding: .4rem .2rem; }
 }
+/* Autour de mille pixels, les filtres passent à la ligne et repoussent la
+   grille d'une soixantaine de pixels. */
+@media (min-width: 641px) and (max-width: 1024px) {
+  .jour-planning { --hors-grille: 37rem; }
+  .sem-planning  { --hors-grille: 37rem; }
+}
+
