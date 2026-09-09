@@ -134,6 +134,11 @@ final class CalendrierController
             'ouEnvoyer'  => Agenda::ouEnvoyer($userId),
             'vises'      => $evenement === null
                 ? [Agenda::DEFAUT] : Agenda::ciblesDe((int) $evenement['id']),
+            'venuDAilleurs' => $evenement !== null && $this->venuDAilleurs($userId, (int) $evenement['id']),
+            'copie'      => $evenement === null ? null
+                : Database::one('SELECT id, titre FROM evenements
+                                  WHERE copie_de = ? AND user_id = ?',
+                    [(int) $evenement['id'], $userId]),
         ], $evenement === null ? 'Nouvel événement' : 'Modifier l\'événement');
     }
 
@@ -613,6 +618,18 @@ final class CalendrierController
             redirect('calendrier', ['date' => substr($donnees['debut'], 0, 10)]);
         }
 
+        /*
+         * Un évènement venu de l'agenda de quelqu'un d'autre ne peut pas être
+         * envoyé ailleurs : il ne nous appartient pas. Cocher un de ses
+         * agendas en fait donc une copie, qui est à nous — l'original ne
+         * change ni de contenu, ni de couleur, ni de camp.
+         */
+        if ($this->venuDAilleurs($userId, $id)) {
+            $this->copier($userId, $id, $donnees);
+        } else {
+            Agenda::viser($id, $donnees['agendas']);
+        }
+
         Database::run(
             'UPDATE evenements
              SET matiere_id = ?, cours_id = ?, type_id = ?, titre = ?, description = ?, lieu = ?,
@@ -632,8 +649,6 @@ final class CalendrierController
                 $userId,
             ]
         );
-
-        Agenda::viser($id, $donnees['agendas']);
 
         /*
          * Un évènement venu d'un agenda distant y retourne modifié, si le
@@ -714,6 +729,85 @@ final class CalendrierController
         }
 
         return count($occurrences);
+    }
+
+    /**
+     * Cet évènement vient-il de l'agenda de quelqu'un d'autre ?
+     *
+     * Le lien de lecture le dit : un évènement écrit ici n'en a pas.
+     */
+    private function venuDAilleurs(int $userId, int $evenementId): bool
+    {
+        return Database::valeur(
+            'SELECT id FROM agenda_liens WHERE user_id = ? AND evenement_id = ?',
+            [$userId, $evenementId]
+        ) !== null;
+    }
+
+    /**
+     * Fait de cet évènement-là un évènement à soi.
+     *
+     * Une copie, pas un déplacement : l'original reste ce qu'il est, dans
+     * l'agenda de qui l'a écrit, avec sa couleur. La copie est un évènement
+     * ordinaire de l'application — elle prend la couleur de « Mes évènements »,
+     * se modifie, se supprime, et part dans les agendas qu'on lui a cochés.
+     *
+     * On ne la fait qu'une fois. Rouvrir l'original ne doit pas se solder par
+     * un second exemplaire à chaque enregistrement ; l'écran le dit et renvoie
+     * vers celle qui existe.
+     */
+    private function copier(int $userId, int $origine, array $donnees): void
+    {
+        if ($donnees['agendas'] === [Agenda::DEFAUT] && !$this->voulaitCopier()) {
+            return;
+        }
+
+        $deja = Database::valeur('SELECT id FROM evenements WHERE copie_de = ? AND user_id = ?',
+            [$origine, $userId]);
+        if ($deja !== null) {
+            return;
+        }
+
+        Database::run(
+            'INSERT INTO evenements (user_id, matiere_id, cours_id, copie_de, type_id, titre,
+                                     description, lieu, debut, fin, journee_entiere)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [
+                $userId,
+                $donnees['matiere_id'],
+                $donnees['cours_id'],
+                $origine,
+                $donnees['type_id'],
+                $donnees['titre'],
+                $donnees['description'],
+                $donnees['lieu'],
+                $donnees['debut'],
+                $donnees['fin'],
+                $donnees['journee_entiere'],
+            ]
+        );
+
+        $copie = Database::dernierId();
+        Agenda::viser($copie, $donnees['agendas']);
+
+        Session::flash('succes', 'Une copie de cet évènement est désormais la vôtre. '
+            . 'L’original reste celui de son agenda : ce que vous en ferez ici ne le touchera pas.');
+    }
+
+    /**
+     * A-t-on demandé la copie, ou seulement laissé les cases comme elles étaient ?
+     *
+     * Sur un évènement venu d'ailleurs, la case « Mes évènements » n'est pas
+     * cochée d'avance : rien n'est encore à nous. La cocher est donc une
+     * demande, au même titre que cocher un agenda — et il faut savoir la
+     * distinguer du cas où l'on n'a rien coché du tout, que « ciblesValides »
+     * ramène pareillement à « Mes évènements ».
+     */
+    private function voulaitCopier(): bool
+    {
+        $coches = $_POST['agendas'] ?? [];
+
+        return is_array($coches) && $coches !== [];
     }
 
     /**

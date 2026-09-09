@@ -152,6 +152,7 @@ CREATE TABLE IF NOT EXISTS `evenements` (
   `type_id`     INT UNSIGNED DEFAULT NULL,
   `cours_id`    INT UNSIGNED DEFAULT NULL,
   `serie_id`    INT UNSIGNED DEFAULT NULL,
+  `copie_de`        INT UNSIGNED NULL,
   `titre`       VARCHAR(200) NOT NULL,
   `description` TEXT         NULL,
   `lieu`        VARCHAR(160) NULL,

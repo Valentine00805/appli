@@ -3,6 +3,8 @@
  * @var ?array $evenement
  * @var array $ouEnvoyer  les agendas où cet évènement peut partir
  * @var array $vises  ceux qu'il vise déjà
+ * @var bool $venuDAilleurs  vient-il de l'agenda de quelqu'un d'autre ?
+ * @var ?array $copie  la copie à soi qu'on en a déjà faite
  * @var array $matieres, $coursListe, $types
  * @var string $dateDefaut
  * @var ?int $typeDefaut
@@ -312,15 +314,64 @@ $matiereActive = $edition ? entier_ou_null($evenement['matiere_id']) : null;
        * Ne sont proposés que les agendas où le fournisseur nous autorise à
        * écrire. Un agenda désigné puis disparu ne se coche plus : l'évènement
        * retombe alors sur « Mes évènements », ici comme à l'envoi.
+       *
+       * Un évènement venu de l'agenda de quelqu'un d'autre ne se range pas
+       * ainsi : il ne nous appartient pas, et rien de ce qu'on cocherait ne
+       * l'emmènerait nulle part. Les mêmes cases servent alors à en faire une
+       * copie qui, elle, sera à nous.
        */
       $connus = array_column($ouEnvoyer, 'cle');
-      $coches = array_values(array_filter(
+      $coches = $venuDAilleurs ? [] : array_values(array_filter(
           $vises,
           static fn (string $v): bool => $v === Agenda::DEFAUT || in_array($v, $connus, true)
       ));
-      if ($coches === []) { $coches = [Agenda::DEFAUT]; }
+      if (!$venuDAilleurs && $coches === []) { $coches = [Agenda::DEFAUT]; }
       ?>
-      <?php if ($ouEnvoyer !== []): ?>
+      <?php if ($ouEnvoyer !== [] && $venuDAilleurs && $copie !== null): ?>
+        <div class="carte">
+          <div class="champ">
+            <span class="legende">Cet évènement est celui d'un autre agenda</span>
+            <span class="champ__aide">
+              Vous en avez déjà fait une copie à vous :
+              <a href="<?= url('evenements/' . (int) $copie['id'] . '/modifier') ?>">
+                <?= e((string) $copie['titre']) ?></a>.
+              C'est là que les agendas se choisissent — ici, vous ne modifiez
+              que l'original, et il appartient à son agenda.
+            </span>
+          </div>
+        </div>
+
+      <?php elseif ($ouEnvoyer !== [] && $venuDAilleurs): ?>
+        <div class="carte">
+          <div class="champ">
+            <span class="legende">En faire un évènement à moi</span>
+
+            <label class="case" style="display:block">
+              <input type="checkbox" name="agendas[]" value="">
+              Mes évènements
+              <span class="discret">— le calendrier de l'application</span>
+            </label>
+
+            <?php foreach ($ouEnvoyer as $cal): ?>
+              <label class="case" style="display:block">
+                <input type="checkbox" name="agendas[]" value="<?= e($cal['cle']) ?>">
+                <?= e($cal['nom']) ?>
+                <span class="discret">
+                  (<?= e($cal['agenda']) ?>)<?= $cal['partage'] ? ' — partagé' : '' ?>
+                </span>
+              </label>
+            <?php endforeach; ?>
+
+            <span class="champ__aide">
+              Cet évènement vient de l'agenda de quelqu'un d'autre. Cocher
+              quelque chose ici en crée une copie qui sera la vôtre, et qui
+              partira dans les agendas cochés. L'original ne bouge pas : ni son
+              contenu, ni sa couleur.
+            </span>
+          </div>
+        </div>
+
+      <?php elseif ($ouEnvoyer !== []): ?>
         <div class="carte">
           <div class="champ">
             <span class="legende">Agendas où envoyer cet évènement</span>
