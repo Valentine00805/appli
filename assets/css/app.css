@@ -2086,3 +2086,31 @@ ul.apercu-liste--n2 { list-style-type: square; }
   color: var(--texte-doux, #64748b);
 }
 .cal-volet__groupe:first-of-type { margin-top: .4rem; }
+
+/* Le titre de section est aussi la poignée : curseur de clic, et le chevron
+   d'ouverture à la place du triangle que le navigateur pose d'office. */
+summary.cal-volet__groupe {
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+summary.cal-volet__groupe::-webkit-details-marker { display: none; }
+summary.cal-volet__groupe::before {
+  content: '';
+  width: .32rem;
+  height: .32rem;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(-45deg);
+  transition: transform .15s ease;
+}
+.cal-volet__section[open] > summary.cal-volet__groupe::before { transform: rotate(45deg); }
+summary.cal-volet__groupe:hover { color: var(--texte, #0f172a); }
+summary.cal-volet__groupe:focus-visible {
+  outline: 2px solid var(--accent, #4f46e5);
+  outline-offset: 2px;
+  border-radius: 3px;
+}

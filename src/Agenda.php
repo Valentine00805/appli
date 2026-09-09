@@ -56,7 +56,8 @@ final class Agenda
      * Une section vide ne s'affiche pas — un agenda relié dont aucun
      * calendrier n'est suivi n'a rien à montrer.
      *
-     * @return array<int, array{titre: string, sources: array<int, array{
+     * @return array<int, array{titre: string, cle: string, replie: bool,
+     *         sources: array<int, array{
      *             cle: string, nom: string, affiche: bool, couleur: string,
      *             partage: bool, agenda: string}>}>
      */
@@ -68,11 +69,15 @@ final class Agenda
         }
 
         $moi = Database::one(
-            'SELECT afficher_miens, couleur_miens FROM users WHERE id = ?', [$userId]);
+            'SELECT afficher_miens, couleur_miens, volet_replie FROM users WHERE id = ?', [$userId]);
+
+        $replies = self::sectionsRepliees($userId);
 
         $sections = [[
             // Le nom de l'application : ce qui est à soi porte son nom.
             'titre'   => (string) (Config::get('app', 'nom') ?? '') ?: 'Mes Cours',
+            'cle'     => SynchroAgenda::MIENS,
+            'replie'  => isset($replies[SynchroAgenda::MIENS]),
             'sources' => [[
                 'cle'     => SynchroAgenda::MIENS,
                 'nom'     => 'Mes évènements',
@@ -100,11 +105,59 @@ final class Agenda
                 ];
             }
             if ($sources !== []) {
-                $sections[] = ['titre' => $f->nom(), 'sources' => $sources];
+                $sections[] = [
+                    'titre'   => $f->nom(),
+                    'cle'     => $f->cle(),
+                    'replie'  => isset($replies[$f->cle()]),
+                    'sources' => $sources,
+                ];
             }
         }
 
         return $sections;
+    }
+
+    /**
+     * Les sections du volet que la personne a repliées.
+     *
+     * @return array<string, true>  par clef de section
+     */
+    public static function sectionsRepliees(int $userId): array
+    {
+        $brut = (string) (Database::valeur(
+            'SELECT volet_replie FROM users WHERE id = ?', [$userId]) ?? '');
+
+        $par = [];
+        foreach (explode(',', $brut) as $cle) {
+            $cle = trim($cle);
+            if ($cle !== '') {
+                $par[$cle] = true;
+            }
+        }
+
+        return $par;
+    }
+
+    /**
+     * Retient les sections repliées.
+     *
+     * Rien n'est vérifié contre la liste des agendas : une clef qui ne désigne
+     * plus rien — un agenda délié depuis — ne fait que ne rien replier. La
+     * borner suffit, pour que la colonne ne déborde pas.
+     *
+     * @param array<int, mixed> $cles
+     */
+    public static function replier(int $userId, array $cles): void
+    {
+        $garder = [];
+        foreach ($cles as $cle) {
+            if (is_string($cle) && preg_match('/^[a-z]{1,20}$/', $cle) === 1) {
+                $garder[$cle] = true;
+            }
+        }
+
+        Database::run('UPDATE users SET volet_replie = ? WHERE id = ?',
+            [$garder === [] ? null : mb_substr(implode(',', array_keys($garder)), 0, 190), $userId]);
     }
 
     /**

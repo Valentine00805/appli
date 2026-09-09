@@ -140,14 +140,25 @@ $puce = static function (array $evt) use ($destination): string {
    * et qu'on rouvre sans que rien n'ait à être retéléchargé.
    */
   ?>
-  <aside class="cal-volet" aria-label="Agendas affichés">
+  <aside class="cal-volet" aria-label="Agendas affichés"
+         data-volet="<?= e(url('calendrier/volet')) ?>">
     <form method="post" action="<?= url('calendrier/agendas') ?>" data-auto-envoi>
       <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
       <input type="hidden" name="retour" value="<?= e((string) ($_SERVER['REQUEST_URI'] ?? '')) ?>">
       <h2 class="cal-volet__titre">Agendas</h2>
+      <?php
+      /*
+       * Chaque section se plie. « details » le fait sans une ligne de script :
+       * replier reste possible quand JavaScript ne répond pas, et l'état
+       * s'écrit dans le HTML plutôt qu'après coup — pas de section qu'on
+       * verrait s'ouvrir puis se refermer au chargement.
+       */
+      ?>
       <?php foreach ($sources as $section): ?>
-      <h3 class="cal-volet__groupe"><?= e($section['titre']) ?></h3>
-      <ul class="cal-volet__liste">
+      <details class="cal-volet__section" data-section="<?= e($section['cle']) ?>"
+               <?= $section['replie'] ? '' : 'open' ?>>
+        <summary class="cal-volet__groupe"><?= e($section['titre']) ?></summary>
+        <ul class="cal-volet__liste">
         <?php foreach ($section['sources'] as $source): ?>
           <li>
             <label>
@@ -169,7 +180,8 @@ $puce = static function (array $evt) use ($destination): string {
                    aria-label="Couleur de <?= e($source['nom']) ?>">
           </li>
         <?php endforeach; ?>
-      </ul>
+        </ul>
+      </details>
       <?php endforeach; ?>
       <noscript>
         <button class="bouton bouton--secondaire bouton--petit" type="submit">Appliquer</button>

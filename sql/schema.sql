@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS `users` (
   `fuseau`        VARCHAR(64)  NOT NULL DEFAULT 'Europe/Paris',
   `afficher_miens` TINYINT(1)  NOT NULL DEFAULT 1,
   `couleur_miens`  VARCHAR(7)  NULL,
+  `volet_replie`    VARCHAR(190) NULL,
   `email`         VARCHAR(190) NOT NULL,
   `password_hash` VARCHAR(255) NOT NULL,
   `created_at`    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,

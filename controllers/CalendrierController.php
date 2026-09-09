@@ -103,6 +103,30 @@ final class CalendrierController
     }
 
     /** Formulaire de création (id null) ou de modification d'un événement. */
+    /**
+     * Retient les sections du volet qu'on a repliées.
+     *
+     * Appelée en arrière-plan quand on plie ou déplie. Sans elle, le
+     * formulaire du volet — qui se renvoie tout seul dès qu'on coche un agenda
+     * — rouvrirait au clic suivant ce qu'on venait de fermer.
+     *
+     * Sans JavaScript, plier fonctionne quand même : c'est le navigateur qui
+     * s'en charge. Seule la mémoire manque, et rien d'important n'en dépend.
+     */
+    public function volet(): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+
+        $replies = $_POST['replie'] ?? [];
+        Agenda::replier(Auth::id(), is_array($replies) ? $replies : []);
+
+        if (veut_du_json()) {
+            repondre_json(['fait' => true]);
+        }
+        repartir_vers('calendrier');
+    }
+
     public function formulaire(?int $id = null): void
     {
         Auth::exiger();

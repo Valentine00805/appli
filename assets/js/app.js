@@ -105,6 +105,44 @@
   // Les filtres s'appliquent dès qu'on change une valeur — listes déroulantes
   // comme cases à cocher, et sur chaque formulaire qui le demande, non plus
   // seulement le premier : le calendrier en a deux depuis le volet des agendas.
+  /*
+   * Le volet retient ses sections repliées.
+   *
+   * Sans cela, replier « Outlook » puis cocher un agenda le rouvrirait : le
+   * formulaire du volet se renvoie tout seul à chaque changement, et la page
+   * reviendrait dépliée. On prévient donc le serveur en arrière-plan, sans
+   * recharger — plier est un geste d'affichage, il ne doit rien coûter.
+   *
+   * Sans JavaScript, plier fonctionne quand même : « details » s'en charge.
+   * Seule la mémoire manque.
+   */
+  var volet = document.querySelector('.cal-volet');
+  if (volet) {
+    var sections = volet.querySelectorAll('.cal-volet__section');
+    var jeton = volet.querySelector('input[name="_csrf"]');
+
+    sections.forEach(function (section) {
+      section.addEventListener('toggle', function () {
+        if (!jeton) { return; }
+
+        var corps = new FormData();
+        corps.append('_csrf', jeton.value);
+        sections.forEach(function (autre) {
+          if (!autre.open) { corps.append('replie[]', autre.dataset.section || ''); }
+        });
+
+        fetch(volet.dataset.volet || '', {
+          method: 'POST',
+          body: corps,
+          headers: { 'Accept': 'application/json' },
+          credentials: 'same-origin'
+        }).catch(function () {
+          // Tant pis : la section reste pliée pour cette page-ci.
+        });
+      });
+    });
+  }
+
   document.querySelectorAll('[data-auto-envoi]').forEach(function (formulaire) {
     formulaire.querySelectorAll('select, input[type="checkbox"], input[type="color"]')
       .forEach(function (champ) {
