@@ -2119,21 +2119,15 @@ summary.cal-volet__groupe:focus-visible {
    l'heure qu'il est. Changer cette seule valeur redimensionne la journée
    entière sans rien décaler. */
 
-/* La hauteur d'une heure s'ajuste à ce qui reste d'écran sous les entêtes :
-   une grille qu'il faut faire défiler pour voir la fin de la journée n'est
-   plus une vue d'ensemble. Elle se resserre donc quand les heures sont
-   nombreuses, jusqu'à un plancher en dessous duquel plus rien ne se lit —
-   passé celui-là, mieux vaut défiler que deviner.
+/* Une heure vaut « --heure » de haut, et tout se mesure à partir de là : le
+   trait des heures, la position d'un évènement, sa hauteur, le repère de
+   l'heure qu'il est. Une hauteur fixe, choisie pour que le titre d'un
+   rendez-vous d'une heure tienne sur deux lignes — la faire varier avec
+   l'écran rendait la grille illisible dès qu'il y avait de quoi la remplir.
 
-   « --hors-grille » est ce que prennent le bandeau du site, le titre de la
-   page, les filtres et l'entête des jours. Mesuré, pas deviné. */
+   La grille est donc aussi haute qu'il faut, et c'est la page qui descend. */
 .jour-planning {
-  --heure-max: 3.4rem;
-  --heure-min: 1.6rem;
-  --hors-grille: 30rem;
-  --heure: clamp(var(--heure-min),
-                 (100svh - var(--hors-grille)) / var(--heures),
-                 var(--heure-max));
+  --heure: 3.4rem;
   --colonne-heures: 3.6rem;
   background: var(--carte, #fff);
   border: 1px solid var(--bordure, #e2e8f0);
@@ -2179,14 +2173,17 @@ summary.cal-volet__groupe:focus-visible {
 }
 
 /* La grille : une colonne d'heures, une piste où l'on pose. */
+/* Pas de hauteur déclarée : ce sont les lignes qui la donnent. En la fixant,
+   elle tombait à un pixel près de ce que les lignes occupaient vraiment, et le
+   reste débordait — assez pour faire naître une barre de défilement. */
 .jour-planning__grille {
   display: grid;
   grid-template-columns: var(--colonne-heures) 1fr;
-  height: calc(var(--heures) * var(--heure));
 }
 
 .jour-planning__heures { position: relative; }
 .jour-planning__heure {
+  box-sizing: border-box;
   height: var(--heure);
   position: relative;
   border-right: 1px solid var(--bordure, #e2e8f0);
@@ -2206,14 +2203,22 @@ summary.cal-volet__groupe:focus-visible {
 
 .jour-planning__piste { position: relative; }
 .jour-planning__ligne {
+  box-sizing: border-box;
+  position: relative;
   height: var(--heure);
   border-top: 1px solid var(--bordure, #e2e8f0);
 }
-/* La demie, en pointillé : assez pour situer, trop discret pour compter. */
+/* La demie, en pointillé : assez pour situer, trop discret pour compter.
+   Posée, pas poussée par une marge : la première ligne n'a pas de bordure
+   haute, si bien que cette marge s'échappait et descendait la ligne
+   elle-même d'une demi-heure — toute la grille était décalée sous ses
+   propres étiquettes. */
 .jour-planning__ligne::after {
   content: '';
-  display: block;
-  margin-top: calc(var(--heure) / 2 - 1px);
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
   border-top: 1px dashed color-mix(in srgb, var(--bordure, #e2e8f0) 60%, transparent);
 }
 .jour-planning__ligne:first-child { border-top: 0; }
@@ -2300,27 +2305,6 @@ summary.cal-volet__groupe:focus-visible {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-/* Grille serrée : l'horaire passe à côté du titre au lieu d'être au-dessus,
-   et le lieu s'efface. Ce n'est pas une préférence d'affichage mais une
-   nécessité — sous une trentaine de pixels, deux lignes n'entrent pas, et ce
-   qu'on rogne alors, c'est le nom de ce qu'on cherchait. */
-[data-serre] .jour-planning__evt {
-  flex-direction: row;
-  align-items: baseline;
-  gap: .3rem;
-  white-space: nowrap;
-  padding: .1rem .3rem;
-  line-height: 1.15;
-}
-[data-serre] .jour-planning__evt-heure { flex: 0 0 auto; }
-[data-serre] .jour-planning__evt-titre { overflow: hidden; text-overflow: ellipsis; }
-[data-serre] .jour-planning__evt-lieu { display: none; }
-/* Les étiquettes d'heures se resserrent avec les lignes : la première est
-   posée dans sa case et les suivantes chevauchent leur trait, mais de moins
-   haut — sinon les deux premières se touchent. */
-[data-serre] .jour-planning__heure span { top: -.4rem; font-size: .62rem; }
-[data-serre] .jour-planning__heure:first-child span { top: 0; }
-
 .jour-planning__evt--termine { opacity: .55; }
 .jour-planning__evt--termine .jour-planning__evt-titre { text-decoration: line-through; }
 
@@ -2328,7 +2312,7 @@ summary.cal-volet__groupe:focus-visible {
    évènement passe sur la même ligne que son titre : la hauteur est ce qui
    manque le plus. */
 @media (max-width: 640px) {
-  .jour-planning { --heure-max: 3rem; --colonne-heures: 2.9rem; --hors-grille: 37rem; }
+  .jour-planning { --heure: 3rem; --colonne-heures: 2.9rem; }
   .jour-planning__evt { font-size: .72rem; padding: .15rem .3rem; }
 }
 /* --- La semaine en grille ------------------------------------------------
@@ -2338,12 +2322,7 @@ summary.cal-volet__groupe:focus-visible {
    titres jusqu'à l'illisible. */
 
 .sem-planning {
-  --heure-max: 3.1rem;
-  --heure-min: 1.4rem;
-  --hors-grille: 33rem;
-  --heure: clamp(var(--heure-min),
-                 (100svh - var(--hors-grille)) / var(--heures),
-                 var(--heure-max));
+  --heure: 3.1rem;
   --colonne-heures: 3.4rem;
   --jour-mini: 6.5rem;
   background: var(--carte, #fff);
@@ -2351,7 +2330,11 @@ summary.cal-volet__groupe:focus-visible {
   border-radius: 12px;
   overflow: hidden;
 }
-.sem-planning__defile { overflow-x: auto; }
+/* En largeur seulement, et jamais en hauteur : une barre verticale ici
+   ferait défiler l'agenda dans son cadre, alors qu'on croit descendre la
+   page. « hidden » l'interdit — sans quoi « auto » en largeur la ferait
+   apparaître en hauteur aussi, pour quelques pixels de débordement. */
+.sem-planning__defile { overflow-x: auto; overflow-y: hidden; }
 .sem-planning__cadre { min-width: calc(var(--colonne-heures) + var(--jours) * var(--jour-mini)); }
 
 /* L'entête des jours, le bandeau et la grille partagent la même trame : la
@@ -2414,7 +2397,7 @@ summary.cal-volet__groupe:focus-visible {
 }
 .sem-planning__toutlejour:last-child { border-right: 0; }
 
-.sem-planning__grille { height: calc(var(--heures) * var(--heure)); }
+
 .sem-planning__heures { position: relative; }
 .sem-planning__piste {
   position: relative;
@@ -2439,14 +2422,6 @@ summary.cal-volet__groupe:focus-visible {
 .sem-planning .jour-planning__evt--court { gap: .25rem; }
 
 @media (max-width: 640px) {
-  .sem-planning { --heure-max: 2.8rem; --colonne-heures: 3.2rem; --jour-mini: 5.2rem;
-                  --hors-grille: 39rem; }
+  .sem-planning { --heure: 2.8rem; --colonne-heures: 3.2rem; --jour-mini: 5.2rem; }
   .sem-planning__etiquette { font-size: .58rem; letter-spacing: 0; padding: .4rem .2rem; }
 }
-/* Autour de mille pixels, les filtres passent à la ligne et repoussent la
-   grille d'une soixantaine de pixels. */
-@media (min-width: 641px) and (max-width: 1024px) {
-  .jour-planning { --hors-grille: 37rem; }
-  .sem-planning  { --hors-grille: 37rem; }
-}
-

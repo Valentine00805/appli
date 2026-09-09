@@ -217,8 +217,7 @@ $puce = static function (array $evt) use ($destination): string {
   $duJour = $parJour[$cle] ?? [];
   $planning = PlanningJour::disposer($duJour, $ancre);
   ?>
-  <section class="jour-planning<?= $cle === $aujourdhui ? ' jour-planning--aujourdhui' : '' ?>"
-           style="--heures:<?= (int) ($planning['fin'] - $planning['debut']) ?>">
+  <section class="jour-planning<?= $cle === $aujourdhui ? ' jour-planning--aujourdhui' : '' ?>">
     <header class="jour-planning__entete">
       <span class="jour-planning__titre">
         <?= $cle === $aujourdhui ? "Aujourd'hui" : e(ucfirst(date_fr($cle . ' 00:00:00', false))) ?>
@@ -243,7 +242,8 @@ $puce = static function (array $evt) use ($destination): string {
       </div>
     <?php endif; ?>
 
-    <div class="jour-planning__grille">
+    <div class="jour-planning__grille"
+         style="--heures:<?= (int) ($planning['fin'] - $planning['debut']) ?>">
       <div class="jour-planning__heures">
         <?php for ($h = $planning['debut']; $h < $planning['fin']; $h++): ?>
           <div class="jour-planning__heure">
@@ -362,10 +362,10 @@ $puce = static function (array $evt) use ($destination): string {
       $bandeau = $bandeau || $unJour['journee'] !== [];
   }
   ?>
-  <div class="sem-planning"
-       style="--jours:<?= count($jours) ?>;--heures:<?= (int) ($planning['fin'] - $planning['debut']) ?>">
+  <div class="sem-planning" style="--jours:<?= count($jours) ?>">
     <div class="sem-planning__defile">
-      <div class="sem-planning__cadre">
+      <div class="sem-planning__cadre"
+           style="--heures:<?= (int) ($planning['fin'] - $planning['debut']) ?>">
 
         <div class="sem-planning__entetes">
           <div class="sem-planning__coin"></div>
