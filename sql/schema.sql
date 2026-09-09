@@ -10,6 +10,8 @@ CREATE TABLE IF NOT EXISTS `users` (
   `id`            INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `nom`           VARCHAR(80)  NOT NULL,
   `fuseau`        VARCHAR(64)  NOT NULL DEFAULT 'Europe/Paris',
+  `afficher_miens` TINYINT(1)  NOT NULL DEFAULT 1,
+  `couleur_miens`  VARCHAR(7)  NULL,
   `email`         VARCHAR(190) NOT NULL,
   `password_hash` VARCHAR(255) NOT NULL,
   `created_at`    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -412,6 +414,7 @@ CREATE TABLE IF NOT EXISTS `fiche_elements` (
 -- les emporte pas.
 CREATE TABLE IF NOT EXISTS `agenda_comptes` (
   `user_id`        INT UNSIGNED NOT NULL,
+  `fournisseur`    VARCHAR(20)  NOT NULL DEFAULT 'microsoft',
   `compte`         VARCHAR(190) NULL,
   `jeton`          TEXT         NULL,
   `renouvellement` TEXT         NULL,
@@ -426,12 +429,10 @@ CREATE TABLE IF NOT EXISTS `agenda_comptes` (
   `synchro_le`     DATETIME     NULL,
   `envoi_le`       DATETIME     NULL,
   `empreinte_envoi` VARCHAR(64) NULL,
-  `afficher_miens`  TINYINT(1)  NOT NULL DEFAULT 1,
-  `couleur_miens`   VARCHAR(7)  NULL,
   `souci`          TEXT         NULL,
   `souci_le`       DATETIME     NULL,
   `cree_le`        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`user_id`),
+  PRIMARY KEY (`user_id`, `fournisseur`),
   CONSTRAINT `fk_outlook_user` FOREIGN KEY (`user_id`)
     REFERENCES `users`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -444,15 +445,16 @@ CREATE TABLE IF NOT EXISTS `agenda_comptes` (
 CREATE TABLE IF NOT EXISTS `agenda_liens` (
   `id`           INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `user_id`      INT UNSIGNED NOT NULL,
+  `fournisseur`  VARCHAR(20)  NOT NULL DEFAULT 'microsoft',
   `evenement_id` INT UNSIGNED NULL,
-  `outlook_id`   VARCHAR(255) NOT NULL,
+  `distant_id`   VARCHAR(255) NOT NULL,
   `calendrier`   CHAR(32)     NULL,
   -- La version connue de part et d'autre, pour repérer ce qui a bougé.
   `etag`         VARCHAR(255) NULL,
   `empreinte`    CHAR(32)     NULL,
   `maj_le`       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uniq_outlook_id` (`user_id`, `outlook_id`),
+  UNIQUE KEY `uniq_lien_distant` (`user_id`, `fournisseur`, `distant_id`),
   KEY `idx_outlook_evenement` (`evenement_id`),
   CONSTRAINT `fk_lien_user` FOREIGN KEY (`user_id`)
     REFERENCES `users`(`id`) ON DELETE CASCADE,
@@ -465,6 +467,7 @@ CREATE TABLE IF NOT EXISTS `agenda_liens` (
 CREATE TABLE IF NOT EXISTS `agenda_calendriers` (
   `id`            INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `user_id`       INT UNSIGNED NOT NULL,
+  `fournisseur`  VARCHAR(20)  NOT NULL DEFAULT 'microsoft',
   `calendrier_id` TEXT         NOT NULL,
   `empreinte`     CHAR(32)     NOT NULL,
   `nom`           VARCHAR(190) NULL,
@@ -476,7 +479,7 @@ CREATE TABLE IF NOT EXISTS `agenda_calendriers` (
   `couleur`       VARCHAR(7)   NULL,
   `vu_le`         DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uniq_calendrier` (`user_id`, `empreinte`),
+  UNIQUE KEY `uniq_calendrier` (`user_id`, `fournisseur`, `empreinte`),
   CONSTRAINT `fk_cal_user` FOREIGN KEY (`user_id`)
     REFERENCES `users`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -486,13 +489,15 @@ CREATE TABLE IF NOT EXISTS `agenda_calendriers` (
 CREATE TABLE IF NOT EXISTS `agenda_envois` (
   `id`         INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `user_id`    INT UNSIGNED NOT NULL,
+  `fournisseur`  VARCHAR(20)  NOT NULL DEFAULT 'microsoft',
   `sorte`      ENUM('evenement','tache') NOT NULL,
   `source_id`  INT UNSIGNED NOT NULL,
-  `outlook_id` VARCHAR(512) NOT NULL,
+  `distant_id` VARCHAR(512) NOT NULL,
+  `calendrier_id` TEXT       NULL,
   `empreinte`  CHAR(32)     NULL,
   `maj_le`     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uniq_envoi` (`user_id`, `sorte`, `source_id`),
+  UNIQUE KEY `uniq_envoi` (`user_id`, `fournisseur`, `sorte`, `source_id`),
   CONSTRAINT `fk_envoi_user` FOREIGN KEY (`user_id`)
     REFERENCES `users`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

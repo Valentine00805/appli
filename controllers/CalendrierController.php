@@ -61,7 +61,7 @@ final class CalendrierController
         // Elles suivent le sort de « Mes évènements » dans le volet : ce sont
         // les siennes, et les masquer à moitié n'aurait pas de sens.
         if ($matiereId === null && $typeId === null
-            && !SynchroAgenda::masques($userId)['miens']) {
+            && !Agenda::masques($userId)['miens']) {
             $evenements = array_merge($evenements, self::echeancesEntre($userId, $debut, $fin));
             usort($evenements, static fn (array $a, array $b): int => $a['debut'] <=> $b['debut']);
         }
@@ -78,7 +78,7 @@ final class CalendrierController
             'types'         => TypesEvenementController::pourUtilisateur($userId),
             'typeId'        => $typeId,
             'aVenir'        => $this->aVenir($userId, 6),
-            'sources'       => SynchroAgenda::sourcesDuCalendrier($userId),
+            'sources'       => Agenda::sourcesDuCalendrier($userId),
         ], 'Calendrier');
     }
 
@@ -94,10 +94,10 @@ final class CalendrierController
         Session::verifierCsrf();
 
         $coches = $_POST['sources'] ?? [];
-        SynchroAgenda::montrer(Auth::id(), is_array($coches) ? $coches : []);
+        Agenda::montrer(Auth::id(), is_array($coches) ? $coches : []);
 
         $couleurs = $_POST['couleur'] ?? [];
-        SynchroAgenda::colorier(Auth::id(), is_array($couleurs) ? $couleurs : []);
+        Agenda::colorier(Auth::id(), is_array($couleurs) ? $couleurs : []);
 
         repartir_vers('calendrier');
     }
@@ -791,7 +791,7 @@ final class CalendrierController
      */
     private static function masqueDesAgendas(int $userId, array &$params): string
     {
-        $masques = SynchroAgenda::masques($userId);
+        $masques = Agenda::masques($userId);
         $sql = '';
 
         if ($masques['miens']) {
@@ -953,7 +953,7 @@ final class CalendrierController
         // Les échéances encore ouvertes s'y ajoutent, sur un horizon large —
         // et suivent le sort de « Mes évènements », comme dans la grille.
         $horizon = (new DateTimeImmutable('today'))->modify('+1 year');
-        $echeances = SynchroAgenda::masques($userId)['miens']
+        $echeances = Agenda::masques($userId)['miens']
             ? []
             : self::echeancesEntre($userId, new DateTimeImmutable('today'), $horizon);
         foreach ($echeances as $echeance) {

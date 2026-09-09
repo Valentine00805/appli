@@ -1,13 +1,14 @@
 <?php
 /**
+ * @var Fournisseur $f    l'agenda montré par cette page
  * @var bool $configuree  l'installation a-t-elle une application Microsoft ?
  * @var ?array $compte    la ligne « agenda_comptes », ou null
  * @var bool $relie       ce compte-ci est-il relié ?
  * @var ?string $derniere la dernière synchronisation, ou null
- * @var int $combien      combien d'évènements viennent d'Outlook
+ * @var int $combien      combien d'évènements viennent de l'agenda
  * @var array $calendriers les calendriers du compte, tels qu'on les a vus
  * @var bool $partage     l'autorisation couvre-t-elle les calendriers partagés ?
- * @var int $envoyes      combien d'éléments d'ici vivent dans Outlook
+ * @var int $envoyes      combien d'éléments d'ici vivent dans l'agenda
  * @var ?string $envoiLe  le dernier envoi, ou null
  * @var ?array $souci     le dernier échec, s'il n'a pas été suivi d'une réussite
  * @var string $retour    l'adresse à déclarer chez Microsoft
@@ -19,7 +20,7 @@
     <p class="discret" style="margin-bottom:.35rem">
       <a href="<?= url('calendrier') ?>">← Calendrier</a>
     </p>
-    <h1>Calendrier Outlook</h1>
+    <h1>Calendrier <?= e($f->nom()) ?></h1>
     <p>Relier votre agenda Microsoft à celui de l'application.</p>
   </div>
 </div>
@@ -49,7 +50,7 @@ $aReautoriser = !($partage ?? true) && $partagesEnAttente > 0 && ($souci ?? null
   ?>
   <div class="vide">
     <span class="vide__icone">📆</span>
-    <p>La liaison avec Outlook n'est pas encore activée sur cette installation.</p>
+    <p>La liaison avec <?= e($f->nom()) ?> n'est pas encore activée sur cette installation.</p>
     <p class="champ__aide">
       Elle demande une inscription unique chez Microsoft, faite une fois pour
       toutes par la personne qui héberge l'application — pas par chacun.
@@ -91,7 +92,7 @@ $aReautoriser = !($partage ?? true) && $partagesEnAttente > 0 && ($souci ?? null
             <?php endif; ?>
             <?php if ($envoiLe !== null): ?>
               <br>Dernier envoi le <?= e(date('d/m/Y à H:i', strtotime($envoiLe))) ?>,
-              <?= $envoyes === 0 ? 'rien dans Outlook' : $envoyes . ' élément' . ($envoyes > 1 ? 's' : '') . ' dans « Mes Cours »' ?>.
+              <?= $envoyes === 0 ? 'rien dans ' . $f->nom() : $envoyes . ' élément' . ($envoyes > 1 ? 's' : '') . ' dans « Mes Cours »' ?>.
             <?php endif; ?>
           </p>
           <?php if ($aReautoriser): ?>
@@ -104,7 +105,7 @@ $aReautoriser = !($partage ?? true) && $partagesEnAttente > 0 && ($souci ?? null
               réautorisez l'application — le bouton est plus bas.
             </p>
           <?php endif; ?>
-          <form method="post" action="<?= url('outlook/synchroniser') ?>">
+          <form method="post" action="<?= url('agenda/' . $f->cle() . '/synchroniser') ?>">
             <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
             <input type="hidden" name="retour" value="<?= e((string) ($_SERVER['REQUEST_URI'] ?? '')) ?>">
             <button class="bouton" type="submit">
@@ -118,30 +119,30 @@ $aReautoriser = !($partage ?? true) && $partagesEnAttente > 0 && ($souci ?? null
             message en cas de refus.
           </p>
           <p class="champ__aide">
-            <strong>D'Outlook vers ici :</strong> les calendriers cochés
+            <strong>De <?= e($f->nom()) ?> vers ici :</strong> les calendriers cochés
             plus bas, du mois écoulé à l'année à venir, séries récurrentes
             comprises — et « Mes Cours » lui-même, pour que ce que vous y
-            créez depuis Outlook arrive jusqu'ici. Outlook fait foi : un
+            créez depuis <?= e($f->nom()) ?> arrive jusqu'ici. <?= e($f->nom()) ?> fait foi : un
             évènement importé que vous modifiez ici sera repris tel qu'il est
-            là-bas. Le supprimer ici l'efface aussi dans Outlook, mais
+            là-bas. Le supprimer ici l'efface aussi dans <?= e($f->nom()) ?>, mais
             <strong>uniquement dans « Mes Cours » et dans votre calendrier
             principal</strong> : venu d'un agenda que quelqu'un vous a partagé,
             il est seulement retiré d'ici, et reviendra à la lecture suivante.
             L'application n'efface rien chez les autres.
           </p>
           <p class="champ__aide">
-            <strong>D'ici vers Outlook :</strong> vos évènements et les
+            <strong>D'ici vers <?= e($f->nom()) ?> :</strong> vos évènements et les
             échéances de vos tâches non faites, dans un calendrier
             <strong>« Mes Cours »</strong> que l'application crée chez
             Microsoft. Elle n'écrit que là : votre agenda existant n'est
             jamais touché, et vous pouvez masquer ou supprimer ce calendrier
-            depuis Outlook. Une tâche cochée quitte l'agenda, un évènement
+            depuis <?= e($f->nom()) ?>. Une tâche cochée quitte l'agenda, un évènement
             supprimé ici disparaît là-bas.
           </p>
           <div class="outlook-defaire">
             <?php if ($combien > 0): ?>
-              <form method="post" action="<?= url('outlook/retirer') ?>"
-                    data-confirmation="Retirer du calendrier les évènements venus d'Outlook ? Ils restent dans votre agenda Microsoft.">
+              <form method="post" action="<?= url('agenda/' . $f->cle() . '/retirer') ?>"
+                    data-confirmation="Retirer du calendrier les évènements venus <?= e(de_agenda($f->nom())) ?> ? Ils restent dans votre agenda Microsoft.">
                 <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
                 <button class="bouton bouton--secondaire bouton--petit" type="submit">
                   Retirer les évènements importés
@@ -149,16 +150,16 @@ $aReautoriser = !($partage ?? true) && $partagesEnAttente > 0 && ($souci ?? null
               </form>
             <?php endif; ?>
             <?php if ($envoyes > 0): ?>
-              <form method="post" action="<?= url('outlook/retirer-envoi') ?>"
-                    data-confirmation="Retirer d'Outlook ce que l'application y a mis ? Vos évènements et vos tâches restent ici, intacts.">
+              <form method="post" action="<?= url('agenda/' . $f->cle() . '/retirer-envoi') ?>"
+                    data-confirmation="Retirer <?= e(de_agenda($f->nom())) ?> ce que l'application y a mis ? Vos évènements et vos tâches restent ici, intacts.">
                 <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
                 <button class="bouton bouton--secondaire bouton--petit" type="submit">
-                  Retirer mes évènements d'Outlook
+                  Retirer mes évènements <?= e(de_agenda($f->nom())) ?>
                 </button>
               </form>
             <?php endif; ?>
-            <form method="post" action="<?= url('outlook/deconnexion') ?>"
-                  data-confirmation="Délier votre compte Outlook ? L'application n'accèdera plus à votre agenda, et les évènements importés quitteront le calendrier.">
+            <form method="post" action="<?= url('agenda/' . $f->cle() . '/deconnexion') ?>"
+                  data-confirmation="Délier votre compte <?= e($f->nom()) ?> ? L'application n'accèdera plus à votre agenda, et les évènements importés quitteront le calendrier.">
               <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
               <button class="bouton bouton--danger bouton--petit" type="submit">Délier mon compte</button>
             </form>
@@ -168,12 +169,12 @@ $aReautoriser = !($partage ?? true) && $partagesEnAttente > 0 && ($souci ?? null
         <section class="carte">
           <h2 style="margin-top:0">Relier votre compte</h2>
           <p>
-            Vos rendez-vous et vos cours Outlook rejoindront le calendrier de
+            Vos rendez-vous et vos cours <?= e($f->nom()) ?> rejoindront le calendrier de
             l'application, et vos évènements d'ici rejoindront le vôtre.
           </p>
-          <form method="post" action="<?= url('outlook/connexion') ?>">
+          <form method="post" action="<?= url('agenda/' . $f->cle() . '/connexion') ?>">
             <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
-            <button class="bouton" type="submit">Connecter mon compte Outlook</button>
+            <button class="bouton" type="submit">Connecter mon compte <?= e($f->nom()) ?></button>
           </form>
           <p class="champ__aide" style="margin-top:.6rem">
             Microsoft vous demandera de choisir votre compte et d'accepter
@@ -206,7 +207,7 @@ $aReautoriser = !($partage ?? true) && $partagesEnAttente > 0 && ($souci ?? null
             est refusé, réautorisez : rien n'est perdu, ni votre liaison, ni
             vos évènements.
           </p>
-          <form method="post" action="<?= url('outlook/connexion') ?>" style="margin-bottom:.9rem">
+          <form method="post" action="<?= url('agenda/' . $f->cle() . '/connexion') ?>" style="margin-bottom:.9rem">
             <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
             <button class="bouton" type="submit">Réautoriser l'application</button>
           </form>
@@ -218,7 +219,7 @@ $aReautoriser = !($partage ?? true) && $partagesEnAttente > 0 && ($souci ?? null
             Microsoft la liste complète pour choisir les autres.
           </p>
         <?php else: ?>
-          <form method="post" action="<?= url('outlook/suivre') ?>">
+          <form method="post" action="<?= url('agenda/' . $f->cle() . '/suivre') ?>">
             <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
             <ul class="outlook-calendriers">
               <?php foreach ($calendriers as $cal): ?>
@@ -241,7 +242,7 @@ $aReautoriser = !($partage ?? true) && $partagesEnAttente > 0 && ($souci ?? null
           </form>
         <?php endif; ?>
 
-        <form method="post" action="<?= url('outlook/calendriers') ?>" style="margin-top:.7rem">
+        <form method="post" action="<?= url('agenda/' . $f->cle() . '/calendriers') ?>" style="margin-top:.7rem">
           <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
           <button class="bouton bouton--secondaire bouton--petit" type="submit">
             <?= $calendriers === [] ? 'Voir mes calendriers' : 'Actualiser la liste' ?>
@@ -279,7 +280,7 @@ $aReautoriser = !($partage ?? true) && $partagesEnAttente > 0 && ($souci ?? null
         <p class="champ__aide">
           Une seule inscription chez Microsoft sert à tout le monde. Elle se
           règle dans <code>config/parametres.php</code>, section
-          <code>outlook</code>, qui ne va pas au dépôt.
+          <code><?= e($f->cle() === 'microsoft' ? 'outlook' : $f->cle()) ?></code>, qui ne va pas au dépôt.
         </p>
         <ol class="outlook-marche">
           <li>Sur <a href="https://entra.microsoft.com" target="_blank" rel="noopener">entra.microsoft.com</a> :
@@ -290,11 +291,11 @@ $aReautoriser = !($partage ?? true) && $partagesEnAttente > 0 && ($souci ?? null
               <br><code class="outlook-retour"><?= e($retour) ?></code></li>
           <li>Plateforme : <strong>Applications mobiles et de bureau</strong> en local, sans secret ;
               <strong>Web</strong> une fois en ligne, avec un secret client à recopier dans
-              <code>outlook.secret</code>.</li>
-          <li>Reportez l'<strong>ID d'application (client)</strong> dans <code>outlook.client_id</code>.</li>
+              <code><?= e($f->cle() === 'microsoft' ? 'outlook' : $f->cle()) ?>.secret</code>.</li>
+          <li>Reportez l'<strong>ID d'application (client)</strong> dans <code><?= e($f->cle() === 'microsoft' ? 'outlook' : $f->cle()) ?>.client_id</code>.</li>
         </ol>
         <p class="champ__aide">
-          En ligne, inscrivez aussi <code>outlook.adresse_retour</code> en clair :
+          En ligne, inscrivez aussi <code><?= e($f->cle() === 'microsoft' ? 'outlook' : $f->cle()) ?>.adresse_retour</code> en clair :
           ce qu'un navigateur annonce comme hôte ne se croit pas sur parole, et
           cette adresse doit correspondre à celle déclarée chez Microsoft.
         </p>

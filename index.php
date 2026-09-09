@@ -35,6 +35,10 @@ require __DIR__ . '/src/ClasseurLecteur.php';
 require __DIR__ . '/src/ReleveExcel.php';
 require __DIR__ . '/src/TextePdf.php';
 require __DIR__ . '/src/GenerateurCartes.php';
+require __DIR__ . '/src/Fournisseur.php';
+require __DIR__ . '/src/FournisseurMicrosoft.php';
+require __DIR__ . '/src/FournisseurGoogle.php';
+require __DIR__ . '/src/Agenda.php';
 require __DIR__ . '/src/LiaisonAgenda.php';
 require __DIR__ . '/src/SynchroAgenda.php';
 require __DIR__ . '/src/EnvoiAgenda.php';
@@ -52,7 +56,7 @@ require __DIR__ . '/controllers/TagsController.php';
 require __DIR__ . '/controllers/OrganisationController.php';
 require __DIR__ . '/controllers/BudgetController.php';
 require __DIR__ . '/controllers/PrevisionsController.php';
-require __DIR__ . '/controllers/OutlookController.php';
+require __DIR__ . '/controllers/AgendaController.php';
 require __DIR__ . '/controllers/ImportController.php';
 require __DIR__ . '/controllers/RemboursementsController.php';
 require __DIR__ . '/controllers/SauvegardeController.php';
@@ -125,6 +129,21 @@ Config::charger([
      * ne se croit pas sur parole, et cette adresse doit correspondre au mot
      * près à celle déclarée chez Microsoft.
      */
+    /*
+     * La liaison avec Google Agenda.
+     *
+     * Même principe qu'Outlook : un projet Google Cloud inscrit une fois
+     * pour toutes, et chacun y relie son compte. Une différence tout de
+     * même — Google exige le secret client même en local, pour un
+     * identifiant de type « application web ».
+     *
+     * L'adresse à déclarer chez Google est « agenda/google/retour ».
+     */
+    'google' => [
+        'client_id'      => '',
+        'secret'         => '',
+        'adresse_retour' => '',
+    ],
     'outlook' => [
         'client_id'      => '',
         'locataire'      => 'common',
@@ -166,15 +185,26 @@ $routes = [
     ['GET',  'compte',                    [AuthController::class, 'compte']],
     ['POST', 'compte/mot-de-passe',       [AuthController::class, 'changerMotDePasse']],
     ['POST', 'compte/fuseau',            [AuthController::class, 'changerFuseau']],
-    ['GET',  'outlook',                    [OutlookController::class, 'index']],
-    ['POST', 'outlook/connexion',          [OutlookController::class, 'connexion']],
-    ['GET',  'outlook/retour',             [OutlookController::class, 'retour']],
-    ['POST', 'outlook/synchroniser',       [OutlookController::class, 'synchroniser']],
-    ['POST', 'outlook/calendriers',        [OutlookController::class, 'calendriers']],
-    ['POST', 'outlook/suivre',             [OutlookController::class, 'suivre']],
-    ['POST', 'outlook/retirer',            [OutlookController::class, 'retirer']],
-    ['POST', 'outlook/retirer-envoi',      [OutlookController::class, 'retirerEnvoi']],
-    ['POST', 'outlook/deconnexion',        [OutlookController::class, 'deconnexion']],
+    /*
+     * Les agendas distants. Le fournisseur est dans l'adresse : chacun a
+     * ainsi sa page et son retour d'autorisation, sans une ligne de plus.
+     */
+    ['GET',  'agenda/{mot}',               [AgendaController::class, 'index']],
+    ['POST', 'agenda/{mot}/connexion',     [AgendaController::class, 'connexion']],
+    ['GET',  'agenda/{mot}/retour',        [AgendaController::class, 'retour']],
+    ['POST', 'agenda/{mot}/synchroniser',  [AgendaController::class, 'synchroniser']],
+    ['POST', 'agenda/{mot}/calendriers',   [AgendaController::class, 'calendriers']],
+    ['POST', 'agenda/{mot}/suivre',        [AgendaController::class, 'suivre']],
+    ['POST', 'agenda/{mot}/retirer',       [AgendaController::class, 'retirer']],
+    ['POST', 'agenda/{mot}/retirer-envoi', [AgendaController::class, 'retirerEnvoi']],
+    ['POST', 'agenda/{mot}/deconnexion',   [AgendaController::class, 'deconnexion']],
+    /*
+     * Les adresses d'avant la refonte. Celle du retour n'est pas une
+     * commodité : elle est déclarée chez Microsoft, et la changer
+     * obligerait chacun à retoucher son inscription.
+     */
+    ['GET',  'outlook',                    [AgendaController::class, 'ancienLien']],
+    ['GET',  'outlook/retour',             [AgendaController::class, 'retourMicrosoft']],
 
     ['GET',  'compte/sauvegarde',           [SauvegardeController::class, 'index']],
     ['GET',  'compte/sauvegarde/export',    [SauvegardeController::class, 'exporter']],
@@ -335,13 +365,30 @@ foreach ($routes as [$methode, $motif, $action]) {
     if ($methode !== METHODE) {
         continue;
     }
-    $parties = array_map(static fn (string $p): string => preg_quote($p, '#'), explode('{id}', $motif));
-    $regex = '#^' . implode('(\d+)', $parties) . '$#';
+    /*
+     * Deux sortes de trous dans un motif : « {id} » pour un entier,
+     * « {mot} » pour un nom sans accent — le fournisseur d'un agenda.
+     * Chacun garde sa nature jusqu'à l'action : un identifiant reste un
+     * entier, un mot reste une chaîne.
+     */
+    $sortes = [];
+    $regex = '#^';
+    foreach (preg_split('#(\{id\}|\{mot\})#', $motif, -1, PREG_SPLIT_DELIM_CAPTURE) as $bout) {
+        if ($bout === '{id}')  { $regex .= '(\d+)';   $sortes[] = 'id';  continue; }
+        if ($bout === '{mot}') { $regex .= '([a-z]+)'; $sortes[] = 'mot'; continue; }
+        $regex .= preg_quote($bout, '#');
+    }
+    $regex .= '$#';
+
     if (preg_match($regex, ROUTE, $captures) === 1) {
         array_shift($captures);
+        $arguments = [];
+        foreach ($captures as $rang => $valeur) {
+            $arguments[] = ($sortes[$rang] ?? 'id') === 'id' ? (int) $valeur : $valeur;
+        }
         [$classe, $methodeAction] = $action;
         $controleur = new $classe();
-        $controleur->$methodeAction(...array_map('intval', $captures));
+        $controleur->$methodeAction(...$arguments);
         exit;
     }
 }

@@ -20,6 +20,24 @@ declare(strict_types=1);
  */
 final class EnvoiAgenda
 {
+    /** @var array<string, self> une instance par agenda, pas davantage */
+    private static array $instances = [];
+
+    private function __construct(private readonly Fournisseur $f)
+    {
+    }
+
+    public static function pour(Fournisseur $f): self
+    {
+        return self::$instances[$f->cle()] ??= new self($f);
+    }
+
+    /** L'agenda distant auquel cette synchronisation s'adresse. */
+    private function lien(): LiaisonAgenda
+    {
+        return LiaisonAgenda::pour($this->f);
+    }
+
     /** Le nom du calendrier créé chez Microsoft. */
     private const CALENDRIER = 'Mes Cours';
 
@@ -28,7 +46,7 @@ final class EnvoiAgenda
     private const APRES = '+12 months';
 
     /** Le fuseau de la personne, réglé au démarrage. */
-    private static function fuseau(): string
+    private function fuseau(): string
     {
         return date_default_timezone_get();
     }
@@ -42,14 +60,14 @@ final class EnvoiAgenda
      * @return array{crees: int, majs: int, retires: int, inchanges: int}
      * @throws RuntimeException si le compte n'est pas relié, ou si Microsoft refuse
      */
-    public static function pousser(int $userId): array
+    public function pousser(int $userId): array
     {
-        $calendrier = self::calendrierDEnvoi($userId);
+        $calendrier = $this->calendrierDEnvoi($userId);
 
-        [$depuis, $jusqua] = self::fenetre();
+        [$depuis, $jusqua] = $this->fenetre();
 
-        $aEnvoyer = self::aEnvoyer($userId, $depuis, $jusqua);
-        $partis = self::partis($userId);
+        $aEnvoyer = $this->aEnvoyer($userId, $depuis, $jusqua);
+        $partis = $this->partis($userId);
 
         $bilan = ['crees' => 0, 'majs' => 0, 'retires' => 0, 'inchanges' => 0];
 
@@ -58,7 +76,7 @@ final class EnvoiAgenda
             $connu = $partis[$cle] ?? null;
 
             if ($connu === null) {
-                self::creer($userId, $calendrier, $quoi, $empreinte);
+                $this->creer($userId, $calendrier, $quoi, $empreinte);
                 $bilan['crees']++;
                 continue;
             }
@@ -67,7 +85,8 @@ final class EnvoiAgenda
                 continue;
             }
 
-            self::modifier($userId, $quoi, $empreinte, (string) $connu['distant_id']);
+            $this->modifier($userId, $quoi, $empreinte, (string) $connu['distant_id'],
+                (string) ($connu['calendrier_id'] ?? $calendrier));
             $bilan['majs']++;
         }
 
@@ -75,24 +94,26 @@ final class EnvoiAgenda
             if (isset($aEnvoyer[$cle])) {
                 continue;
             }
-            self::effacer($userId, (string) $connu['distant_id']);
-            Database::run('DELETE FROM agenda_envois WHERE user_id = ? AND id = ?',
-                [$userId, (int) $connu['id']]);
+            $this->effacer($userId, (string) $connu['distant_id'],
+                (string) ($connu['calendrier_id'] ?? $calendrier));
+            Database::run('DELETE FROM agenda_envois WHERE user_id = ? AND fournisseur = ? AND id = ?',
+                [$userId, $this->f->cle(), (int) $connu['id']]);
             $bilan['retires']++;
         }
 
         Database::run(
-            'UPDATE agenda_comptes SET envoi_le = NOW(), empreinte_envoi = ? WHERE user_id = ?',
-            [self::signature($userId), $userId]
+            'UPDATE agenda_comptes SET envoi_le = NOW(), empreinte_envoi = ?
+              WHERE user_id = ? AND fournisseur = ?',
+            [$this->signature($userId), $userId, $this->f->cle()]
         );
 
         return $bilan;
     }
 
     /** La période envoyée : la même partout, sans quoi rien ne concorderait. */
-    private static function fenetre(): array
+    private function fenetre(): array
     {
-        $maintenant = new DateTimeImmutable('now', new DateTimeZone(self::fuseau()));
+        $maintenant = new DateTimeImmutable('now', new DateTimeZone($this->fuseau()));
 
         return [
             $maintenant->modify(self::AVANT)->setTime(0, 0),
@@ -112,16 +133,16 @@ final class EnvoiAgenda
      * Deux agrégats sur des index existants : c'est assez léger pour être
      * demandé à chaque page.
      */
-    public static function aPousser(int $userId): bool
+    public function aPousser(int $userId): bool
     {
-        if (!LiaisonAgenda::configuree() || !LiaisonAgenda::relie($userId)) {
+        if (!$this->lien()->configure() || !$this->lien()->relie($userId)) {
             return false;
         }
 
         $connue = Database::valeur(
-            'SELECT empreinte_envoi FROM agenda_comptes WHERE user_id = ?', [$userId]);
+            'SELECT empreinte_envoi FROM agenda_comptes WHERE user_id = ? AND fournisseur = ?', [$userId, $this->f->cle()]);
 
-        return (string) $connue !== self::signature($userId);
+        return (string) $connue !== $this->signature($userId);
     }
 
     /**
@@ -131,15 +152,20 @@ final class EnvoiAgenda
      * envoie pour rien, ou l'on attend cinq minutes de plus. Le vrai travail
      * de comparaison reste celui de « pousser », ligne par ligne.
      */
-    private static function signature(int $userId): string
+    private function signature(int $userId): string
     {
-        [$depuis, $jusqua] = self::fenetre();
+        [$depuis, $jusqua] = $this->fenetre();
 
         $evts = Database::one(
             'SELECT COUNT(*) AS n, COALESCE(SUM(CRC32(CONCAT_WS("|",
                         e.id, e.titre, COALESCE(e.description, ""), COALESCE(e.lieu, ""),
                         e.debut, e.fin, e.journee_entiere))), 0) AS s
                FROM evenements e
+               /*
+                * Aucun fournisseur ici, volontairement : un évènement venu de
+                * n’importe quel agenda n’est pas né dans l’application et n’a
+                * donc à repartir vers aucun autre.
+                */
                LEFT JOIN agenda_liens l ON l.evenement_id = e.id AND l.user_id = e.user_id
               WHERE e.user_id = ? AND l.id IS NULL AND e.debut BETWEEN ? AND ?',
             [$userId, $depuis->format('Y-m-d H:i:s'), $jusqua->format('Y-m-d H:i:s')]
@@ -161,24 +187,24 @@ final class EnvoiAgenda
     }
 
     /** La date du dernier envoi, ou null s'il n'y en a jamais eu. */
-    public static function derniereFois(int $userId): ?string
+    public function derniereFois(int $userId): ?string
     {
-        $quand = Database::valeur('SELECT envoi_le FROM agenda_comptes WHERE user_id = ?', [$userId]);
+        $quand = Database::valeur('SELECT envoi_le FROM agenda_comptes WHERE user_id = ? AND fournisseur = ?', [$userId, $this->f->cle()]);
 
         return $quand === null ? null : (string) $quand;
     }
 
     /** Combien d'éléments de l'application vivent dans Outlook. */
-    public static function combien(int $userId): int
+    public function combien(int $userId): int
     {
-        return (int) Database::valeur('SELECT COUNT(*) FROM agenda_envois WHERE user_id = ?', [$userId]);
+        return (int) Database::valeur('SELECT COUNT(*) FROM agenda_envois WHERE user_id = ? AND fournisseur = ?', [$userId, $this->f->cle()]);
     }
 
     /** L'identifiant du calendrier où l'application écrit, s'il existe déjà. */
-    public static function calendrierConnu(int $userId): ?string
+    public function calendrierConnu(int $userId): ?string
     {
         $id = Database::valeur(
-            'SELECT calendrier_envoi_id FROM agenda_comptes WHERE user_id = ?', [$userId]);
+            'SELECT calendrier_envoi_id FROM agenda_comptes WHERE user_id = ? AND fournisseur = ?', [$userId, $this->f->cle()]);
 
         return ($id === null || (string) $id === '') ? null : (string) $id;
     }
@@ -191,19 +217,21 @@ final class EnvoiAgenda
      *
      * @return int  combien ont été retirés
      */
-    public static function toutRetirer(int $userId): int
+    public function toutRetirer(int $userId): int
     {
         $retires = 0;
-        foreach (Database::all('SELECT id, distant_id FROM agenda_envois WHERE user_id = ?',
-            [$userId]) as $ligne) {
-            self::effacer($userId, (string) $ligne['distant_id']);
-            Database::run('DELETE FROM agenda_envois WHERE user_id = ? AND id = ?',
-                [$userId, (int) $ligne['id']]);
+        foreach (Database::all('SELECT id, distant_id, calendrier_id FROM agenda_envois
+                                  WHERE user_id = ? AND fournisseur = ?',
+            [$userId, $this->f->cle()]) as $ligne) {
+            $this->effacer($userId, (string) $ligne['distant_id'],
+                (string) ($ligne['calendrier_id'] ?? 'primary'));
+            Database::run('DELETE FROM agenda_envois WHERE user_id = ? AND fournisseur = ? AND id = ?',
+                [$userId, $this->f->cle(), (int) $ligne['id']]);
             $retires++;
         }
 
         Database::run('UPDATE agenda_comptes SET envoi_le = NULL, empreinte_envoi = NULL
-                       WHERE user_id = ?', [$userId]);
+                       WHERE user_id = ? AND fournisseur = ?', [$userId, $this->f->cle()]);
 
         return $retires;
     }
@@ -219,23 +247,24 @@ final class EnvoiAgenda
      *
      * @throws RuntimeException si Microsoft refuse de le donner ou de le créer
      */
-    private static function calendrierDEnvoi(int $userId): string
+    private function calendrierDEnvoi(int $userId): string
     {
-        $connu = self::calendrierConnu($userId);
+        $connu = $this->calendrierConnu($userId);
         if ($connu !== null) {
             return $connu;
         }
 
-        $liste = LiaisonAgenda::appeler($userId, 'GET', '/me/calendars?$select=id,name&$top=100');
+        $liste = $this->lien()->appeler($userId, 'GET', $this->f->cheminDeListeSimple());
         if ($liste['code'] < 400) {
             foreach (($liste['corps']['value'] ?? []) as $cal) {
                 if ((string) ($cal['name'] ?? '') === self::CALENDRIER && isset($cal['id'])) {
-                    return self::retenirLeCalendrier($userId, (string) $cal['id']);
+                    return $this->retenirLeCalendrier($userId, (string) $cal['id']);
                 }
             }
         }
 
-        $cree = LiaisonAgenda::appeler($userId, 'POST', '/me/calendars', ['name' => self::CALENDRIER]);
+        [$chemin, $corps] = $this->f->creationDeCalendrier(self::CALENDRIER);
+        $cree = $this->lien()->appeler($userId, 'POST', $chemin, $corps);
         if ($cree['code'] >= 400 || !isset($cree['corps']['id'])) {
             $dit = (string) ($cree['corps']['error']['message'] ?? '');
 
@@ -243,15 +272,15 @@ final class EnvoiAgenda
                 . self::CALENDRIER . ' »' . ($dit === '' ? '.' : ' : ' . mb_substr($dit, 0, 200)));
         }
 
-        return self::retenirLeCalendrier($userId, (string) $cree['corps']['id']);
+        return $this->retenirLeCalendrier($userId, (string) $cree['corps']['id']);
     }
 
-    private static function retenirLeCalendrier(int $userId, string $id): string
+    private function retenirLeCalendrier(int $userId, string $id): string
     {
         Database::run(
             'UPDATE agenda_comptes SET calendrier_envoi_id = ?, calendrier_envoi_nom = ?
-              WHERE user_id = ?',
-            [$id, self::CALENDRIER, $userId]
+              WHERE user_id = ? AND fournisseur = ?',
+            [$id, self::CALENDRIER, $userId, $this->f->cle()]
         );
 
         return $id;
@@ -264,7 +293,7 @@ final class EnvoiAgenda
      *
      * @return array<string, array{corps: array}>  rangé par « sorte:id »
      */
-    private static function aEnvoyer(int $userId, DateTimeImmutable $depuis, DateTimeImmutable $jusqua): array
+    private function aEnvoyer(int $userId, DateTimeImmutable $depuis, DateTimeImmutable $jusqua): array
     {
         $tout = [];
 
@@ -275,6 +304,11 @@ final class EnvoiAgenda
         foreach (Database::all(
             'SELECT e.id, e.titre, e.description, e.lieu, e.debut, e.fin, e.journee_entiere
                FROM evenements e
+               /*
+                * Aucun fournisseur ici, volontairement : un évènement venu de
+                * n’importe quel agenda n’est pas né dans l’application et n’a
+                * donc à repartir vers aucun autre.
+                */
                LEFT JOIN agenda_liens l ON l.evenement_id = e.id AND l.user_id = e.user_id
               WHERE e.user_id = ? AND l.id IS NULL AND e.debut BETWEEN ? AND ?',
             [$userId, $depuis->format('Y-m-d H:i:s'), $jusqua->format('Y-m-d H:i:s')]
@@ -282,7 +316,7 @@ final class EnvoiAgenda
             $tout['evenement:' . (int) $evt['id']] = [
                 'sorte'     => 'evenement',
                 'source_id' => (int) $evt['id'],
-                'corps'     => self::corpsDUnEvenement($evt),
+                'corps'     => $this->corpsDUnEvenement($evt),
             ];
         }
 
@@ -300,7 +334,7 @@ final class EnvoiAgenda
             $tout['tache:' . (int) $tache['id']] = [
                 'sorte'     => 'tache',
                 'source_id' => (int) $tache['id'],
-                'corps'     => self::corpsDUneTache($tache),
+                'corps'     => $this->corpsDUneTache($tache),
             ];
         }
 
@@ -308,7 +342,7 @@ final class EnvoiAgenda
     }
 
     /** Un évènement de l'application dans les termes de Microsoft. */
-    private static function corpsDUnEvenement(array $evt): array
+    private function corpsDUnEvenement(array $evt): array
     {
         $journee = (int) $evt['journee_entiere'] === 1;
         $debut = new DateTimeImmutable((string) $evt['debut']);
@@ -328,7 +362,7 @@ final class EnvoiAgenda
             }
         }
 
-        return self::corps(
+        return $this->corps(
             (string) $evt['titre'],
             (string) ($evt['description'] ?? ''),
             (string) ($evt['lieu'] ?? ''),
@@ -339,12 +373,12 @@ final class EnvoiAgenda
     }
 
     /** Une échéance de tâche : une journée entière, et de quoi savoir d'où elle vient. */
-    private static function corpsDUneTache(array $tache): array
+    private function corpsDUneTache(array $tache): array
     {
         $jour = new DateTimeImmutable((string) $tache['echeance']);
         $note = trim((string) ($tache['note'] ?? ''));
 
-        return self::corps(
+        return $this->corps(
             self::MARQUE_TACHE . (string) $tache['titre'],
             'Échéance d’une tâche de la liste « ' . (string) $tache['liste_nom'] . ' ».'
                 . ($note === '' ? '' : "\n\n" . $note),
@@ -356,7 +390,7 @@ final class EnvoiAgenda
     }
 
     /** La forme qu'attend Microsoft, la même pour tout ce qu'on envoie. */
-    private static function corps(
+    private function corps(
         string $titre,
         string $texte,
         string $lieu,
@@ -364,29 +398,20 @@ final class EnvoiAgenda
         DateTimeImmutable $fin,
         bool $journee
     ): array {
-        $corps = [
-            'subject'  => mb_substr($titre === '' ? '(sans titre)' : $titre, 0, 250),
-            'body'     => ['contentType' => 'text', 'content' => mb_substr($texte, 0, 4000)],
-            'isAllDay' => $journee,
-            'start'    => ['dateTime' => $debut->format('Y-m-d\TH:i:s'), 'timeZone' => self::fuseau()],
-            'end'      => ['dateTime' => $fin->format('Y-m-d\TH:i:s'), 'timeZone' => self::fuseau()],
-        ];
-        if ($lieu !== '') {
-            $corps['location'] = ['displayName' => mb_substr($lieu, 0, 250)];
-        }
-
-        return $corps;
+        return $this->f->corpsDUnEvenement(
+            $titre, $texte, $lieu, $debut, $fin, $journee, $this->fuseau());
     }
 
     /* --- Écrire chez Microsoft -------------------------------------------- */
 
     /** Ce qui est déjà parti, rangé par « sorte:id ». */
-    private static function partis(int $userId): array
+    private function partis(int $userId): array
     {
         $par = [];
         foreach (Database::all(
-            'SELECT id, sorte, source_id, distant_id, empreinte FROM agenda_envois WHERE user_id = ?',
-            [$userId]
+            'SELECT id, sorte, source_id, distant_id, calendrier_id, empreinte
+               FROM agenda_envois WHERE user_id = ? AND fournisseur = ?',
+            [$userId, $this->f->cle()]
         ) as $ligne) {
             $par[$ligne['sorte'] . ':' . (int) $ligne['source_id']] = $ligne;
         }
@@ -394,61 +419,74 @@ final class EnvoiAgenda
         return $par;
     }
 
-    private static function creer(int $userId, string $calendrier, array $quoi, string $empreinte): void
+    private function creer(int $userId, string $calendrier, array $quoi, string $empreinte): void
     {
-        $reponse = LiaisonAgenda::appeler(
+        $reponse = $this->lien()->appeler(
             $userId,
             'POST',
-            '/me/calendars/' . rawurlencode($calendrier) . '/events',
+            $this->f->cheminDeCreation($calendrier),
             $quoi['corps']
         );
-        self::verifier($reponse, 'créer un évènement');
+        $this->verifier($reponse, 'créer un évènement');
 
         Database::run(
-            'INSERT INTO agenda_envois (user_id, sorte, source_id, distant_id, empreinte)
-             VALUES (?, ?, ?, ?, ?)
-             ON DUPLICATE KEY UPDATE distant_id = VALUES(distant_id), empreinte = VALUES(empreinte)',
-            [$userId, $quoi['sorte'], $quoi['source_id'],
-             (string) ($reponse['corps']['id'] ?? ''), $empreinte]
+            'INSERT INTO agenda_envois
+                 (user_id, fournisseur, sorte, source_id, distant_id, calendrier_id, empreinte)
+             VALUES (?, ?, ?, ?, ?, ?, ?)
+             ON DUPLICATE KEY UPDATE distant_id = VALUES(distant_id),
+                 calendrier_id = VALUES(calendrier_id), empreinte = VALUES(empreinte)',
+            [$userId, $this->f->cle(), $quoi['sorte'], $quoi['source_id'],
+             (string) ($reponse['corps']['id'] ?? ''), $calendrier, $empreinte]
         );
     }
 
-    private static function modifier(int $userId, array $quoi, string $empreinte, string $outlookId): void
-    {
-        $reponse = LiaisonAgenda::appeler(
-            $userId, 'PATCH', '/me/events/' . rawurlencode($outlookId), $quoi['corps']);
+    private function modifier(
+        int $userId,
+        array $quoi,
+        string $empreinte,
+        string $distantId,
+        string $calendrierId
+    ): void {
+        $reponse = $this->lien()->appeler($userId, 'PATCH',
+            $this->f->cheminDeModification($calendrierId, $distantId), $quoi['corps']);
 
         /*
-         * Introuvable : quelqu'un l'a supprimé dans Outlook. On ne s'en offusque
-         * pas — on oublie le lien, et le prochain passage le recréera.
+         * Introuvable : quelqu'un l'a supprimé là-bas. On ne s'en offusque pas
+         * — on oublie le lien, et le prochain passage le recréera.
          */
         if ($reponse['code'] === 404) {
-            Database::run('DELETE FROM agenda_envois WHERE user_id = ? AND distant_id = ?',
-                [$userId, $outlookId]);
+            Database::run('DELETE FROM agenda_envois WHERE user_id = ? AND fournisseur = ? AND distant_id = ?',
+                [$userId, $this->f->cle(), $distantId]);
 
             return;
         }
-        self::verifier($reponse, 'mettre à jour un évènement');
+        $this->verifier($reponse, 'mettre à jour un évènement');
 
         Database::run(
             'UPDATE agenda_envois SET empreinte = ?, maj_le = NOW()
-              WHERE user_id = ? AND distant_id = ?',
-            [$empreinte, $userId, $outlookId]
+              WHERE user_id = ? AND fournisseur = ? AND distant_id = ?',
+            [$empreinte, $userId, $this->f->cle(), $distantId]
         );
     }
 
-    /** Efface là-bas, sans s'émouvoir de ce qui n'y est déjà plus. */
-    private static function effacer(int $userId, string $outlookId): void
+    /**
+     * Efface là-bas, sans s'émouvoir de ce qui n'y est déjà plus.
+     *
+     * Le calendrier accompagne l'évènement : Microsoft le retrouve sans lui,
+     * Google non.
+     */
+    private function effacer(int $userId, string $distantId, string $calendrierId): void
     {
-        $reponse = LiaisonAgenda::appeler($userId, 'DELETE', '/me/events/' . rawurlencode($outlookId));
+        $reponse = $this->lien()->appeler($userId, 'DELETE',
+            $this->f->cheminDeSuppression($calendrierId, $distantId));
         if ($reponse['code'] === 404 || $reponse['code'] === 410) {
             return;
         }
-        self::verifier($reponse, 'supprimer un évènement');
+        $this->verifier($reponse, 'supprimer un évènement');
     }
 
     /** @throws RuntimeException si Microsoft a refusé */
-    private static function verifier(array $reponse, string $quoi): void
+    private function verifier(array $reponse, string $quoi): void
     {
         if ($reponse['code'] < 400) {
             return;

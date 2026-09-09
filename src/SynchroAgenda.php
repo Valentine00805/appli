@@ -20,12 +20,28 @@ declare(strict_types=1);
  */
 final class SynchroAgenda
 {
+    /** @var array<string, self> une instance par agenda, pas davantage */
+    private static array $instances = [];
+
+    private function __construct(private readonly Fournisseur $f)
+    {
+    }
+
+    public static function pour(Fournisseur $f): self
+    {
+        return self::$instances[$f->cle()] ??= new self($f);
+    }
+
+    /** L'agenda distant auquel cette synchronisation s'adresse. */
+    private function lien(): LiaisonAgenda
+    {
+        return LiaisonAgenda::pour($this->f);
+    }
+
     /** La fenêtre regardée, autour d'aujourd'hui. */
     private const AVANT = '-1 month';
     private const APRES = '+12 months';
 
-    /** Ce qu'on lit de chaque évènement : rien de plus que ce qui s'affiche. */
-    private const CHAMPS = 'id,subject,bodyPreview,location,start,end,isAllDay,isCancelled';
 
     private const PAR_PAGE = 100;
 
@@ -39,7 +55,7 @@ final class SynchroAgenda
      * celle où s'affichent ses évènements, et les deux ne doivent jamais
      * diverger.
      */
-    private static function fuseau(): string
+    private function fuseau(): string
     {
         return date_default_timezone_get();
     }
@@ -71,7 +87,7 @@ final class SynchroAgenda
      * @return array{ajoutes: int, modifies: int, retires: int, inchanges: int}
      * @throws RuntimeException si le compte n'est pas relié, ou si Microsoft refuse
      */
-    public static function tirer(int $userId): array
+    public function tirer(int $userId): array
     {
         /*
          * Deux lectures en même temps — un onglet qui se réveille pendant
@@ -86,39 +102,39 @@ final class SynchroAgenda
         }
 
         try {
-            return self::vraimentTirer($userId);
+            return $this->vraimentTirer($userId);
         } finally {
             Database::run('SELECT RELEASE_LOCK(?)', [$verrou]);
         }
     }
 
     /** @return array{ajoutes: int, modifies: int, retires: int, inchanges: int, occupe: bool} */
-    private static function vraimentTirer(int $userId): array
+    private function vraimentTirer(int $userId): array
     {
-        $fuseau = new DateTimeZone(self::fuseau());
+        $fuseau = new DateTimeZone($this->fuseau());
         $maintenant = new DateTimeImmutable('now', $fuseau);
         $depuis = $maintenant->modify(self::AVANT)->setTime(0, 0);
         $jusqua = $maintenant->modify(self::APRES)->setTime(23, 59, 59);
 
         // Avant de lire : ce qu'on a supprimé ici doit partir de là-bas, sans
         // quoi la lecture le ramènerait aussitôt.
-        $bilanEfface = self::porterLesSuppressions($userId);
+        $bilanEfface = $this->porterLesSuppressions($userId);
 
-        $venus = self::lire($userId, $depuis, $jusqua);
-        $connus = self::liens($userId);
+        $venus = $this->lire($userId, $depuis, $jusqua);
+        $connus = $this->liens($userId);
         /*
          * Ce que l'application a elle-même écrit dans « Mes Cours ». On le
          * croise en relisant ce calendrier, et le rapatrier ferait de chaque
          * évènement son propre double — puis le double d'un double.
          */
-        $ecrits = self::ecritsParNous($userId);
+        $ecrits = $this->ecritsParNous($userId);
 
         $bilan = ['ajoutes' => 0, 'modifies' => 0, 'retires' => 0,
                   'inchanges' => 0, 'effaces' => 0, 'occupe' => false];
         $vus = [];
 
         foreach ($venus as $brut) {
-            $champs = self::traduire($brut, $fuseau);
+            $champs = $this->traduire($brut, $fuseau);
             if ($champs === null) {
                 continue;
             }
@@ -133,7 +149,7 @@ final class SynchroAgenda
             $lien = $connus[$outlookId] ?? null;
 
             if ($lien === null) {
-                self::ajouter($userId, $outlookId, $champs, $empreinte, $ou);
+                $this->ajouter($userId, $outlookId, $champs, $empreinte, $ou);
                 $bilan['ajoutes']++;
                 continue;
             }
@@ -141,8 +157,8 @@ final class SynchroAgenda
                 // Une origine inconnue, ou changée : sans elle on refuserait
                 // plus tard de supprimer là-bas, faute de savoir où.
                 Database::run(
-                    'UPDATE agenda_liens SET calendrier = ? WHERE user_id = ? AND distant_id = ?',
-                    [$ou, $userId, $outlookId]
+                    'UPDATE agenda_liens SET calendrier = ? WHERE user_id = ? AND fournisseur = ? AND distant_id = ?',
+                    [$ou, $userId, $this->f->cle(), $outlookId]
                 );
             }
             if ($lien['empreinte'] === $empreinte) {
@@ -150,14 +166,14 @@ final class SynchroAgenda
                 continue;
             }
 
-            self::mettreAJour($userId, (int) $lien['evenement_id'], $outlookId, $champs, $empreinte);
+            $this->mettreAJour($userId, (int) $lien['evenement_id'], $outlookId, $champs, $empreinte);
             $bilan['modifies']++;
         }
 
-        $bilan['retires'] = self::retirerLesDisparus($userId, $connus, $vus, $depuis, $jusqua);
+        $bilan['retires'] = $this->retirerLesDisparus($userId, $connus, $vus, $depuis, $jusqua);
         $bilan['effaces'] = $bilanEfface;
 
-        Database::run('UPDATE agenda_comptes SET synchro_le = NOW() WHERE user_id = ?', [$userId]);
+        Database::run('UPDATE agenda_comptes SET synchro_le = NOW() WHERE user_id = ? AND fournisseur = ?', [$userId, $this->f->cle()]);
 
         return $bilan;
     }
@@ -168,9 +184,9 @@ final class SynchroAgenda
      * Faux si le compte n'est pas relié, si aucun calendrier n'est suivi, ou
      * si la dernière lecture est trop fraîche.
      */
-    public static function aBesoinDEtreRelu(int $userId): bool
+    public function aBesoinDEtreRelu(int $userId): bool
     {
-        if (!LiaisonAgenda::configuree() || !LiaisonAgenda::relie($userId)) {
+        if (!$this->lien()->configure() || !$this->lien()->relie($userId)) {
             return false;
         }
 
@@ -180,23 +196,23 @@ final class SynchroAgenda
          * une suppression : c'est le geste qu'on vérifie le plus vite.
          */
         $orphelins = (int) Database::valeur(
-            'SELECT COUNT(*) FROM agenda_liens WHERE user_id = ? AND evenement_id IS NULL',
-            [$userId]
+            'SELECT COUNT(*) FROM agenda_liens WHERE user_id = ? AND fournisseur = ? AND evenement_id IS NULL',
+            [$userId, $this->f->cle()]
         );
         if ($orphelins > 0) {
             return true;
         }
 
         $connus = (int) Database::valeur(
-            'SELECT COUNT(*) FROM agenda_calendriers WHERE user_id = ?', [$userId]);
+            'SELECT COUNT(*) FROM agenda_calendriers WHERE user_id = ? AND fournisseur = ?', [$userId, $this->f->cle()]);
         $suivis = (int) Database::valeur(
-            'SELECT COUNT(*) FROM agenda_calendriers WHERE user_id = ? AND suivi = 1', [$userId]);
+            'SELECT COUNT(*) FROM agenda_calendriers WHERE user_id = ? AND fournisseur = ? AND suivi = 1', [$userId, $this->f->cle()]);
         if ($connus > 0 && $suivis === 0) {
             // Tout a été décoché : il n'y a plus rien à aller chercher.
             return false;
         }
 
-        $quand = self::derniereFois($userId);
+        $quand = $this->derniereFois($userId);
         if ($quand === null) {
             // Jamais lu : c'est à l'utilisateur de lancer la première fois,
             // pour qu'il voie arriver ce qu'il a demandé.
@@ -213,15 +229,15 @@ final class SynchroAgenda
      * rien dire sans interrompre. Muette, elle laisserait quelqu'un attendre
      * des jours des évènements qui ne viennent plus.
      */
-    public static function retenirLeSouci(int $userId, ?string $souci): void
+    public function retenirLeSouci(int $userId, ?string $souci): void
     {
         $texte = $souci === null ? null : mb_substr($souci, 0, 500);
 
         Database::run(
             'UPDATE agenda_comptes
                 SET souci = ?, souci_le = IF(? IS NULL, NULL, NOW())
-              WHERE user_id = ?',
-            [$texte, $texte, $userId]
+              WHERE user_id = ? AND fournisseur = ?',
+            [$texte, $texte, $userId, $this->f->cle()]
         );
     }
 
@@ -230,11 +246,11 @@ final class SynchroAgenda
      *
      * @return ?array{quoi: string, quand: string}
      */
-    public static function dernierSouci(int $userId): ?array
+    public function dernierSouci(int $userId): ?array
     {
         $ligne = Database::one(
-            'SELECT souci, souci_le FROM agenda_comptes WHERE user_id = ? AND souci IS NOT NULL',
-            [$userId]
+            'SELECT souci, souci_le FROM agenda_comptes WHERE user_id = ? AND fournisseur = ? AND souci IS NOT NULL',
+            [$userId, $this->f->cle()]
         );
 
         return $ligne === null
@@ -243,22 +259,22 @@ final class SynchroAgenda
     }
 
     /** La date de la dernière synchronisation, ou null s'il n'y en a jamais eu. */
-    public static function derniereFois(int $userId): ?string
+    public function derniereFois(int $userId): ?string
     {
         $quand = Database::valeur(
-            'SELECT synchro_le FROM agenda_comptes WHERE user_id = ?',
-            [$userId]
+            'SELECT synchro_le FROM agenda_comptes WHERE user_id = ? AND fournisseur = ?',
+            [$userId, $this->f->cle()]
         );
 
         return $quand === null ? null : (string) $quand;
     }
 
     /** Combien d'évènements de l'application viennent d'Outlook. */
-    public static function combien(int $userId): int
+    public function combien(int $userId): int
     {
         return (int) Database::valeur(
-            'SELECT COUNT(*) FROM agenda_liens WHERE user_id = ?',
-            [$userId]
+            'SELECT COUNT(*) FROM agenda_liens WHERE user_id = ? AND fournisseur = ?',
+            [$userId, $this->f->cle()]
         );
     }
 
@@ -272,11 +288,11 @@ final class SynchroAgenda
      *
      * @return int  combien ont été retirés
      */
-    public static function toutRetirer(int $userId): int
+    public function toutRetirer(int $userId): int
     {
         $ids = Database::all(
-            'SELECT evenement_id FROM agenda_liens WHERE user_id = ? AND evenement_id IS NOT NULL',
-            [$userId]
+            'SELECT evenement_id FROM agenda_liens WHERE user_id = ? AND fournisseur = ? AND evenement_id IS NOT NULL',
+            [$userId, $this->f->cle()]
         );
 
         /*
@@ -284,7 +300,7 @@ final class SynchroAgenda
          * suppression chez Microsoft, en laisser derrière soi ferait disparaître
          * de l'agenda ce qu'on voulait seulement retirer d'ici.
          */
-        Database::run('DELETE FROM agenda_liens WHERE user_id = ?', [$userId]);
+        Database::run('DELETE FROM agenda_liens WHERE user_id = ? AND fournisseur = ?', [$userId, $this->f->cle()]);
 
         $retires = 0;
         foreach ($ids as $ligne) {
@@ -293,7 +309,7 @@ final class SynchroAgenda
                 [(int) $ligne['evenement_id'], $userId]);
             $retires++;
         }
-        Database::run('UPDATE agenda_comptes SET synchro_le = NULL WHERE user_id = ?', [$userId]);
+        Database::run('UPDATE agenda_comptes SET synchro_le = NULL WHERE user_id = ? AND fournisseur = ?', [$userId, $this->f->cle()]);
 
         return $retires;
     }
@@ -305,172 +321,17 @@ final class SynchroAgenda
      *
      * @return array<int, array>
      */
-    public static function calendriers(int $userId): array
+    public function calendriers(int $userId): array
     {
-        $ecriture = EnvoiAgenda::calendrierConnu($userId);
+        $ecriture = EnvoiAgenda::pour($this->f)->calendrierConnu($userId);
 
         return Database::all(
-            'SELECT id, empreinte, nom, proprietaire, partage, principal, suivi
+            'SELECT id, empreinte, nom, proprietaire, partage, principal, suivi, affiche, couleur
                FROM agenda_calendriers
-              WHERE user_id = ? AND empreinte <> ?
+              WHERE user_id = ? AND fournisseur = ? AND empreinte <> ?
               ORDER BY principal DESC, partage ASC, nom ASC',
-            [$userId, $ecriture === null ? '' : md5($ecriture)]
+            [$userId, $this->f->cle(), $ecriture === null ? '' : md5($ecriture)]
         );
-    }
-
-    /**
-     * Les agendas qu'on peut montrer ou masquer dans le calendrier.
-     *
-     * Rien à voir avec le suivi : « suivi » dit ce que l'application va
-     * chercher chez Microsoft, « affiche » ce qu'on veut voir maintenant. On
-     * masque l'agenda d'un proche un après-midi sans cesser de le suivre, et
-     * sans que rien ne soit effacé ni retéléchargé.
-     *
-     * Le premier de la liste, ce sont ses propres évènements : ils n'ont pas
-     * de calendrier d'origine, et méritent pourtant leur case.
-     *
-     * @return array<int, array{cle: string, nom: string, affiche: bool, partage: bool}>
-     */
-    public static function sourcesDuCalendrier(int $userId): array
-    {
-        if (!LiaisonAgenda::configuree() || !LiaisonAgenda::relie($userId)) {
-            return [];
-        }
-
-        $moi = Database::one(
-            'SELECT afficher_miens, couleur_miens FROM agenda_comptes WHERE user_id = ?', [$userId]);
-
-        $sources = [[
-            'cle'     => self::MIENS,
-            'nom'     => 'Mes évènements',
-            'affiche' => (int) ($moi['afficher_miens'] ?? 1) !== 0,
-            'couleur' => self::couleurOuDefaut((string) ($moi['couleur_miens'] ?? ''), 0),
-            'partage' => false,
-        ]];
-
-        $rang = 1;
-        foreach (Database::all(
-            'SELECT empreinte, nom, proprietaire, partage, affiche, couleur
-               FROM agenda_calendriers
-              WHERE user_id = ? AND suivi = 1
-              ORDER BY principal DESC, partage ASC, nom ASC',
-            [$userId]
-        ) as $cal) {
-            $sources[] = [
-                'cle'     => (string) $cal['empreinte'],
-                'nom'     => (string) ($cal['nom'] ?? 'Calendrier'),
-                'affiche' => (int) $cal['affiche'] !== 0,
-                'couleur' => self::couleurOuDefaut((string) ($cal['couleur'] ?? ''), $rang++),
-                'partage' => (int) $cal['partage'] === 1,
-            ];
-        }
-
-        return $sources;
-    }
-
-    /**
-     * La couleur d'un agenda, ou celle que la palette lui réserve.
-     *
-     * Un agenda tout neuf n'en a pas encore : plutôt que de le rendre gris
-     * comme ses voisins — et donc indistinct, ce qui est exactement ce qu'on
-     * veut éviter —, on lui en prête une, jusqu'à ce qu'on en choisisse une.
-     */
-    private static function couleurOuDefaut(string $couleur, int $rang): string
-    {
-        $couleur = strtolower(trim($couleur));
-        if (preg_match('/^#[0-9a-f]{6}$/', $couleur) === 1) {
-            return $couleur;
-        }
-
-        $palette = MatieresController::PALETTE;
-
-        return $palette[$rang % count($palette)];
-    }
-
-    /**
-     * Retient les couleurs choisies dans le volet.
-     *
-     * @param array<string, string> $couleurs  par clé d'agenda
-     */
-    public static function colorier(int $userId, array $couleurs): void
-    {
-        foreach ($couleurs as $cle => $couleur) {
-            if (!is_string($cle) || !is_string($couleur)
-                || preg_match('/^#[0-9a-f]{6}$/i', $couleur) !== 1) {
-                continue;
-            }
-            $couleur = strtolower($couleur);
-
-            if ($cle === self::MIENS) {
-                Database::run('UPDATE agenda_comptes SET couleur_miens = ? WHERE user_id = ?',
-                    [$couleur, $userId]);
-                continue;
-            }
-            if (preg_match('/^[0-9a-f]{32}$/', $cle) !== 1) {
-                continue;
-            }
-            Database::run(
-                'UPDATE agenda_calendriers SET couleur = ? WHERE user_id = ? AND empreinte = ?',
-                [$couleur, $userId, $cle]
-            );
-        }
-    }
-
-    /**
-     * Retient les agendas cochés dans le volet.
-     *
-     * @param array<int, string> $cles  ce qui reste coché
-     */
-    public static function montrer(int $userId, array $cles): void
-    {
-        $garder = [];
-        foreach ($cles as $cle) {
-            if (is_string($cle) && preg_match('/^[0-9a-f]{32}$/', $cle) === 1) {
-                $garder[$cle] = true;
-            }
-        }
-        $miens = in_array(self::MIENS, $cles, true) ? 1 : 0;
-
-        Database::run('UPDATE agenda_comptes SET afficher_miens = ? WHERE user_id = ?',
-            [$miens, $userId]);
-
-        foreach (Database::all(
-            'SELECT empreinte, affiche FROM agenda_calendriers WHERE user_id = ?', [$userId]
-        ) as $cal) {
-            $veut = isset($garder[(string) $cal['empreinte']]) ? 1 : 0;
-            if ((int) $cal['affiche'] === $veut) {
-                continue;
-            }
-            Database::run(
-                'UPDATE agenda_calendriers SET affiche = ? WHERE user_id = ? AND empreinte = ?',
-                [$veut, $userId, (string) $cal['empreinte']]
-            );
-        }
-    }
-
-    /**
-     * Ce que le calendrier doit taire.
-     *
-     * @return array{miens: bool, calendriers: array<int, string>}
-     */
-    public static function masques(int $userId): array
-    {
-        if (!LiaisonAgenda::configuree() || !LiaisonAgenda::relie($userId)) {
-            return ['miens' => false, 'calendriers' => []];
-        }
-
-        $miens = Database::valeur(
-            'SELECT afficher_miens FROM agenda_comptes WHERE user_id = ?', [$userId]);
-
-        $caches = [];
-        foreach (Database::all(
-            'SELECT empreinte FROM agenda_calendriers WHERE user_id = ? AND affiche = 0',
-            [$userId]
-        ) as $ligne) {
-            $caches[] = (string) $ligne['empreinte'];
-        }
-
-        return ['miens' => (int) $miens === 0, 'calendriers' => $caches];
     }
 
     /**
@@ -488,13 +349,13 @@ final class SynchroAgenda
      * @return int  combien de calendriers sont désormais connus
      * @throws RuntimeException si Microsoft refuse
      */
-    public static function rafraichirLesCalendriers(int $userId): int
+    public function rafraichirLesCalendriers(int $userId): int
     {
-        $moi = mb_strtolower((string) (LiaisonAgenda::compte($userId)['compte'] ?? ''));
+        $moi = mb_strtolower((string) ($this->lien()->compte($userId)['compte'] ?? ''));
         $trouves = [];
 
-        foreach (self::sourcesDeCalendriers($userId) as $chemin) {
-            $reponse = LiaisonAgenda::appeler($userId, 'GET', $chemin);
+        foreach ($this->sourcesDeCalendriers($userId) as $chemin) {
+            $reponse = $this->lien()->appeler($userId, 'GET', $chemin);
             if ($reponse['code'] >= 400) {
                 // Un groupe inaccessible ne doit pas emporter les autres :
                 // certains comptes n'ont pas tous les groupes.
@@ -512,14 +373,18 @@ final class SynchroAgenda
         }
 
         $connus = [];
-        foreach (self::calendriers($userId) as $ligne) {
+        foreach ($this->calendriers($userId) as $ligne) {
             $connus[(string) $ligne['empreinte']] = true;
         }
 
         foreach ($trouves as $id => $cal) {
             $empreinte = md5($id);
-            $adresse = mb_strtolower((string) ($cal['owner']['address'] ?? ''));
-            $principal = ($cal['isDefaultCalendar'] ?? false) === true ? 1 : 0;
+            $lu = $this->f->lireCalendrier($cal);
+            if ($lu === null) {
+                continue;
+            }
+            $adresse = mb_strtolower($lu['adresse']);
+            $principal = $lu['principal'] ? 1 : 0;
             $partage = ($adresse !== '' && $moi !== '' && $adresse !== $moi) ? 1 : 0;
 
             if (isset($connus[$empreinte])) {
@@ -528,11 +393,11 @@ final class SynchroAgenda
                 Database::run(
                     'UPDATE agenda_calendriers
                         SET nom = ?, proprietaire = ?, partage = ?, principal = ?, vu_le = NOW()
-                      WHERE user_id = ? AND empreinte = ?',
+                      WHERE user_id = ? AND fournisseur = ? AND empreinte = ?',
                     [
-                        mb_substr((string) ($cal['name'] ?? 'Calendrier'), 0, 190),
-                        mb_substr((string) ($cal['owner']['name'] ?? $adresse), 0, 190),
-                        $partage, $principal, $userId, $empreinte,
+                        mb_substr($lu['nom'], 0, 190),
+                        mb_substr($lu['proprietaire'], 0, 190),
+                        $partage, $principal, $userId, $this->f->cle(), $empreinte,
                     ]
                 );
                 continue;
@@ -544,19 +409,19 @@ final class SynchroAgenda
              * et c'est justement pour les distinguer qu'on les suit.
              */
             $deja = (int) Database::valeur(
-                'SELECT COUNT(*) FROM agenda_calendriers WHERE user_id = ?', [$userId]);
+                'SELECT COUNT(*) FROM agenda_calendriers WHERE user_id = ? AND fournisseur = ?', [$userId, $this->f->cle()]);
 
             Database::run(
                 'INSERT INTO agenda_calendriers
-                     (user_id, calendrier_id, empreinte, nom, proprietaire, partage,
+                     (user_id, fournisseur, calendrier_id, empreinte, nom, proprietaire, partage,
                       principal, suivi, couleur)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
                 [
-                    $userId, $id, $empreinte,
-                    mb_substr((string) ($cal['name'] ?? 'Calendrier'), 0, 190),
-                    mb_substr((string) ($cal['owner']['name'] ?? $adresse), 0, 190),
+                    $userId, $this->f->cle(), $id, $empreinte,
+                    mb_substr($lu['nom'], 0, 190),
+                    mb_substr($lu['proprietaire'], 0, 190),
                     $partage, $principal, $principal,
-                    self::couleurOuDefaut('', $deja + 1),
+                    $this->couleurOuDefaut('', $deja + 1),
                 ]
             );
         }
@@ -570,7 +435,7 @@ final class SynchroAgenda
      * @param  array<int, string> $empreintes  ceux que l'utilisateur a cochés
      * @return int  combien sont suivis
      */
-    public static function choisir(int $userId, array $empreintes): int
+    public function choisir(int $userId, array $empreintes): int
     {
         $garder = [];
         foreach ($empreintes as $empreinte) {
@@ -579,14 +444,14 @@ final class SynchroAgenda
             }
         }
 
-        foreach (self::calendriers($userId) as $ligne) {
+        foreach ($this->calendriers($userId) as $ligne) {
             $veut = isset($garder[(string) $ligne['empreinte']]) ? 1 : 0;
             if ((int) $ligne['suivi'] === $veut) {
                 continue;
             }
             Database::run(
-                'UPDATE agenda_calendriers SET suivi = ? WHERE user_id = ? AND empreinte = ?',
-                [$veut, $userId, (string) $ligne['empreinte']]
+                'UPDATE agenda_calendriers SET suivi = ? WHERE user_id = ? AND fournisseur = ? AND empreinte = ?',
+                [$veut, $userId, $this->f->cle(), (string) $ligne['empreinte']]
             );
         }
 
@@ -594,22 +459,9 @@ final class SynchroAgenda
     }
 
     /** Où Microsoft range les calendriers d'un compte. */
-    private static function sourcesDeCalendriers(int $userId): array
+    private function sourcesDeCalendriers(int $userId): array
     {
-        $chemins = ['/me/calendars?$select=id,name,owner,isDefaultCalendar&$top=100'];
-
-        $groupes = LiaisonAgenda::appeler($userId, 'GET', '/me/calendarGroups?$select=id&$top=50');
-        if ($groupes['code'] < 400) {
-            foreach (($groupes['corps']['value'] ?? []) as $groupe) {
-                if (!isset($groupe['id'])) {
-                    continue;
-                }
-                $chemins[] = '/me/calendarGroups/' . rawurlencode((string) $groupe['id'])
-                    . '/calendars?$select=id,name,owner,isDefaultCalendar&$top=100';
-            }
-        }
-
-        return $chemins;
+        return $this->f->cheminsDesCalendriers($userId);
     }
 
     /* --- Lire chez Microsoft --------------------------------------------- */
@@ -619,25 +471,22 @@ final class SynchroAgenda
      *
      * @return array<int, array>
      */
-    private static function lire(int $userId, DateTimeImmutable $depuis, DateTimeImmutable $jusqua): array
+    private function lire(int $userId, DateTimeImmutable $depuis, DateTimeImmutable $jusqua): array
     {
-        $question = http_build_query([
-            'startDateTime' => $depuis->format('c'),
-            'endDateTime'   => $jusqua->format('c'),
-            '$select'       => self::CHAMPS,
-            '$orderby'      => 'start/dateTime',
-            '$top'          => self::PAR_PAGE,
-        ]);
-
         $tout = [];
-        foreach (self::aLire($userId) as $calendrier) {
+        foreach ($this->aLire($userId) as $calendrier) {
             // D'où vient l'évènement : c'est de cela que dépendra le droit de
             // le supprimer là-bas, le jour où on le supprimera ici.
             $ou = $calendrier === null
                 ? self::DEFAUT
                 : md5((string) $calendrier['calendrier_id']);
 
-            foreach (self::unCalendrier($userId, $calendrier, $question) as $evenement) {
+            $question = $this->f->cheminDesEvenements(
+                $calendrier === null ? null : (string) $calendrier['calendrier_id'],
+                $depuis, $jusqua, self::PAR_PAGE, $this->fuseau()
+            );
+
+            foreach ($this->unCalendrier($userId, $calendrier, $question) as $evenement) {
                 // Un évènement partagé entre deux calendriers ne compte qu'une
                 // fois : son identifiant tranche.
                 $evenement['_calendrier'] = $ou;
@@ -663,14 +512,14 @@ final class SynchroAgenda
      *
      * @return array<int, ?array>  null désigne le calendrier principal
      */
-    private static function aLire(int $userId): array
+    private function aLire(int $userId): array
     {
-        $ecriture = EnvoiAgenda::calendrierConnu($userId);
+        $ecriture = EnvoiAgenda::pour($this->f)->calendrierConnu($userId);
 
         $suivis = Database::all(
             'SELECT calendrier_id, nom FROM agenda_calendriers
-              WHERE user_id = ? AND suivi = 1 AND empreinte <> ?',
-            [$userId, $ecriture === null ? '' : md5($ecriture)]
+              WHERE user_id = ? AND fournisseur = ? AND suivi = 1 AND empreinte <> ?',
+            [$userId, $this->f->cle(), $ecriture === null ? '' : md5($ecriture)]
         );
         if ($suivis === []) {
             $suivis = [null];
@@ -689,12 +538,9 @@ final class SynchroAgenda
      * @param  ?array $calendrier  null pour le calendrier principal
      * @return array<int, array>
      */
-    private static function unCalendrier(int $userId, ?array $calendrier, string $question): array
+    private function unCalendrier(int $userId, ?array $calendrier, string $question): array
     {
-        $base = $calendrier === null
-            ? '/me/calendarView?'
-            : '/me/calendars/' . rawurlencode((string) $calendrier['calendrier_id']) . '/calendarView?';
-        $chemin = $base . $question;
+        $chemin = $question;
         $nom = $calendrier === null ? 'l’agenda' : '« ' . (string) $calendrier['nom'] . ' »';
 
         /*
@@ -702,11 +548,11 @@ final class SynchroAgenda
          * Sans cela Microsoft répond en UTC, et il faudrait convertir à la main
          * une date que lui sait convertir mieux que nous.
          */
-        $entetes = ['Prefer: outlook.timezone="' . self::fuseau() . '"'];
+        $entetes = $this->f->entetesDeLecture($this->fuseau());
 
         $tout = [];
         for ($page = 0; $page < self::PAGES_MAX && $chemin !== ''; $page++) {
-            $reponse = LiaisonAgenda::appeler($userId, 'GET', $chemin, null, $entetes);
+            $reponse = $this->lien()->appeler($userId, 'GET', $chemin, null, $entetes);
 
             if ($reponse['code'] === 403) {
                 throw new RuntimeException(
@@ -725,7 +571,7 @@ final class SynchroAgenda
             foreach (($reponse['corps']['value'] ?? []) as $evenement) {
                 $tout[] = $evenement;
             }
-            $chemin = (string) ($reponse['corps']['@odata.nextLink'] ?? '');
+            $chemin = $this->f->pageSuivante($reponse['corps'], $chemin);
         }
 
         return $tout;
@@ -738,64 +584,9 @@ final class SynchroAgenda
      *
      * @return ?array  null si l'évènement n'a pas sa place ici (annulé, illisible)
      */
-    private static function traduire(array $brut, DateTimeZone $fuseau): ?array
+    private function traduire(array $brut, DateTimeZone $fuseau): ?array
     {
-        if (($brut['isCancelled'] ?? false) === true) {
-            return null;
-        }
-
-        $journee = ($brut['isAllDay'] ?? false) === true;
-        $debut = self::moment($brut['start'] ?? null, $fuseau);
-        $fin = self::moment($brut['end'] ?? null, $fuseau);
-        if ($debut === null || $fin === null) {
-            return null;
-        }
-
-        if ($journee) {
-            /*
-             * Microsoft borne une journée entière par le lendemain à minuit ;
-             * l'application, elle, la termine à 23:59:59 du dernier jour. On
-             * recule d'une seconde pour retomber sur sa convention.
-             */
-            $debut = $debut->setTime(0, 0);
-            $fin = $fin->modify('-1 second');
-            if ($fin < $debut) {
-                $fin = $debut->setTime(23, 59, 59);
-            }
-        }
-        if ($fin < $debut) {
-            $fin = $debut;
-        }
-
-        $titre = trim((string) ($brut['subject'] ?? ''));
-        $lieu = trim((string) ($brut['location']['displayName'] ?? ''));
-        $texte = trim((string) ($brut['bodyPreview'] ?? ''));
-
-        return [
-            'titre'           => mb_substr($titre === '' ? '(sans titre)' : $titre, 0, 200),
-            'description'     => $texte === '' ? null : mb_substr($texte, 0, 2000),
-            'lieu'            => $lieu === '' ? null : mb_substr($lieu, 0, 160),
-            'debut'           => $debut->format('Y-m-d H:i:s'),
-            'fin'             => $fin->format('Y-m-d H:i:s'),
-            'journee_entiere' => $journee ? 1 : 0,
-        ];
-    }
-
-    /** Une date Microsoft, lue dans le fuseau qu'on a demandé. */
-    private static function moment(mixed $borne, DateTimeZone $fuseau): ?DateTimeImmutable
-    {
-        if (!is_array($borne) || !isset($borne['dateTime'])) {
-            return null;
-        }
-
-        // « 2026-09-08T14:00:00.0000000 » : les fractions de seconde gênent.
-        $ecrit = substr((string) $borne['dateTime'], 0, 19);
-
-        try {
-            return new DateTimeImmutable($ecrit, $fuseau);
-        } catch (Exception) {
-            return null;
-        }
+        return $this->f->lireEvenement($brut, $fuseau);
     }
 
     /* --- Écrire ici -------------------------------------------------------- */
@@ -816,30 +607,55 @@ final class SynchroAgenda
      *
      * @return int  combien ont été effacés chez Microsoft
      */
-    private static function porterLesSuppressions(int $userId): int
+    private function porterLesSuppressions(int $userId): int
     {
         $orphelins = Database::all(
             'SELECT id, distant_id, calendrier FROM agenda_liens
-              WHERE user_id = ? AND evenement_id IS NULL',
-            [$userId]
+              WHERE user_id = ? AND fournisseur = ? AND evenement_id IS NULL',
+            [$userId, $this->f->cle()]
         );
         if ($orphelins === []) {
             return 0;
         }
 
-        $permis = self::calendriersOuLOnPeutEffacer($userId);
+        $permis = $this->calendriersOuLOnPeutEffacer($userId);
+        $parEmpreinte = $this->calendriersParEmpreinte($userId);
         $effaces = 0;
 
         foreach ($orphelins as $orphelin) {
-            if (isset($permis[(string) ($orphelin['calendrier'] ?? '')])) {
-                self::effacerLaBas($userId, (string) $orphelin['distant_id']);
+            $ou = (string) ($orphelin['calendrier'] ?? '');
+            if (isset($permis[$ou])) {
+                $this->effacerLaBas($userId, (string) $orphelin['distant_id'],
+                    $parEmpreinte[$ou] ?? 'primary');
                 $effaces++;
             }
-            Database::run('DELETE FROM agenda_liens WHERE user_id = ? AND id = ?',
-                [$userId, (int) $orphelin['id']]);
+            Database::run('DELETE FROM agenda_liens WHERE user_id = ? AND fournisseur = ? AND id = ?',
+                [$userId, $this->f->cle(), (int) $orphelin['id']]);
         }
 
         return $effaces;
+    }
+
+    /**
+     * L'identifiant distant de chaque calendrier, par empreinte.
+     *
+     * L'empreinte suffit à reconnaître un calendrier ; pour lui parler, il faut
+     * l'identifiant que le fournisseur lui a donné.
+     *
+     * @return array<string, string>
+     */
+    private function calendriersParEmpreinte(int $userId): array
+    {
+        $par = [];
+        foreach (Database::all(
+            'SELECT empreinte, calendrier_id FROM agenda_calendriers
+              WHERE user_id = ? AND fournisseur = ?',
+            [$userId, $this->f->cle()]
+        ) as $ligne) {
+            $par[(string) $ligne['empreinte']] = (string) $ligne['calendrier_id'];
+        }
+
+        return $par;
     }
 
     /**
@@ -847,7 +663,7 @@ final class SynchroAgenda
      *
      * @return array<string, true>  par empreinte
      */
-    private static function calendriersOuLOnPeutEffacer(int $userId): array
+    private function calendriersOuLOnPeutEffacer(int $userId): array
     {
         // Le calendrier principal, y compris quand on ne connaît pas encore la
         // liste et qu'on lit celui que Microsoft donne d'office.
@@ -855,13 +671,13 @@ final class SynchroAgenda
 
         foreach (Database::all(
             'SELECT empreinte FROM agenda_calendriers
-              WHERE user_id = ? AND principal = 1 AND partage = 0',
-            [$userId]
+              WHERE user_id = ? AND fournisseur = ? AND principal = 1 AND partage = 0',
+            [$userId, $this->f->cle()]
         ) as $ligne) {
             $permis[(string) $ligne['empreinte']] = true;
         }
 
-        $ecriture = EnvoiAgenda::calendrierConnu($userId);
+        $ecriture = EnvoiAgenda::pour($this->f)->calendrierConnu($userId);
         if ($ecriture !== null) {
             $permis[md5($ecriture)] = true;
         }
@@ -869,10 +685,16 @@ final class SynchroAgenda
         return $permis;
     }
 
-    /** Efface chez Microsoft, sans s'émouvoir de ce qui n'y est déjà plus. */
-    private static function effacerLaBas(int $userId, string $outlookId): void
+    /**
+     * Efface chez le fournisseur, sans s'émouvoir de ce qui n'y est déjà plus.
+     *
+     * Le calendrier accompagne l'évènement : Microsoft le retrouve sans, Google
+     * non, et l'on écrit le même code pour les deux.
+     */
+    private function effacerLaBas(int $userId, string $distantId, string $calendrierId): void
     {
-        $reponse = LiaisonAgenda::appeler($userId, 'DELETE', '/me/events/' . rawurlencode($outlookId));
+        $reponse = $this->lien()->appeler($userId, 'DELETE',
+            $this->f->cheminDeSuppression($calendrierId, $distantId));
 
         if ($reponse['code'] < 400 || in_array($reponse['code'], [404, 410], true)) {
             return;
@@ -889,11 +711,11 @@ final class SynchroAgenda
      *
      * @return array<string, true>
      */
-    private static function ecritsParNous(int $userId): array
+    private function ecritsParNous(int $userId): array
     {
         $par = [];
-        foreach (Database::all('SELECT distant_id FROM agenda_envois WHERE user_id = ?',
-            [$userId]) as $ligne) {
+        foreach (Database::all('SELECT distant_id FROM agenda_envois WHERE user_id = ? AND fournisseur = ?',
+            [$userId, $this->f->cle()]) as $ligne) {
             $par[(string) $ligne['distant_id']] = true;
         }
 
@@ -901,12 +723,12 @@ final class SynchroAgenda
     }
 
     /** Ce que l'application sait déjà, rangé par identifiant Outlook. */
-    private static function liens(int $userId): array
+    private function liens(int $userId): array
     {
         $lignes = Database::all(
             'SELECT distant_id, evenement_id, empreinte, calendrier
-               FROM agenda_liens WHERE user_id = ? AND evenement_id IS NOT NULL',
-            [$userId]
+               FROM agenda_liens WHERE user_id = ? AND fournisseur = ? AND evenement_id IS NOT NULL',
+            [$userId, $this->f->cle()]
         );
 
         $par = [];
@@ -917,7 +739,7 @@ final class SynchroAgenda
         return $par;
     }
 
-    private static function ajouter(
+    private function ajouter(
         int $userId,
         string $outlookId,
         array $champs,
@@ -936,15 +758,15 @@ final class SynchroAgenda
         $evenementId = Database::dernierId();
 
         Database::run(
-            'INSERT INTO agenda_liens (user_id, evenement_id, distant_id, empreinte, calendrier)
-             VALUES (?, ?, ?, ?, ?)
+            'INSERT INTO agenda_liens (user_id, fournisseur, evenement_id, distant_id, empreinte, calendrier)
+             VALUES (?, ?, ?, ?, ?, ?)
              ON DUPLICATE KEY UPDATE evenement_id = VALUES(evenement_id),
                  empreinte = VALUES(empreinte), calendrier = VALUES(calendrier)',
-            [$userId, $evenementId, $outlookId, $empreinte, $calendrier]
+            [$userId, $this->f->cle(), $evenementId, $outlookId, $empreinte, $calendrier]
         );
     }
 
-    private static function mettreAJour(
+    private function mettreAJour(
         int $userId,
         int $evenementId,
         string $outlookId,
@@ -968,8 +790,8 @@ final class SynchroAgenda
         );
 
         Database::run(
-            'UPDATE agenda_liens SET empreinte = ? WHERE user_id = ? AND distant_id = ?',
-            [$empreinte, $userId, $outlookId]
+            'UPDATE agenda_liens SET empreinte = ? WHERE user_id = ? AND fournisseur = ? AND distant_id = ?',
+            [$empreinte, $userId, $this->f->cle(), $outlookId]
         );
     }
 
@@ -981,7 +803,7 @@ final class SynchroAgenda
      * vient de regarder. Un évènement plus lointain n'a pas été vu ; ce n'est
      * pas une raison pour croire qu'il a été supprimé.
      */
-    private static function retirerLesDisparus(
+    private function retirerLesDisparus(
         int $userId,
         array $connus,
         array $vus,
@@ -1008,8 +830,8 @@ final class SynchroAgenda
 
             Database::run('DELETE FROM evenements WHERE id = ? AND user_id = ?',
                 [(int) $lien['evenement_id'], $userId]);
-            Database::run('DELETE FROM agenda_liens WHERE user_id = ? AND distant_id = ?',
-                [$userId, (string) $outlookId]);
+            Database::run('DELETE FROM agenda_liens WHERE user_id = ? AND fournisseur = ? AND distant_id = ?',
+                [$userId, $this->f->cle(), (string) $outlookId]);
             $retires++;
         }
 

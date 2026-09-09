@@ -510,6 +510,22 @@ function asset(string $chemin): string
 }
 
 /**
+ * « d'Outlook », mais « de Google Agenda ».
+ *
+ * Le nom d'un agenda vient d'ailleurs et ne se plie pas d'avance à la
+ * phrase qui l'accueille. Une élision faite à la main donnerait « de
+ * Outlook », qu'on ne lit nulle part ailleurs dans l'application.
+ */
+function de_agenda(string $nom): string
+{
+    $premiere = mb_strtolower(mb_substr($nom, 0, 1));
+
+    return in_array($premiere, ['a', 'e', 'i', 'o', 'u', 'y', 'é', 'è', 'h'], true)
+        ? 'd’' . $nom
+        : 'de ' . $nom;
+}
+
+/**
  * Répond en JSON et s'arrête là.
  *
  * Pour les appels que le navigateur passe seul, en arrière-plan : ils
