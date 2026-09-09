@@ -1918,3 +1918,81 @@ ul.apercu-liste--n2 { list-style-type: square; }
 .fichier__minutage {
   font-size: .78rem; color: var(--texte-doux); font-variant-numeric: tabular-nums;
 }
+
+/* ===== Liaison Outlook et volet du calendrier ===== */
+
+/* Les deux retours en arrière de la liaison Outlook, côte à côte. */
+.outlook-defaire {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  margin-top: .9rem;
+}
+
+/* La liste des calendriers Outlook qu'on choisit de lire. */
+.outlook-calendriers {
+  list-style: none;
+  margin: 0 0 .9rem;
+  padding: 0;
+  display: grid;
+  gap: .35rem;
+}
+.outlook-calendriers label {
+  display: flex;
+  align-items: baseline;
+  gap: .5rem;
+  cursor: pointer;
+}
+.outlook-calendriers em {
+  font-style: normal;
+  font-size: .82rem;
+}
+
+/* Ce qu'il faut faire avant de relire l'agenda, quand la lecture échouerait. */
+.outlook-attention {
+  margin: 0 0 .8rem;
+  padding: .65rem .8rem;
+  border-radius: var(--rayon-s);
+  border: 1px solid #f0c36d;
+  border-left: 4px solid #e0a030;
+  background: #fdf6e6;
+  font-size: .9rem;
+  line-height: 1.45;
+}
+
+/* Le calendrier et son volet d'agendas, côte à côte. */
+.cal-avec-volet {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+/* En dessous, le volet passe au-dessus : une grille de mois a besoin de
+   place, et deux colonnes serrées ne valent pas mieux qu'une. */
+@media (min-width: 820px) {
+  .cal-avec-volet { grid-template-columns: 14rem minmax(0, 1fr); }
+}
+.cal-corps { min-width: 0; }
+
+.cal-volet {
+  background: var(--fond-carte);
+  border: 1px solid var(--bordure);
+  border-radius: var(--rayon);
+  padding: .9rem 1rem;
+}
+.cal-volet__titre { margin: 0 0 .6rem; font-size: 1rem; }
+.cal-volet__liste {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: .4rem;
+}
+.cal-volet__liste label {
+  display: flex;
+  align-items: baseline;
+  gap: .5rem;
+  cursor: pointer;
+  line-height: 1.35;
+}
+.cal-volet__note { margin: .8rem 0 0; font-size: .8rem; }
