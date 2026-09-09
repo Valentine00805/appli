@@ -2,6 +2,7 @@
 /**
  * @var ?array $evenement
  * @var array $ouEnvoyer  les agendas où cet évènement peut partir
+ * @var array $vises  ceux qu'il vise déjà
  * @var array $matieres, $coursListe, $types
  * @var string $dateDefaut
  * @var ?int $typeDefaut
@@ -303,46 +304,53 @@ $matiereActive = $edition ? entier_ou_null($evenement['matiere_id']) : null;
        * Où va cet évènement.
        *
        * « Mes évènements » est le calendrier de l'application, et le choix par
-       * défaut. Désigner un autre agenda y envoie l'évènement plutôt que là :
-       * il n'est pas copié mais déplacé, et reste modifiable — changer
-       * l'horaire ici change l'horaire là-bas, le supprimer ici le supprime
-       * là-bas. Ne sont proposés que les agendas où le fournisseur nous
-       * autorise à écrire.
-       */
-      $cibleActuelle = $edition ? (string) ($evenement['agenda_cible'] ?? '') : post('agenda_cible');
-
-      /*
-       * L'agenda désigné a pu disparaître depuis — délié, supprimé, repris.
-       * Le menu ne le propose donc plus, et laisser sa valeur ici ne
-       * sélectionnerait rien : on montrerait « Mes évènements » sans le dire,
-       * alors que c'est exactement là que l'évènement ira.
+       * défaut. Cocher d'autres agendas l'y envoie aussi — plusieurs à la
+       * fois, chacun recevant sa copie. Ce ne sont pas des copies mortes :
+       * changer l'horaire ici le change partout, supprimer l'évènement ici le
+       * retire de partout, décocher un agenda l'en retire lui seul.
+       *
+       * Ne sont proposés que les agendas où le fournisseur nous autorise à
+       * écrire. Un agenda désigné puis disparu ne se coche plus : l'évènement
+       * retombe alors sur « Mes évènements », ici comme à l'envoi.
        */
       $connus = array_column($ouEnvoyer, 'cle');
-      if (!in_array($cibleActuelle, $connus, true)) { $cibleActuelle = ''; }
+      $coches = array_values(array_filter(
+          $vises,
+          static fn (string $v): bool => $v === Agenda::DEFAUT || in_array($v, $connus, true)
+      ));
+      if ($coches === []) { $coches = [Agenda::DEFAUT]; }
       ?>
       <?php if ($ouEnvoyer !== []): ?>
         <div class="carte">
           <div class="champ">
-            <label for="agenda_cible">Agenda</label>
-            <select id="agenda_cible" name="agenda_cible">
-              <option value=""<?= $cibleActuelle === '' ? ' selected' : '' ?>>
-                Mes évènements — le calendrier de l'application
-              </option>
-              <?php foreach ($ouEnvoyer as $cal): ?>
-                <option value="<?= e($cal['cle']) ?>"<?= $cibleActuelle === $cal['cle'] ? ' selected' : '' ?>>
-                  <?= e($cal['nom']) ?> (<?= e($cal['agenda']) ?>)<?= $cal['partage'] ? ' — partagé' : '' ?>
-                </option>
-              <?php endforeach; ?>
-            </select>
+            <span class="legende">Agendas où envoyer cet évènement</span>
+
+            <label class="case" style="display:block">
+              <input type="checkbox" name="agendas[]" value=""
+                     <?= in_array(Agenda::DEFAUT, $coches, true) ? 'checked' : '' ?>>
+              Mes évènements
+              <span class="discret">— le calendrier de l'application</span>
+            </label>
+
+            <?php foreach ($ouEnvoyer as $cal): ?>
+              <label class="case" style="display:block">
+                <input type="checkbox" name="agendas[]" value="<?= e($cal['cle']) ?>"
+                       <?= in_array($cal['cle'], $coches, true) ? 'checked' : '' ?>>
+                <?= e($cal['nom']) ?>
+                <span class="discret">
+                  (<?= e($cal['agenda']) ?>)<?= $cal['partage'] ? ' — partagé' : '' ?>
+                </span>
+              </label>
+            <?php endforeach; ?>
+
             <span class="champ__aide">
-              L'évènement part dans cet agenda au lieu du vôtre, et y reste
-              modifiable : ce que vous changez ici le suit, ce que vous
-              supprimez ici en disparaît.
+              Cochez-en autant que vous voulez : l'évènement part dans chacun et
+              y reste modifiable. Aucune case cochée revient à « Mes
+              évènements ».
             </span>
           </div>
         </div>
       <?php endif; ?>
-
       <button class="bouton bouton--bloc" type="submit">
 
         <?= $edition ? 'Enregistrer' : 'Ajouter au calendrier' ?>

@@ -132,6 +132,8 @@ final class CalendrierController
                 : Database::one('SELECT * FROM series_evenements WHERE id = ? AND user_id = ?',
                     [(int) $evenement['serie_id'], $userId]),
             'ouEnvoyer'  => Agenda::ouEnvoyer($userId),
+            'vises'      => $evenement === null
+                ? [Agenda::DEFAUT] : Agenda::ciblesDe((int) $evenement['id']),
         ], $evenement === null ? 'Nouvel événement' : 'Modifier l\'événement');
     }
 
@@ -188,8 +190,8 @@ final class CalendrierController
     {
         Database::run(
             'INSERT INTO evenements (user_id, matiere_id, cours_id, serie_id, type_id, titre,
-                                     description, lieu, debut, fin, journee_entiere, agenda_cible)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                                     description, lieu, debut, fin, journee_entiere)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             [
                 $userId,
                 $donnees['matiere_id'],
@@ -202,11 +204,13 @@ final class CalendrierController
                 $quand === null ? $donnees['debut'] : $quand['debut']->format('Y-m-d H:i:s'),
                 $quand === null ? $donnees['fin'] : $quand['fin']->format('Y-m-d H:i:s'),
                 $donnees['journee_entiere'],
-                $donnees['agenda_cible'],
             ]
         );
 
-        return Database::dernierId();
+        $id = Database::dernierId();
+        Agenda::viser($id, $donnees['agendas']);
+
+        return $id;
     }
 
     /**
@@ -612,7 +616,7 @@ final class CalendrierController
         Database::run(
             'UPDATE evenements
              SET matiere_id = ?, cours_id = ?, type_id = ?, titre = ?, description = ?, lieu = ?,
-                 debut = ?, fin = ?, journee_entiere = ?, agenda_cible = ?
+                 debut = ?, fin = ?, journee_entiere = ?
              WHERE id = ? AND user_id = ?',
             [
                 $donnees['matiere_id'],
@@ -624,11 +628,12 @@ final class CalendrierController
                 $donnees['debut'],
                 $donnees['fin'],
                 $donnees['journee_entiere'],
-                $donnees['agenda_cible'],
                 $id,
                 $userId,
             ]
         );
+
+        Agenda::viser($id, $donnees['agendas']);
 
         /*
          * Un évènement venu d'un agenda distant y retourne modifié, si le
@@ -694,16 +699,18 @@ final class CalendrierController
             Database::run(
                 'UPDATE evenements
                     SET matiere_id = ?, cours_id = ?, type_id = ?, titre = ?, description = ?,
-                        lieu = ?, debut = ?, fin = ?, journee_entiere = ?, agenda_cible = ?
+                        lieu = ?, debut = ?, fin = ?, journee_entiere = ?
                   WHERE id = ? AND user_id = ?',
                 [
                     $donnees['matiere_id'], $donnees['cours_id'], $donnees['type_id'],
                     $donnees['titre'], $donnees['description'], $donnees['lieu'],
                     $neuf->format('Y-m-d H:i:s'), $fin->format('Y-m-d H:i:s'),
-                    $donnees['journee_entiere'], $donnees['agenda_cible'],
+                    $donnees['journee_entiere'],
                     (int) $occurrence['id'], $userId,
                 ]
             );
+
+            Agenda::viser((int) $occurrence['id'], $donnees['agendas']);
         }
 
         return count($occurrences);
@@ -1076,13 +1083,15 @@ final class CalendrierController
         }
 
         /*
-         * L'agenda visé passe par « cibleValide » : une empreinte soumise à
-         * la main, ou celle d'un calendrier délié depuis, ne doit pas suffire
-         * à faire écrire l'application quelque part. Vide, c'est « Mes
-         * évènements » — le comportement d'avant.
+         * Les agendas cochés passent par « ciblesValides » : une empreinte
+         * soumise à la main, ou celle d'un calendrier délié depuis, ne doit
+         * pas suffire à faire écrire l'application quelque part. Rien de
+         * valable ? Alors « Mes évènements » — le comportement d'avant.
          */
+        $coches = $_POST['agendas'] ?? [];
+
         return [
-            'agenda_cible'    => Agenda::cibleValide($userId, (string) ($_POST['agenda_cible'] ?? '') ?: null),
+            'agendas'         => Agenda::ciblesValides($userId, is_array($coches) ? $coches : []),
             'matiere_id'      => $matiereId,
             'cours_id'        => $coursId,
             'type_id'         => $typeId,

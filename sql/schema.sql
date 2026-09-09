@@ -158,7 +158,6 @@ CREATE TABLE IF NOT EXISTS `evenements` (
   `debut`       DATETIME     NOT NULL,
   `fin`         DATETIME     NOT NULL,
   `journee_entiere` TINYINT(1) NOT NULL DEFAULT 0,
-  `agenda_cible`    CHAR(32)     DEFAULT NULL,
   `termine`     TINYINT(1)   NOT NULL DEFAULT 0,
   `etape`       TINYINT UNSIGNED NOT NULL DEFAULT 0,
   `created_at`  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -487,6 +486,19 @@ CREATE TABLE IF NOT EXISTS `agenda_calendriers` (
     REFERENCES `users`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Les agendas où part chaque évènement.
+-- (voir sql/migration-agendas-multiples.sql)
+--
+-- L'empreinte vide désigne « Mes évènements », le calendrier de
+-- l'application. Aucune ligne veut dire la même chose : c'est le cas de tout
+-- ce qui a été écrit avant que le choix existe.
+CREATE TABLE IF NOT EXISTS `evenement_agendas` (
+  `evenement_id` INT UNSIGNED NOT NULL,
+  `empreinte`    CHAR(32)     NOT NULL DEFAULT '',
+  PRIMARY KEY (`evenement_id`, `empreinte`),
+  CONSTRAINT `fk_evt_agenda` FOREIGN KEY (`evenement_id`)
+    REFERENCES `evenements`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 -- Ce que l'application a écrit dans Outlook.
 -- (voir sql/migration-outlook-envoi.sql)
 CREATE TABLE IF NOT EXISTS `agenda_envois` (
@@ -497,10 +509,11 @@ CREATE TABLE IF NOT EXISTS `agenda_envois` (
   `source_id`  INT UNSIGNED NOT NULL,
   `distant_id` VARCHAR(512) NOT NULL,
   `calendrier_id` TEXT       NULL,
+  `calendrier_empreinte` CHAR(32) NOT NULL DEFAULT '',
   `empreinte`  CHAR(32)     NULL,
   `maj_le`     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uniq_envoi` (`user_id`, `fournisseur`, `sorte`, `source_id`),
+  UNIQUE KEY `uniq_envoi` (`user_id`, `fournisseur`, `sorte`, `source_id`, `calendrier_empreinte`),
   CONSTRAINT `fk_envoi_user` FOREIGN KEY (`user_id`)
     REFERENCES `users`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

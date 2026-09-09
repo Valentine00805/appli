@@ -232,26 +232,84 @@ final class Agenda
     }
 
     /**
-     * L'agenda visé par un évènement, ramené à ce qui existe encore.
+     * L'empreinte qui désigne le calendrier de l'application.
      *
-     * Un calendrier peut avoir disparu depuis qu'on l'a désigné — délié,
-     * supprimé chez le fournisseur, partagé puis repris. L'évènement retombe
-     * alors sur « Mes évènements » plutôt que de rester suspendu à une
-     * destination qui n'existe plus.
+     * Vide plutôt qu'un mot choisi : c'est la valeur qu'une case décochée
+     * laisse derrière elle, et celle qu'ont déjà tous les évènements écrits
+     * avant que le choix existe.
+     *
+     * À ne pas confondre avec SynchroAgenda::MIENS, qui nomme la case « Mes
+     * évènements » du volet : celle-là dit ce qu'on affiche, celle-ci où l'on
+     * écrit.
      */
-    public static function cibleValide(int $userId, ?string $empreinte): ?string
+    public const DEFAUT = '';
+
+    /**
+     * Les agendas cochés, réduits à ceux qui existent et qu'on peut écrire.
+     *
+     * On repart de la liste plutôt que du formulaire : une empreinte soumise à
+     * la main, ou celle d'un calendrier délié depuis, ne doit pas suffire à
+     * faire écrire l'application quelque part.
+     *
+     * Rien de valable ne reste ? Alors « Mes évènements » — un évènement doit
+     * bien aller quelque part, et c'est là qu'il allait avant qu'on choisisse.
+     *
+     * @param  array<int, mixed> $cles  ce que le formulaire a envoyé
+     * @return array<int, string>       les empreintes retenues, jamais vide
+     */
+    public static function ciblesValides(int $userId, array $cles): array
     {
-        if ($empreinte === null || preg_match('/^[0-9a-f]{32}$/', $empreinte) !== 1) {
-            return null;
+        $connus = [];
+        foreach (self::ouEnvoyer($userId) as $cal) {
+            $connus[$cal['cle']] = true;
         }
 
-        foreach (self::ouEnvoyer($userId) as $cal) {
-            if ($cal['cle'] === $empreinte) {
-                return $empreinte;
+        $garder = [];
+        foreach ($cles as $cle) {
+            if ($cle === self::DEFAUT) {
+                $garder[self::DEFAUT] = true;
+                continue;
+            }
+            if (is_string($cle) && isset($connus[$cle])) {
+                $garder[$cle] = true;
             }
         }
 
-        return null;
+        return $garder === [] ? [self::DEFAUT] : array_keys($garder);
+    }
+
+    /**
+     * Les agendas où part un évènement, tels qu'ils sont retenus.
+     *
+     * @return array<int, string>  jamais vide : sans ligne, c'est « Mes évènements »
+     */
+    public static function ciblesDe(int $evenementId): array
+    {
+        $cibles = [];
+        foreach (Database::all(
+            'SELECT empreinte FROM evenement_agendas WHERE evenement_id = ?', [$evenementId]
+        ) as $ligne) {
+            $cibles[] = (string) $ligne['empreinte'];
+        }
+
+        return $cibles === [] ? [self::DEFAUT] : $cibles;
+    }
+
+    /**
+     * Retient les agendas d'un évènement.
+     *
+     * @param array<int, string> $cibles  déjà passées par « ciblesValides »
+     */
+    public static function viser(int $evenementId, array $cibles): void
+    {
+        Database::run('DELETE FROM evenement_agendas WHERE evenement_id = ?', [$evenementId]);
+
+        foreach ($cibles as $empreinte) {
+            Database::run(
+                'INSERT INTO evenement_agendas (evenement_id, empreinte) VALUES (?, ?)',
+                [$evenementId, $empreinte]
+            );
+        }
     }
 
     /**
