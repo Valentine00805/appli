@@ -8,10 +8,15 @@ declare(strict_types=1);
  * pas, et cela change tout : une lecture ratée ne coûte qu'une lecture, une
  * écriture ratée abîme l'agenda de quelqu'un.
  *
- * D'où le calendrier séparé. L'application crée le sien chez le fournisseur —
- * « Mes Cours » — et n'écrit jamais ailleurs. On l'affiche ou on le masque
- * d'une case dans Outlook, le supprimer n'emporte que ce qui vient d'ici, et
- * une erreur de notre part ne peut pas atteindre l'agenda dont on se sert.
+ * D'où le calendrier séparé par défaut. L'application crée le sien chez le
+ * fournisseur — « Mes Cours » —, on l'affiche ou on le masque d'une case dans
+ * Outlook, le supprimer n'emporte que ce qui vient d'ici, et une erreur de
+ * notre part ne peut pas atteindre l'agenda dont on se sert.
+ *
+ * Un évènement peut cependant désigner un autre agenda, parmi ceux qu'on a le
+ * droit de modifier. Il n'y a plus alors une destination mais autant qu'il y a
+ * d'évènements, et changer d'avis déménage : effacer là-bas avant de recréer
+ * ici, sans quoi le même rendez-vous vivrait à deux endroits.
  *
  * Ce qui monte : les évènements créés dans l'application, et les échéances des
  * tâches, en journée entière. Ce qui est venu d'Outlook n'y retourne pas —
@@ -66,7 +71,7 @@ final class EnvoiAgenda
 
         [$depuis, $jusqua] = $this->fenetre();
 
-        $aEnvoyer = $this->aEnvoyer($userId, $depuis, $jusqua);
+        $aEnvoyer = $this->aEnvoyer($userId, $depuis, $jusqua, $calendrier);
         $partis = $this->partis($userId);
 
         $bilan = ['crees' => 0, 'majs' => 0, 'retires' => 0, 'inchanges' => 0];
@@ -74,19 +79,34 @@ final class EnvoiAgenda
         foreach ($aEnvoyer as $cle => $quoi) {
             $empreinte = md5(json_encode($quoi['corps'], JSON_THROW_ON_ERROR));
             $connu = $partis[$cle] ?? null;
+            $ou = (string) $quoi['calendrier'];
 
             if ($connu === null) {
-                $this->creer($userId, $calendrier, $quoi, $empreinte);
+                $this->creer($userId, $ou, $quoi, $empreinte);
                 $bilan['crees']++;
                 continue;
             }
+
+            /*
+             * L'agenda visé a changé. On efface avant de recréer : laisser
+             * l'ancienne copie en place ferait apparaître le rendez-vous deux
+             * fois, et personne ne saurait laquelle des deux suit encore ce
+             * qu'on écrit ici.
+             */
+            $ouAvant = (string) ($connu['calendrier_id'] ?? $calendrier);
+            if ($ouAvant !== $ou) {
+                $this->effacer($userId, (string) $connu['distant_id'], $ouAvant);
+                $this->creer($userId, $ou, $quoi, $empreinte);
+                $bilan['majs']++;
+                continue;
+            }
+
             if ((string) $connu['empreinte'] === $empreinte) {
                 $bilan['inchanges']++;
                 continue;
             }
 
-            $this->modifier($userId, $quoi, $empreinte, (string) $connu['distant_id'],
-                (string) ($connu['calendrier_id'] ?? $calendrier));
+            $this->modifier($userId, $quoi, $empreinte, (string) $connu['distant_id'], $ou);
             $bilan['majs']++;
         }
 
@@ -159,7 +179,8 @@ final class EnvoiAgenda
         $evts = Database::one(
             'SELECT COUNT(*) AS n, COALESCE(SUM(CRC32(CONCAT_WS("|",
                         e.id, e.titre, COALESCE(e.description, ""), COALESCE(e.lieu, ""),
-                        e.debut, e.fin, e.journee_entiere))), 0) AS s
+                        e.debut, e.fin, e.journee_entiere,
+                        COALESCE(e.agenda_cible, "")))), 0) AS s
                FROM evenements e
                /*
                 * Aucun fournisseur ici, volontairement : un évènement venu de
@@ -236,75 +257,6 @@ final class EnvoiAgenda
         return $retires;
     }
 
-    /* --- Déposer chez quelqu'un ------------------------------------------- */
-
-    /**
-     * Dépose une copie d'un évènement dans l'agenda de quelqu'un d'autre.
-     *
-     * C'est la seule écriture de l'application hors de chez soi, et elle ne
-     * fait qu'une chose : ajouter. Pas de lien, pas d'empreinte, pas de
-     * calendrier à part — rien de ce qui permettrait de revenir dessus. La
-     * copie appartient désormais à la personne à qui on l'a donnée : elle peut
-     * la déplacer, la renommer, la jeter, sans que rien d'ici ne la contredise.
-     *
-     * On refuse ce que le fournisseur refuserait de toute façon — un agenda
-     * partagé en simple lecture —, et surtout on refuse de déposer deux fois
-     * le même évènement au même endroit : un double-clic ne doit pas remplir
-     * l'agenda de quelqu'un en double.
-     *
-     * @return array{nom: string, deja: bool}  où c'est parti, et si ça y était déjà
-     * @throws RuntimeException si le calendrier ne s'y prête pas, ou si le
-     *                          fournisseur refuse
-     */
-    public function deposer(int $userId, array $evenement, string $empreinte): array
-    {
-        $cal = Database::one(
-            'SELECT calendrier_id, nom, proprietaire, partage, peut_ecrire
-               FROM agenda_calendriers
-              WHERE user_id = ? AND fournisseur = ? AND empreinte = ?',
-            [$userId, $this->f->cle(), $empreinte]
-        );
-        if ($cal === null) {
-            throw new RuntimeException('Cet agenda n’est plus dans la liste.');
-        }
-        $nom = (string) ($cal['nom'] ?? 'cet agenda');
-
-        if ((int) $cal['peut_ecrire'] !== 1) {
-            throw new RuntimeException($this->f->nom() . ' ne vous donne pas le droit d’ajouter '
-                . 'dans « ' . $nom . ' » : cet agenda vous est partagé en lecture seule.');
-        }
-
-        $vu = Database::valeur(
-            'SELECT id FROM agenda_depots
-              WHERE user_id = ? AND fournisseur = ? AND evenement_id = ? AND calendrier_empreinte = ?',
-            [$userId, $this->f->cle(), (int) $evenement['id'], $empreinte]
-        );
-        if ($vu !== null) {
-            return ['nom' => $nom, 'deja' => true];
-        }
-
-        $reponse = $this->lien()->appeler($userId, 'POST',
-            $this->f->cheminDeCreation((string) $cal['calendrier_id']),
-            $this->corpsDUnEvenement($evenement));
-        $this->verifier($reponse, 'ajouter un évènement dans « ' . $nom . ' »');
-
-        Database::run(
-            'INSERT INTO agenda_depots
-                 (user_id, fournisseur, evenement_id, calendrier_empreinte, calendrier_nom,
-                  chez, distant_id, titre, debut)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-            [
-                $userId, $this->f->cle(), (int) $evenement['id'], $empreinte,
-                mb_substr($nom, 0, 190),
-                mb_substr((string) ($cal['proprietaire'] ?? ''), 0, 190),
-                (string) ($reponse['corps']['id'] ?? ''),
-                mb_substr((string) $evenement['titre'], 0, 190),
-                (string) $evenement['debut'],
-            ]
-        );
-
-        return ['nom' => $nom, 'deja' => false];
-    }
     /* --- Le calendrier de destination ------------------------------------- */
 
     /**
@@ -464,16 +416,23 @@ final class EnvoiAgenda
      *
      * @return array<string, array{corps: array}>  rangé par « sorte:id »
      */
-    private function aEnvoyer(int $userId, DateTimeImmutable $depuis, DateTimeImmutable $jusqua): array
-    {
+    private function aEnvoyer(
+        int $userId,
+        DateTimeImmutable $depuis,
+        DateTimeImmutable $jusqua,
+        string $defaut
+    ): array {
         $tout = [];
+        $miens = $this->calendriersDIci($userId);
+        $connues = $this->calendriersConnus($userId);
 
         /*
          * Les évènements, sauf ceux qui viennent d'Outlook : les renvoyer
          * reviendrait à les rendre à leur expéditeur, en double.
          */
         foreach (Database::all(
-            'SELECT e.id, e.titre, e.description, e.lieu, e.debut, e.fin, e.journee_entiere
+            'SELECT e.id, e.titre, e.description, e.lieu, e.debut, e.fin, e.journee_entiere,
+                    e.agenda_cible
                FROM evenements e
                /*
                 * Aucun fournisseur ici, volontairement : un évènement venu de
@@ -484,10 +443,28 @@ final class EnvoiAgenda
               WHERE e.user_id = ? AND l.id IS NULL AND e.debut BETWEEN ? AND ?',
             [$userId, $depuis->format('Y-m-d H:i:s'), $jusqua->format('Y-m-d H:i:s')]
         ) as $evt) {
+            $cible = (string) ($evt['agenda_cible'] ?? '');
+
+            /*
+             * Une cible inconnue de tous les agendas — un calendrier délié,
+             * supprimé, repris — retombe sur la destination par défaut :
+             * mieux vaut le rendez-vous quelque part que nulle part.
+             */
+            if ($cible === '' || !isset($connues[$cible])) {
+                $ou = $defaut;
+            } elseif (isset($miens[$cible])) {
+                $ou = $miens[$cible];
+            } else {
+                // Elle désigne l'agenda d'un autre fournisseur : c'est lui qui
+                // s'en charge, et ici l'évènement n'a rien à faire.
+                continue;
+            }
+
             $tout['evenement:' . (int) $evt['id']] = [
-                'sorte'     => 'evenement',
-                'source_id' => (int) $evt['id'],
-                'corps'     => $this->corpsDUnEvenement($evt),
+                'sorte'      => 'evenement',
+                'source_id'  => (int) $evt['id'],
+                'calendrier' => $ou,
+                'corps'      => $this->corpsDUnEvenement($evt),
             ];
         }
 
@@ -502,10 +479,13 @@ final class EnvoiAgenda
               WHERE t.user_id = ? AND t.faite = 0 AND t.echeance BETWEEN ? AND ?',
             [$userId, $depuis->format('Y-m-d'), $jusqua->format('Y-m-d')]
         ) as $tache) {
+            // Une échéance de tâche ne se choisit pas d'agenda : c'est un
+            // rappel de l'application, il reste là où l'application écrit.
             $tout['tache:' . (int) $tache['id']] = [
-                'sorte'     => 'tache',
-                'source_id' => (int) $tache['id'],
-                'corps'     => $this->corpsDUneTache($tache),
+                'sorte'      => 'tache',
+                'source_id'  => (int) $tache['id'],
+                'calendrier' => $defaut,
+                'corps'      => $this->corpsDUneTache($tache),
             ];
         }
 
@@ -513,8 +493,48 @@ final class EnvoiAgenda
     }
 
     /**
-     * Un évènement de l'application dans les termes de l'agenda.
+     * Les calendriers de ce fournisseur-ci : empreinte vers identifiant.
      *
+     * @return array<string, string>
+     */
+    private function calendriersDIci(int $userId): array
+    {
+        $par = [];
+        foreach (Database::all(
+            'SELECT empreinte, calendrier_id FROM agenda_calendriers
+              WHERE user_id = ? AND fournisseur = ? AND peut_ecrire = 1',
+            [$userId, $this->f->cle()]
+        ) as $ligne) {
+            $par[(string) $ligne['empreinte']] = (string) $ligne['calendrier_id'];
+        }
+
+        return $par;
+    }
+
+    /**
+     * Toutes les empreintes connues, tous fournisseurs confondus.
+     *
+     * Elles départagent les deux façons dont une cible peut ne pas être d'ici :
+     * elle appartient à l'autre agenda, et c'est lui qui l'enverra — ou elle
+     * n'existe plus nulle part, et l'évènement doit retomber quelque part.
+     *
+     * @return array<string, true>
+     */
+    private function calendriersConnus(int $userId): array
+    {
+        $par = [];
+        foreach (Database::all(
+            'SELECT empreinte FROM agenda_calendriers WHERE user_id = ? AND peut_ecrire = 1',
+            [$userId]
+        ) as $ligne) {
+            $par[(string) $ligne['empreinte']] = true;
+        }
+
+        return $par;
+    }
+
+    /**
+     * Un évènement de l'application dans les termes de l'agenda.     *
      * Public parce que la lecture s'en sert aussi : quand on modifie ici un
      * évènement venu de là-bas, c'est la même traduction qui repart.
      */

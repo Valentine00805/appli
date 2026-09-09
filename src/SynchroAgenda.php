@@ -845,16 +845,6 @@ final class SynchroAgenda
             $par[(string) $ligne['distant_id']] = true;
         }
 
-        /*
-         * Les copies déposées dans l'agenda de quelqu'un comptent elles aussi :
-         * si l'on suit cet agenda, on les y relira. Les rapatrier ferait, du
-         * cadeau qu'on vient de faire, un second évènement dans son propre
-         * calendrier — et l'on croirait Fanny plus occupée qu'elle ne l'est.
-         */
-        foreach (Database::all('SELECT distant_id FROM agenda_depots WHERE user_id = ? AND fournisseur = ?',
-            [$userId, $this->f->cle()]) as $ligne) {
-            $par[(string) $ligne['distant_id']] = true;
-        }
 
         return $par;
     }

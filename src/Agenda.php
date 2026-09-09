@@ -191,31 +191,39 @@ final class Agenda
     }
 
     /**
-     * Les agendas de quelqu'un d'autre où l'on a le droit de déposer.
+     * Tous les agendas où un évènement peut être envoyé, fournisseurs confondus.
      *
-     * Les siens n'y figurent pas : ce qu'on crée ici y arrive déjà tout seul,
-     * par « Mes Cours ». Ne restent que les agendas partagés — et parmi eux,
-     * seulement ceux dont le propriétaire a accordé la modification.
+     * Les siens, et ceux qu'on nous a ouverts en modification : « Votre
+     * famille » est l'agenda de quelqu'un d'autre, mais y écrire nous a été
+     * accordé, et ce qu'on y met s'y corrige et s'y supprime comme ailleurs.
+     * Ce qui est refusé ici l'est parce que le fournisseur le refuserait.
      *
-     * @return array<int, array{cle: string, nom: string, chez: string,
-     *                          agenda: string, fournisseur: string}>
+     * « Mes Cours » n'y figure pas : c'est là que va « Mes évènements », le
+     * choix par défaut, et le proposer une seconde fois sous son autre nom ne
+     * ferait que semer le doute.
+     *
+     * @return array<int, array{cle: string, nom: string, agenda: string,
+     *                          fournisseur: string, partage: bool}>
      */
-    public static function ouDeposer(int $userId): array
+    public static function ouEnvoyer(int $userId): array
     {
         $ou = [];
         foreach (self::relies($userId) as $f) {
+            $actuelle = EnvoiAgenda::pour($f)->destination($userId);
+            $reflet = $actuelle['choisi'] || $actuelle['id'] === null ? '' : md5($actuelle['id']);
+
             foreach (Database::all(
-                'SELECT empreinte, nom, proprietaire FROM agenda_calendriers
-                  WHERE user_id = ? AND fournisseur = ? AND partage = 1 AND peut_ecrire = 1
-                  ORDER BY nom',
-                [$userId, $f->cle()]
+                'SELECT empreinte, nom, proprietaire, partage FROM agenda_calendriers
+                  WHERE user_id = ? AND fournisseur = ? AND peut_ecrire = 1 AND empreinte <> ?
+                  ORDER BY partage, principal DESC, nom',
+                [$userId, $f->cle(), $reflet]
             ) as $cal) {
                 $ou[] = [
                     'cle'         => (string) $cal['empreinte'],
                     'nom'         => (string) ($cal['nom'] ?? 'Agenda'),
-                    'chez'        => (string) ($cal['proprietaire'] ?? ''),
                     'agenda'      => $f->nom(),
                     'fournisseur' => $f->cle(),
+                    'partage'     => (int) $cal['partage'] === 1,
                 ];
             }
         }
@@ -224,13 +232,34 @@ final class Agenda
     }
 
     /**
+     * L'agenda visé par un évènement, ramené à ce qui existe encore.
+     *
+     * Un calendrier peut avoir disparu depuis qu'on l'a désigné — délié,
+     * supprimé chez le fournisseur, partagé puis repris. L'évènement retombe
+     * alors sur « Mes évènements » plutôt que de rester suspendu à une
+     * destination qui n'existe plus.
+     */
+    public static function cibleValide(int $userId, ?string $empreinte): ?string
+    {
+        if ($empreinte === null || preg_match('/^[0-9a-f]{32}$/', $empreinte) !== 1) {
+            return null;
+        }
+
+        foreach (self::ouEnvoyer($userId) as $cal) {
+            if ($cal['cle'] === $empreinte) {
+                return $empreinte;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Les agendas à soi qui peuvent recevoir ce qu'on crée dans l'application.
      *
-     * L'inverse exact de « ouDeposer » : là-bas les agendas des autres, ici
-     * les siens. Un agenda qu'on nous a partagé n'a pas sa place dans cette
-     * liste — y déverser tous ses évènements et toutes ses échéances de
-     * tâches, sans que le propriétaire l'ait demandé, n'est pas un partage,
-     * c'est une invasion.
+     * Un agenda qu'on nous a partagé n'a pas sa place dans cette liste : y
+     * déverser tous ses évènements et toutes ses échéances de tâches, sans
+     * que le propriétaire l'ait demandé, n'est pas un partage.
      *
      * @return array<int, array{cle: string, nom: string, principal: bool}>
      */
@@ -263,33 +292,6 @@ final class Agenda
         return $ou;
     }
 
-    /**
-     * Combien d'agendas partagés on connaît, quel que soit le droit d'écriture.
-     *
-     * Sert à distinguer deux silences très différents : « personne ne vous a
-     * partagé son agenda » et « on ne vous y laisse pas écrire ».
-     */
-    public static function combienDePartages(int $userId): int
-    {
-        return (int) Database::valeur(
-            'SELECT COUNT(*) FROM agenda_calendriers WHERE user_id = ? AND partage = 1', [$userId]);
-    }
-
-    /**
-     * Ce qui a déjà été déposé pour un évènement.
-     *
-     * @return array<int, array>
-     */
-    public static function depots(int $userId, int $evenementId): array
-    {
-        return Database::all(
-            'SELECT calendrier_empreinte, calendrier_nom, chez, titre, depose_le
-               FROM agenda_depots
-              WHERE user_id = ? AND evenement_id = ?
-              ORDER BY depose_le',
-            [$userId, $evenementId]
-        );
-    }
     /**
      * Un agenda a-t-il quelque chose à faire, chez n'importe quel fournisseur ?
      *

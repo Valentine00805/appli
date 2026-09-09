@@ -169,15 +169,16 @@ $aReautoriser = !($partage ?? true) && $partagesEnAttente > 0 && ($souci ?? null
             les autres.
           </p>
           <p class="champ__aide">
-            <strong>Une seule exception, et vous la déclenchez :</strong> depuis un
-            évènement, « déposer une copie » l'ajoute dans l'agenda de
-            quelqu'un qui vous a laissé le droit d'y écrire. Une copie,
-            donnée une fois : elle lui appartient ensuite, et l'application
-            n'y reviendra ni pour la corriger ni pour la reprendre.
+            <strong>Une exception, et vous la déclenchez :</strong> chaque évènement
+            peut désigner l'agenda où il part, y compris celui de quelqu'un qui
+            vous a laissé le droit d'y écrire. Ce n'est pas une copie figée —
+            l'évènement y reste le vôtre, et ce que vous en faites ici le suit
+            là-bas.
           </p>
           <p class="champ__aide">
-            <strong>D'ici vers <?= e($f->nom()) ?> :</strong> vos évènements et les
-            échéances de vos tâches non faites, dans
+            <strong>D'ici vers <?= e($f->nom()) ?> :</strong> les échéances de vos
+            tâches non faites, et les évènements qui ne désignent pas d'autre
+            agenda, dans
             <strong>« <?= e($destination['nom']) ?> »</strong><?php
             ?><?= $destination['choisi'] ? '' : ', un calendrier que l’application crée chez ' . e($f->nom()) ?>.
             Elle n'écrit que là. Une tâche cochée quitte l'agenda, un évènement

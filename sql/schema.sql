@@ -158,6 +158,7 @@ CREATE TABLE IF NOT EXISTS `evenements` (
   `debut`       DATETIME     NOT NULL,
   `fin`         DATETIME     NOT NULL,
   `journee_entiere` TINYINT(1) NOT NULL DEFAULT 0,
+  `agenda_cible`    CHAR(32)     DEFAULT NULL,
   `termine`     TINYINT(1)   NOT NULL DEFAULT 0,
   `etape`       TINYINT UNSIGNED NOT NULL DEFAULT 0,
   `created_at`  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -484,33 +485,6 @@ CREATE TABLE IF NOT EXISTS `agenda_calendriers` (
   UNIQUE KEY `uniq_calendrier` (`user_id`, `fournisseur`, `empreinte`),
   CONSTRAINT `fk_cal_user` FOREIGN KEY (`user_id`)
     REFERENCES `users`(`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- Les copies déposées dans l'agenda de quelqu'un d'autre.
--- (voir sql/migration-depot.sql)
---
--- Une trace, pas un lien : rien ne repartira d'ici vers ces copies. Le titre
--- et la date sont recopiés pour que la trace se lise encore quand l'évènement
--- d'ici a changé, ou n'existe plus.
-CREATE TABLE IF NOT EXISTS `agenda_depots` (
-  `id`                   INT UNSIGNED NOT NULL AUTO_INCREMENT,
-  `user_id`              INT UNSIGNED NOT NULL,
-  `fournisseur`          VARCHAR(20)  NOT NULL DEFAULT 'microsoft',
-  `evenement_id`         INT UNSIGNED NULL,
-  `calendrier_empreinte` CHAR(32)     NOT NULL,
-  `calendrier_nom`       VARCHAR(190) NULL,
-  `chez`                 VARCHAR(190) NULL,
-  `distant_id`           VARCHAR(512) NOT NULL,
-  `titre`                VARCHAR(190) NOT NULL,
-  `debut`                DATETIME     NOT NULL,
-  `depose_le`            DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  KEY `idx_depot_user` (`user_id`, `fournisseur`),
-  KEY `idx_depot_evenement` (`evenement_id`),
-  CONSTRAINT `fk_depot_user` FOREIGN KEY (`user_id`)
-    REFERENCES `users`(`id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_depot_evenement` FOREIGN KEY (`evenement_id`)
-    REFERENCES `evenements`(`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Ce que l'application a écrit dans Outlook.
