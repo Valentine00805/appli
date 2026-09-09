@@ -277,7 +277,9 @@ final class CalendrierController
         Session::verifierCsrf();
         $userId = Auth::id();
 
-        if (Database::valeur('SELECT id FROM evenements WHERE id = ? AND user_id = ?', [$id, $userId]) === null) {
+        $avant = Database::one('SELECT id, serie_id FROM evenements WHERE id = ? AND user_id = ?',
+            [$id, $userId]);
+        if ($avant === null) {
             $this->introuvable();
         }
 
@@ -285,6 +287,14 @@ final class CalendrierController
         if (is_string($donnees)) {
             Session::flash('erreur', $donnees);
             redirect('evenements/' . $id . '/modifier');
+        }
+
+        $serieId = entier_ou_null($avant['serie_id']);
+        if (($_POST['portee'] ?? '') === 'serie' && $serieId !== null) {
+            $combien = $this->modifierLaSerie($userId, $serieId, $donnees);
+            Session::flash('succes', $combien . ' occurrence'
+                . ($combien > 1 ? 's mises à jour' : ' mise à jour') . '.');
+            redirect('calendrier', ['date' => substr($donnees['debut'], 0, 10)]);
         }
 
         Database::run(
@@ -309,6 +319,60 @@ final class CalendrierController
 
         Session::flash('succes', 'Événement mis à jour.');
         redirect('calendrier', ['date' => substr($donnees['debut'], 0, 10)]);
+    }
+
+    /**
+     * Applique la modification à toutes les occurrences d'une série.
+     *
+     * Chacune garde sa date : c'est ce qui fait d'elles une série, et la leur
+     * imposer les entasserait toutes le même jour. Ce qui se propage, c'est le
+     * reste — titre, lieu, notes, matière, type, cours — plus l'heure de la
+     * journée et la durée, prises sur l'occurrence qu'on avait sous les yeux.
+     *
+     * @return int  combien ont été mises à jour
+     */
+    private function modifierLaSerie(int $userId, int $serieId, array $donnees): int
+    {
+        $debut = new DateTimeImmutable($donnees['debut']);
+        $finie = new DateTimeImmutable($donnees['fin']);
+        $duree = $debut->diff($finie);
+        $journee = (int) $donnees['journee_entiere'] === 1;
+        // Une journée entière ne se mesure pas en heures mais en jours
+        // couverts : de minuit au dernier soir.
+        $jours = (int) $debut->setTime(0, 0)->diff($finie->setTime(0, 0))->days;
+
+        $occurrences = Database::all(
+            'SELECT id, debut FROM evenements WHERE serie_id = ? AND user_id = ? ORDER BY debut',
+            [$serieId, $userId]
+        );
+
+        foreach ($occurrences as $occurrence) {
+            $jour = new DateTimeImmutable(substr((string) $occurrence['debut'], 0, 10));
+
+            if ($journee) {
+                $neuf = $jour->setTime(0, 0);
+                $fin = $jour->modify('+' . $jours . ' days')->setTime(23, 59, 59);
+            } else {
+                $neuf = $jour->setTime((int) $debut->format('H'), (int) $debut->format('i'));
+                $fin = $neuf->add($duree);
+            }
+
+            Database::run(
+                'UPDATE evenements
+                    SET matiere_id = ?, cours_id = ?, type_id = ?, titre = ?, description = ?,
+                        lieu = ?, debut = ?, fin = ?, journee_entiere = ?
+                  WHERE id = ? AND user_id = ?',
+                [
+                    $donnees['matiere_id'], $donnees['cours_id'], $donnees['type_id'],
+                    $donnees['titre'], $donnees['description'], $donnees['lieu'],
+                    $neuf->format('Y-m-d H:i:s'), $fin->format('Y-m-d H:i:s'),
+                    $donnees['journee_entiere'],
+                    (int) $occurrence['id'], $userId,
+                ]
+            );
+        }
+
+        return count($occurrences);
     }
 
     /**

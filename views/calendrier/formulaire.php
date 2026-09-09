@@ -126,14 +126,37 @@ $matiereActive = $edition ? entier_ou_null($evenement['matiere_id']) : null;
           </div>
         </div>
       <?php elseif ($serie !== null): ?>
-        <p class="champ__aide">
-          🔁 Cet évènement fait partie d'une série
-          <?= e(['jour' => 'quotidienne', 'semaine' => 'hebdomadaire',
-                 'quinzaine' => 'toutes les deux semaines', 'mois' => 'mensuelle'][$serie['frequence']] ?? '') ?>
-          de <?= (int) $serie['occurrences'] ?> occurrences, jusqu'au
-          <?= e(date('d/m/Y', strtotime((string) $serie['jusqu_au']))) ?>.
-          Ce que vous modifiez ici ne concerne que cette occurrence.
-        </p>
+        <?php
+        /*
+         * À qui s'applique la modification.
+         *
+         * « Cette occurrence » d'abord : c'est le geste le moins destructeur,
+         * et celui qu'on fait le plus souvent — déplacer un cours d'une
+         * semaine, noter une salle différente.
+         */
+        ?>
+        <fieldset class="serie-portee">
+          <legend>
+            🔁 Série
+            <?= e(['jour' => 'quotidienne', 'semaine' => 'hebdomadaire',
+                   'quinzaine' => 'toutes les deux semaines', 'mois' => 'mensuelle'][$serie['frequence']] ?? '') ?>
+            de <?= (int) $serie['occurrences'] ?> occurrences, jusqu'au
+            <?= e(date('d/m/Y', strtotime((string) $serie['jusqu_au']))) ?>
+          </legend>
+          <label class="case">
+            <input type="radio" name="portee" value="occurrence" checked>
+            Ne modifier que cette occurrence
+          </label>
+          <label class="case">
+            <input type="radio" name="portee" value="serie">
+            Modifier les <?= (int) $serie['occurrences'] ?> occurrences
+          </label>
+          <span class="champ__aide">
+            Sur toute la série, chaque occurrence garde sa date — sans quoi
+            elles se retrouveraient toutes le même jour. L'heure et la durée,
+            elles, s'appliquent partout.
+          </span>
+        </fieldset>
       <?php endif; ?>
 
       <div class="champ">

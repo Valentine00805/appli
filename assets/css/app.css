@@ -2030,3 +2030,14 @@ ul.apercu-liste--n2 { list-style-type: square; }
 .cal-volet__teinte::-webkit-color-swatch-wrapper { padding: 0; }
 .cal-volet__teinte::-webkit-color-swatch { border: none; border-radius: 50%; }
 .cal-volet__teinte::-moz-color-swatch { border: none; border-radius: 50%; }
+
+/* Le choix de la portée, quand on modifie une occurrence d'une série. */
+.serie-portee {
+  margin: 0 0 1rem;
+  padding: .7rem .9rem;
+  border: 1px solid var(--bordure);
+  border-radius: var(--rayon-s);
+}
+.serie-portee legend { padding: 0 .35rem; font-size: .85rem; font-weight: 650; }
+.serie-portee .case { display: flex; gap: .5rem; align-items: baseline; margin-bottom: .3rem; }
+.serie-portee .champ__aide { display: block; margin-top: .4rem; }
