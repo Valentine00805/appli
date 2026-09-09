@@ -15,6 +15,29 @@ $valeur = static function (string $champ, string $defaut = '') use ($evenement, 
     return post($champ, $defaut);
 };
 
+/**
+ * Les cases des jours de la semaine.
+ *
+ * Elles ne valent que pour les rythmes hebdomadaires ; « chaque jour » les
+ * prend déjà tous et « chaque mois » se compte en quantièmes. Aucune cochée,
+ * la série garde le jour de sa date de départ — le comportement d'avant, pour
+ * qui ne s'en préoccupe pas.
+ */
+$joursSemaine = static function (array $coches, string $prefixe): string {
+    $noms = [1 => 'lundi', 2 => 'mardi', 3 => 'mercredi', 4 => 'jeudi',
+             5 => 'vendredi', 6 => 'samedi', 7 => 'dimanche'];
+    $html = '<span class="legende">Jours de la semaine</span><div class="jours-semaine">';
+    foreach ($noms as $numero => $nom) {
+        $id = $prefixe . '-jour-' . $numero;
+        $html .= '<input type="checkbox" id="' . $id . '" name="jours[]" value="' . $numero . '"'
+            . (in_array($numero, $coches, true) ? ' checked' : '') . '>'
+            . '<label for="' . $id . '" title="' . e(ucfirst($nom)) . '">'
+            . e(mb_strtoupper(mb_substr($nom, 0, 1))) . '<span class="sr-only">' . e($nom) . '</span></label>';
+    }
+
+    return $html . '</div>';
+};
+
 $dateDebut = $edition ? substr((string) $evenement['debut'], 0, 10) : ($dateDefaut ?: date('Y-m-d'));
 $dateFin   = $edition ? substr((string) $evenement['fin'], 0, 10) : $dateDebut;
 $heureDebut = $edition ? substr((string) $evenement['debut'], 11, 5) : '08:00';
@@ -125,6 +148,14 @@ $matiereActive = $edition ? entier_ou_null($evenement['matiere_id']) : null;
             <span class="champ__aide">Deux ans au plus, deux cents occurrences au maximum.</span>
           </div>
         </div>
+
+        <div class="champ">
+          <?= $joursSemaine([], 'neuf') ?>
+          <span class="champ__aide">
+            Pour un rythme hebdomadaire : cochez les jours voulus, par exemple
+            lundi et jeudi. Rien de coché garde le jour de la date de début.
+          </span>
+        </div>
       <?php elseif ($serie !== null): ?>
         <?php
         /*
@@ -186,10 +217,15 @@ $matiereActive = $edition ? entier_ou_null($evenement['matiere_id']) : null;
                      value="<?= e((string) $serie['jusqu_au']) ?>">
             </div>
           </div>
+          <div class="champ" style="margin-top:.5rem">
+            <?= $joursSemaine(
+                array_map('intval', array_filter(explode(',', (string) ($serie['jours'] ?? '')), 'strlen')),
+                'serie') ?>
+          </div>
           <span class="champ__aide">
-            Changer le rythme n'a d'effet que sur toute la série. Les séances
-            qui tombent encore sur une date prévue sont conservées telles
-            quelles ; celles qui ne le sont plus disparaissent.
+            Changer le rythme ou les jours n'a d'effet que sur toute la série.
+            Les séances qui tombent encore sur une date prévue sont conservées
+            telles quelles ; celles qui ne le sont plus disparaissent.
           </span>
         </fieldset>
       <?php endif; ?>

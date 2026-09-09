@@ -23,6 +23,14 @@ final class CalendrierController
      * remplirait la base et l'agenda de quelqu'un pour l'éternité. Deux ans et
      * deux cents occurrences couvrent une année scolaire avec de la marge.
      */
+    /**
+     * Les rythmes hebdomadaires, seuls à admettre un choix de jours.
+     *
+     * « Chaque jour » les prend déjà tous, et « chaque mois » se compte en
+     * quantièmes, pas en jours de semaine.
+     */
+    private const RYTHMES_A_JOURS = ['semaine' => 1, 'quinzaine' => 2];
+
     private const SERIE_MAX = 200;
     private const SERIE_HORIZON = '+2 years';
 
@@ -147,9 +155,10 @@ final class CalendrierController
         $serieId = null;
         if ($quand !== null) {
             Database::run(
-                'INSERT INTO series_evenements (user_id, frequence, jusqu_au, occurrences)
-                 VALUES (?, ?, ?, ?)',
-                [$userId, $quand['frequence'], $quand['jusqu_au']->format('Y-m-d'), count($quand['dates'])]
+                'INSERT INTO series_evenements (user_id, frequence, jours, jusqu_au, occurrences)
+                 VALUES (?, ?, ?, ?, ?)',
+                [$userId, $quand['frequence'], implode(',', $quand['jours']) ?: null,
+                 $quand['jusqu_au']->format('Y-m-d'), count($quand['dates'])]
             );
             $serieId = Database::dernierId();
         }
@@ -228,21 +237,63 @@ final class CalendrierController
             $jusqu = $horizon;
         }
 
+        $jours = $this->joursSoumis($frequence);
+
         $dates = [];
-        foreach ($this->deplier($premier, $frequence, $jusqu) as $quand) {
+        foreach ($this->deplier($premier, $frequence, $jusqu, $jours) as $quand) {
             $dates[] = ['debut' => $quand, 'fin' => $quand->add($duree)];
         }
+        if ($dates === []) {
+            return 'Aucune date ne correspond : vérifiez les jours cochés.';
+        }
 
-        return ['frequence' => $frequence, 'jusqu_au' => $jusqu, 'dates' => $dates];
+        return ['frequence' => $frequence, 'jours' => $jours,
+                'jusqu_au' => $jusqu, 'dates' => $dates];
+    }
+
+    /**
+     * Les jours de semaine cochés, en numéros ISO croissants.
+     *
+     * Vide s'il n'y en a pas, ou si le rythme n'en admet pas : la série garde
+     * alors le jour de sa date de départ.
+     *
+     * @return array<int, int>
+     */
+    private function joursSoumis(string $frequence): array
+    {
+        if (!isset(self::RYTHMES_A_JOURS[$frequence])) {
+            return [];
+        }
+
+        $jours = [];
+        foreach ((array) ($_POST['jours'] ?? []) as $jour) {
+            $jour = (int) $jour;
+            if ($jour >= 1 && $jour <= 7) {
+                $jours[$jour] = true;
+            }
+        }
+        ksort($jours);
+
+        return array_keys($jours);
     }
 
     /**
      * Les dates d'une répétition, de la première jusqu'à la borne.
      *
+     * @param array<int, int> $jours  jours de semaine ISO, ou vide
      * @return array<int, DateTimeImmutable>
      */
-    private function deplier(DateTimeImmutable $premier, string $frequence, DateTimeImmutable $jusqu): array
-    {
+    private function deplier(
+        DateTimeImmutable $premier,
+        string $frequence,
+        DateTimeImmutable $jusqu,
+        array $jours = []
+    ): array {
+        if ($jours !== [] && isset(self::RYTHMES_A_JOURS[$frequence])) {
+            return $this->deplierSurLesJours(
+                $premier, self::RYTHMES_A_JOURS[$frequence], $jusqu, $jours);
+        }
+
         $dates = [];
         $rang = 0;
         while (count($dates) < self::SERIE_MAX) {
@@ -259,6 +310,50 @@ final class CalendrierController
                 break;
             }
             $dates[] = $quand;
+        }
+
+        return $dates;
+    }
+
+    /**
+     * Les dates d'une répétition qui retombe sur plusieurs jours de semaine.
+     *
+     * On avance de semaine en semaine — ou de quinzaine en quinzaine — et l'on
+     * prend, dans chacune, les jours cochés. Ceux qui précèdent la date de
+     * départ sont laissés : une série commencée un mercredi ne remonte pas au
+     * lundi de la même semaine.
+     *
+     * @param int $pas  1 pour chaque semaine, 2 pour une sur deux
+     * @param array<int, int> $jours
+     * @return array<int, DateTimeImmutable>
+     */
+    private function deplierSurLesJours(
+        DateTimeImmutable $premier,
+        int $pas,
+        DateTimeImmutable $jusqu,
+        array $jours
+    ): array {
+        // Le lundi de la semaine de départ : le repère à partir duquel les
+        // semaines se comptent, quel que soit le jour où l'on a commencé.
+        $lundi = $premier->modify('monday this week')
+            ->setTime((int) $premier->format('H'), (int) $premier->format('i'));
+
+        $dates = [];
+        for ($semaine = 0; count($dates) < self::SERIE_MAX; $semaine += $pas) {
+            $debutSemaine = $lundi->modify('+' . ($semaine * 7) . ' days');
+            if ($debutSemaine > $jusqu) {
+                break;
+            }
+            foreach ($jours as $jour) {
+                $quand = $debutSemaine->modify('+' . ($jour - 1) . ' days');
+                if ($quand < $premier || $quand > $jusqu) {
+                    continue;
+                }
+                $dates[] = $quand;
+                if (count($dates) >= self::SERIE_MAX) {
+                    break;
+                }
+            }
         }
 
         return $dates;
@@ -293,12 +388,14 @@ final class CalendrierController
         }
 
         $jusqu = (new DateTimeImmutable($borne))->setTime(23, 59, 59);
+        $jours = $this->joursSoumis($frequence);
         if ($frequence === (string) $serie['frequence']
-            && $borne === (string) $serie['jusqu_au']) {
+            && $borne === (string) $serie['jusqu_au']
+            && implode(',', $jours) === (string) ($serie['jours'] ?? '')) {
             return null;
         }
 
-        return ['frequence' => $frequence, 'jusqu_au' => $jusqu];
+        return ['frequence' => $frequence, 'jours' => $jours, 'jusqu_au' => $jusqu];
     }
 
     /**
@@ -329,8 +426,12 @@ final class CalendrierController
         $jusqu = $rythme['jusqu_au'] > $horizon ? $horizon : $rythme['jusqu_au'];
 
         $voulues = [];
-        foreach ($this->deplier($ancre, $rythme['frequence'], $jusqu) as $quand) {
+        foreach ($this->deplier($ancre, $rythme['frequence'], $jusqu, $rythme['jours']) as $quand) {
             $voulues[$quand->format('Y-m-d')] = $quand;
+        }
+        if ($voulues === []) {
+            // Aucune date : plutôt que de vider la série, on n'y touche pas.
+            return ['ajoutees' => 0, 'retirees' => 0];
         }
 
         $bilan = ['ajoutees' => 0, 'retirees' => 0];
@@ -358,9 +459,10 @@ final class CalendrierController
         }
 
         Database::run(
-            'UPDATE series_evenements SET frequence = ?, jusqu_au = ?, occurrences = ?
+            'UPDATE series_evenements SET frequence = ?, jours = ?, jusqu_au = ?, occurrences = ?
               WHERE id = ? AND user_id = ?',
-            [$rythme['frequence'], $jusqu->format('Y-m-d'), count($voulues), $serieId, $userId]
+            [$rythme['frequence'], implode(',', $rythme['jours']) ?: null,
+             $jusqu->format('Y-m-d'), count($voulues), $serieId, $userId]
         );
 
         return $bilan;

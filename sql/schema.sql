@@ -132,6 +132,7 @@ CREATE TABLE IF NOT EXISTS `series_evenements` (
   `id`          INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `user_id`     INT UNSIGNED NOT NULL,
   `frequence`   ENUM('jour','semaine','quinzaine','mois') NOT NULL,
+  `jours`       VARCHAR(20)  NULL,
   `jusqu_au`    DATE         NOT NULL,
   `occurrences` SMALLINT UNSIGNED NOT NULL DEFAULT 0,
   `cree_le`     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,

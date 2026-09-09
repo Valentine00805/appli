@@ -2041,3 +2041,18 @@ ul.apercu-liste--n2 { list-style-type: square; }
 .serie-portee legend { padding: 0 .35rem; font-size: .85rem; font-weight: 650; }
 .serie-portee .case { display: flex; gap: .5rem; align-items: baseline; margin-bottom: .3rem; }
 .serie-portee .champ__aide { display: block; margin-top: .4rem; }
+
+/* Les jours de la semaine d'une répétition : sept pastilles à cocher. */
+.jours-semaine { display: flex; flex-wrap: wrap; gap: .3rem; margin-top: .25rem; }
+.jours-semaine input { position: absolute; opacity: 0; width: 0; height: 0; }
+.jours-semaine label {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 2rem; height: 2rem; border-radius: 50%;
+  border: 1px solid var(--bordure); background: var(--fond-carte);
+  font-size: .85rem; font-weight: 650; cursor: pointer;
+  transition: background .12s, border-color .12s, color .12s;
+}
+.jours-semaine input:checked + label {
+  background: var(--accent, #4f46e5); border-color: var(--accent, #4f46e5); color: #fff;
+}
+.jours-semaine input:focus-visible + label { outline: 2px solid var(--accent, #4f46e5); outline-offset: 2px; }
