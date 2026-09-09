@@ -27,7 +27,10 @@ final class CalendrierController
         // Les échéances des tâches s'invitent dans le calendrier sans y être
         // recopiées : elles sont relues à chaque affichage, donc toujours à
         // jour. Un filtre par matière ou par type les écarte, n'en ayant pas.
-        if ($matiereId === null && $typeId === null) {
+        // Elles suivent le sort de « Mes évènements » dans le volet : ce sont
+        // les siennes, et les masquer à moitié n'aurait pas de sens.
+        if ($matiereId === null && $typeId === null
+            && !SynchroOutlook::masques($userId)['miens']) {
             $evenements = array_merge($evenements, self::echeancesEntre($userId, $debut, $fin));
             usort($evenements, static fn (array $a, array $b): int => $a['debut'] <=> $b['debut']);
         }
@@ -44,7 +47,25 @@ final class CalendrierController
             'types'         => TypesEvenementController::pourUtilisateur($userId),
             'typeId'        => $typeId,
             'aVenir'        => $this->aVenir($userId, 6),
+            'sources'       => SynchroOutlook::sourcesDuCalendrier($userId),
         ], 'Calendrier');
+    }
+
+    /**
+     * Retient les agendas cochés dans le volet.
+     *
+     * Rien n'est synchronisé ni effacé : on choisit ce qu'on regarde, pas ce
+     * que l'application va chercher.
+     */
+    public function sources(): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+
+        $coches = $_POST['sources'] ?? [];
+        SynchroOutlook::montrer(Auth::id(), is_array($coches) ? $coches : []);
+
+        repartir_vers('calendrier');
     }
 
     /** Formulaire de création (id null) ou de modification d'un événement. */
@@ -190,14 +211,22 @@ final class CalendrierController
         ?int $matiereId = null,
         ?int $typeId = null
     ): array {
+        /*
+         * L'agenda d'origine sert à masquer : un évènement sans lien vient
+         * d'ici, les autres du calendrier Outlook nommé par « ol.calendrier ».
+         */
         $sql = 'SELECT e.*, m.nom AS matiere_nom, m.couleur AS matiere_couleur, c.titre AS cours_titre,
-                       t.nom AS type_nom, t.icone AS type_icone, t.couleur AS type_couleur, t.est_echeance
+                       t.nom AS type_nom, t.icone AS type_icone, t.couleur AS type_couleur, t.est_echeance,
+                       ol.calendrier AS outlook_calendrier
                 FROM evenements e
                 LEFT JOIN matieres m        ON m.id = e.matiere_id
                 LEFT JOIN cours c           ON c.id = e.cours_id
                 LEFT JOIN types_evenement t ON t.id = e.type_id
+                LEFT JOIN outlook_liens ol  ON ol.evenement_id = e.id AND ol.user_id = e.user_id
                 WHERE e.user_id = ? AND e.debut <= ? AND e.fin >= ?';
         $params = [$userId, $fin->format('Y-m-d H:i:s'), $debut->format('Y-m-d H:i:s')];
+
+        $sql .= self::masqueDesAgendas($userId, $params);
 
         if ($matiereId !== null) {
             $sql .= ' AND e.matiere_id = ?';
@@ -210,6 +239,36 @@ final class CalendrierController
         $sql .= ' ORDER BY e.debut ASC, e.fin ASC';
 
         return Database::all($sql, $params);
+    }
+
+    /**
+     * La condition qui écarte les agendas décochés dans le volet.
+     *
+     * Elle vaut partout où l'on montre des évènements, y compris dans
+     * « Prochainement » : décocher un agenda et le retrouver plus bas ferait
+     * douter de la case autant que de la liste.
+     *
+     * La requête doit avoir joint « outlook_liens » sous l'alias « ol ».
+     *
+     * @param array $params  complété des valeurs à lier
+     */
+    private static function masqueDesAgendas(int $userId, array &$params): string
+    {
+        $masques = SynchroOutlook::masques($userId);
+        $sql = '';
+
+        if ($masques['miens']) {
+            $sql .= ' AND ol.id IS NOT NULL';
+        }
+        if ($masques['calendriers'] !== []) {
+            // Une origine inconnue reste montrée : mieux vaut un évènement de
+            // trop qu'un rendez-vous escamoté sans qu'on sache pourquoi.
+            $trous = implode(', ', array_fill(0, count($masques['calendriers']), '?'));
+            $sql .= ' AND (ol.calendrier IS NULL OR ol.calendrier NOT IN (' . $trous . '))';
+            $params = array_merge($params, $masques['calendriers']);
+        }
+
+        return $sql;
     }
 
     private function evenements(
@@ -337,20 +396,27 @@ final class CalendrierController
 
     private function aVenir(int $userId, int $limite): array
     {
+        $params = [$userId];
         $lignes = Database::all(
             'SELECT e.*, m.nom AS matiere_nom, m.couleur AS matiere_couleur,
                     t.nom AS type_nom, t.icone AS type_icone, t.couleur AS type_couleur
              FROM evenements e
              LEFT JOIN matieres m        ON m.id = e.matiere_id
              LEFT JOIN types_evenement t ON t.id = e.type_id
-             WHERE e.user_id = ? AND e.fin >= NOW() AND e.termine = 0
-             ORDER BY e.debut ASC LIMIT ' . $limite,
-            [$userId]
+             LEFT JOIN outlook_liens ol  ON ol.evenement_id = e.id AND ol.user_id = e.user_id
+             WHERE e.user_id = ? AND e.fin >= NOW() AND e.termine = 0'
+             . self::masqueDesAgendas($userId, $params)
+             . ' ORDER BY e.debut ASC LIMIT ' . $limite,
+            $params
         );
 
-        // Les échéances encore ouvertes s'y ajoutent, sur un horizon large.
+        // Les échéances encore ouvertes s'y ajoutent, sur un horizon large —
+        // et suivent le sort de « Mes évènements », comme dans la grille.
         $horizon = (new DateTimeImmutable('today'))->modify('+1 year');
-        foreach (self::echeancesEntre($userId, new DateTimeImmutable('today'), $horizon) as $echeance) {
+        $echeances = SynchroOutlook::masques($userId)['miens']
+            ? []
+            : self::echeancesEntre($userId, new DateTimeImmutable('today'), $horizon);
+        foreach ($echeances as $echeance) {
             if ((int) $echeance['termine'] === 0) {
                 $lignes[] = $echeance;
             }

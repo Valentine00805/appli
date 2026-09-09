@@ -196,6 +196,7 @@ $routes = [
     ['POST', 'fichiers/{id}/supprimer',   [CoursController::class, 'supprimerFichier']],
 
     ['GET',  'calendrier',                [CalendrierController::class, 'index']],
+    ['POST', 'calendrier/agendas',        [CalendrierController::class, 'sources']],
     ['GET',  'evenements/nouveau',        [CalendrierController::class, 'formulaire']],
     ['POST', 'evenements/nouveau',        [CalendrierController::class, 'creer']],
     ['GET',  'evenements/{id}/modifier',  [CalendrierController::class, 'formulaire']],

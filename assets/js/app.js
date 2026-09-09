@@ -102,13 +102,14 @@
     });
   }
 
-  // Les filtres s'appliquent dès qu'on change une valeur
-  var filtres = document.querySelector('[data-auto-envoi]');
-  if (filtres) {
-    filtres.querySelectorAll('select').forEach(function (champ) {
-      champ.addEventListener('change', function () { filtres.submit(); });
+  // Les filtres s'appliquent dès qu'on change une valeur — listes déroulantes
+  // comme cases à cocher, et sur chaque formulaire qui le demande, non plus
+  // seulement le premier : le calendrier en a deux depuis le volet des agendas.
+  document.querySelectorAll('[data-auto-envoi]').forEach(function (formulaire) {
+    formulaire.querySelectorAll('select, input[type="checkbox"]').forEach(function (champ) {
+      champ.addEventListener('change', function () { formulaire.submit(); });
     });
-  }
+  });
 
   // Les champs de remboursement n'apparaissent qu'une fois la case cochée
   var caseRemb = document.getElementById('a_rembourser');

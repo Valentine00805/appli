@@ -4,6 +4,7 @@
  * @var DateTimeImmutable $ancre, $debut, $fin
  * @var array $evenements, $parJour, $matieres, $types, $aVenir
  * @var ?int $matiereId, $typeId
+ * @var array $sources  les agendas qu'on peut montrer ou masquer
  */
 $aujourdhui = (new DateTimeImmutable('today'))->format('Y-m-d');
 
@@ -126,6 +127,47 @@ $puce = static function (array $evt) use ($destination): string {
     </nav>
   </div>
 </div>
+
+<div class="cal-avec-volet">
+
+<?php if ($sources !== []): ?>
+  <?php
+  /*
+   * Le volet des agendas.
+   *
+   * Cocher ici ne touche à rien : ni synchronisation, ni suppression. C'est
+   * un rideau qu'on tire sur l'agenda d'un proche le temps d'y voir clair,
+   * et qu'on rouvre sans que rien n'ait à être retéléchargé.
+   */
+  ?>
+  <aside class="cal-volet" aria-label="Agendas affichés">
+    <form method="post" action="<?= url('calendrier/agendas') ?>" data-auto-envoi>
+      <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
+      <input type="hidden" name="retour" value="<?= e((string) ($_SERVER['REQUEST_URI'] ?? '')) ?>">
+      <h2 class="cal-volet__titre">Agendas</h2>
+      <ul class="cal-volet__liste">
+        <?php foreach ($sources as $source): ?>
+          <li>
+            <label>
+              <input type="checkbox" name="sources[]"
+                     value="<?= e($source['cle']) ?>"<?= $source['affiche'] ? ' checked' : '' ?>>
+              <span><?= e($source['nom']) ?></span>
+            </label>
+          </li>
+        <?php endforeach; ?>
+      </ul>
+      <noscript>
+        <button class="bouton bouton--secondaire bouton--petit" type="submit">Appliquer</button>
+      </noscript>
+      <p class="champ__aide cal-volet__note">
+        Masquer un agenda ne le désynchronise pas et n'efface rien.
+        <a href="<?= url('outlook') ?>">Choisir ceux à synchroniser</a>
+      </p>
+    </form>
+  </aside>
+<?php endif; ?>
+
+<div class="cal-corps">
 
 <?php if ($vue === 'jour'): ?>
 
@@ -252,6 +294,9 @@ $puce = static function (array $evt) use ($destination): string {
   <?php endif; ?>
 
 <?php endif; ?>
+
+</div><!-- .cal-corps -->
+</div><!-- .cal-avec-volet -->
 
 <div class="legende-types" style="margin-top:1rem">
   <?php foreach ($types as $t): ?>

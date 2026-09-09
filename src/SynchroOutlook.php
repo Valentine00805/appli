@@ -42,6 +42,9 @@ final class SynchroOutlook
      */
     private const DEFAUT = 'principal';
 
+    /** Dans le volet du calendrier, la ligne de ses propres évènements. */
+    public const MIENS = 'miens';
+
     /**
      * Le repos entre deux lectures automatiques, en secondes.
      *
@@ -303,6 +306,110 @@ final class SynchroOutlook
               ORDER BY principal DESC, partage ASC, nom ASC',
             [$userId, $ecriture === null ? '' : md5($ecriture)]
         );
+    }
+
+    /**
+     * Les agendas qu'on peut montrer ou masquer dans le calendrier.
+     *
+     * Rien à voir avec le suivi : « suivi » dit ce que l'application va
+     * chercher chez Microsoft, « affiche » ce qu'on veut voir maintenant. On
+     * masque l'agenda d'un proche un après-midi sans cesser de le suivre, et
+     * sans que rien ne soit effacé ni retéléchargé.
+     *
+     * Le premier de la liste, ce sont ses propres évènements : ils n'ont pas
+     * de calendrier d'origine, et méritent pourtant leur case.
+     *
+     * @return array<int, array{cle: string, nom: string, affiche: bool, partage: bool}>
+     */
+    public static function sourcesDuCalendrier(int $userId): array
+    {
+        if (!Outlook::configuree() || !Outlook::relie($userId)) {
+            return [];
+        }
+
+        $miens = Database::valeur(
+            'SELECT afficher_miens FROM outlook_comptes WHERE user_id = ?', [$userId]);
+
+        $sources = [[
+            'cle'     => self::MIENS,
+            'nom'     => 'Mes évènements',
+            'affiche' => (int) $miens !== 0,
+            'partage' => false,
+        ]];
+
+        foreach (Database::all(
+            'SELECT empreinte, nom, proprietaire, partage, affiche
+               FROM outlook_calendriers
+              WHERE user_id = ? AND suivi = 1
+              ORDER BY principal DESC, partage ASC, nom ASC',
+            [$userId]
+        ) as $cal) {
+            $sources[] = [
+                'cle'     => (string) $cal['empreinte'],
+                'nom'     => (string) ($cal['nom'] ?? 'Calendrier'),
+                'affiche' => (int) $cal['affiche'] !== 0,
+                'partage' => (int) $cal['partage'] === 1,
+            ];
+        }
+
+        return $sources;
+    }
+
+    /**
+     * Retient les agendas cochés dans le volet.
+     *
+     * @param array<int, string> $cles  ce qui reste coché
+     */
+    public static function montrer(int $userId, array $cles): void
+    {
+        $garder = [];
+        foreach ($cles as $cle) {
+            if (is_string($cle) && preg_match('/^[0-9a-f]{32}$/', $cle) === 1) {
+                $garder[$cle] = true;
+            }
+        }
+        $miens = in_array(self::MIENS, $cles, true) ? 1 : 0;
+
+        Database::run('UPDATE outlook_comptes SET afficher_miens = ? WHERE user_id = ?',
+            [$miens, $userId]);
+
+        foreach (Database::all(
+            'SELECT empreinte, affiche FROM outlook_calendriers WHERE user_id = ?', [$userId]
+        ) as $cal) {
+            $veut = isset($garder[(string) $cal['empreinte']]) ? 1 : 0;
+            if ((int) $cal['affiche'] === $veut) {
+                continue;
+            }
+            Database::run(
+                'UPDATE outlook_calendriers SET affiche = ? WHERE user_id = ? AND empreinte = ?',
+                [$veut, $userId, (string) $cal['empreinte']]
+            );
+        }
+    }
+
+    /**
+     * Ce que le calendrier doit taire.
+     *
+     * @return array{miens: bool, calendriers: array<int, string>}
+     */
+    public static function masques(int $userId): array
+    {
+        if (!Outlook::configuree() || !Outlook::relie($userId)) {
+            return ['miens' => false, 'calendriers' => []];
+        }
+
+        $miens = Database::valeur(
+            'SELECT afficher_miens FROM outlook_comptes WHERE user_id = ?', [$userId]);
+
+        $caches = [];
+        foreach (Database::all(
+            'SELECT empreinte FROM outlook_calendriers WHERE user_id = ? AND affiche = 0',
+            [$userId]
+        ) as $ligne) {
+            $caches[] = (string) $ligne['empreinte'];
+        }
+
+        return ['miens' => (int) $miens === 0, 'calendriers' => $caches];
     }
 
     /**

@@ -37,3 +37,38 @@
   font-size: .9rem;
   line-height: 1.45;
 }
+
+/* Le calendrier et son volet d'agendas, côte à côte. */
+.cal-avec-volet {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+@media (min-width: 900px) {
+  .cal-avec-volet { grid-template-columns: 15rem minmax(0, 1fr); }
+}
+.cal-corps { min-width: 0; }
+
+.cal-volet {
+  background: var(--fond-carte);
+  border: 1px solid var(--bordure);
+  border-radius: var(--rayon);
+  padding: .9rem 1rem;
+}
+.cal-volet__titre { margin: 0 0 .6rem; font-size: 1rem; }
+.cal-volet__liste {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: .4rem;
+}
+.cal-volet__liste label {
+  display: flex;
+  align-items: baseline;
+  gap: .5rem;
+  cursor: pointer;
+  line-height: 1.35;
+}
+.cal-volet__note { margin: .8rem 0 0; font-size: .8rem; }
