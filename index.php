@@ -35,6 +35,7 @@ require __DIR__ . '/src/ClasseurLecteur.php';
 require __DIR__ . '/src/ReleveExcel.php';
 require __DIR__ . '/src/TextePdf.php';
 require __DIR__ . '/src/GenerateurCartes.php';
+require __DIR__ . '/src/PlanningJour.php';
 require __DIR__ . '/src/Fournisseur.php';
 require __DIR__ . '/src/FournisseurMicrosoft.php';
 require __DIR__ . '/src/FournisseurGoogle.php';
