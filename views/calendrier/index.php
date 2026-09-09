@@ -4,7 +4,7 @@
  * @var DateTimeImmutable $ancre, $debut, $fin
  * @var array $evenements, $parJour, $matieres, $types, $aVenir
  * @var ?int $matiereId, $typeId
- * @var array $sources  les agendas qu'on peut montrer ou masquer
+ * @var array $sources  les agendas à montrer ou masquer, par fournisseur
  */
 $aujourdhui = (new DateTimeImmutable('today'))->format('Y-m-d');
 
@@ -145,8 +145,10 @@ $puce = static function (array $evt) use ($destination): string {
       <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
       <input type="hidden" name="retour" value="<?= e((string) ($_SERVER['REQUEST_URI'] ?? '')) ?>">
       <h2 class="cal-volet__titre">Agendas</h2>
+      <?php foreach ($sources as $section): ?>
+      <h3 class="cal-volet__groupe"><?= e($section['titre']) ?></h3>
       <ul class="cal-volet__liste">
-        <?php foreach ($sources as $source): ?>
+        <?php foreach ($section['sources'] as $source): ?>
           <li>
             <label>
               <input type="checkbox" name="sources[]"
@@ -168,6 +170,7 @@ $puce = static function (array $evt) use ($destination): string {
           </li>
         <?php endforeach; ?>
       </ul>
+      <?php endforeach; ?>
       <noscript>
         <button class="bouton bouton--secondaire bouton--petit" type="submit">Appliquer</button>
       </noscript>

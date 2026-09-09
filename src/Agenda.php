@@ -46,13 +46,19 @@ final class Agenda
     }
 
     /**
-     * Les agendas qu'on peut montrer ou masquer dans le calendrier.
+     * Les agendas qu'on peut montrer ou masquer, rangés par fournisseur.
      *
-     * Tous fournisseurs confondus, et « Mes évènements » en tête : ce sont les
-     * siens, ils n'appartiennent à aucun agenda distant.
+     * Une liste à plat mettait sur le même plan ses propres évènements, le
+     * calendrier d'un proche et les jours fériés : dix cases dont rien ne
+     * disait d'où elles venaient. Outlook et Google les groupent, et l'œil
+     * cherche la bonne section avant de chercher la bonne ligne.
      *
-     * @return array<int, array{cle: string, nom: string, affiche: bool,
-     *                          couleur: string, partage: bool, agenda: string}>
+     * Une section vide ne s'affiche pas — un agenda relié dont aucun
+     * calendrier n'est suivi n'a rien à montrer.
+     *
+     * @return array<int, array{titre: string, sources: array<int, array{
+     *             cle: string, nom: string, affiche: bool, couleur: string,
+     *             partage: bool, agenda: string}>}>
      */
     public static function sourcesDuCalendrier(int $userId): array
     {
@@ -64,17 +70,22 @@ final class Agenda
         $moi = Database::one(
             'SELECT afficher_miens, couleur_miens FROM users WHERE id = ?', [$userId]);
 
-        $sources = [[
-            'cle'     => SynchroAgenda::MIENS,
-            'nom'     => 'Mes évènements',
-            'affiche' => (int) ($moi['afficher_miens'] ?? 1) !== 0,
-            'couleur' => self::couleurOuDefaut((string) ($moi['couleur_miens'] ?? ''), 0),
-            'partage' => false,
-            'agenda'  => '',
+        $sections = [[
+            // Le nom de l'application : ce qui est à soi porte son nom.
+            'titre'   => (string) (Config::get('app', 'nom') ?? '') ?: 'Mes Cours',
+            'sources' => [[
+                'cle'     => SynchroAgenda::MIENS,
+                'nom'     => 'Mes évènements',
+                'affiche' => (int) ($moi['afficher_miens'] ?? 1) !== 0,
+                'couleur' => self::couleurOuDefaut((string) ($moi['couleur_miens'] ?? ''), 0),
+                'partage' => false,
+                'agenda'  => '',
+            ]],
         ]];
 
         $rang = 1;
         foreach ($relies as $f) {
+            $sources = [];
             foreach (SynchroAgenda::pour($f)->calendriers($userId) as $cal) {
                 if ((int) $cal['suivi'] !== 1) {
                     continue;
@@ -88,9 +99,12 @@ final class Agenda
                     'agenda'  => $f->nom(),
                 ];
             }
+            if ($sources !== []) {
+                $sections[] = ['titre' => $f->nom(), 'sources' => $sources];
+            }
         }
 
-        return $sources;
+        return $sections;
     }
 
     /**

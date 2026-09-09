@@ -2073,3 +2073,16 @@ ul.apercu-liste--n2 { list-style-type: square; }
 .agenda-carte__titre h2 { margin: 0; font-size: 1.05rem; }
 .pastille--ok { background: #dcfce7; color: #14532d; }
 .pastille--muette { background: var(--fond); color: var(--texte-doux, #64748b); }
+
+/* Le volet range les agendas par fournisseur : un intertitre discret, qui
+   sépare sans peser — il y en a un par section, et la section « Mes Cours »
+   n'en compte qu'une ligne. */
+.cal-volet__groupe {
+  margin: .9rem 0 .3rem;
+  font-size: .72rem;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--texte-doux, #64748b);
+}
+.cal-volet__groupe:first-of-type { margin-top: .4rem; }
