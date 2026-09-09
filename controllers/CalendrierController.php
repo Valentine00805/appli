@@ -65,6 +65,9 @@ final class CalendrierController
         $coches = $_POST['sources'] ?? [];
         SynchroOutlook::montrer(Auth::id(), is_array($coches) ? $coches : []);
 
+        $couleurs = $_POST['couleur'] ?? [];
+        SynchroOutlook::colorier(Auth::id(), is_array($couleurs) ? $couleurs : []);
+
         repartir_vers('calendrier');
     }
 
@@ -217,12 +220,14 @@ final class CalendrierController
          */
         $sql = 'SELECT e.*, m.nom AS matiere_nom, m.couleur AS matiere_couleur, c.titre AS cours_titre,
                        t.nom AS type_nom, t.icone AS type_icone, t.couleur AS type_couleur, t.est_echeance,
-                       ol.calendrier AS outlook_calendrier
+                       ol.calendrier AS outlook_calendrier, oc.nom AS agenda_nom, oc.couleur AS agenda_couleur
                 FROM evenements e
                 LEFT JOIN matieres m        ON m.id = e.matiere_id
                 LEFT JOIN cours c           ON c.id = e.cours_id
                 LEFT JOIN types_evenement t ON t.id = e.type_id
                 LEFT JOIN outlook_liens ol  ON ol.evenement_id = e.id AND ol.user_id = e.user_id
+                LEFT JOIN outlook_calendriers oc
+                       ON oc.user_id = e.user_id AND oc.empreinte = ol.calendrier
                 WHERE e.user_id = ? AND e.debut <= ? AND e.fin >= ?';
         $params = [$userId, $fin->format('Y-m-d H:i:s'), $debut->format('Y-m-d H:i:s')];
 
@@ -399,11 +404,14 @@ final class CalendrierController
         $params = [$userId];
         $lignes = Database::all(
             'SELECT e.*, m.nom AS matiere_nom, m.couleur AS matiere_couleur,
-                    t.nom AS type_nom, t.icone AS type_icone, t.couleur AS type_couleur
+                    t.nom AS type_nom, t.icone AS type_icone, t.couleur AS type_couleur,
+                    oc.nom AS agenda_nom, oc.couleur AS agenda_couleur
              FROM evenements e
              LEFT JOIN matieres m        ON m.id = e.matiere_id
              LEFT JOIN types_evenement t ON t.id = e.type_id
              LEFT JOIN outlook_liens ol  ON ol.evenement_id = e.id AND ol.user_id = e.user_id
+             LEFT JOIN outlook_calendriers oc
+                    ON oc.user_id = e.user_id AND oc.empreinte = ol.calendrier
              WHERE e.user_id = ? AND e.fin >= NOW() AND e.termine = 0'
              . self::masqueDesAgendas($userId, $params)
              . ' ORDER BY e.debut ASC LIMIT ' . $limite,

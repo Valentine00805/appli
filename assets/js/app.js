@@ -106,7 +106,8 @@
   // comme cases à cocher, et sur chaque formulaire qui le demande, non plus
   // seulement le premier : le calendrier en a deux depuis le volet des agendas.
   document.querySelectorAll('[data-auto-envoi]').forEach(function (formulaire) {
-    formulaire.querySelectorAll('select, input[type="checkbox"]').forEach(function (champ) {
+    formulaire.querySelectorAll('select, input[type="checkbox"], input[type="radio"]')
+      .forEach(function (champ) {
       champ.addEventListener('change', function () { formulaire.submit(); });
     });
   });

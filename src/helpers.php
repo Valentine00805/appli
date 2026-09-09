@@ -278,7 +278,9 @@ function libelle_type(array $evt): string
  */
 function couleur_evenement(array $evt): string
 {
-    foreach (['matiere_couleur', 'type_couleur'] as $cle) {
+    // La matière et le type gardent la main ; l'agenda ne colore que ce qui
+    // n'a ni l'une ni l'autre — c'est-à-dire tout ce qui vient d'Outlook.
+    foreach (['matiere_couleur', 'type_couleur', 'agenda_couleur'] as $cle) {
         $couleur = (string) ($evt[$cle] ?? '');
         if ($couleur !== '') {
             return $couleur;

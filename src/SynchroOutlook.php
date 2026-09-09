@@ -337,18 +337,20 @@ final class SynchroOutlook
             return [];
         }
 
-        $miens = Database::valeur(
-            'SELECT afficher_miens FROM outlook_comptes WHERE user_id = ?', [$userId]);
+        $moi = Database::one(
+            'SELECT afficher_miens, couleur_miens FROM outlook_comptes WHERE user_id = ?', [$userId]);
 
         $sources = [[
             'cle'     => self::MIENS,
             'nom'     => 'Mes évènements',
-            'affiche' => (int) $miens !== 0,
+            'affiche' => (int) ($moi['afficher_miens'] ?? 1) !== 0,
+            'couleur' => self::couleurOuDefaut((string) ($moi['couleur_miens'] ?? ''), 0),
             'partage' => false,
         ]];
 
+        $rang = 1;
         foreach (Database::all(
-            'SELECT empreinte, nom, proprietaire, partage, affiche
+            'SELECT empreinte, nom, proprietaire, partage, affiche, couleur
                FROM outlook_calendriers
               WHERE user_id = ? AND suivi = 1
               ORDER BY principal DESC, partage ASC, nom ASC',
@@ -358,11 +360,60 @@ final class SynchroOutlook
                 'cle'     => (string) $cal['empreinte'],
                 'nom'     => (string) ($cal['nom'] ?? 'Calendrier'),
                 'affiche' => (int) $cal['affiche'] !== 0,
+                'couleur' => self::couleurOuDefaut((string) ($cal['couleur'] ?? ''), $rang++),
                 'partage' => (int) $cal['partage'] === 1,
             ];
         }
 
         return $sources;
+    }
+
+    /**
+     * La couleur d'un agenda, ou celle que la palette lui réserve.
+     *
+     * Un agenda tout neuf n'en a pas encore : plutôt que de le rendre gris
+     * comme ses voisins — et donc indistinct, ce qui est exactement ce qu'on
+     * veut éviter —, on lui en prête une, jusqu'à ce qu'on en choisisse une.
+     */
+    private static function couleurOuDefaut(string $couleur, int $rang): string
+    {
+        $couleur = strtolower(trim($couleur));
+        if (preg_match('/^#[0-9a-f]{6}$/', $couleur) === 1) {
+            return $couleur;
+        }
+
+        $palette = MatieresController::PALETTE;
+
+        return $palette[$rang % count($palette)];
+    }
+
+    /**
+     * Retient les couleurs choisies dans le volet.
+     *
+     * @param array<string, string> $couleurs  par clé d'agenda
+     */
+    public static function colorier(int $userId, array $couleurs): void
+    {
+        foreach ($couleurs as $cle => $couleur) {
+            if (!is_string($cle) || !is_string($couleur)
+                || preg_match('/^#[0-9a-f]{6}$/i', $couleur) !== 1) {
+                continue;
+            }
+            $couleur = strtolower($couleur);
+
+            if ($cle === self::MIENS) {
+                Database::run('UPDATE outlook_comptes SET couleur_miens = ? WHERE user_id = ?',
+                    [$couleur, $userId]);
+                continue;
+            }
+            if (preg_match('/^[0-9a-f]{32}$/', $cle) !== 1) {
+                continue;
+            }
+            Database::run(
+                'UPDATE outlook_calendriers SET couleur = ? WHERE user_id = ? AND empreinte = ?',
+                [$couleur, $userId, $cle]
+            );
+        }
     }
 
     /**
@@ -487,15 +538,25 @@ final class SynchroOutlook
                 continue;
             }
 
+            /*
+             * Une couleur lui est attribuée d'emblée, en tournant dans la
+             * palette : un agenda sans couleur serait gris comme ses voisins,
+             * et c'est justement pour les distinguer qu'on les suit.
+             */
+            $deja = (int) Database::valeur(
+                'SELECT COUNT(*) FROM outlook_calendriers WHERE user_id = ?', [$userId]);
+
             Database::run(
                 'INSERT INTO outlook_calendriers
-                     (user_id, calendrier_id, empreinte, nom, proprietaire, partage, principal, suivi)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+                     (user_id, calendrier_id, empreinte, nom, proprietaire, partage,
+                      principal, suivi, couleur)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
                 [
                     $userId, $id, $empreinte,
                     mb_substr((string) ($cal['name'] ?? 'Calendrier'), 0, 190),
                     mb_substr((string) ($cal['owner']['name'] ?? $adresse), 0, 190),
                     $partage, $principal, $principal,
+                    self::couleurOuDefaut('', $deja + 1),
                 ]
             );
         }
