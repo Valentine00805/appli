@@ -308,6 +308,21 @@ $matiereActive = $edition ? entier_ou_null($evenement['matiere_id']) : null;
        * Elle n'y écrira qu'une fois : la suite se dit avant, pas après.
        */
       ?>
+      <?php if (!$edition && $ouDeposer === [] && $partages > 0): ?>
+        <div class="carte">
+          <div class="champ">
+            <span class="legende">Déposer aussi une copie chez</span>
+            <span class="champ__aide">
+              Personne pour l'instant. Les agendas qu'on vous a partagés sont
+              en lecture seule, ou leur droit d'écriture n'a pas encore été
+              relevé — il se demande depuis
+              <a href="<?= url('agenda') ?>">Mes agendas</a>, bouton
+              « Actualiser la liste ».
+            </span>
+          </div>
+        </div>
+      <?php endif; ?>
+
       <?php if (!$edition && $ouDeposer !== []): ?>
         <div class="carte">
           <div class="champ">
