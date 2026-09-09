@@ -156,6 +156,41 @@ $matiereActive = $edition ? entier_ou_null($evenement['matiere_id']) : null;
             elles se retrouveraient toutes le même jour. L'heure et la durée,
             elles, s'appliquent partout.
           </span>
+
+          <?php
+          /*
+           * Le rythme lui-même.
+           *
+           * Redéplier une série ne repart pas de zéro : les séances qui
+           * tombent encore sur une date attendue sont laissées telles quelles,
+           * avec ce qu'on y avait retouché. Seules disparaissent celles qui ne
+           * sont plus prévues.
+           */
+          ?>
+          <div class="ligne-champs" style="margin-top:.7rem">
+            <div class="champ">
+              <label for="repetition">Rythme</label>
+              <select id="repetition" name="repetition">
+                <?php foreach (['jour' => 'Chaque jour', 'semaine' => 'Chaque semaine',
+                                'quinzaine' => 'Toutes les deux semaines',
+                                'mois' => 'Chaque mois'] as $cle => $libelle): ?>
+                  <option value="<?= e($cle) ?>"<?= $serie['frequence'] === $cle ? ' selected' : '' ?>>
+                    <?= e($libelle) ?>
+                  </option>
+                <?php endforeach; ?>
+              </select>
+            </div>
+            <div class="champ">
+              <label for="repeter_jusqu_au">Jusqu'au</label>
+              <input type="date" id="repeter_jusqu_au" name="repeter_jusqu_au"
+                     value="<?= e((string) $serie['jusqu_au']) ?>">
+            </div>
+          </div>
+          <span class="champ__aide">
+            Changer le rythme n'a d'effet que sur toute la série. Les séances
+            qui tombent encore sur une date prévue sont conservées telles
+            quelles ; celles qui ne le sont plus disparaissent.
+          </span>
         </fieldset>
       <?php endif; ?>
 

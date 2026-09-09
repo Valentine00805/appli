@@ -229,6 +229,21 @@ final class CalendrierController
         }
 
         $dates = [];
+        foreach ($this->deplier($premier, $frequence, $jusqu) as $quand) {
+            $dates[] = ['debut' => $quand, 'fin' => $quand->add($duree)];
+        }
+
+        return ['frequence' => $frequence, 'jusqu_au' => $jusqu, 'dates' => $dates];
+    }
+
+    /**
+     * Les dates d'une répétition, de la première jusqu'à la borne.
+     *
+     * @return array<int, DateTimeImmutable>
+     */
+    private function deplier(DateTimeImmutable $premier, string $frequence, DateTimeImmutable $jusqu): array
+    {
+        $dates = [];
         $rang = 0;
         while (count($dates) < self::SERIE_MAX) {
             $quand = $this->occurrence($premier, $frequence, $rang++);
@@ -243,10 +258,112 @@ final class CalendrierController
             if ($quand > $jusqu) {
                 break;
             }
-            $dates[] = ['debut' => $quand, 'fin' => $quand->add($duree)];
+            $dates[] = $quand;
         }
 
-        return ['frequence' => $frequence, 'jusqu_au' => $jusqu, 'dates' => $dates];
+        return $dates;
+    }
+
+    /**
+     * Le rythme demandé pour une série qui existe déjà.
+     *
+     * Vide, il ne change rien : on ne redéplie une série que lorsqu'on le
+     * demande, et modifier un titre ne doit pas déplacer des dates.
+     *
+     * @return null|string|array{frequence: string, jusqu_au: DateTimeImmutable}
+     */
+    private function rythmeSoumis(array $serie): null|string|array
+    {
+        $frequence = (string) ($_POST['repetition'] ?? '');
+        $borne = (string) ($_POST['repeter_jusqu_au'] ?? '');
+        if ($frequence === '' && $borne === '') {
+            return null;
+        }
+        if ($frequence === '') {
+            $frequence = (string) $serie['frequence'];
+        }
+        if (!isset(self::RYTHMES[$frequence])) {
+            return 'Cette façon de répéter n’existe pas.';
+        }
+        if ($borne === '') {
+            $borne = (string) $serie['jusqu_au'];
+        }
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $borne) !== 1) {
+            return 'La date de fin de la répétition est illisible.';
+        }
+
+        $jusqu = (new DateTimeImmutable($borne))->setTime(23, 59, 59);
+        if ($frequence === (string) $serie['frequence']
+            && $borne === (string) $serie['jusqu_au']) {
+            return null;
+        }
+
+        return ['frequence' => $frequence, 'jusqu_au' => $jusqu];
+    }
+
+    /**
+     * Redéplie une série sur un nouveau rythme.
+     *
+     * Les occurrences qui tombent encore sur une date attendue sont laissées
+     * telles quelles : une séance qu'on avait déplacée ou renommée à la main
+     * survit au changement de rythme. Seules disparaissent celles dont la date
+     * n'est plus prévue, et n'apparaissent que celles qui manquaient.
+     *
+     * L'ancre est la première occurrence de la série, pas celle qu'on avait
+     * ouverte : changer le rythme depuis la troisième séance ne doit pas
+     * décaler les deux premières.
+     *
+     * @return array{ajoutees: int, retirees: int}
+     */
+    private function rebatirLaSerie(int $userId, int $serieId, array $donnees, array $rythme): array
+    {
+        $premier = Database::valeur(
+            'SELECT MIN(debut) FROM evenements WHERE serie_id = ? AND user_id = ?', [$serieId, $userId]);
+        if ($premier === null) {
+            return ['ajoutees' => 0, 'retirees' => 0];
+        }
+
+        $ancre = new DateTimeImmutable(
+            substr((string) $premier, 0, 10) . ' ' . substr($donnees['debut'], 11));
+        $horizon = $ancre->modify(self::SERIE_HORIZON);
+        $jusqu = $rythme['jusqu_au'] > $horizon ? $horizon : $rythme['jusqu_au'];
+
+        $voulues = [];
+        foreach ($this->deplier($ancre, $rythme['frequence'], $jusqu) as $quand) {
+            $voulues[$quand->format('Y-m-d')] = $quand;
+        }
+
+        $bilan = ['ajoutees' => 0, 'retirees' => 0];
+        $connues = [];
+        foreach (Database::all(
+            'SELECT id, debut FROM evenements WHERE serie_id = ? AND user_id = ?', [$serieId, $userId]
+        ) as $occurrence) {
+            $jour = substr((string) $occurrence['debut'], 0, 10);
+            if (isset($voulues[$jour])) {
+                $connues[$jour] = true;
+                continue;
+            }
+            Database::run('DELETE FROM evenements WHERE id = ? AND user_id = ?',
+                [(int) $occurrence['id'], $userId]);
+            $bilan['retirees']++;
+        }
+
+        $duree = (new DateTimeImmutable($donnees['debut']))->diff(new DateTimeImmutable($donnees['fin']));
+        foreach ($voulues as $jour => $quand) {
+            if (isset($connues[$jour])) {
+                continue;
+            }
+            $this->poser($userId, $donnees, $serieId, ['debut' => $quand, 'fin' => $quand->add($duree)]);
+            $bilan['ajoutees']++;
+        }
+
+        Database::run(
+            'UPDATE series_evenements SET frequence = ?, jusqu_au = ?, occurrences = ?
+              WHERE id = ? AND user_id = ?',
+            [$rythme['frequence'], $jusqu->format('Y-m-d'), count($voulues), $serieId, $userId]
+        );
+
+        return $bilan;
     }
 
 
@@ -291,9 +408,27 @@ final class CalendrierController
 
         $serieId = entier_ou_null($avant['serie_id']);
         if (($_POST['portee'] ?? '') === 'serie' && $serieId !== null) {
+            $serie = Database::one('SELECT * FROM series_evenements WHERE id = ? AND user_id = ?',
+                [$serieId, $userId]);
+            $rythme = $serie === null ? null : $this->rythmeSoumis($serie);
+            if (is_string($rythme)) {
+                Session::flash('erreur', $rythme);
+                redirect('evenements/' . $id . '/modifier');
+            }
+
+            // Le rythme d'abord : les occurrences qu'il ajoute doivent recevoir
+            // les mêmes valeurs que les autres, pas celles d'avant.
+            $refait = $rythme === null
+                ? ['ajoutees' => 0, 'retirees' => 0]
+                : $this->rebatirLaSerie($userId, $serieId, $donnees, $rythme);
+
             $combien = $this->modifierLaSerie($userId, $serieId, $donnees);
-            Session::flash('succes', $combien . ' occurrence'
-                . ($combien > 1 ? 's mises à jour' : ' mise à jour') . '.');
+
+            $dit = $combien . ' occurrence' . ($combien > 1 ? 's mises à jour' : ' mise à jour');
+            if ($refait['ajoutees'] > 0) { $dit .= ', ' . $refait['ajoutees'] . ' ajoutée' . ($refait['ajoutees'] > 1 ? 's' : ''); }
+            if ($refait['retirees'] > 0) { $dit .= ', ' . $refait['retirees'] . ' retirée' . ($refait['retirees'] > 1 ? 's' : ''); }
+
+            Session::flash('succes', $dit . '.');
             redirect('calendrier', ['date' => substr($donnees['debut'], 0, 10)]);
         }
 
