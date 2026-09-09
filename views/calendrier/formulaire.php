@@ -341,6 +341,11 @@ $matiereActive = $edition ? entier_ou_null($evenement['matiere_id']) : null;
               Une copie, donnée une fois. Elle leur appartiendra : la modifier
               ou la supprimer ici n'y changera plus rien.
             </span>
+            <span class="champ__aide">
+              Vos propres agendas ne sont pas ici : ils se règlent en une fois
+              depuis <a href="<?= url('agenda') ?>">Mes agendas</a>, où vous
+              choisissez celui qui reçoit tout ce que vous créez.
+            </span>
           </div>
         </div>
       <?php endif; ?>
@@ -425,6 +430,11 @@ $matiereActive = $edition ? entier_ou_null($evenement['matiere_id']) : null;
           La copie leur appartiendra. La modifier ici, ou la supprimer ici, n'y
           changera plus rien : l'application n'y reviendra pas. Pour se
           reprendre, il faut le leur demander — ou le faire depuis leur agenda.
+        </span>
+        <span class="champ__aide">
+          Vos propres agendas ne sont pas dans cette liste : ils se règlent en
+          une fois depuis <a href="<?= url('agenda') ?>">Mes agendas</a>, et ce
+          qui y part reste modifiable.
         </span>
 
         <button class="bouton bouton--secondaire" type="submit" style="margin-top:.6rem">
