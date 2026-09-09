@@ -2056,3 +2056,11 @@ ul.apercu-liste--n2 { list-style-type: square; }
   background: var(--accent, #4f46e5); border-color: var(--accent, #4f46e5); color: #fff;
 }
 .jours-semaine input:focus-visible + label { outline: 2px solid var(--accent, #4f46e5); outline-offset: 2px; }
+
+/* Fin d'une répétition : une date, ou un nombre de fois. */
+.fin-repetition {
+  display: flex; flex-wrap: wrap; align-items: center; gap: .4rem;
+  margin-top: .25rem;
+}
+.fin-repetition .case { display: inline-flex; align-items: center; gap: .3rem; margin: 0; }
+.fin-repetition input[type="number"] { width: 5rem; }

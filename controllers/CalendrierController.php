@@ -155,10 +155,11 @@ final class CalendrierController
         $serieId = null;
         if ($quand !== null) {
             Database::run(
-                'INSERT INTO series_evenements (user_id, frequence, jours, jusqu_au, occurrences)
-                 VALUES (?, ?, ?, ?, ?)',
+                'INSERT INTO series_evenements
+                     (user_id, frequence, jours, jusqu_au, nombre_voulu, occurrences)
+                 VALUES (?, ?, ?, ?, ?, ?)',
                 [$userId, $quand['frequence'], implode(',', $quand['jours']) ?: null,
-                 $quand['jusqu_au']->format('Y-m-d'), count($quand['dates'])]
+                 $quand['jusqu_au']->format('Y-m-d'), $quand['nombre'], count($quand['dates'])]
             );
             $serieId = Database::dernierId();
         }
@@ -218,21 +219,31 @@ final class CalendrierController
             return 'Cette façon de répéter n’existe pas.';
         }
 
-        $borne = (string) ($_POST['repeter_jusqu_au'] ?? '');
-        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $borne) !== 1) {
-            return 'Indiquez jusqu’à quelle date l’évènement se répète.';
-        }
-
         // La durée vient des dates déjà validées, et non d'une seconde lecture
         // du formulaire : deux lectures finiraient par ne plus dire pareil.
         $premier = new DateTimeImmutable($debut);
         $duree = $premier->diff(new DateTimeImmutable($fin));
-        $jusqu = (new DateTimeImmutable($borne))->setTime(23, 59, 59);
-        if ($jusqu < $premier) {
-            return 'La répétition ne peut pas s’arrêter avant de commencer.';
+        $horizon = $premier->modify(self::SERIE_HORIZON);
+
+        $combien = $this->nombreSoumis();
+        if (is_string($combien)) {
+            return $combien;
         }
 
-        $horizon = $premier->modify(self::SERIE_HORIZON);
+        if ($combien === null) {
+            $borne = (string) ($_POST['repeter_jusqu_au'] ?? '');
+            if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $borne) !== 1) {
+                return 'Indiquez jusqu’à quelle date l’évènement se répète.';
+            }
+            $jusqu = (new DateTimeImmutable($borne))->setTime(23, 59, 59);
+            if ($jusqu < $premier) {
+                return 'La répétition ne peut pas s’arrêter avant de commencer.';
+            }
+        } else {
+            // Compté en occurrences, l'horizon sert de garde-fou et la date de
+            // fin sera celle de la dernière, une fois qu'on la connaîtra.
+            $jusqu = $horizon;
+        }
         if ($jusqu > $horizon) {
             $jusqu = $horizon;
         }
@@ -240,15 +251,46 @@ final class CalendrierController
         $jours = $this->joursSoumis($frequence);
 
         $dates = [];
-        foreach ($this->deplier($premier, $frequence, $jusqu, $jours) as $quand) {
+        foreach ($this->deplier($premier, $frequence, $jusqu, $jours, $combien) as $quand) {
             $dates[] = ['debut' => $quand, 'fin' => $quand->add($duree)];
         }
         if ($dates === []) {
             return 'Aucune date ne correspond : vérifiez les jours cochés.';
         }
+        if ($combien !== null) {
+            $jusqu = end($dates)['debut']->setTime(23, 59, 59);
+        }
 
-        return ['frequence' => $frequence, 'jours' => $jours,
+        return ['frequence' => $frequence, 'jours' => $jours, 'nombre' => $combien,
                 'jusqu_au' => $jusqu, 'dates' => $dates];
+    }
+
+    /**
+     * Le nombre d'occurrences demandé, ou null si la borne est une date.
+     *
+     * « Douze séances » se sait d'avance ; la date où elles se terminent, non —
+     * il faudrait sauter les mois sans 31 et compter les jours cochés. C'est le
+     * travail de l'application, pas celui de qui remplit le formulaire.
+     *
+     * @return null|int|string  un message si le nombre ne tient pas debout
+     */
+    private function nombreSoumis(): null|int|string
+    {
+        if (($_POST['fin_type'] ?? 'date') !== 'nombre') {
+            return null;
+        }
+
+        $brut = trim((string) ($_POST['repeter_nombre'] ?? ''));
+        if (preg_match('/^\d+$/', $brut) !== 1) {
+            return 'Indiquez combien de fois l’évènement se répète.';
+        }
+
+        $combien = (int) $brut;
+        if ($combien < 1) {
+            return 'Une répétition compte au moins une occurrence.';
+        }
+
+        return min($combien, self::SERIE_MAX);
     }
 
     /**
@@ -287,16 +329,19 @@ final class CalendrierController
         DateTimeImmutable $premier,
         string $frequence,
         DateTimeImmutable $jusqu,
-        array $jours = []
+        array $jours = [],
+        ?int $combien = null
     ): array {
+        $plafond = $combien === null ? self::SERIE_MAX : min($combien, self::SERIE_MAX);
+
         if ($jours !== [] && isset(self::RYTHMES_A_JOURS[$frequence])) {
             return $this->deplierSurLesJours(
-                $premier, self::RYTHMES_A_JOURS[$frequence], $jusqu, $jours);
+                $premier, self::RYTHMES_A_JOURS[$frequence], $jusqu, $jours, $plafond);
         }
 
         $dates = [];
         $rang = 0;
-        while (count($dates) < self::SERIE_MAX) {
+        while (count($dates) < $plafond) {
             $quand = $this->occurrence($premier, $frequence, $rang++);
             if ($quand === null) {
                 // Un 31 dans un mois qui n'en a pas : on passe, sans décaler
@@ -331,7 +376,8 @@ final class CalendrierController
         DateTimeImmutable $premier,
         int $pas,
         DateTimeImmutable $jusqu,
-        array $jours
+        array $jours,
+        int $plafond
     ): array {
         // Le lundi de la semaine de départ : le repère à partir duquel les
         // semaines se comptent, quel que soit le jour où l'on a commencé.
@@ -339,7 +385,7 @@ final class CalendrierController
             ->setTime((int) $premier->format('H'), (int) $premier->format('i'));
 
         $dates = [];
-        for ($semaine = 0; count($dates) < self::SERIE_MAX; $semaine += $pas) {
+        for ($semaine = 0; count($dates) < $plafond; $semaine += $pas) {
             $debutSemaine = $lundi->modify('+' . ($semaine * 7) . ' days');
             if ($debutSemaine > $jusqu) {
                 break;
@@ -350,7 +396,7 @@ final class CalendrierController
                     continue;
                 }
                 $dates[] = $quand;
-                if (count($dates) >= self::SERIE_MAX) {
+                if (count($dates) >= $plafond) {
                     break;
                 }
             }
@@ -380,22 +426,39 @@ final class CalendrierController
         if (!isset(self::RYTHMES[$frequence])) {
             return 'Cette façon de répéter n’existe pas.';
         }
-        if ($borne === '') {
-            $borne = (string) $serie['jusqu_au'];
-        }
-        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $borne) !== 1) {
-            return 'La date de fin de la répétition est illisible.';
+
+        $combien = $this->nombreSoumis();
+        if (is_string($combien)) {
+            return $combien;
         }
 
-        $jusqu = (new DateTimeImmutable($borne))->setTime(23, 59, 59);
+        if ($combien === null) {
+            if ($borne === '') {
+                $borne = (string) $serie['jusqu_au'];
+            }
+            if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $borne) !== 1) {
+                return 'La date de fin de la répétition est illisible.';
+            }
+            $jusqu = (new DateTimeImmutable($borne))->setTime(23, 59, 59);
+        } else {
+            // La date de fin sera celle de la dernière occurrence : on la
+            // laisse ouverte, le redépliage la fixera.
+            $borne = '';
+            $jusqu = null;
+        }
+
         $jours = $this->joursSoumis($frequence);
-        if ($frequence === (string) $serie['frequence']
-            && $borne === (string) $serie['jusqu_au']
-            && implode(',', $jours) === (string) ($serie['jours'] ?? '')) {
+        $inchange = $frequence === (string) $serie['frequence']
+            && implode(',', $jours) === (string) ($serie['jours'] ?? '')
+            && ($combien === null
+                ? $borne === (string) $serie['jusqu_au'] && $serie['nombre_voulu'] === null
+                : $combien === (int) ($serie['nombre_voulu'] ?? 0));
+        if ($inchange) {
             return null;
         }
 
-        return ['frequence' => $frequence, 'jours' => $jours, 'jusqu_au' => $jusqu];
+        return ['frequence' => $frequence, 'jours' => $jours,
+                'nombre' => $combien, 'jusqu_au' => $jusqu];
     }
 
     /**
@@ -423,11 +486,16 @@ final class CalendrierController
         $ancre = new DateTimeImmutable(
             substr((string) $premier, 0, 10) . ' ' . substr($donnees['debut'], 11));
         $horizon = $ancre->modify(self::SERIE_HORIZON);
-        $jusqu = $rythme['jusqu_au'] > $horizon ? $horizon : $rythme['jusqu_au'];
+        $jusqu = ($rythme['jusqu_au'] === null || $rythme['jusqu_au'] > $horizon)
+            ? $horizon : $rythme['jusqu_au'];
 
         $voulues = [];
-        foreach ($this->deplier($ancre, $rythme['frequence'], $jusqu, $rythme['jours']) as $quand) {
+        foreach ($this->deplier($ancre, $rythme['frequence'], $jusqu,
+            $rythme['jours'], $rythme['nombre']) as $quand) {
             $voulues[$quand->format('Y-m-d')] = $quand;
+        }
+        if ($rythme['nombre'] !== null && $voulues !== []) {
+            $jusqu = end($voulues)->setTime(23, 59, 59);
         }
         if ($voulues === []) {
             // Aucune date : plutôt que de vider la série, on n'y touche pas.
@@ -459,10 +527,11 @@ final class CalendrierController
         }
 
         Database::run(
-            'UPDATE series_evenements SET frequence = ?, jours = ?, jusqu_au = ?, occurrences = ?
+            'UPDATE series_evenements
+                SET frequence = ?, jours = ?, jusqu_au = ?, nombre_voulu = ?, occurrences = ?
               WHERE id = ? AND user_id = ?',
             [$rythme['frequence'], implode(',', $rythme['jours']) ?: null,
-             $jusqu->format('Y-m-d'), count($voulues), $serieId, $userId]
+             $jusqu->format('Y-m-d'), $rythme['nombre'], count($voulues), $serieId, $userId]
         );
 
         return $bilan;

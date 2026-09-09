@@ -38,6 +38,33 @@ $joursSemaine = static function (array $coches, string $prefixe): string {
     return $html . '</div>';
 };
 
+/**
+ * Jusqu'à quand la répétition va.
+ *
+ * Deux façons de le dire, et l'on choisit la sienne : une date, ou un nombre
+ * de fois. « Douze séances » se sait d'avance ; la date où elles se terminent
+ * demanderait de compter soi-même les jours cochés et les mois sans 31.
+ */
+$borneRepetition = static function (?string $date, ?int $nombre, string $prefixe): string {
+    $parNombre = $nombre !== null;
+    $q = static fn (string $v): string => e($v);
+
+    return '<span class="legende">Fin de la répétition</span>'
+        . '<div class="fin-repetition">'
+        . '<label class="case"><input type="radio" name="fin_type" value="date"'
+        . ($parNombre ? '' : ' checked') . '> le</label>'
+        . '<input type="date" id="' . $prefixe . '-jusqu" name="repeter_jusqu_au"'
+        . ' aria-label="Date de fin de la répétition"'
+        . ' value="' . $q((string) $date) . '">'
+        . '<label class="case"><input type="radio" name="fin_type" value="nombre"'
+        . ($parNombre ? ' checked' : '') . '> après</label>'
+        . '<input type="number" id="' . $prefixe . '-nombre" name="repeter_nombre"'
+        . ' min="1" max="200" step="1" aria-label="Nombre d\'occurrences"'
+        . ' value="' . ($parNombre ? (int) $nombre : '') . '">'
+        . '<span class="discret">occurrences</span>'
+        . '</div>';
+};
+
 $dateDebut = $edition ? substr((string) $evenement['debut'], 0, 10) : ($dateDefaut ?: date('Y-m-d'));
 $dateFin   = $edition ? substr((string) $evenement['fin'], 0, 10) : $dateDebut;
 $heureDebut = $edition ? substr((string) $evenement['debut'], 11, 5) : '08:00';
@@ -143,8 +170,7 @@ $matiereActive = $edition ? entier_ou_null($evenement['matiere_id']) : null;
           </div>
 
           <div class="champ">
-            <label for="repeter_jusqu_au">Jusqu'au</label>
-            <input type="date" id="repeter_jusqu_au" name="repeter_jusqu_au">
+            <?= $borneRepetition(null, null, 'neuf') ?>
             <span class="champ__aide">Deux ans au plus, deux cents occurrences au maximum.</span>
           </div>
         </div>
@@ -212,9 +238,8 @@ $matiereActive = $edition ? entier_ou_null($evenement['matiere_id']) : null;
               </select>
             </div>
             <div class="champ">
-              <label for="repeter_jusqu_au">Jusqu'au</label>
-              <input type="date" id="repeter_jusqu_au" name="repeter_jusqu_au"
-                     value="<?= e((string) $serie['jusqu_au']) ?>">
+              <?= $borneRepetition((string) $serie['jusqu_au'],
+                  $serie['nombre_voulu'] === null ? null : (int) $serie['nombre_voulu'], 'serie') ?>
             </div>
           </div>
           <div class="champ" style="margin-top:.5rem">

@@ -134,6 +134,7 @@ CREATE TABLE IF NOT EXISTS `series_evenements` (
   `frequence`   ENUM('jour','semaine','quinzaine','mois') NOT NULL,
   `jours`       VARCHAR(20)  NULL,
   `jusqu_au`    DATE         NOT NULL,
+  `nombre_voulu` SMALLINT UNSIGNED NULL,
   `occurrences` SMALLINT UNSIGNED NOT NULL DEFAULT 0,
   `cree_le`     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
