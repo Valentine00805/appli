@@ -328,9 +328,46 @@ $puce = static function (array $evt) use ($destination): string {
             <?= $puce($evt) ?>
           <?php endforeach; ?>
           <?php if (count($duJour) > 4): ?>
-            <a class="discret" style="font-size:.72rem" href="<?= $lien('semaine', $curseur) ?>">
-              +<?= count($duJour) - 4 ?> autre<?= count($duJour) - 4 > 1 ? 's' : '' ?>
-            </a>
+            <?php
+            /*
+             * Le reste de la journée, sans quitter le mois.
+             *
+             * « details » ouvre et ferme sans une ligne de script : la liste
+             * reste atteignable quand JavaScript ne répond pas. Elle montre la
+             * journée entière et non les seuls évènements cachés — on l'ouvre
+             * pour voir ce que contient ce jour-là, pas pour compléter une
+             * liste qu'on aurait à recoller de tête.
+             */
+            ?>
+            <details class="cal-reste">
+              <summary class="cal-reste__bouton">
+                +<?= count($duJour) - 4 ?> autre<?= count($duJour) - 4 > 1 ? 's' : '' ?>
+              </summary>
+              <div class="cal-reste__volet">
+                <div class="cal-reste__entete">
+                  <strong><?= e(ucfirst(date_fr($cle . ' 00:00:00', false))) ?></strong>
+                  <a href="<?= $lien('jour', $curseur) ?>">Voir la journée</a>
+                </div>
+                <ul class="cal-reste__liste">
+                  <?php foreach ($duJour as $evt): ?>
+                    <li>
+                      <a class="cal-reste__evt" href="<?= $destination($evt) ?>">
+                        <span class="cal-reste__barre"
+                              style="background:<?= e(couleur_evenement($evt)) ?>"></span>
+                        <span class="cal-reste__heure">
+                          <?= $evt['journee_entiere']
+                              ? (empty($evt['est_tache']) ? 'Journée' : 'Échéance')
+                              : e(date('H:i', strtotime((string) $evt['debut']))) ?>
+                        </span>
+                        <span class="cal-reste__titre">
+                          <?= e(icone_evenement($evt)) ?> <?= e($evt['titre']) ?>
+                        </span>
+                      </a>
+                    </li>
+                  <?php endforeach; ?>
+                </ul>
+              </div>
+            </details>
           <?php endif; ?>
         </div>
         <?php

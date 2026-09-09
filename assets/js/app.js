@@ -106,6 +106,46 @@
   // comme cases à cocher, et sur chaque formulaire qui le demande, non plus
   // seulement le premier : le calendrier en a deux depuis le volet des agendas.
   /*
+   * Le volet d'une journée chargée se ferme comme on s'y attend.
+   *
+   * « details » l'ouvre et le referme tout seul, et cela suffit à s'en
+   * servir. Mais un panneau posé sur le calendrier qui reste ouvert pendant
+   * qu'on regarde ailleurs finit par gêner : on le ferme donc en cliquant à
+   * côté, ou d'un coup d'échappement, et l'on n'en garde qu'un ouvert à la
+   * fois.
+   */
+  var restes = document.querySelectorAll('.cal-reste');
+  if (restes.length) {
+    restes.forEach(function (reste) {
+      reste.addEventListener('toggle', function () {
+        if (!reste.open) { return; }
+        restes.forEach(function (autre) {
+          if (autre !== reste) { autre.open = false; }
+        });
+      });
+    });
+
+    document.addEventListener('click', function (evenement) {
+      restes.forEach(function (reste) {
+        if (reste.open && !reste.contains(evenement.target)) { reste.open = false; }
+      });
+    });
+
+    document.addEventListener('keydown', function (evenement) {
+      if (evenement.key !== 'Escape') { return; }
+      restes.forEach(function (reste) {
+        if (reste.open) {
+          reste.open = false;
+          // Le clavier ne doit pas rester en l'air : il revient sur le bouton
+          // qui vient de se refermer.
+          var bouton = reste.querySelector('summary');
+          if (bouton) { bouton.focus(); }
+        }
+      });
+    });
+  }
+
+  /*
    * Le volet retient ses sections repliées.
    *
    * Sans cela, replier « Outlook » puis cocher un agenda le rouvrirait : le

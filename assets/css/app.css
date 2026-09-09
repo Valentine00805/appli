@@ -278,12 +278,20 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
 .cal-onglets a + a { border-left: 1px solid var(--bordure); }
 .cal-onglets a[aria-current="page"] { background: var(--accent); color: #fff; }
 
+/* Pas de « overflow: hidden » ici : il rognerait le volet d'une journée
+   chargée. Ce sont donc les quatre cellules d'angle qui s'arrondissent —
+   la dernière ligne se désigne à partir de la fin, ce qui vaut pour un
+   mois de cinq semaines comme de six. */
 .cal-grille {
   display: grid; grid-template-columns: repeat(7, minmax(0, 1fr));
   border: 1px solid var(--bordure); border-radius: var(--rayon);
-  overflow: hidden; background: var(--bordure);
+  background: var(--bordure);
   gap: 1px;
 }
+.cal-grille > :first-child { border-top-left-radius: calc(var(--rayon) - 1px); }
+.cal-grille > :nth-child(7) { border-top-right-radius: calc(var(--rayon) - 1px); }
+.cal-grille > :nth-last-child(7) { border-bottom-left-radius: calc(var(--rayon) - 1px); }
+.cal-grille > :last-child { border-bottom-right-radius: calc(var(--rayon) - 1px); }
 .cal-entete-jour {
   background: var(--fond-doux); padding: .5rem; text-align: center;
   font-size: .78rem; font-weight: 700; color: var(--texte-doux); text-transform: uppercase;
@@ -292,6 +300,7 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
 .cal-jour {
   background: var(--fond-carte); min-height: 118px; padding: .4rem;
   display: flex; flex-direction: column; gap: .25rem;
+  position: relative;
 }
 .cal-jour--hors { background: var(--fond-doux); }
 .cal-jour--hors .cal-jour__numero { opacity: .45; }
@@ -2425,3 +2434,75 @@ summary.cal-volet__groupe:focus-visible {
   .sem-planning { --heure: 2.8rem; --colonne-heures: 3.2rem; --jour-mini: 5.2rem; }
   .sem-planning__etiquette { font-size: .58rem; letter-spacing: 0; padding: .4rem .2rem; }
 }
+
+/* --- Le reste d'une journée chargée --------------------------------------
+   Un volet posé sur le mois, plutôt qu'un renvoi vers une autre vue : on
+   veut savoir ce que contient ce jeudi-là sans perdre les trois semaines
+   qu'on avait sous les yeux.
+
+   Il s'ancre du côté où il y a de la place — à gauche pour les deux
+   premières colonnes, à droite pour les deux dernières, centré ailleurs —
+   sans quoi il sortirait de l'écran un lundi ou un dimanche. */
+
+.cal-reste { position: static; }
+.cal-reste__bouton {
+  font-size: .72rem;
+  color: var(--texte-doux);
+  cursor: pointer;
+  list-style: none;
+  padding: .1rem .2rem;
+  border-radius: 4px;
+}
+.cal-reste__bouton::-webkit-details-marker { display: none; }
+.cal-reste__bouton:hover { background: var(--fond-doux); color: var(--texte); }
+.cal-reste__bouton:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.cal-reste__volet {
+  position: absolute;
+  z-index: 20;
+  top: .3rem;
+  left: 50%;
+  transform: translateX(-50%);
+  width: max(15rem, 100%);
+  max-height: 20rem;
+  overflow-y: auto;
+  background: var(--fond-carte);
+  border: 1px solid var(--bordure);
+  border-radius: var(--rayon);
+  box-shadow: 0 8px 24px rgb(15 23 42 / 18%);
+  padding: .5rem;
+}
+.cal-grille > :nth-child(7n+1) .cal-reste__volet,
+.cal-grille > :nth-child(7n+2) .cal-reste__volet { left: .3rem; transform: none; }
+.cal-grille > :nth-child(7n+6) .cal-reste__volet,
+.cal-grille > :nth-child(7n) .cal-reste__volet { left: auto; right: .3rem; transform: none; }
+
+.cal-reste__entete {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: .5rem;
+  padding: 0 .2rem .35rem;
+  border-bottom: 1px solid var(--bordure);
+  margin-bottom: .3rem;
+  font-size: .8rem;
+  text-transform: capitalize;
+}
+.cal-reste__entete a { font-size: .72rem; text-transform: none; }
+
+.cal-reste__liste { list-style: none; margin: 0; padding: 0; }
+.cal-reste__evt {
+  display: grid;
+  grid-template-columns: 3px 2.6rem 1fr;
+  align-items: center;
+  gap: .4rem;
+  padding: .25rem .2rem;
+  border-radius: 5px;
+  color: inherit;
+  text-decoration: none;
+  font-size: .78rem;
+}
+.cal-reste__evt:hover { background: var(--fond-doux); }
+.cal-reste__barre { align-self: stretch; border-radius: 2px; min-height: 1.1rem; }
+.cal-reste__heure { font-size: .7rem; color: var(--texte-doux); }
+.cal-reste__titre { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
