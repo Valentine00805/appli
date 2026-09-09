@@ -623,6 +623,27 @@ final class CalendrierController
             ]
         );
 
+        /*
+         * Un évènement venu d'un agenda distant y retourne modifié, si le
+         * calendrier est à nous. Fait ici plutôt qu'à la synchronisation
+         * suivante : celle-ci lit avant d'écrire, et rétablirait la version de
+         * là-bas avant d'avoir vu la nôtre.
+         */
+        $souci = null;
+        foreach (Agenda::relies($userId) as $agenda) {
+            try {
+                $souci ??= SynchroAgenda::pour($agenda)->porterLaModification($userId, $id);
+            } catch (Throwable $e) {
+                $souci ??= $e->getMessage();
+            }
+        }
+
+        if ($souci !== null) {
+            Session::flash('erreur', 'La modification est enregistrée ici, mais n’a pas pu être '
+                . 'portée dans l’agenda : ' . $souci
+                . ' Elle sera défaite à la prochaine lecture.');
+        }
+
         Session::flash('succes', 'Événement mis à jour.');
         redirect('calendrier', ['date' => substr($donnees['debut'], 0, 10)]);
     }

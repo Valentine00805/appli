@@ -618,7 +618,7 @@ final class SynchroAgenda
             return 0;
         }
 
-        $permis = $this->calendriersOuLOnPeutEffacer($userId);
+        $permis = $this->calendriersOuLOnPeutEcrire($userId);
         $parEmpreinte = $this->calendriersParEmpreinte($userId);
         $effaces = 0;
 
@@ -659,11 +659,16 @@ final class SynchroAgenda
     }
 
     /**
-     * Les calendriers où l'application s'autorise à supprimer.
+     * Les calendriers où l'application s'autorise à écrire.
+     *
+     * Ceux dont la personne est propriétaire, et eux seuls. Modifier ou
+     * effacer un rendez-vous chez quelqu'un qui a partagé son agenda serait la
+     * pire chose que cette application puisse faire : il le verrait changer
+     * sans savoir pourquoi.
      *
      * @return array<string, true>  par empreinte
      */
-    private function calendriersOuLOnPeutEffacer(int $userId): array
+    public function calendriersOuLOnPeutEcrire(int $userId): array
     {
         // Le calendrier principal, y compris quand on ne connaît pas encore la
         // liste et qu'on lit celui que le fournisseur donne d'office.
@@ -671,7 +676,7 @@ final class SynchroAgenda
 
         foreach (Database::all(
             'SELECT empreinte FROM agenda_calendriers
-              WHERE user_id = ? AND fournisseur = ? AND principal = 1 AND partage = 0',
+              WHERE user_id = ? AND fournisseur = ? AND partage = 0',
             [$userId, $this->f->cle()]
         ) as $ligne) {
             $permis[(string) $ligne['empreinte']] = true;
@@ -704,6 +709,74 @@ final class SynchroAgenda
 
         throw new RuntimeException($this->f->nom() . ' a refusé de supprimer un évènement'
             . ($dit === '' ? '.' : ' : ' . mb_substr($dit, 0, 200)));
+    }
+
+    /**
+     * Porte dans l'agenda distant une modification faite ici.
+     *
+     * Seulement pour un évènement qui en vient, et seulement dans un
+     * calendrier dont on est propriétaire. Ailleurs, on ne fait rien : la
+     * lecture suivante rétablira la version de son propriétaire, ce que
+     * l'écran annonce.
+     *
+     * @return ?string  le message d'erreur, ou null — y compris quand il n'y
+     *                  avait rien à porter
+     */
+    public function porterLaModification(int $userId, int $evenementId): ?string
+    {
+        $lien = Database::one(
+            'SELECT distant_id, calendrier FROM agenda_liens
+              WHERE user_id = ? AND fournisseur = ? AND evenement_id = ?',
+            [$userId, $this->f->cle(), $evenementId]
+        );
+        if ($lien === null) {
+            return null;
+        }
+
+        $ou = (string) ($lien['calendrier'] ?? '');
+        if (!isset($this->calendriersOuLOnPeutEcrire($userId)[$ou])) {
+            return null;
+        }
+
+        $evt = Database::one(
+            'SELECT titre, description, lieu, debut, fin, journee_entiere
+               FROM evenements WHERE id = ? AND user_id = ?',
+            [$evenementId, $userId]
+        );
+        if ($evt === null) {
+            return null;
+        }
+
+        $calendriers = $this->calendriersParEmpreinte($userId);
+        $reponse = $this->lien()->appeler(
+            $userId,
+            'PATCH',
+            $this->f->cheminDeModification($calendriers[$ou] ?? 'primary', (string) $lien['distant_id']),
+            EnvoiAgenda::pour($this->f)->corpsDUnEvenement($evt)
+        );
+
+        if ($reponse['code'] === 404 || $reponse['code'] === 410) {
+            // Supprimé là-bas entre-temps : la lecture suivante fera le ménage.
+            return null;
+        }
+        if ($reponse['code'] >= 400) {
+            $dit = (string) ($reponse['corps']['error']['message'] ?? '');
+
+            return $this->f->nom() . ' a refusé la modification'
+                . ($dit === '' ? '.' : ' : ' . mb_substr($dit, 0, 200));
+        }
+
+        /*
+         * L'empreinte du lien devient caduque : ce qui est là-bas a changé.
+         * On l'oublie, et la lecture suivante la refera sans rien écraser.
+         */
+        Database::run(
+            'UPDATE agenda_liens SET empreinte = NULL
+              WHERE user_id = ? AND fournisseur = ? AND evenement_id = ?',
+            [$userId, $this->f->cle(), $evenementId]
+        );
+
+        return null;
     }
 
     /**

@@ -155,13 +155,15 @@ $aReautoriser = !($partage ?? true) && $partagesEnAttente > 0 && ($souci ?? null
             <strong>De <?= e($f->nom()) ?> vers ici :</strong> les calendriers cochés
             plus bas, du mois écoulé à l'année à venir, séries récurrentes
             comprises — et « Mes Cours » lui-même, pour que ce que vous y
-            créez depuis <?= e($f->nom()) ?> arrive jusqu'ici. <?= e($f->nom()) ?> fait foi : un
-            évènement importé que vous modifiez ici sera repris tel qu'il est
-            là-bas. Le supprimer ici l'efface aussi dans <?= e($f->nom()) ?>, mais
-            <strong>uniquement dans « Mes Cours » et dans votre calendrier
-            principal</strong> : venu d'un agenda que quelqu'un vous a partagé,
-            il est seulement retiré d'ici, et reviendra à la lecture suivante.
-            L'application n'efface rien chez les autres.
+            créez depuis <?= e($f->nom()) ?> arrive jusqu'ici.
+          </p>
+          <p class="champ__aide">
+            <strong>Ce que vous modifiez ou supprimez ici</strong> l'est aussi
+            dans <?= e($f->nom()) ?>, mais <strong>uniquement dans les agendas
+            dont vous êtes propriétaire</strong> — les vôtres et « Mes Cours ».
+            Venu d'un agenda que quelqu'un vous a partagé, l'évènement se
+            retouche ici sans rien changer chez lui, et la lecture suivante
+            rétablit sa version. L'application n'écrit rien chez les autres.
           </p>
           <p class="champ__aide">
             <strong>D'ici vers <?= e($f->nom()) ?> :</strong> vos évènements et les

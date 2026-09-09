@@ -343,7 +343,13 @@ final class EnvoiAgenda
     }
 
     /** Un évènement de l'application dans les termes de l'agenda. */
-    private function corpsDUnEvenement(array $evt): array
+    /**
+     * Un évènement de l'application dans les termes de l'agenda.
+     *
+     * Public parce que la lecture s'en sert aussi : quand on modifie ici un
+     * évènement venu de là-bas, c'est la même traduction qui repart.
+     */
+    public function corpsDUnEvenement(array $evt): array
     {
         $journee = (int) $evt['journee_entiere'] === 1;
         $debut = new DateTimeImmutable((string) $evt['debut']);
