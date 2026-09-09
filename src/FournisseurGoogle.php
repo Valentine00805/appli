@@ -80,6 +80,20 @@ final class FournisseurGoogle extends Fournisseur
     {
         $agenda = LiaisonAgenda::pour($this)->appeler($userId, 'GET', '/calendars/primary');
 
+        /*
+         * Un refus ici tient presque toujours à la permission d'agenda, que
+         * l'écran de consentement de Google laisse décochée. Le taire donnerait
+         * un compte relié sans nom et sans droits, dont on ne comprendrait
+         * l'inutilité que trois clics plus loin.
+         */
+        if ($agenda['code'] >= 400) {
+            throw new RuntimeException(
+                'Google a refusé l’accès à votre agenda. Sur l’écran de '
+                . 'consentement, cochez la case « Consulter, modifier, partager et '
+                . 'supprimer définitivement tous les agendas », puis recommencez : '
+                . 'elle n’est pas cochée d’avance.');
+        }
+
         return [
             // Chez Google, l'identifiant du calendrier principal est l'adresse.
             'compte'         => (string) ($agenda['corps']['id'] ?? ''),

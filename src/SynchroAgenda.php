@@ -45,7 +45,7 @@ final class SynchroAgenda
 
     private const PAR_PAGE = 100;
 
-    /** Une garde : au-delà, quelque chose ne tourne pas rond côté Microsoft. */
+    /** Une garde : au-delà, quelque chose ne tourne pas rond côté du fournisseur. */
     private const PAGES_MAX = 60;
 
     /**
@@ -297,7 +297,7 @@ final class SynchroAgenda
 
         /*
          * On délie d'abord. Depuis qu'un lien sans évènement vaut ordre de
-         * suppression chez Microsoft, en laisser derrière soi ferait disparaître
+         * suppression chez le fournisseur, en laisser derrière soi ferait disparaître
          * de l'agenda ce qu'on voulait seulement retirer d'ici.
          */
         Database::run('DELETE FROM agenda_liens WHERE user_id = ? AND fournisseur = ?', [$userId, $this->f->cle()]);
@@ -369,7 +369,7 @@ final class SynchroAgenda
         }
 
         if ($trouves === []) {
-            throw new RuntimeException('Microsoft n’a donné aucun calendrier.');
+            throw new RuntimeException($this->f->nom() . ' n’a donné aucun calendrier.');
         }
 
         $connus = [];
@@ -458,13 +458,13 @@ final class SynchroAgenda
         return count($garder);
     }
 
-    /** Où Microsoft range les calendriers d'un compte. */
+    /** Où le fournisseur range les calendriers d'un compte. */
     private function sourcesDeCalendriers(int $userId): array
     {
         return $this->f->cheminsDesCalendriers($userId);
     }
 
-    /* --- Lire chez Microsoft --------------------------------------------- */
+    /* --- Lire chez le fournisseur --------------------------------------------- */
 
     /**
      * Toutes les occurrences de la fenêtre, page après page.
@@ -556,7 +556,7 @@ final class SynchroAgenda
 
             if ($reponse['code'] === 403) {
                 throw new RuntimeException(
-                    'Microsoft refuse l’accès à ' . $nom . '. Si c’est un calendrier '
+                    $this->f->nom() . ' refuse l’accès à ' . $nom . '. Si c’est un calendrier '
                     . 'partagé par quelqu’un d’autre, réautorisez l’application : '
                     . 'la permission qui les ouvre est plus récente que votre liaison.'
                 );
@@ -564,7 +564,7 @@ final class SynchroAgenda
             if ($reponse['code'] >= 400) {
                 $dit = (string) ($reponse['corps']['error']['message'] ?? '');
 
-                throw new RuntimeException('Microsoft a refusé de donner ' . $nom
+                throw new RuntimeException($this->f->nom() . ' a refusé de donner ' . $nom
                     . ($dit === '' ? '.' : ' : ' . mb_substr($dit, 0, 200)));
             }
 
@@ -592,7 +592,7 @@ final class SynchroAgenda
     /* --- Écrire ici -------------------------------------------------------- */
 
     /**
-     * Supprime chez Microsoft ce qui a été supprimé ici — là où c'est chez soi.
+     * Supprime chez le fournisseur ce qui a été supprimé ici — là où c'est chez soi.
      *
      * Un évènement effacé dans l'application laisse son lien derrière lui,
      * orphelin : c'est cette trace qu'on ramasse. Encore faut-il avoir le
@@ -605,7 +605,7 @@ final class SynchroAgenda
      * jours fériés — le lien est simplement oublié, et l'évènement reviendra à
      * la lecture suivante : c'est déjà ce qui était annoncé.
      *
-     * @return int  combien ont été effacés chez Microsoft
+     * @return int  combien ont été effacés chez le fournisseur
      */
     private function porterLesSuppressions(int $userId): int
     {
@@ -666,7 +666,7 @@ final class SynchroAgenda
     private function calendriersOuLOnPeutEffacer(int $userId): array
     {
         // Le calendrier principal, y compris quand on ne connaît pas encore la
-        // liste et qu'on lit celui que Microsoft donne d'office.
+        // liste et qu'on lit celui que le fournisseur donne d'office.
         $permis = [self::DEFAUT => true];
 
         foreach (Database::all(
@@ -702,7 +702,7 @@ final class SynchroAgenda
 
         $dit = (string) ($reponse['corps']['error']['message'] ?? '');
 
-        throw new RuntimeException('Microsoft a refusé de supprimer un évènement'
+        throw new RuntimeException($this->f->nom() . ' a refusé de supprimer un évènement'
             . ($dit === '' ? '.' : ' : ' . mb_substr($dit, 0, 200)));
     }
 

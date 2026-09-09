@@ -8,7 +8,7 @@ declare(strict_types=1);
  * pas, et cela change tout : une lecture ratée ne coûte qu'une lecture, une
  * écriture ratée abîme l'agenda de quelqu'un.
  *
- * D'où le calendrier séparé. L'application crée le sien chez Microsoft —
+ * D'où le calendrier séparé. L'application crée le sien chez le fournisseur —
  * « Mes Cours » — et n'écrit jamais ailleurs. On l'affiche ou on le masque
  * d'une case dans Outlook, le supprimer n'emporte que ce qui vient d'ici, et
  * une erreur de notre part ne peut pas atteindre l'agenda dont on se sert.
@@ -38,7 +38,7 @@ final class EnvoiAgenda
         return LiaisonAgenda::pour($this->f);
     }
 
-    /** Le nom du calendrier créé chez Microsoft. */
+    /** Le nom du calendrier créé chez le fournisseur. */
     private const CALENDRIER = 'Mes Cours';
 
     /** La fenêtre envoyée, la même que celle qu'on lit. */
@@ -241,7 +241,7 @@ final class EnvoiAgenda
     /**
      * Le calendrier « Mes Cours », créé au besoin.
      *
-     * On ne le recrée pas s'il porte déjà ce nom chez Microsoft : quelqu'un
+     * On ne le recrée pas s'il porte déjà ce nom chez le fournisseur : quelqu'un
      * qui délie puis relie son compte retrouverait sinon deux calendriers
      * identiques, et ne saurait pas lequel jeter.
      *
@@ -268,7 +268,7 @@ final class EnvoiAgenda
         if ($cree['code'] >= 400 || !isset($cree['corps']['id'])) {
             $dit = (string) ($cree['corps']['error']['message'] ?? '');
 
-            throw new RuntimeException('Microsoft a refusé de créer le calendrier « '
+            throw new RuntimeException($this->f->nom() . ' a refusé de créer le calendrier « '
                 . self::CALENDRIER . ' »' . ($dit === '' ? '.' : ' : ' . mb_substr($dit, 0, 200)));
         }
 
@@ -341,7 +341,7 @@ final class EnvoiAgenda
         return $tout;
     }
 
-    /** Un évènement de l'application dans les termes de Microsoft. */
+    /** Un évènement de l'application dans les termes de l'agenda. */
     private function corpsDUnEvenement(array $evt): array
     {
         $journee = (int) $evt['journee_entiere'] === 1;
@@ -389,7 +389,7 @@ final class EnvoiAgenda
         );
     }
 
-    /** La forme qu'attend Microsoft, la même pour tout ce qu'on envoie. */
+    /** La forme qu'attend l'agenda, la même pour tout ce qu'on envoie. */
     private function corps(
         string $titre,
         string $texte,
@@ -402,7 +402,7 @@ final class EnvoiAgenda
             $titre, $texte, $lieu, $debut, $fin, $journee, $this->fuseau());
     }
 
-    /* --- Écrire chez Microsoft -------------------------------------------- */
+    /* --- Écrire chez le fournisseur -------------------------------------------- */
 
     /** Ce qui est déjà parti, rangé par « sorte:id ». */
     private function partis(int $userId): array
@@ -485,7 +485,7 @@ final class EnvoiAgenda
         $this->verifier($reponse, 'supprimer un évènement');
     }
 
-    /** @throws RuntimeException si Microsoft a refusé */
+    /** @throws RuntimeException si le fournisseur a refusé */
     private function verifier(array $reponse, string $quoi): void
     {
         if ($reponse['code'] < 400) {
@@ -494,7 +494,7 @@ final class EnvoiAgenda
 
         $dit = (string) ($reponse['corps']['error']['message'] ?? '');
 
-        throw new RuntimeException('Microsoft a refusé de ' . $quoi
+        throw new RuntimeException($this->f->nom() . ' a refusé de ' . $quoi
             . ($dit === '' ? '.' : ' : ' . mb_substr($dit, 0, 200)));
     }
 }

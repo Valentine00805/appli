@@ -32,7 +32,7 @@
       <?php endforeach; ?>
     </p>
     <h1>Calendrier <?= e($f->nom()) ?></h1>
-    <p>Relier votre agenda Microsoft à celui de l'application.</p>
+    <p>Relier votre agenda <?= e($f->nom()) ?> à celui de l'application.</p>
   </div>
 </div>
 
@@ -63,7 +63,7 @@ $aReautoriser = !($partage ?? true) && $partagesEnAttente > 0 && ($souci ?? null
     <span class="vide__icone">📆</span>
     <p>La liaison avec <?= e($f->nom()) ?> n'est pas encore activée sur cette installation.</p>
     <p class="champ__aide">
-      Elle demande une inscription unique chez Microsoft, faite une fois pour
+      Elle demande une inscription unique chez son fournisseur, faite une fois pour
       toutes par la personne qui héberge l'application — pas par chacun.
     </p>
   </div>
@@ -106,9 +106,31 @@ $aReautoriser = !($partage ?? true) && $partagesEnAttente > 0 && ($souci ?? null
               <?= $envoyes === 0 ? 'rien dans ' . $f->nom() : $envoyes . ' élément' . ($envoyes > 1 ? 's' : '') . ' dans « Mes Cours »' ?>.
             <?php endif; ?>
           </p>
+          <?php
+          /*
+           * L'autorisation obtenue ne couvre pas tout ce qu'on demande. Chez
+           * Google c'est le cas ordinaire : les permissions sensibles sont
+           * proposées décochées, et l'on passe outre sans le voir. Le message
+           * des calendriers partagés, plus précis, passe devant quand il vaut.
+           */
+          ?>
+          <?php if (!$partage && !$aReautoriser): ?>
+            <p class="outlook-attention">
+              <strong>L'autorisation ne couvre pas votre agenda.</strong>
+              Reconnectez-vous, et sur l'écran de consentement
+              <strong>cochez la case des agendas</strong> — elle n'est pas cochée
+              d'avance. Sans elle, l'application peut vous reconnaître mais ne
+              voit aucun rendez-vous.
+            </p>
+            <form method="post" action="<?= url('agenda/' . $f->cle() . '/connexion') ?>"
+                  style="margin-bottom:.9rem">
+              <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
+              <button class="bouton" type="submit">Reconnecter mon compte</button>
+            </form>
+          <?php endif; ?>
           <?php if ($aReautoriser): ?>
             <p class="outlook-attention">
-              <strong>Si Microsoft refuse les calendriers partagés, c'est l'autorisation.</strong>
+              <strong>Si <?= e($f->nom()) ?> refuse les calendriers partagés, c'est l'autorisation.</strong>
               Vous suivez <?= $partagesEnAttente ?> calendrier<?= $partagesEnAttente > 1 ? 's' : '' ?>
               partagé<?= $partagesEnAttente > 1 ? 's' : '' ?> par quelqu'un d'autre, et votre
               autorisation date d'avant que l'application ne sache les lire.
@@ -145,7 +167,7 @@ $aReautoriser = !($partage ?? true) && $partagesEnAttente > 0 && ($souci ?? null
             <strong>D'ici vers <?= e($f->nom()) ?> :</strong> vos évènements et les
             échéances de vos tâches non faites, dans un calendrier
             <strong>« Mes Cours »</strong> que l'application crée chez
-            Microsoft. Elle n'écrit que là : votre agenda existant n'est
+            <?= e($f->nom()) ?>. Elle n'écrit que là : votre agenda existant n'est
             jamais touché, et vous pouvez masquer ou supprimer ce calendrier
             depuis <?= e($f->nom()) ?>. Une tâche cochée quitte l'agenda, un évènement
             supprimé ici disparaît là-bas.
@@ -188,7 +210,7 @@ $aReautoriser = !($partage ?? true) && $partagesEnAttente > 0 && ($souci ?? null
             <button class="bouton" type="submit">Connecter mon compte <?= e($f->nom()) ?></button>
           </form>
           <p class="champ__aide" style="margin-top:.6rem">
-            Microsoft vous demandera de choisir votre compte et d'accepter
+            <?= e($f->nom()) ?> vous demandera de choisir votre compte et d'accepter
             l'accès à votre agenda, puis vous ramènera ici. Vous pouvez délier
             le compte quand vous voulez.
           </p>
@@ -214,7 +236,7 @@ $aReautoriser = !($partage ?? true) && $partagesEnAttente > 0 && ($souci ?? null
             Votre autorisation date d'avant que l'application ne demande une
             permission pour les calendriers <strong>partagés par quelqu'un
             d'autre</strong>. Elle n'est pas toujours nécessaire — selon le
-            compte, Microsoft les donne sans rien de plus. Si l'un d'eux vous
+            compte, <?= e($f->nom()) ?> les donne sans rien de plus. Si l'un d'eux vous
             est refusé, réautorisez : rien n'est perdu, ni votre liaison, ni
             vos évènements.
           </p>
@@ -227,7 +249,7 @@ $aReautoriser = !($partage ?? true) && $partagesEnAttente > 0 && ($souci ?? null
         <?php if ($calendriers === []): ?>
           <p class="champ__aide" style="margin-top:0">
             L'application n'a lu que votre calendrier principal. Demandez à
-            Microsoft la liste complète pour choisir les autres.
+            <?= e($f->nom()) ?> la liste complète pour choisir les autres.
           </p>
         <?php else: ?>
           <form method="post" action="<?= url('agenda/' . $f->cle() . '/suivre') ?>">
@@ -289,31 +311,52 @@ $aReautoriser = !($partage ?? true) && $partagesEnAttente > 0 && ($souci ?? null
           Pour qui héberge l'application
         </summary>
         <p class="champ__aide">
-          Une seule inscription chez Microsoft sert à tout le monde. Elle se
-          règle dans <code>config/parametres.php</code>, section
-          <code><?= e($f->cle() === 'microsoft' ? 'outlook' : $f->cle()) ?></code>, qui ne va pas au dépôt.
+          Une seule inscription sert à tout le monde. Elle se règle dans
+          <code>config/parametres.php</code>, section
+          <code><?= e($f->cle() === 'microsoft' ? 'outlook' : $f->cle()) ?></code>,
+          qui ne va pas au dépôt.
         </p>
-        <ol class="outlook-marche">
-          <li>Sur <a href="https://entra.microsoft.com" target="_blank" rel="noopener">entra.microsoft.com</a> :
-              <em>Applications</em> › <em>Inscriptions d'applications</em> › <em>Nouvelle inscription</em>.</li>
-          <li>Comptes pris en charge :
-              <em>Comptes dans un annuaire organisationnel et comptes Microsoft personnels</em>.</li>
-          <li>URI de redirection — inscrivez celle-ci, au mot près :
-              <br><code class="outlook-retour"><?= e($retour) ?></code></li>
-          <li>Plateforme : <strong>Applications mobiles et de bureau</strong> en local, sans secret ;
-              <strong>Web</strong> une fois en ligne, avec un secret client à recopier dans
-              <code><?= e($f->cle() === 'microsoft' ? 'outlook' : $f->cle()) ?>.secret</code>.</li>
-          <li>Reportez l'<strong>ID d'application (client)</strong> dans <code><?= e($f->cle() === 'microsoft' ? 'outlook' : $f->cle()) ?>.client_id</code>.</li>
-        </ol>
+
+        <?php if ($f->cle() === 'microsoft'): ?>
+          <ol class="outlook-marche">
+            <li>Sur <a href="https://entra.microsoft.com" target="_blank" rel="noopener">entra.microsoft.com</a> :
+                <em>Applications</em> › <em>Inscriptions d'applications</em> › <em>Nouvelle inscription</em>.</li>
+            <li>Comptes pris en charge :
+                <em>Comptes dans un annuaire organisationnel et comptes Microsoft personnels</em>.</li>
+            <li>URI de redirection — inscrivez celle-ci, au mot près :
+                <br><code class="outlook-retour"><?= e($retour) ?></code></li>
+            <li>Plateforme : <strong>Applications mobiles et de bureau</strong> en local, sans secret ;
+                <strong>Web</strong> une fois en ligne, avec un secret client.</li>
+            <li>Reportez l'<strong>ID d'application (client)</strong> dans <code>outlook.client_id</code>.</li>
+          </ol>
+        <?php else: ?>
+          <ol class="outlook-marche">
+            <li>Sur <a href="https://console.cloud.google.com" target="_blank" rel="noopener">console.cloud.google.com</a> :
+                créez un projet, puis activez <em>Google Calendar API</em>.</li>
+            <li><em>Accès aux données</em> : ajoutez la permission
+                <code>https://www.googleapis.com/auth/calendar</code>, et elle seule.</li>
+            <li><em>Audience</em> : ajoutez votre adresse dans <em>Utilisateurs tests</em>,
+                ou publiez l'application — sans quoi Google refuse même votre propre compte.</li>
+            <li><em>Clients</em> : un client OAuth de type <strong>Application Web</strong>, avec
+                cette adresse de redirection, au mot près :
+                <br><code class="outlook-retour"><?= e($retour) ?></code></li>
+            <li>Reportez l'<strong>ID client</strong> et le <strong>secret</strong> dans
+                <code>google.client_id</code> et <code>google.secret</code> —
+                Google exige les deux, même en local.</li>
+          </ol>
+          <p class="champ__aide">
+            Tant que l'application reste « en test » chez Google, l'autorisation
+            expire au bout de sept jours et il faut se reconnecter. La publier —
+            un bouton, sans validation ni attente — supprime ce délai ; l'écran
+            d'avertissement, lui, reste jusqu'à la validation.
+          </p>
+        <?php endif; ?>
+
         <p class="champ__aide">
-          En ligne, inscrivez aussi <code><?= e($f->cle() === 'microsoft' ? 'outlook' : $f->cle()) ?>.adresse_retour</code> en clair :
-          ce qu'un navigateur annonce comme hôte ne se croit pas sur parole, et
-          cette adresse doit correspondre à celle déclarée chez Microsoft.
-        </p>
-        <p class="champ__aide">
-          Certains établissements exigent qu'un administrateur autorise
-          l'application avant que leurs comptes puissent s'y relier. Les comptes
-          personnels, eux, n'ont besoin de personne.
+          En ligne, inscrivez aussi
+          <code><?= e($f->cle() === 'microsoft' ? 'outlook' : $f->cle()) ?>.adresse_retour</code>
+          en clair : ce qu'un navigateur annonce comme hôte ne se croit pas sur
+          parole, et cette adresse doit correspondre à celle déclarée là-bas.
         </p>
       </details>
     </div>
