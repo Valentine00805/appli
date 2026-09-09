@@ -18,7 +18,18 @@
 <div class="entete-page">
   <div>
     <p class="discret" style="margin-bottom:.35rem">
-      <a href="<?= url('calendrier') ?>">← Calendrier</a>
+      <a href="<?= url('agenda') ?>">← Mes agendas</a>
+      <?php
+      /*
+       * Passer d'un agenda à l'autre sans repasser par la liste : quand on
+       * en règle deux, on compare l'un et l'autre plus qu'on ne les visite.
+       */
+      ?>
+      <?php foreach ($autres as $voisin): ?>
+        <?php if ($voisin->cle() !== $f->cle()): ?>
+          · <a href="<?= url('agenda/' . $voisin->cle()) ?>"><?= e($voisin->nom()) ?></a>
+        <?php endif; ?>
+      <?php endforeach; ?>
     </p>
     <h1>Calendrier <?= e($f->nom()) ?></h1>
     <p>Relier votre agenda Microsoft à celui de l'application.</p>

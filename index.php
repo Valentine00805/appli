@@ -189,6 +189,8 @@ $routes = [
      * Les agendas distants. Le fournisseur est dans l'adresse : chacun a
      * ainsi sa page et son retour d'autorisation, sans une ligne de plus.
      */
+    ['GET',  'agenda',                     [AgendaController::class, 'liste']],
+    ['POST', 'agenda/synchroniser',        [AgendaController::class, 'synchroniserTout']],
     ['GET',  'agenda/{mot}',               [AgendaController::class, 'index']],
     ['POST', 'agenda/{mot}/connexion',     [AgendaController::class, 'connexion']],
     ['GET',  'agenda/{mot}/retour',        [AgendaController::class, 'retour']],

@@ -159,15 +159,72 @@ final class AgendaController
 
         $f = $this->fournisseur($cle);
         $userId = Auth::id();
+        $seul = ($_POST['seul'] ?? '') === '1';
+
+        $bilan = $this->unAgenda($f, $userId, $seul);
+        if ($bilan === null) {
+            if ($seul || veut_du_json()) {
+                repondre_json(['fait' => false, 'change' => 0]);
+            }
+            Session::flash('succes', 'Tout était déjà à jour.');
+            repartir_vers('agenda/' . $f->cle());
+        }
+
+        $this->rendreCompte([$f->cle() => $bilan], $seul, 'agenda/' . $f->cle());
+    }
+
+    /**
+     * Synchronise tous les agendas reliés, d'un seul geste.
+     *
+     * C'est ce que veut le bouton du calendrier, et ce que réveille la page :
+     * on n'a pas à savoir de quel agenda vient tel rendez-vous pour vouloir
+     * qu'il soit à jour.
+     */
+    public function synchroniserTout(): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+
+        $userId = Auth::id();
+        $seul = ($_POST['seul'] ?? '') === '1';
+        $bilans = [];
+
+        foreach (Agenda::relies($userId) as $f) {
+            $bilan = $this->unAgenda($f, $userId, $seul);
+            if ($bilan !== null) {
+                $bilans[$f->cle()] = $bilan;
+            }
+        }
+
+        if ($bilans === []) {
+            if ($seul || veut_du_json()) {
+                repondre_json(['fait' => false, 'change' => 0]);
+            }
+            Session::flash('succes', 'Tout était déjà à jour.');
+            repartir_vers('agenda');
+        }
+
+        $this->rendreCompte($bilans, $seul, 'agenda');
+    }
+
+    /**
+     * Lit et envoie pour un agenda, et rend ce qui s'est passé.
+     *
+     * Rend null quand il n'y avait rien à faire — et non un bilan vide : la
+     * différence compte pour savoir s'il faut dire quelque chose.
+     *
+     * @return ?array{f: Fournisseur, lu: array, envoye: array, souci: ?string}
+     */
+    private function unAgenda(Fournisseur $f, int $userId, bool $seul): ?array
+    {
         $synchro = SynchroAgenda::pour($f);
         $envoiDe = EnvoiAgenda::pour($f);
         $rien = ['crees' => 0, 'majs' => 0, 'retires' => 0, 'inchanges' => 0];
 
-        $seul = ($_POST['seul'] ?? '') === '1';
         $lire = !$seul || $synchro->aBesoinDEtreRelu($userId);
         $envoyer = !$seul || $envoiDe->aPousser($userId);
         if (!$lire && !$envoyer) {
-            repondre_json(['fait' => false, 'change' => 0]);
+            return null;
         }
 
         try {
@@ -186,29 +243,77 @@ final class AgendaController
             // n'a personne devant elle, et son échec doit survivre à la requête.
             $synchro->retenirLeSouci($userId, $e->getMessage());
 
-            if ($seul || veut_du_json()) {
-                repondre_json(['fait' => false, 'change' => 0, 'souci' => $e->getMessage()]);
-            }
-            Session::flash('erreur', $e->getMessage());
-            repartir_vers('agenda/' . $f->cle());
+            return ['f' => $f, 'lu' => [], 'envoye' => [], 'souci' => $e->getMessage()];
         }
 
         $synchro->retenirLeSouci($userId, null);
 
-        $change = $bilan['ajoutes'] + $bilan['modifies'] + $bilan['retires'] + $bilan['effaces']
-            + $envoi['crees'] + $envoi['majs'] + $envoi['retires'];
+        return ['f' => $f, 'lu' => $bilan, 'envoye' => $envoi, 'souci' => null];
+    }
+
+    /**
+     * Dit ce que la synchronisation a fait, sur un ou plusieurs agendas.
+     *
+     * @param array<string, array> $bilans
+     */
+    private function rendreCompte(array $bilans, bool $seul, string $retour): never
+    {
+        $change = 0;
+        $soucis = [];
+        $phrases = [];
+
+        foreach ($bilans as $bilan) {
+            if ($bilan['souci'] !== null) {
+                $soucis[] = $bilan['souci'];
+                continue;
+            }
+            $lu = $bilan['lu'];
+            $envoye = $bilan['envoye'];
+            $change += $lu['ajoutes'] + $lu['modifies'] + $lu['retires'] + $lu['effaces']
+                + $envoye['crees'] + $envoye['majs'] + $envoye['retires'];
+            $dit = self::raconter($bilan['f'], $lu, $envoye);
+            if ($dit !== '') {
+                $phrases[] = $dit;
+            }
+        }
 
         if ($seul || veut_du_json()) {
-            repondre_json(['fait' => !$bilan['occupe'], 'change' => $change]);
+            repondre_json($soucis === []
+                ? ['fait' => true, 'change' => $change]
+                : ['fait' => false, 'change' => $change, 'souci' => implode(' ', $soucis)]);
         }
 
-        if ($bilan['occupe']) {
-            Session::flash('succes', 'Une lecture était déjà en cours : rien n’a été fait deux fois.');
-            repartir_vers('agenda/' . $f->cle());
+        if ($soucis !== []) {
+            Session::flash('erreur', implode(' ', $soucis));
+        }
+        Session::flash('succes', $phrases === []
+            ? 'Synchronisé : tout était déjà à jour, de part et d’autre.'
+            : implode(' ', $phrases));
+
+        repartir_vers($retour);
+    }
+
+    /** La page qui montre les agendas et leur état. */
+    public function liste(): void
+    {
+        Auth::exiger();
+        $userId = Auth::id();
+
+        $etats = [];
+        foreach (Agenda::tous() as $f) {
+            $lien = LiaisonAgenda::pour($f);
+            $etats[] = [
+                'f'          => $f,
+                'configure'  => $lien->configure(),
+                'relie'      => $lien->relie($userId),
+                'compte'     => (string) ($lien->compte($userId)['compte'] ?? ''),
+                'evenements' => SynchroAgenda::pour($f)->combien($userId),
+                'envoyes'    => EnvoiAgenda::pour($f)->combien($userId),
+                'souci'      => SynchroAgenda::pour($f)->dernierSouci($userId),
+            ];
         }
 
-        Session::flash('succes', self::raconter($f, $bilan, $envoi));
-        repartir_vers('agenda/' . $f->cle());
+        Vue::afficher('agenda/liste', ['etats' => $etats], 'Mes agendas');
     }
 
     /**
@@ -236,9 +341,7 @@ final class AgendaController
         if ($venus !== [])  { $phrases[] = 'venus ' . de_agenda($f->nom()) . ' : ' . implode(', ', $venus); }
         if ($partis !== []) { $phrases[] = 'partis vers ' . $f->nom() . ' : ' . implode(', ', $partis); }
 
-        return $phrases === []
-            ? 'Synchronisé : tout était déjà à jour, de part et d’autre.'
-            : 'Synchronisé — ' . implode(' ; ', $phrases) . '.';
+        return $phrases === [] ? '' : 'Synchronisé — ' . implode(' ; ', $phrases) . '.';
     }
 
     /** Retire de l'application les évènements venus de cet agenda. */

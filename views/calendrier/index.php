@@ -75,14 +75,14 @@ $puce = static function (array $evt) use ($destination): string {
      */
     ?>
     <?php if (Agenda::relies(Auth::id()) !== []): ?>
-      <form method="post" action="<?= url('outlook/synchroniser') ?>">
+      <form method="post" action="<?= url('agenda/synchroniser') ?>">
         <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
         <input type="hidden" name="retour" value="<?= e((string) ($_SERVER['REQUEST_URI'] ?? '')) ?>">
         <button class="bouton bouton--secondaire" type="submit"
-                title="Relire l'agenda Outlook maintenant">↻</button>
+                title="Synchroniser mes agendas maintenant">↻</button>
       </form>
     <?php endif; ?>
-    <a class="bouton bouton--secondaire" href="<?= url('outlook') ?>">📆 Outlook</a>
+    <a class="bouton bouton--secondaire" href="<?= url('agenda') ?>">📆 Mes agendas</a>
     <a class="bouton bouton--secondaire" href="<?= url('organisation/types') ?>">Gérer les types</a>
     <a class="bouton" href="<?= url('evenements/nouveau') ?>">+ Évènement</a>
   </div>
@@ -175,7 +175,7 @@ $puce = static function (array $evt) use ($destination): string {
         La couleur d'un agenda ne s'applique qu'aux évènements sans matière ni
         type : celles-ci gardent la main.
         Masquer un agenda ne le désynchronise pas et n'efface rien.
-        <a href="<?= url('outlook') ?>">Choisir ceux à synchroniser</a>
+        <a href="<?= url('agenda') ?>">Choisir ceux à synchroniser</a>
       </p>
     </form>
   </aside>

@@ -99,7 +99,7 @@ $actif = static function (string $prefixe) use ($route): string {
  */
 ?>
 <?php if (Auth::connecte() && Agenda::aQuelqueChoseAFaire(Auth::id())): ?>
-  <div hidden data-outlook-relire="<?= e(url('outlook/synchroniser')) ?>"
+  <div hidden data-outlook-relire="<?= e(url('agenda/synchroniser')) ?>"
        data-csrf="<?= e(Session::jetonCsrf()) ?>"></div>
 <?php endif; ?>
 

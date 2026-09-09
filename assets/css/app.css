@@ -2064,3 +2064,12 @@ ul.apercu-liste--n2 { list-style-type: square; }
 }
 .fin-repetition .case { display: inline-flex; align-items: center; gap: .3rem; margin: 0; }
 .fin-repetition input[type="number"] { width: 5rem; }
+
+/* La liste des agendas qu'on peut relier. */
+.agenda-carte__titre {
+  display: flex; align-items: center; gap: .6rem; flex-wrap: wrap;
+  margin-bottom: .4rem;
+}
+.agenda-carte__titre h2 { margin: 0; font-size: 1.05rem; }
+.pastille--ok { background: #dcfce7; color: #14532d; }
+.pastille--muette { background: var(--fond); color: var(--texte-doux, #64748b); }
