@@ -256,9 +256,10 @@ final class EnvoiAgenda
 
         $liste = $this->lien()->appeler($userId, 'GET', $this->f->cheminDeListeSimple());
         if ($liste['code'] < 400) {
-            foreach (($liste['corps']['value'] ?? []) as $cal) {
-                if ((string) ($cal['name'] ?? '') === self::CALENDRIER && isset($cal['id'])) {
-                    return $this->retenirLeCalendrier($userId, (string) $cal['id']);
+            foreach ($this->f->elements($liste['corps']) as $cal) {
+                $lu = $this->f->lireCalendrier($cal);
+                if ($lu !== null && $lu['nom'] === self::CALENDRIER) {
+                    return $this->retenirLeCalendrier($userId, $lu['id']);
                 }
             }
         }

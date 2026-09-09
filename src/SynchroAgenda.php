@@ -361,7 +361,7 @@ final class SynchroAgenda
                 // certains comptes n'ont pas tous les groupes.
                 continue;
             }
-            foreach (($reponse['corps']['value'] ?? []) as $cal) {
+            foreach ($this->f->elements($reponse['corps']) as $cal) {
                 if (isset($cal['id'])) {
                     $trouves[(string) $cal['id']] = $cal;
                 }
@@ -568,7 +568,7 @@ final class SynchroAgenda
                     . ($dit === '' ? '.' : ' : ' . mb_substr($dit, 0, 200)));
             }
 
-            foreach (($reponse['corps']['value'] ?? []) as $evenement) {
+            foreach ($this->f->elements($reponse['corps']) as $evenement) {
                 $tout[] = $evenement;
             }
             $chemin = $this->f->pageSuivante($reponse['corps'], $chemin);

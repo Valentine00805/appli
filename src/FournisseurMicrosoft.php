@@ -169,6 +169,11 @@ final class FournisseurMicrosoft extends Fournisseur
         return ['Prefer: outlook.timezone="' . $fuseau . '"'];
     }
 
+    public function elements(array $corps): array
+    {
+        return is_array($corps['value'] ?? null) ? $corps['value'] : [];
+    }
+
     public function pageSuivante(array $corps, string $cheminPrecedent): string
     {
         return (string) ($corps['@odata.nextLink'] ?? '');

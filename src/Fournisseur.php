@@ -103,6 +103,17 @@ abstract class Fournisseur
      */
     abstract public function entetesDeLecture(string $fuseau): array;
 
+    /**
+     * Les éléments d'une liste, là où ce fournisseur les range.
+     *
+     * Microsoft dit « value », Google dit « items ». Chercher l'un chez
+     * l'autre ne lève aucune erreur : on obtient une liste vide, et un agenda
+     * qui semble n'avoir ni calendrier ni rendez-vous.
+     *
+     * @return array<int, array>
+     */
+    abstract public function elements(array $corps): array;
+
     /** La page suivante, ou une chaîne vide s'il n'y en a plus. */
     abstract public function pageSuivante(array $corps, string $cheminPrecedent): string;
 

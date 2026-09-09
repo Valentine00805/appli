@@ -154,6 +154,11 @@ final class FournisseurGoogle extends Fournisseur
         return [];
     }
 
+    public function elements(array $corps): array
+    {
+        return is_array($corps['items'] ?? null) ? $corps['items'] : [];
+    }
+
     public function pageSuivante(array $corps, string $cheminPrecedent): string
     {
         $jeton = (string) ($corps['nextPageToken'] ?? '');
