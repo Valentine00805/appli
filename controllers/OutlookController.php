@@ -108,7 +108,8 @@ final class OutlookController
         try {
             $bilan = $lire
                 ? SynchroOutlook::tirer($userId)
-                : ['ajoutes' => 0, 'modifies' => 0, 'retires' => 0, 'inchanges' => 0, 'occupe' => false];
+                : ['ajoutes' => 0, 'modifies' => 0, 'retires' => 0,
+                   'inchanges' => 0, 'effaces' => 0, 'occupe' => false];
             /*
              * L'envoi ne part que si la lecture n'a pas buté sur le verrou :
              * quelqu'un d'autre fait alors déjà les deux, et écrire par dessus
@@ -134,7 +135,7 @@ final class OutlookController
 
         SynchroOutlook::retenirLeSouci($userId, null);
 
-        $change = $bilan['ajoutes'] + $bilan['modifies'] + $bilan['retires']
+        $change = $bilan['ajoutes'] + $bilan['modifies'] + $bilan['retires'] + $bilan['effaces']
             + $envoi['crees'] + $envoi['majs'] + $envoi['retires'];
 
         if ($seul || veut_du_json()) {
@@ -158,12 +159,15 @@ final class OutlookController
      */
     private static function raconter(array $bilan, array $envoi): string
     {
+        $partis = [];
         $venus = [];
         if ($bilan['ajoutes'] > 0)  { $venus[] = $bilan['ajoutes'] . ' ajouté' . ($bilan['ajoutes'] > 1 ? 's' : ''); }
         if ($bilan['modifies'] > 0) { $venus[] = $bilan['modifies'] . ' mis à jour'; }
         if ($bilan['retires'] > 0)  { $venus[] = $bilan['retires'] . ' retiré' . ($bilan['retires'] > 1 ? 's' : ''); }
+        if (($bilan['effaces'] ?? 0) > 0) {
+            $partis[] = $bilan['effaces'] . ' supprimé' . ($bilan['effaces'] > 1 ? 's' : '');
+        }
 
-        $partis = [];
         if ($envoi['crees'] > 0)   { $partis[] = $envoi['crees'] . ' créé' . ($envoi['crees'] > 1 ? 's' : ''); }
         if ($envoi['majs'] > 0)    { $partis[] = $envoi['majs'] . ' mis à jour'; }
         if ($envoi['retires'] > 0) { $partis[] = $envoi['retires'] . ' retiré' . ($envoi['retires'] > 1 ? 's' : ''); }

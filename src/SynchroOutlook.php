@@ -35,6 +35,14 @@ final class SynchroOutlook
     private const FUSEAU = 'Europe/Paris';
 
     /**
+     * Le calendrier principal, quand on n'a jamais demandé la liste.
+     *
+     * C'est celui que Microsoft donne par défaut, et l'application y a les
+     * mêmes droits que dans le sien : on peut y supprimer.
+     */
+    private const DEFAUT = 'principal';
+
+    /**
      * Le repos entre deux lectures automatiques, en secondes.
      *
      * Cinq minutes. Un quart d'heure paraissait raisonnable jusqu'à ce qu'on
@@ -61,7 +69,7 @@ final class SynchroOutlook
         $verrou = 'mescours_outlook_' . $userId;
         if ((int) Database::valeur('SELECT GET_LOCK(?, 0)', [$verrou]) !== 1) {
             return ['ajoutes' => 0, 'modifies' => 0, 'retires' => 0,
-                    'inchanges' => 0, 'occupe' => true];
+                    'inchanges' => 0, 'effaces' => 0, 'occupe' => true];
         }
 
         try {
@@ -79,6 +87,10 @@ final class SynchroOutlook
         $depuis = $maintenant->modify(self::AVANT)->setTime(0, 0);
         $jusqua = $maintenant->modify(self::APRES)->setTime(23, 59, 59);
 
+        // Avant de lire : ce qu'on a supprimé ici doit partir de là-bas, sans
+        // quoi la lecture le ramènerait aussitôt.
+        $bilanEfface = self::porterLesSuppressions($userId);
+
         $venus = self::lire($userId, $depuis, $jusqua);
         $connus = self::liens($userId);
         /*
@@ -89,7 +101,7 @@ final class SynchroOutlook
         $ecrits = self::ecritsParNous($userId);
 
         $bilan = ['ajoutes' => 0, 'modifies' => 0, 'retires' => 0,
-                  'inchanges' => 0, 'occupe' => false];
+                  'inchanges' => 0, 'effaces' => 0, 'occupe' => false];
         $vus = [];
 
         foreach ($venus as $brut) {
@@ -104,12 +116,21 @@ final class SynchroOutlook
             }
             $vus[$outlookId] = true;
             $empreinte = md5(json_encode($champs, JSON_THROW_ON_ERROR));
+            $ou = (string) ($brut['_calendrier'] ?? '');
             $lien = $connus[$outlookId] ?? null;
 
             if ($lien === null) {
-                self::ajouter($userId, $outlookId, $champs, $empreinte);
+                self::ajouter($userId, $outlookId, $champs, $empreinte, $ou);
                 $bilan['ajoutes']++;
                 continue;
+            }
+            if ((string) ($lien['calendrier'] ?? '') !== $ou) {
+                // Une origine inconnue, ou changée : sans elle on refuserait
+                // plus tard de supprimer là-bas, faute de savoir où.
+                Database::run(
+                    'UPDATE outlook_liens SET calendrier = ? WHERE user_id = ? AND outlook_id = ?',
+                    [$ou, $userId, $outlookId]
+                );
             }
             if ($lien['empreinte'] === $empreinte) {
                 $bilan['inchanges']++;
@@ -121,6 +142,7 @@ final class SynchroOutlook
         }
 
         $bilan['retires'] = self::retirerLesDisparus($userId, $connus, $vus, $depuis, $jusqua);
+        $bilan['effaces'] = $bilanEfface;
 
         Database::run('UPDATE outlook_comptes SET synchro_le = NOW() WHERE user_id = ?', [$userId]);
 
@@ -137,6 +159,19 @@ final class SynchroOutlook
     {
         if (!Outlook::configuree() || !Outlook::relie($userId)) {
             return false;
+        }
+
+        /*
+         * Un lien devenu orphelin, c'est un évènement supprimé ici dont
+         * Outlook ne sait rien encore. On ne fait pas attendre cinq minutes
+         * une suppression : c'est le geste qu'on vérifie le plus vite.
+         */
+        $orphelins = (int) Database::valeur(
+            'SELECT COUNT(*) FROM outlook_liens WHERE user_id = ? AND evenement_id IS NULL',
+            [$userId]
+        );
+        if ($orphelins > 0) {
+            return true;
         }
 
         $connus = (int) Database::valeur(
@@ -231,6 +266,13 @@ final class SynchroOutlook
             [$userId]
         );
 
+        /*
+         * On délie d'abord. Depuis qu'un lien sans évènement vaut ordre de
+         * suppression chez Microsoft, en laisser derrière soi ferait disparaître
+         * de l'agenda ce qu'on voulait seulement retirer d'ici.
+         */
+        Database::run('DELETE FROM outlook_liens WHERE user_id = ?', [$userId]);
+
         $retires = 0;
         foreach ($ids as $ligne) {
             // Un par un, et toujours borné au compte : la règle de la maison.
@@ -238,9 +280,6 @@ final class SynchroOutlook
                 [(int) $ligne['evenement_id'], $userId]);
             $retires++;
         }
-
-        // Le lien tombe avec l'évènement, mais une ligne orpheline peut rester.
-        Database::run('DELETE FROM outlook_liens WHERE user_id = ?', [$userId]);
         Database::run('UPDATE outlook_comptes SET synchro_le = NULL WHERE user_id = ?', [$userId]);
 
         return $retires;
@@ -414,9 +453,16 @@ final class SynchroOutlook
 
         $tout = [];
         foreach (self::aLire($userId) as $calendrier) {
+            // D'où vient l'évènement : c'est de cela que dépendra le droit de
+            // le supprimer là-bas, le jour où on le supprimera ici.
+            $ou = $calendrier === null
+                ? self::DEFAUT
+                : md5((string) $calendrier['calendrier_id']);
+
             foreach (self::unCalendrier($userId, $calendrier, $question) as $evenement) {
                 // Un évènement partagé entre deux calendriers ne compte qu'une
                 // fois : son identifiant tranche.
+                $evenement['_calendrier'] = $ou;
                 $tout[(string) ($evenement['id'] ?? '')] = $evenement;
             }
         }
@@ -577,6 +623,90 @@ final class SynchroOutlook
     /* --- Écrire ici -------------------------------------------------------- */
 
     /**
+     * Supprime chez Microsoft ce qui a été supprimé ici — là où c'est chez soi.
+     *
+     * Un évènement effacé dans l'application laisse son lien derrière lui,
+     * orphelin : c'est cette trace qu'on ramasse. Encore faut-il avoir le
+     * droit d'en tirer les conséquences, et ce droit s'arrête au bord de
+     * l'agenda des autres.
+     *
+     * On ne supprime donc que dans deux calendriers : « Mes Cours », qui
+     * n'existe que par cette application, et le calendrier principal, qui est
+     * celui de la personne. Ailleurs — l'agenda d'un proche, d'un groupe, les
+     * jours fériés — le lien est simplement oublié, et l'évènement reviendra à
+     * la lecture suivante : c'est déjà ce qui était annoncé.
+     *
+     * @return int  combien ont été effacés chez Microsoft
+     */
+    private static function porterLesSuppressions(int $userId): int
+    {
+        $orphelins = Database::all(
+            'SELECT id, outlook_id, calendrier FROM outlook_liens
+              WHERE user_id = ? AND evenement_id IS NULL',
+            [$userId]
+        );
+        if ($orphelins === []) {
+            return 0;
+        }
+
+        $permis = self::calendriersOuLOnPeutEffacer($userId);
+        $effaces = 0;
+
+        foreach ($orphelins as $orphelin) {
+            if (isset($permis[(string) ($orphelin['calendrier'] ?? '')])) {
+                self::effacerLaBas($userId, (string) $orphelin['outlook_id']);
+                $effaces++;
+            }
+            Database::run('DELETE FROM outlook_liens WHERE user_id = ? AND id = ?',
+                [$userId, (int) $orphelin['id']]);
+        }
+
+        return $effaces;
+    }
+
+    /**
+     * Les calendriers où l'application s'autorise à supprimer.
+     *
+     * @return array<string, true>  par empreinte
+     */
+    private static function calendriersOuLOnPeutEffacer(int $userId): array
+    {
+        // Le calendrier principal, y compris quand on ne connaît pas encore la
+        // liste et qu'on lit celui que Microsoft donne d'office.
+        $permis = [self::DEFAUT => true];
+
+        foreach (Database::all(
+            'SELECT empreinte FROM outlook_calendriers
+              WHERE user_id = ? AND principal = 1 AND partage = 0',
+            [$userId]
+        ) as $ligne) {
+            $permis[(string) $ligne['empreinte']] = true;
+        }
+
+        $ecriture = EnvoiOutlook::calendrierConnu($userId);
+        if ($ecriture !== null) {
+            $permis[md5($ecriture)] = true;
+        }
+
+        return $permis;
+    }
+
+    /** Efface chez Microsoft, sans s'émouvoir de ce qui n'y est déjà plus. */
+    private static function effacerLaBas(int $userId, string $outlookId): void
+    {
+        $reponse = Outlook::appeler($userId, 'DELETE', '/me/events/' . rawurlencode($outlookId));
+
+        if ($reponse['code'] < 400 || in_array($reponse['code'], [404, 410], true)) {
+            return;
+        }
+
+        $dit = (string) ($reponse['corps']['error']['message'] ?? '');
+
+        throw new RuntimeException('Microsoft a refusé de supprimer un évènement'
+            . ($dit === '' ? '.' : ' : ' . mb_substr($dit, 0, 200)));
+    }
+
+    /**
      * Les identifiants des évènements que l'application a écrits dans Outlook.
      *
      * @return array<string, true>
@@ -596,7 +726,8 @@ final class SynchroOutlook
     private static function liens(int $userId): array
     {
         $lignes = Database::all(
-            'SELECT outlook_id, evenement_id, empreinte FROM outlook_liens WHERE user_id = ?',
+            'SELECT outlook_id, evenement_id, empreinte, calendrier
+               FROM outlook_liens WHERE user_id = ? AND evenement_id IS NOT NULL',
             [$userId]
         );
 
@@ -608,7 +739,13 @@ final class SynchroOutlook
         return $par;
     }
 
-    private static function ajouter(int $userId, string $outlookId, array $champs, string $empreinte): void
+    private static function ajouter(
+        int $userId,
+        string $outlookId,
+        array $champs,
+        string $empreinte,
+        string $calendrier
+    ): void
     {
         Database::run(
             'INSERT INTO evenements (user_id, titre, description, lieu, debut, fin, journee_entiere)
@@ -621,10 +758,11 @@ final class SynchroOutlook
         $evenementId = Database::dernierId();
 
         Database::run(
-            'INSERT INTO outlook_liens (user_id, evenement_id, outlook_id, empreinte)
-             VALUES (?, ?, ?, ?)
-             ON DUPLICATE KEY UPDATE evenement_id = VALUES(evenement_id), empreinte = VALUES(empreinte)',
-            [$userId, $evenementId, $outlookId, $empreinte]
+            'INSERT INTO outlook_liens (user_id, evenement_id, outlook_id, empreinte, calendrier)
+             VALUES (?, ?, ?, ?, ?)
+             ON DUPLICATE KEY UPDATE evenement_id = VALUES(evenement_id),
+                 empreinte = VALUES(empreinte), calendrier = VALUES(calendrier)',
+            [$userId, $evenementId, $outlookId, $empreinte, $calendrier]
         );
     }
 

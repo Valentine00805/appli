@@ -123,7 +123,11 @@ $aReautoriser = !($partage ?? true) && $partagesEnAttente > 0 && ($souci ?? null
             comprises — et « Mes Cours » lui-même, pour que ce que vous y
             créez depuis Outlook arrive jusqu'ici. Outlook fait foi : un
             évènement importé que vous modifiez ici sera repris tel qu'il est
-            là-bas, et si vous le supprimez ici, il reviendra.
+            là-bas. Le supprimer ici l'efface aussi dans Outlook, mais
+            <strong>uniquement dans « Mes Cours » et dans votre calendrier
+            principal</strong> : venu d'un agenda que quelqu'un vous a partagé,
+            il est seulement retiré d'ici, et reviendra à la lecture suivante.
+            L'application n'efface rien chez les autres.
           </p>
           <p class="champ__aide">
             <strong>D'ici vers Outlook :</strong> vos évènements et les

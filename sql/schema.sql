@@ -424,6 +424,7 @@ CREATE TABLE IF NOT EXISTS `outlook_liens` (
   `user_id`      INT UNSIGNED NOT NULL,
   `evenement_id` INT UNSIGNED NULL,
   `outlook_id`   VARCHAR(255) NOT NULL,
+  `calendrier`   CHAR(32)     NULL,
   -- La version connue de part et d'autre, pour repérer ce qui a bougé.
   `etag`         VARCHAR(255) NULL,
   `empreinte`    CHAR(32)     NULL,
@@ -434,7 +435,7 @@ CREATE TABLE IF NOT EXISTS `outlook_liens` (
   CONSTRAINT `fk_lien_user` FOREIGN KEY (`user_id`)
     REFERENCES `users`(`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_lien_evenement` FOREIGN KEY (`evenement_id`)
-    REFERENCES `evenements`(`id`) ON DELETE CASCADE
+    REFERENCES `evenements`(`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Les calendriers Outlook d'un compte, et ceux que l'application lit.
