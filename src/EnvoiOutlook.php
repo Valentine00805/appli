@@ -27,7 +27,11 @@ final class EnvoiOutlook
     private const AVANT = '-1 month';
     private const APRES = '+12 months';
 
-    private const FUSEAU = 'Europe/Paris';
+    /** Le fuseau de la personne, réglé au démarrage. */
+    private static function fuseau(): string
+    {
+        return date_default_timezone_get();
+    }
 
     /** Une échéance de tâche se reconnaît d'un coup d'œil dans l'agenda. */
     private const MARQUE_TACHE = '☑ ';
@@ -88,7 +92,7 @@ final class EnvoiOutlook
     /** La période envoyée : la même partout, sans quoi rien ne concorderait. */
     private static function fenetre(): array
     {
-        $maintenant = new DateTimeImmutable('now', new DateTimeZone(self::FUSEAU));
+        $maintenant = new DateTimeImmutable('now', new DateTimeZone(self::fuseau()));
 
         return [
             $maintenant->modify(self::AVANT)->setTime(0, 0),
@@ -364,8 +368,8 @@ final class EnvoiOutlook
             'subject'  => mb_substr($titre === '' ? '(sans titre)' : $titre, 0, 250),
             'body'     => ['contentType' => 'text', 'content' => mb_substr($texte, 0, 4000)],
             'isAllDay' => $journee,
-            'start'    => ['dateTime' => $debut->format('Y-m-d\TH:i:s'), 'timeZone' => self::FUSEAU],
-            'end'      => ['dateTime' => $fin->format('Y-m-d\TH:i:s'), 'timeZone' => self::FUSEAU],
+            'start'    => ['dateTime' => $debut->format('Y-m-d\TH:i:s'), 'timeZone' => self::fuseau()],
+            'end'      => ['dateTime' => $fin->format('Y-m-d\TH:i:s'), 'timeZone' => self::fuseau()],
         ];
         if ($lieu !== '') {
             $corps['location'] = ['displayName' => mb_substr($lieu, 0, 250)];

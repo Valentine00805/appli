@@ -20,6 +20,46 @@ $moi = Auth::utilisateur();
   </div>
 </div>
 
+<?php
+/*
+ * Le fuseau horaire.
+ *
+ * Il ne sert pas qu'à l'affichage : c'est lui qui décide de l'heure à laquelle
+ * un cours part dans Outlook et de celle à laquelle un rendez-vous en revient.
+ * Mal réglé, il décale tout d'un bloc sans rien signaler.
+ */
+?>
+<section class="carte" style="margin-bottom:1rem">
+  <h2 style="margin-top:0">🕑 Fuseau horaire</h2>
+  <p class="champ__aide" style="margin-top:0">
+    Il est <strong><?= e(date('H:i')) ?></strong> pour l'application.
+    Vos horaires d'évènements, ici comme dans Outlook, sont lus et écrits dans
+    ce fuseau.
+  </p>
+  <form method="post" action="<?= url('compte/fuseau') ?>" class="fuseau-choix">
+    <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
+    <label class="sr-only" for="fuseau">Fuseau horaire</label>
+    <select id="fuseau" name="fuseau">
+      <?php foreach ($fuseaux as $region => $liste): ?>
+        <optgroup label="<?= e($region) ?>">
+          <?php foreach ($liste as $f): ?>
+            <option value="<?= e($f) ?>"<?= $f === $fuseau ? ' selected' : '' ?>>
+              <?= e(str_replace('_', ' ', $f)) ?>
+            </option>
+          <?php endforeach; ?>
+        </optgroup>
+      <?php endforeach; ?>
+    </select>
+    <button class="bouton bouton--secondaire" type="submit">Enregistrer</button>
+  </form>
+  <p class="champ__aide">
+    Changer de fuseau ne déplace pas ce qui est déjà noté : un cours à 8 h
+    reste à 8 h, simplement lu dans la nouvelle heure. C'est ce qu'on veut en
+    déménageant — moins en corrigeant un mauvais réglage, où il faudra
+    reprendre les horaires à la main.
+  </p>
+</section>
+
 <div class="colonnes">
   <div class="carte">
     <h2>Changer de mot de passe</h2>

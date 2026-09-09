@@ -1996,3 +1996,12 @@ ul.apercu-liste--n2 { list-style-type: square; }
   line-height: 1.35;
 }
 .cal-volet__note { margin: .8rem 0 0; font-size: .8rem; }
+
+/* Le choix du fuseau horaire : la liste et son bouton sur une ligne. */
+.fuseau-choix {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .5rem;
+  align-items: center;
+}
+.fuseau-choix select { max-width: 22rem; }

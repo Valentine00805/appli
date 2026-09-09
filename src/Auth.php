@@ -33,13 +33,16 @@ final class Auth
         if (!$id) {
             return null;
         }
-        $u = Database::one('SELECT id, nom, email, created_at FROM users WHERE id = ?', [$id]);
+        $u = Database::one('SELECT id, nom, email, fuseau, created_at FROM users WHERE id = ?', [$id]);
         if ($u === null) {
             self::deconnecter();
             return null;
         }
         return self::$utilisateur = $u;
     }
+
+    /** Faute de mieux : là où l'application a été écrite. */
+    public const FUSEAU_PAR_DEFAUT = 'Europe/Paris';
 
     public static function id(): int
     {
@@ -53,6 +56,27 @@ final class Auth
     public static function connecte(): bool
     {
         return self::utilisateur() !== null;
+    }
+
+    /**
+     * Le fuseau horaire de la personne connectée, ou celui de l'installation.
+     *
+     * Il est appliqué une fois pour toutes au démarrage : ensuite, chaque
+     * date lue ou écrite l'est dans ce fuseau, sans que rien d'autre dans
+     * l'application ait à s'en soucier.
+     */
+    public static function fuseau(): string
+    {
+        $u = self::utilisateur();
+        $dit = trim((string) ($u['fuseau'] ?? ''));
+
+        return self::fuseauValide($dit) ? $dit : self::FUSEAU_PAR_DEFAUT;
+    }
+
+    /** Ce fuseau existe-t-il vraiment ? On n'écrit pas n'importe quoi en base. */
+    public static function fuseauValide(string $fuseau): bool
+    {
+        return $fuseau !== '' && in_array($fuseau, DateTimeZone::listIdentifiers(), true);
     }
 
     /** Bloque l'accès aux visiteurs non connectés. */

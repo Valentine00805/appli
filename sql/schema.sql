@@ -9,6 +9,7 @@ USE `mon_appli_cours`;
 CREATE TABLE IF NOT EXISTS `users` (
   `id`            INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `nom`           VARCHAR(80)  NOT NULL,
+  `fuseau`        VARCHAR(64)  NOT NULL DEFAULT 'Europe/Paris',
   `email`         VARCHAR(190) NOT NULL,
   `password_hash` VARCHAR(255) NOT NULL,
   `created_at`    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,

@@ -32,7 +32,17 @@ final class SynchroOutlook
     /** Une garde : au-delà, quelque chose ne tourne pas rond côté Microsoft. */
     private const PAGES_MAX = 60;
 
-    private const FUSEAU = 'Europe/Paris';
+    /**
+     * Le fuseau de la personne, réglé au démarrage.
+     *
+     * On le redemande à PHP plutôt que de le figer : c'est la même heure que
+     * celle où s'affichent ses évènements, et les deux ne doivent jamais
+     * diverger.
+     */
+    private static function fuseau(): string
+    {
+        return date_default_timezone_get();
+    }
 
     /**
      * Le calendrier principal, quand on n'a jamais demandé la liste.
@@ -85,7 +95,7 @@ final class SynchroOutlook
     /** @return array{ajoutes: int, modifies: int, retires: int, inchanges: int, occupe: bool} */
     private static function vraimentTirer(int $userId): array
     {
-        $fuseau = new DateTimeZone(self::FUSEAU);
+        $fuseau = new DateTimeZone(self::fuseau());
         $maintenant = new DateTimeImmutable('now', $fuseau);
         $depuis = $maintenant->modify(self::AVANT)->setTime(0, 0);
         $jusqua = $maintenant->modify(self::APRES)->setTime(23, 59, 59);
@@ -631,7 +641,7 @@ final class SynchroOutlook
          * Sans cela Microsoft répond en UTC, et il faudrait convertir à la main
          * une date que lui sait convertir mieux que nous.
          */
-        $entetes = ['Prefer: outlook.timezone="' . self::FUSEAU . '"'];
+        $entetes = ['Prefer: outlook.timezone="' . self::fuseau() . '"'];
 
         $tout = [];
         for ($page = 0; $page < self::PAGES_MAX && $chemin !== ''; $page++) {

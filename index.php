@@ -141,6 +141,16 @@ define('METHODE', Requete::methode());
 
 Session::demarrer();
 
+/*
+ * L'heure de qui regarde.
+ *
+ * Les dates sont écrites en heure locale, sans décalage : chacun ne lit que
+ * les siennes, et elles n'ont de sens que dans son fuseau. Le régler ici, une
+ * fois, suffit à ce que tout le reste — affichage, formulaires, agenda
+ * Outlook — tombe juste sans avoir à s'en occuper.
+ */
+date_default_timezone_set(Auth::connecte() ? Auth::fuseau() : Auth::FUSEAU_PAR_DEFAUT);
+
 /**
  * Table de routage : [méthode, motif, action].
  * Le motif accepte {id} pour un entier.
@@ -155,6 +165,7 @@ $routes = [
     ['POST', 'deconnexion',               [AuthController::class, 'deconnecter']],
     ['GET',  'compte',                    [AuthController::class, 'compte']],
     ['POST', 'compte/mot-de-passe',       [AuthController::class, 'changerMotDePasse']],
+    ['POST', 'compte/fuseau',            [AuthController::class, 'changerFuseau']],
     ['GET',  'outlook',                    [OutlookController::class, 'index']],
     ['POST', 'outlook/connexion',          [OutlookController::class, 'connexion']],
     ['GET',  'outlook/retour',             [OutlookController::class, 'retour']],

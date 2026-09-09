@@ -154,7 +154,60 @@ final class AuthController
             'fichiers'   => (int) Database::valeur('SELECT COUNT(*) FROM fichiers WHERE user_id = ?', [$userId]),
             'octets'     => (int) Database::valeur('SELECT COALESCE(SUM(taille), 0) FROM fichiers WHERE user_id = ?', [$userId]),
         ];
-        Vue::afficher('auth/compte', ['stats' => $stats, 'erreurs' => []], 'Mon compte');
+        Vue::afficher('auth/compte', [
+            'stats'   => $stats,
+            'erreurs' => [],
+            'fuseau'  => Auth::fuseau(),
+            'fuseaux' => self::fuseauxParRegion(),
+        ], 'Mon compte');
+    }
+
+    /**
+     * Change le fuseau horaire de la personne.
+     *
+     * Les dates sont écrites en heure locale, sans décalage : changer de
+     * fuseau ne les déplace pas, il les relit autrement. Un cours noté à 8 h
+     * reste à 8 h — ce qui est presque toujours ce qu'on veut en déménageant,
+     * mais pas en corrigeant une erreur de réglage. L'écran le dit avant.
+     */
+    public function changerFuseau(): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+
+        $fuseau = trim((string) ($_POST['fuseau'] ?? ''));
+        if (!Auth::fuseauValide($fuseau)) {
+            Session::flash('erreur', 'Ce fuseau horaire n’existe pas.');
+            redirect('compte');
+        }
+
+        Database::run('UPDATE users SET fuseau = ? WHERE id = ?', [$fuseau, Auth::id()]);
+        date_default_timezone_set($fuseau);
+
+        Session::flash('succes', 'Fuseau horaire réglé sur ' . str_replace('_', ' ', $fuseau)
+            . ' — il est ' . date('H:i') . ' chez vous.');
+        redirect('compte');
+    }
+
+    /**
+     * Les fuseaux connus, rangés par région.
+     *
+     * Quatre cents lignes d'affilée ne se lisent pas ; groupées par continent,
+     * on trouve la sienne.
+     *
+     * @return array<string, array<int, string>>
+     */
+    private static function fuseauxParRegion(): array
+    {
+        $par = [];
+        foreach (DateTimeZone::listIdentifiers() as $fuseau) {
+            $coupe = strpos($fuseau, '/');
+            $region = $coupe === false ? 'Autres' : substr($fuseau, 0, $coupe);
+            $par[$region][] = $fuseau;
+        }
+        ksort($par);
+
+        return $par;
     }
 
     public function changerMotDePasse(): void
