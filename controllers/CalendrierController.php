@@ -61,7 +61,7 @@ final class CalendrierController
         // Elles suivent le sort de « Mes évènements » dans le volet : ce sont
         // les siennes, et les masquer à moitié n'aurait pas de sens.
         if ($matiereId === null && $typeId === null
-            && !SynchroOutlook::masques($userId)['miens']) {
+            && !SynchroAgenda::masques($userId)['miens']) {
             $evenements = array_merge($evenements, self::echeancesEntre($userId, $debut, $fin));
             usort($evenements, static fn (array $a, array $b): int => $a['debut'] <=> $b['debut']);
         }
@@ -78,7 +78,7 @@ final class CalendrierController
             'types'         => TypesEvenementController::pourUtilisateur($userId),
             'typeId'        => $typeId,
             'aVenir'        => $this->aVenir($userId, 6),
-            'sources'       => SynchroOutlook::sourcesDuCalendrier($userId),
+            'sources'       => SynchroAgenda::sourcesDuCalendrier($userId),
         ], 'Calendrier');
     }
 
@@ -94,10 +94,10 @@ final class CalendrierController
         Session::verifierCsrf();
 
         $coches = $_POST['sources'] ?? [];
-        SynchroOutlook::montrer(Auth::id(), is_array($coches) ? $coches : []);
+        SynchroAgenda::montrer(Auth::id(), is_array($coches) ? $coches : []);
 
         $couleurs = $_POST['couleur'] ?? [];
-        SynchroOutlook::colorier(Auth::id(), is_array($couleurs) ? $couleurs : []);
+        SynchroAgenda::colorier(Auth::id(), is_array($couleurs) ? $couleurs : []);
 
         repartir_vers('calendrier');
     }
@@ -757,8 +757,8 @@ final class CalendrierController
                 LEFT JOIN matieres m        ON m.id = e.matiere_id
                 LEFT JOIN cours c           ON c.id = e.cours_id
                 LEFT JOIN types_evenement t ON t.id = e.type_id
-                LEFT JOIN outlook_liens ol  ON ol.evenement_id = e.id AND ol.user_id = e.user_id
-                LEFT JOIN outlook_calendriers oc
+                LEFT JOIN agenda_liens ol  ON ol.evenement_id = e.id AND ol.user_id = e.user_id
+                LEFT JOIN agenda_calendriers oc
                        ON oc.user_id = e.user_id AND oc.empreinte = ol.calendrier
                 WHERE e.user_id = ? AND e.debut <= ? AND e.fin >= ?';
         $params = [$userId, $fin->format('Y-m-d H:i:s'), $debut->format('Y-m-d H:i:s')];
@@ -785,13 +785,13 @@ final class CalendrierController
      * « Prochainement » : décocher un agenda et le retrouver plus bas ferait
      * douter de la case autant que de la liste.
      *
-     * La requête doit avoir joint « outlook_liens » sous l'alias « ol ».
+     * La requête doit avoir joint « agenda_liens » sous l'alias « ol ».
      *
      * @param array $params  complété des valeurs à lier
      */
     private static function masqueDesAgendas(int $userId, array &$params): string
     {
-        $masques = SynchroOutlook::masques($userId);
+        $masques = SynchroAgenda::masques($userId);
         $sql = '';
 
         if ($masques['miens']) {
@@ -941,8 +941,8 @@ final class CalendrierController
              FROM evenements e
              LEFT JOIN matieres m        ON m.id = e.matiere_id
              LEFT JOIN types_evenement t ON t.id = e.type_id
-             LEFT JOIN outlook_liens ol  ON ol.evenement_id = e.id AND ol.user_id = e.user_id
-             LEFT JOIN outlook_calendriers oc
+             LEFT JOIN agenda_liens ol  ON ol.evenement_id = e.id AND ol.user_id = e.user_id
+             LEFT JOIN agenda_calendriers oc
                     ON oc.user_id = e.user_id AND oc.empreinte = ol.calendrier
              WHERE e.user_id = ? AND e.fin >= NOW() AND e.termine = 0'
              . self::masqueDesAgendas($userId, $params)
@@ -953,7 +953,7 @@ final class CalendrierController
         // Les échéances encore ouvertes s'y ajoutent, sur un horizon large —
         // et suivent le sort de « Mes évènements », comme dans la grille.
         $horizon = (new DateTimeImmutable('today'))->modify('+1 year');
-        $echeances = SynchroOutlook::masques($userId)['miens']
+        $echeances = SynchroAgenda::masques($userId)['miens']
             ? []
             : self::echeancesEntre($userId, new DateTimeImmutable('today'), $horizon);
         foreach ($echeances as $echeance) {

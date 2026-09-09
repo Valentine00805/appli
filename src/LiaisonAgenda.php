@@ -16,7 +16,7 @@ declare(strict_types=1);
  *
  * Rien ici ne suppose une bibliothèque : curl suffit à parler à Microsoft.
  */
-final class Outlook
+final class LiaisonAgenda
 {
     /**
      * Ce que l'application demande : lire et écrire l'agenda, et revenir plus tard.
@@ -84,7 +84,7 @@ final class Outlook
     /** Ce que l'application sait du compte Outlook de quelqu'un, ou null. */
     public static function compte(int $userId): ?array
     {
-        return Database::one('SELECT * FROM outlook_comptes WHERE user_id = ?', [$userId]);
+        return Database::one('SELECT * FROM agenda_comptes WHERE user_id = ?', [$userId]);
     }
 
     /**
@@ -114,8 +114,8 @@ final class Outlook
     /** Oublie les jetons : l'application ne touche plus à cet agenda. */
     public static function delier(int $userId): void
     {
-        Database::run('DELETE FROM outlook_liens WHERE user_id = ?', [$userId]);
-        Database::run('DELETE FROM outlook_comptes WHERE user_id = ?', [$userId]);
+        Database::run('DELETE FROM agenda_liens WHERE user_id = ?', [$userId]);
+        Database::run('DELETE FROM agenda_comptes WHERE user_id = ?', [$userId]);
     }
 
     /* --- L'aller et le retour -------------------------------------------- */
@@ -252,7 +252,7 @@ final class Outlook
         $agenda = self::appeler($userId, 'GET', '/me/calendar?$select=id,name');
 
         Database::run(
-            'UPDATE outlook_comptes SET compte = ?, calendrier_id = ?, calendrier_nom = ? WHERE user_id = ?',
+            'UPDATE agenda_comptes SET compte = ?, calendrier_id = ?, calendrier_nom = ? WHERE user_id = ?',
             [
                 mb_substr($adresse, 0, 190),
                 mb_substr((string) ($agenda['corps']['id'] ?? ''), 0, 255),
@@ -312,7 +312,7 @@ final class Outlook
         $permissions = isset($reponse['scope']) ? (string) $reponse['scope'] : null;
 
         Database::run(
-            'INSERT INTO outlook_comptes (user_id, jeton, renouvellement, permissions, expire_le)
+            'INSERT INTO agenda_comptes (user_id, jeton, renouvellement, permissions, expire_le)
              VALUES (?, ?, ?, ?, ?)
              ON DUPLICATE KEY UPDATE jeton = VALUES(jeton),
                  renouvellement = COALESCE(VALUES(renouvellement), renouvellement),

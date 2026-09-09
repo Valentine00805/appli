@@ -18,17 +18,17 @@ final class OutlookController
         $userId = Auth::id();
 
         Vue::afficher('outlook/index', [
-            'configuree' => Outlook::configuree(),
-            'compte'     => Outlook::compte($userId),
-            'relie'      => Outlook::relie($userId),
-            'retour'     => Outlook::adresseDeRetour(),
-            'derniere'   => SynchroOutlook::derniereFois($userId),
-            'combien'    => SynchroOutlook::combien($userId),
-            'calendriers' => SynchroOutlook::calendriers($userId),
-            'partage'    => Outlook::partageAutorise($userId),
-            'envoyes'    => EnvoiOutlook::combien($userId),
-            'envoiLe'    => EnvoiOutlook::derniereFois($userId),
-            'souci'      => SynchroOutlook::dernierSouci($userId),
+            'configuree' => LiaisonAgenda::configuree(),
+            'compte'     => LiaisonAgenda::compte($userId),
+            'relie'      => LiaisonAgenda::relie($userId),
+            'retour'     => LiaisonAgenda::adresseDeRetour(),
+            'derniere'   => SynchroAgenda::derniereFois($userId),
+            'combien'    => SynchroAgenda::combien($userId),
+            'calendriers' => SynchroAgenda::calendriers($userId),
+            'partage'    => LiaisonAgenda::partageAutorise($userId),
+            'envoyes'    => EnvoiAgenda::combien($userId),
+            'envoiLe'    => EnvoiAgenda::derniereFois($userId),
+            'souci'      => SynchroAgenda::dernierSouci($userId),
         ], 'Calendrier Outlook');
     }
 
@@ -44,7 +44,7 @@ final class OutlookController
         Session::verifierCsrf();
 
         try {
-            $combien = SynchroOutlook::rafraichirLesCalendriers(Auth::id());
+            $combien = SynchroAgenda::rafraichirLesCalendriers(Auth::id());
         } catch (Throwable $e) {
             Session::flash('erreur', $e->getMessage());
             redirect('outlook');
@@ -62,7 +62,7 @@ final class OutlookController
         Session::verifierCsrf();
 
         $coches = $_POST['calendriers'] ?? [];
-        $suivis = SynchroOutlook::choisir(Auth::id(), is_array($coches) ? $coches : []);
+        $suivis = SynchroAgenda::choisir(Auth::id(), is_array($coches) ? $coches : []);
 
         Session::flash('succes', $suivis === 0
             ? 'Aucun calendrier suivi : plus rien ne viendra d’Outlook.'
@@ -99,15 +99,15 @@ final class OutlookController
          * vient de créer part ainsi tout de suite, sans attendre le tour de la
          * lecture.
          */
-        $lire = !$seul || SynchroOutlook::aBesoinDEtreRelu($userId);
-        $envoyer = !$seul || EnvoiOutlook::aPousser($userId);
+        $lire = !$seul || SynchroAgenda::aBesoinDEtreRelu($userId);
+        $envoyer = !$seul || EnvoiAgenda::aPousser($userId);
         if (!$lire && !$envoyer) {
             repondre_json(['fait' => false, 'change' => 0]);
         }
 
         try {
             $bilan = $lire
-                ? SynchroOutlook::tirer($userId)
+                ? SynchroAgenda::tirer($userId)
                 : ['ajoutes' => 0, 'modifies' => 0, 'retires' => 0,
                    'inchanges' => 0, 'effaces' => 0, 'occupe' => false];
             /*
@@ -115,14 +115,14 @@ final class OutlookController
              * quelqu'un d'autre fait alors déjà les deux, et écrire par dessus
              * créerait les doublons que le verrou évite.
              */
-            $envoi = ($envoyer && !$bilan['occupe']) ? EnvoiOutlook::pousser($userId) : $rien;
+            $envoi = ($envoyer && !$bilan['occupe']) ? EnvoiAgenda::pousser($userId) : $rien;
         } catch (Throwable $e) {
             /*
              * Noté en base, pas seulement affiché : une synchronisation de
              * fond n'a personne devant elle, et son échec doit survivre à la
              * requête qui l'a rencontré.
              */
-            SynchroOutlook::retenirLeSouci($userId, $e->getMessage());
+            SynchroAgenda::retenirLeSouci($userId, $e->getMessage());
 
             if ($seul || veut_du_json()) {
                 // En arrière-plan, un échec ne s'impose pas à l'écran : la
@@ -133,7 +133,7 @@ final class OutlookController
             repartir_vers('outlook');
         }
 
-        SynchroOutlook::retenirLeSouci($userId, null);
+        SynchroAgenda::retenirLeSouci($userId, null);
 
         $change = $bilan['ajoutes'] + $bilan['modifies'] + $bilan['retires'] + $bilan['effaces']
             + $envoi['crees'] + $envoi['majs'] + $envoi['retires'];
@@ -187,12 +187,12 @@ final class OutlookController
         Auth::exiger();
         Session::verifierCsrf();
 
-        if (!Outlook::configuree()) {
+        if (!LiaisonAgenda::configuree()) {
             Session::flash('erreur', 'La liaison Outlook n’est pas configurée sur cette installation.');
             redirect('outlook');
         }
 
-        header('Location: ' . Outlook::adresseDAutorisation());
+        header('Location: ' . LiaisonAgenda::adresseDAutorisation());
         exit;
     }
 
@@ -221,7 +221,7 @@ final class OutlookController
         }
 
         try {
-            $souci = Outlook::terminerLaLiaison(Auth::id(), $code, $etat);
+            $souci = LiaisonAgenda::terminerLaLiaison(Auth::id(), $code, $etat);
         } catch (Throwable $e) {
             $souci = $e->getMessage();
         }
@@ -231,7 +231,7 @@ final class OutlookController
             redirect('outlook');
         }
 
-        $compte = Outlook::compte(Auth::id());
+        $compte = LiaisonAgenda::compte(Auth::id());
         Session::flash('succes', 'Compte Outlook relié'
             . (($compte['compte'] ?? '') === '' ? '.' : ' : ' . $compte['compte'] . '.'));
         redirect('outlook');
@@ -248,7 +248,7 @@ final class OutlookController
         Auth::exiger();
         Session::verifierCsrf();
 
-        $retires = SynchroOutlook::toutRetirer(Auth::id());
+        $retires = SynchroAgenda::toutRetirer(Auth::id());
         Session::flash('succes', $retires === 0
             ? 'Il n’y avait aucun évènement importé.'
             : $retires . ' évènement' . ($retires > 1 ? 's importés retirés' : ' importé retiré')
@@ -268,7 +268,7 @@ final class OutlookController
         Session::verifierCsrf();
 
         try {
-            $retires = EnvoiOutlook::toutRetirer(Auth::id());
+            $retires = EnvoiAgenda::toutRetirer(Auth::id());
         } catch (Throwable $e) {
             Session::flash('erreur', $e->getMessage());
             repartir_vers('outlook');
@@ -303,13 +303,13 @@ final class OutlookController
          */
         $reste = false;
         try {
-            EnvoiOutlook::toutRetirer($userId);
+            EnvoiAgenda::toutRetirer($userId);
         } catch (Throwable) {
             $reste = true;
         }
 
-        $retires = SynchroOutlook::toutRetirer($userId);
-        Outlook::delier($userId);
+        $retires = SynchroAgenda::toutRetirer($userId);
+        LiaisonAgenda::delier($userId);
 
         Session::flash('succes', 'Compte Outlook délié. L’application n’accède plus à votre agenda'
             . ($retires === 0 ? '.' : ', et ' . $retires . ' évènement' . ($retires > 1 ? 's importés ont' : ' importé a')

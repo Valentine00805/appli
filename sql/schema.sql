@@ -410,7 +410,7 @@ CREATE TABLE IF NOT EXISTS `fiche_elements` (
 -- Ces jetons ouvrent l'agenda du compte relié : la table est délibérément
 -- laissée hors des sauvegardes exportables, pour qu'une archive partagée ne
 -- les emporte pas.
-CREATE TABLE IF NOT EXISTS `outlook_comptes` (
+CREATE TABLE IF NOT EXISTS `agenda_comptes` (
   `user_id`        INT UNSIGNED NOT NULL,
   `compte`         VARCHAR(190) NULL,
   `jeton`          TEXT         NULL,
@@ -441,7 +441,7 @@ CREATE TABLE IF NOT EXISTS `outlook_comptes` (
 -- Sans ce lien, une synchronisation ne saurait pas distinguer « un évènement
 -- nouveau » de « un évènement déjà connu qui a changé », et les doublerait à
 -- chaque passage.
-CREATE TABLE IF NOT EXISTS `outlook_liens` (
+CREATE TABLE IF NOT EXISTS `agenda_liens` (
   `id`           INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `user_id`      INT UNSIGNED NOT NULL,
   `evenement_id` INT UNSIGNED NULL,
@@ -462,7 +462,7 @@ CREATE TABLE IF NOT EXISTS `outlook_liens` (
 
 -- Les calendriers Outlook d'un compte, et ceux que l'application lit.
 -- (voir sql/migration-outlook-calendriers.sql)
-CREATE TABLE IF NOT EXISTS `outlook_calendriers` (
+CREATE TABLE IF NOT EXISTS `agenda_calendriers` (
   `id`            INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `user_id`       INT UNSIGNED NOT NULL,
   `calendrier_id` TEXT         NOT NULL,
@@ -483,7 +483,7 @@ CREATE TABLE IF NOT EXISTS `outlook_calendriers` (
 
 -- Ce que l'application a écrit dans Outlook.
 -- (voir sql/migration-outlook-envoi.sql)
-CREATE TABLE IF NOT EXISTS `outlook_envois` (
+CREATE TABLE IF NOT EXISTS `agenda_envois` (
   `id`         INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `user_id`    INT UNSIGNED NOT NULL,
   `sorte`      ENUM('evenement','tache') NOT NULL,

@@ -74,7 +74,7 @@ $puce = static function (array $evt) use ($destination): string {
      * appuyer sur un bouton n'a jamais eu de sens.
      */
     ?>
-    <?php if (Outlook::configuree() && Outlook::relie(Auth::id())): ?>
+    <?php if (LiaisonAgenda::configuree() && LiaisonAgenda::relie(Auth::id())): ?>
       <form method="post" action="<?= url('outlook/synchroniser') ?>">
         <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
         <input type="hidden" name="retour" value="<?= e((string) ($_SERVER['REQUEST_URI'] ?? '')) ?>">

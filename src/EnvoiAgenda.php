@@ -18,7 +18,7 @@ declare(strict_types=1);
  * sans quoi chaque passage rendrait les évènements à leur expéditeur, et
  * l'agenda enflerait tout seul.
  */
-final class EnvoiOutlook
+final class EnvoiAgenda
 {
     /** Le nom du calendrier créé chez Microsoft. */
     private const CALENDRIER = 'Mes Cours';
@@ -67,7 +67,7 @@ final class EnvoiOutlook
                 continue;
             }
 
-            self::modifier($userId, $quoi, $empreinte, (string) $connu['outlook_id']);
+            self::modifier($userId, $quoi, $empreinte, (string) $connu['distant_id']);
             $bilan['majs']++;
         }
 
@@ -75,14 +75,14 @@ final class EnvoiOutlook
             if (isset($aEnvoyer[$cle])) {
                 continue;
             }
-            self::effacer($userId, (string) $connu['outlook_id']);
-            Database::run('DELETE FROM outlook_envois WHERE user_id = ? AND id = ?',
+            self::effacer($userId, (string) $connu['distant_id']);
+            Database::run('DELETE FROM agenda_envois WHERE user_id = ? AND id = ?',
                 [$userId, (int) $connu['id']]);
             $bilan['retires']++;
         }
 
         Database::run(
-            'UPDATE outlook_comptes SET envoi_le = NOW(), empreinte_envoi = ? WHERE user_id = ?',
+            'UPDATE agenda_comptes SET envoi_le = NOW(), empreinte_envoi = ? WHERE user_id = ?',
             [self::signature($userId), $userId]
         );
 
@@ -114,12 +114,12 @@ final class EnvoiOutlook
      */
     public static function aPousser(int $userId): bool
     {
-        if (!Outlook::configuree() || !Outlook::relie($userId)) {
+        if (!LiaisonAgenda::configuree() || !LiaisonAgenda::relie($userId)) {
             return false;
         }
 
         $connue = Database::valeur(
-            'SELECT empreinte_envoi FROM outlook_comptes WHERE user_id = ?', [$userId]);
+            'SELECT empreinte_envoi FROM agenda_comptes WHERE user_id = ?', [$userId]);
 
         return (string) $connue !== self::signature($userId);
     }
@@ -140,7 +140,7 @@ final class EnvoiOutlook
                         e.id, e.titre, COALESCE(e.description, ""), COALESCE(e.lieu, ""),
                         e.debut, e.fin, e.journee_entiere))), 0) AS s
                FROM evenements e
-               LEFT JOIN outlook_liens l ON l.evenement_id = e.id AND l.user_id = e.user_id
+               LEFT JOIN agenda_liens l ON l.evenement_id = e.id AND l.user_id = e.user_id
               WHERE e.user_id = ? AND l.id IS NULL AND e.debut BETWEEN ? AND ?',
             [$userId, $depuis->format('Y-m-d H:i:s'), $jusqua->format('Y-m-d H:i:s')]
         );
@@ -163,7 +163,7 @@ final class EnvoiOutlook
     /** La date du dernier envoi, ou null s'il n'y en a jamais eu. */
     public static function derniereFois(int $userId): ?string
     {
-        $quand = Database::valeur('SELECT envoi_le FROM outlook_comptes WHERE user_id = ?', [$userId]);
+        $quand = Database::valeur('SELECT envoi_le FROM agenda_comptes WHERE user_id = ?', [$userId]);
 
         return $quand === null ? null : (string) $quand;
     }
@@ -171,14 +171,14 @@ final class EnvoiOutlook
     /** Combien d'éléments de l'application vivent dans Outlook. */
     public static function combien(int $userId): int
     {
-        return (int) Database::valeur('SELECT COUNT(*) FROM outlook_envois WHERE user_id = ?', [$userId]);
+        return (int) Database::valeur('SELECT COUNT(*) FROM agenda_envois WHERE user_id = ?', [$userId]);
     }
 
     /** L'identifiant du calendrier où l'application écrit, s'il existe déjà. */
     public static function calendrierConnu(int $userId): ?string
     {
         $id = Database::valeur(
-            'SELECT calendrier_envoi_id FROM outlook_comptes WHERE user_id = ?', [$userId]);
+            'SELECT calendrier_envoi_id FROM agenda_comptes WHERE user_id = ?', [$userId]);
 
         return ($id === null || (string) $id === '') ? null : (string) $id;
     }
@@ -194,15 +194,15 @@ final class EnvoiOutlook
     public static function toutRetirer(int $userId): int
     {
         $retires = 0;
-        foreach (Database::all('SELECT id, outlook_id FROM outlook_envois WHERE user_id = ?',
+        foreach (Database::all('SELECT id, distant_id FROM agenda_envois WHERE user_id = ?',
             [$userId]) as $ligne) {
-            self::effacer($userId, (string) $ligne['outlook_id']);
-            Database::run('DELETE FROM outlook_envois WHERE user_id = ? AND id = ?',
+            self::effacer($userId, (string) $ligne['distant_id']);
+            Database::run('DELETE FROM agenda_envois WHERE user_id = ? AND id = ?',
                 [$userId, (int) $ligne['id']]);
             $retires++;
         }
 
-        Database::run('UPDATE outlook_comptes SET envoi_le = NULL, empreinte_envoi = NULL
+        Database::run('UPDATE agenda_comptes SET envoi_le = NULL, empreinte_envoi = NULL
                        WHERE user_id = ?', [$userId]);
 
         return $retires;
@@ -226,7 +226,7 @@ final class EnvoiOutlook
             return $connu;
         }
 
-        $liste = Outlook::appeler($userId, 'GET', '/me/calendars?$select=id,name&$top=100');
+        $liste = LiaisonAgenda::appeler($userId, 'GET', '/me/calendars?$select=id,name&$top=100');
         if ($liste['code'] < 400) {
             foreach (($liste['corps']['value'] ?? []) as $cal) {
                 if ((string) ($cal['name'] ?? '') === self::CALENDRIER && isset($cal['id'])) {
@@ -235,7 +235,7 @@ final class EnvoiOutlook
             }
         }
 
-        $cree = Outlook::appeler($userId, 'POST', '/me/calendars', ['name' => self::CALENDRIER]);
+        $cree = LiaisonAgenda::appeler($userId, 'POST', '/me/calendars', ['name' => self::CALENDRIER]);
         if ($cree['code'] >= 400 || !isset($cree['corps']['id'])) {
             $dit = (string) ($cree['corps']['error']['message'] ?? '');
 
@@ -249,7 +249,7 @@ final class EnvoiOutlook
     private static function retenirLeCalendrier(int $userId, string $id): string
     {
         Database::run(
-            'UPDATE outlook_comptes SET calendrier_envoi_id = ?, calendrier_envoi_nom = ?
+            'UPDATE agenda_comptes SET calendrier_envoi_id = ?, calendrier_envoi_nom = ?
               WHERE user_id = ?',
             [$id, self::CALENDRIER, $userId]
         );
@@ -275,7 +275,7 @@ final class EnvoiOutlook
         foreach (Database::all(
             'SELECT e.id, e.titre, e.description, e.lieu, e.debut, e.fin, e.journee_entiere
                FROM evenements e
-               LEFT JOIN outlook_liens l ON l.evenement_id = e.id AND l.user_id = e.user_id
+               LEFT JOIN agenda_liens l ON l.evenement_id = e.id AND l.user_id = e.user_id
               WHERE e.user_id = ? AND l.id IS NULL AND e.debut BETWEEN ? AND ?',
             [$userId, $depuis->format('Y-m-d H:i:s'), $jusqua->format('Y-m-d H:i:s')]
         ) as $evt) {
@@ -385,7 +385,7 @@ final class EnvoiOutlook
     {
         $par = [];
         foreach (Database::all(
-            'SELECT id, sorte, source_id, outlook_id, empreinte FROM outlook_envois WHERE user_id = ?',
+            'SELECT id, sorte, source_id, distant_id, empreinte FROM agenda_envois WHERE user_id = ?',
             [$userId]
         ) as $ligne) {
             $par[$ligne['sorte'] . ':' . (int) $ligne['source_id']] = $ligne;
@@ -396,7 +396,7 @@ final class EnvoiOutlook
 
     private static function creer(int $userId, string $calendrier, array $quoi, string $empreinte): void
     {
-        $reponse = Outlook::appeler(
+        $reponse = LiaisonAgenda::appeler(
             $userId,
             'POST',
             '/me/calendars/' . rawurlencode($calendrier) . '/events',
@@ -405,9 +405,9 @@ final class EnvoiOutlook
         self::verifier($reponse, 'créer un évènement');
 
         Database::run(
-            'INSERT INTO outlook_envois (user_id, sorte, source_id, outlook_id, empreinte)
+            'INSERT INTO agenda_envois (user_id, sorte, source_id, distant_id, empreinte)
              VALUES (?, ?, ?, ?, ?)
-             ON DUPLICATE KEY UPDATE outlook_id = VALUES(outlook_id), empreinte = VALUES(empreinte)',
+             ON DUPLICATE KEY UPDATE distant_id = VALUES(distant_id), empreinte = VALUES(empreinte)',
             [$userId, $quoi['sorte'], $quoi['source_id'],
              (string) ($reponse['corps']['id'] ?? ''), $empreinte]
         );
@@ -415,7 +415,7 @@ final class EnvoiOutlook
 
     private static function modifier(int $userId, array $quoi, string $empreinte, string $outlookId): void
     {
-        $reponse = Outlook::appeler(
+        $reponse = LiaisonAgenda::appeler(
             $userId, 'PATCH', '/me/events/' . rawurlencode($outlookId), $quoi['corps']);
 
         /*
@@ -423,7 +423,7 @@ final class EnvoiOutlook
          * pas — on oublie le lien, et le prochain passage le recréera.
          */
         if ($reponse['code'] === 404) {
-            Database::run('DELETE FROM outlook_envois WHERE user_id = ? AND outlook_id = ?',
+            Database::run('DELETE FROM agenda_envois WHERE user_id = ? AND distant_id = ?',
                 [$userId, $outlookId]);
 
             return;
@@ -431,8 +431,8 @@ final class EnvoiOutlook
         self::verifier($reponse, 'mettre à jour un évènement');
 
         Database::run(
-            'UPDATE outlook_envois SET empreinte = ?, maj_le = NOW()
-              WHERE user_id = ? AND outlook_id = ?',
+            'UPDATE agenda_envois SET empreinte = ?, maj_le = NOW()
+              WHERE user_id = ? AND distant_id = ?',
             [$empreinte, $userId, $outlookId]
         );
     }
@@ -440,7 +440,7 @@ final class EnvoiOutlook
     /** Efface là-bas, sans s'émouvoir de ce qui n'y est déjà plus. */
     private static function effacer(int $userId, string $outlookId): void
     {
-        $reponse = Outlook::appeler($userId, 'DELETE', '/me/events/' . rawurlencode($outlookId));
+        $reponse = LiaisonAgenda::appeler($userId, 'DELETE', '/me/events/' . rawurlencode($outlookId));
         if ($reponse['code'] === 404 || $reponse['code'] === 410) {
             return;
         }

@@ -18,7 +18,7 @@ declare(strict_types=1);
  * effacé de l'application : seul disparaît d'ici ce qui a disparu de là-bas
  * *à l'intérieur* de la fenêtre regardée.
  */
-final class SynchroOutlook
+final class SynchroAgenda
 {
     /** La fenêtre regardée, autour d'aujourd'hui. */
     private const AVANT = '-1 month';
@@ -141,7 +141,7 @@ final class SynchroOutlook
                 // Une origine inconnue, ou changée : sans elle on refuserait
                 // plus tard de supprimer là-bas, faute de savoir où.
                 Database::run(
-                    'UPDATE outlook_liens SET calendrier = ? WHERE user_id = ? AND outlook_id = ?',
+                    'UPDATE agenda_liens SET calendrier = ? WHERE user_id = ? AND distant_id = ?',
                     [$ou, $userId, $outlookId]
                 );
             }
@@ -157,7 +157,7 @@ final class SynchroOutlook
         $bilan['retires'] = self::retirerLesDisparus($userId, $connus, $vus, $depuis, $jusqua);
         $bilan['effaces'] = $bilanEfface;
 
-        Database::run('UPDATE outlook_comptes SET synchro_le = NOW() WHERE user_id = ?', [$userId]);
+        Database::run('UPDATE agenda_comptes SET synchro_le = NOW() WHERE user_id = ?', [$userId]);
 
         return $bilan;
     }
@@ -170,7 +170,7 @@ final class SynchroOutlook
      */
     public static function aBesoinDEtreRelu(int $userId): bool
     {
-        if (!Outlook::configuree() || !Outlook::relie($userId)) {
+        if (!LiaisonAgenda::configuree() || !LiaisonAgenda::relie($userId)) {
             return false;
         }
 
@@ -180,7 +180,7 @@ final class SynchroOutlook
          * une suppression : c'est le geste qu'on vérifie le plus vite.
          */
         $orphelins = (int) Database::valeur(
-            'SELECT COUNT(*) FROM outlook_liens WHERE user_id = ? AND evenement_id IS NULL',
+            'SELECT COUNT(*) FROM agenda_liens WHERE user_id = ? AND evenement_id IS NULL',
             [$userId]
         );
         if ($orphelins > 0) {
@@ -188,9 +188,9 @@ final class SynchroOutlook
         }
 
         $connus = (int) Database::valeur(
-            'SELECT COUNT(*) FROM outlook_calendriers WHERE user_id = ?', [$userId]);
+            'SELECT COUNT(*) FROM agenda_calendriers WHERE user_id = ?', [$userId]);
         $suivis = (int) Database::valeur(
-            'SELECT COUNT(*) FROM outlook_calendriers WHERE user_id = ? AND suivi = 1', [$userId]);
+            'SELECT COUNT(*) FROM agenda_calendriers WHERE user_id = ? AND suivi = 1', [$userId]);
         if ($connus > 0 && $suivis === 0) {
             // Tout a été décoché : il n'y a plus rien à aller chercher.
             return false;
@@ -218,7 +218,7 @@ final class SynchroOutlook
         $texte = $souci === null ? null : mb_substr($souci, 0, 500);
 
         Database::run(
-            'UPDATE outlook_comptes
+            'UPDATE agenda_comptes
                 SET souci = ?, souci_le = IF(? IS NULL, NULL, NOW())
               WHERE user_id = ?',
             [$texte, $texte, $userId]
@@ -233,7 +233,7 @@ final class SynchroOutlook
     public static function dernierSouci(int $userId): ?array
     {
         $ligne = Database::one(
-            'SELECT souci, souci_le FROM outlook_comptes WHERE user_id = ? AND souci IS NOT NULL',
+            'SELECT souci, souci_le FROM agenda_comptes WHERE user_id = ? AND souci IS NOT NULL',
             [$userId]
         );
 
@@ -246,7 +246,7 @@ final class SynchroOutlook
     public static function derniereFois(int $userId): ?string
     {
         $quand = Database::valeur(
-            'SELECT synchro_le FROM outlook_comptes WHERE user_id = ?',
+            'SELECT synchro_le FROM agenda_comptes WHERE user_id = ?',
             [$userId]
         );
 
@@ -257,7 +257,7 @@ final class SynchroOutlook
     public static function combien(int $userId): int
     {
         return (int) Database::valeur(
-            'SELECT COUNT(*) FROM outlook_liens WHERE user_id = ?',
+            'SELECT COUNT(*) FROM agenda_liens WHERE user_id = ?',
             [$userId]
         );
     }
@@ -275,7 +275,7 @@ final class SynchroOutlook
     public static function toutRetirer(int $userId): int
     {
         $ids = Database::all(
-            'SELECT evenement_id FROM outlook_liens WHERE user_id = ? AND evenement_id IS NOT NULL',
+            'SELECT evenement_id FROM agenda_liens WHERE user_id = ? AND evenement_id IS NOT NULL',
             [$userId]
         );
 
@@ -284,7 +284,7 @@ final class SynchroOutlook
          * suppression chez Microsoft, en laisser derrière soi ferait disparaître
          * de l'agenda ce qu'on voulait seulement retirer d'ici.
          */
-        Database::run('DELETE FROM outlook_liens WHERE user_id = ?', [$userId]);
+        Database::run('DELETE FROM agenda_liens WHERE user_id = ?', [$userId]);
 
         $retires = 0;
         foreach ($ids as $ligne) {
@@ -293,7 +293,7 @@ final class SynchroOutlook
                 [(int) $ligne['evenement_id'], $userId]);
             $retires++;
         }
-        Database::run('UPDATE outlook_comptes SET synchro_le = NULL WHERE user_id = ?', [$userId]);
+        Database::run('UPDATE agenda_comptes SET synchro_le = NULL WHERE user_id = ?', [$userId]);
 
         return $retires;
     }
@@ -307,11 +307,11 @@ final class SynchroOutlook
      */
     public static function calendriers(int $userId): array
     {
-        $ecriture = EnvoiOutlook::calendrierConnu($userId);
+        $ecriture = EnvoiAgenda::calendrierConnu($userId);
 
         return Database::all(
             'SELECT id, empreinte, nom, proprietaire, partage, principal, suivi
-               FROM outlook_calendriers
+               FROM agenda_calendriers
               WHERE user_id = ? AND empreinte <> ?
               ORDER BY principal DESC, partage ASC, nom ASC',
             [$userId, $ecriture === null ? '' : md5($ecriture)]
@@ -333,12 +333,12 @@ final class SynchroOutlook
      */
     public static function sourcesDuCalendrier(int $userId): array
     {
-        if (!Outlook::configuree() || !Outlook::relie($userId)) {
+        if (!LiaisonAgenda::configuree() || !LiaisonAgenda::relie($userId)) {
             return [];
         }
 
         $moi = Database::one(
-            'SELECT afficher_miens, couleur_miens FROM outlook_comptes WHERE user_id = ?', [$userId]);
+            'SELECT afficher_miens, couleur_miens FROM agenda_comptes WHERE user_id = ?', [$userId]);
 
         $sources = [[
             'cle'     => self::MIENS,
@@ -351,7 +351,7 @@ final class SynchroOutlook
         $rang = 1;
         foreach (Database::all(
             'SELECT empreinte, nom, proprietaire, partage, affiche, couleur
-               FROM outlook_calendriers
+               FROM agenda_calendriers
               WHERE user_id = ? AND suivi = 1
               ORDER BY principal DESC, partage ASC, nom ASC',
             [$userId]
@@ -402,7 +402,7 @@ final class SynchroOutlook
             $couleur = strtolower($couleur);
 
             if ($cle === self::MIENS) {
-                Database::run('UPDATE outlook_comptes SET couleur_miens = ? WHERE user_id = ?',
+                Database::run('UPDATE agenda_comptes SET couleur_miens = ? WHERE user_id = ?',
                     [$couleur, $userId]);
                 continue;
             }
@@ -410,7 +410,7 @@ final class SynchroOutlook
                 continue;
             }
             Database::run(
-                'UPDATE outlook_calendriers SET couleur = ? WHERE user_id = ? AND empreinte = ?',
+                'UPDATE agenda_calendriers SET couleur = ? WHERE user_id = ? AND empreinte = ?',
                 [$couleur, $userId, $cle]
             );
         }
@@ -431,18 +431,18 @@ final class SynchroOutlook
         }
         $miens = in_array(self::MIENS, $cles, true) ? 1 : 0;
 
-        Database::run('UPDATE outlook_comptes SET afficher_miens = ? WHERE user_id = ?',
+        Database::run('UPDATE agenda_comptes SET afficher_miens = ? WHERE user_id = ?',
             [$miens, $userId]);
 
         foreach (Database::all(
-            'SELECT empreinte, affiche FROM outlook_calendriers WHERE user_id = ?', [$userId]
+            'SELECT empreinte, affiche FROM agenda_calendriers WHERE user_id = ?', [$userId]
         ) as $cal) {
             $veut = isset($garder[(string) $cal['empreinte']]) ? 1 : 0;
             if ((int) $cal['affiche'] === $veut) {
                 continue;
             }
             Database::run(
-                'UPDATE outlook_calendriers SET affiche = ? WHERE user_id = ? AND empreinte = ?',
+                'UPDATE agenda_calendriers SET affiche = ? WHERE user_id = ? AND empreinte = ?',
                 [$veut, $userId, (string) $cal['empreinte']]
             );
         }
@@ -455,16 +455,16 @@ final class SynchroOutlook
      */
     public static function masques(int $userId): array
     {
-        if (!Outlook::configuree() || !Outlook::relie($userId)) {
+        if (!LiaisonAgenda::configuree() || !LiaisonAgenda::relie($userId)) {
             return ['miens' => false, 'calendriers' => []];
         }
 
         $miens = Database::valeur(
-            'SELECT afficher_miens FROM outlook_comptes WHERE user_id = ?', [$userId]);
+            'SELECT afficher_miens FROM agenda_comptes WHERE user_id = ?', [$userId]);
 
         $caches = [];
         foreach (Database::all(
-            'SELECT empreinte FROM outlook_calendriers WHERE user_id = ? AND affiche = 0',
+            'SELECT empreinte FROM agenda_calendriers WHERE user_id = ? AND affiche = 0',
             [$userId]
         ) as $ligne) {
             $caches[] = (string) $ligne['empreinte'];
@@ -490,11 +490,11 @@ final class SynchroOutlook
      */
     public static function rafraichirLesCalendriers(int $userId): int
     {
-        $moi = mb_strtolower((string) (Outlook::compte($userId)['compte'] ?? ''));
+        $moi = mb_strtolower((string) (LiaisonAgenda::compte($userId)['compte'] ?? ''));
         $trouves = [];
 
         foreach (self::sourcesDeCalendriers($userId) as $chemin) {
-            $reponse = Outlook::appeler($userId, 'GET', $chemin);
+            $reponse = LiaisonAgenda::appeler($userId, 'GET', $chemin);
             if ($reponse['code'] >= 400) {
                 // Un groupe inaccessible ne doit pas emporter les autres :
                 // certains comptes n'ont pas tous les groupes.
@@ -526,7 +526,7 @@ final class SynchroOutlook
                 // Le choix de l'utilisateur ne se réécrit pas : seul le
                 // signalement change.
                 Database::run(
-                    'UPDATE outlook_calendriers
+                    'UPDATE agenda_calendriers
                         SET nom = ?, proprietaire = ?, partage = ?, principal = ?, vu_le = NOW()
                       WHERE user_id = ? AND empreinte = ?',
                     [
@@ -544,10 +544,10 @@ final class SynchroOutlook
              * et c'est justement pour les distinguer qu'on les suit.
              */
             $deja = (int) Database::valeur(
-                'SELECT COUNT(*) FROM outlook_calendriers WHERE user_id = ?', [$userId]);
+                'SELECT COUNT(*) FROM agenda_calendriers WHERE user_id = ?', [$userId]);
 
             Database::run(
-                'INSERT INTO outlook_calendriers
+                'INSERT INTO agenda_calendriers
                      (user_id, calendrier_id, empreinte, nom, proprietaire, partage,
                       principal, suivi, couleur)
                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
@@ -585,7 +585,7 @@ final class SynchroOutlook
                 continue;
             }
             Database::run(
-                'UPDATE outlook_calendriers SET suivi = ? WHERE user_id = ? AND empreinte = ?',
+                'UPDATE agenda_calendriers SET suivi = ? WHERE user_id = ? AND empreinte = ?',
                 [$veut, $userId, (string) $ligne['empreinte']]
             );
         }
@@ -598,7 +598,7 @@ final class SynchroOutlook
     {
         $chemins = ['/me/calendars?$select=id,name,owner,isDefaultCalendar&$top=100'];
 
-        $groupes = Outlook::appeler($userId, 'GET', '/me/calendarGroups?$select=id&$top=50');
+        $groupes = LiaisonAgenda::appeler($userId, 'GET', '/me/calendarGroups?$select=id&$top=50');
         if ($groupes['code'] < 400) {
             foreach (($groupes['corps']['value'] ?? []) as $groupe) {
                 if (!isset($groupe['id'])) {
@@ -665,10 +665,10 @@ final class SynchroOutlook
      */
     private static function aLire(int $userId): array
     {
-        $ecriture = EnvoiOutlook::calendrierConnu($userId);
+        $ecriture = EnvoiAgenda::calendrierConnu($userId);
 
         $suivis = Database::all(
-            'SELECT calendrier_id, nom FROM outlook_calendriers
+            'SELECT calendrier_id, nom FROM agenda_calendriers
               WHERE user_id = ? AND suivi = 1 AND empreinte <> ?',
             [$userId, $ecriture === null ? '' : md5($ecriture)]
         );
@@ -706,7 +706,7 @@ final class SynchroOutlook
 
         $tout = [];
         for ($page = 0; $page < self::PAGES_MAX && $chemin !== ''; $page++) {
-            $reponse = Outlook::appeler($userId, 'GET', $chemin, null, $entetes);
+            $reponse = LiaisonAgenda::appeler($userId, 'GET', $chemin, null, $entetes);
 
             if ($reponse['code'] === 403) {
                 throw new RuntimeException(
@@ -819,7 +819,7 @@ final class SynchroOutlook
     private static function porterLesSuppressions(int $userId): int
     {
         $orphelins = Database::all(
-            'SELECT id, outlook_id, calendrier FROM outlook_liens
+            'SELECT id, distant_id, calendrier FROM agenda_liens
               WHERE user_id = ? AND evenement_id IS NULL',
             [$userId]
         );
@@ -832,10 +832,10 @@ final class SynchroOutlook
 
         foreach ($orphelins as $orphelin) {
             if (isset($permis[(string) ($orphelin['calendrier'] ?? '')])) {
-                self::effacerLaBas($userId, (string) $orphelin['outlook_id']);
+                self::effacerLaBas($userId, (string) $orphelin['distant_id']);
                 $effaces++;
             }
-            Database::run('DELETE FROM outlook_liens WHERE user_id = ? AND id = ?',
+            Database::run('DELETE FROM agenda_liens WHERE user_id = ? AND id = ?',
                 [$userId, (int) $orphelin['id']]);
         }
 
@@ -854,14 +854,14 @@ final class SynchroOutlook
         $permis = [self::DEFAUT => true];
 
         foreach (Database::all(
-            'SELECT empreinte FROM outlook_calendriers
+            'SELECT empreinte FROM agenda_calendriers
               WHERE user_id = ? AND principal = 1 AND partage = 0',
             [$userId]
         ) as $ligne) {
             $permis[(string) $ligne['empreinte']] = true;
         }
 
-        $ecriture = EnvoiOutlook::calendrierConnu($userId);
+        $ecriture = EnvoiAgenda::calendrierConnu($userId);
         if ($ecriture !== null) {
             $permis[md5($ecriture)] = true;
         }
@@ -872,7 +872,7 @@ final class SynchroOutlook
     /** Efface chez Microsoft, sans s'émouvoir de ce qui n'y est déjà plus. */
     private static function effacerLaBas(int $userId, string $outlookId): void
     {
-        $reponse = Outlook::appeler($userId, 'DELETE', '/me/events/' . rawurlencode($outlookId));
+        $reponse = LiaisonAgenda::appeler($userId, 'DELETE', '/me/events/' . rawurlencode($outlookId));
 
         if ($reponse['code'] < 400 || in_array($reponse['code'], [404, 410], true)) {
             return;
@@ -892,9 +892,9 @@ final class SynchroOutlook
     private static function ecritsParNous(int $userId): array
     {
         $par = [];
-        foreach (Database::all('SELECT outlook_id FROM outlook_envois WHERE user_id = ?',
+        foreach (Database::all('SELECT distant_id FROM agenda_envois WHERE user_id = ?',
             [$userId]) as $ligne) {
-            $par[(string) $ligne['outlook_id']] = true;
+            $par[(string) $ligne['distant_id']] = true;
         }
 
         return $par;
@@ -904,14 +904,14 @@ final class SynchroOutlook
     private static function liens(int $userId): array
     {
         $lignes = Database::all(
-            'SELECT outlook_id, evenement_id, empreinte, calendrier
-               FROM outlook_liens WHERE user_id = ? AND evenement_id IS NOT NULL',
+            'SELECT distant_id, evenement_id, empreinte, calendrier
+               FROM agenda_liens WHERE user_id = ? AND evenement_id IS NOT NULL',
             [$userId]
         );
 
         $par = [];
         foreach ($lignes as $ligne) {
-            $par[(string) $ligne['outlook_id']] = $ligne;
+            $par[(string) $ligne['distant_id']] = $ligne;
         }
 
         return $par;
@@ -936,7 +936,7 @@ final class SynchroOutlook
         $evenementId = Database::dernierId();
 
         Database::run(
-            'INSERT INTO outlook_liens (user_id, evenement_id, outlook_id, empreinte, calendrier)
+            'INSERT INTO agenda_liens (user_id, evenement_id, distant_id, empreinte, calendrier)
              VALUES (?, ?, ?, ?, ?)
              ON DUPLICATE KEY UPDATE evenement_id = VALUES(evenement_id),
                  empreinte = VALUES(empreinte), calendrier = VALUES(calendrier)',
@@ -968,7 +968,7 @@ final class SynchroOutlook
         );
 
         Database::run(
-            'UPDATE outlook_liens SET empreinte = ? WHERE user_id = ? AND outlook_id = ?',
+            'UPDATE agenda_liens SET empreinte = ? WHERE user_id = ? AND distant_id = ?',
             [$empreinte, $userId, $outlookId]
         );
     }
@@ -1008,7 +1008,7 @@ final class SynchroOutlook
 
             Database::run('DELETE FROM evenements WHERE id = ? AND user_id = ?',
                 [(int) $lien['evenement_id'], $userId]);
-            Database::run('DELETE FROM outlook_liens WHERE user_id = ? AND outlook_id = ?',
+            Database::run('DELETE FROM agenda_liens WHERE user_id = ? AND distant_id = ?',
                 [$userId, (string) $outlookId]);
             $retires++;
         }

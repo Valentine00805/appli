@@ -1,7 +1,7 @@
 <?php
 /**
  * @var bool $configuree  l'installation a-t-elle une application Microsoft ?
- * @var ?array $compte    la ligne « outlook_comptes », ou null
+ * @var ?array $compte    la ligne « agenda_comptes », ou null
  * @var bool $relie       ce compte-ci est-il relié ?
  * @var ?string $derniere la dernière synchronisation, ou null
  * @var int $combien      combien d'évènements viennent d'Outlook
