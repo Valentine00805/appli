@@ -261,6 +261,55 @@
   }
 
   /*
+   * Ouvrir et fermer le volet des agendas, sans recharger.
+   *
+   * Le formulaire fonctionne seul : sans script, le bouton renvoie la page et
+   * le volet a changé d'état. Mais recharger un calendrier de trois cents
+   * évènements pour cacher une colonne, c'est cher payé — on bascule donc sur
+   * place, et l'on prévient le serveur en arrière-plan pour que le volet soit
+   * dans le même état au prochain changement de mois.
+   */
+  var bascule = document.querySelector('[data-volet-bascule]');
+  if (bascule) {
+    var zone = bascule.closest('.cal-avec-volet');
+    var jetonBascule = bascule.querySelector('input[name="_csrf"]');
+    var etat = bascule.querySelector('input[name="ferme"]');
+    var boutonBascule = bascule.querySelector('button');
+    var fleche = boutonBascule.querySelector('[aria-hidden]');
+    var motBascule = boutonBascule.querySelector('.sr-only');
+
+    bascule.addEventListener('submit', function (evenement) {
+      evenement.preventDefault();
+
+      var ferme = etat.value === '1';
+      zone.classList.toggle('cal-avec-volet--ferme', ferme);
+
+      // Le bouton dit maintenant l'inverse : c'est lui qui porte le prochain
+      // geste, pas l'état où l'on se trouve.
+      etat.value = ferme ? '0' : '1';
+      boutonBascule.setAttribute('aria-expanded', ferme ? 'false' : 'true');
+      var mot = ferme ? 'Montrer les agendas' : 'Masquer les agendas';
+      boutonBascule.title = mot;
+      fleche.textContent = ferme ? '›' : '‹';
+      motBascule.textContent = mot;
+
+      var corpsBascule = new FormData();
+      corpsBascule.append('_csrf', jetonBascule.value);
+      corpsBascule.append('ferme', ferme ? '1' : '0');
+
+      fetch(bascule.dataset.voletBascule || '', {
+        method: 'POST',
+        body: corpsBascule,
+        headers: { 'Accept': 'application/json' },
+        credentials: 'same-origin'
+      }).catch(function () {
+        // Tant pis : le volet reste comme on vient de le mettre, pour cette
+        // page-ci.
+      });
+    });
+  }
+
+  /*
    * Le volet retient ses sections repliées.
    *
    * Sans cela, replier « Outlook » puis cocher un agenda le rouvrirait : le

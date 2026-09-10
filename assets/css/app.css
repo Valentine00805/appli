@@ -1978,6 +1978,9 @@ ul.apercu-liste--n2 { list-style-type: square; }
   /* Deux colonnes seulement s'il y a un volet : sans lui, le calendrier
      se retrouvait dans la colonne étroite qui lui était réservée. */
   .cal-avec-volet--volet { grid-template-columns: 14rem minmax(0, 1fr); }
+  /* Fermé, il rend ses quatorze rem à la grille et ne garde que la place
+     de son bouton. */
+  .cal-avec-volet--ferme { grid-template-columns: 1.1rem minmax(0, 1fr); }
 }
 .cal-corps { min-width: 0; }
 
@@ -2609,3 +2612,30 @@ summary.cal-volet__groupe:focus-visible {
 .jour-planning--compact .jour-planning__evt-lieu { display: none; }
 .jour-planning--compact .jour-planning__heure span { top: -.4rem; font-size: .62rem; }
 .jour-planning--compact .jour-planning__heure:first-child span { top: 0; }
+
+/* --- Ouvrir et fermer le volet ------------------------------------------
+   Le bouton se tient au bord droit du volet, dehors : dedans, il aurait
+   disparu avec lui, et l'on n'aurait plus eu de quoi le rouvrir. */
+
+.cal-volet-zone { position: relative; min-width: 0; }
+.cal-avec-volet--ferme .cal-volet { display: none; }
+
+.cal-volet-bascule { position: absolute; top: .55rem; right: -.7rem; z-index: 5; margin: 0; }
+.cal-volet-bascule button {
+  width: 1.4rem; height: 1.9rem;
+  display: grid; place-items: center;
+  padding: 0; cursor: pointer;
+  border: 1px solid var(--bordure); border-radius: 999px;
+  background: var(--fond-carte); color: var(--texte-doux);
+  font-size: .95rem; line-height: 1;
+  box-shadow: 0 1px 4px rgb(15 23 42 / 12%);
+}
+.cal-volet-bascule button:hover { color: var(--texte); border-color: var(--bordure-forte, var(--bordure)); }
+.cal-volet-bascule button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* En colonne unique, le volet est au-dessus du calendrier : le bouton se
+   range dans son coin plutôt que de flotter dans le vide à sa droite. */
+@media (max-width: 900px) {
+  .cal-avec-volet--ferme { grid-template-columns: minmax(0, 1fr); }
+  .cal-volet-bascule { right: .35rem; }
+}

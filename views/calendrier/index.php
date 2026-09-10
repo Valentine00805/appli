@@ -5,6 +5,7 @@
  * @var array $evenements, $parJour, $matieres, $types, $aVenir
  * @var ?int $matiereId, $typeId
  * @var array $sources  les agendas à montrer ou masquer, par fournisseur
+ * @var bool $voletFerme  le volet est-il replié contre le bord ?
  */
 $aujourdhui = (new DateTimeImmutable('today'))->format('Y-m-d');
 
@@ -132,7 +133,8 @@ $puce = static function (array $evt) use ($destination): string {
   </div>
 </div>
 
-<div class="cal-avec-volet<?= $sources === [] ? '' : ' cal-avec-volet--volet' ?>">
+<div class="cal-avec-volet<?= $sources === [] ? '' : ' cal-avec-volet--volet' ?><?php
+    ?><?= $sources !== [] && $voletFerme ? ' cal-avec-volet--ferme' : '' ?>">
 
 <?php if ($sources !== []): ?>
   <?php
@@ -144,6 +146,32 @@ $puce = static function (array $evt) use ($destination): string {
    * et qu'on rouvre sans que rien n'ait à être retéléchargé.
    */
   ?>
+  <div class="cal-volet-zone">
+    <?php
+    /*
+     * Le bouton qui ouvre et ferme le volet, posé à son bord droit, dehors.
+     *
+     * Un formulaire, et non un simple bouton : sans script il fonctionne
+     * quand même, au prix d'un rechargement. Le script l'intercepte et
+     * bascule sur place, puis prévient le serveur en arrière-plan — le
+     * calendrier se recharge à chaque pas de navigation, et sans mémoire le
+     * volet reviendrait au premier changement de mois.
+     */
+    ?>
+    <form class="cal-volet-bascule" method="post"
+          action="<?= url('calendrier/volet-ouvert') ?>"
+          data-volet-bascule="<?= e(url('calendrier/volet-ouvert')) ?>">
+      <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
+      <input type="hidden" name="retour" value="<?= e((string) ($_SERVER['REQUEST_URI'] ?? '')) ?>">
+      <input type="hidden" name="ferme" value="<?= $voletFerme ? '0' : '1' ?>">
+      <button type="submit"
+              aria-expanded="<?= $voletFerme ? 'false' : 'true' ?>"
+              title="<?= $voletFerme ? 'Montrer les agendas' : 'Masquer les agendas' ?>">
+        <span aria-hidden="true"><?= $voletFerme ? '›' : '‹' ?></span>
+        <span class="sr-only"><?= $voletFerme ? 'Montrer les agendas' : 'Masquer les agendas' ?></span>
+      </button>
+    </form>
+
   <aside class="cal-volet" aria-label="Agendas affichés"
          data-volet="<?= e(url('calendrier/volet')) ?>">
     <form method="post" action="<?= url('calendrier/agendas') ?>" data-auto-envoi>
@@ -198,6 +226,7 @@ $puce = static function (array $evt) use ($destination): string {
       </p>
     </form>
   </aside>
+  </div>
 <?php endif; ?>
 
 <div class="cal-corps">

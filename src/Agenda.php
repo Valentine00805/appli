@@ -139,6 +139,26 @@ final class Agenda
     }
 
     /**
+     * Le volet des agendas est-il fermé ?
+     *
+     * Fermé, il ne montre que son bouton et rend ses quatorze rem à la grille.
+     * Ce qu'il contient n'est pas perdu pour autant : les agendas cochés le
+     * restent, et les sections repliées aussi.
+     */
+    public static function voletFerme(int $userId): bool
+    {
+        return (int) Database::valeur(
+            'SELECT volet_ferme FROM users WHERE id = ?', [$userId]) === 1;
+    }
+
+    /** Ouvre ou ferme le volet. */
+    public static function fermerLeVolet(int $userId, bool $ferme): void
+    {
+        Database::run('UPDATE users SET volet_ferme = ? WHERE id = ?',
+            [$ferme ? 1 : 0, $userId]);
+    }
+
+    /**
      * Retient les sections repliées.
      *
      * Rien n'est vérifié contre la liste des agendas : une clef qui ne désigne

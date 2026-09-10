@@ -79,6 +79,7 @@ final class CalendrierController
             'typeId'        => $typeId,
             'aVenir'        => $this->aVenir($userId, 6),
             'sources'       => Agenda::sourcesDuCalendrier($userId),
+            'voletFerme'    => Agenda::voletFerme($userId),
         ], 'Calendrier');
     }
 
@@ -156,6 +157,27 @@ final class CalendrierController
     }
 
     /** Formulaire de création (id null) ou de modification d'un événement. */
+    /**
+     * Ouvre ou ferme le volet des agendas.
+     *
+     * Un geste d'affichage, comme replier une section — il ne synchronise rien
+     * et n'efface rien. Il est retenu parce que le calendrier se recharge à
+     * chaque pas de navigation : sans mémoire, le volet reviendrait au premier
+     * changement de mois.
+     */
+    public function voletOuvert(): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+
+        Agenda::fermerLeVolet(Auth::id(), ($_POST['ferme'] ?? '') === '1');
+
+        if (veut_du_json()) {
+            repondre_json(['fait' => true]);
+        }
+        repartir_vers('calendrier');
+    }
+
     /**
      * Retient les sections du volet qu'on a repliées.
      *
