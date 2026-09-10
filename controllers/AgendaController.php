@@ -47,7 +47,6 @@ final class AgendaController
             'ouEcrire'    => Agenda::ouEcrire($userId, $f),
             'destination' => EnvoiAgenda::pour($f)->destination($userId),
             'souci'       => SynchroAgenda::pour($f)->dernierSouci($userId),
-            'autres'      => Agenda::tous(),
         ];
 
         if (Vue::enFenetre()) {

@@ -19,22 +19,21 @@
 
 <div class="entete-page"<?= ($dansUneFenetre ?? false) ? ' data-large' : '' ?>>
   <div>
-    <p class="discret" style="margin-bottom:.35rem">
-      <a href="<?= url('agenda') ?>"<?= ($dansUneFenetre ?? false) ? ' data-fenetre' : '' ?>>← Mes agendas</a>
-      <?php
-      /*
-       * Passer d'un agenda à l'autre sans repasser par la liste : quand on
-       * en règle deux, on compare l'un et l'autre plus qu'on ne les visite.
-       */
-      ?>
-      <?php foreach ($autres as $voisin): ?>
-        <?php if ($voisin->cle() !== $f->cle()): ?>
-          · <a href="<?= url('agenda/' . $voisin->cle()) ?>"><?= e($voisin->nom()) ?></a>
-        <?php endif; ?>
-      <?php endforeach; ?>
-    </p>
     <h1>Calendrier <?= e($f->nom()) ?></h1>
     <p>Relier votre agenda <?= e($f->nom()) ?> à celui de l'application.</p>
+  </div>
+
+  <?php
+  /*
+   * Un bouton plutôt qu'un fil d'Ariane : on arrive ici depuis « Mes
+   * agendas » et l'on y retourne, c'est le seul chemin. Une ligne de liens
+   * discrets au-dessus du titre se lit moins vite qu'un bouton là où l'œil
+   * cherche les actions.
+   */
+  ?>
+  <div class="actions">
+    <a class="bouton bouton--secondaire" href="<?= url('agenda') ?>"
+       <?= ($dansUneFenetre ?? false) ? 'data-fenetre' : '' ?>>← Retour</a>
   </div>
 </div>
 
