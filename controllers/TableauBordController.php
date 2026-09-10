@@ -24,14 +24,16 @@ final class TableauBordController
             return $lignes;
         };
 
+        /*
+         * La journée en grille, comme dans le calendrier : on ouvre l'accueil
+         * pour savoir ce qu'on fait aujourd'hui, et une grille le dit plus vite
+         * qu'une liste — les trous s'y voient.
+         */
+        $duJour = $melange($userId, $aujourdhui, $aujourdhui->setTime(23, 59, 59));
+
         Vue::afficher('tableau-bord', [
             'aujourdhui' => $aujourdhui,
-            'duJour' => $melange($userId, $aujourdhui, $aujourdhui->setTime(23, 59, 59)),
-            'semaine' => $melange(
-                $userId,
-                $aujourdhui->modify('+1 day')->setTime(0, 0),
-                $finSemaine
-            ),
+            'planning'   => PlanningJour::disposer($duJour, $aujourdhui),
             'examens' => Database::all(
                 'SELECT e.*, m.nom AS matiere_nom, m.couleur AS matiere_couleur,
                         c.titre AS cours_titre,

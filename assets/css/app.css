@@ -2588,3 +2588,24 @@ summary.cal-volet__groupe:focus-visible {
   .fenetre__fermer { top: .4rem; right: .4rem; box-shadow: none; }
   .fenetre__corps { padding-top: 2.2rem; }
 }
+/* La journée en plus petit, pour la colonne de l'accueil : une heure y vaut
+   moins haut, et le lieu s'efface — on y jette un œil, on ne l'étudie pas. */
+.jour-planning--compact {
+  --heure: 2.1rem;
+  --colonne-heures: 2.9rem;
+}
+.jour-planning--compact .jour-planning__entete { padding: .55rem .75rem; }
+.jour-planning--compact .jour-planning__evt {
+  flex-direction: row;
+  align-items: baseline;
+  gap: .3rem;
+  white-space: nowrap;
+  padding: .1rem .3rem;
+  font-size: .72rem;
+  line-height: 1.15;
+}
+.jour-planning--compact .jour-planning__evt-heure { flex: 0 0 auto; font-size: .65rem; }
+.jour-planning--compact .jour-planning__evt-titre { overflow: hidden; text-overflow: ellipsis; }
+.jour-planning--compact .jour-planning__evt-lieu { display: none; }
+.jour-planning--compact .jour-planning__heure span { top: -.4rem; font-size: .62rem; }
+.jour-planning--compact .jour-planning__heure:first-child span { top: 0; }

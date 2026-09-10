@@ -1,13 +1,9 @@
 <?php
 /**
  * @var DateTimeImmutable $aujourdhui
- * @var array $duJour, $semaine, $examens, $taches, $derniersCours, $stats
+ * @var array $planning  la journée d'aujourd'hui, disposée par PlanningJour
+ * @var array $examens, $taches, $derniersCours, $stats
  */
-/*
- * Les lignes d'évènement sont celles du calendrier : mêmes boutons, même
- * comportement. En avoir eu deux versions, c'était en corriger une sur deux.
- */
-$ligneEvenement = static fn (array $evt): string => Vue::rendre('calendrier/_ligne', ['evt' => $evt]);
 ?>
 
 <div class="entete-page">
@@ -38,43 +34,15 @@ $ligneEvenement = static fn (array $evt): string => Vue::rendre('calendrier/_lig
 
 <div class="colonnes">
   <div class="pile">
-    <section class="carte">
-      <h2>Aujourd'hui</h2>
-      <?php if ($duJour === []): ?>
-        <p class="discret">Rien de prévu aujourd'hui. Profitez-en pour réviser 🙂</p>
-      <?php else: ?>
-        <div class="pile">
-          <?php foreach ($duJour as $evt): ?><?= $ligneEvenement($evt) ?><?php endforeach; ?>
-        </div>
-      <?php endif; ?>
-    </section>
-
-    <section class="carte">
-      <h2>Les 7 prochains jours</h2>
-      <?php if ($semaine === []): ?>
-        <p class="discret">Aucun évènement planifié.
-          <a href="<?= url('evenements/nouveau') ?>">En ajouter un</a>.</p>
-      <?php else: ?>
-        <div class="pile">
-          <?php
-          $jourCourant = null;
-          foreach ($semaine as $evt):
-              $jour = substr((string) $evt['debut'], 0, 10);
-              if ($jour !== $jourCourant):
-                  $jourCourant = $jour;
-                  ?>
-                  <p class="discret" style="margin:.4rem 0 0;text-transform:capitalize">
-                    <?= e(date_fr($evt['debut'], false)) ?>
-                  </p>
-              <?php endif; ?>
-              <?= $ligneEvenement($evt) ?>
-          <?php endforeach; ?>
-        </div>
-      <?php endif; ?>
-    </section>
-  </div>
-
-  <div class="pile">
+    <?php
+    /*
+     * Les tâches à venir, dans la colonne large.
+     *
+     * Elles y remplacent « Aujourd'hui » et « Les sept prochains jours » :
+     * ces deux blocs redisaient en liste ce que la grille de droite montre
+     * en place, et l'on relisait deux fois la même journée.
+     */
+    ?>
     <section class="carte">
       <h2>Mes tâches</h2>
       <?php if ($taches === []): ?>
@@ -91,7 +59,7 @@ $ligneEvenement = static fn (array $evt): string => Vue::rendre('calendrier/_lig
         <div class="pile">
           <?php foreach ($taches as $t): ?>
             <?php $etat = echeance_etat($t['echeance']); ?>
-            <a class="evt-ligne" href="<?= url('taches') ?>">
+            <a class="evt-ligne" href="<?= url('taches', ['liste' => (int) $t['liste_id']]) ?>">
               <span class="evt-ligne__barre" style="background:<?= e($t['liste_couleur']) ?>"></span>
               <span>
                 <span class="evt-ligne__titre"><?= e($t['titre']) ?></span><br>
@@ -105,7 +73,24 @@ $ligneEvenement = static fn (array $evt): string => Vue::rendre('calendrier/_lig
         </div>
       <?php endif; ?>
     </section>
+  </div>
 
+  <div class="pile">
+    <?php
+    /*
+     * La journée en grille, en plus petit.
+     *
+     * Le même partiel que le calendrier : on ouvre l'accueil pour savoir ce
+     * qu'on fait aujourd'hui, et une grille le dit plus vite qu'une liste —
+     * les heures libres s'y voient sans qu'on ait à les calculer.
+     */
+    echo Vue::rendre('calendrier/_planning', [
+        'planning'      => $planning,
+        'cle'           => $aujourdhui->format('Y-m-d'),
+        'estAujourdhui' => true,
+        'compact'       => true,
+    ]);
+    ?>
     <section class="carte">
       <h2>Examens &amp; devoirs</h2>
       <?php if ($examens === []): ?>

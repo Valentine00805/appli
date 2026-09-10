@@ -206,100 +206,17 @@ $puce = static function (array $evt) use ($destination): string {
 
   <?php
   /*
-   * La journée en grille.
-   *
-   * Une liste dit ce qu'il y a, une grille dit quand : les heures libres se
-   * voient sans avoir à soustraire deux horaires, et deux rendez-vous qui se
-   * chevauchent se montrent côte à côte plutôt que l'un sous l'autre.
-   *
-   * Le calcul est ailleurs — PlanningJour —, la vue ne fait que traduire des
-   * minutes en styles. Une heure vaut « --heure » de haut, et tout se place à
-   * partir de là : la même mesure sert au trait des heures, aux évènements et
-   * au repère de l'heure qu'il est.
+   * La journée en grille — le même partiel que sur l'accueil, où elle tient
+   * en plus petit. Une seule version, donc une seule à corriger.
    */
   $cle = $ancre->format('Y-m-d');
-  $duJour = $parJour[$cle] ?? [];
-  $planning = PlanningJour::disposer($duJour, $ancre);
+  echo Vue::rendre('calendrier/_planning', [
+      'planning'      => PlanningJour::disposer($parJour[$cle] ?? [], $ancre),
+      'cle'           => $cle,
+      'estAujourdhui' => $cle === $aujourdhui,
+  ]);
   ?>
-  <section class="jour-planning<?= $cle === $aujourdhui ? ' jour-planning--aujourdhui' : '' ?>">
-    <header class="jour-planning__entete">
-      <span class="jour-planning__titre">
-        <?= $cle === $aujourdhui ? "Aujourd'hui" : e(ucfirst(date_fr($cle . ' 00:00:00', false))) ?>
-      </span>
-      <a class="discret" href="<?= url('evenements/nouveau', ['date' => $cle]) ?>" data-fenetre>+ ajouter</a>
-    </header>
 
-    <?php if ($planning['journee'] !== []): ?>
-      <?php
-      /*
-       * Le bandeau du haut : ce qui n'a pas d'heure, ou qui déborde du jour.
-       * L'étaler sur toute la hauteur de la grille masquerait tout le reste.
-       */
-      ?>
-      <div class="jour-planning__bandeau">
-        <span class="jour-planning__etiquette">Journée</span>
-        <div class="jour-planning__toutlejour">
-          <?php foreach ($planning['journee'] as $evt): ?>
-            <?= $puce($evt) ?>
-          <?php endforeach; ?>
-        </div>
-      </div>
-    <?php endif; ?>
-
-    <div class="jour-planning__grille"
-         style="--heures:<?= (int) ($planning['fin'] - $planning['debut']) ?>">
-      <div class="jour-planning__heures">
-        <?php for ($h = $planning['debut']; $h < $planning['fin']; $h++): ?>
-          <div class="jour-planning__heure">
-            <span><?= str_pad((string) $h, 2, '0', STR_PAD_LEFT) ?>:00</span>
-          </div>
-        <?php endfor; ?>
-      </div>
-
-      <div class="jour-planning__piste">
-        <?php for ($h = $planning['debut']; $h < $planning['fin']; $h++): ?>
-          <div class="jour-planning__ligne"></div>
-        <?php endfor; ?>
-
-        <?php if ($planning['maintenant'] !== null): ?>
-          <div class="jour-planning__maintenant"
-               style="--minute:<?= (float) $planning['maintenant'] ?>"
-               aria-hidden="true"></div>
-        <?php endif; ?>
-
-        <?php if ($planning['blocs'] === []): ?>
-          <p class="jour-planning__vide discret">Rien de prévu à cette heure-là.</p>
-        <?php endif; ?>
-
-        <?php foreach ($planning['blocs'] as $bloc): ?>
-          <?php
-          $evt = $bloc['evt'];
-          $couleur = couleur_evenement($evt);
-          $largeur = 100 / $bloc['colonnes'];
-          ?>
-          <a class="jour-planning__evt<?= $evt['termine'] ? ' jour-planning__evt--termine' : ''
-             ?><?= $bloc['court'] ? ' jour-planning__evt--court' : '' ?>"
-             href="<?= $destination($evt) ?>"
-             <?= empty($evt['est_tache']) ? 'data-fenetre' : '' ?>
-             style="--minute:<?= (float) $bloc['haut'] ?>;--duree:<?= (float) $bloc['hauteur'] ?>;
-                    --gauche:<?= round($bloc['colonne'] * $largeur, 3) ?>%;
-                    --largeur:<?= round($largeur, 3) ?>%;
-                    --teinte:<?= e($couleur) ?>"
-             title="<?= e(libelle_type($evt) . ' · ' . $evt['titre']) ?>">
-            <span class="jour-planning__evt-heure">
-              <?= e(date('H:i', strtotime($evt['debut']))) ?>–<?= e(date('H:i', strtotime($evt['fin']))) ?>
-            </span>
-            <span class="jour-planning__evt-titre">
-              <?= e(icone_evenement($evt)) ?> <?= e($evt['titre']) ?>
-            </span>
-            <?php if (!$bloc['court'] && (string) ($evt['lieu'] ?? '') !== ''): ?>
-              <span class="jour-planning__evt-lieu"><?= e($evt['lieu']) ?></span>
-            <?php endif; ?>
-          </a>
-        <?php endforeach; ?>
-      </div>
-    </div>
-  </section>
 <?php elseif ($vue === 'mois'): ?>
 
   <div class="cal-grille">
