@@ -1502,6 +1502,13 @@ input.depot__champ {
 .paragraphe__images { grid-column: 2; }
 .paragraphe__images .document-image { margin: .35rem 0 .2rem; text-align: left; }
 
+/* Une image en attente d'enregistrement : on la voit déjà, et l'on sait
+   qu'elle n'est pas encore dans le fichier. */
+.paragraphe__attente { color: var(--texte-doux); font-size: .82rem; margin: .1rem 0 .3rem; }
+
+/* Le refus d'une image se lit sous la barre, sur toute sa largeur. */
+.barre-outils__souci { flex-basis: 100%; margin: .3rem 0 0; }
+
 /* L'aperçu rend la mise en forme : un surlignage ou un mot plus grand ne doit
    pas venir toucher la ligne du dessus. */
 .apercu-document p { line-height: 1.9; }

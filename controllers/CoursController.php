@@ -1235,7 +1235,7 @@ final class CoursController
         $nom = (string) $fichier['nom_origine'];
         $chemin = $this->cheminDe($fichier);
 
-        $entrees = $this->paragraphesSoumis();
+        $entrees = $this->imagesSoumises($id, $this->paragraphesSoumis(), $nom);
         if ($entrees === []) {
             Session::flash('erreur', 'Un document ne peut pas être entièrement vidé : gardez au moins une ligne.');
             redirect('fichiers/' . $id . '/modifier');
@@ -1532,6 +1532,114 @@ final class CoursController
     }
 
     /**
+     * Les images jointes aux paragraphes neufs, vérifiées une à une.
+     *
+     * Tout est vérifié avant d'écrire quoi que ce soit : une image refusée
+     * laisse le document tel qu'il était, texte compris. Une clé sans fichier
+     * — la case « image » laissée vide dans la page sans script — ne demande
+     * rien, et son paragraphe s'en va s'il n'avait pas de texte.
+     *
+     * @param list<array> $entrees
+     * @return list<array>
+     */
+    private function imagesSoumises(int $id, array $entrees, string $nom): array
+    {
+        $fichiers = $_FILES['images'] ?? null;
+        $retenues = [];
+
+        foreach ($entrees as $entree) {
+            if (!isset($entree['image_cle'])) {
+                $retenues[] = $entree;
+                continue;
+            }
+            $cle = (string) $entree['image_cle'];
+            unset($entree['image_cle']);
+
+            $erreur = is_array($fichiers) && isset($fichiers['error'][$cle])
+                ? (int) $fichiers['error'][$cle]
+                : UPLOAD_ERR_NO_FILE;
+            if ($erreur === UPLOAD_ERR_NO_FILE) {
+                if ($entree['texte'] !== '') {
+                    $retenues[] = $entree;
+                }
+                continue;
+            }
+
+            if (!EditionDocument::imagesAjoutables($nom)) {
+                $this->refuserImage($id, 'une image ne s’ajoute pour l’instant qu’à un document Word (.docx).');
+            }
+            $image = $this->imageEnvoyee((array) $fichiers, $cle, $erreur);
+            if (is_string($image)) {
+                $this->refuserImage($id, $image);
+            }
+            $entree['image'] = $image;
+            $retenues[] = $entree;
+        }
+
+        return $retenues;
+    }
+
+    /**
+     * Une image reçue, ou la raison de la refuser.
+     *
+     * Le type annoncé par le navigateur ne compte pas : c'est le contenu du
+     * fichier qui dit ce qu'il est. Un texte renommé en « .png » serait sinon
+     * glissé tel quel dans le document, que Word refuserait alors d'ouvrir.
+     *
+     * @return array{octets: string, extension: string, largeur: int, hauteur: int, nom: string}|string
+     */
+    private function imageEnvoyee(array $fichiers, string $cle, int $erreur): array|string
+    {
+        $nomImage = (string) ($fichiers['name'][$cle] ?? 'image');
+        if ($erreur !== UPLOAD_ERR_OK) {
+            return '« ' . $nomImage . ' » : ' . Fichiers::messageErreur($erreur);
+        }
+        $temporaire = (string) ($fichiers['tmp_name'][$cle] ?? '');
+        if ($temporaire === '' || !is_uploaded_file($temporaire)) {
+            return '« ' . $nomImage . ' » n’est pas arrivée entière.';
+        }
+        if ((int) ($fichiers['size'][$cle] ?? 0) > Fichiers::tailleMax()) {
+            return '« ' . $nomImage . ' » est trop lourde pour le serveur.';
+        }
+
+        $mesure = @getimagesize($temporaire);
+        $sorte = match ($mesure === false ? null : ($mesure[2] ?? null)) {
+            IMAGETYPE_PNG  => 'png',
+            IMAGETYPE_JPEG => 'jpeg',
+            IMAGETYPE_GIF  => 'gif',
+            default        => null,
+        };
+        if ($mesure === false || $sorte === null) {
+            return '« ' . $nomImage . ' » n’est pas une image PNG, JPEG ou GIF — les formats que Word ouvre partout.';
+        }
+        if ((int) $mesure[0] <= 0 || (int) $mesure[1] <= 0) {
+            return '« ' . $nomImage . ' » n’a pas de dimensions lisibles.';
+        }
+
+        $octets = file_get_contents($temporaire);
+        if ($octets === false || $octets === '') {
+            return '« ' . $nomImage . ' » n’a pas pu être lue.';
+        }
+
+        return [
+            'octets'    => $octets,
+            'extension' => $sorte,
+            'largeur'   => (int) $mesure[0],
+            'hauteur'   => (int) $mesure[1],
+            // Le nom sert de description : c'est ce qu'un lecteur d'écran
+            // dira de l'image, faute de mieux.
+            'nom'       => mb_substr((string) pathinfo($nomImage, PATHINFO_FILENAME), 0, 120),
+        ];
+    }
+
+    /** Refuse l'enregistrement entier, en disant pourquoi. */
+    private function refuserImage(int $id, string $raison): never
+    {
+        Session::flash('erreur', 'Le document n’a pas été modifié : ' . $raison);
+        redirect('fichiers/' . $id . '/modifier');
+    }
+
+    /**
      * Les paragraphes envoyés par le formulaire, dans l'ordre de la page.
      *
      * Une zone de saisie peut contenir plusieurs lignes : chacune devient un
@@ -1559,6 +1667,14 @@ final class CoursController
             $reference = $origines[$rang] ?? '';
             $origine = is_numeric($reference) ? (int) $reference : null;
 
+            /*
+             * Un paragraphe neuf qui porte une image : son origine vaut
+             * « image: » suivi de la clé de son fichier. Le fichier lui-même
+             * arrive à part, dans « images », sous cette même clé.
+             */
+            $cleImage = is_string($reference)
+                && preg_match('/^image:([a-z0-9]{1,32})$/', $reference, $m) === 1 ? $m[1] : null;
+
             // Un alignement inconnu ne dit rien plutôt que n'importe quoi : le
             // paragraphe garde alors celui du document.
             $aligne = $alignements[$rang] ?? '';
@@ -1584,14 +1700,21 @@ final class CoursController
             // Découpage octet par octet : les fins de ligne sont de l'ASCII,
             // et un motif Unicode échouerait en silence sur un texte mal encodé
             // — au prix d'un paragraphe vidé sans prévenir.
-            foreach (preg_split('/\r\n|\r|\n/', (string) $texte) ?: [''] as $ligne) {
+            foreach (preg_split('/\r\n|\r|\n/', (string) $texte) ?: [''] as $morceau => $ligne) {
                 $ligne = rtrim($ligne);
-                if ($ligne === '' && $origine === null) {
+                // Une image se garde même sans légende : elle est alors tout
+                // le paragraphe. Elle va au premier morceau, pas à chacun.
+                $avecImage = $cleImage !== null && $morceau === 0;
+                if ($ligne === '' && $origine === null && !$avecImage) {
                     continue;
                 }
-                $entrees[] = ['origine' => $origine, 'texte' => $ligne,
+                $entree = ['origine' => $origine, 'texte' => $ligne,
                     'alignement' => $aligne, 'liste' => $liste, 'niveau' => $niveau,
                     'titre' => $titre];
+                if ($avecImage) {
+                    $entree['image_cle'] = $cleImage;
+                }
+                $entrees[] = $entree;
             }
         }
         return $entrees;

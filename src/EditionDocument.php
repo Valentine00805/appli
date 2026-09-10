@@ -26,6 +26,28 @@ final class EditionDocument
     private const NS_STYLE  = 'urn:oasis:names:tc:opendocument:xmlns:style:1.0';
     private const NS_FO     = 'urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0';
     private const NS_DRAW   = 'urn:oasis:names:tc:opendocument:xmlns:drawing:1.0';
+    private const NS_WP     = 'http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing';
+    private const NS_A      = 'http://schemas.openxmlformats.org/drawingml/2006/main';
+    private const NS_PIC    = 'http://schemas.openxmlformats.org/drawingml/2006/picture';
+    private const NS_R      = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
+    private const REL_IMAGE = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/image';
+
+    /**
+     * Les images qu'on accepte d'insérer : celles que toutes les versions de
+     * Word savent ouvrir. Le WebP et le SVG, trop récents, rendraient le
+     * document illisible chez qui n'a pas le dernier Office.
+     */
+    public const IMAGES_INSERABLES = [
+        'png'  => 'image/png',
+        'jpeg' => 'image/jpeg',
+        'gif'  => 'image/gif',
+    ];
+
+    /** 914 400 unités Word par pouce, 96 pixels par pouce à l'écran. */
+    private const EMU_PAR_PIXEL = 9525;
+
+    /** Une page A4 aux marges de 2,5 cm, si le document n'en dit rien : 16 cm utiles. */
+    private const LARGEUR_UTILE_DEFAUT = 5760720;
 
     /* --- Les listes à puces ---------------------------------------------- */
 
@@ -236,6 +258,19 @@ final class EditionDocument
     public static function modifiable(string $nomOrigine): bool
     {
         return isset(self::FORMATS[self::extension($nomOrigine)]);
+    }
+
+    /**
+     * Peut-on y ajouter une image ?
+     *
+     * Seulement dans un document Word pour l'instant : l'OpenDocument range
+     * ses images autrement, et les annonce dans un manifeste qu'il faudrait
+     * réécrire à part. Mieux vaut ne pas proposer le bouton que de le
+     * proposer pour produire un fichier abîmé.
+     */
+    public static function imagesAjoutables(string $nomOrigine): bool
+    {
+        return self::extension($nomOrigine) === 'docx';
     }
 
     /**
@@ -501,6 +536,25 @@ final class EditionDocument
         // de zéro, il n'aurait ni style ni police et détonnerait dans la page.
         $modele = $paragraphes === [] ? null : end($paragraphes);
         $gabarit = self::gabaritTexte($doc);
+
+        /*
+         * Des images à ajouter ? Il faut savoir d'avance la largeur utile de
+         * la page — une image plus large serait coupée au bord — et le
+         * dernier numéro de dessin pris : Word refuse deux dessins qui
+         * portent le même.
+         */
+        $avecImages = false;
+        foreach ($entrees as $entree) {
+            if (isset($entree['image'])) {
+                $avecImages = true;
+                break;
+            }
+        }
+        if ($avecImages && (!$word || !self::imagesAjoutables($nomOrigine))) {
+            throw new RuntimeException('une image ne s’ajoute pour l’instant qu’à un document Word (.docx).');
+        }
+        $largeurUtile = $avecImages ? self::largeurUtileWord($doc) : 0;
+        $dessin = $avecImages ? self::dernierDessinWord($doc) : 0;
         $utilises = [];
         $nouveaux = [];
         // Les sous-listes dont il faudra vérifier que la définition les prévoit.
@@ -546,6 +600,13 @@ final class EditionDocument
 
             self::remplacerTexte($doc, $noeud, $entree['texte'], $gabarit, $riche);
             self::alignerParagraphe($doc, $noeud, $entree['alignement'] ?? null);
+
+            // L'image ajoutée se pose après le texte du paragraphe, comme
+            // l'éditeur la montrait : sous la ligne où on l'a déposée.
+            if (isset($entree['image'])) {
+                self::insererImageWord($doc, $noeud, $entree['image'], $chemin, $parties,
+                    $largeurUtile, ++$dessin);
+            }
 
             // Le texte du titre se relit sur le paragraphe : le formulaire, lui,
             // envoie du balisage, qui n'a rien à faire dans un sommaire.
@@ -2682,6 +2743,210 @@ final class EditionDocument
         if ($ecrit !== false) {
             $parties[self::PART_RELS] = $ecrit;
         }
+    }
+
+    /* --- Les images ajoutées --------------------------------------------- */
+
+    /**
+     * Ajoute une image à la fin d'un paragraphe Word.
+     *
+     * Quatre écritures, et toutes sont nécessaires : sans l'une d'elles, Word
+     * tient l'archive pour abîmée et refuse de l'ouvrir.
+     * - l'image elle-même, rangée dans « word/media » ;
+     * - son extension, déclarée dans « [Content_Types].xml » ;
+     * - une relation qui lui donne un numéro depuis le document ;
+     * - le dessin, dans le paragraphe, qui cite ce numéro.
+     *
+     * @param array{octets: string, extension: string, largeur: int, hauteur: int, nom: string} $image
+     * @param array<string, string> $parties  complété des parties à écrire
+     */
+    private static function insererImageWord(
+        DOMDocument $doc,
+        DOMElement $paragraphe,
+        array $image,
+        string $chemin,
+        array &$parties,
+        int $largeurUtile,
+        int $numero
+    ): void {
+        $extension = (string) $image['extension'];
+        if (!isset(self::IMAGES_INSERABLES[$extension])) {
+            throw new RuntimeException('ce format d’image ne s’ajoute pas à un document Word.');
+        }
+
+        // Le nom vient du contenu : la même image ajoutée deux fois ne pèse
+        // qu'une fois dans l'archive.
+        $cible = 'media/ajout-' . substr(sha1((string) $image['octets']), 0, 20) . '.' . $extension;
+        $parties['word/' . $cible] = (string) $image['octets'];
+        self::declarerExtension($chemin, $parties, $extension, self::IMAGES_INSERABLES[$extension]);
+        $relation = self::relierImage($chemin, $parties, $cible);
+
+        // La taille d'origine, ramenée à la largeur de la page s'il le faut.
+        $cx = (int) $image['largeur'] * self::EMU_PAR_PIXEL;
+        $cy = (int) $image['hauteur'] * self::EMU_PAR_PIXEL;
+        if ($cx > $largeurUtile) {
+            $cy = (int) round($cy * $largeurUtile / $cx);
+            $cx = $largeurUtile;
+        }
+
+        $attr = static fn (string $v): string =>
+            htmlspecialchars($v, ENT_XML1 | ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+        $description = $attr((string) $image['nom']);
+
+        $xml = '<w:drawing xmlns:w="' . self::NS_W . '" xmlns:wp="' . self::NS_WP . '"'
+            . ' xmlns:a="' . self::NS_A . '" xmlns:pic="' . self::NS_PIC . '"'
+            . ' xmlns:r="' . self::NS_R . '">'
+            . '<wp:inline distT="0" distB="0" distL="0" distR="0">'
+            . '<wp:extent cx="' . $cx . '" cy="' . $cy . '"/>'
+            . '<wp:effectExtent l="0" t="0" r="0" b="0"/>'
+            . '<wp:docPr id="' . $numero . '" name="Image ' . $numero . '" descr="' . $description . '"/>'
+            . '<wp:cNvGraphicFramePr><a:graphicFrameLocks noChangeAspect="1"/></wp:cNvGraphicFramePr>'
+            . '<a:graphic><a:graphicData uri="' . self::NS_PIC . '">'
+            . '<pic:pic>'
+            . '<pic:nvPicPr><pic:cNvPr id="0" name="' . $description . '"/><pic:cNvPicPr/></pic:nvPicPr>'
+            . '<pic:blipFill><a:blip r:embed="' . $attr($relation) . '"/>'
+            . '<a:stretch><a:fillRect/></a:stretch></pic:blipFill>'
+            . '<pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="' . $cx . '" cy="' . $cy . '"/></a:xfrm>'
+            . '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr>'
+            . '</pic:pic>'
+            . '</a:graphicData></a:graphic>'
+            . '</wp:inline></w:drawing>';
+
+        $fragment = self::analyser($xml);
+        if ($fragment === null || $fragment->documentElement === null) {
+            throw new RuntimeException('l’image n’a pas pu être placée dans le document.');
+        }
+        $run = $doc->createElementNS(self::NS_W, 'w:r');
+        $run->appendChild($doc->importNode($fragment->documentElement, true));
+        $paragraphe->appendChild($run);
+    }
+
+    /**
+     * La largeur où une image peut s'étendre : la page moins ses marges.
+     *
+     * Lue dans la dernière section du document, qui porte la mise en page du
+     * corps. Une image plus large serait coupée au bord de la feuille.
+     */
+    private static function largeurUtileWord(DOMDocument $doc): int
+    {
+        $sections = $doc->getElementsByTagNameNS(self::NS_W, 'sectPr');
+        $section = $sections->length > 0 ? $sections->item($sections->length - 1) : null;
+        if ($section instanceof DOMElement) {
+            $page = $section->getElementsByTagNameNS(self::NS_W, 'pgSz')->item(0);
+            $marges = $section->getElementsByTagNameNS(self::NS_W, 'pgMar')->item(0);
+            if ($page instanceof DOMElement && $marges instanceof DOMElement) {
+                // En vingtièmes de point, qui valent 635 unités d'image.
+                $vingtiemes = (int) $page->getAttributeNS(self::NS_W, 'w')
+                    - (int) $marges->getAttributeNS(self::NS_W, 'left')
+                    - (int) $marges->getAttributeNS(self::NS_W, 'right');
+                // Moins d'un pouce utile ne serait pas une page : on ne s'y fie pas.
+                if ($vingtiemes > 1440) {
+                    return $vingtiemes * 635;
+                }
+            }
+        }
+
+        return self::LARGEUR_UTILE_DEFAUT;
+    }
+
+    /** Le plus grand numéro de dessin déjà pris dans le document. */
+    private static function dernierDessinWord(DOMDocument $doc): int
+    {
+        $plus = 0;
+        foreach ($doc->getElementsByTagNameNS(self::NS_WP, 'docPr') as $dessin) {
+            $plus = max($plus, (int) $dessin->getAttribute('id'));
+        }
+
+        return $plus;
+    }
+
+    /**
+     * Déclare une extension de fichier dans « [Content_Types].xml ».
+     *
+     * Un document qui n'a jamais contenu d'image ne connaît pas les PNG :
+     * Word refuserait d'ouvrir l'archive où l'on en glisserait un.
+     *
+     * @param array<string, string> $parties  complété au besoin
+     */
+    private static function declarerExtension(
+        string $chemin,
+        array &$parties,
+        string $extension,
+        string $type
+    ): void {
+        $types = $parties[self::PART_TYPES] ?? self::partie($chemin, self::PART_TYPES);
+        $doc = $types === null ? null : self::analyser($types);
+        if ($doc === null || $doc->documentElement === null) {
+            throw new RuntimeException('le document ne dit pas quels fichiers il contient : l’image n’a pas pu y être ajoutée.');
+        }
+
+        foreach ($doc->getElementsByTagNameNS(self::NS_TYPES, 'Default') as $entree) {
+            if (strcasecmp($entree->getAttribute('Extension'), $extension) === 0) {
+                return;
+            }
+        }
+
+        $entree = $doc->createElementNS(self::NS_TYPES, 'Default');
+        $entree->setAttribute('Extension', $extension);
+        $entree->setAttribute('ContentType', $type);
+        // Les « Default » se rangent avant les « Override », comme Word les écrit.
+        $doc->documentElement->insertBefore(
+            $entree,
+            $doc->getElementsByTagNameNS(self::NS_TYPES, 'Override')->item(0)
+        );
+
+        $ecrit = $doc->saveXML();
+        if ($ecrit === false) {
+            throw new RuntimeException('l’image n’a pas pu être déclarée dans le document.');
+        }
+        $parties[self::PART_TYPES] = $ecrit;
+    }
+
+    /**
+     * La relation qui mène du document à une image, créée au besoin.
+     *
+     * @param array<string, string> $parties  complété au besoin
+     * @return string  son identifiant, que le dessin citera
+     */
+    private static function relierImage(string $chemin, array &$parties, string $cible): string
+    {
+        $rels = $parties[self::PART_RELS] ?? self::partie($chemin, self::PART_RELS)
+            ?? '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+             . '<Relationships xmlns="' . self::NS_RELS . '"/>';
+        $doc = self::analyser($rels);
+        if ($doc === null || $doc->documentElement === null) {
+            throw new RuntimeException('les liens du document sont illisibles : l’image n’a pas pu y être ajoutée.');
+        }
+
+        $pris = [];
+        foreach ($doc->getElementsByTagNameNS(self::NS_RELS, 'Relationship') as $lien) {
+            if ($lien->getAttribute('Type') === self::REL_IMAGE && $lien->getAttribute('Target') === $cible) {
+                return $lien->getAttribute('Id');
+            }
+            $pris[$lien->getAttribute('Id')] = true;
+        }
+
+        // Un numéro libre : Word donne les siens dans le désordre, on ne
+        // devine rien, on cherche.
+        $n = count($pris) + 1;
+        while (isset($pris['rId' . $n])) {
+            $n++;
+        }
+        $id = 'rId' . $n;
+
+        $lien = $doc->createElementNS(self::NS_RELS, 'Relationship');
+        $lien->setAttribute('Id', $id);
+        $lien->setAttribute('Type', self::REL_IMAGE);
+        $lien->setAttribute('Target', $cible);
+        $doc->documentElement->appendChild($lien);
+
+        $ecrit = $doc->saveXML();
+        if ($ecrit === false) {
+            throw new RuntimeException('l’image n’a pas pu être reliée au document.');
+        }
+        $parties[self::PART_RELS] = $ecrit;
+
+        return $id;
     }
 
     /* --- Le sommaire ----------------------------------------------------- */

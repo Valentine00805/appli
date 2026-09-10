@@ -9,6 +9,9 @@
  * @var string $format
  * @var ?string $erreur
  */
+
+// Une image ne s'ajoute qu'à un document Word : voir « imagesAjoutables ».
+$ajoutImages = EditionDocument::imagesAjoutables((string) $fichier['nom_origine']);
 ?>
 
 <div class="entete-page">
@@ -34,14 +37,25 @@
     surlignage, l'alignement, les titres, les listes et le sommaire se modifient
     ici.</strong> Les images s'affichent sous leur paragraphe : elles restent
     à leur place à l'enregistrement, et ne partent qu'avec la corbeille de leur
-    ligne. Le reste de la mise en forme — styles, polices, retraits, tableaux —
+    ligne.<?php if ($ajoutImages): ?> Le bouton « 🖼 Image » en ajoute une, sous la
+    ligne où se trouve le curseur.<?php endif; ?> Le reste de la mise en forme —
+    styles, polices, retraits, tableaux —
     reste dans le document sans passer par cette page, et n'est donc pas
     perdu. Une copie du document d'origine est gardée avant la première
     modification.
   </div>
 
+  <?php
+  /*
+   * « multipart » : le formulaire peut emporter des images. Le poids admis
+   * est dit au script, qui refuse une image trop lourde dès qu'on la choisit
+   * plutôt qu'à l'envoi — un refus du serveur ferait perdre tout ce qu'on a
+   * tapé depuis l'ouverture.
+   */
+  ?>
   <form method="post" action="<?= url('fichiers/' . $fichier['id'] . '/modifier') ?>"
-        data-edition-document>
+        enctype="multipart/form-data" data-edition-document
+        data-taille-max="<?= (int) Fichiers::tailleMax() ?>">
     <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
     <?php // Posé par le script : il dit au serveur que le texte arrive balisé. ?>
     <input type="hidden" name="riche" value="" data-riche>
@@ -177,9 +191,25 @@
         <button type="button" class="barre-outils__bouton" data-fond-defaut
                 title="Retirer le surlignage">⌫</button>
       </span>
+      <?php if ($ajoutImages): ?>
+        <?php
+        /*
+         * Ajouter une image. Le champ de fichier reste caché : le bouton
+         * l'ouvre, et le script le range ensuite dans la ligne créée pour
+         * l'image — c'est de là qu'il partira, à l'enregistrement.
+         */
+        ?>
+        <button type="button" class="barre-outils__bouton barre-outils__image"
+                data-inserer-image title="Ajouter une image sous la ligne où se trouve le curseur">
+          <span aria-hidden="true">🖼</span> Image
+        </button>
+        <input type="file" accept="image/png,image/jpeg,image/gif" hidden data-choisir-image
+               aria-label="Choisir une image à ajouter">
+      <?php endif; ?>
       <span class="champ__aide barre-outils__aide">
         Sélectionnez du texte, puis cliquez sur une commande.
       </span>
+      <p class="message-erreur barre-outils__souci" data-souci-image role="alert" hidden></p>
     </div>
 
     <div class="carte">
@@ -249,6 +279,22 @@
                       aria-label="Nouveau paragraphe"></textarea>
           </div>
         <?php endfor; ?>
+        <?php if ($ajoutImages): ?>
+          <?php // Et une image, ajoutée à la fin du document, avec sa légende si on en écrit une. ?>
+          <div class="paragraphe">
+            <span class="paragraphe__rang" aria-hidden="true">🖼</span>
+            <input type="hidden" name="origine[]" value="image:sansjs1">
+            <input type="hidden" name="alignement[]" value="">
+            <input type="hidden" name="liste[]" value="">
+            <input type="hidden" name="niveau[]" value="0">
+            <input type="hidden" name="titre[]" value="0">
+            <textarea name="texte[]" rows="1" class="paragraphe__texte"
+                      aria-label="Légende de l'image ajoutée (facultative)"
+                      placeholder="Légende de l'image (facultative)"></textarea>
+            <input type="file" name="images[sansjs1]" accept="image/png,image/jpeg,image/gif"
+                   aria-label="Image à ajouter à la fin du document">
+          </div>
+        <?php endif; ?>
       </noscript>
 
       <p class="champ__aide" style="margin-top:.75rem">

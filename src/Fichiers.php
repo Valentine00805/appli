@@ -433,7 +433,7 @@ final class Fichiers
         return null;
     }
 
-    private static function messageErreur(int $code): string
+    public static function messageErreur(int $code): string
     {
         return match ($code) {
             UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE => 'fichier trop volumineux pour le serveur (voir upload_max_filesize dans php.ini).',

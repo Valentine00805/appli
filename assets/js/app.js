@@ -1806,6 +1806,127 @@
         });
       }
 
+      /*
+       * Ajouter une image.
+       *
+       * Elle s'installe dans un paragraphe neuf, sous celui où se trouve le
+       * curseur — à la fin du document si le curseur n'est nulle part. Rien
+       * n'est écrit avant l'enregistrement : le fichier choisi part avec le
+       * formulaire, rangé dans la ligne de l'image, et la corbeille de cette
+       * ligne suffit pour y renoncer.
+       *
+       * Le format et le poids se vérifient ici, dès le choix : un refus du
+       * serveur ferait perdre tout ce qu'on a tapé depuis l'ouverture.
+       */
+      var boutonImage = barreOutils.querySelector("[data-inserer-image]");
+      var choixImage = barreOutils.querySelector("[data-choisir-image]");
+      var souciImage = barreOutils.querySelector("[data-souci-image]");
+      if (boutonImage && choixImage && modeleParagraphe && modeleParagraphe.content) {
+        var formatsImage = ["image/png", "image/jpeg", "image/gif"];
+        var poidsMax = Number(formulaireDocument.getAttribute("data-taille-max") || 0);
+        var ligneDeLImage = null;
+        var imagesPosees = 0;
+
+        var direSouci = function (texte) {
+          if (!souciImage) { return; }
+          souciImage.textContent = texte;
+          souciImage.hidden = texte === "";
+        };
+
+        var enMo = function (octets) {
+          return String(Math.round(octets / 104857.6) / 10).replace(".", ",") + " Mo";
+        };
+
+        // Ce que pèsent déjà les images en attente : elles partiront ensemble.
+        var poidsEnAttente = function () {
+          var total = 0;
+          [].slice.call(zoneParagraphes.querySelectorAll("input[type='file']")).forEach(function (champ) {
+            if (champ.files && champ.files[0]) { total += champ.files[0].size; }
+          });
+          return total;
+        };
+
+        // Garder la sélection : c'est elle qui dit sous quelle ligne poser l'image.
+        boutonImage.addEventListener("mousedown", function (evenement) {
+          evenement.preventDefault();
+        });
+        boutonImage.addEventListener("click", function () {
+          var zone = zoneDeLaSelection() || zoneChoisie;
+          ligneDeLImage = zone ? zone.closest("[data-paragraphe]") : null;
+          direSouci("");
+          choixImage.click();
+        });
+
+        var poserLImage = function () {
+          var champ = choixImage;
+          var fichier = champ.files && champ.files[0];
+          if (!fichier) { return; }
+
+          if (formatsImage.indexOf(fichier.type) < 0) {
+            champ.value = "";
+            direSouci("« " + fichier.name + " » n'est pas une image PNG, JPEG ou GIF — les formats que Word ouvre partout.");
+            return;
+          }
+          if (poidsMax > 0 && poidsEnAttente() + fichier.size > poidsMax) {
+            champ.value = "";
+            direSouci("« " + fichier.name + " » est trop lourde : le serveur accepte " + enMo(poidsMax)
+              + " par enregistrement. Enregistrez d'abord, puis ajoutez la suite.");
+            return;
+          }
+
+          imagesPosees++;
+          var cle = "n" + Date.now().toString(36) + imagesPosees;
+          var ligne = modeleParagraphe.content.firstElementChild.cloneNode(true);
+          ligne.querySelector("input[name='origine[]']").value = "image:" + cle;
+          var suivante = ligneDeLImage && ligneDeLImage.parentNode === zoneParagraphes
+            ? ligneDeLImage.nextSibling
+            : null;
+          zoneParagraphes.insertBefore(ligne, suivante);
+
+          var corbeille = ligne.querySelector("[data-supprimer-paragraphe]");
+          if (corbeille) { corbeille.title = "Renoncer à cette image"; }
+
+          // Le champ de fichier rejoint sa ligne : c'est de là qu'il partira.
+          champ.removeAttribute("data-choisir-image");
+          champ.name = "images[" + cle + "]";
+          ligne.appendChild(champ);
+
+          var cadre = document.createElement("div");
+          cadre.className = "paragraphe__images";
+          var figure = document.createElement("figure");
+          figure.className = "document-image";
+          var apercu = document.createElement("img");
+          apercu.alt = fichier.name;
+          apercu.src = URL.createObjectURL(fichier);
+          figure.appendChild(apercu);
+          cadre.appendChild(figure);
+          var attente = document.createElement("p");
+          attente.className = "paragraphe__attente";
+          attente.textContent = "Ajoutée au document à l'enregistrement. Une légende peut s'écrire au-dessus.";
+          cadre.appendChild(attente);
+          ligne.appendChild(cadre);
+
+          enrichir(ligne);
+          renumeroter();
+          renumeroterListes();
+
+          // Un champ neuf pour l'image suivante.
+          var neuf = document.createElement("input");
+          neuf.type = "file";
+          neuf.accept = formatsImage.join(",");
+          neuf.hidden = true;
+          neuf.setAttribute("data-choisir-image", "");
+          neuf.setAttribute("aria-label", "Choisir une image à ajouter");
+          neuf.addEventListener("change", poserLImage);
+          boutonImage.parentNode.insertBefore(neuf, boutonImage.nextSibling);
+          choixImage = neuf;
+
+          ligne.scrollIntoView({ block: "nearest" });
+        };
+
+        choixImage.addEventListener("change", poserLImage);
+      }
+
       formulaireDocument.addEventListener("submit", recopier);
     }
   }
