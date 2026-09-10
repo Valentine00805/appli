@@ -172,9 +172,24 @@
          * clavier retombe sur la page derrière : la touche d'échappement ne
          * ferme plus rien. On le ramène dans la fenêtre — sur le premier champ
          * s'il y en a un, puisque c'est là qu'on allait.
+         *
+         * Sans faire défiler : donner le focus amène l'élément sous les yeux,
+         * et sur une page de réglages le premier champ est au milieu. On
+         * arrivait donc à mi-hauteur, sans avoir rien demandé. Le clavier va
+         * où il doit, la fenêtre reste en haut.
+         */
+        corps.scrollTop = 0;
+
+        /*
+         * Et seulement s'il est sous les yeux. Sur une page de réglages, le
+         * premier champ est au milieu : y poser le curseur laisserait le
+         * clavier quelque part qu'on ne voit pas, où une frappe changerait un
+         * réglage sans qu'on l'ait cherché. La croix, elle, est toujours là.
          */
         var premier = corps.querySelector('input:not([type="hidden"]), textarea, select');
-        (premier || fenetre.querySelector('.fenetre__fermer')).focus();
+        var aPortee = premier !== null && premier.offsetTop < 200;
+        (aPortee ? premier : fenetre.querySelector('.fenetre__fermer'))
+          .focus({ preventScroll: true });
       }).catch(function () {
         // Plutôt que d'expliquer un échec qu'on ne sait pas nommer, on fait
         // ce que le lien aurait fait sans nous.
