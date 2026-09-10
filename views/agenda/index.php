@@ -17,23 +17,21 @@
  */
 ?>
 
+<?php
+/*
+ * Le retour, avant le titre : on arrive ici depuis « Mes agendas » et l'on y
+ * retourne, c'est le seul chemin. Posé en tête plutôt qu'en marge, là où le
+ * regard commence — et de la couleur des actions, puisqu'il en est une.
+ */
+?>
 <div class="entete-page"<?= ($dansUneFenetre ?? false) ? ' data-large' : '' ?>>
   <div>
+    <p style="margin:0 0 .6rem">
+      <a class="bouton" href="<?= url('agenda') ?>"
+         <?= ($dansUneFenetre ?? false) ? 'data-fenetre' : '' ?>>Retour</a>
+    </p>
     <h1>Calendrier <?= e($f->nom()) ?></h1>
     <p>Relier votre agenda <?= e($f->nom()) ?> à celui de l'application.</p>
-  </div>
-
-  <?php
-  /*
-   * Un bouton plutôt qu'un fil d'Ariane : on arrive ici depuis « Mes
-   * agendas » et l'on y retourne, c'est le seul chemin. Une ligne de liens
-   * discrets au-dessus du titre se lit moins vite qu'un bouton là où l'œil
-   * cherche les actions.
-   */
-  ?>
-  <div class="actions">
-    <a class="bouton bouton--secondaire" href="<?= url('agenda') ?>"
-       <?= ($dansUneFenetre ?? false) ? 'data-fenetre' : '' ?>>← Retour</a>
   </div>
 </div>
 
