@@ -54,16 +54,13 @@ final class TableauBordController
                  ORDER BY c.updated_at DESC LIMIT 6',
                 [$userId]
             ),
-            'stats' => [
-                'cours'    => (int) Database::valeur('SELECT COUNT(*) FROM cours WHERE user_id = ?', [$userId]),
-                'matieres' => (int) Database::valeur('SELECT COUNT(*) FROM matieres WHERE user_id = ?', [$userId]),
-                'fichiers' => (int) Database::valeur('SELECT COUNT(*) FROM fichiers WHERE user_id = ?', [$userId]),
-                'taches'   => TachesController::resteAFaire($userId),
-                'aVenir'   => (int) Database::valeur(
-                    'SELECT COUNT(*) FROM evenements WHERE user_id = ? AND debut >= NOW()',
-                    [$userId]
-                ),
-            ],
+            /*
+             * Il n'en reste qu'un : le nombre de tâches en attente, que la
+             * carte des tâches cite quand aucune n'a d'échéance proche. Les
+             * quatre compteurs du haut, eux, sont partis — quatre requêtes de
+             * moins à chaque ouverture de l'accueil.
+             */
+            'stats' => ['taches' => TachesController::resteAFaire($userId)],
         ], 'Accueil');
     }
 }

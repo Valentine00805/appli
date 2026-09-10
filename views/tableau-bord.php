@@ -17,21 +17,6 @@
   </div>
 </div>
 
-<div class="grille grille--4" style="margin-bottom:1.5rem">
-  <a class="carte stat" href="<?= url('cours') ?>" style="text-decoration:none;color:inherit">
-    <div class="stat__valeur"><?= (int) $stats['cours'] ?></div><div class="stat__libelle">cours enregistrés</div>
-  </a>
-  <a class="carte stat" href="<?= url('organisation/matieres') ?>" style="text-decoration:none;color:inherit">
-    <div class="stat__valeur"><?= (int) $stats['matieres'] ?></div><div class="stat__libelle">matières</div>
-  </a>
-  <a class="carte stat" href="<?= url('calendrier') ?>" style="text-decoration:none;color:inherit">
-    <div class="stat__valeur"><?= (int) $stats['aVenir'] ?></div><div class="stat__libelle">évènements à venir</div>
-  </a>
-  <a class="carte stat" href="<?= url('taches') ?>" style="text-decoration:none;color:inherit">
-    <div class="stat__valeur"><?= (int) $stats['taches'] ?></div><div class="stat__libelle">tâches à faire</div>
-  </a>
-</div>
-
 <div class="colonnes">
   <div class="pile">
     <?php
