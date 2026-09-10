@@ -1069,12 +1069,17 @@ final class CalendrierController
         ?int $typeId = null
     ): array {
         /*
-         * L'agenda d'origine sert à masquer : un évènement sans lien vient
-         * d'ici, les autres du calendrier Outlook nommé par « ol.calendrier ».
+         * L'agenda sert à masquer et à colorer. Un évènement relu d'Outlook
+         * tient le sien de « ol.calendrier » ; un évènement écrit ici le tient
+         * de la destination qu'on lui a choisie.
          */
+        [$nomDest, $couleurDest] = self::agendaDeDestination();
+
         $sql = 'SELECT e.*, m.nom AS matiere_nom, m.couleur AS matiere_couleur, c.titre AS cours_titre,
                        t.nom AS type_nom, t.icone AS type_icone, t.couleur AS type_couleur, t.est_echeance,
-                       ol.calendrier AS outlook_calendrier, oc.nom AS agenda_nom, oc.couleur AS agenda_couleur
+                       ol.calendrier AS outlook_calendrier,
+                       COALESCE(oc.nom, ' . $nomDest . ') AS agenda_nom,
+                       COALESCE(oc.couleur, ' . $couleurDest . ') AS agenda_couleur
                 FROM evenements e
                 LEFT JOIN matieres m        ON m.id = e.matiere_id
                 LEFT JOIN cours c           ON c.id = e.cours_id
@@ -1107,27 +1112,90 @@ final class CalendrierController
      * « Prochainement » : décocher un agenda et le retrouver plus bas ferait
      * douter de la case autant que de la liste.
      *
-     * La requête doit avoir joint « agenda_liens » sous l'alias « ol ».
+     * Un évènement est montré si l'agenda où il se trouve l'est. Reste à
+     * savoir où il se trouve, et la réponse n'est pas la même des deux côtés :
+     *
+     * - venu d'ailleurs, c'est son agenda d'origine qui le dit — la ligne de
+     *   « agenda_liens », jointe sous l'alias « ol » ;
+     * - écrit ici, c'est sa destination — les lignes de « evenement_agendas »,
+     *   où l'empreinte vide désigne « Mes évènements ». Sans destination
+     *   enregistrée, c'est « Mes évènements » aussi : le choix par défaut.
+     *
+     * Ce second cas manquait, et un évènement écrit ici pour l'agenda familial
+     * partait bien chez Outlook mais disparaissait de l'application dès qu'on
+     * décochait « Mes évènements » — il n'a pas de ligne dans « agenda_liens »,
+     * puisqu'il n'a jamais été relu de nulle part, et rien n'allait chercher
+     * l'agenda auquel il était pourtant destiné.
+     *
+     * La requête doit avoir joint « agenda_liens » sous l'alias « ol », et
+     * nommer la table des évènements « e ».
      *
      * @param array $params  complété des valeurs à lier
      */
     private static function masqueDesAgendas(int $userId, array &$params): string
     {
         $masques = Agenda::masques($userId);
-        $sql = '';
+        $caches  = $masques['calendriers'];
+        $miens   = !$masques['miens'];      // « Mes évènements » est-il coché ?
 
-        if ($masques['miens']) {
-            $sql .= ' AND ol.id IS NOT NULL';
+        if ($miens && $caches === []) {
+            return '';                       // rien n'est masqué
         }
-        if ($masques['calendriers'] !== []) {
-            // Une origine inconnue reste montrée : mieux vaut un évènement de
-            // trop qu'un rendez-vous escamoté sans qu'on sache pourquoi.
-            $trous = implode(', ', array_fill(0, count($masques['calendriers']), '?'));
-            $sql .= ' AND (ol.calendrier IS NULL OR ol.calendrier NOT IN (' . $trous . '))';
-            $params = array_merge($params, $masques['calendriers']);
+        $trous = implode(', ', array_fill(0, count($caches), '?'));
+        $lies = [];
+
+        // Venu d'ailleurs. Une origine inconnue reste montrée : mieux vaut un
+        // évènement de trop qu'un rendez-vous escamoté sans qu'on sache pourquoi.
+        $venu = 'ol.id IS NOT NULL';
+        if ($caches !== []) {
+            $venu .= ' AND (ol.calendrier IS NULL OR ol.calendrier NOT IN (' . $trous . '))';
+            $lies = array_merge($lies, $caches);
         }
 
-        return $sql;
+        // Écrit ici, et posé dans un agenda resté coché.
+        $ailleurs = 'EXISTS (SELECT 1 FROM evenement_agendas ea'
+            . ' WHERE ea.evenement_id = e.id AND ea.empreinte <> \'\'';
+        if ($caches !== []) {
+            $ailleurs .= ' AND ea.empreinte NOT IN (' . $trous . ')';
+            $lies = array_merge($lies, $caches);
+        }
+        $ailleurs .= ')';
+
+        $ecrit = [$ailleurs];
+        if ($miens) {
+            // Écrit ici et gardé pour soi : aucune destination, ou celle qui
+            // porte l'empreinte vide.
+            $ecrit[] = 'NOT EXISTS (SELECT 1 FROM evenement_agendas ea WHERE ea.evenement_id = e.id)'
+                . ' OR EXISTS (SELECT 1 FROM evenement_agendas ea'
+                . ' WHERE ea.evenement_id = e.id AND ea.empreinte = \'\')';
+        }
+
+        $params = array_merge($params, $lies);
+
+        return ' AND ((' . $venu . ') OR (ol.id IS NULL AND (('
+            . implode(') OR (', $ecrit) . '))))';
+    }
+
+    /**
+     * L'agenda auquel rattacher un évènement écrit ici et posé ailleurs.
+     *
+     * Sans cela, un évènement créé pour l'agenda familial s'affichait sans
+     * origine : décoché avec « Votre famille », mais gris et anonyme tant
+     * qu'il était là. Les deux sous-requêtes trient pareil, donc désignent la
+     * même ligne quand un évènement vise plusieurs agendas.
+     *
+     * @return array{0: string, 1: string}  les expressions nom et couleur
+     */
+    private static function agendaDeDestination(): array
+    {
+        $choisir = static fn (string $champ): string =>
+            '(SELECT oa.' . $champ . ' FROM evenement_agendas ea
+                JOIN agenda_calendriers oa
+                  ON oa.user_id = e.user_id AND oa.empreinte = ea.empreinte
+               WHERE ea.evenement_id = e.id AND ea.empreinte <> \'\'
+               ORDER BY ea.empreinte LIMIT 1)';
+
+        return [$choisir('nom'), $choisir('couleur')];
     }
 
     private function evenements(
@@ -1256,10 +1324,12 @@ final class CalendrierController
     private function aVenir(int $userId, int $limite): array
     {
         $params = [$userId];
+        [$nomDest, $couleurDest] = self::agendaDeDestination();
         $lignes = Database::all(
             'SELECT e.*, m.nom AS matiere_nom, m.couleur AS matiere_couleur,
                     t.nom AS type_nom, t.icone AS type_icone, t.couleur AS type_couleur,
-                    oc.nom AS agenda_nom, oc.couleur AS agenda_couleur
+                    COALESCE(oc.nom, ' . $nomDest . ') AS agenda_nom,
+                    COALESCE(oc.couleur, ' . $couleurDest . ') AS agenda_couleur
              FROM evenements e
              LEFT JOIN matieres m        ON m.id = e.matiere_id
              LEFT JOIN types_evenement t ON t.id = e.type_id
