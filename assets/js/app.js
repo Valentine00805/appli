@@ -2,6 +2,67 @@
 (function () {
   'use strict';
 
+  /*
+   * Remonter en haut, et voir d'un coup d'œil où l'on en est.
+   *
+   * L'anneau autour de la flèche se remplit à mesure qu'on descend. C'est la
+   * même information que la barre de défilement, mais à l'endroit où l'on
+   * regarde déjà quand on cherche à remonter.
+   *
+   * Le lien fonctionne sans nous — il saute à l'ancre du haut de page. On ne
+   * s'en mêle que pour glisser plutôt que sauter, et pour ne pas laisser
+   * « #haut » derrière nous dans la barre d'adresse.
+   */
+  var haut = document.querySelector('.haut-de-page');
+  if (haut) {
+    var part = haut.querySelector('.haut-de-page__part');
+    var tour = 2 * Math.PI * 20;          // le rayon du cercle, dans le SVG
+    var enAttente = false;
+
+    var suivreLeDefilement = function () {
+      enAttente = false;
+      var doc = document.documentElement;
+      var course = doc.scrollHeight - doc.clientHeight;
+      var y = window.pageYOffset || doc.scrollTop || 0;
+
+      // Une page qui tient dans l'écran n'a pas de haut à retrouver, et les
+      // premiers pixels ne valent pas qu'on encombre le coin de l'écran.
+      haut.classList.toggle('haut-de-page--efface', course < 240 || y < 120);
+
+      var avance = course > 0 ? Math.min(1, Math.max(0, y / course)) : 0;
+      part.style.strokeDashoffset = (tour * (1 - avance)).toFixed(2);
+    };
+
+    // Le défilement se déclenche bien plus souvent que l'écran ne se redessine.
+    var demanderLeSuivi = function () {
+      if (enAttente) { return; }
+      enAttente = true;
+      if (window.requestAnimationFrame) {
+        window.requestAnimationFrame(suivreLeDefilement);
+      } else {
+        window.setTimeout(suivreLeDefilement, 60);
+      }
+    };
+
+    part.style.strokeDasharray = tour.toFixed(2);
+    window.addEventListener('scroll', demanderLeSuivi, { passive: true });
+    window.addEventListener('resize', demanderLeSuivi);
+    suivreLeDefilement();
+
+    haut.addEventListener('click', function (evenement) {
+      if (!window.scrollTo) { return; }   // le saut d'ancre fera l'affaire
+      evenement.preventDefault();
+
+      var brusque = window.matchMedia
+        && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      try {
+        window.scrollTo({ top: 0, behavior: brusque ? 'auto' : 'smooth' });
+      } catch (e) {
+        window.scrollTo(0, 0);            // les navigateurs d'avant l'objet
+      }
+    });
+  }
+
   // Menu mobile
   var burger = document.querySelector('.burger');
   var nav = document.getElementById('navigation');

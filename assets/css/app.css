@@ -2672,3 +2672,56 @@ summary.cal-volet__groupe:focus-visible {
   .cal-avec-volet--ferme { grid-template-columns: minmax(0, 1fr); }
   .cal-volet-bascule { right: .35rem; }
 }
+
+/* --- Remonter en haut ---------------------------------------------------- */
+
+/*
+ * Une flèche dans un anneau, en bas à droite, sur toutes les pages.
+ *
+ * L'anneau se remplit à mesure qu'on descend : c'est la même information que
+ * la barre de défilement, mais lisible d'un coup d'œil et à l'endroit où l'on
+ * regarde déjà quand on cherche à remonter.
+ *
+ * Sans JavaScript, l'anneau reste vide et la flèche visible : le lien
+ * fonctionne, il saute simplement au lieu de glisser.
+ */
+.haut-de-page {
+  position: fixed; right: 1.25rem; bottom: 1.25rem; z-index: 30;
+  display: grid; place-items: center;
+  width: 2.85rem; height: 2.85rem;
+  border-radius: 50%; text-decoration: none;
+  background: var(--fond-carte); color: var(--texte-doux);
+  box-shadow: 0 4px 16px rgb(15 23 42 / 16%);
+  transition: opacity .18s ease, transform .18s ease, color .18s ease;
+}
+.haut-de-page:hover { color: var(--texte); }
+.haut-de-page:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+.haut-de-page__anneau {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  transform: rotate(-90deg);  /* le remplissage part de midi */
+}
+.haut-de-page__anneau circle { fill: none; stroke-width: 2.5; }
+.haut-de-page__piste { stroke: var(--bordure); }
+.haut-de-page__part {
+  stroke: var(--accent); stroke-linecap: round;
+  /* 2 × π × 20 : le tour du cercle. Vide tant que rien n'est mesuré. */
+  stroke-dasharray: 125.66; stroke-dashoffset: 125.66;
+}
+.haut-de-page__fleche { position: relative; font-size: 1.15rem; line-height: 1; }
+
+/* En haut de page, ou sur une page qui tient dans l'écran, il n'y a rien à
+   remonter : la flèche s'efface plutôt que d'occuper un coin pour rien. */
+.haut-de-page--efface {
+  opacity: 0; visibility: hidden; pointer-events: none;
+  transform: translateY(.6rem);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .haut-de-page { transition: none; }
+  .haut-de-page--efface { transform: none; }
+}
+
+@media (max-width: 520px) {
+  .haut-de-page { right: .75rem; bottom: .75rem; width: 2.5rem; height: 2.5rem; }
+}

@@ -25,7 +25,7 @@ $actif = static function (string $prefixe) use ($route): string {
 
 <a class="lien-evitement" href="#contenu">Aller au contenu</a>
 
-<header class="entete">
+<header class="entete" id="haut">
   <div class="entete__interieur">
     <a class="marque" href="<?= url('') ?>">
       <span class="marque__icone" aria-hidden="true">📚</span>
@@ -81,6 +81,27 @@ $actif = static function (string $prefixe) use ($route): string {
 
   <?= $contenu ?>
 </main>
+
+<?php
+/*
+ * Remonter en haut de la page.
+ *
+ * Un lien d'ancre, et non un bouton : sans JavaScript il remonte quand même,
+ * d'un saut plutôt qu'en glissant. Le cercle reste vide dans ce cas — il ne
+ * promet rien qu'il ne tienne.
+ *
+ * Le script prend le relais : il remplit le cercle à mesure qu'on descend et
+ * efface la flèche tant qu'on est en haut, où elle n'aurait rien à faire.
+ */
+?>
+<a class="haut-de-page" href="#haut" title="Remonter en haut de la page">
+  <svg class="haut-de-page__anneau" viewBox="0 0 44 44" aria-hidden="true" focusable="false">
+    <circle class="haut-de-page__piste" cx="22" cy="22" r="20"></circle>
+    <circle class="haut-de-page__part" cx="22" cy="22" r="20"></circle>
+  </svg>
+  <span class="haut-de-page__fleche" aria-hidden="true">↑</span>
+  <span class="sr-only">Remonter en haut de la page</span>
+</a>
 
 <footer class="pied">
   <p><?= e((string) Config::get('app', 'nom')) ?> — vos cours et votre planning, en local.</p>
