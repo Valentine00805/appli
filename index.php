@@ -27,6 +27,7 @@ require __DIR__ . '/src/LimiteurConnexion.php';
 require __DIR__ . '/src/Sauvegarde.php';
 require __DIR__ . '/src/Fichiers.php';
 require __DIR__ . '/src/ApercuDocument.php';
+require __DIR__ . '/src/ImagesDocument.php';
 require __DIR__ . '/src/EditionDocument.php';
 require __DIR__ . '/src/ReleveCsv.php';
 require __DIR__ . '/src/ClasseurXlsx.php';
@@ -236,6 +237,7 @@ $routes = [
     ['POST', 'revision/element/{id}/supprimer', [CoursController::class, 'supprimerElement']],
     ['GET',  'fichiers/{id}',             [CoursController::class, 'telechargerFichier']],
     ['GET',  'fichiers/{id}/apercu',      [CoursController::class, 'apercuFichier']],
+    ['GET',  'fichiers/{id}/image',       [CoursController::class, 'imageFichier']],
     ['GET',  'fichiers/{id}/modifier',    [CoursController::class, 'modifierFichier']],
     ['POST', 'fichiers/{id}/modifier',    [CoursController::class, 'enregistrerFichier']],
     ['POST', 'fichiers/{id}/position',    [CoursController::class, 'positionLecture']],

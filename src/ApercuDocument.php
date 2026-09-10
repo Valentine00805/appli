@@ -8,9 +8,12 @@ declare(strict_types=1);
  * fichiers sont des archives contenant du XML, et l'application sait déjà lire
  * des archives. On en extrait donc le texte pour le montrer dans une page.
  *
- * C'est un aperçu, pas le document : la mise en forme, les images et la
- * pagination ne sont pas reproduites. Le fichier d'origine reste téléchargeable
+ * C'est un aperçu, pas le document : la pagination n'est pas reproduite, les
+ * tableaux et les en-têtes non plus. Le fichier d'origine reste téléchargeable
  * pour l'ouvrir dans Word ou LibreOffice.
+ *
+ * Cette classe s'en tient au texte. La mise en forme est relue par
+ * « EditionDocument », et les images par « ImagesDocument ».
  */
 final class ApercuDocument
 {

@@ -1423,6 +1423,26 @@ input.depot__champ {
 .apercu-document p { margin: 0 0 .9em; overflow-wrap: anywhere; }
 .apercu-document p:last-child { margin-bottom: 0; }
 
+/*
+ * Les images du document.
+ *
+ * Le document leur donne une largeur en centimètres, écrite ici en pixels :
+ * une petite icône reste petite, une capture pleine page tient dans la
+ * colonne. « height: auto » garde les proportions quand la largeur est
+ * ramenée à celle du texte, et les deux dimensions annoncées dans la balise
+ * réservent la place avant même que l'image arrive — la page ne saute pas
+ * sous les yeux pendant qu'elle se remplit.
+ */
+.apercu-image { margin: 1.2em 0; text-align: center; }
+.apercu-image img {
+  max-width: 100%; height: auto; border-radius: var(--rayon-s);
+  background: var(--fond-doux);
+}
+.apercu-image__absente {
+  color: var(--texte-doux); font-size: .88rem; font-style: italic;
+  border-left: 3px solid var(--bordure); padding-left: .7rem;
+}
+
 /* Aperçu d'un classeur : lignes numérotées, colonnes lisibles. */
 .apercu-classeur { font-size: .88rem; white-space: nowrap; }
 .apercu-classeur td { max-width: 22rem; overflow: hidden; text-overflow: ellipsis; }

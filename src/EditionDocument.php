@@ -25,6 +25,7 @@ final class EditionDocument
     private const NS_TEXT   = 'urn:oasis:names:tc:opendocument:xmlns:text:1.0';
     private const NS_STYLE  = 'urn:oasis:names:tc:opendocument:xmlns:style:1.0';
     private const NS_FO     = 'urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0';
+    private const NS_DRAW   = 'urn:oasis:names:tc:opendocument:xmlns:drawing:1.0';
 
     /* --- Les listes à puces ---------------------------------------------- */
 
@@ -304,8 +305,14 @@ final class EditionDocument
      * un paragraphe à la place d'un autre : celle-ci suit la règle de l'aperçu,
      * pour que les deux listes se correspondent une à une.
      *
+     * Les images du document y sont rendues à leur paragraphe. Un paragraphe
+     * qui n'en porte qu'une, sans un mot de texte, est gardé lui aussi : c'est
+     * le cas d'une capture posée seule entre deux phrases, et la sauter
+     * reviendrait à montrer un document amputé.
+     *
      * @return list<array{html: string, alignement: ?string, liste: string,
-     *                    numero: ?int, niveau: int, titre: int, sommaire: bool}>
+     *                    numero: ?int, niveau: int, titre: int, sommaire: bool,
+     *                    images: list<array>}>
      * @throws RuntimeException si le fichier est illisible
      */
     public static function apercuRiche(string $chemin, string $nomOrigine): array
@@ -330,15 +337,23 @@ final class EditionDocument
         }
         $numeros = self::numeroter($tous, $numsWord, $listesOdf);
 
+        $images = ImagesDocument::possible($nomOrigine)
+            ? ImagesDocument::parParagraphe(
+                $tous,
+                ImagesDocument::trouver($doc, ImagesDocument::relations($chemin, $nomOrigine))
+            )
+            : [];
+
         $rendus = [];
         foreach ($tous as $rang => $noeud) {
             $passages = self::resserrer($noeud->namespaceURI === self::NS_W
                 ? self::passagesWord($noeud)
                 : self::passagesOdf($noeud, $stylesOdf));
+            $siennes = $images[$rang] ?? [];
 
-            if ($passages !== []) {
+            if ($passages !== [] || $siennes !== []) {
                 $rendus[] = [
-                    'html' => self::html($passages),
+                    'html' => $passages === [] ? '' : self::html($passages),
                     'alignement' => self::alignement($noeud, $alignementsOdf),
                     'liste' => (string) self::sorteDeListe($noeud, $numsWord, $listesOdf),
                     'numero' => $numeros[$rang],
@@ -347,6 +362,7 @@ final class EditionDocument
                     // Une ligne du sommaire : la page la saute et refait le
                     // sien à partir des titres.
                     'sommaire' => isset($horsTexte[spl_object_id($noeud)]),
+                    'images' => $siennes,
                 ];
             }
         }
@@ -811,6 +827,10 @@ final class EditionDocument
      * Word numérote chaque paragraphe pour y accrocher commentaires et
      * révisions : deux paragraphes ne peuvent pas porter le même numéro, la
      * copie repart donc sans. Word lui en attribuera un nouveau.
+     *
+     * Elle repart aussi sans les images : couper un paragraphe en deux partage
+     * son texte, il n'en fabrique pas une seconde photo. L'image reste au
+     * premier des deux, celui qui garde le paragraphe d'origine.
      */
     private static function copier(DOMElement $paragraphe): DOMElement
     {
@@ -819,6 +839,8 @@ final class EditionDocument
         foreach (['paraId', 'textId'] as $attribut) {
             $copie->removeAttributeNS('http://schemas.microsoft.com/office/word/2010/wordml', $attribut);
         }
+        self::detacherLesImages($copie);
+
         return $copie;
     }
 
@@ -846,9 +868,12 @@ final class EditionDocument
         bool $riche = false
     ): void {
         $passages = $riche ? self::passagesDuHtml($texte) : null;
+        // Ce que l'éditeur ne sait pas réécrire, il ne le jette pas.
+        $images = self::detacherLesImages($paragraphe);
 
         if ($paragraphe->namespaceURI === self::NS_W) {
             self::remplacerTexteWord($doc, $paragraphe, $texte, $gabarit, $passages);
+            self::rendreLesImages($doc, $paragraphe, $images);
             return;
         }
 
@@ -862,6 +887,7 @@ final class EditionDocument
             if ($texte !== '') {
                 $paragraphe->appendChild($doc->createTextNode($texte));
             }
+            self::rendreLesImages($doc, $paragraphe, $images);
             return;
         }
 
@@ -880,6 +906,8 @@ final class EditionDocument
             $span->appendChild($noeud);
             $paragraphe->appendChild($span);
         }
+
+        self::rendreLesImages($doc, $paragraphe, $images);
     }
 
     /**
@@ -962,6 +990,80 @@ final class EditionDocument
         // Sans cet attribut, Word rogne les espaces de début et de fin.
         $t->setAttributeNS(self::NS_XML, 'xml:space', 'preserve');
         $t->appendChild($doc->createTextNode($texte));
+    }
+
+    /**
+     * Détache les images d'un paragraphe pour qu'il puisse être réécrit.
+     *
+     * L'éditeur ne travaille que sur le texte : il vide le paragraphe et le
+     * refait passage par passage. Ce qu'il ne sait pas relire disparaissait
+     * alors avec le reste — une capture, un schéma, un objet inséré. Ils sont
+     * donc mis de côté ici, et « rendreLesImages » les remet ensuite à la fin
+     * du paragraphe, dans leur ordre.
+     *
+     * À la fin, et non à leur place exacte : le texte réécrit ne dit pas où
+     * l'image se tenait au milieu de lui. Dans un document ordinaire cela ne
+     * se voit pas — une image est presque toujours seule dans son paragraphe,
+     * ou posée après le texte.
+     *
+     * @return list<DOMElement>
+     */
+    private static function detacherLesImages(DOMElement $paragraphe): array
+    {
+        $porteuses = [
+            self::NS_W    => ['drawing', 'pict', 'object'],
+            self::NS_DRAW => ['frame'],
+        ];
+
+        $images = [];
+        foreach (iterator_to_array($paragraphe->getElementsByTagName('*')) as $noeud) {
+            if (!$noeud instanceof DOMElement
+                || !in_array($noeud->localName, $porteuses[$noeud->namespaceURI] ?? [], true)) {
+                continue;
+            }
+            // Une image posée dans une zone de texte, elle-même dans une
+            // image : la retenir deux fois la donnerait deux fois.
+            $dedans = false;
+            for ($parent = $noeud->parentNode; $parent !== null; $parent = $parent->parentNode) {
+                if (in_array($parent, $images, true)) {
+                    $dedans = true;
+                    break;
+                }
+            }
+            if (!$dedans) {
+                $images[] = $noeud;
+            }
+        }
+
+        foreach ($images as $image) {
+            $image->parentNode?->removeChild($image);
+        }
+
+        return $images;
+    }
+
+    /**
+     * Remet à la fin du paragraphe les images mises de côté.
+     *
+     * Chez Word une image se tient dans un passage : on lui en refait un neuf
+     * plutôt que de garder l'ancien, qui portait aussi du texte déjà réécrit.
+     *
+     * @param list<DOMElement> $images
+     */
+    private static function rendreLesImages(
+        DOMDocument $doc,
+        DOMElement $paragraphe,
+        array $images
+    ): void {
+        foreach ($images as $image) {
+            if ($image->namespaceURI === self::NS_W) {
+                $run = $doc->createElementNS(self::NS_W, 'w:r');
+                $run->appendChild($image);
+                $paragraphe->appendChild($run);
+                continue;
+            }
+            $paragraphe->appendChild($image);
+        }
     }
 
     /** Cet enfant est-il l'élément Word attendu ? */

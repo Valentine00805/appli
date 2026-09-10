@@ -700,13 +700,20 @@ final class CoursController
                             $enrichis = [];
                         }
                         /*
-                         * Les deux lectures doivent donner autant de
-                         * paragraphes l'une que l'autre : sinon leurs rangs ne
-                         * se correspondent plus, et la page montrerait un
-                         * paragraphe à la place d'un autre. Au moindre écart,
-                         * on s'en tient au texte nu.
+                         * Les deux lectures doivent trouver autant de
+                         * paragraphes de texte l'une que l'autre : au moindre
+                         * écart, la lecture riche s'est égarée et l'on s'en
+                         * tient au texte nu, qui vaut mieux que faux.
+                         *
+                         * On ne compte que ceux qui portent du texte : la
+                         * lecture riche rend aussi les paragraphes faits d'une
+                         * seule image, que la lecture nue ne voit pas.
                          */
-                        if (count($enrichis) !== count($paragraphes)) {
+                        $textuels = count(array_filter(
+                            $enrichis,
+                            static fn (array $e): bool => ($e['html'] ?? '') !== ''
+                        ));
+                        if ($textuels !== count($paragraphes)) {
                             $enrichis = [];
                         }
                         // Le sommaire du document n'est pas montré tel quel :
@@ -1135,6 +1142,56 @@ final class CoursController
             $this->introuvable();
         }
         Fichiers::envoyer($fichier, isset($_GET['telecharger']));
+    }
+
+    /**
+     * Une image du document, relue de l'archive et servie telle quelle.
+     *
+     * L'adresse ne porte qu'un rang dans la liste des images du document :
+     * jamais un chemin. Un rang qui ne désigne rien — ou qui désigne un format
+     * que le navigateur n'affiche pas — ne donne rien du tout.
+     *
+     * Le fichier n'est relu qu'à la première demande de chaque image : ensuite
+     * le navigateur garde la sienne, et une page qui en compte trente ne
+     * rouvre pas trente fois l'archive à chaque défilement.
+     */
+    public function imageFichier(int $id): void
+    {
+        Auth::exiger();
+        $fichier = Database::one(
+            'SELECT * FROM fichiers WHERE id = ? AND user_id = ?',
+            [$id, Auth::id()]
+        );
+        if ($fichier === null || !ImagesDocument::possible((string) $fichier['nom_origine'])) {
+            $this->introuvable();
+        }
+
+        $chemin = $this->cheminDe($fichier);
+        $rang = entier_ou_null($_GET['n'] ?? null);
+        $image = $rang === null ? null
+            : ImagesDocument::octets($chemin, (string) $fichier['nom_origine'], $rang);
+        if ($image === null) {
+            $this->introuvable();
+        }
+
+        // Le document ne change qu'en étant réenregistré : sa date de
+        // modification suffit à dire si l'image d'hier vaut encore.
+        $marque = '"' . md5($id . ':' . $rang . ':' . (string) @filemtime($chemin)) . '"';
+        if (trim((string) ($_SERVER['HTTP_IF_NONE_MATCH'] ?? '')) === $marque) {
+            http_response_code(304);
+            exit;
+        }
+
+        header('Content-Type: ' . $image['type']);
+        header('Content-Length: ' . (string) strlen($image['octets']));
+        header('Content-Disposition: inline');
+        // Le type annoncé fait foi : pas de reniflage, pas de script déguisé
+        // en image.
+        header('X-Content-Type-Options: nosniff');
+        header('ETag: ' . $marque);
+        header('Cache-Control: private, max-age=86400');
+        echo $image['octets'];
+        exit;
     }
 
     public function modifierFichier(int $id): void

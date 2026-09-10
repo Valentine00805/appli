@@ -42,11 +42,11 @@
     <?php elseif ($genre === 'brut'): ?>
       <strong>Contenu du fichier</strong>, tel qu'il est enregistré.
     <?php elseif ($enrichis !== []): ?>
-      <strong>Aperçu du texte.</strong> Le gras, l'italique, le souligné, la taille,
-      la couleur, le surlignage, l'alignement, les titres et les listes sont rendus ; les images,
-      les tableaux et la pagination ne le sont pas — un navigateur ne sait pas afficher un
-      <?= e($format) ?>. Téléchargez le fichier pour l'ouvrir tel quel dans Word
-      ou LibreOffice.
+      <strong>Aperçu du document.</strong> Le gras, l'italique, le souligné, la taille,
+      la couleur, le surlignage, l'alignement, les titres, les listes et les images
+      sont rendus ; les tableaux, les en-têtes et la pagination ne le sont pas —
+      un navigateur ne sait pas afficher un <?= e($format) ?>. Téléchargez le fichier
+      pour l'ouvrir tel quel dans Word ou LibreOffice.
     <?php else: ?>
       <strong>Aperçu du texte.</strong> La mise en forme, les images et la pagination
       ne sont pas reproduites — un navigateur ne sait pas afficher un <?= e($format) ?>.
@@ -129,11 +129,11 @@
       <?= $n ?> ligne<?= $n > 1 ? 's' : '' ?> affichée<?= $n > 1 ? 's' : '' ?><?= $suite ?>
     </p>
   <?php endif; ?>
-<?php elseif ($paragraphes === []): ?>
+<?php elseif ($paragraphes === [] && $enrichis === []): ?>
   <div class="vide">
     <span class="vide__icone">📄</span>
-    <p>Ce document ne contient aucun texte — il est peut-être vide, ou composé
-       uniquement d'images.</p>
+    <p>Ce document ne contient rien que l'aperçu sache montrer — il est
+       peut-être vide.</p>
     <a class="bouton bouton--secondaire" href="<?= url('fichiers/' . $fichier['id'], ['telecharger' => 1]) ?>">
       Télécharger le fichier
     </a>
@@ -141,17 +141,75 @@
 <?php else: ?>
   <?php
   /*
+   * Une seule liste à parcourir, et non deux à faire correspondre.
+   *
+   * La lecture riche fait foi quand elle a abouti : elle porte le texte mis en
+   * forme et les images. Sinon on retombe sur le texte nu, présenté de la même
+   * façon — la page n'a plus à savoir laquelle des deux elle affiche.
+   */
+  $blocs = $enrichis !== [] ? $enrichis : array_map(
+      static fn (string $texte): array => [
+          'html' => e($texte), 'alignement' => null, 'liste' => '', 'numero' => null,
+          'niveau' => 0, 'titre' => 0, 'sommaire' => false, 'images' => [],
+      ],
+      $paragraphes
+  );
+
+  /** Le texte d'un bloc, sans ses balises : pour le sommaire. */
+  $nu = static fn (array $bloc): string => trim((string) preg_replace('/\s+/u', ' ',
+      html_entity_decode(strip_tags((string) $bloc['html']), ENT_QUOTES, 'UTF-8')));
+
+  /*
+   * Les images du document, rendues à leur place.
+   *
+   * Elles ne sont pas recopiées : l'adresse va les relire dans le fichier
+   * déposé. « loading="lazy" » évite de les demander toutes d'un coup — un
+   * cours de trente captures ne doit pas peser trente fois au premier écran.
+   */
+  $figures = static function (array $images) use ($fichier): string {
+      $html = '';
+      foreach ($images as $image) {
+          if ($image['type'] === null) {
+              /*
+               * Une image qu'on ne peut pas montrer : soit un vieux format de
+               * Word — EMF, WMF — qu'aucun navigateur ne dessine, soit une
+               * image seulement liée, restée sur l'ordinateur de qui a écrit
+               * le document. Le dire vaut mieux qu'un trou muet.
+               */
+              $html .= '<p class="apercu-image__absente">'
+                  . ($image['source'] === ''
+                      ? 'Une image liée : le document ne la contient pas, elle est restée'
+                        . ' sur l’ordinateur où il a été écrit.'
+                      : 'Une image dans un format que le navigateur n’affiche pas ('
+                        . e(strtoupper((string) pathinfo($image['source'], PATHINFO_EXTENSION)))
+                        . '). Elle reste dans le fichier, à ouvrir dans Word.')
+                  . '</p>';
+              continue;
+          }
+          $taille = $image['largeur'] === null ? ''
+              : ' width="' . (int) $image['largeur'] . '" height="' . (int) $image['hauteur'] . '"';
+          $html .= '<figure class="apercu-image"><img src="'
+              . e(url('fichiers/' . $fichier['id'] . '/image', ['n' => (int) $image['rang']]))
+              . '" alt="' . e($image['alt'] !== '' ? $image['alt'] : 'Image du document') . '"'
+              . $taille . ' loading="lazy" decoding="async"></figure>';
+      }
+
+      return $html;
+  };
+  ?>
+  <?php
+  /*
    * Le sommaire est refait ici à partir des titres lus, et non repris du
    * document : il est ainsi toujours d'accord avec ce qu'on voit dessous,
    * même si le fichier n'a pas encore été rouvert dans Word.
    */
   $plan = [];
-  foreach ($paragraphes as $rang => $paragraphe) {
-      if ($enrichis[$rang]['sommaire'] ?? false) {
+  foreach ($blocs as $rang => $bloc) {
+      if ($bloc['sommaire'] ?? false) {
           continue;
       }
-      $niveau = (int) ($enrichis[$rang]['titre'] ?? 0);
-      $intitule = trim((string) preg_replace('/\s+/u', ' ', (string) $paragraphe));
+      $niveau = (int) ($bloc['titre'] ?? 0);
+      $intitule = $nu($bloc);
       // Le sommaire s'arrête au niveau choisi : ce qui est plus profond
       // reste dans le texte, mais n'y figure pas.
       if ($niveau > 0 && $niveau <= $sommaire && $intitule !== '') {
@@ -202,8 +260,7 @@
         echo '</' . array_pop($pile) . '>';
     };
 
-    foreach ($paragraphes as $rang => $paragraphe):
-        $riche = $enrichis[$rang] ?? null;
+    foreach ($blocs as $rang => $riche):
         // Le sommaire du document est refait plus haut, à partir des titres :
         // le montrer ici le donnerait deux fois, dont une périmée.
         if ($riche['sommaire'] ?? false) {
@@ -212,7 +269,8 @@
         $aligne = ['gauche' => 'left', 'centre' => 'center',
                    'droite' => 'right', 'justifie' => 'justify'][$riche['alignement'] ?? ''] ?? null;
         $style = $aligne === null ? '' : ' style="text-align:' . $aligne . '"';
-        $corps = $riche === null ? e($paragraphe) : $riche['html'];
+        $corps = (string) $riche['html'];
+        $dessins = $figures($riche['images'] ?? []);
         $liste = (string) ($riche['liste'] ?? '');
         $titre = (int) ($riche['titre'] ?? 0);
         // Un titre annonce une section : il referme les listes ouvertes et ne
@@ -252,7 +310,12 @@
             $classe = $titre > 0
                 ? ' id="titre-' . (int) $rang . '" class="apercu-titre apercu-titre--' . $titre . '"'
                 : '';
-            echo '<' . $balise . $classe . $style . '>' . $corps . '</' . $balise . '>';
+            // Un paragraphe qui n'est qu'une image : la figure suffit, un
+            // paragraphe vide au-dessus ne ferait qu'un blanc de plus.
+            if ($corps !== '') {
+                echo '<' . $balise . $classe . $style . '>' . $corps . '</' . $balise . '>';
+            }
+            echo $dessins;
             continue;
         }
 
@@ -264,7 +327,8 @@
         if ($porte[$dernier]) {
             echo '</li>';
         }
-        echo '<li' . ($numero > 0 ? ' value="' . $numero . '"' : '') . $style . '>' . $corps;
+        echo '<li' . ($numero > 0 ? ' value="' . $numero . '"' : '') . $style . '>'
+            . $corps . $dessins;
         $porte[$dernier] = true;
     endforeach;
 
@@ -274,6 +338,9 @@
     ?>
   </article>
   <p class="champ__aide" style="margin-top:.6rem">
-    <?= count($paragraphes) ?> paragraphe<?= count($paragraphes) > 1 ? 's' : '' ?> lu<?= count($paragraphes) > 1 ? 's' : '' ?>.
+    <?php $nbImages = array_sum(array_map(
+        static fn (array $b): int => count($b['images'] ?? []), $blocs)); ?>
+    <?= count($paragraphes) ?> paragraphe<?= count($paragraphes) > 1 ? 's' : '' ?> lu<?= count($paragraphes) > 1 ? 's' : '' ?><?php
+    ?><?= $nbImages > 0 ? ', ' . $nbImages . ' image' . ($nbImages > 1 ? 's' : '') : '' ?>.
   </p>
 <?php endif; ?>
