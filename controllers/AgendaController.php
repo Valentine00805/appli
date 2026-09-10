@@ -32,7 +32,7 @@ final class AgendaController
         $f = $this->fournisseur($cle);
         $lien = LiaisonAgenda::pour($f);
 
-        Vue::afficher('agenda/index', [
+        $donnees = [
             'f'           => $f,
             'configuree'  => $lien->configure(),
             'compte'      => $lien->compte($userId),
@@ -48,7 +48,15 @@ final class AgendaController
             'destination' => EnvoiAgenda::pour($f)->destination($userId),
             'souci'       => SynchroAgenda::pour($f)->dernierSouci($userId),
             'autres'      => Agenda::tous(),
-        ], $f->nom());
+        ];
+
+        if (Vue::enFenetre()) {
+            Vue::fragment('agenda/index', $donnees);
+
+            return;
+        }
+
+        Vue::afficher('agenda/index', $donnees, $f->nom());
     }
 
     /** Part demander l'autorisation au fournisseur. */
@@ -315,10 +323,18 @@ final class AgendaController
             ];
         }
 
-        Vue::afficher('agenda/liste', [
+        $donnees = [
             'etats' => $etats,
-            'vue'   => CalendrierController::vuePreferee(Auth::id()),
-        ], 'Mes agendas');
+            'vue'   => CalendrierController::vuePreferee($userId),
+        ];
+
+        if (Vue::enFenetre()) {
+            Vue::fragment('agenda/liste', $donnees);
+
+            return;
+        }
+
+        Vue::afficher('agenda/liste', $donnees, 'Mes agendas');
     }
 
     /**

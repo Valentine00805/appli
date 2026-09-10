@@ -5,15 +5,19 @@
  * @var array $etats  un par fournisseur : [f, configure, relie, compte,
  *                    evenements, envoyes, souci]
  * @var string $vue  la vue du calendrier qu'on retrouve en arrivant
+ * @var bool $dansUneFenetre  rendu seul, pour être posé dans une fenêtre
  */
+$dansUneFenetre = $dansUneFenetre ?? false;
 $relies = array_filter($etats, static fn (array $e): bool => $e['relie']);
 ?>
 
-<div class="entete-page">
+<div class="entete-page"<?= $dansUneFenetre ? ' data-large' : '' ?>>
   <div>
-    <p class="discret" style="margin-bottom:.35rem">
-      <a href="<?= url('calendrier') ?>">← Calendrier</a>
-    </p>
+    <?php if (!$dansUneFenetre): ?>
+      <p class="discret" style="margin-bottom:.35rem">
+        <a href="<?= url('calendrier') ?>">← Calendrier</a>
+      </p>
+    <?php endif; ?>
     <h1>Mes agendas</h1>
     <p>Relier un agenda en ligne au calendrier de l'application — l'un, l'autre, ou les deux.</p>
   </div>
@@ -111,7 +115,8 @@ $relies = array_filter($etats, static fn (array $e): bool => $e['relie']);
       <?php endif; ?>
 
       <a class="bouton <?= $etat['relie'] ? 'bouton--secondaire' : '' ?>"
-         href="<?= url('agenda/' . $f->cle()) ?>">
+         href="<?= url('agenda/' . $f->cle()) ?>"
+         <?= $dansUneFenetre ? 'data-fenetre' : '' ?>>
         <?= $etat['relie'] ? 'Réglages' : ($etat['configure'] ? 'Relier mon compte' : 'En savoir plus') ?>
       </a>
     </section>

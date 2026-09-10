@@ -253,8 +253,8 @@ final class CalendrierController
                     [(int) $evenement['copie_de'], $userId]),
         ];
 
-        if (($_GET['fenetre'] ?? '') === '1') {
-            echo Vue::rendre('calendrier/voir', $donnees + ['dansUneFenetre' => true]);
+        if (Vue::enFenetre()) {
+            Vue::fragment('calendrier/voir', $donnees);
 
             return;
         }
@@ -303,8 +303,8 @@ final class CalendrierController
 
         // Comme la fiche : demandé en fragment, le formulaire part seul et
         // c'est le script qui l'enveloppe. Sans lui, la page entière répond.
-        if (($_GET['fenetre'] ?? '') === '1') {
-            echo Vue::rendre('calendrier/formulaire', $donnees + ['dansUneFenetre' => true]);
+        if (Vue::enFenetre()) {
+            Vue::fragment('calendrier/formulaire', $donnees);
 
             return;
         }

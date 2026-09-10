@@ -17,10 +17,10 @@
  */
 ?>
 
-<div class="entete-page">
+<div class="entete-page"<?= ($dansUneFenetre ?? false) ? ' data-large' : '' ?>>
   <div>
     <p class="discret" style="margin-bottom:.35rem">
-      <a href="<?= url('agenda') ?>">← Mes agendas</a>
+      <a href="<?= url('agenda') ?>"<?= ($dansUneFenetre ?? false) ? ' data-fenetre' : '' ?>>← Mes agendas</a>
       <?php
       /*
        * Passer d'un agenda à l'autre sans repasser par la liste : quand on
