@@ -2,7 +2,7 @@
 /**
  * @var DateTimeImmutable $aujourdhui
  * @var array $planning  la journée d'aujourd'hui, disposée par PlanningJour
- * @var array $examens, $taches, $derniersCours, $stats
+ * @var array $examens, $taches, $stats
  */
 ?>
 
@@ -58,24 +58,7 @@
         </div>
       <?php endif; ?>
     </section>
-  </div>
 
-  <div class="pile">
-    <?php
-    /*
-     * La journée en grille, en plus petit.
-     *
-     * Le même partiel que le calendrier : on ouvre l'accueil pour savoir ce
-     * qu'on fait aujourd'hui, et une grille le dit plus vite qu'une liste —
-     * les heures libres s'y voient sans qu'on ait à les calculer.
-     */
-    echo Vue::rendre('calendrier/_planning', [
-        'planning'      => $planning,
-        'cle'           => $aujourdhui->format('Y-m-d'),
-        'estAujourdhui' => true,
-        'compact'       => true,
-    ]);
-    ?>
     <section class="carte">
       <h2>Examens &amp; devoirs</h2>
       <?php if ($examens === []): ?>
@@ -112,27 +95,23 @@
         </div>
       <?php endif; ?>
     </section>
+  </div>
 
-    <section class="carte">
-      <h2>Cours récents</h2>
-      <?php if ($derniersCours === []): ?>
-        <p class="discret">Vous n'avez pas encore de cours.
-          <a href="<?= url('cours/nouveau') ?>">Créer le premier</a>.</p>
-      <?php else: ?>
-        <div class="pile">
-          <?php foreach ($derniersCours as $c): ?>
-            <a class="evt-ligne" href="<?= url('cours/' . $c['id']) ?>">
-              <span class="evt-ligne__barre" style="background:<?= e($c['matiere_couleur'] ?? '#94a3b8') ?>"></span>
-              <span>
-                <span class="evt-ligne__titre"><?= e($c['titre']) ?></span><br>
-                <span class="evt-ligne__meta">
-                  <?= e($c['matiere_nom'] ?? 'Sans matière') ?> · modifié le <?= e(date_fr($c['updated_at'], false)) ?>
-                </span>
-              </span>
-            </a>
-          <?php endforeach; ?>
-        </div>
-      <?php endif; ?>
-    </section>
+  <div class="pile">
+    <?php
+    /*
+     * La journée en grille, en plus petit.
+     *
+     * Le même partiel que le calendrier : on ouvre l'accueil pour savoir ce
+     * qu'on fait aujourd'hui, et une grille le dit plus vite qu'une liste —
+     * les heures libres s'y voient sans qu'on ait à les calculer.
+     */
+    echo Vue::rendre('calendrier/_planning', [
+        'planning'      => $planning,
+        'cle'           => $aujourdhui->format('Y-m-d'),
+        'estAujourdhui' => true,
+        'compact'       => true,
+    ]);
+    ?>
   </div>
 </div>

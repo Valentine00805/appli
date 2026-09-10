@@ -47,13 +47,6 @@ final class TableauBordController
                 [$userId]
             ),
             'taches' => TachesController::aVenir($userId),
-            'derniersCours' => Database::all(
-                'SELECT c.id, c.titre, c.updated_at, m.nom AS matiere_nom, m.couleur AS matiere_couleur
-                 FROM cours c LEFT JOIN matieres m ON m.id = c.matiere_id
-                 WHERE c.user_id = ?
-                 ORDER BY c.updated_at DESC LIMIT 6',
-                [$userId]
-            ),
             /*
              * Il n'en reste qu'un : le nombre de tâches en attente, que la
              * carte des tâches cite quand aucune n'a d'échéance proche. Les
