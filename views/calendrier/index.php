@@ -57,6 +57,7 @@ $puce = static function (array $evt) use ($destination): string {
     $classes = 'evt' . ($evt['termine'] ? ' evt--termine' : '') . (empty($evt['est_tache']) ? '' : ' evt--tache');
     return '<a class="' . $classes . '"'
         . ' href="' . $destination($evt) . '"'
+        . (empty($evt['est_tache']) ? ' data-fiche' : '')
         . ' style="background:' . e($fond) . ';border-left-color:' . e($couleur) . ';color:inherit"'
         . ' title="' . e(libelle_type($evt) . ' · ' . $evt['titre']) . '">'
         . $heure . e(icone_evenement($evt)) . ' ' . e($evt['titre'])
@@ -279,6 +280,7 @@ $puce = static function (array $evt) use ($destination): string {
           <a class="jour-planning__evt<?= $evt['termine'] ? ' jour-planning__evt--termine' : ''
              ?><?= $bloc['court'] ? ' jour-planning__evt--court' : '' ?>"
              href="<?= $destination($evt) ?>"
+             <?= empty($evt['est_tache']) ? 'data-fiche' : '' ?>
              style="--minute:<?= (float) $bloc['haut'] ?>;--duree:<?= (float) $bloc['hauteur'] ?>;
                     --gauche:<?= round($bloc['colonne'] * $largeur, 3) ?>%;
                     --largeur:<?= round($largeur, 3) ?>%;
@@ -354,7 +356,8 @@ $puce = static function (array $evt) use ($destination): string {
                 <ul class="cal-reste__liste">
                   <?php foreach ($duJour as $evt): ?>
                     <li>
-                      <a class="cal-reste__evt" href="<?= $destination($evt) ?>">
+                      <a class="cal-reste__evt" href="<?= $destination($evt) ?>"
+                         <?= empty($evt['est_tache']) ? 'data-fiche' : '' ?>>
                         <span class="cal-reste__barre"
                               style="background:<?= e(couleur_evenement($evt)) ?>"></span>
                         <span class="cal-reste__heure">
@@ -469,6 +472,7 @@ $puce = static function (array $evt) use ($destination): string {
                 <a class="jour-planning__evt<?= $evt['termine'] ? ' jour-planning__evt--termine' : ''
                    ?><?= $bloc['court'] ? ' jour-planning__evt--court' : '' ?>"
                    href="<?= $destination($evt) ?>"
+                   <?= empty($evt['est_tache']) ? 'data-fiche' : '' ?>
                    style="--minute:<?= (float) $bloc['haut'] ?>;--duree:<?= (float) $bloc['hauteur'] ?>;
                           --gauche:<?= round($bloc['colonne'] * $largeur, 3) ?>%;
                           --largeur:<?= round($largeur, 3) ?>%;

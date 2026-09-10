@@ -2530,3 +2530,58 @@ summary.cal-volet__groupe:focus-visible {
 @media (max-width: 560px) {
   .fiche__ligne { grid-template-columns: 1fr; gap: .1rem; }
 }
+
+/* --- La fenêtre d'un évènement -----------------------------------------
+   Une « dialog » : le navigateur fournit le fond grisé, la touche
+   d'échappement et le clavier qui ne s'échappe pas derrière. On ne dessine
+   que la boîte.
+
+   Elle ne s'étire pas à l'écran : une fiche de six lignes dans une fenêtre
+   plein écran se lit plus mal qu'une page. */
+
+.fenetre {
+  width: min(34rem, calc(100vw - 2rem));
+  max-height: min(42rem, calc(100vh - 3rem));
+  padding: 0;
+  border: 1px solid var(--bordure);
+  border-radius: 14px;
+  background: var(--fond);
+  color: var(--texte);
+  box-shadow: 0 24px 60px rgb(15 23 42 / 28%);
+  overflow: visible;
+}
+.fenetre::backdrop { background: rgb(15 23 42 / 45%); }
+
+.fenetre__corps {
+  max-height: min(42rem, calc(100vh - 3rem));
+  overflow-y: auto;
+  padding: 1.1rem 1.25rem 1.25rem;
+}
+/* L'entête de la fiche se resserre : dans une fenêtre, le titre et le bouton
+   « Modifier » sont côte à côte plutôt qu'aux deux bouts d'une page. */
+.fenetre__corps .entete-page { margin-bottom: .9rem; gap: .75rem; }
+.fenetre__corps .entete-page h1 { font-size: 1.25rem; }
+.fenetre__corps .pile { gap: .75rem; }
+
+.fenetre__fermer {
+  position: absolute;
+  top: -.6rem;
+  right: -.6rem;
+  width: 1.9rem;
+  height: 1.9rem;
+  border-radius: 50%;
+  border: 1px solid var(--bordure);
+  background: var(--fond-carte);
+  color: var(--texte-doux);
+  cursor: pointer;
+  font-size: .85rem;
+  line-height: 1;
+  box-shadow: 0 2px 6px rgb(15 23 42 / 15%);
+}
+.fenetre__fermer:hover { color: var(--texte); }
+
+@media (max-width: 560px) {
+  .fenetre { width: calc(100vw - 1rem); border-radius: 12px; }
+  .fenetre__fermer { top: .4rem; right: .4rem; box-shadow: none; }
+  .fenetre__corps { padding-top: 2.2rem; }
+}

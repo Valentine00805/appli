@@ -106,6 +106,87 @@
   // comme cases à cocher, et sur chaque formulaire qui le demande, non plus
   // seulement le premier : le calendrier en a deux depuis le volet des agendas.
   /*
+   * Un évènement s'ouvre dans une fenêtre, sans quitter le calendrier.
+   *
+   * Le lien reste un lien : sans script, il mène à la fiche pleine page, et
+   * tout y fonctionne. Le script se contente de l'intercepter, d'aller
+   * chercher la même fiche en fragment, et de la poser dans une « dialog ».
+   *
+   * « dialog » plutôt qu'un bloc à nous : le navigateur s'occupe seul de la
+   * touche d'échappement, du fond grisé et du clavier qui ne doit pas
+   * s'échapper derrière la fenêtre. Trois choses qu'on écrit mal à la main.
+   */
+  var liensFiche = document.querySelectorAll('[data-fiche]');
+  if (liensFiche.length && typeof HTMLDialogElement === 'function') {
+    var fenetre = document.createElement('dialog');
+    fenetre.className = 'fenetre';
+    fenetre.innerHTML =
+      '<button class="fenetre__fermer" type="button" aria-label="Fermer">✕</button>' +
+      '<div class="fenetre__corps"></div>';
+    document.body.appendChild(fenetre);
+
+    var corps = fenetre.querySelector('.fenetre__corps');
+
+    var fermer = function () { fenetre.close(); };
+    fenetre.querySelector('.fenetre__fermer').addEventListener('click', fermer);
+
+    /*
+     * La touche d'échappement, écrite noir sur blanc.
+     *
+     * « dialog » est censée s'en charger seule, et le fait dans la plupart
+     * des cas. Mesuré ici, l'évènement arrive bien mais la fenêtre ne se
+     * ferme pas : trois lignes valent mieux qu'une fenêtre qu'on ne sait
+     * plus quitter au clavier.
+     */
+    fenetre.addEventListener('keydown', function (evenement) {
+      if (evenement.key === 'Escape') { evenement.preventDefault(); fermer(); }
+    });
+
+    // Le fond grisé fait partie de la « dialog » : un clic dessus arrive sur
+    // elle et non sur son contenu. C'est ce qui les distingue.
+    fenetre.addEventListener('click', function (evenement) {
+      if (evenement.target === fenetre) { fermer(); }
+    });
+
+    var ouvrir = function (adresse) {
+      corps.innerHTML = '<p class="discret" style="padding:1rem">Un instant…</p>';
+      fenetre.showModal();
+
+      fetch(adresse + (adresse.indexOf('?') === -1 ? '?' : '&') + 'fenetre=1', {
+        credentials: 'same-origin'
+      }).then(function (reponse) {
+        if (!reponse.ok) { throw new Error('refus'); }
+        return reponse.text();
+      }).then(function (html) {
+        corps.innerHTML = html;
+        /*
+         * Remplacer le contenu emporte l'élément qui avait le focus, et le
+         * clavier retombe sur la page derrière : la touche d'échappement ne
+         * ferme plus rien. On le ramène dans la fenêtre.
+         */
+        fenetre.querySelector('.fenetre__fermer').focus();
+      }).catch(function () {
+        // Plutôt que d'expliquer un échec qu'on ne sait pas nommer, on fait
+        // ce que le lien aurait fait sans nous.
+        window.location.href = adresse;
+      });
+    };
+
+    liensFiche.forEach(function (lien) {
+      lien.addEventListener('click', function (evenement) {
+        // Un clic du milieu, ou avec une touche tenue, ouvre un onglet : ce
+        // n'est pas à nous de le contrarier.
+        if (evenement.metaKey || evenement.ctrlKey || evenement.shiftKey
+            || evenement.altKey || evenement.button !== 0) {
+          return;
+        }
+        evenement.preventDefault();
+        ouvrir(lien.getAttribute('href'));
+      });
+    });
+  }
+
+  /*
    * Le volet d'une journée chargée se ferme comme on s'y attend.
    *
    * « details » l'ouvre et le referme tout seul, et cela suffit à s'en

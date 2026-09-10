@@ -12,7 +12,9 @@
  * @var array $vises    les agendas où il part, sous leur nom
  * @var ?array $copie   la copie à soi qu'on en a faite
  * @var ?array $origine l'évènement dont il est la copie
+ * @var bool $dansUneFenetre  rendue seule, pour être posée dans une fenêtre
  */
+$dansUneFenetre = $dansUneFenetre ?? false;
 $couleur = couleur_evenement($evenement);
 $journee = (int) $evenement['journee_entiere'] === 1;
 $debut = new DateTimeImmutable((string) $evenement['debut']);
@@ -33,9 +35,11 @@ $ligne = static function (string $etiquette, string $valeur): string {
 
 <div class="entete-page">
   <div>
-    <p class="discret" style="margin-bottom:.35rem">
-      <a href="<?= url('calendrier', ['date' => $debut->format('Y-m-d')]) ?>">← Calendrier</a>
-    </p>
+    <?php if (!$dansUneFenetre): ?>
+      <p class="discret" style="margin-bottom:.35rem">
+        <a href="<?= url('calendrier', ['date' => $debut->format('Y-m-d')]) ?>">← Calendrier</a>
+      </p>
+    <?php endif; ?>
     <h1 style="display:flex;align-items:center;gap:.6rem">
       <span class="fiche__teinte" style="background:<?= e($couleur) ?>"></span>
       <?= e(icone_evenement($evenement)) ?> <?= e((string) $evenement['titre']) ?>
@@ -49,7 +53,7 @@ $ligne = static function (string $etiquette, string $valeur): string {
   </div>
 </div>
 
-<div class="pile" style="max-width:44rem">
+<div class="pile"<?= $dansUneFenetre ? '' : ' style="max-width:44rem"' ?>>
   <section class="carte fiche">
     <?php
     /*

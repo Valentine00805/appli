@@ -181,7 +181,13 @@ final class CalendrierController
             }
         }
 
-        Vue::afficher('calendrier/voir', [
+        /*
+         * Demandée en fragment, la fiche part seule : c'est le script de la
+         * page qui l'enveloppe dans une fenêtre. Sans lui, l'adresse répond
+         * une page entière et l'évènement s'ouvre normalement — la fenêtre
+         * est un confort, pas un passage obligé.
+         */
+        $donnees = [
             'evenement' => $evenement,
             'serie'     => $evenement['serie_id'] === null ? null
                 : Database::one('SELECT * FROM series_evenements WHERE id = ? AND user_id = ?',
@@ -192,7 +198,15 @@ final class CalendrierController
             'origine'   => $evenement['copie_de'] === null ? null
                 : Database::one('SELECT id, titre FROM evenements WHERE id = ? AND user_id = ?',
                     [(int) $evenement['copie_de'], $userId]),
-        ], (string) $evenement['titre']);
+        ];
+
+        if (($_GET['fenetre'] ?? '') === '1') {
+            echo Vue::rendre('calendrier/voir', $donnees + ['dansUneFenetre' => true]);
+
+            return;
+        }
+
+        Vue::afficher('calendrier/voir', $donnees, (string) $evenement['titre']);
     }
 
     public function formulaire(?int $id = null): void
