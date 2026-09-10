@@ -37,12 +37,15 @@ if ($vue === 'jour') {
 }
 
 /**
- * Où mène un élément du calendrier : un vrai évènement s'ouvre en
- * modification, une échéance de tâche ouvre sa liste.
+ * Où mène un élément du calendrier : un vrai évènement s'ouvre en lecture,
+ * une échéance de tâche ouvre sa liste.
+ *
+ * En lecture, et non en modification : on clique sur un rendez-vous pour
+ * voir ce qu'il dit, pas pour le changer. Le changer reste à un clic de là.
  */
 $destination = static function (array $evt): string {
     return empty($evt['est_tache'])
-        ? url('evenements/' . $evt['id'] . '/modifier')
+        ? url('evenements/' . $evt['id'])
         : url('taches', ['liste' => $evt['liste_id']]);
 };
 

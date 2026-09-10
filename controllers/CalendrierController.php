@@ -127,6 +127,74 @@ final class CalendrierController
         repartir_vers('calendrier');
     }
 
+    /**
+     * Un évènement, en lecture.
+     *
+     * Cliquer sur un rendez-vous dans le calendrier ouvrait le formulaire de
+     * modification : on ne pouvait pas le consulter sans se retrouver, sans
+     * l'avoir demandé, en train de le changer. Un champ effleuré, un
+     * enregistrement machinal, et l'horaire n'est plus le bon.
+     *
+     * Cette page ne fait que montrer. Modifier reste à un clic, mais c'est un
+     * clic qu'on donne.
+     */
+    public function voir(int $id): void
+    {
+        Auth::exiger();
+        $userId = Auth::id();
+
+        $evenement = Database::one(
+            'SELECT e.*, m.nom AS matiere_nom, m.couleur AS matiere_couleur,
+                    c.titre AS cours_titre,
+                    t.nom AS type_nom, t.icone AS type_icone, t.couleur AS type_couleur,
+                    oc.nom AS agenda_nom, oc.couleur AS agenda_couleur,
+                    oc.proprietaire AS agenda_proprietaire, oc.partage AS agenda_partage,
+                    ol.fournisseur AS agenda_fournisseur
+               FROM evenements e
+               LEFT JOIN matieres m        ON m.id = e.matiere_id
+               LEFT JOIN cours c           ON c.id = e.cours_id
+               LEFT JOIN types_evenement t ON t.id = e.type_id
+               LEFT JOIN agenda_liens ol   ON ol.evenement_id = e.id AND ol.user_id = e.user_id
+               LEFT JOIN agenda_calendriers oc
+                      ON oc.user_id = e.user_id AND oc.empreinte = ol.calendrier
+              WHERE e.id = ? AND e.user_id = ?',
+            [$id, $userId]
+        );
+        if ($evenement === null) {
+            $this->introuvable();
+        }
+
+        /*
+         * Où il part, sous les noms qu'on lui connaît. Un agenda délié depuis
+         * n'apparaît pas : la liste des destinations sert de dictionnaire.
+         */
+        $noms = [];
+        foreach (Agenda::ouEnvoyer($userId) as $cal) {
+            $noms[$cal['cle']] = $cal['nom'] . ' (' . $cal['agenda'] . ')';
+        }
+        $vises = [];
+        foreach (Agenda::ciblesDe($id) as $cible) {
+            if ($cible === Agenda::DEFAUT) {
+                $vises[] = 'Mes évènements';
+            } elseif (isset($noms[$cible])) {
+                $vises[] = $noms[$cible];
+            }
+        }
+
+        Vue::afficher('calendrier/voir', [
+            'evenement' => $evenement,
+            'serie'     => $evenement['serie_id'] === null ? null
+                : Database::one('SELECT * FROM series_evenements WHERE id = ? AND user_id = ?',
+                    [(int) $evenement['serie_id'], $userId]),
+            'vises'     => $vises,
+            'copie'     => Database::one('SELECT id, titre FROM evenements
+                                           WHERE copie_de = ? AND user_id = ?', [$id, $userId]),
+            'origine'   => $evenement['copie_de'] === null ? null
+                : Database::one('SELECT id, titre FROM evenements WHERE id = ? AND user_id = ?',
+                    [(int) $evenement['copie_de'], $userId]),
+        ], (string) $evenement['titre']);
+    }
+
     public function formulaire(?int $id = null): void
     {
         Auth::exiger();

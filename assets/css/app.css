@@ -2506,3 +2506,27 @@ summary.cal-volet__groupe:focus-visible {
 .cal-reste__barre { align-self: stretch; border-radius: 2px; min-height: 1.1rem; }
 .cal-reste__heure { font-size: .7rem; color: var(--texte-doux); }
 .cal-reste__titre { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* --- La fiche d'un évènement -------------------------------------------
+   Une étiquette à gauche, la valeur à droite, et rien pour ce qui n'a rien
+   à dire : une fiche pleine de tirets ne se lit pas plus vite qu'un
+   formulaire. */
+
+.fiche { display: flex; flex-direction: column; gap: .55rem; }
+.fiche__ligne { display: grid; grid-template-columns: 7rem 1fr; gap: .75rem; align-items: baseline; }
+.fiche__etiquette {
+  font-size: .72rem; font-weight: 700; letter-spacing: .04em;
+  text-transform: uppercase; color: var(--texte-doux);
+}
+.fiche__valeur { min-width: 0; overflow-wrap: anywhere; }
+.fiche__notes { border-top: 1px solid var(--bordure); padding-top: .55rem; }
+.fiche__notes p { margin: .3rem 0 0; white-space: pre-line; }
+/* Le trait de couleur de l'évènement, à côté de son titre. */
+.fiche__teinte {
+  display: inline-block; width: 6px; height: 1.5rem;
+  border-radius: 3px; flex: 0 0 auto;
+}
+.fiche__teinte--puce { width: 10px; height: 10px; border-radius: 50%; }
+.fiche__actions { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+@media (max-width: 560px) {
+  .fiche__ligne { grid-template-columns: 1fr; gap: .1rem; }
+}
