@@ -408,6 +408,35 @@
     });
   }
 
+  /*
+   * Le plafond d'une sous-tâche suit la tâche principale qu'on lui choisit.
+   *
+   * Le champ arrive déjà borné par le serveur, sur la tâche principale du
+   * moment. Mais le même formulaire permet d'en changer : sans cela, le
+   * plafond resterait celui d'avant et la date serait refusée à l'envoi,
+   * alors qu'on pouvait le dire tout de suite.
+   */
+  document.querySelectorAll('[data-plafond-de]').forEach(function (champDate) {
+    var choix = document.getElementById(champDate.getAttribute('data-plafond-de'));
+    if (!choix) { return; }
+
+    var suivreLePlafond = function () {
+      var option = choix.options[choix.selectedIndex];
+      var plafond = option ? (option.getAttribute('data-echeance') || '') : '';
+
+      if (plafond === '') {
+        champDate.removeAttribute('max');
+        champDate.removeAttribute('title');
+        return;
+      }
+      champDate.setAttribute('max', plafond);
+      // Une date déjà saisie au-delà : on la signale plutôt que de la couper.
+      champDate.title = 'Au plus tard le ' + plafond.split('-').reverse().join('/');
+    };
+
+    choix.addEventListener('change', suivreLePlafond);
+  });
+
   document.querySelectorAll('[data-auto-envoi]').forEach(function (formulaire) {
     formulaire.querySelectorAll('select, input[type="checkbox"], input[type="color"]')
       .forEach(function (champ) {

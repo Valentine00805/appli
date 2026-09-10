@@ -22,6 +22,22 @@ foreach ($listes as $l) {
 $aFaire    = array_filter($taches, static fn (array $t): bool => (int) $t['faite'] === 0);
 $terminees = array_filter($taches, static fn (array $t): bool => (int) $t['faite'] === 1);
 
+/*
+ * La date à ne pas dépasser, tâche principale par tâche principale.
+ *
+ * Une sous-tâche ne peut pas être due après la sienne : le serveur le refuse,
+ * et le champ de date le dit avant qu'on essaie. Le calendrier du navigateur
+ * grise alors les jours d'après — c'est plus clair qu'un message d'erreur, et
+ * ça arrive plus tôt.
+ */
+$plafonds = [];
+foreach ($listes as $l) {
+    $plafonds[(int) $l['id']] = (string) ($l['echeance'] ?? '');
+}
+$plafond = static function (mixed $listeId) use ($plafonds): string {
+    return $plafonds[(int) $listeId] ?? '';
+};
+
 /** Le contexte à conserver quand un formulaire renvoie sur cette page. */
 $contexte = static function () use ($vue, $listeOuverte, $csrf): string {
     $html  = '<input type="hidden" name="_csrf" value="' . e($csrf) . '">';
@@ -33,7 +49,7 @@ $contexte = static function () use ($vue, $listeOuverte, $csrf): string {
 };
 
 /** Une ligne de tâche : la case, le libellé, l'échéance, les actions. */
-$ligneTache = static function (array $t) use ($csrf, $contexte, $listes, $vue): string {
+$ligneTache = static function (array $t) use ($csrf, $contexte, $listes, $vue, $plafond): string {
     $faite = (int) $t['faite'] === 1;
     $etat  = echeance_etat($t['echeance'], $faite);
     $texte = echeance_libelle($t['echeance'], $faite);
@@ -76,13 +92,17 @@ $ligneTache = static function (array $t) use ($csrf, $contexte, $listes, $vue): 
           <div class="champ">
             <label for="ech-<?= (int) $t['id'] ?>">Échéance</label>
             <input type="date" id="ech-<?= (int) $t['id'] ?>" name="echeance"
-                   value="<?= e((string) $t['echeance']) ?>">
+                   value="<?= e((string) $t['echeance']) ?>"
+                   data-plafond-de="lst-<?= (int) $t['id'] ?>"
+                   <?php $max = $plafond($t['liste_id']); ?>
+                   <?= $max === '' ? '' : 'max="' . e($max) . '"' ?>>
           </div>
           <div class="champ">
             <label for="lst-<?= (int) $t['id'] ?>">Déplacer vers</label>
             <select id="lst-<?= (int) $t['id'] ?>" name="liste_id">
               <?php foreach ($listes as $l): ?>
-                <option value="<?= (int) $l['id'] ?>"<?= (int) $l['id'] === (int) $t['liste_id'] ? ' selected' : '' ?>>
+                <option value="<?= (int) $l['id'] ?>"<?= (int) $l['id'] === (int) $t['liste_id'] ? ' selected' : '' ?>
+                        data-echeance="<?= e((string) ($l['echeance'] ?? '')) ?>">
                   <?= e($l['icone'] . ' ' . $l['nom']) ?>
                 </option>
               <?php endforeach; ?>
@@ -194,7 +214,8 @@ $ligneTache = static function (array $t) use ($csrf, $contexte, $listes, $vue): 
             <select id="st-liste" name="liste_id" required>
               <?php foreach ($listes as $l): ?>
                 <option value="<?= (int) $l['id'] ?>"
-                        <?= (int) $l['id'] === (int) $listeOuverte ? ' selected' : '' ?>>
+                        <?= (int) $l['id'] === (int) $listeOuverte ? ' selected' : '' ?>
+                        data-echeance="<?= e((string) ($l['echeance'] ?? '')) ?>">
                   <?= e($l['icone'] . ' ' . $l['nom']) ?>
                 </option>
               <?php endforeach; ?>
@@ -208,9 +229,19 @@ $ligneTache = static function (array $t) use ($csrf, $contexte, $listes, $vue): 
                    placeholder="Relire le chapitre 3">
           </div>
 
+          <?php
+          // Le plafond de la tâche principale déjà sélectionnée : sans choix
+          // explicite, le navigateur retient la première de la liste.
+          $choisie = isset($plafonds[(int) $listeOuverte])
+              ? (int) $listeOuverte
+              : (int) $listes[array_key_first($listes)]['id'];
+          $maxNouvelle = $plafond($choisie);
+          ?>
           <div class="champ">
             <label for="st-echeance">Échéance <span class="discret">(facultative)</span></label>
-            <input type="date" id="st-echeance" name="echeance">
+            <input type="date" id="st-echeance" name="echeance" data-plafond-de="st-liste"
+                   <?= $maxNouvelle === '' ? '' : 'max="' . e($maxNouvelle) . '"' ?>>
+            <span class="champ__aide">Au plus tard à l’échéance de la tâche principale.</span>
           </div>
 
           <button class="bouton bouton--bloc" type="submit">Ajouter la sous-tâche</button>
@@ -497,9 +528,29 @@ $ligneTache = static function (array $t) use ($csrf, $contexte, $listes, $vue): 
                 <label for="ln">Nom de la liste</label>
                 <input type="text" id="ln" name="nom" required maxlength="120" value="<?= e($ouverte['nom']) ?>">
               </div>
+              <?php
+              /*
+               * La règle vue de l'autre côté : une tâche principale ne peut pas
+               * être due avant ce qu'elle contient. On lit la sous-tâche la plus
+               * tardive pour poser le plancher du champ.
+               */
+              $plancher = '';
+              foreach ($taches as $t) {
+                  if ($t['echeance'] !== null && (string) $t['echeance'] > $plancher) {
+                      $plancher = (string) $t['echeance'];
+                  }
+              }
+              ?>
               <div class="champ">
                 <label for="le">Échéance <span class="discret">(facultative)</span></label>
-                <input type="date" id="le" name="echeance" value="<?= e((string) $ouverte['echeance']) ?>">
+                <input type="date" id="le" name="echeance" value="<?= e((string) $ouverte['echeance']) ?>"
+                       <?= $plancher === '' ? '' : 'min="' . e($plancher) . '"' ?>>
+                <?php if ($plancher !== ''): ?>
+                  <span class="champ__aide">
+                    Pas avant le <?= e(date_fr($plancher, false)) ?> :
+                    c’est la sous-tâche la plus tardive.
+                  </span>
+                <?php endif; ?>
               </div>
             </div>
 
@@ -573,7 +624,9 @@ $ligneTache = static function (array $t) use ($csrf, $contexte, $listes, $vue): 
           <input type="hidden" name="liste_id" value="<?= (int) $ouverte['id'] ?>">
           <input type="text" name="titre" required maxlength="200" placeholder="Ajouter une sous-tâche…"
                  aria-label="Nouvelle sous-tâche dans <?= e($ouverte['nom']) ?>">
-          <input type="date" name="echeance" aria-label="Échéance (facultative)">
+          <input type="date" name="echeance" aria-label="Échéance (facultative)"
+                 <?= $ouverte['echeance'] === null ? '' : 'max="' . e((string) $ouverte['echeance'])
+                     . '" title="Au plus tard le ' . e(date_fr((string) $ouverte['echeance'], false)) . '"' ?>>
           <button class="bouton bouton--petit" type="submit">Ajouter</button>
         </form>
       </section>

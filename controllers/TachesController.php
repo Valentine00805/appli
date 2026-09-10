@@ -154,10 +154,17 @@ final class TachesController
             redirect('taches');
         }
 
+        $echeance = $this->dateValide(post('echeance'));
+        $souci = $this->souciDeTachePrincipale($userId, $id, $echeance);
+        if ($souci !== null) {
+            Session::flash('erreur', $souci);
+            redirect('taches', ['liste' => $id]);
+        }
+
         Database::run(
             'UPDATE listes_taches SET nom = ?, couleur = ?, icone = ?, echeance = ? WHERE id = ? AND user_id = ?',
             [$nom, $this->couleurValide(post('couleur')), $this->iconeValide(post('icone')),
-             $this->dateValide(post('echeance')), $id, $userId]
+             $echeance, $id, $userId]
         );
 
         Session::flash('succes', 'Liste mise à jour.');
@@ -360,10 +367,16 @@ final class TachesController
             redirect('taches');
         }
 
+        $echeance = $this->dateValide(post('echeance'));
+        $souci = $this->souciDeSousTache($userId, $listeId, $echeance);
+        if ($souci !== null) {
+            Session::flash('erreur', $souci);
+            redirect('taches', ['liste' => $listeId]);
+        }
+
         Database::run(
             'INSERT INTO taches (user_id, liste_id, titre, echeance, position) VALUES (?, ?, ?, ?, ?)',
-            [$userId, $listeId, $titre, $this->dateValide(post('echeance')),
-             $this->rangSuivant($userId, $listeId)]
+            [$userId, $listeId, $titre, $echeance, $this->rangSuivant($userId, $listeId)]
         );
 
         // Le volet reste ouvert sur la liste où l'on vient d'écrire.
@@ -393,6 +406,15 @@ final class TachesController
             redirect('taches');
         }
 
+        // La date est jugée sur la liste d'arrivée : c'est celle dont la
+        // sous-tâche dépendra une fois enregistrée.
+        $echeance = $this->dateValide(post('echeance'));
+        $souci = $this->souciDeSousTache($userId, $listeId, $echeance);
+        if ($souci !== null) {
+            Session::flash('erreur', $souci);
+            redirect('taches', ['liste' => $listeId]);
+        }
+
         // Un changement de liste renvoie la tâche en fin de sa destination.
         $ancienne = (int) Database::valeur('SELECT liste_id FROM taches WHERE id = ? AND user_id = ?', [$id, $userId]);
         $rang = $ancienne === $listeId
@@ -401,7 +423,7 @@ final class TachesController
 
         Database::run(
             'UPDATE taches SET titre = ?, echeance = ?, liste_id = ?, position = ? WHERE id = ? AND user_id = ?',
-            [$titre, $this->dateValide(post('echeance')), $listeId, $rang, $id, $userId]
+            [$titre, $echeance, $listeId, $rang, $id, $userId]
         );
 
         Session::flash('succes', 'Tâche mise à jour.');
@@ -468,7 +490,7 @@ final class TachesController
 
         $tacheId = entier_ou_null($_POST['tache'] ?? null);
         $tache = $tacheId === null ? null : Database::one(
-            'SELECT id, titre, liste_id FROM taches WHERE id = ? AND user_id = ?',
+            'SELECT id, titre, liste_id, echeance FROM taches WHERE id = ? AND user_id = ?',
             [$tacheId, $userId]
         );
         if ($tache === null) {
@@ -478,6 +500,14 @@ final class TachesController
         $cible = $this->listeValide($userId, $_POST['cible'] ?? null);
         if ($cible === null) {
             Session::flash('erreur', 'Liste de destination introuvable.');
+            redirect('taches', $this->filtreCourant());
+        }
+
+        // La sous-tâche garde sa date en changeant de tâche principale : encore
+        // faut-il que la nouvelle la couvre.
+        $souci = $this->souciDeSousTache($userId, $cible, $tache['echeance']);
+        if ($souci !== null) {
+            Session::flash('erreur', '« ' . $tache['titre'] . ' » n’a pas bougé. ' . $souci);
             redirect('taches', $this->filtreCourant());
         }
 
@@ -734,6 +764,77 @@ final class TachesController
         }
         $date = DateTimeImmutable::createFromFormat('!Y-m-d', $saisie);
         return $date !== false && $date->format('Y-m-d') === $saisie ? $saisie : null;
+    }
+
+    /*
+     * Une sous-tâche ne peut pas être due après sa tâche principale.
+     *
+     * L'échéance d'une tâche principale est une promesse : tout ce qu'elle
+     * contient doit être fini avant. Une sous-tâche datée au-delà annonce donc
+     * un retard dès qu'on l'écrit, et personne ne le voit — les deux dates
+     * s'affichent à deux endroits différents de l'écran.
+     *
+     * Le contrôle vaut dans les deux sens, et se pose à chaque fois qu'une des
+     * deux dates est écrite : à la création d'une sous-tâche, à sa modification,
+     * quand on la glisse dans une autre tâche principale, et quand on change
+     * l'échéance de la tâche principale elle-même. Rien n'est corrigé d'office :
+     * on refuse en disant ce qui bloque, et c'est vous qui tranchez.
+     *
+     * Sans exception pour les sous-tâches déjà faites : une règle qui souffre
+     * un cas particulier ne tient plus. Décocher une sous-tâche ne peut donc
+     * pas non plus faire apparaître une date impossible.
+     */
+
+    /**
+     * Ce qui empêche de dater une sous-tâche ainsi, ou null si la date tient.
+     */
+    private function souciDeSousTache(int $userId, int $listeId, ?string $echeance): ?string
+    {
+        if ($echeance === null) {
+            return null;
+        }
+        $liste = Database::one(
+            'SELECT nom, echeance FROM listes_taches WHERE id = ? AND user_id = ?',
+            [$listeId, $userId]
+        );
+        if ($liste === null || $liste['echeance'] === null || $echeance <= $liste['echeance']) {
+            return null;
+        }
+
+        return 'Une sous-tâche ne peut pas être due après sa tâche principale : « '
+            . $liste['nom'] . ' » est due le ' . date_fr((string) $liste['echeance'], false)
+            . '. Choisissez cette date au plus tard, ou repoussez d’abord la tâche principale.';
+    }
+
+    /**
+     * Ce qui empêche de dater une tâche principale ainsi, ou null si ça tient.
+     */
+    private function souciDeTachePrincipale(int $userId, int $listeId, ?string $echeance): ?string
+    {
+        if ($echeance === null) {
+            return null;   // sans échéance, la tâche principale ne promet rien
+        }
+        $tardives = Database::all(
+            'SELECT titre, echeance FROM taches
+              WHERE user_id = ? AND liste_id = ? AND echeance IS NOT NULL AND echeance > ?
+           ORDER BY echeance DESC, titre',
+            [$userId, $listeId, $echeance]
+        );
+        if ($tardives === []) {
+            return null;
+        }
+
+        $nb = count($tardives);
+        $derniere = $tardives[0];
+
+        return 'Une tâche principale ne peut pas être due avant ses sous-tâches : '
+            . ($nb === 1
+                ? '« ' . $derniere['titre'] . ' » est due le '
+                    . date_fr((string) $derniere['echeance'], false)
+                : $nb . ' sous-tâches sont dues plus tard, la dernière (« '
+                    . $derniere['titre'] . ' ») le '
+                    . date_fr((string) $derniere['echeance'], false))
+            . '. Changez d’abord leur date, ou choisissez une échéance plus tardive.';
     }
 
     private function couleurValide(string $couleur): string
