@@ -47,7 +47,11 @@ $ligne = static function (string $etiquette, string $valeur): string {
   </div>
 
   <div class="actions">
-    <a class="bouton" href="<?= url('evenements/' . (int) $evenement['id'] . '/modifier') ?>">
+    <a class="bouton" href="<?= url('evenements/' . (int) $evenement['id'] . '/modifier') ?>"
+       <?php // Ouverte en fenêtre, la fiche y laisse la place au formulaire
+          // plutôt que de renvoyer sur une page : on modifie ce qu'on vient
+          // de lire, au même endroit. ?>
+       <?= $dansUneFenetre ? 'data-fenetre' : '' ?>>
       ✎ Modifier
     </a>
   </div>

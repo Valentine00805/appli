@@ -227,8 +227,9 @@ final class CalendrierController
             $dateDefaut = date('Y-m-d');
         }
 
-        Vue::afficher('calendrier/formulaire', [
+        $donnees = [
             'evenement'  => $evenement,
+
             'matieres'   => $this->matieres($userId),
             'coursListe' => Database::all('SELECT id, titre FROM cours WHERE user_id = ? ORDER BY titre', [$userId]),
             'dateDefaut' => $dateDefaut,
@@ -245,7 +246,18 @@ final class CalendrierController
                 : Database::one('SELECT id, titre FROM evenements
                                   WHERE copie_de = ? AND user_id = ?',
                     [(int) $evenement['id'], $userId]),
-        ], $evenement === null ? 'Nouvel événement' : 'Modifier l\'événement');
+        ];
+
+        // Comme la fiche : demandé en fragment, le formulaire part seul et
+        // c'est le script qui l'enveloppe. Sans lui, la page entière répond.
+        if (($_GET['fenetre'] ?? '') === '1') {
+            echo Vue::rendre('calendrier/formulaire', $donnees + ['dansUneFenetre' => true]);
+
+            return;
+        }
+
+        Vue::afficher('calendrier/formulaire', $donnees,
+            $evenement === null ? 'Nouvel événement' : 'Modifier l\'événement');
     }
 
     public function creer(): void

@@ -106,18 +106,21 @@
   // comme cases à cocher, et sur chaque formulaire qui le demande, non plus
   // seulement le premier : le calendrier en a deux depuis le volet des agendas.
   /*
-   * Un évènement s'ouvre dans une fenêtre, sans quitter le calendrier.
+   * Ce qui s'ouvre dans une fenêtre, sans quitter la page.
    *
-   * Le lien reste un lien : sans script, il mène à la fiche pleine page, et
+   * La fiche d'un évènement, le formulaire qui le crée, celui qui le modifie.
+   * Le lien reste un lien : sans script il mène à la page correspondante, et
    * tout y fonctionne. Le script se contente de l'intercepter, d'aller
-   * chercher la même fiche en fragment, et de la poser dans une « dialog ».
+   * chercher la même chose en fragment, et de la poser dans une « dialog ».
    *
-   * « dialog » plutôt qu'un bloc à nous : le navigateur s'occupe seul de la
-   * touche d'échappement, du fond grisé et du clavier qui ne doit pas
-   * s'échapper derrière la fenêtre. Trois choses qu'on écrit mal à la main.
+   * « dialog » plutôt qu'un bloc à nous : le navigateur s'occupe du fond
+   * grisé et du clavier qui ne doit pas s'échapper derrière la fenêtre.
+   *
+   * L'écoute est posée sur le document et non sur chaque lien : le bouton
+   * « Modifier » de la fiche n'existe pas au chargement de la page, il arrive
+   * dans la fenêtre. Un lien qui naît là doit s'ouvrir comme les autres.
    */
-  var liensFiche = document.querySelectorAll('[data-fiche]');
-  if (liensFiche.length && typeof HTMLDialogElement === 'function') {
+  if (typeof HTMLDialogElement === 'function') {
     var fenetre = document.createElement('dialog');
     fenetre.className = 'fenetre';
     fenetre.innerHTML =
@@ -126,17 +129,17 @@
     document.body.appendChild(fenetre);
 
     var corps = fenetre.querySelector('.fenetre__corps');
-
     var fermer = function () { fenetre.close(); };
+
     fenetre.querySelector('.fenetre__fermer').addEventListener('click', fermer);
 
     /*
      * La touche d'échappement, écrite noir sur blanc.
      *
-     * « dialog » est censée s'en charger seule, et le fait dans la plupart
-     * des cas. Mesuré ici, l'évènement arrive bien mais la fenêtre ne se
-     * ferme pas : trois lignes valent mieux qu'une fenêtre qu'on ne sait
-     * plus quitter au clavier.
+     * « dialog » est censée s'en charger seule, et le fait dans la plupart des
+     * cas. Mesuré ici, l'évènement arrive bien mais la fenêtre ne se ferme
+     * pas : trois lignes valent mieux qu'une fenêtre qu'on ne sait plus
+     * quitter au clavier.
      */
     fenetre.addEventListener('keydown', function (evenement) {
       if (evenement.key === 'Escape') { evenement.preventDefault(); fermer(); }
@@ -150,7 +153,7 @@
 
     var ouvrir = function (adresse) {
       corps.innerHTML = '<p class="discret" style="padding:1rem">Un instant…</p>';
-      fenetre.showModal();
+      if (!fenetre.open) { fenetre.showModal(); }
 
       fetch(adresse + (adresse.indexOf('?') === -1 ? '?' : '&') + 'fenetre=1', {
         credentials: 'same-origin'
@@ -159,12 +162,19 @@
         return reponse.text();
       }).then(function (html) {
         corps.innerHTML = html;
+
+        // Le contenu annonce la place qu'il lui faut : un formulaire tient sur
+        // deux colonnes, une fiche de six lignes se lit mieux étroite.
+        fenetre.classList.toggle('fenetre--large', corps.querySelector('[data-large]') !== null);
+
         /*
          * Remplacer le contenu emporte l'élément qui avait le focus, et le
          * clavier retombe sur la page derrière : la touche d'échappement ne
-         * ferme plus rien. On le ramène dans la fenêtre.
+         * ferme plus rien. On le ramène dans la fenêtre — sur le premier champ
+         * s'il y en a un, puisque c'est là qu'on allait.
          */
-        fenetre.querySelector('.fenetre__fermer').focus();
+        var premier = corps.querySelector('input:not([type="hidden"]), textarea, select');
+        (premier || fenetre.querySelector('.fenetre__fermer')).focus();
       }).catch(function () {
         // Plutôt que d'expliquer un échec qu'on ne sait pas nommer, on fait
         // ce que le lien aurait fait sans nous.
@@ -172,20 +182,29 @@
       });
     };
 
-    liensFiche.forEach(function (lien) {
-      lien.addEventListener('click', function (evenement) {
-        // Un clic du milieu, ou avec une touche tenue, ouvre un onglet : ce
-        // n'est pas à nous de le contrarier.
-        if (evenement.metaKey || evenement.ctrlKey || evenement.shiftKey
-            || evenement.altKey || evenement.button !== 0) {
-          return;
-        }
+    document.addEventListener('click', function (evenement) {
+      // Un clic du milieu, ou avec une touche tenue, ouvre un onglet : ce
+      // n'est pas à nous de le contrarier.
+      if (evenement.metaKey || evenement.ctrlKey || evenement.shiftKey
+          || evenement.altKey || evenement.button !== 0) {
+        return;
+      }
+
+      var fermeture = evenement.target.closest('[data-fermer]');
+      if (fermeture !== null && fenetre.open) {
         evenement.preventDefault();
-        ouvrir(lien.getAttribute('href'));
-      });
+        fermer();
+
+        return;
+      }
+
+      var lien = evenement.target.closest('[data-fenetre]');
+      if (lien === null) { return; }
+
+      evenement.preventDefault();
+      ouvrir(lien.getAttribute('href'));
     });
   }
-
   /*
    * Le volet d'une journée chargée se ferme comme on s'y attend.
    *

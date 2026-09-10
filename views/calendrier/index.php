@@ -57,7 +57,7 @@ $puce = static function (array $evt) use ($destination): string {
     $classes = 'evt' . ($evt['termine'] ? ' evt--termine' : '') . (empty($evt['est_tache']) ? '' : ' evt--tache');
     return '<a class="' . $classes . '"'
         . ' href="' . $destination($evt) . '"'
-        . (empty($evt['est_tache']) ? ' data-fiche' : '')
+        . (empty($evt['est_tache']) ? ' data-fenetre' : '')
         . ' style="background:' . e($fond) . ';border-left-color:' . e($couleur) . ';color:inherit"'
         . ' title="' . e(libelle_type($evt) . ' · ' . $evt['titre']) . '">'
         . $heure . e(icone_evenement($evt)) . ' ' . e($evt['titre'])
@@ -88,7 +88,7 @@ $puce = static function (array $evt) use ($destination): string {
     <?php endif; ?>
     <a class="bouton bouton--secondaire" href="<?= url('agenda') ?>">📆 Mes agendas</a>
     <a class="bouton bouton--secondaire" href="<?= url('organisation/types') ?>">Gérer les types</a>
-    <a class="bouton" href="<?= url('evenements/nouveau') ?>">+ Évènement</a>
+    <a class="bouton" href="<?= url('evenements/nouveau') ?>" data-fenetre>+ Évènement</a>
   </div>
 </div>
 
@@ -226,7 +226,7 @@ $puce = static function (array $evt) use ($destination): string {
       <span class="jour-planning__titre">
         <?= $cle === $aujourdhui ? "Aujourd'hui" : e(ucfirst(date_fr($cle . ' 00:00:00', false))) ?>
       </span>
-      <a class="discret" href="<?= url('evenements/nouveau', ['date' => $cle]) ?>">+ ajouter</a>
+      <a class="discret" href="<?= url('evenements/nouveau', ['date' => $cle]) ?>" data-fenetre>+ ajouter</a>
     </header>
 
     <?php if ($planning['journee'] !== []): ?>
@@ -280,7 +280,7 @@ $puce = static function (array $evt) use ($destination): string {
           <a class="jour-planning__evt<?= $evt['termine'] ? ' jour-planning__evt--termine' : ''
              ?><?= $bloc['court'] ? ' jour-planning__evt--court' : '' ?>"
              href="<?= $destination($evt) ?>"
-             <?= empty($evt['est_tache']) ? 'data-fiche' : '' ?>
+             <?= empty($evt['est_tache']) ? 'data-fenetre' : '' ?>
              style="--minute:<?= (float) $bloc['haut'] ?>;--duree:<?= (float) $bloc['hauteur'] ?>;
                     --gauche:<?= round($bloc['colonne'] * $largeur, 3) ?>%;
                     --largeur:<?= round($largeur, 3) ?>%;
@@ -326,7 +326,7 @@ $puce = static function (array $evt) use ($destination): string {
         <div class="<?= $classes ?>">
           <div class="cal-jour__haut">
             <span class="cal-jour__numero"><?= (int) $curseur->format('j') ?></span>
-            <a class="cal-jour__ajout" href="<?= url('evenements/nouveau', ['date' => $cle]) ?>"
+            <a class="cal-jour__ajout" href="<?= url('evenements/nouveau', ['date' => $cle]) ?>" data-fenetre
                title="Ajouter un évènement le <?= e($curseur->format('d/m/Y')) ?>">+</a>
           </div>
           <?php foreach (array_slice($duJour, 0, 4) as $evt): ?>
@@ -357,7 +357,7 @@ $puce = static function (array $evt) use ($destination): string {
                   <?php foreach ($duJour as $evt): ?>
                     <li>
                       <a class="cal-reste__evt" href="<?= $destination($evt) ?>"
-                         <?= empty($evt['est_tache']) ? 'data-fiche' : '' ?>>
+                         <?= empty($evt['est_tache']) ? 'data-fenetre' : '' ?>>
                         <span class="cal-reste__barre"
                               style="background:<?= e(couleur_evenement($evt)) ?>"></span>
                         <span class="cal-reste__heure">
@@ -472,7 +472,7 @@ $puce = static function (array $evt) use ($destination): string {
                 <a class="jour-planning__evt<?= $evt['termine'] ? ' jour-planning__evt--termine' : ''
                    ?><?= $bloc['court'] ? ' jour-planning__evt--court' : '' ?>"
                    href="<?= $destination($evt) ?>"
-                   <?= empty($evt['est_tache']) ? 'data-fiche' : '' ?>
+                   <?= empty($evt['est_tache']) ? 'data-fenetre' : '' ?>
                    style="--minute:<?= (float) $bloc['haut'] ?>;--duree:<?= (float) $bloc['hauteur'] ?>;
                           --gauche:<?= round($bloc['colonne'] * $largeur, 3) ?>%;
                           --largeur:<?= round($largeur, 3) ?>%;
@@ -500,7 +500,7 @@ $puce = static function (array $evt) use ($destination): string {
       <span class="vide__icone">🗓️</span>
       <p>Aucun évènement à partir de <?= e(strtolower(nom_mois((int) $ancre->format('n')))) ?>
          <?= e($ancre->format('Y')) ?>.</p>
-      <a class="bouton" href="<?= url('evenements/nouveau') ?>">Planifier quelque chose</a>
+      <a class="bouton" href="<?= url('evenements/nouveau') ?>" data-fenetre>Planifier quelque chose</a>
     </div>
   <?php else: ?>
     <div class="pile">

@@ -8,7 +8,9 @@
  * @var array $matieres, $coursListe, $types
  * @var string $dateDefaut
  * @var ?int $typeDefaut
+ * @var bool $dansUneFenetre  rendu seul, pour être posé dans une fenêtre
  */
+$dansUneFenetre = $dansUneFenetre ?? false;
 $edition = $evenement !== null;
 $action = $edition ? url('evenements/' . $evenement['id'] . '/modifier') : url('evenements/nouveau');
 
@@ -93,11 +95,21 @@ $coursActif = $edition ? entier_ou_null($evenement['cours_id']) : entier_ou_null
 $matiereActive = $edition ? entier_ou_null($evenement['matiere_id']) : null;
 ?>
 
-<div class="entete-page">
+<?php
+/*
+ * « data-large » dit à la fenêtre de s'élargir : le formulaire tient sur deux
+ * colonnes, là où une fiche de six lignes se lit mieux étroite. C'est le
+ * contenu qui annonce la place qu'il lui faut, plutôt que le script qui
+ * devine ce qu'il vient de charger.
+ */
+?>
+<div class="entete-page"<?= $dansUneFenetre ? ' data-large' : '' ?>>
   <div>
-    <p class="discret" style="margin-bottom:.35rem">
-      <a href="<?= url('calendrier', ['date' => $dateDebut]) ?>">← Retour au calendrier</a>
-    </p>
+    <?php if (!$dansUneFenetre): ?>
+      <p class="discret" style="margin-bottom:.35rem">
+        <a href="<?= url('calendrier', ['date' => $dateDebut]) ?>">← Retour au calendrier</a>
+      </p>
+    <?php endif; ?>
     <h1><?= $edition ? "Modifier l'évènement" : 'Nouvel évènement' ?></h1>
   </div>
 </div>
@@ -422,7 +434,11 @@ $matiereActive = $edition ? entier_ou_null($evenement['matiere_id']) : null;
         <?= $edition ? 'Enregistrer' : 'Ajouter au calendrier' ?>
       </button>
       <a class="bouton bouton--secondaire bouton--bloc"
-         href="<?= url('calendrier', ['date' => $dateDebut]) ?>">Annuler</a>
+         href="<?= url('calendrier', ['date' => $dateDebut]) ?>"
+         <?php // Dans une fenêtre, annuler c'est la refermer : recharger le
+            // calendrier pour revenir là où l'on n'a jamais cessé d'être
+            // ferait clignoter la page pour rien. ?>
+         <?= $dansUneFenetre ? 'data-fermer' : '' ?>>Annuler</a>
     </div>
   </div>
 </form>

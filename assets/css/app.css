@@ -2551,6 +2551,9 @@ summary.cal-volet__groupe:focus-visible {
   overflow: visible;
 }
 .fenetre::backdrop { background: rgb(15 23 42 / 45%); }
+/* Un formulaire tient sur deux colonnes : il lui faut plus de large qu'à
+   une fiche de six lignes. C'est le contenu qui le demande. */
+.fenetre--large { width: min(52rem, calc(100vw - 2rem)); }
 
 .fenetre__corps {
   max-height: min(42rem, calc(100vh - 3rem));
