@@ -265,12 +265,38 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
 
 /* --- Calendrier --------------------------------------------------------- */
 
+/*
+ * La barre du calendrier tient sur une ligne : la date à gauche, les filtres
+ * et les vues à droite.
+ *
+ * Elle se repliait sur deux lignes dès que le titre s'allongeait — la vue
+ * semaine, la seule à écrire une plage de dates, y passait toujours. Deux
+ * corrections : le côté droit accepte de se serrer plutôt que de descendre,
+ * et les deux listes de filtres se mettent côte à côte au lieu de s'empiler
+ * (elles héritaient du « width: 100% » des formulaires, où chaque champ a sa
+ * ligne ; ici ce ne sont pas des champs à remplir mais deux boutons de tri).
+ *
+ * Si un jour la place manque vraiment — des noms de matière très longs —,
+ * ce sont les listes qui rétrécissent, jamais la date : leur texte complet
+ * reste lisible dès qu'on les déroule, la date n'a pas cette échappatoire.
+ */
 .cal-barre {
   display: flex; align-items: center; justify-content: space-between;
-  gap: .75rem; flex-wrap: wrap; margin-bottom: 1rem;
+  gap: .75rem; flex-wrap: nowrap; margin-bottom: 1rem;
 }
-.cal-titre { font-size: 1.35rem; font-weight: 700; margin: 0; text-transform: capitalize; }
-.cal-onglets { display: inline-flex; border: 1px solid var(--bordure-forte); border-radius: var(--rayon-s); overflow: hidden; }
+.cal-barre > .actions { flex-wrap: nowrap; }
+.cal-barre > .actions:first-child { flex: 0 0 auto; }
+.cal-barre > .actions:last-child { flex: 0 1 auto; min-width: 0; }
+
+/* Déjà capitalisé à la source : « capitalize » écrivait « Semaine Du 7 Au ». */
+.cal-titre { font-size: 1.35rem; font-weight: 700; margin: 0; white-space: nowrap; }
+
+.cal-filtres { display: flex; gap: .5rem; flex-wrap: nowrap; min-width: 0; }
+.cal-filtres select { width: auto; flex: 0 1 auto; min-width: 0; text-overflow: ellipsis; }
+.cal-onglets {
+  display: inline-flex; flex: none; border: 1px solid var(--bordure-forte);
+  border-radius: var(--rayon-s); overflow: hidden;
+}
 .cal-onglets a {
   padding: .4rem .8rem; text-decoration: none; color: var(--texte-doux);
   font-size: .88rem; font-weight: 600; background: var(--fond-carte);
@@ -420,6 +446,13 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
   .evt-ligne { flex-wrap: wrap; }
   .evt-ligne__heure { min-width: auto; }
   h1 { font-size: 1.4rem; }
+
+  /* Trop étroit pour une seule ligne : la barre se replie comme avant. */
+  .cal-barre, .cal-barre > .actions { flex-wrap: wrap; }
+  .cal-barre > .actions:last-child { flex: 1 1 auto; }
+  .cal-filtres { flex-wrap: wrap; }
+  .cal-filtres select { flex: 1 1 12rem; }
+  .cal-titre { white-space: normal; }
 }
 
 @media (max-width: 460px) {

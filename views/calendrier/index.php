@@ -31,8 +31,36 @@ $suivant   = $ancre->modify('+' . $pas);
 if ($vue === 'jour') {
     $titre = ucfirst(date_fr($ancre->format('Y-m-d') . ' 00:00:00', false));
 } elseif ($vue === 'semaine') {
-    $titre = 'Semaine du ' . $debut->format('j') . ' au ' . $fin->format('j') . ' '
-        . strtolower(nom_mois((int) $fin->format('n'))) . ' ' . $fin->format('Y');
+    /*
+     * « 7 – 13 septembre 2026 », et non « Semaine du 7 au 13 septembre 2026 ».
+     *
+     * Le mot « semaine » est déjà allumé dans les onglets, à droite : le
+     * répéter coûtait la moitié de la barre, qui passait alors sur deux
+     * lignes alors que le jour et le mois en tenaient une. La formule longue
+     * écrivait aussi « du 28 au 4 octobre » quand la semaine changeait de
+     * mois — le mois de départ manquait tout simplement.
+     *
+     * À cheval sur deux mois, le nom est abrégé : c'est la seule façon de
+     * nommer les deux mois sans déborder, et c'est ce que font les agendas
+     * qu'on a l'habitude de lire.
+     */
+    $moisDebut = (int) $debut->format('n');
+    $moisFin   = (int) $fin->format('n');
+
+    if ($moisDebut === $moisFin && $debut->format('Y') === $fin->format('Y')) {
+        $titre = $debut->format('j') . ' – ' . $fin->format('j')
+            . ' ' . strtolower(nom_mois($moisFin)) . ' ' . $fin->format('Y');
+    } elseif ($debut->format('Y') === $fin->format('Y')) {
+        $titre = $debut->format('j') . ' ' . nom_mois_court($moisDebut)
+            . ' – ' . $fin->format('j') . ' ' . nom_mois_court($moisFin)
+            . ' ' . $fin->format('Y');
+    } else {
+        // Une semaine à cheval sur deux années : chacune porte la sienne.
+        $titre = $debut->format('j') . ' ' . nom_mois_court($moisDebut)
+            . ' ' . $debut->format('Y')
+            . ' – ' . $fin->format('j') . ' ' . nom_mois_court($moisFin)
+            . ' ' . $fin->format('Y');
+    }
 } else {
     $titre = nom_mois((int) $ancre->format('n')) . ' ' . $ancre->format('Y');
 }
@@ -102,7 +130,7 @@ $puce = static function (array $evt) use ($destination): string {
   </div>
 
   <div class="actions">
-    <form method="get" action="<?= url('calendrier') ?>" data-auto-envoi>
+    <form class="cal-filtres" method="get" action="<?= url('calendrier') ?>" data-auto-envoi>
       <input type="hidden" name="vue" value="<?= e($vue) ?>">
       <input type="hidden" name="date" value="<?= e($ancre->format('Y-m-d')) ?>">
       <select name="matiere" aria-label="Filtrer par matière">
