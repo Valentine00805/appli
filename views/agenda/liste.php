@@ -13,20 +13,11 @@ $relies = array_filter($etats, static fn (array $e): bool => $e['relie']);
 
 <div class="entete-page"<?= $dansUneFenetre ? ' data-large' : '' ?>>
   <div>
-    <?php
-    /*
-     * Le retour, avant le titre, de la couleur des actions.
-     *
-     * Dans une fenêtre, il la referme : le calendrier est déjà là,
-     * derrière, et l'y renvoyer le rechargerait pour rien. Ailleurs, il y
-     * mène. Le mot est le même parce que le geste est le même — revenir
-     * d'où l'on vient.
-     */
-    ?>
-    <p style="margin:0 0 .6rem">
-      <a class="bouton" href="<?= url('calendrier') ?>"
-         <?= $dansUneFenetre ? 'data-fermer' : '' ?>>Retour</a>
-    </p>
+    <?php if (!$dansUneFenetre): ?>
+      <p class="discret" style="margin-bottom:.35rem">
+        <a href="<?= url('calendrier') ?>">← Calendrier</a>
+      </p>
+    <?php endif; ?>
     <h1>Mes agendas</h1>
     <p>Relier un agenda en ligne au calendrier de l'application — l'un, l'autre, ou les deux.</p>
   </div>
