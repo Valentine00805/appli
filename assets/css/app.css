@@ -1433,12 +1433,12 @@ input.depot__champ {
  * réservent la place avant même que l'image arrive — la page ne saute pas
  * sous les yeux pendant qu'elle se remplit.
  */
-.apercu-image { margin: 1.2em 0; text-align: center; }
-.apercu-image img {
+.document-image { margin: 1.2em 0; text-align: center; }
+.document-image img {
   max-width: 100%; height: auto; border-radius: var(--rayon-s);
   background: var(--fond-doux);
 }
-.apercu-image__absente {
+.document-image__absente {
   color: var(--texte-doux); font-size: .88rem; font-style: italic;
   border-left: 3px solid var(--bordure); padding-left: .7rem;
 }
@@ -1490,6 +1490,17 @@ input.depot__champ {
 }
 
 .paragraphe [data-supprimer-paragraphe] { margin-top: .3rem; }
+
+/*
+ * Les images d'un paragraphe, sous sa zone de texte.
+ *
+ * Toujours dans la colonne du texte, quel que soit l'ordre des balises : la
+ * zone modifiable s'intercale quand le script la pose, et sans cette règle
+ * les images glisseraient à la place de la corbeille. Alignées à gauche,
+ * comme le texte qu'on écrit au-dessus.
+ */
+.paragraphe__images { grid-column: 2; }
+.paragraphe__images .document-image { margin: .35rem 0 .2rem; text-align: left; }
 
 /* L'aperçu rend la mise en forme : un surlignage ou un mot plus grand ne doit
    pas venir toucher la ligne du dessus. */

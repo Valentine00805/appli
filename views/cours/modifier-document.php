@@ -32,10 +32,12 @@
   <div class="flash flash--info" style="margin-bottom:1.25rem">
     <strong>Le gras, l'italique, le souligné, la taille, la couleur, le
     surlignage, l'alignement, les titres, les listes et le sommaire se modifient
-    ici.</strong> Le reste de
-    la mise en forme — styles, polices, retraits, images, tableaux — reste dans
-    le document sans passer par cette page, et n'est donc pas perdu. Une copie
-    du document d'origine est gardée avant la première modification.
+    ici.</strong> Les images s'affichent sous leur paragraphe : elles restent
+    à leur place à l'enregistrement, et ne partent qu'avec la corbeille de leur
+    ligne. Le reste de la mise en forme — styles, polices, retraits, tableaux —
+    reste dans le document sans passer par cette page, et n'est donc pas
+    perdu. Une copie du document d'origine est gardée avant la première
+    modification.
   </div>
 
   <form method="post" action="<?= url('fichiers/' . $fichier['id'] . '/modifier') ?>"
@@ -206,8 +208,29 @@
             <input type="hidden" name="titre[]" value="<?= $titre ?>">
             <textarea name="texte[]" rows="1" class="paragraphe__texte"
                       aria-label="Paragraphe <?= $rang + 1 ?>"><?= e($paragraphe) ?></textarea>
+            <?php $images = $enrichis[$rang]['images'] ?? []; ?>
             <button type="button" class="bouton bouton--discret bouton--petit"
-                    data-supprimer-paragraphe title="Supprimer ce paragraphe">🗑</button>
+                    data-supprimer-paragraphe
+                    title="<?= match (true) {
+                        $images === []       => 'Supprimer ce paragraphe',
+                        count($images) === 1 => 'Supprimer ce paragraphe, et son image avec lui',
+                        default              => 'Supprimer ce paragraphe, et ses images avec lui',
+                    } ?>">🗑</button>
+            <?php
+            /*
+             * Ses images, sous le texte et hors de la zone qu'on modifie : on
+             * les voit, on ne les réécrit pas. Elles ne partent pas avec le
+             * formulaire — le serveur les garde de lui-même dans leur
+             * paragraphe, et couper celui-ci en deux les laisse au premier
+             * morceau, comme ici. Seule la corbeille les emporte, avec la
+             * ligne entière : son titre le dit.
+             */
+            ?>
+            <?php if ($images !== []): ?>
+              <div class="paragraphe__images">
+                <?= Vue::rendre('cours/_images', ['images' => $images, 'fichier' => $fichier]) ?>
+              </div>
+            <?php endif; ?>
           </div>
         <?php endforeach; ?>
       </div>

@@ -160,42 +160,11 @@
       html_entity_decode(strip_tags((string) $bloc['html']), ENT_QUOTES, 'UTF-8')));
 
   /*
-   * Les images du document, rendues à leur place.
-   *
-   * Elles ne sont pas recopiées : l'adresse va les relire dans le fichier
-   * déposé. « loading="lazy" » évite de les demander toutes d'un coup — un
-   * cours de trente captures ne doit pas peser trente fois au premier écran.
+   * Les images du document, rendues à leur place — par le même partiel que
+   * l'éditeur, pour que les deux pages les montrent de la même façon.
    */
-  $figures = static function (array $images) use ($fichier): string {
-      $html = '';
-      foreach ($images as $image) {
-          if ($image['type'] === null) {
-              /*
-               * Une image qu'on ne peut pas montrer : soit un vieux format de
-               * Word — EMF, WMF — qu'aucun navigateur ne dessine, soit une
-               * image seulement liée, restée sur l'ordinateur de qui a écrit
-               * le document. Le dire vaut mieux qu'un trou muet.
-               */
-              $html .= '<p class="apercu-image__absente">'
-                  . ($image['source'] === ''
-                      ? 'Une image liée : le document ne la contient pas, elle est restée'
-                        . ' sur l’ordinateur où il a été écrit.'
-                      : 'Une image dans un format que le navigateur n’affiche pas ('
-                        . e(strtoupper((string) pathinfo($image['source'], PATHINFO_EXTENSION)))
-                        . '). Elle reste dans le fichier, à ouvrir dans Word.')
-                  . '</p>';
-              continue;
-          }
-          $taille = $image['largeur'] === null ? ''
-              : ' width="' . (int) $image['largeur'] . '" height="' . (int) $image['hauteur'] . '"';
-          $html .= '<figure class="apercu-image"><img src="'
-              . e(url('fichiers/' . $fichier['id'] . '/image', ['n' => (int) $image['rang']]))
-              . '" alt="' . e($image['alt'] !== '' ? $image['alt'] : 'Image du document') . '"'
-              . $taille . ' loading="lazy" decoding="async"></figure>';
-      }
-
-      return $html;
-  };
+  $figures = static fn (array $images): string => $images === [] ? ''
+      : Vue::rendre('cours/_images', ['images' => $images, 'fichier' => $fichier]);
   ?>
   <?php
   /*

@@ -278,6 +278,19 @@ final class EditionDocument
         $titresWord = self::titresWord($chemin);
         $numeros = self::numeroter($paragraphes, $numsWord, $listesOdf);
 
+        /*
+         * Les images de chaque paragraphe, pour que l'éditeur les montre sous
+         * leur texte. Elles ne repassent pas par le formulaire : à
+         * l'enregistrement, le serveur les garde de lui-même dans le
+         * paragraphe qui les portait.
+         */
+        $images = ImagesDocument::possible($nomOrigine)
+            ? ImagesDocument::parParagraphe(
+                $paragraphes,
+                ImagesDocument::trouver($doc, ImagesDocument::relations($chemin, $nomOrigine))
+            )
+            : [];
+
         $rendus = [];
         foreach ($paragraphes as $rang => $p) {
             $rendus[] = [
@@ -289,6 +302,7 @@ final class EditionDocument
                 'numero' => $numeros[$rang],
                 'niveau' => min(self::niveauDeListe($p), self::NIVEAU_MAX),
                 'titre' => min(self::niveauDeTitre($p, $titresWord), self::TITRE_MAX),
+                'images' => $images[$rang] ?? [],
             ];
         }
 
