@@ -39,7 +39,7 @@ final class CalendrierController
         Auth::exiger();
         $userId = Auth::id();
 
-        $vue = in_array($_GET['vue'] ?? '', ['jour', 'semaine', 'liste'], true) ? (string) $_GET['vue'] : 'mois';
+        $vue = self::vueDemandee($userId);
         $ancre = $this->dateAncre();
 
         [$debut, $fin] = match ($vue) {
@@ -80,6 +80,59 @@ final class CalendrierController
             'aVenir'        => $this->aVenir($userId, 6),
             'sources'       => Agenda::sourcesDuCalendrier($userId),
         ], 'Calendrier');
+    }
+
+    /** Les vues que le calendrier sait afficher. */
+    public const VUES = ['jour', 'semaine', 'mois', 'liste'];
+
+    /**
+     * La vue à ouvrir : celle demandée, sinon celle qu'on préfère.
+     *
+     * L'adresse garde le dernier mot. Changer de vue d'un clic ne doit pas
+     * devenir un choix définitif — on regarde sa semaine, on revient à son
+     * mois, et le réglage n'a pas bougé.
+     */
+    private static function vueDemandee(int $userId): string
+    {
+        if (in_array($_GET['vue'] ?? '', self::VUES, true)) {
+            return (string) $_GET['vue'];
+        }
+
+        return self::vuePreferee($userId);
+    }
+
+    /** Celle qu'on retrouve en arrivant, le mois à défaut. */
+    public static function vuePreferee(int $userId): string
+    {
+        $voulue = (string) (Database::valeur(
+            'SELECT vue_calendrier FROM users WHERE id = ?', [$userId]) ?? '');
+
+        return in_array($voulue, self::VUES, true) ? $voulue : 'mois';
+    }
+
+    /**
+     * Retient la vue qu'on veut retrouver.
+     *
+     * Une valeur qui ne désigne rien remet le mois plutôt que d'échouer : le
+     * réglage n'est pas assez important pour mériter un message d'erreur.
+     */
+    public function vue(): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+
+        $voulue = (string) ($_POST['vue'] ?? '');
+        Database::run('UPDATE users SET vue_calendrier = ? WHERE id = ?',
+            [in_array($voulue, self::VUES, true) ? $voulue : null, Auth::id()]);
+
+        Session::flash('succes', 'Le calendrier s’ouvrira désormais sur '
+            . match ($voulue) {
+                'jour'    => 'la journée',
+                'semaine' => 'la semaine',
+                'liste'   => 'la liste',
+                default   => 'le mois',
+            } . '.');
+        repartir_vers('agenda');
     }
 
     /**

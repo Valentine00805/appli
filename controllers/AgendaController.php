@@ -315,7 +315,10 @@ final class AgendaController
             ];
         }
 
-        Vue::afficher('agenda/liste', ['etats' => $etats], 'Mes agendas');
+        Vue::afficher('agenda/liste', [
+            'etats' => $etats,
+            'vue'   => CalendrierController::vuePreferee(Auth::id()),
+        ], 'Mes agendas');
     }
 
     /**

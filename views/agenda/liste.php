@@ -4,6 +4,7 @@
  *
  * @var array $etats  un par fournisseur : [f, configure, relie, compte,
  *                    evenements, envoyes, souci]
+ * @var string $vue  la vue du calendrier qu'on retrouve en arrivant
  */
 $relies = array_filter($etats, static fn (array $e): bool => $e['relie']);
 ?>
@@ -29,6 +30,44 @@ $relies = array_filter($etats, static fn (array $e): bool => $e['relie']);
 </div>
 
 <div class="pile">
+  <?php
+  /*
+   * La vue qu'on retrouve en arrivant.
+   *
+   * Le mois s'imposait à tous. Il convient à qui prend du recul sur son
+   * trimestre, moins à qui vit sa semaine heure par heure : celui-là
+   * commençait chaque visite par un clic pour arriver là où il voulait être.
+   *
+   * Le réglage ne ferme rien : changer de vue depuis le calendrier reste un
+   * clic, et ne touche pas à ce choix-ci.
+   */
+  ?>
+  <section class="carte">
+    <form method="post" action="<?= url('agenda/vue') ?>" data-auto-envoi>
+      <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
+      <input type="hidden" name="retour" value="<?= e((string) ($_SERVER['REQUEST_URI'] ?? '')) ?>">
+      <div class="champ" style="max-width:22rem;margin:0">
+        <label for="vue-calendrier">La vue du calendrier à l'ouverture</label>
+        <select id="vue-calendrier" name="vue">
+          <?php foreach (['jour' => 'Jour', 'semaine' => 'Semaine',
+                          'mois' => 'Mois', 'liste' => 'Liste'] as $cle => $libelle): ?>
+            <option value="<?= e($cle) ?>"<?= $vue === $cle ? ' selected' : '' ?>>
+              <?= e($libelle) ?>
+            </option>
+          <?php endforeach; ?>
+        </select>
+        <span class="champ__aide">
+          Ce que vous voyez en arrivant sur le calendrier. Vous pouvez toujours
+          en changer d'un clic sans que ce réglage bouge.
+        </span>
+      </div>
+      <noscript>
+        <button class="bouton bouton--secondaire bouton--petit" type="submit"
+                style="margin-top:.5rem">Enregistrer</button>
+      </noscript>
+    </form>
+  </section>
+
   <?php foreach ($etats as $etat): ?>
     <?php $f = $etat['f']; ?>
     <section class="carte agenda-carte">

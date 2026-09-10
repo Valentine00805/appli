@@ -192,6 +192,7 @@ $routes = [
      */
     ['GET',  'agenda',                     [AgendaController::class, 'liste']],
     ['POST', 'agenda/synchroniser',        [AgendaController::class, 'synchroniserTout']],
+    ['POST', 'agenda/vue',                 [CalendrierController::class, 'vue']],
     ['GET',  'agenda/{mot}',               [AgendaController::class, 'index']],
     ['POST', 'agenda/{mot}/connexion',     [AgendaController::class, 'connexion']],
     ['GET',  'agenda/{mot}/retour',        [AgendaController::class, 'retour']],
