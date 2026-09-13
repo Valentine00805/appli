@@ -14,6 +14,10 @@
 $surPage = $surPage ?? false;
 $nbElements = count($fichiersFiche) + array_sum(array_map('count', $parType));
 
+// Dans une fenêtre, chaque formulaire de la fiche s'y enregistre.
+$dansUneFenetre = $dansUneFenetre ?? false;
+$surPlace = $dansUneFenetre ? ' data-envoi-fenetre' : '';
+
 // Sur sa propre page, chaque formulaire doit y ramener plutôt que d'ouvrir le cours.
 $champPage = $surPage ? '<input type="hidden" name="page" value="fiche">' : '';
 
@@ -66,7 +70,7 @@ $avancementFiche = avancement_anneaux(
   <?php // Sur sa propre page, la note et ce qui lui est rattaché se font face. ?>
   <div class="fiche-grille">
     <div class="fiche-grille__note">
-  <form method="post" action="<?= url('cours/' . $cours['id'] . '/revision') ?>" style="margin-top:1rem">
+  <form<?= $surPlace ?> method="post" action="<?= url('cours/' . $cours['id'] . '/revision') ?>" style="margin-top:1rem">
     <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>"><?= $champPage ?>
 
     <div class="champ">
@@ -88,7 +92,8 @@ $avancementFiche = avancement_anneaux(
     <div class="actions">
       <button class="bouton" type="submit">Enregistrer la fiche</button>
       <?php if ($surPage): ?>
-        <a class="bouton bouton--discret" href="<?= url('revision') ?>">Retour aux fiches</a>
+        <?php // Dans une fenêtre, elle la ferme ; sur la page, elle ramène à la liste. ?>
+        <a class="bouton bouton--discret" href="<?= url('revision') ?>" data-fermer>Retour aux fiches</a>
       <?php else: ?>
         <a class="bouton bouton--discret" href="<?= url('cours/' . $cours['id']) ?>">Fermer</a>
       <?php endif; ?>
@@ -145,7 +150,7 @@ $avancementFiche = avancement_anneaux(
             <span class="fichier__actions">
               <a class="bouton bouton--discret bouton--petit"
                  href="<?= url('fichiers/' . $f['id'], ['telecharger' => 1]) ?>" title="Télécharger">⬇</a>
-              <form method="post" action="<?= url('fichiers/' . $f['id'] . '/supprimer') ?>" class="en-ligne"
+              <form<?= $surPlace ?> method="post" action="<?= url('fichiers/' . $f['id'] . '/supprimer') ?>" class="en-ligne"
                     data-confirmation="Retirer ce fichier de la fiche ?">
                 <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>"><?= $champPage ?>
                 <button class="bouton bouton--discret bouton--petit" type="submit" title="Retirer">✕</button>
@@ -352,7 +357,7 @@ $avancementFiche = avancement_anneaux(
       <?php endif; ?>
     <?php endif; ?>
 
-    <form method="post" action="<?= url('cours/' . $cours['id'] . '/revision/fichiers') ?>"
+    <form<?= $surPlace ?> method="post" action="<?= url('cours/' . $cours['id'] . '/revision/fichiers') ?>"
           enctype="multipart/form-data" class="depot depot--mince" data-depot>
       <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>"><?= $champPage ?>
       <label class="depot__zone" for="depot-fiche-<?= (int) $cours['id'] ?>">
@@ -419,7 +424,7 @@ $avancementFiche = avancement_anneaux(
         </a>
 
         <?php if ($cartes['total'] > 0): ?>
-          <form method="post" action="<?= url('cours/' . $cours['id'] . '/cartes/rezero') ?>"
+          <form<?= $surPlace ?> method="post" action="<?= url('cours/' . $cours['id'] . '/cartes/rezero') ?>"
                 class="en-ligne"
                 data-confirmation="Remettre les <?= $cartes['total'] ?> cartes de ce cours à revoir aujourd'hui ?">
             <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
@@ -443,6 +448,7 @@ $avancementFiche = avancement_anneaux(
             'paquetTotal'    => $cartes['total'],
             'paquetSomme'    => $cartes['somme_boites'],
             'rezeroRetour'   => $surPage ? 'fiche' : 'volet',
+            'dansUneFenetre' => $dansUneFenetre,
         ]) ?>
       </div>
     <?php endif; ?>
@@ -462,7 +468,7 @@ $avancementFiche = avancement_anneaux(
               <?= e((string) $lien['libelle']) ?> ↗
             </a>
             <span class="fiche__url discret"><?= e((string) parse_url((string) $lien['url'], PHP_URL_HOST)) ?></span>
-            <?= Vue::rendre('cours/_retirer-element', ['element' => $lien, 'surPage' => $surPage]) ?>
+            <?= Vue::rendre('cours/_retirer-element', ['element' => $lien, 'surPage' => $surPage, 'dansUneFenetre' => $dansUneFenetre]) ?>
           </li>
         <?php endforeach; ?>
       </ul>
@@ -470,7 +476,7 @@ $avancementFiche = avancement_anneaux(
 
     <details class="fiche__ajout">
       <summary>+ Ajouter un lien</summary>
-      <form method="post" action="<?= url('cours/' . $cours['id'] . '/revision/elements') ?>">
+      <form<?= $surPlace ?> method="post" action="<?= url('cours/' . $cours['id'] . '/revision/elements') ?>">
         <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>"><?= $champPage ?>
         <input type="hidden" name="type" value="lien">
         <div class="champ">
@@ -503,7 +509,7 @@ $avancementFiche = avancement_anneaux(
             <?php if (($renvoi['libelle'] ?? '') !== ''): ?>
               <span class="fiche__url discret"><?= e((string) $renvoi['libelle']) ?></span>
             <?php endif; ?>
-            <?= Vue::rendre('cours/_retirer-element', ['element' => $renvoi, 'surPage' => $surPage]) ?>
+            <?= Vue::rendre('cours/_retirer-element', ['element' => $renvoi, 'surPage' => $surPage, 'dansUneFenetre' => $dansUneFenetre]) ?>
           </li>
         <?php endforeach; ?>
       </ul>
@@ -514,7 +520,7 @@ $avancementFiche = avancement_anneaux(
     <?php else: ?>
       <details class="fiche__ajout">
         <summary>+ Renvoyer vers un cours</summary>
-        <form method="post" action="<?= url('cours/' . $cours['id'] . '/revision/elements') ?>">
+        <form<?= $surPlace ?> method="post" action="<?= url('cours/' . $cours['id'] . '/revision/elements') ?>">
           <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>"><?= $champPage ?>
           <input type="hidden" name="type" value="cours">
           <div class="champ">
@@ -553,7 +559,7 @@ $avancementFiche = avancement_anneaux(
               <?= e(date_fr((string) $renvoi['evenement_debut'], (int) $renvoi['journee_entiere'] === 0)) ?>
               <?= (int) $renvoi['termine'] === 1 ? '· terminé' : '' ?>
             </span>
-            <?= Vue::rendre('cours/_retirer-element', ['element' => $renvoi, 'surPage' => $surPage]) ?>
+            <?= Vue::rendre('cours/_retirer-element', ['element' => $renvoi, 'surPage' => $surPage, 'dansUneFenetre' => $dansUneFenetre]) ?>
           </li>
         <?php endforeach; ?>
       </ul>
@@ -564,7 +570,7 @@ $avancementFiche = avancement_anneaux(
     <?php else: ?>
       <details class="fiche__ajout">
         <summary>+ Rattacher un évènement</summary>
-        <form method="post" action="<?= url('cours/' . $cours['id'] . '/revision/elements') ?>">
+        <form<?= $surPlace ?> method="post" action="<?= url('cours/' . $cours['id'] . '/revision/elements') ?>">
           <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>"><?= $champPage ?>
           <input type="hidden" name="type" value="evenement">
           <div class="champ">

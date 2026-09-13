@@ -250,6 +250,13 @@
       }
     };
 
+    // Une séance de cartes terminée dans la fenêtre : on y relit la fiche, à jour.
+    document.addEventListener('fenetre:relire', function () {
+      if (!fenetre.open || historique.length === 0) { return; }
+      aChange = true;
+      ouvrir(historique[historique.length - 1]);
+    });
+
     boutonRetour.addEventListener('click', function () {
       if (historique.length > 1) { ouvrir(historique[historique.length - 2]); }
     });
@@ -328,9 +335,12 @@
         (aPortee ? premier : fenetre.querySelector('.fenetre__fermer'))
           .focus({ preventScroll: true });
 
-        // L'éditeur de document, le dépôt de fichiers, s'ils viennent d'arriver.
+        // Ce qui s'anime dans ce qui vient d'arriver : l'éditeur de document,
+        // le dépôt de fichiers, la fiche de révision et sa séance de cartes.
         initialiserEditeur(corps);
         initialiserDepots(corps);
+        initialiserFiche(corps);
+        initialiserSeance(corps);
     };
 
     var ouvrir = function (adresse) {
@@ -2384,11 +2394,16 @@
   initialiserEditeur(document);
 
   /*
+   * La fiche de révision — sa copie imprimable, ses lecteurs, ses anneaux —
+   * se lance sur une racine : la page, ou la fenêtre où elle vient d'arriver.
+   */
+  var initialiserFiche = function (racine) {
+  /*
    * La copie imprimable de la fiche suit ce qu on tape : sans cela, imprimer
    * avant d avoir enregistre sortirait l ancien texte.
    */
-  var zoneFiche = document.getElementById("fiche_revision");
-  var copieFiche = document.querySelector("[data-impression-fiche]");
+  var zoneFiche = racine.querySelector("#fiche_revision");
+  var copieFiche = racine.querySelector("[data-impression-fiche]");
   if (zoneFiche && copieFiche) {
     zoneFiche.addEventListener("input", function () {
       copieFiche.textContent = zoneFiche.value;
@@ -2410,8 +2425,8 @@
    * L'avancement dans un enregistrement : le lecteur reprend là où on s'était
    * arrêté, et prévient le serveur quand on le quitte. L'anneau suit en direct.
    */
-  var jetonLecture = document.querySelector("[data-jeton-lecture]");
-  var lecteurs = [].slice.call(document.querySelectorAll("[data-lecteur]"));
+  var jetonLecture = racine.querySelector("[data-jeton-lecture]");
+  var lecteurs = [].slice.call(racine.querySelectorAll("[data-lecteur]"));
 
   var jeton = jetonLecture ? jetonLecture.getAttribute("data-jeton-lecture") : "";
 
@@ -2421,12 +2436,12 @@
    * part — c'est ce qui est affiché qui fait foi, et le serveur calcule
    * exactement pareil au chargement suivant.
    */
-  var totalFiche = document.querySelector("[data-total-fiche]");
+  var totalFiche = racine.querySelector("[data-total-fiche]");
 
   var majTotalFiche = function () {
     if (!totalFiche) { return; }
 
-    var parts = [].slice.call(document.querySelectorAll("[data-avancement] .anneau"));
+    var parts = [].slice.call(racine.querySelectorAll("[data-avancement] .anneau"));
     if (!parts.length) { return; }
 
     var somme = 0;
@@ -2462,7 +2477,7 @@
 
     lecteurs.forEach(function (lecteur) {
       var id = lecteur.getAttribute("data-lecteur");
-      var bloc = document.querySelector("[data-avancement='" + id + "']");
+      var bloc = racine.querySelector("[data-avancement='" + id + "']");
       var anneau = bloc ? bloc.querySelector(".anneau") : null;
       var trait = anneau ? anneau.querySelector(".anneau__part") : null;
       var texte = anneau ? anneau.querySelector(".anneau__texte") : null;
@@ -2538,7 +2553,7 @@
    * donc par elles qu'on sait où l'on en est. Le cadre est remplacé à chaque
    * fois, car le greffon ne relit pas un fragment changé sur place.
    */
-  var documents = [].slice.call(document.querySelectorAll("[data-pdf]"));
+  var documents = [].slice.call(racine.querySelectorAll("[data-pdf]"));
 
   if (jetonLecture && documents.length) {
     documents.forEach(function (bloc) {
@@ -2553,7 +2568,7 @@
       var libelle = bloc.querySelector("[data-pdf-libelle]");
       var recule = bloc.querySelector("[data-pdf-recule]");
       var avance = bloc.querySelector("[data-pdf-avance]");
-      var mesure = document.querySelector("[data-avancement='" + id + "']");
+      var mesure = racine.querySelector("[data-avancement='" + id + "']");
       var anneau = mesure ? mesure.querySelector(".anneau") : null;
       var trait = anneau ? anneau.querySelector(".anneau__part") : null;
       var texte = anneau ? anneau.querySelector(".anneau__texte") : null;
@@ -2659,7 +2674,7 @@
    * Ouvrir la fiche ne compte pour rien : c'est en passant d'une image à la
    * suivante qu'on les déclare vues, comme on tourne les pages d'un document.
    */
-  var galeries = [].slice.call(document.querySelectorAll("[data-images]"));
+  var galeries = [].slice.call(racine.querySelectorAll("[data-images]"));
 
   if (jetonLecture && galeries.length) {
     galeries.forEach(function (bloc) {
@@ -2774,6 +2789,15 @@
     });
   }
 
+  };
+  initialiserFiche(document);
+
+  // La fiche seule, ouverte pour être imprimée : l'impression part d'elle-même.
+  if (/(^|[?&])imprimer=1(&|$)/.test(window.location.search.slice(1))
+    && document.querySelector("[data-impression-fiche]")) {
+    window.addEventListener("load", function () { window.print(); });
+  }
+
   /*
    * Fabriquer des cartes : les cours cochés montrent leurs documents.
    *
@@ -2812,9 +2836,16 @@
    * verdict et passe à la suivante. Sans lui, la page reste lisible — questions
    * et réponses à la suite, ce qui vaut mieux que rien.
    */
-  var seance = document.querySelector("[data-seance]");
+  /*
+   * Dans une fonction, et non à même la page : ses variables « ouvrir » et
+   * « fermer » écrasaient celles de la fenêtre, et sur une page où une séance
+   * était présente, plus aucun lien ne s'ouvrait en fenêtre.
+   */
+  var initialiserSeance = function (racine) {
+  var seance = racine.querySelector("[data-seance]");
 
-  if (seance) {
+  if (seance && !seance.hasAttribute("data-seance-lancee")) {
+    seance.setAttribute("data-seance-lancee", "");
     var cartesSeance = [].slice.call(seance.querySelectorAll("[data-carte]"));
     var compteur = seance.querySelector("[data-seance-compteur]");
     var fin = seance.querySelector("[data-seance-fin]");
@@ -2996,9 +3027,9 @@
      * mène à la page de révision, et le script l'intercepte pour la déplier ici
      * même. Sans lui, le lien fait ce qu'il annonce, et rien n'est perdu.
      */
-    var repli = document.querySelector("[data-seance-sur-place]");
-    var resume = document.querySelector("[data-cartes-resume]");
-    var ouvrir = document.querySelector("[data-ouvrir-seance]");
+    var repli = racine.querySelector("[data-seance-sur-place]");
+    var resume = racine.querySelector("[data-cartes-resume]");
+    var ouvrir = racine.querySelector("[data-ouvrir-seance]");
 
     if (repli && ouvrir) {
       ouvrir.addEventListener("click", function (e) {
@@ -3036,7 +3067,14 @@
     var fermer = seance.querySelector("[data-fermer-seance]");
     if (fermer) {
       // Les compteurs de la page ont vieilli pendant la séance : on repart du serveur.
-      fermer.addEventListener("click", function () { window.location.reload(); });
+      fermer.addEventListener("click", function () {
+        // Dans une fenêtre, c'est la fiche qu'on relit, pas la page derrière.
+        if (seance.closest(".fenetre__corps")) {
+          document.dispatchEvent(new CustomEvent("fenetre:relire"));
+          return;
+        }
+        window.location.reload();
+      });
     }
     cartesSeance.forEach(function (carte) {
       carte.querySelector("[data-montrer]").addEventListener("click", function (e) {
@@ -3065,6 +3103,8 @@
 
     montrerCarte();
   }
+  };
+  initialiserSeance(document);
 })();
 
 /* ==========================================================================

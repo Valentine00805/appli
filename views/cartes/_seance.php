@@ -53,7 +53,8 @@ $paquetSomme = $paquetSomme ?? 0;
        * repartira du début, ce que la demande de confirmation annonce.
        */
       ?>
-      <form method="post" action="<?= url('cours/' . $rezeroCours . '/cartes/rezero') ?>"
+      <?php // Depuis une fiche ouverte en fenêtre, la remise à zéro s'y enregistre. ?>
+      <form<?= ($dansUneFenetre ?? false) ? ' data-envoi-fenetre' : '' ?> method="post" action="<?= url('cours/' . $rezeroCours . '/cartes/rezero') ?>"
             class="en-ligne"
             data-confirmation="Remettre les <?= $rezeroTotal ?> cartes de ce cours à revoir aujourd'hui ? La séance en cours repartira du début.">
         <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">

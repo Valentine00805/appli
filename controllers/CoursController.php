@@ -511,7 +511,7 @@ final class CoursController
             $parType[$element['type']][] = $element;
         }
 
-        Vue::afficher('cours/fiche', [
+        $donnees = [
             'cours'   => $cours,
             'fiche'   => (string) ($cours['fiche_revision'] ?? ''),
             'parType' => $parType,
@@ -525,7 +525,16 @@ final class CoursController
                 'SELECT id, titre, debut FROM evenements WHERE user_id = ? ORDER BY debut DESC LIMIT 100',
                 [$userId]
             ),
-        ], 'Fiche — ' . $cours['titre']);
+        ];
+
+        // Depuis un cours ou la liste des fiches, la fiche s'ouvre dans une fenêtre.
+        if (Vue::enFenetre()) {
+            Vue::fragment('cours/fiche', $donnees);
+
+            return;
+        }
+
+        Vue::afficher('cours/fiche', $donnees, 'Fiche — ' . $cours['titre']);
     }
 
     /**
@@ -1339,6 +1348,10 @@ final class CoursController
         }
         Fichiers::supprimer($id, $userId);
         Session::flash('succes', 'Fichier supprimé.');
+        // Retiré depuis une fiche affichée seule : c'est là qu'on revient.
+        if (($_POST['page'] ?? '') === 'fiche') {
+            redirect('revision/' . (int) $coursId);
+        }
         redirect('cours/' . (int) $coursId);
     }
 

@@ -47,11 +47,15 @@ $nbElements = count($elements) + count($fichiersFiche);
         <?= (int) $cours['favori'] === 1 ? '⭐ Favori' : '☆ Favori' ?>
       </button>
     </form>
-    <?php // Le même bouton ouvre et referme le volet. ?>
+    <?php
+    /*
+     * La fiche de révision s'ouvre dans une fenêtre, par-dessus le cours. Sans
+     * script, le lien mène à la fiche seule ; le volet reste à l'adresse
+     * « ?revision=1 », qui l'ouvre à côté du cours.
+     */
+    ?>
     <a class="bouton bouton--secondaire<?= $revision ? ' est-actif' : '' ?>"
-       href="<?= $revision
-           ? url('cours/' . $cours['id'])
-           : url('cours/' . $cours['id'], ['revision' => 1]) . '#revision' ?>">
+       href="<?= url('revision/' . $cours['id']) ?>" data-fenetre>
       📝 Révision<?= $fiche !== '' || $nbElements > 0 ? ' •' : '' ?>
     </a>
     <a class="bouton bouton--secondaire" href="<?= url('evenements/nouveau', ['cours' => $cours['id']]) ?>">Planifier</a>

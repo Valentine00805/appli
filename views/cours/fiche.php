@@ -5,14 +5,19 @@
  *
  * @var array $cours, $fichiersFiche, $parType, $autresCours, $evenementsChoix
  * @var string $fiche
+ * @var bool $dansUneFenetre  rendue seule, pour être posée dans une fenêtre
  */
+$dansUneFenetre = $dansUneFenetre ?? false;
 ?>
 
-<div class="entete-page">
+<div class="entete-page"<?= $dansUneFenetre ? ' data-large data-document' : '' ?>>
   <div>
-    <p class="discret sans-impression" style="margin-bottom:.35rem">
-      <a href="<?= url('revision') ?>">← Révision</a>
-    </p>
+    <?php // Dans une fenêtre, on vient d'un cours ou de la liste : la croix y ramène. ?>
+    <?php if (!$dansUneFenetre): ?>
+      <p class="discret sans-impression" style="margin-bottom:.35rem">
+        <a href="<?= url('revision') ?>">← Révision</a>
+      </p>
+    <?php endif; ?>
     <h1><?= e($cours['titre']) ?></h1>
     <p>
       <?php if ($cours['matiere_nom'] !== null): ?>
@@ -26,8 +31,20 @@
 
   <div class="actions">
     <?php // L'impression sort la fiche seule : ni menu, ni boutons, ni formulaires. ?>
-    <button class="bouton bouton--secondaire" type="button" onclick="window.print()">🖨 Imprimer</button>
-    <a class="bouton bouton--secondaire" href="<?= url('cours/' . $cours['id']) ?>">
+    <?php if ($dansUneFenetre): ?>
+      <?php
+      /*
+       * Une fenêtre s'imprime avec la page qu'elle recouvre. La fiche
+       * s'ouvre donc seule dans un onglet, qui lance l'impression.
+       */
+      ?>
+      <a class="bouton bouton--secondaire" href="<?= url('revision/' . $cours['id'], ['imprimer' => 1]) ?>"
+         target="_blank" rel="noopener">🖨 Imprimer</a>
+    <?php else: ?>
+      <button class="bouton bouton--secondaire" type="button" onclick="window.print()">🖨 Imprimer</button>
+    <?php endif; ?>
+    <a class="bouton bouton--secondaire" href="<?= url('cours/' . $cours['id']) ?>"
+       <?= $dansUneFenetre ? 'data-fenetre' : '' ?>>
       Voir le cours
     </a>
   </div>
@@ -38,5 +55,6 @@
       'cours' => $cours, 'fiche' => $fiche, 'fichiersFiche' => $fichiersFiche,
       'parType' => $parType, 'autresCours' => $autresCours,
       'evenementsChoix' => $evenementsChoix, 'cartes' => $cartes, 'surPage' => true,
+      'dansUneFenetre' => $dansUneFenetre,
   ]) ?>
 </div>
