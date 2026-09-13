@@ -23,8 +23,15 @@ $versApercu = $dansUneFenetre ? ' data-fenetre' : '';
 
 <div class="entete-page"<?= $dansUneFenetre ? ' data-large data-document' : '' ?>>
   <div>
-    <p class="discret" style="margin-bottom:.35rem">
-      <a href="<?= url('fichiers/' . $fichier['id'] . '/apercu') ?>"<?= $versApercu ?>>← <?= e((string) $fichier['nom_origine']) ?></a>
+    <?php
+    /*
+     * Le retour à l'aperçu, en bouton, avant le titre — comme dans les
+     * réglages des agendas : c'est une action, de la couleur des actions.
+     */
+    ?>
+    <p style="margin:0 0 .6rem">
+      <a class="bouton" href="<?= url('fichiers/' . $fichier['id'] . '/apercu') ?>"<?= $versApercu ?>
+         title="Revenir à l'aperçu de <?= e((string) $fichier['nom_origine']) ?>">Retour</a>
     </p>
     <h1>Modifier le texte</h1>
     <p><?= e(ucfirst($format)) ?> · <?= count($paragraphes) ?> paragraphe<?= count($paragraphes) > 1 ? 's' : '' ?></p>
