@@ -127,7 +127,7 @@ $total = array_sum(array_map('count', $parColonne));
                   <span class="kanban-note__icone" aria-hidden="true"><?= $aUneNote ? '✎' : '+' ?></span>
                 </summary>
 
-                <form method="post" action="<?= url('tableau/note') ?>">
+                <form method="post" action="<?= url('tableau/note') ?>" data-annuler-replie>
                   <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
                   <input type="hidden" name="retour" value="<?= e((string) ($_SERVER['REQUEST_URI'] ?? '')) ?>">
                   <input type="hidden" name="carte" value="<?= (int) $carte['id'] ?>">
@@ -137,7 +137,17 @@ $total = array_sum(array_map('count', $parColonne));
                   </label>
                   <textarea id="<?= e($champNote) ?>" name="note" rows="3" maxlength="500"
                             placeholder="Revoir la partie 3 avant de rendre…"><?= e($carte['note']) ?></textarea>
-                  <button class="bouton bouton--petit bouton--bloc" type="submit">Enregistrer</button>
+                  <?php
+                  /*
+                   * « Annuler » remet le texte tel qu'il était enregistré — un
+                   * bouton « reset », qui s'en passe de script — et le script
+                   * replie la remarque par-dessus.
+                   */
+                  ?>
+                  <div class="kanban-note__actions">
+                    <button class="bouton bouton--petit bouton--secondaire" type="reset">Annuler</button>
+                    <button class="bouton bouton--petit" type="submit">Enregistrer</button>
+                  </div>
                 </form>
               </details>
 

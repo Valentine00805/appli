@@ -623,6 +623,20 @@
     if (bouton) { bouton.focus(); }
   });
 
+  /*
+   * « Annuler » dans un formulaire qui se replie (une remarque du tableau) :
+   * le navigateur remet le texte d'avant, on referme le volet par-dessus.
+   */
+  document.addEventListener('reset', function (evenement) {
+    var formulaire = evenement.target;
+    if (!formulaire.matches || !formulaire.matches('[data-annuler-replie]')) { return; }
+    var volet = formulaire.closest('details');
+    if (!volet) { return; }
+    volet.open = false;
+    var bouton = volet.querySelector('summary');
+    if (bouton) { bouton.focus(); }
+  }, true);
+
   document.querySelectorAll('[data-plafond-de]').forEach(function (champDate) {
     var choix = document.getElementById(champDate.getAttribute('data-plafond-de'));
     if (!choix) { return; }

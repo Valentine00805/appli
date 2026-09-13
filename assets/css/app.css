@@ -1203,6 +1203,9 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
 }
 
 /* La corbeille, discrète tant qu'on ne survole pas la carte. */
+/* « Annuler » et « Enregistrer », côte à côte, à parts égales. */
+.kanban-note__actions { display: flex; gap: .4rem; }
+.kanban-note__actions > .bouton { flex: 1; justify-content: center; }
 .kanban-note__supprimer { flex: none; }
 .kanban-note__supprimer button {
   border: 1px solid transparent; border-radius: 6px; background: none;
