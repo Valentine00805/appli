@@ -110,7 +110,7 @@
   <h2>Fabriquer des cartes</h2>
   <?php if ($cours === []): ?>
     <p class="discret">Vous n'avez pas encore de cours.
-      <a href="<?= url('cours/nouveau') ?>">En créer un</a>.</p>
+      <a href="<?= url('cours/nouveau') ?>" data-fenetre>En créer un</a>.</p>
   <?php else: ?>
     <p class="champ__aide">
       Choisissez un ou plusieurs cours, et ce que l'application doit relire.

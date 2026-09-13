@@ -12,7 +12,7 @@
     <p>Nous sommes le <?= e(date_fr($aujourdhui->format('Y-m-d H:i:s'), false)) ?>.</p>
   </div>
   <div class="actions">
-    <a class="bouton bouton--secondaire" href="<?= url('cours/nouveau') ?>">+ Nouveau cours</a>
+    <a class="bouton bouton--secondaire" href="<?= url('cours/nouveau') ?>" data-fenetre>+ Nouveau cours</a>
     <a class="bouton" href="<?= url('evenements/nouveau') ?>">+ Nouvel évènement</a>
   </div>
 </div>

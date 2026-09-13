@@ -124,7 +124,7 @@ $compteurs = static function (array $c): array {
   <div class="vide">
     <span class="vide__icone">📝</span>
     <p>Vous n'avez pas encore de cours. Une fiche de révision se rédige depuis un cours.</p>
-    <a class="bouton" href="<?= url('cours/nouveau') ?>">Créer un cours</a>
+    <a class="bouton" href="<?= url('cours/nouveau') ?>" data-fenetre>Créer un cours</a>
   </div>
 <?php else: ?>
 

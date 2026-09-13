@@ -53,7 +53,7 @@
           'dansEntete' => true,
       ]) ?>
     <?php endif; ?>
-    <a class="bouton" href="<?= url('cours/nouveau') ?>">+ Nouveau cours</a>
+    <a class="bouton" href="<?= url('cours/nouveau') ?>" data-fenetre>+ Nouveau cours</a>
   </div>
 </div>
 
@@ -399,7 +399,7 @@ for ($haut = $courant; $haut !== null;) {
       <a class="bouton bouton--secondaire" href="<?= url('cours') ?>">Voir tous les cours</a>
     <?php else: ?>
       <p>Vous n'avez pas encore de cours enregistré.</p>
-      <a class="bouton" href="<?= url('cours/nouveau') ?>">Créer mon premier cours</a>
+      <a class="bouton" href="<?= url('cours/nouveau') ?>" data-fenetre>Créer mon premier cours</a>
     <?php endif; ?>
   </div>
 <?php else: ?>
