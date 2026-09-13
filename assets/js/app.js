@@ -410,21 +410,31 @@
           aChange = true;
           var cle = sansFenetre(reponse.adresse);
 
-          // Une page entière n'a rien à faire dans la fenêtre : on y va.
+          // Le message du serveur est déjà arrivé dans la réponse, et ne sera
+          // plus redonné : il est gardé le temps du chargement, pour s'afficher
+          // sur la page où l'on va. Lu sans l'insérer, rien ne se télécharge.
+          var garderLesMessages = function () {
+            try {
+              var recu = new DOMParser().parseFromString(reponse.html, 'text/html');
+              var messages = recu.querySelector('.flashs');
+              if (messages) { sessionStorage.setItem('mesCoursMessages', messages.outerHTML); }
+            } catch (e) { /* stockage refusé : le message sera perdu, pas l'enregistrement */ }
+          };
+
+          // Une page entière n'a rien à faire dans la fenêtre : on y va —
+          // la page même qu'on regardait, quand on y revient (« + Tâche »).
           if (/<header class="entete"/.test(reponse.html)) {
-            window.location.href = cle;
+            garderLesMessages();
+            if (cle === sansFenetre(window.location.href)) {
+              window.location.reload();
+            } else {
+              window.location.href = cle;
+            }
             return;
           }
           // La page qu'on regarde derrière la fenêtre : c'est elle qui a changé.
-          // Le message du serveur est déjà arrivé dans la réponse : il est
-          // gardé le temps du rechargement, pour s'afficher sur la page.
           if (cle === sansFenetre(window.location.href)) {
-            var recu = document.createElement('div');
-            recu.innerHTML = reponse.html;
-            var messages = recu.querySelector('.flashs');
-            try {
-              if (messages) { sessionStorage.setItem('mesCoursMessages', messages.outerHTML); }
-            } catch (e) { /* stockage refusé : le message sera perdu, pas l'enregistrement */ }
+            garderLesMessages();
             window.location.reload();
             return;
           }
@@ -652,9 +662,31 @@
     if (titre) { titre.click(); }
   });
 
+  /*
+   * Écouté sur le document, et non champ par champ : le formulaire de « + Tâche »
+   * arrive dans une fenêtre après le chargement de la page.
+   */
+  document.addEventListener('change', function (evenement) {
+    var choix = evenement.target;
+    if (!choix || choix.tagName !== 'SELECT' || !choix.id) { return; }
+    (choix.form || document).querySelectorAll('[data-plafond-de]').forEach(function (champDate) {
+      if (champDate.getAttribute('data-plafond-de') !== choix.id) { return; }
+      var option = choix.options[choix.selectedIndex];
+      var plafond = option ? (option.getAttribute('data-echeance') || '') : '';
+      if (plafond === '') {
+        champDate.removeAttribute('max');
+        champDate.removeAttribute('title');
+        return;
+      }
+      champDate.setAttribute('max', plafond);
+      champDate.title = 'Au plus tard le ' + plafond.split('-').reverse().join('/');
+    });
+  });
+
+  // Les champs hors d'un formulaire commun avec leur liste gardent l'écoute d'avant.
   document.querySelectorAll('[data-plafond-de]').forEach(function (champDate) {
     var choix = document.getElementById(champDate.getAttribute('data-plafond-de'));
-    if (!choix) { return; }
+    if (!choix || choix.form === champDate.form) { return; }
 
     var suivreLePlafond = function () {
       var option = choix.options[choix.selectedIndex];

@@ -104,11 +104,11 @@ final class TachesController
         $nom = mb_substr(post('nom'), 0, 120);
         if ($nom === '') {
             Session::flash('erreur', 'Donnez un nom à votre liste.');
-            redirect('taches');
+            $this->apresEchec();
         }
         if (Database::valeur('SELECT id FROM listes_taches WHERE user_id = ? AND nom = ?', [$userId, $nom]) !== null) {
             Session::flash('erreur', 'Vous avez déjà une liste nommée « ' . $nom . ' ».');
-            redirect('taches');
+            $this->apresEchec();
         }
 
         // Une nouvelle liste se range à la fin, sans bousculer l'ordre choisi.
@@ -126,6 +126,7 @@ final class TachesController
         $nouvelleListe = Database::dernierId();
 
         Session::flash('succes', 'Liste « ' . $nom . ' » créée.');
+        $this->apresCreation();
         // La nouvelle liste s'ouvre aussitôt dans le volet.
         redirect('taches', ['liste' => $nouvelleListe]);
     }
@@ -358,20 +359,20 @@ final class TachesController
         $listeId = $this->listeValide($userId, $_POST['liste_id'] ?? null);
         if ($listeId === null) {
             Session::flash('erreur', 'Choisissez la liste dans laquelle ranger cette tâche.');
-            redirect('taches');
+            $this->apresEchec();
         }
 
         $titre = mb_substr(post('titre'), 0, 200);
         if ($titre === '') {
             Session::flash('erreur', 'Écrivez ce qu’il y a à faire.');
-            redirect('taches');
+            $this->apresEchec();
         }
 
         $echeance = $this->dateValide(post('echeance'));
         $souci = $this->souciDeSousTache($userId, $listeId, $echeance);
         if ($souci !== null) {
             Session::flash('erreur', $souci);
-            redirect('taches', ['liste' => $listeId]);
+            $this->apresEchec(['liste' => $listeId]);
         }
 
         Database::run(
@@ -379,6 +380,11 @@ final class TachesController
             [$userId, $listeId, $titre, $echeance, $this->rangSuivant($userId, $listeId)]
         );
 
+        // Revenu au tableau, rien ne montre la liste où elle est rangée : on le dit.
+        if ($this->depuisNouvelle()) {
+            Session::flash('succes', 'Sous-tâche « ' . $titre . ' » ajoutée.');
+        }
+        $this->apresCreation();
         // Le volet reste ouvert sur la liste où l'on vient d'écrire.
         redirect('taches', ['liste' => $listeId]);
     }
@@ -881,6 +887,73 @@ final class TachesController
         }
 
         Vue::afficher('taches/voir', $donnees, (string) $tache['titre']);
+    }
+
+    /**
+     * « + Tâche » : créer une tâche principale ou une sous-tâche depuis une
+     * autre page — le tableau. Demandée en fragment, elle se pose dans une
+     * fenêtre ; « retour » dit où revenir une fois la tâche créée.
+     */
+    public function nouvelle(): void
+    {
+        Auth::exiger();
+        $userId = Auth::id();
+
+        $donnees = [
+            'listes'  => Database::all(
+                'SELECT id, nom, icone, echeance FROM listes_taches WHERE user_id = ? ORDER BY position, id',
+                [$userId]
+            ),
+            'palette' => self::PALETTE,
+            'icones'  => icones_listes(),
+            'retour'  => self::adresseInterne((string) ($_GET['retour'] ?? '')),
+        ];
+
+        if (Vue::enFenetre()) {
+            Vue::fragment('taches/nouvelle', $donnees);
+
+            return;
+        }
+
+        Vue::afficher('taches/nouvelle', $donnees, 'Nouvelle tâche');
+    }
+
+    /** Envoyé depuis « + Tâche » ? Les deux formulaires de création le disent. */
+    private function depuisNouvelle(): bool
+    {
+        return ($_POST['depuis'] ?? '') === 'nouvelle';
+    }
+
+    /** Un refus : on revient au formulaire qui l'a envoyé, message compris. */
+    private function apresEchec(array $params = []): never
+    {
+        if ($this->depuisNouvelle()) {
+            redirect('taches/nouvelle', ['retour' => self::adresseInterne((string) ($_POST['retour'] ?? ''))]);
+        }
+        redirect('taches', $params);
+    }
+
+    /** Créée depuis « + Tâche » : retour à la page d'où l'on venait. */
+    private function apresCreation(): void
+    {
+        if ($this->depuisNouvelle()) {
+            repartir_vers('tableau');
+        }
+    }
+
+    /**
+     * Une adresse de l'application, et rien d'autre : elle finit dans un lien
+     * et une redirection, où « javascript: » ou un autre site n'ont rien à faire.
+     */
+    private static function adresseInterne(string $adresse): string
+    {
+        $interne = $adresse !== ''
+            && $adresse[0] === '/'
+            && !str_starts_with($adresse, '//')
+            && !preg_match('/[\r\n\\\\]/', $adresse)
+            && (BASE_URL === '' || str_starts_with($adresse, BASE_URL . '/'));
+
+        return $interne ? $adresse : '';
     }
 
     private function introuvable(): never

@@ -10,7 +10,8 @@ $total = array_sum(array_map('count', $parColonne));
     <p>Vos sous-tâches et vos évènements — révisions, devoirs, examens — au même endroit.</p>
   </div>
   <div class="actions">
-    <a class="bouton bouton--secondaire" href="<?= url('taches') ?>">Mes tâches</a>
+    <?php // Une tâche ou une sous-tâche, créée dans une fenêtre par-dessus le tableau. ?>
+    <a class="bouton bouton--secondaire" href="<?= url('taches/nouvelle', ['retour' => (string) ($_SERVER['REQUEST_URI'] ?? '')]) ?>" data-fenetre>+ Tâche</a>
     <a class="bouton" href="<?= url('evenements/nouveau') ?>" data-fenetre>+ Évènement</a>
   </div>
 </div>
