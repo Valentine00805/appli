@@ -2,9 +2,9 @@
 /**
  * Créer une tâche sans quitter la page d'où l'on vient — le tableau.
  *
- * Deux formulaires côte à côte : une sous-tâche, rangée dans la tâche
- * principale de son choix (c'est elle qui paraît au tableau), ou une nouvelle
- * tâche principale. Ils envoient aux mêmes adresses que la page « Tâches » ;
+ * Deux formulaires côte à côte : une nouvelle tâche principale, ou une
+ * sous-tâche rangée dans la tâche principale de son choix (c'est elle qui
+ * paraît au tableau). Ils envoient aux mêmes adresses que la page « Tâches » ;
  * « depuis » leur dit de revenir ici, et « retour » où aller une fois fait.
  *
  * @var array  $listes  les tâches principales, pour y ranger la sous-tâche
@@ -35,45 +35,6 @@ $champsCommuns = '<input type="hidden" name="_csrf" value="' . e($csrf) . '">'
 </div>
 
 <div class="nouvelle-tache-choix">
-  <section class="carte">
-    <h2 style="margin-top:0">Sous-tâche</h2>
-    <?php if ($listes === []): ?>
-      <p class="discret" style="margin:0">
-        Il faut d'abord une tâche principale pour la ranger : créez-la à côté.
-      </p>
-    <?php else: ?>
-      <form method="post" action="<?= url('taches') ?>"<?= $surPlace ?>>
-        <?= $champsCommuns ?>
-
-        <div class="champ">
-          <label for="nt-liste">Tâche principale</label>
-          <select id="nt-liste" name="liste_id" required>
-            <?php foreach ($listes as $l): ?>
-              <option value="<?= (int) $l['id'] ?>" data-echeance="<?= e((string) ($l['echeance'] ?? '')) ?>">
-                <?= e($l['icone'] . ' ' . $l['nom']) ?>
-              </option>
-            <?php endforeach; ?>
-          </select>
-        </div>
-
-        <div class="champ">
-          <label for="nt-titre">Tâche</label>
-          <input type="text" id="nt-titre" name="titre" required maxlength="200" placeholder="Relire le chapitre 3">
-        </div>
-
-        <?php $premier = (string) ($listes[0]['echeance'] ?? ''); ?>
-        <div class="champ">
-          <label for="nt-echeance">Échéance <span class="discret">(facultative)</span></label>
-          <input type="date" id="nt-echeance" name="echeance" data-plafond-de="nt-liste"
-                 <?= $premier === '' ? '' : 'max="' . e($premier) . '"' ?>>
-          <span class="champ__aide">Au plus tard à l’échéance de la tâche principale.</span>
-        </div>
-
-        <button class="bouton bouton--bloc" type="submit">Ajouter la sous-tâche</button>
-      </form>
-    <?php endif; ?>
-  </section>
-
   <section class="carte">
     <h2 style="margin-top:0">Tâche principale</h2>
     <form method="post" action="<?= url('taches/listes') ?>"<?= $surPlace ?>>
@@ -111,5 +72,44 @@ $champsCommuns = '<input type="hidden" name="_csrf" value="' . e($csrf) . '">'
 
       <button class="bouton bouton--bloc" type="submit">Créer la tâche principale</button>
     </form>
+  </section>
+
+  <section class="carte">
+    <h2 style="margin-top:0">Sous-tâche</h2>
+    <?php if ($listes === []): ?>
+      <p class="discret" style="margin:0">
+        Il faut d'abord une tâche principale pour la ranger : créez-la à côté.
+      </p>
+    <?php else: ?>
+      <form method="post" action="<?= url('taches') ?>"<?= $surPlace ?>>
+        <?= $champsCommuns ?>
+
+        <div class="champ">
+          <label for="nt-liste">Tâche principale</label>
+          <select id="nt-liste" name="liste_id" required>
+            <?php foreach ($listes as $l): ?>
+              <option value="<?= (int) $l['id'] ?>" data-echeance="<?= e((string) ($l['echeance'] ?? '')) ?>">
+                <?= e($l['icone'] . ' ' . $l['nom']) ?>
+              </option>
+            <?php endforeach; ?>
+          </select>
+        </div>
+
+        <div class="champ">
+          <label for="nt-titre">Tâche</label>
+          <input type="text" id="nt-titre" name="titre" required maxlength="200" placeholder="Relire le chapitre 3">
+        </div>
+
+        <?php $premier = (string) ($listes[0]['echeance'] ?? ''); ?>
+        <div class="champ">
+          <label for="nt-echeance">Échéance <span class="discret">(facultative)</span></label>
+          <input type="date" id="nt-echeance" name="echeance" data-plafond-de="nt-liste"
+                 <?= $premier === '' ? '' : 'max="' . e($premier) . '"' ?>>
+          <span class="champ__aide">Au plus tard à l’échéance de la tâche principale.</span>
+        </div>
+
+        <button class="bouton bouton--bloc" type="submit">Ajouter la sous-tâche</button>
+      </form>
+    <?php endif; ?>
   </section>
 </div>
