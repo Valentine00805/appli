@@ -248,6 +248,8 @@ $ajoutImages = EditionDocument::imagesAjoutables((string) $fichier['nom_origine'
                   aria-pressed="false" title="L'image dans la ligne, comme un mot">▭</button>
           <button type="button" class="barre-outils__bouton" data-habillage-choix="gauche"
                   aria-pressed="false" title="L'image à gauche, le texte à sa droite">◧≡</button>
+          <button type="button" class="barre-outils__bouton" data-habillage-choix="centre"
+                  aria-pressed="false" title="L'image centrée, le texte au-dessus et en dessous">▣</button>
           <button type="button" class="barre-outils__bouton" data-habillage-choix="droite"
                   aria-pressed="false" title="L'image à droite, le texte à sa gauche">≡◨</button>
         </span>

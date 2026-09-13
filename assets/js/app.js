@@ -1892,7 +1892,7 @@
       };
 
       var groupeHabillage = barreOutils.querySelector("[data-habillage-image]");
-      var HABILLAGES = ["ligne", "gauche", "droite"];
+      var HABILLAGES = ["ligne", "gauche", "centre", "droite"];
 
       var montrerHabillage = function () {
         if (!groupeHabillage) { return; }

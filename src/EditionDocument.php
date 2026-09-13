@@ -3162,6 +3162,8 @@ final class EditionDocument
      *
      * - « ligne » : dans la ligne, comme un mot ;
      * - « gauche » ou « droite » : sur ce bord, le texte coulant à côté ;
+     * - « centre » : au milieu de la colonne, seule sur sa hauteur, le texte
+     *   au-dessus et en dessous ;
      * - « fixe » : tout le reste — derrière ou devant le texte, centrée, au-
      *   dessus et en dessous, ou un dessin qui n'est pas une image simple.
      *   L'éditeur la montre dans la ligne sans rien proposer d'en changer, et
@@ -3190,7 +3192,18 @@ final class EditionDocument
             $coule = $coule || self::enfantWp($cadre, $sorte) !== null;
         }
         $horizontal = self::enfantWp($cadre, 'positionH');
-        if (!$coule || $horizontal === null) {
+        if ($horizontal === null) {
+            return 'fixe';
+        }
+
+        // Au milieu, le texte seulement au-dessus et en dessous. Au milieu avec
+        // du texte des deux côtés, en revanche, reste « fixe » : un navigateur
+        // ne sait pas couper chaque ligne en deux autour d'une image.
+        $milieu = self::enfantWp($horizontal, 'align');
+        if (self::enfantWp($cadre, 'wrapTopAndBottom') !== null) {
+            return $milieu !== null && trim($milieu->textContent) === 'center' ? 'centre' : 'fixe';
+        }
+        if (!$coule) {
             return 'fixe';
         }
 
@@ -3211,6 +3224,18 @@ final class EditionDocument
             + (int) ($etendue?->getAttribute('cx') ?? 0) / 2;
 
         return $milieu > $largeurUtile / 2 ? 'droite' : 'gauche';
+    }
+
+    /** Le contour d'une image flottante : le texte à côté, ou seulement au-dessus et en dessous. */
+    private static function contourVoulu(DOMDocument $doc, string $voulu): DOMElement
+    {
+        if ($voulu === 'centre') {
+            return $doc->createElementNS(self::NS_WP, 'wp:wrapTopAndBottom');
+        }
+        $contour = $doc->createElementNS(self::NS_WP, 'wp:wrapSquare');
+        $contour->setAttribute('wrapText', 'bothSides');
+
+        return $contour;
     }
 
     /** L'enfant direct « wp:… » de ce nom, s'il y en a un. */
@@ -3244,7 +3269,7 @@ final class EditionDocument
             return;
         }
 
-        $bord = $voulu === 'droite' ? 'right' : 'left';
+        $bord = match ($voulu) { 'droite' => 'right', 'centre' => 'center', default => 'left' };
         if ($voulu !== 'ligne' && $cadre->localName === 'anchor') {
             $horizontal = self::enfantWp($cadre, 'positionH');
             if ($horizontal !== null) {
@@ -3253,6 +3278,23 @@ final class EditionDocument
                 }
                 $horizontal->setAttribute('relativeFrom', 'column');
                 $horizontal->appendChild($doc->createElementNS(self::NS_WP, 'wp:align', $bord));
+            }
+            // Le contour suit : au milieu, rien à côté ; sur un bord, le texte
+            // coule à côté. Un contour réglé dans Word qui convient déjà reste.
+            $contour = null;
+            foreach (['wrapSquare', 'wrapTight', 'wrapThrough', 'wrapTopAndBottom', 'wrapNone'] as $sorte) {
+                $contour ??= self::enfantWp($cadre, $sorte);
+            }
+            $convient = $contour !== null && ($voulu === 'centre'
+                ? $contour->localName === 'wrapTopAndBottom'
+                : in_array($contour->localName, ['wrapSquare', 'wrapTight', 'wrapThrough'], true));
+            if (!$convient) {
+                $neuf = self::contourVoulu($doc, $voulu);
+                if ($contour !== null) {
+                    $cadre->replaceChild($neuf, $contour);
+                } else {
+                    $cadre->insertBefore($neuf, self::enfantWp($cadre, 'docPr'));
+                }
             }
             return;
         }
@@ -3304,18 +3346,23 @@ final class EditionDocument
             $horizontal->appendChild($doc->createElementNS(self::NS_WP, 'wp:align', $bord));
             $neuf->appendChild($horizontal);
 
+            // Centrée, elle se tient à la ligne où elle est posée : le texte
+            // écrit avant elle reste au-dessus, celui d'après passe dessous.
             $vertical = $doc->createElementNS(self::NS_WP, 'wp:positionV');
-            $vertical->setAttribute('relativeFrom', 'paragraph');
+            $vertical->setAttribute('relativeFrom', $voulu === 'centre' ? 'line' : 'paragraph');
             $vertical->appendChild($doc->createElementNS(self::NS_WP, 'wp:posOffset', '0'));
             $neuf->appendChild($vertical);
+            if ($voulu === 'centre') {
+                // Un peu d'air au-dessus et en dessous, comme à l'écran.
+                $neuf->setAttribute('distT', '114300');
+                $neuf->setAttribute('distB', '114300');
+            }
 
             $neuf->appendChild($etendue);
             if ($marge !== null) {
                 $neuf->appendChild($marge);
             }
-            $habillage = $doc->createElementNS(self::NS_WP, 'wp:wrapSquare');
-            $habillage->setAttribute('wrapText', 'bothSides');
-            $neuf->appendChild($habillage);
+            $neuf->appendChild(self::contourVoulu($doc, $voulu));
             $neuf->appendChild($description);
             if ($verrous !== null) {
                 $neuf->appendChild($verrous);
@@ -3450,7 +3497,7 @@ final class EditionDocument
 
         // « fixe » ou rien : on ne demande pas de changement.
         $habillage = $element->getAttribute('data-habillage');
-        $habillage = in_array($habillage, ['ligne', 'gauche', 'droite'], true) ? $habillage : null;
+        $habillage = in_array($habillage, ['ligne', 'gauche', 'droite', 'centre'], true) ? $habillage : null;
 
         return ['rang' => $ajout === null ? $rang : null, 'ajout' => $ajout, 'largeur' => $largeur,
             'habillage' => $habillage];
@@ -3512,7 +3559,7 @@ final class EditionDocument
                 }
                 $porteur = self::dessinNeuf($doc, $ajouts[$repere->getAttribute('ajout')], $chemin,
                     $parties, $largeurUtile, ++$dessin, $largeur);
-                if (in_array($repere->getAttribute('habillage'), ['gauche', 'droite'], true)) {
+                if (in_array($repere->getAttribute('habillage'), ['gauche', 'droite', 'centre'], true)) {
                     self::habillerDessin($porteur, $repere->getAttribute('habillage'), $dessin);
                 }
             } elseif ($repere->hasAttribute('rang') && isset($parRang[(int) $repere->getAttribute('rang')])) {
@@ -3531,7 +3578,7 @@ final class EditionDocument
                 // Un habillage qui ne change rien ne touche pas au fichier :
                 // une image flottante réglée dans Word garde ses réglages.
                 $habillage = $repere->getAttribute('habillage');
-                if (in_array($habillage, ['ligne', 'gauche', 'droite'], true)
+                if (in_array($habillage, ['ligne', 'gauche', 'droite', 'centre'], true)
                     && $parRang[$rang]['habillage'] !== 'fixe'
                     && $habillage !== $parRang[$rang]['habillage']) {
                     self::habillerDessin($porteur, $habillage, ++$dessin);

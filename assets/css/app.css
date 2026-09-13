@@ -1530,6 +1530,8 @@ input.depot__champ {
  */
 .riche-image[data-habillage="gauche"] { float: left; margin: .15em .9em .4em 0; }
 .riche-image[data-habillage="droite"] { float: right; margin: .15em 0 .4em .9em; }
+/* Centrée : seule sur sa hauteur, le texte d'avant au-dessus, celui d'après dessous. */
+.riche-image[data-habillage="centre"] { display: block; margin: .5em auto; clear: both; }
 .paragraphe__riche { display: flow-root; }
 .apercu-document::after { content: ""; display: block; clear: both; }
 .barre-outils__bouton[aria-pressed="true"] { background: var(--accent-doux); border-color: var(--accent); }
