@@ -15,7 +15,7 @@ $total = array_sum(array_map('count', $parColonne));
   </div>
 </div>
 
-<form class="cal-barre" method="get" action="<?= url('tableau') ?>" data-auto-envoi>
+<form class="cal-barre tableau-filtres" method="get" action="<?= url('tableau') ?>" data-auto-envoi>
   <div class="actions">
     <select name="source" aria-label="Ce que le tableau contient">
       <option value="tout"<?= $source === 'tout' ? ' selected' : '' ?>>Tout</option>
@@ -30,16 +30,32 @@ $total = array_sum(array_map('count', $parColonne));
         </option>
       <?php endforeach; ?>
     </select>
-    <select name="type" aria-label="Filtrer par type d'évènement">
-      <option value="">Tous les types</option>
-      <?php foreach ($types as $t): ?>
-        <option value="<?= (int) $t['id'] ?>"<?= $typeId === (int) $t['id'] ? ' selected' : '' ?>>
-          <?= e($t['icone'] . ' ' . $t['nom']) ?>
-        </option>
-      <?php endforeach; ?>
-    </select>
     <noscript><button class="bouton bouton--secondaire bouton--petit" type="submit">OK</button></noscript>
   </div>
+
+  <?php
+  /*
+   * Les types en pastilles, comme dans le formulaire d'un évènement : un clic
+   * filtre le tableau. Des boutons radio sous les pastilles — le clavier et
+   * les lecteurs d'écran s'y retrouvent, et sans script « OK » envoie le choix.
+   */
+  ?>
+  <?php if ($types !== []): ?>
+    <div class="filtre-types" role="radiogroup" aria-label="Filtrer par type d'évènement">
+      <label class="filtre-types__choix">
+        <input type="radio" name="type" value=""<?= $typeId === null ? ' checked' : '' ?>>
+        <span class="pastille pastille--muette">Tous les types</span>
+      </label>
+      <?php foreach ($types as $t): ?>
+        <label class="filtre-types__choix">
+          <input type="radio" name="type" value="<?= (int) $t['id'] ?>"<?= $typeId === (int) $t['id'] ? ' checked' : '' ?>>
+          <span class="pastille" style="background:<?= e($t['couleur']) ?>;color:<?= e(couleur_texte($t['couleur'])) ?>">
+            <?= e($t['icone'] . ' ' . $t['nom']) ?>
+          </span>
+        </label>
+      <?php endforeach; ?>
+    </div>
+  <?php endif; ?>
   <p class="discret" style="margin:0">
     <?= $total ?> carte<?= $total > 1 ? 's' : '' ?>
     <?php if ($matiereId !== null || $typeId !== null): ?>

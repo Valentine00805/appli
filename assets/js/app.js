@@ -674,7 +674,7 @@
   });
 
   document.querySelectorAll('[data-auto-envoi]').forEach(function (formulaire) {
-    formulaire.querySelectorAll('select, input[type="checkbox"], input[type="color"]')
+    formulaire.querySelectorAll('select, input[type="checkbox"], input[type="radio"], input[type="color"]')
       .forEach(function (champ) {
       champ.addEventListener('change', function () { formulaire.submit(); });
     });

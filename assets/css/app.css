@@ -285,6 +285,24 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
   gap: .75rem; flex-wrap: nowrap; margin-bottom: 1rem;
 }
 .cal-barre > .actions { flex-wrap: nowrap; }
+
+/* Le tableau : ses listes et son compte, puis les pastilles des types dessous. */
+.tableau-filtres { flex-wrap: wrap; }
+.filtre-types { order: 3; flex-basis: 100%; display: flex; flex-wrap: wrap; gap: .45rem; }
+.filtre-types__choix { position: relative; cursor: pointer; margin: 0; }
+/* Le bouton radio reste là pour le clavier, mais c'est la pastille qu'on voit. */
+.filtre-types__choix input { position: absolute; opacity: 0; width: 0; height: 0; }
+/* Toutes en couleurs pleines, comme dans le formulaire ; la choisie porte un anneau. */
+.filtre-types .pastille {
+  font-size: .85rem; padding: .3rem .8rem;
+  border: 1px solid transparent; transition: box-shadow .12s, filter .12s;
+}
+.filtre-types .pastille--muette { border-color: var(--bordure); }
+.filtre-types__choix:hover .pastille { filter: brightness(1.08); }
+.filtre-types input:checked + .pastille {
+  box-shadow: 0 0 0 2px var(--fond), 0 0 0 4px var(--texte);
+}
+.filtre-types input:focus-visible + .pastille { outline: 2px solid var(--accent); outline-offset: 4px; }
 .cal-barre > .actions:first-child { flex: 0 0 auto; }
 .cal-barre > .actions:last-child { flex: 0 1 auto; min-width: 0; }
 
