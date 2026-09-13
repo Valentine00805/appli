@@ -1237,6 +1237,20 @@
      * d'en ajouter un de plus : c'est ainsi qu'on la termine sans avoir à
      * chercher un bouton.
      */
+    /**
+     * Va à la ligne sans changer de paragraphe.
+     *
+     * Le navigateur sait le faire lui-même ; à défaut, on pose le saut à la
+     * main. Le serveur l'écrira comme Word le fait avec Maj+Entrée.
+     */
+    var allerALaLigne = function (zone) {
+      var fait = false;
+      try { fait = document.execCommand("insertLineBreak"); } catch (e) { fait = false; }
+      if (!fait) { document.execCommand("insertHTML", false, "<br>"); }
+      var champ = zone.closest("[data-paragraphe]") && zone.closest("[data-paragraphe]").querySelector("textarea");
+      if (champ) { champ.value = zone.innerHTML; }
+    };
+
     var alaLigne = function (ligne, zone) {
       var sorte = ligne.getAttribute("data-liste") || "";
       var niveau = sorte === "" ? 0 : Number(ligne.getAttribute("data-niveau") || 0);
@@ -1496,6 +1510,11 @@
          */
         if (evenement.key === "Enter") {
           evenement.preventDefault();
+          // Maj+Entrée : à la ligne, dans le même paragraphe — comme dans Word.
+          if (evenement.shiftKey) {
+            allerALaLigne(zone);
+            return;
+          }
           alaLigne(ligne, zone);
           return;
         }
@@ -2007,6 +2026,16 @@
         parcourir(recu.body);
         return trouvees > 0 ? morceaux.join("") : null;
       };
+
+      var boutonSaut = barreOutils.querySelector("[data-saut-ligne]");
+      if (boutonSaut) {
+        // Sur l'appui, et non au clic : le clic ferait perdre le curseur.
+        boutonSaut.addEventListener("mousedown", function (evenement) {
+          evenement.preventDefault();
+          var zone = reprendreLaSelection();
+          if (zone) { allerALaLigne(zone); }
+        });
+      }
 
       var boutonImage = barreOutils.querySelector("[data-inserer-image]");
       var choixImage = barreOutils.querySelector("[data-choisir-image]");

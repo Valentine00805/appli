@@ -469,7 +469,9 @@ final class EditionDocument
 
         foreach ($passages as $rang => $passage) {
             if (!isset($passage['image'])) {
-                $passages[$rang]['texte'] = (string) preg_replace('/\s+/u', ' ', $passage['texte']);
+                // Les blancs se resserrent, les sauts de ligne restent.
+                $texte = (string) preg_replace('/[^\S\n]+/u', ' ', $passage['texte']);
+                $passages[$rang]['texte'] = (string) preg_replace('/ ?\n ?/', "\n", $texte);
             }
         }
         $passages = array_values(array_filter($passages, $garder));
@@ -1055,7 +1057,7 @@ final class EditionDocument
             if ($passage['texte'] === '') {
                 continue;
             }
-            $noeud = $doc->createTextNode($passage['texte']);
+            $noeud = self::texteOdf($doc, $passage['texte']);
             $style = self::styleOdf($doc, $passage);
             if ($style === null) {
                 $paragraphe->appendChild($noeud);
@@ -1251,12 +1253,71 @@ final class EditionDocument
         if ($paragraphe->namespaceURI !== self::NS_W) {
             return (string) $paragraphe->textContent;
         }
+        // Un saut de ligne vaut une espace : sans cela, les deux mots qu'il
+        // sépare se colleraient dans la zone de texte et dans le sommaire.
         $texte = '';
-        foreach ($paragraphe->getElementsByTagNameNS(self::NS_W, 't') as $t) {
-            $texte .= $t->textContent;
+        foreach ($paragraphe->getElementsByTagName('*') as $noeud) {
+            if (self::estElement($noeud, 't')) {
+                $texte .= $noeud->textContent;
+            } elseif (self::estSautDeLigne($noeud)) {
+                $texte .= ' ';
+            }
         }
 
         return $texte;
+    }
+
+    /**
+     * Retire les sauts de ligne en fin de paragraphe.
+     *
+     * Le navigateur en laisse un derrière le dernier mot pour pouvoir y
+     * poser le curseur ; dans le document, ce ne serait qu'une ligne vide
+     * que personne n'a demandée. Au milieu du texte, en revanche, deux sauts
+     * de suite font une ligne blanche voulue, et restent.
+     */
+    private static function sansSautAuBout(array $passages): array
+    {
+        for ($i = count($passages) - 1; $i >= 0; $i--) {
+            if (isset($passages[$i]['image'])) {
+                break;
+            }
+            $passages[$i]['texte'] = rtrim($passages[$i]['texte'], "\n");
+            if ($passages[$i]['texte'] !== '') {
+                break;
+            }
+            unset($passages[$i]);
+        }
+
+        return array_values($passages);
+    }
+
+    /** Un retour à la ligne de Word qui ne change pas de paragraphe (ni de page, ni de colonne). */
+    private static function estSautDeLigne(DOMNode $noeud): bool
+    {
+        if (self::estElement($noeud, 'cr')) {
+            return true;
+        }
+
+        return self::estElement($noeud, 'br')
+            && in_array($noeud->getAttributeNS(self::NS_W, 'type'), ['', 'textWrapping'], true);
+    }
+
+    /**
+     * Du texte OpenDocument : chaque « \n » y devient un <text:line-break/>.
+     */
+    private static function texteOdf(DOMDocument $doc, string $texte): DOMDocumentFragment
+    {
+        $fragment = $doc->createDocumentFragment();
+        foreach (explode("\n", $texte) as $numero => $morceau) {
+            if ($numero > 0) {
+                $fragment->appendChild($doc->createElementNS(self::NS_TEXT, 'text:line-break'));
+            }
+            if ($morceau !== '') {
+                $fragment->appendChild($doc->createTextNode($morceau));
+            }
+        }
+
+        return $fragment;
     }
 
     /** Un enfant de passage qui n'est pas du texte : un dessin, une image, un objet. */
@@ -1520,7 +1581,8 @@ final class EditionDocument
             if ($passage['texte'] === '') {
                 continue;
             }
-            $morceau = htmlspecialchars($passage['texte'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+            $morceau = str_replace("\n", '<br>',
+                htmlspecialchars($passage['texte'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'));
             if ($passage['fond'] !== null) {
                 $morceau = '<span data-fond="' . $passage['fond']
                     . '" style="background-color:#' . $passage['fond'] . '">' . $morceau . '</span>';
@@ -1584,7 +1646,7 @@ final class EditionDocument
                 'fond' => null], $passages);
         }
 
-        return self::fondrePassages($passages);
+        return self::sansSautAuBout(self::fondrePassages($passages));
     }
 
     /** Descend dans le HTML en tenant à jour la mise en forme du moment. */
@@ -1622,7 +1684,7 @@ final class EditionDocument
                 $sien['souligne'] = true;
             }
             if ($nom === 'br') {
-                $passages[] = $etat + ['texte' => ' '];
+                $passages[] = $etat + ['texte' => "\n"];
                 continue;
             }
             // La taille voyage soit dans notre attribut, soit dans le style que
@@ -1829,6 +1891,8 @@ final class EditionDocument
                     $texte .= $enfant->textContent;
                 } elseif (self::estElement($enfant, 'tab')) {
                     $texte .= "\t";
+                } elseif (self::estSautDeLigne($enfant)) {
+                    $texte .= "\n";
                 } elseif ($enfant instanceof DOMElement && isset($dessins[spl_object_id($enfant)])) {
                     if ($texte !== '') {
                         $passages[] = ['texte' => $texte] + $marques;
@@ -2002,10 +2066,22 @@ final class EditionDocument
                 ? $gabarit->cloneNode(false)
                 : $doc->createElementNS(self::NS_W, 'w:t');
             /** @var DOMElement $t */
-            // Sans cet attribut, Word rogne les espaces de début et de fin.
-            $t->setAttributeNS(self::NS_XML, 'xml:space', 'preserve');
-            $t->appendChild($doc->createTextNode($passage['texte']));
-            $run->appendChild($t);
+            // Une ligne par <w:t>, et un <w:br/> entre deux : c'est ainsi que
+            // Word écrit un retour à la ligne qui ne change pas de paragraphe.
+            foreach (explode("\n", $passage['texte']) as $numero => $morceau) {
+                if ($numero > 0) {
+                    $run->appendChild($doc->createElementNS(self::NS_W, 'w:br'));
+                }
+                if ($morceau === '') {
+                    continue;
+                }
+                /** @var DOMElement $ligne */
+                $ligne = $numero === 0 ? $t : $t->cloneNode(false);
+                // Sans cet attribut, Word rogne les espaces de début et de fin.
+                $ligne->setAttributeNS(self::NS_XML, 'xml:space', 'preserve');
+                $ligne->appendChild($doc->createTextNode($morceau));
+                $run->appendChild($ligne);
+            }
 
             $paragraphe->appendChild($run);
         }
@@ -2183,6 +2259,10 @@ final class EditionDocument
             }
             if ($enfant->localName === 'tab') {
                 $passages[] = $etat + ['texte' => "\t"];
+                continue;
+            }
+            if ($enfant->localName === 'line-break') {
+                $passages[] = $etat + ['texte' => "\n"];
                 continue;
             }
 

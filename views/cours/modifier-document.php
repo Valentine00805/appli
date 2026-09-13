@@ -198,6 +198,14 @@ $ajoutImages = EditionDocument::imagesAjoutables((string) $fichier['nom_origine'
         <button type="button" class="barre-outils__bouton" data-fond-defaut
                 title="Retirer le surlignage">⌫</button>
       </span>
+      <?php
+      /*
+       * Aller à la ligne sans changer de paragraphe : ce que fait Maj+Entrée,
+       * pour qui ne connaît pas le raccourci.
+       */
+      ?>
+      <button type="button" class="barre-outils__bouton" data-saut-ligne
+              title="Aller à la ligne sans changer de paragraphe (Maj+Entrée)">↵</button>
       <?php if ($ajoutImages): ?>
         <?php
         /*
@@ -207,7 +215,7 @@ $ajoutImages = EditionDocument::imagesAjoutables((string) $fichier['nom_origine'
          */
         ?>
         <button type="button" class="barre-outils__bouton barre-outils__image"
-                data-inserer-image title="Ajouter une image sous la ligne où se trouve le curseur">
+                data-inserer-image title="Ajouter une image à l'endroit du curseur">
           <span aria-hidden="true">🖼</span> Image
         </button>
         <input type="file" accept="image/png,image/jpeg,image/gif" hidden data-choisir-image
@@ -340,7 +348,8 @@ $ajoutImages = EditionDocument::imagesAjoutables((string) $fichier['nom_origine'
       </noscript>
 
       <p class="champ__aide" style="margin-top:.75rem">
-        Un retour à la ligne dans une zone crée un nouveau paragraphe.
+        Entrée crée un nouveau paragraphe ; Maj+Entrée va à la ligne dans le même
+        paragraphe.
       </p>
     </div>
 

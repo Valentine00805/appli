@@ -320,9 +320,15 @@ final class ApercuDocument
         if ($noeud->namespaceURI !== self::NS_W) {
             return (string) $noeud->textContent;
         }
+        // Un saut de ligne vaut une espace, pour ne pas coller deux mots.
         $texte = '';
-        foreach ($noeud->getElementsByTagNameNS(self::NS_W, 't') as $t) {
-            $texte .= $t->textContent;
+        foreach ($noeud->getElementsByTagNameNS(self::NS_W, '*') as $enfant) {
+            if ($enfant->localName === 't') {
+                $texte .= $enfant->textContent;
+            } elseif ($enfant->localName === 'cr' || ($enfant->localName === 'br'
+                && in_array($enfant->getAttributeNS(self::NS_W, 'type'), ['', 'textWrapping'], true))) {
+                $texte .= ' ';
+            }
         }
 
         return $texte;
