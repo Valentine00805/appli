@@ -1141,6 +1141,9 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
   padding: .6rem .7rem;
 }
 .kanban-carte:hover { border-color: var(--bordure-forte); }
+/* Toute la carte ouvre son détail : elle le dit au pointeur. */
+.kanban-carte[data-detail-carte] { cursor: pointer; }
+.kanban-carte__titre:hover { color: var(--accent); }
 .kanban-carte--faite .kanban-carte__titre { text-decoration: line-through; color: var(--texte-doux); }
 .kanban-carte--glisse { opacity: .45; border-style: dashed; }
 

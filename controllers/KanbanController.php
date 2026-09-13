@@ -167,6 +167,7 @@ final class KanbanController
                 'couleur'     => (string) $t['liste_couleur'],
                 'icone'       => (string) $t['liste_icone'] !== '' ? (string) $t['liste_icone'] : '📋',
                 'origine'     => (string) $t['liste_nom'],
+                'detail'      => url('taches/' . (int) $t['id']),
                 'note'        => (string) ($t['note'] ?? ''),
                 'lien'        => url('taches', ['liste' => (int) $t['liste_id']]),
                 'cours_id'    => 0,
@@ -221,6 +222,7 @@ final class KanbanController
                     . ((string) ($e['matiere_nom'] ?? '') !== '' ? ' · ' . (string) $e['matiere_nom'] : '')),
                 'note'     => (string) ($e['description'] ?? ''),
                 'lien'     => url('evenements/' . (int) $e['id'] . '/modifier'),
+                'detail'   => url('evenements/' . (int) $e['id']),
                 // De quoi rejoindre le cours et sa fiche, comme au calendrier.
                 'cours_id'    => (int) ($e['cours_id'] ?? 0),
                 'cours_titre' => (string) ($e['cours_titre'] ?? ''),
@@ -230,7 +232,7 @@ final class KanbanController
     }
 
     /** « Terminé » l'emporte : un élément fait l'est, quelle que soit l'étape. */
-    private function colonneDe(int $fait, int $etape): string
+    public static function colonneDe(int $fait, int $etape): string
     {
         if ($fait === 1) {
             return 'termine';

@@ -847,6 +847,42 @@ final class TachesController
         return in_array($icone, icones_listes(), true) ? $icone : '📋';
     }
 
+    /**
+     * Une sous-tâche, en lecture : le détail d'une carte du tableau.
+     *
+     * Demandée en fragment, elle se pose dans une fenêtre par-dessus le
+     * tableau ; son adresse seule donne la page entière.
+     */
+    public function voir(int $id): void
+    {
+        Auth::exiger();
+        $userId = Auth::id();
+
+        $tache = Database::one(
+            'SELECT t.*, l.nom AS liste_nom, l.couleur AS liste_couleur, l.icone AS liste_icone
+               FROM taches t
+               JOIN listes_taches l ON l.id = t.liste_id
+              WHERE t.id = ? AND t.user_id = ?',
+            [$id, $userId]
+        );
+        if ($tache === null) {
+            $this->introuvable();
+        }
+
+        $donnees = [
+            'tache'   => $tache,
+            'colonne' => KanbanController::colonneDe((int) $tache['faite'], (int) $tache['etape']),
+        ];
+
+        if (Vue::enFenetre()) {
+            Vue::fragment('taches/voir', $donnees);
+
+            return;
+        }
+
+        Vue::afficher('taches/voir', $donnees, (string) $tache['titre']);
+    }
+
     private function introuvable(): never
     {
         http_response_code(404);

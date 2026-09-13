@@ -81,12 +81,18 @@ $total = array_sum(array_map('count', $parColonne));
           <article class="kanban-carte<?= $cle === 'termine' ? ' kanban-carte--faite' : '' ?>"
                    style="border-left-color:<?= e($carte['couleur']) ?>"
                    data-carte="<?= (int) $carte['id'] ?>"
-                   data-nature="<?= e($carte['nature']) ?>">
-            <?php // Le titre ne se clique pas : les boutons disent où l'on va. ?>
-            <span class="kanban-carte__titre">
+                   data-nature="<?= e($carte['nature']) ?>" data-detail-carte>
+            <?php
+            /*
+             * Le titre ouvre le détail de la carte dans une fenêtre ; le script
+             * étend ce clic à toute la carte, hors de ses boutons et de sa
+             * remarque. Sans script, le titre reste un lien vers la fiche.
+             */
+            ?>
+            <a class="kanban-carte__titre" href="<?= e($carte['detail']) ?>" data-fenetre draggable="false">
               <span aria-hidden="true"><?= e($carte['icone']) ?></span>
               <?= e($carte['titre']) ?>
-            </span>
+            </a>
             <p class="kanban-carte__meta"><?= e($carte['origine']) ?><?php
               if ($carte['cours_titre'] !== '') { echo ' · 📘 ' . e($carte['cours_titre']); }
             ?></p>

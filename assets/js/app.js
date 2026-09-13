@@ -637,6 +637,21 @@
     if (bouton) { bouton.focus(); }
   }, true);
 
+  /*
+   * Une carte du tableau s'ouvre d'un clic n'importe où sur elle, comme son
+   * titre. Ses boutons, sa remarque et sa poignée gardent leur propre rôle.
+   */
+  document.addEventListener('click', function (evenement) {
+    if (evenement.defaultPrevented || !evenement.target.closest) { return; }
+    var carte = evenement.target.closest('[data-detail-carte]');
+    if (!carte) { return; }
+    if (evenement.target.closest('a, button, input, textarea, select, label, summary, form, details')) { return; }
+    // Un texte qu'on sélectionne n'est pas un clic pour ouvrir.
+    if (String(window.getSelection ? window.getSelection() : '') !== '') { return; }
+    var titre = carte.querySelector('.kanban-carte__titre[href]');
+    if (titre) { titre.click(); }
+  });
+
   document.querySelectorAll('[data-plafond-de]').forEach(function (champDate) {
     var choix = document.getElementById(champDate.getAttribute('data-plafond-de'));
     if (!choix) { return; }

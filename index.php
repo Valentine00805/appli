@@ -334,6 +334,7 @@ $routes = [
     ['POST', 'budget/suggestions/{id}/appliquer', [BudgetController::class, 'appliquerSuggestion']],
 
     ['GET',  'taches',                       [TachesController::class, 'index']],
+    ['GET',  'taches/{id}',                  [TachesController::class, 'voir']],
     ['POST', 'taches',                       [TachesController::class, 'creer']],
     ['POST', 'taches/listes',                [TachesController::class, 'creerListe']],
     ['POST', 'taches/listes/{id}/modifier',  [TachesController::class, 'modifierListe']],
