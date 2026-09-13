@@ -111,7 +111,7 @@ function types_evenement_par_defaut(): array
         ['nom' => 'Examen',   'icone' => '📝', 'couleur' => '#dc2626', 'est_echeance' => 1, 'au_tableau' => 1],
         ['nom' => 'Devoir',   'icone' => '🗂️', 'couleur' => '#ea580c', 'est_echeance' => 1, 'au_tableau' => 1],
         ['nom' => 'Révision', 'icone' => '🔁', 'couleur' => '#059669', 'est_echeance' => 0, 'au_tableau' => 1],
-        ['nom' => 'Autre',    'icone' => '📌', 'couleur' => '#64748b', 'est_echeance' => 0, 'au_tableau' => 1],
+        ['nom' => 'Autre',    'icone' => '📌', 'couleur' => '#64748b', 'est_echeance' => 0, 'au_tableau' => 0],
     ];
 }
 

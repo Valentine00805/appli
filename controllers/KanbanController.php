@@ -58,7 +58,11 @@ final class KanbanController
                 'SELECT id, nom FROM matieres WHERE user_id = ? ORDER BY nom',
                 [$userId]
             ),
-            'types'      => TypesEvenementController::pourUtilisateur($userId),
+            // Le filtre ne propose que les types qui peuvent être au tableau.
+            'types'      => array_values(array_filter(
+                TypesEvenementController::pourUtilisateur($userId),
+                static fn (array $t): bool => (int) $t['au_tableau'] === 1
+            )),
             'matiereId'  => $matiereId,
             'typeId'     => $typeId,
             'source'     => $source,
@@ -192,9 +196,10 @@ final class KanbanController
                 LEFT JOIN types_evenement t ON t.id = e.type_id
                 WHERE e.user_id = ?
                   AND (e.termine = 0 OR e.fin >= DATE_SUB(NOW(), INTERVAL 30 DAY))
-                  -- Un type peut se retirer du tableau : un cours au programme
-                  -- n\'est pas une chose à faire. Un évènement sans type reste.
-                  AND (t.au_tableau = 1 OR e.type_id IS NULL)';
+                  -- Seuls les types marqués « au tableau » y viennent — devoirs,
+                  -- examens, révisions. Un cours au programme, un rendez-vous
+                  -- importé d\'Outlook sans type, ne sont pas des choses à faire.
+                  AND t.au_tableau = 1';
         $params = [$userId];
 
         if ($matiereId !== null) {
