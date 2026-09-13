@@ -112,7 +112,8 @@ $nbElements = count($elements) + count($fichiersFiche);
                   <?php $apercu = ApercuDocument::possible((string) $f['nom_origine']); ?>
                   <a class="fichier__nom"
                      href="<?= url('fichiers/' . $f['id'] . ($apercu ? '/apercu' : '')) ?>"
-                     <?= $apercu ? '' : ' target="_blank" rel="noopener"' ?>>
+                     <?php // L'aperçu s'ouvre dans une fenêtre, par-dessus le cours. ?>
+                     <?= $apercu ? 'data-fenetre' : ' target="_blank" rel="noopener"' ?>>
                     <?= e($f['nom_origine']) ?>
                   </a><br>
                   <span class="fichier__meta"><?= e(taille_lisible((int) $f['taille'])) ?></span>

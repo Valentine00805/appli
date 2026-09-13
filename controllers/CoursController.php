@@ -728,7 +728,7 @@ final class CoursController
             $erreur = $e->getMessage();
         }
 
-        Vue::afficher('cours/apercu', [
+        $donnees = [
             'fichier'     => $fichier,
             'genre'       => $genre,
             'estTableur'  => $genre === 'tableur',
@@ -742,7 +742,17 @@ final class CoursController
             'limite'      => ApercuDocument::LIGNES_MAX,
             'erreur'      => $erreur,
             'format'      => ApercuDocument::format($nom),
-        ], $nom);
+        ];
+
+        // Depuis la page du cours, l'aperçu s'ouvre dans une fenêtre, par-dessus
+        // le cours qu'on consultait ; l'adresse seule donne toujours la page.
+        if (Vue::enFenetre()) {
+            Vue::fragment('cours/apercu', $donnees);
+
+            return;
+        }
+
+        Vue::afficher('cours/apercu', $donnees, $nom);
     }
 
     /** Jusqu'où l'on recrée l'arborescence d'un dossier déposé. */

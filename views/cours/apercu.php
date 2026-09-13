@@ -8,15 +8,25 @@
  * @var bool $estTableur
  * @var int $total, $limite
  * @var ?string $erreur
-
+ * @var bool $dansUneFenetre  rendu seul, pour être posé dans une fenêtre
  */
+$dansUneFenetre = $dansUneFenetre ?? false;
 ?>
 
-<div class="entete-page">
+<?php
+/*
+ * « data-document » demande à la fenêtre toute la place qu'elle peut prendre :
+ * un document se lit, et une colonne étroite de quarante lignes ne se lit pas.
+ */
+?>
+<div class="entete-page"<?= $dansUneFenetre ? ' data-large data-document' : '' ?>>
   <div>
-    <p class="discret" style="margin-bottom:.35rem">
-      <a href="<?= url('cours/' . $fichier['cours_id']) ?>">← <?= e((string) $fichier['cours_titre']) ?></a>
-    </p>
+    <?php // Dans une fenêtre, le cours est juste derrière : la croix y ramène. ?>
+    <?php if (!$dansUneFenetre): ?>
+      <p class="discret" style="margin-bottom:.35rem">
+        <a href="<?= url('cours/' . $fichier['cours_id']) ?>">← <?= e((string) $fichier['cours_titre']) ?></a>
+      </p>
+    <?php endif; ?>
     <h1><?= e(Fichiers::icone($fichier['mime'], $fichier['nom_origine'])) ?> <?= e((string) $fichier['nom_origine']) ?></h1>
     <p><?= e(ucfirst($format)) ?> · <?= e(taille_lisible((int) $fichier['taille'])) ?></p>
   </div>

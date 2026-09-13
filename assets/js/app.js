@@ -210,6 +210,22 @@
     // elle et non sur son contenu. C'est ce qui les distingue.
     fenetre.addEventListener('click', function (evenement) {
       if (evenement.target === fenetre) { fermer(); }
+
+      /*
+       * Le sommaire d'un aperçu ouvert en fenêtre : c'est la fenêtre qui
+       * défile, pas la page derrière. On amène le titre en haut de la
+       * fenêtre, sans toucher à l'adresse de la page — elle est celle du
+       * cours, qu'une ancre d'aperçu n'a rien à y faire.
+       */
+      var lien = evenement.target.closest && evenement.target.closest('[data-apercu-sommaire] a[href^="#"]');
+      if (!lien) { return; }
+      var titre = document.getElementById(decodeURIComponent(lien.getAttribute('href').slice(1)));
+      if (!titre || !corps.contains(titre)) { return; }
+      evenement.preventDefault();
+      corps.scrollTo({
+        top: titre.getBoundingClientRect().top - corps.getBoundingClientRect().top + corps.scrollTop - 12,
+        behavior: 'smooth'
+      });
     });
 
     var ouvrir = function (adresse) {
@@ -227,6 +243,8 @@
         // Le contenu annonce la place qu'il lui faut : un formulaire tient sur
         // deux colonnes, une fiche de six lignes se lit mieux étroite.
         fenetre.classList.toggle('fenetre--large', corps.querySelector('[data-large]') !== null);
+        // Un document à lire prend toute la place que l'écran lui laisse.
+        fenetre.classList.toggle('fenetre--document', corps.querySelector('[data-document]') !== null);
 
         /*
          * Remplacer le contenu emporte l'élément qui avait le focus, et le
