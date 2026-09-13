@@ -92,8 +92,11 @@ $avancementFiche = avancement_anneaux(
     <div class="actions">
       <button class="bouton" type="submit">Enregistrer la fiche</button>
       <?php if ($surPage): ?>
-        <?php // Dans une fenêtre, elle la ferme ; sur la page, elle ramène à la liste. ?>
-        <a class="bouton bouton--discret" href="<?= url('revision') ?>" data-fermer>Retour aux fiches</a>
+        <?php
+        // Toujours vers la liste des fiches, fenêtre ou non : la fermer ramènerait
+        // à la page d'où on l'a ouverte, qui n'est souvent pas cette liste.
+        ?>
+        <a class="bouton bouton--discret" href="<?= url('revision') ?>">Retour aux fiches</a>
       <?php else: ?>
         <a class="bouton bouton--discret" href="<?= url('cours/' . $cours['id']) ?>">Fermer</a>
       <?php endif; ?>
