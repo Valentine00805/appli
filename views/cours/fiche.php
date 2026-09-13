@@ -10,7 +10,8 @@
 $dansUneFenetre = $dansUneFenetre ?? false;
 ?>
 
-<div class="entete-page"<?= $dansUneFenetre ? ' data-large data-document' : '' ?>>
+<?php // Comme un cours qu'on modifie, la fiche ne se quitte que par la croix : on y écrit. ?>
+<div class="entete-page"<?= $dansUneFenetre ? ' data-large data-document data-croix-seule' : '' ?>>
   <div>
     <?php // Dans une fenêtre, on vient d'un cours ou de la liste : la croix y ramène. ?>
     <?php if (!$dansUneFenetre): ?>
