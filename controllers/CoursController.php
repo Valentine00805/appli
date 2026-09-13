@@ -22,6 +22,7 @@ final class CoursController
             'matieres'  => $this->matieres($userId),
             'tags'      => $this->tags($userId),
             'dossiers'  => DossiersController::pourUtilisateur($userId, true),
+            'dossiersFermes' => DossiersController::colonneFermee($userId),
             'sansDossier' => (int) Database::valeur(
                 'SELECT COUNT(*) FROM cours WHERE user_id = ? AND dossier_id IS NULL',
                 [$userId]

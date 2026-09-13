@@ -154,7 +154,8 @@ $descendanceDe = static function (int $id) use (&$descendanceDe, $enfantsDe): ar
 };
 ?>
 
-<div class="<?= $dossiers === [] ? '' : 'cours-vue' ?>">
+<?php $dossiersFermes = ($dossiersFermes ?? false) && $dossiers !== []; ?>
+<div class="<?= $dossiers === [] ? '' : 'cours-vue' ?><?= $dossiersFermes ? ' cours-vue--ferme' : '' ?>">
 
 <?php if ($dossiers !== []): ?>
   <?php
@@ -163,6 +164,29 @@ $descendanceDe = static function (int $id) use (&$descendanceDe, $enfantsDe): ar
       $parNiveau[(int) ($d['parent_id'] ?? 0)][] = $d;
   }
   ?>
+  <div class="cours-dossiers-zone">
+    <?php
+    /*
+     * Le bouton qui ouvre et ferme la colonne, à son bord droit, dehors —
+     * le même que celui du volet des agendas. Un formulaire, pour marcher
+     * sans script au prix d'un rechargement ; le script bascule sur place.
+     */
+    ?>
+    <form class="cal-volet-bascule" method="post"
+          action="<?= url('dossiers/colonne') ?>"
+          data-volet-bascule="<?= e(url('dossiers/colonne')) ?>"
+          data-classe-ferme="cours-vue--ferme" data-quoi="les dossiers">
+      <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
+      <input type="hidden" name="retour" value="<?= e((string) ($_SERVER['REQUEST_URI'] ?? '')) ?>">
+      <input type="hidden" name="ferme" value="<?= $dossiersFermes ? '0' : '1' ?>">
+      <button type="submit"
+              aria-expanded="<?= $dossiersFermes ? 'false' : 'true' ?>"
+              title="<?= $dossiersFermes ? 'Montrer les dossiers' : 'Masquer les dossiers' ?>">
+        <span aria-hidden="true"><?= $dossiersFermes ? '›' : '‹' ?></span>
+        <span class="sr-only"><?= $dossiersFermes ? 'Montrer les dossiers' : 'Masquer les dossiers' ?></span>
+      </button>
+    </form>
+
   <aside class="cours-dossiers" data-dossiers-cibles>
     <p class="cours-dossiers__titre">Dossiers</p>
 
@@ -317,6 +341,7 @@ $descendanceDe = static function (int $id) use (&$descendanceDe, $enfantsDe): ar
       sur un dossier y crée un cours qui le contient.
     </p>
   </aside>
+  </div>
 
   <?php // Un fichier venu du bureau passe par ici : un cours par fichier. ?>
   <form method="post" action="<?= url('cours/depot') ?>" enctype="multipart/form-data"

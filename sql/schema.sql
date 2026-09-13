@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS `users` (
   `couleur_miens`  VARCHAR(7)  NULL,
   `volet_replie`    VARCHAR(190) NULL,
   `volet_ferme`     TINYINT(1)   NOT NULL DEFAULT 0,
+  `dossiers_ferme`  TINYINT(1)   NOT NULL DEFAULT 0,
   `vue_calendrier`  VARCHAR(10)   NULL,
   `email`         VARCHAR(190) NOT NULL,
   `password_hash` VARCHAR(255) NOT NULL,

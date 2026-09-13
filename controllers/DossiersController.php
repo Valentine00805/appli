@@ -356,6 +356,37 @@ final class DossiersController
         return in_array($icone, icones_dossiers(), true) ? $icone : '📁';
     }
 
+    /**
+     * Ouvre ou ferme la colonne des dossiers de « Mes cours ».
+     *
+     * Un geste d'affichage, comme le volet des agendas : rien n'est rangé ni
+     * déplacé. Il est retenu, pour que la liste revienne comme on l'a laissée
+     * après un filtre ou une recherche.
+     */
+    public function fermerColonne(): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+
+        self::fermerLaColonne(Auth::id(), ($_POST['ferme'] ?? '') === '1');
+
+        if (veut_du_json()) {
+            repondre_json(['fait' => true]);
+        }
+        repartir_vers('cours');
+    }
+
+    /** La colonne des dossiers est-elle fermée ? */
+    public static function colonneFermee(int $userId): bool
+    {
+        return (int) Database::valeur('SELECT dossiers_ferme FROM users WHERE id = ?', [$userId]) === 1;
+    }
+
+    private static function fermerLaColonne(int $userId, bool $ferme): void
+    {
+        Database::run('UPDATE users SET dossiers_ferme = ? WHERE id = ?', [$ferme ? 1 : 0, $userId]);
+    }
+
     private function introuvable(): never
     {
         http_response_code(404);

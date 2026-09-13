@@ -266,6 +266,7 @@ $routes = [
     ['POST', 'dossiers/{id}/supprimer',    [DossiersController::class, 'supprimer']],
     ['POST', 'dossiers/{id}/deplacer',     [DossiersController::class, 'deplacer']],
     ['POST', 'dossiers/ranger',            [DossiersController::class, 'ranger']],
+    ['POST', 'dossiers/colonne',           [DossiersController::class, 'fermerColonne']],
 
     // Anciennes adresses, conservées pour les liens déjà enregistrés.
     ['GET',  'matieres',                  [OrganisationController::class, 'ancienneAdresse']],

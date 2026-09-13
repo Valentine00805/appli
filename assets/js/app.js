@@ -514,9 +514,15 @@
    * place, et l'on prévient le serveur en arrière-plan pour que le volet soit
    * dans le même état au prochain changement de mois.
    */
-  var bascule = document.querySelector('[data-volet-bascule]');
-  if (bascule) {
-    var zone = bascule.closest('.cal-avec-volet');
+  /*
+   * Le même bouton ferme la colonne des dossiers de « Mes cours » : le
+   * formulaire dit quelle classe porte l'état fermé, et de quoi il parle.
+   */
+  document.querySelectorAll('[data-volet-bascule]').forEach(function (bascule) {
+    var classeFerme = bascule.dataset.classeFerme || 'cal-avec-volet--ferme';
+    var quoi = bascule.dataset.quoi || 'les agendas';
+    var zone = bascule.closest('.' + classeFerme.replace(/--ferme$/, ''));
+    if (!zone) { return; }
     var jetonBascule = bascule.querySelector('input[name="_csrf"]');
     var etat = bascule.querySelector('input[name="ferme"]');
     var boutonBascule = bascule.querySelector('button');
@@ -527,13 +533,13 @@
       evenement.preventDefault();
 
       var ferme = etat.value === '1';
-      zone.classList.toggle('cal-avec-volet--ferme', ferme);
+      zone.classList.toggle(classeFerme, ferme);
 
       // Le bouton dit maintenant l'inverse : c'est lui qui porte le prochain
       // geste, pas l'état où l'on se trouve.
       etat.value = ferme ? '0' : '1';
       boutonBascule.setAttribute('aria-expanded', ferme ? 'false' : 'true');
-      var mot = ferme ? 'Montrer les agendas' : 'Masquer les agendas';
+      var mot = (ferme ? 'Montrer ' : 'Masquer ') + quoi;
       boutonBascule.title = mot;
       fleche.textContent = ferme ? '›' : '‹';
       motBascule.textContent = mot;
@@ -552,7 +558,7 @@
         // page-ci.
       });
     });
-  }
+  });
 
   /*
    * Le volet retient ses sections repliées.
