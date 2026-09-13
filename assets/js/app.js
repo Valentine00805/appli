@@ -238,6 +238,12 @@
      */
     var aChange = false;
 
+    // Certains contenus ne se quittent que par la croix : un clic à côté ou
+    // la touche Échap n'y font rien.
+    var croixSeule = function () {
+      return corps.querySelector('[data-croix-seule]') !== null;
+    };
+
     var fermer = function () {
       if (!peutQuitter()) { return; }
       corps.innerHTML = '';
@@ -263,7 +269,7 @@
     // « dialog » se ferme parfois toute seule sur Échap : on la retient.
     fenetre.addEventListener('cancel', function (evenement) {
       evenement.preventDefault();
-      fermer();
+      if (!croixSeule()) { fermer(); }
     });
 
     fenetre.querySelector('.fenetre__fermer').addEventListener('click', fermer);
@@ -277,13 +283,16 @@
      * quitter au clavier.
      */
     fenetre.addEventListener('keydown', function (evenement) {
-      if (evenement.key === 'Escape') { evenement.preventDefault(); fermer(); }
+      if (evenement.key === 'Escape') {
+        evenement.preventDefault();
+        if (!croixSeule()) { fermer(); }
+      }
     });
 
     // Le fond grisé fait partie de la « dialog » : un clic dessus arrive sur
     // elle et non sur son contenu. C'est ce qui les distingue.
     fenetre.addEventListener('click', function (evenement) {
-      if (evenement.target === fenetre) { fermer(); }
+      if (evenement.target === fenetre && !croixSeule()) { fermer(); }
 
       /*
        * Le sommaire d'un aperçu ouvert en fenêtre : c'est la fenêtre qui

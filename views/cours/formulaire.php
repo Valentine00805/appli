@@ -14,8 +14,14 @@ $matiereActive = $edition ? entier_ou_null($cours['matiere_id']) : $matiereSelec
 $dossierActif  = $edition ? entier_ou_null($cours['dossier_id']) : entier_ou_null($_GET['dossier'] ?? null);
 ?>
 
-<?php // « data-large » : le formulaire tient sur deux colonnes, il lui faut de la place. ?>
-<div class="entete-page"<?= $dansUneFenetre ? ' data-large' : '' ?>>
+<?php
+/*
+ * « data-large » : le formulaire tient sur deux colonnes, il lui faut de la place.
+ * « data-croix-seule » : un nouveau cours ne se quitte que par la croix — un clic
+ * à côté de la fenêtre ou la touche Échap perdraient ce qu'on vient de taper.
+ */
+?>
+<div class="entete-page"<?= $dansUneFenetre ? ' data-large' : '' ?><?= $dansUneFenetre && !$edition ? ' data-croix-seule' : '' ?>>
   <div>
     <?php // Dans une fenêtre, le cours est juste derrière : la croix y ramène. ?>
     <?php if (!$dansUneFenetre): ?>
