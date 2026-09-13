@@ -12,12 +12,19 @@
 
 // Une image ne s'ajoute qu'à un document Word : voir « imagesAjoutables ».
 $ajoutImages = EditionDocument::imagesAjoutables((string) $fichier['nom_origine']);
+
+/*
+ * Ouvert dans la fenêtre de l'aperçu, l'éditeur y reste : les liens qui
+ * ramènent à l'aperçu l'y rouvrent, et le formulaire s'y enregistre.
+ */
+$dansUneFenetre = $dansUneFenetre ?? false;
+$versApercu = $dansUneFenetre ? ' data-fenetre' : '';
 ?>
 
-<div class="entete-page">
+<div class="entete-page"<?= $dansUneFenetre ? ' data-large data-document' : '' ?>>
   <div>
     <p class="discret" style="margin-bottom:.35rem">
-      <a href="<?= url('fichiers/' . $fichier['id'] . '/apercu') ?>">← <?= e((string) $fichier['nom_origine']) ?></a>
+      <a href="<?= url('fichiers/' . $fichier['id'] . '/apercu') ?>"<?= $versApercu ?>>← <?= e((string) $fichier['nom_origine']) ?></a>
     </p>
     <h1>Modifier le texte</h1>
     <p><?= e(ucfirst($format)) ?> · <?= count($paragraphes) ?> paragraphe<?= count($paragraphes) > 1 ? 's' : '' ?></p>
@@ -28,7 +35,7 @@ $ajoutImages = EditionDocument::imagesAjoutables((string) $fichier['nom_origine'
   <div class="vide">
     <span class="vide__icone">⚠️</span>
     <p><?= e($erreur) ?></p>
-    <a class="bouton bouton--secondaire" href="<?= url('fichiers/' . $fichier['id'] . '/apercu') ?>">Revenir à l'aperçu</a>
+    <a class="bouton bouton--secondaire" href="<?= url('fichiers/' . $fichier['id'] . '/apercu') ?>"<?= $versApercu ?>>Revenir à l'aperçu</a>
   </div>
 <?php else: ?>
 
@@ -56,7 +63,7 @@ $ajoutImages = EditionDocument::imagesAjoutables((string) $fichier['nom_origine'
    */
   ?>
   <form method="post" action="<?= url('fichiers/' . $fichier['id'] . '/modifier') ?>"
-        enctype="multipart/form-data" data-edition-document
+        enctype="multipart/form-data" data-edition-document<?= $dansUneFenetre ? ' data-envoi-fenetre' : '' ?>
         data-taille-max="<?= (int) Fichiers::tailleMax() ?>"
         data-largeur-page="<?= (int) ($largeurPage ?? 0) ?>">
     <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
@@ -360,7 +367,7 @@ $ajoutImages = EditionDocument::imagesAjoutables((string) $fichier['nom_origine'
         + Ajouter un paragraphe
       </button>
       <button class="bouton" type="submit">Enregistrer le document</button>
-      <a class="bouton bouton--discret" href="<?= url('fichiers/' . $fichier['id'] . '/apercu') ?>">Annuler</a>
+      <a class="bouton bouton--discret" href="<?= url('fichiers/' . $fichier['id'] . '/apercu') ?>"<?= $versApercu ?>>Annuler</a>
     </div>
   </form>
 

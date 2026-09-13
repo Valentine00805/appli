@@ -190,7 +190,26 @@
     document.body.appendChild(fenetre);
 
     var corps = fenetre.querySelector('.fenetre__corps');
-    var fermer = function () { fenetre.close(); };
+
+    /*
+     * Un document modifié et pas encore enregistré ne se referme pas sans
+     * qu'on le confirme : ni la croix, ni Échap, ni un clic à côté, ni un lien
+     * qui remplacerait l'éditeur.
+     */
+    var peutQuitter = function () {
+      if (corps.querySelector('form[data-modifie]') === null) { return true; }
+      return window.confirm('Fermer sans enregistrer ? Les modifications du document seront perdues.');
+    };
+    var fermer = function () {
+      if (!peutQuitter()) { return; }
+      corps.innerHTML = '';
+      fenetre.close();
+    };
+    // « dialog » se ferme parfois toute seule sur Échap : on la retient.
+    fenetre.addEventListener('cancel', function (evenement) {
+      evenement.preventDefault();
+      fermer();
+    });
 
     fenetre.querySelector('.fenetre__fermer').addEventListener('click', fermer);
 
@@ -228,16 +247,7 @@
       });
     });
 
-    var ouvrir = function (adresse) {
-      corps.innerHTML = '<p class="discret" style="padding:1rem">Un instant…</p>';
-      if (!fenetre.open) { fenetre.showModal(); }
-
-      fetch(adresse + (adresse.indexOf('?') === -1 ? '?' : '&') + 'fenetre=1', {
-        credentials: 'same-origin'
-      }).then(function (reponse) {
-        if (!reponse.ok) { throw new Error('refus'); }
-        return reponse.text();
-      }).then(function (html) {
+    var poser = function (html) {
         corps.innerHTML = html;
 
         // Le contenu annonce la place qu'il lui faut : un formulaire tient sur
@@ -269,12 +279,59 @@
         var aPortee = premier !== null && premier.offsetTop < 200;
         (aPortee ? premier : fenetre.querySelector('.fenetre__fermer'))
           .focus({ preventScroll: true });
-      }).catch(function () {
+
+        // L'éditeur de document, s'il vient d'arriver dans la fenêtre.
+        initialiserEditeur(corps);
+    };
+
+    var ouvrir = function (adresse) {
+      if (fenetre.open && !peutQuitter()) { return; }
+      corps.innerHTML = '<p class="discret" style="padding:1rem">Un instant…</p>';
+      if (!fenetre.open) { fenetre.showModal(); }
+
+      fetch(adresse + (adresse.indexOf('?') === -1 ? '?' : '&') + 'fenetre=1', {
+        credentials: 'same-origin'
+      }).then(function (reponse) {
+        if (!reponse.ok) { throw new Error('refus'); }
+        return reponse.text();
+      }).then(poser).catch(function () {
         // Plutôt que d'expliquer un échec qu'on ne sait pas nommer, on fait
         // ce que le lien aurait fait sans nous.
         window.location.href = adresse;
       });
     };
+
+    /*
+     * Un formulaire qui s'enregistre sans quitter la fenêtre.
+     *
+     * L'envoi est celui du formulaire, fichiers compris, marqué « fenetre » :
+     * le serveur répond par un fragment — l'aperçu mis à jour, ou l'éditeur
+     * avec son message d'erreur — qui prend la place du formulaire. Les
+     * écoutes du formulaire lui-même sont passées avant celle-ci : le texte
+     * mis en forme est déjà recopié dans les champs qui partent.
+     */
+    corps.addEventListener('submit', function (evenement) {
+      var formulaire = evenement.target;
+      if (evenement.defaultPrevented || !formulaire.hasAttribute('data-envoi-fenetre')) { return; }
+      evenement.preventDefault();
+
+      var donnees = new FormData(formulaire);
+      donnees.append('fenetre', '1');
+      var bouton = formulaire.querySelector('button[type="submit"]');
+      if (bouton) { bouton.disabled = true; bouton.textContent = 'Enregistrement…'; }
+
+      fetch(formulaire.action, { method: 'POST', body: donnees, credentials: 'same-origin' })
+        .then(function (reponse) {
+          if (!reponse.ok) { throw new Error('refus'); }
+          return reponse.text();
+        })
+        .then(poser)
+        .catch(function () {
+          // Faute de mieux, l'envoi ordinaire : la page entière s'en chargera.
+          formulaire.removeAttribute('data-envoi-fenetre');
+          formulaire.submit();
+        });
+    });
 
     document.addEventListener('click', function (evenement) {
       // Un clic du milieu, ou avec une touche tenue, ouvre un onglet : ce
@@ -1141,10 +1198,16 @@
    * Modifier le texte d un document : ajouter, supprimer, et laisser chaque
    * zone grandir avec son contenu.
    */
-  var zoneParagraphes = document.querySelector("[data-paragraphes]");
-  if (zoneParagraphes) {
-    var modeleParagraphe = document.querySelector("[data-modele-paragraphe]");
-    var ajoutParagraphe = document.querySelector("[data-ajouter-paragraphe]");
+  /*
+   * L'éditeur se lance sur une racine : la page, ou la fenêtre où il vient
+   * d'être posé. Une zone déjà lancée ne l'est pas deux fois.
+   */
+  var initialiserEditeur = function (racine) {
+  var zoneParagraphes = racine.querySelector("[data-paragraphes]");
+  if (zoneParagraphes && !zoneParagraphes.hasAttribute("data-editeur-lance")) {
+    zoneParagraphes.setAttribute("data-editeur-lance", "");
+    var modeleParagraphe = racine.querySelector("[data-modele-paragraphe]");
+    var ajoutParagraphe = racine.querySelector("[data-ajouter-paragraphe]");
 
     var ajusterHauteur = function (zone) {
       zone.style.height = "auto";
@@ -1201,9 +1264,9 @@
      * montre tel quel et la page fait ce qu'elle a toujours fait — on modifie
      * le texte, pas sa forme.
      */
-    var formulaireDocument = document.querySelector("[data-edition-document]");
-    var barreOutils = document.querySelector("[data-barre-outils]");
-    var drapeauRiche = document.querySelector("[data-riche]");
+    var formulaireDocument = racine.querySelector("[data-edition-document]");
+    var barreOutils = racine.querySelector("[data-barre-outils]");
+    var drapeauRiche = racine.querySelector("[data-riche]");
 
     /*
      * Sur quelle zone la barre agit : celle où se trouve la sélection.
@@ -1226,7 +1289,9 @@
 
     document.addEventListener("selectionchange", function () {
       var zone = zoneDeLaSelection();
-      if (!zone) { return; }
+      // Seulement les zones de cet éditeur : une fenêtre refermée en laisse un
+      // autre derrière elle, qui n'a pas à suivre la sélection d'ailleurs.
+      if (!zone || !zoneParagraphes.contains(zone)) { return; }
       zoneChoisie = zone;
       // La plage est retenue, et pas seulement la zone : cliquer dans un
       // nuancier fait perdre la sélection, et il faut pouvoir la remettre.
@@ -2197,7 +2262,26 @@
       });
       formulaireDocument.addEventListener("submit", recopier);
     }
+
+    /*
+     * Retenir qu'on a modifié le document : la fenêtre demande alors avant
+     * de se fermer, pour qu'un clic à côté ne jette pas une heure de travail.
+     * Choisir une image, déplacer le curseur ne compte pas ; changer un mot,
+     * une largeur, une liste, si.
+     */
+    if (formulaireDocument && window.MutationObserver) {
+      var marquerModifie = function () { formulaireDocument.setAttribute("data-modifie", ""); };
+      new MutationObserver(marquerModifie).observe(zoneParagraphes, {
+        childList: true, subtree: true, characterData: true, attributes: true,
+        attributeFilter: ["data-largeur", "data-habillage", "data-liste", "data-niveau",
+          "data-titre", "data-aligne", "data-couleur", "data-fond", "data-taille"]
+      });
+      formulaireDocument.addEventListener("input", marquerModifie);
+      formulaireDocument.addEventListener("change", marquerModifie);
+    }
   }
+  };
+  initialiserEditeur(document);
 
   /*
    * La copie imprimable de la fiche suit ce qu on tape : sans cela, imprimer

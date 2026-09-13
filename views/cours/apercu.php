@@ -32,7 +32,9 @@ $dansUneFenetre = $dansUneFenetre ?? false;
   </div>
   <div class="actions">
     <?php if (EditionDocument::modifiable((string) $fichier['nom_origine'])): ?>
-      <a class="bouton bouton--secondaire" href="<?= url('fichiers/' . $fichier['id'] . '/modifier') ?>">
+      <?php // Dans la fenêtre, l'éditeur prend la place de l'aperçu. ?>
+      <a class="bouton bouton--secondaire" href="<?= url('fichiers/' . $fichier['id'] . '/modifier') ?>"
+         <?= $dansUneFenetre ? 'data-fenetre' : '' ?>>
         ✎ Modifier le texte
       </a>
     <?php endif; ?>

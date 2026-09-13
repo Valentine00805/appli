@@ -1238,7 +1238,7 @@ final class CoursController
             $largeurPage = 0;
         }
 
-        Vue::afficher('cours/modifier-document', [
+        $donnees = [
             'fichier'     => $fichier,
             'paragraphes' => $paragraphes,
             'enrichis'    => $enrichis,
@@ -1248,7 +1248,28 @@ final class CoursController
             'tailles'     => EditionDocument::TAILLES,
             'format'      => ApercuDocument::format($nom),
             'erreur'      => $erreur,
-        ], 'Modifier ' . $nom);
+        ];
+
+        // Depuis l'aperçu ouvert en fenêtre, l'éditeur prend sa place.
+        if (Vue::enFenetre()) {
+            Vue::fragment('cours/modifier-document', $donnees);
+
+            return;
+        }
+
+        Vue::afficher('cours/modifier-document', $donnees, 'Modifier ' . $nom);
+    }
+
+    /**
+     * Repart vers une page de l'édition — dans la fenêtre si l'on en vient.
+     *
+     * Le formulaire envoyé depuis la fenêtre le dit par « fenetre » : la
+     * redirection garde alors la marque, et la réponse est un fragment que la
+     * fenêtre pose à la place de l'éditeur, message compris.
+     */
+    private function repartirEdition(string $chemin): never
+    {
+        redirect($chemin, ($_POST['fenetre'] ?? $_GET['fenetre'] ?? '') === '1' ? ['fenetre' => 1] : []);
     }
 
     public function enregistrerFichier(int $id): void
@@ -1263,7 +1284,7 @@ final class CoursController
         $ajouts = $this->imagesDansLeTexte($id, $entrees, $nom);
         if ($entrees === []) {
             Session::flash('erreur', 'Un document ne peut pas être entièrement vidé : gardez au moins une ligne.');
-            redirect('fichiers/' . $id . '/modifier');
+            $this->repartirEdition('fichiers/' . $id . '/modifier');
         }
 
         try {
@@ -1282,7 +1303,7 @@ final class CoursController
                 $profondeur, $ajouts, ($_POST['images_en_ligne'] ?? '') === '1');
         } catch (Throwable $e) {
             Session::flash('erreur', 'Le document n’a pas été modifié : ' . $e->getMessage());
-            redirect('fichiers/' . $id . '/modifier');
+            $this->repartirEdition('fichiers/' . $id . '/modifier');
         }
 
         // La taille affichée doit suivre le fichier, qui vient de changer.
@@ -1293,7 +1314,7 @@ final class CoursController
         );
 
         Session::flash('succes', 'Document enregistré.');
-        redirect('fichiers/' . $id . '/apercu');
+        $this->repartirEdition('fichiers/' . $id . '/apercu');
     }
 
     public function supprimerFichier(int $id): void
@@ -1548,7 +1569,7 @@ final class CoursController
             $this->introuvable();
         }
         if (!EditionDocument::modifiable((string) $fichier['nom_origine'])) {
-            redirect('fichiers/' . $id . '/apercu');
+            $this->repartirEdition('fichiers/' . $id . '/apercu');
         }
         return $fichier;
     }
@@ -1714,7 +1735,7 @@ final class CoursController
     private function refuserImage(int $id, string $raison): never
     {
         Session::flash('erreur', 'Le document n’a pas été modifié : ' . $raison);
-        redirect('fichiers/' . $id . '/modifier');
+        $this->repartirEdition('fichiers/' . $id . '/modifier');
     }
 
     /**

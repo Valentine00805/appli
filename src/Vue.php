@@ -52,6 +52,22 @@ final class Vue
         $_SERVER['REQUEST_URI'] = rtrim((string) $_SERVER['REQUEST_URI'], '?&');
 
         try {
+            /*
+             * Les messages en attente se montrent dans la fenêtre : un
+             * enregistrement fait depuis elle y revient, et « Document
+             * enregistré » ne doit pas attendre la prochaine page entière
+             * pour s'afficher — ni un refus pour s'expliquer.
+             */
+            $flashs = Session::flashs();
+            if ($flashs !== []) {
+                echo '<div class="flashs">';
+                foreach ($flashs as $flash) {
+                    echo '<div class="flash flash--' . htmlspecialchars((string) $flash['type'], ENT_QUOTES, 'UTF-8')
+                        . '" role="status">' . htmlspecialchars((string) $flash['message'], ENT_QUOTES, 'UTF-8')
+                        . '</div>';
+                }
+                echo '</div>';
+            }
             echo self::rendre($vue, $donnees + ['dansUneFenetre' => true]);
         } finally {
             $_SERVER['REQUEST_URI'] = $avant;
