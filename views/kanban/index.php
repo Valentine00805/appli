@@ -103,8 +103,9 @@ $total = array_sum(array_map('count', $parColonne));
                 <a class="bouton bouton--secondaire" href="<?= url('revision/' . $carte['cours_id']) ?>"
                    title="Ouvrir la fiche de révision">📝 Révision</a>
               <?php endif; ?>
+              <?php // Un évènement se modifie dans une fenêtre, par-dessus le tableau. ?>
               <a class="bouton bouton--discret bouton--petit" href="<?= e($carte['lien']) ?>"
-                 title="<?= $carte['nature'] === 'tache' ? 'Ouvrir dans Tâches' : 'Modifier l’évènement' ?>">
+                 title="<?= $carte['nature'] === 'tache' ? 'Ouvrir dans Tâches' : 'Modifier l’évènement' ?>"<?= $carte['nature'] === 'tache' ? '' : ' data-fenetre' ?>>
                 <?= $carte['nature'] === 'tache' ? '↗' : '✎' ?>
               </a>
             </div>
