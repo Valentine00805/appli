@@ -609,6 +609,20 @@
    * plafond resterait celui d'avant et la date serait refusée à l'envoi,
    * alors qu'on pouvait le dire tout de suite.
    */
+  /*
+   * La croix d'un panneau déroulant (« + Nouvelle liste ») : elle le referme,
+   * et rend le clavier au bouton qui l'avait ouvert.
+   */
+  document.addEventListener('click', function (evenement) {
+    var croix = evenement.target.closest && evenement.target.closest('[data-fermer-panneau]');
+    if (!croix) { return; }
+    var panneau = croix.closest('details');
+    if (!panneau) { return; }
+    panneau.open = false;
+    var bouton = panneau.querySelector('summary');
+    if (bouton) { bouton.focus(); }
+  });
+
   document.querySelectorAll('[data-plafond-de]').forEach(function (champDate) {
     var choix = document.getElementById(champDate.getAttribute('data-plafond-de'));
     if (!choix) { return; }

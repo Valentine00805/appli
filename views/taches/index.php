@@ -159,6 +159,8 @@ $ligneTache = static function (array $t) use ($csrf, $contexte, $listes, $vue, $
   <details class="nouvelle-liste"<?= $listes === [] ? ' open' : '' ?>>
     <summary class="bouton bouton--petit">+ Nouvelle liste</summary>
     <div class="nouvelle-liste__panneau carte">
+      <?php // La croix referme le panneau, comme celle d'une fenêtre. ?>
+      <button class="panneau-fermer" type="button" data-fermer-panneau title="Fermer" aria-label="Fermer la nouvelle liste">✕</button>
       <h2 style="margin-top:0">Nouvelle liste</h2>
       <form method="post" action="<?= url('taches/listes') ?>">
         <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
@@ -205,6 +207,7 @@ $ligneTache = static function (array $t) use ($csrf, $contexte, $listes, $vue, $
     <details class="nouvelle-liste nouvelle-tache">
       <summary class="bouton bouton--petit bouton--secondaire">+ Nouvelle sous-tâche</summary>
       <div class="nouvelle-liste__panneau carte">
+        <button class="panneau-fermer" type="button" data-fermer-panneau title="Fermer" aria-label="Fermer la nouvelle sous-tâche">✕</button>
         <h2 style="margin-top:0">Nouvelle sous-tâche</h2>
         <form method="post" action="<?= url('taches') ?>">
           <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">

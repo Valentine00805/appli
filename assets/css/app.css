@@ -910,6 +910,17 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
   box-shadow: 0 12px 30px rgba(15, 23, 42, .18);
 }
 
+/* La croix du panneau, dessinée comme celle des fenêtres, à son coin. */
+.panneau-fermer {
+  position: absolute; top: -.6rem; right: -.6rem; z-index: 1;
+  width: 1.9rem; height: 1.9rem; border-radius: 50%;
+  border: 1px solid var(--bordure); background: var(--fond-carte); color: var(--texte-doux);
+  cursor: pointer; font-size: .85rem; line-height: 1;
+  box-shadow: 0 2px 6px rgb(15 23 42 / 15%);
+}
+.panneau-fermer:hover { color: var(--texte); }
+.panneau-fermer:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
 @media (max-width: 640px) {
   .barre-taches { align-items: stretch; }
   .nouvelle-liste { margin-bottom: .6rem; }
