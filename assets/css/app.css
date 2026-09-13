@@ -2675,10 +2675,17 @@ summary.cal-volet__groupe:focus-visible {
 .fenetre--document .apercu-cadre iframe { height: calc(100vh - 14rem); min-height: 20rem; }
 
 .fenetre__corps {
+  --corps-haut: 1.1rem;
   max-height: min(42rem, calc(100vh - 3rem));
   overflow-y: auto;
-  padding: 1.1rem 1.25rem 1.25rem;
+  padding: var(--corps-haut) 1.25rem 1.25rem;
 }
+/*
+ * La barre d'outils de l'éditeur colle au bord même de la fenêtre. Collée à
+ * « top: 0 », elle s'arrêtait sous la marge du haut, et le document défilait
+ * dans cette bande, au-dessus d'elle.
+ */
+.fenetre__corps .barre-outils { top: calc(-1 * var(--corps-haut)); }
 /* L'entête de la fiche se resserre : dans une fenêtre, le titre et le bouton
    « Modifier » sont côte à côte plutôt qu'aux deux bouts d'une page. */
 .fenetre__corps .entete-page { margin-bottom: .9rem; gap: .75rem; }
@@ -2687,6 +2694,8 @@ summary.cal-volet__groupe:focus-visible {
 
 .fenetre__fermer {
   position: absolute;
+  /* Au-dessus de la barre d'outils, qui monte désormais jusqu'au bord. */
+  z-index: 10;
   top: -.6rem;
   right: -.6rem;
   width: 1.9rem;
@@ -2703,7 +2712,7 @@ summary.cal-volet__groupe:focus-visible {
 .fenetre__fermer:hover { color: var(--texte); }
 /* Revenir d'un cran dans la fenêtre : au coin opposé à la croix. */
 .fenetre__retour {
-  position: absolute; top: -.6rem; left: -.6rem;
+  position: absolute; z-index: 10; top: -.6rem; left: -.6rem;
   width: 1.9rem; height: 1.9rem; border-radius: 50%;
   border: 1px solid var(--bordure); background: var(--fond-carte); color: var(--texte-doux);
   cursor: pointer; font-size: .95rem; line-height: 1;
@@ -2714,7 +2723,7 @@ summary.cal-volet__groupe:focus-visible {
 @media (max-width: 560px) {
   .fenetre { width: calc(100vw - 1rem); border-radius: 12px; }
   .fenetre__fermer { top: .4rem; right: .4rem; box-shadow: none; }
-  .fenetre__corps { padding-top: 2.2rem; }
+  .fenetre__corps { --corps-haut: 2.2rem; }
 }
 /* La journée en plus petit, pour la colonne de l'accueil : une heure y vaut
    moins haut, et le lieu s'efface — on y jette un œil, on ne l'étudie pas. */
