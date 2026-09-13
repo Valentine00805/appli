@@ -5,18 +5,24 @@
  * @var string $tagsCours
  * @var array $tousLesTags
  * @var ?int $matiereSelection
+ * @var bool $dansUneFenetre  rendu seul, pour être posé dans une fenêtre
  */
+$dansUneFenetre = $dansUneFenetre ?? false;
 $edition = $cours !== null;
 $action = $edition ? url('cours/' . $cours['id'] . '/modifier') : url('cours/nouveau');
 $matiereActive = $edition ? entier_ou_null($cours['matiere_id']) : $matiereSelection;
 $dossierActif  = $edition ? entier_ou_null($cours['dossier_id']) : entier_ou_null($_GET['dossier'] ?? null);
 ?>
 
-<div class="entete-page">
+<?php // « data-large » : le formulaire tient sur deux colonnes, il lui faut de la place. ?>
+<div class="entete-page"<?= $dansUneFenetre ? ' data-large' : '' ?>>
   <div>
-    <p class="discret" style="margin-bottom:.35rem">
-      <a href="<?= $edition ? url('cours/' . $cours['id']) : url('cours') ?>">← Retour</a>
-    </p>
+    <?php // Dans une fenêtre, le cours est juste derrière : la croix y ramène. ?>
+    <?php if (!$dansUneFenetre): ?>
+      <p class="discret" style="margin-bottom:.35rem">
+        <a href="<?= $edition ? url('cours/' . $cours['id']) : url('cours') ?>">← Retour</a>
+      </p>
+    <?php endif; ?>
     <h1><?= $edition ? 'Modifier le cours' : 'Nouveau cours' ?></h1>
   </div>
 </div>
@@ -119,7 +125,8 @@ $dossierActif  = $edition ? entier_ou_null($cours['dossier_id']) : entier_ou_nul
       <button class="bouton bouton--bloc" type="submit">
         <?= $edition ? 'Enregistrer les modifications' : 'Créer le cours' ?>
       </button>
-      <a class="bouton bouton--secondaire bouton--bloc"
+      <?php // Dans une fenêtre, « Annuler » la ferme ; sur la page, il y ramène. ?>
+      <a class="bouton bouton--secondaire bouton--bloc" data-fermer
          href="<?= $edition ? url('cours/' . $cours['id']) : url('cours') ?>">Annuler</a>
     </div>
   </div>

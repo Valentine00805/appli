@@ -629,7 +629,7 @@ final class CoursController
             ), 'nom');
         }
 
-        Vue::afficher('cours/formulaire', [
+        $donnees = [
             'cours'            => $cours,
             'matieres'         => $this->matieres($userId),
             'dossiers'         => DossiersController::pourUtilisateur($userId),
@@ -639,7 +639,17 @@ final class CoursController
                 : [],
             'matiereSelection' => entier_ou_null($_GET['matiere'] ?? null),
             'tousLesTags'      => TagsController::nomsPourUtilisateur($userId),
-        ], $cours === null ? 'Nouveau cours' : 'Modifier le cours');
+        ];
+
+        // Ouvert depuis la page du cours, le formulaire s'y pose en fenêtre ;
+        // l'enregistrer ramène au cours, comme depuis la page entière.
+        if (Vue::enFenetre()) {
+            Vue::fragment('cours/formulaire', $donnees);
+
+            return;
+        }
+
+        Vue::afficher('cours/formulaire', $donnees, $cours === null ? 'Nouveau cours' : 'Modifier le cours');
     }
 
     /**

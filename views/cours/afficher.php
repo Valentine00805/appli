@@ -48,7 +48,8 @@ $nbElements = count($elements) + count($fichiersFiche);
       📝 Révision<?= $fiche !== '' || $nbElements > 0 ? ' •' : '' ?>
     </a>
     <a class="bouton bouton--secondaire" href="<?= url('evenements/nouveau', ['cours' => $cours['id']]) ?>">Planifier</a>
-    <a class="bouton" href="<?= url('cours/' . $cours['id'] . '/modifier') ?>">Modifier</a>
+    <?php // Le formulaire s'ouvre dans une fenêtre, par-dessus le cours. ?>
+    <a class="bouton" href="<?= url('cours/' . $cours['id'] . '/modifier') ?>" data-fenetre>Modifier</a>
   </div>
 </div>
 
