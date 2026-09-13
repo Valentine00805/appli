@@ -37,7 +37,7 @@ $ajoutImages = EditionDocument::imagesAjoutables((string) $fichier['nom_origine'
     surlignage, l'alignement, les titres, les listes et le sommaire se modifient
     ici.</strong><?php if ($ajoutImages): ?> Les images font partie du texte :
     glissez-les où vous voulez, même au milieu d'une phrase, et cliquez-en une
-    pour changer sa taille. Le bouton « 🖼 Image » en ajoute une à l'endroit du
+    pour changer sa taille ou mettre le texte à côté d'elle. Le bouton « 🖼 Image » en ajoute une à l'endroit du
     curseur.<?php else: ?> Les images s'affichent sous leur paragraphe : elles
     restent à leur place à l'enregistrement, et ne partent qu'avec la corbeille
     de leur ligne.<?php endif; ?> Le reste de la mise en forme —
@@ -226,6 +226,22 @@ $ajoutImages = EditionDocument::imagesAjoutables((string) $fichier['nom_origine'
           <output data-taille-image-valeur>—</output>
           <button type="button" class="barre-outils__bouton" data-taille-image-origine
                   title="Revenir à la taille qu'avait l'image à l'ouverture">↺</button>
+        </span>
+        <?php
+        /*
+         * Où se tient l'image : dans la ligne, comme un mot, ou sur un bord,
+         * le texte de son paragraphe à côté d'elle — ce que Word appelle
+         * l'habillage « carré ».
+         */
+        ?>
+        <span class="barre-outils__couleurs" data-habillage-image hidden>
+          <span class="discret">Texte</span>
+          <button type="button" class="barre-outils__bouton" data-habillage-choix="ligne"
+                  aria-pressed="false" title="L'image dans la ligne, comme un mot">▭</button>
+          <button type="button" class="barre-outils__bouton" data-habillage-choix="gauche"
+                  aria-pressed="false" title="L'image à gauche, le texte à sa droite">◧≡</button>
+          <button type="button" class="barre-outils__bouton" data-habillage-choix="droite"
+                  aria-pressed="false" title="L'image à droite, le texte à sa gauche">≡◨</button>
         </span>
       <?php endif; ?>
       <span class="champ__aide barre-outils__aide">

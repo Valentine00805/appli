@@ -289,7 +289,8 @@ final class ImagesDocument
         foreach ([[self::NS_WP, 'docPr', 'descr'], [self::NS_WP, 'docPr', 'name']] as [$ns, $balise, $attribut]) {
             $element = $cadre->getElementsByTagNameNS($ns, $balise)->item(0);
             if ($element instanceof DOMElement) {
-                $texte = trim($element->getAttribute($attribut));
+                // Sur une ligne : Word la coupe volontiers en plusieurs.
+                $texte = trim((string) preg_replace('/\s+/u', ' ', $element->getAttribute($attribut)));
                 if ($texte !== '') {
                     return $texte;
                 }

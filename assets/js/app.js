@@ -1872,7 +1872,34 @@
         return String(Math.round(px * 25.4 / 96) / 10).replace(".", ",") + " cm";
       };
 
+      var groupeHabillage = barreOutils.querySelector("[data-habillage-image]");
+      var HABILLAGES = ["ligne", "gauche", "droite"];
+
+      var montrerHabillage = function () {
+        if (!groupeHabillage) { return; }
+        var actuel = imageChoisie ? imageChoisie.getAttribute("data-habillage") || "" : "";
+        // « fixe » : une image que Word place autrement — on la garde telle quelle.
+        groupeHabillage.hidden = !(imageChoisie && imageChoisie.tagName === "IMG"
+          && HABILLAGES.indexOf(actuel) >= 0);
+        [].slice.call(groupeHabillage.querySelectorAll("[data-habillage-choix]")).forEach(function (bouton) {
+          bouton.setAttribute("aria-pressed", bouton.getAttribute("data-habillage-choix") === actuel ? "true" : "false");
+        });
+      };
+
+      if (groupeHabillage) {
+        groupeHabillage.addEventListener("mousedown", function (evenement) { evenement.preventDefault(); });
+        groupeHabillage.addEventListener("click", function (evenement) {
+          var bouton = evenement.target.closest("[data-habillage-choix]");
+          if (!bouton || !imageChoisie) { return; }
+          imageChoisie.setAttribute("data-habillage", bouton.getAttribute("data-habillage-choix"));
+          retenirImage(imageChoisie);
+          recopierLaLigne(imageChoisie);
+          montrerHabillage();
+        });
+      }
+
       var montrerTaille = function () {
+        montrerHabillage();
         if (!groupeTaille || !curseurTaille || !valeurTaille) { return; }
         var possible = imageChoisie !== null && imageChoisie.tagName === "IMG"
           && imageChoisie.getAttribute("data-redim") !== "0" && largeurPage > 0;
@@ -1959,6 +1986,11 @@
               var modele = imagesConnues[cleImage(enfant)];
               if (!modele) { return; }
               var copie = modele.cloneNode(true);
+              var habillageColle = enfant.getAttribute("data-habillage") || "";
+              if (copie.tagName === "IMG" && HABILLAGES.indexOf(habillageColle) >= 0
+                && HABILLAGES.indexOf(copie.getAttribute("data-habillage") || "") >= 0) {
+                copie.setAttribute("data-habillage", habillageColle);
+              }
               var largeur = enfant.getAttribute("data-largeur") || "";
               if (copie.tagName === "IMG" && /^\d{1,5}$/.test(largeur)) {
                 copie.setAttribute("data-largeur", largeur);
@@ -2051,6 +2083,7 @@
           image.className = "riche-image";
           image.setAttribute("data-ajout", cle);
           image.setAttribute("data-redim", "1");
+          image.setAttribute("data-habillage", "ligne");
           image.alt = fichier.name.replace(/\.[^.]+$/, "");
 
           // À l'endroit du curseur ; sans curseur, dans une ligne neuve en fin

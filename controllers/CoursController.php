@@ -1758,7 +1758,19 @@ final class CoursController
             // Découpage octet par octet : les fins de ligne sont de l'ASCII,
             // et un motif Unicode échouerait en silence sur un texte mal encodé
             // — au prix d'un paragraphe vidé sans prévenir.
-            foreach (preg_split('/\r\n|\r|\n/', (string) $texte) ?: [''] as $morceau => $ligne) {
+            /*
+             * Le texte nu se découpe aux retours à la ligne : chacun ouvre un
+             * paragraphe. Le texte balisé de l'éditeur, jamais — Entrée y
+             * crée déjà une ligne à part, et un retour à la ligne ne peut s'y
+             * trouver qu'à l'intérieur d'une balise : la description d'une
+             * image, que Word écrit volontiers sur plusieurs lignes. Couper là
+             * tranchait la balise en deux, et sa fin devenait du texte dans le
+             * document.
+             */
+            $morceaux = ($_POST['riche'] ?? '') === '1'
+                ? [(string) preg_replace('/\r\n|\r|\n/', ' ', (string) $texte)]
+                : (preg_split('/\r\n|\r|\n/', (string) $texte) ?: ['']);
+            foreach ($morceaux as $morceau => $ligne) {
                 $ligne = rtrim($ligne);
                 // Une image se garde même sans légende : elle est alors tout
                 // le paragraphe. Elle va au premier morceau, pas à chacun.

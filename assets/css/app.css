@@ -1522,6 +1522,18 @@ input.depot__champ {
 
 /* Ce qui ne s'affiche pas garde sa place : une étiquette qu'on peut
    déplacer ou effacer comme un mot. */
+/*
+ * Une image sur un bord, le texte à côté : ce que Word appelle l'habillage
+ * « carré ». La zone de l'éditeur contient ses flottants, pour qu'une image
+ * ne déborde pas sur la ligne du dessous ; l'aperçu, lui, laisse les
+ * paragraphes suivants couler à côté, comme dans le document.
+ */
+.riche-image[data-habillage="gauche"] { float: left; margin: .15em .9em .4em 0; }
+.riche-image[data-habillage="droite"] { float: right; margin: .15em 0 .4em .9em; }
+.paragraphe__riche { display: flow-root; }
+.apercu-document::after { content: ""; display: block; clear: both; }
+.barre-outils__bouton[aria-pressed="true"] { background: var(--accent-doux); border-color: var(--accent); }
+
 .riche-image-absente {
   display: inline-block; padding: 0 .4em; margin: 0 .1em;
   border: 1px dashed var(--bordure-forte); border-radius: 4px;

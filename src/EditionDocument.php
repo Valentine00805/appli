@@ -1967,7 +1967,7 @@ final class EditionDocument
                 // dessin viendra le remplacer.
                 $porteur = $doc->createElementNS(self::NS_W, 'w:r');
                 $repere = $doc->createElement(self::REPERE);
-                foreach (['rang', 'ajout', 'largeur'] as $cle) {
+                foreach (['rang', 'ajout', 'largeur', 'habillage'] as $cle) {
                     if (($passage['image'][$cle] ?? null) !== null) {
                         $repere->setAttribute($cle, (string) $passage['image'][$cle]);
                     }
@@ -3055,6 +3055,7 @@ final class EditionDocument
         }
 
         $dessins = [];
+        $largeurUtile = null;
         foreach (self::unitesDuCorps($doc) as $rang => $unite) {
             $image = $images[spl_object_id($unite)] ?? null;
             $dessins[spl_object_id($unite)] = [
@@ -3068,11 +3069,181 @@ final class EditionDocument
                 'redim'   => $image !== null
                     && $unite->getElementsByTagNameNS(self::NS_WP, 'extent')->length > 0,
                 'sorte'   => $image !== null ? 'image' : self::sorteDObjet($unite),
+                'habillage' => self::habillageDe($unite, $largeurUtile ??= self::largeurUtileWord($doc)),
                 'noeud'   => $unite,
             ];
         }
 
         return $dessins;
+    }
+
+    /**
+     * Où se tient une image par rapport au texte.
+     *
+     * - « ligne » : dans la ligne, comme un mot ;
+     * - « gauche » ou « droite » : sur ce bord, le texte coulant à côté ;
+     * - « fixe » : tout le reste — derrière ou devant le texte, centrée, au-
+     *   dessus et en dessous, ou un dessin qui n'est pas une image simple.
+     *   L'éditeur la montre dans la ligne sans rien proposer d'en changer, et
+     *   le fichier la garde exactement telle quelle.
+     *
+     * Une image flottante placée par une distance plutôt qu'un bord est dite
+     * du côté où se trouve son milieu.
+     */
+    private static function habillageDe(DOMElement $unite, int $largeurUtile): string
+    {
+        if (!($unite->namespaceURI === self::NS_W && $unite->localName === 'drawing')) {
+            return 'fixe';
+        }
+        $cadre = self::enfantWp($unite, 'inline') ?? self::enfantWp($unite, 'anchor');
+        if ($cadre === null) {
+            return 'fixe';
+        }
+        if ($cadre->localName === 'inline') {
+            return 'ligne';
+        }
+        if ($cadre->getAttribute('behindDoc') === '1') {
+            return 'fixe';
+        }
+        $coule = false;
+        foreach (['wrapSquare', 'wrapTight', 'wrapThrough'] as $sorte) {
+            $coule = $coule || self::enfantWp($cadre, $sorte) !== null;
+        }
+        $horizontal = self::enfantWp($cadre, 'positionH');
+        if (!$coule || $horizontal === null) {
+            return 'fixe';
+        }
+
+        $bord = self::enfantWp($horizontal, 'align');
+        if ($bord !== null) {
+            return match (trim($bord->textContent)) {
+                'left', 'inside'   => 'gauche',
+                'right', 'outside' => 'droite',
+                default            => 'fixe',
+            };
+        }
+        $decalage = self::enfantWp($horizontal, 'posOffset');
+        $etendue = self::enfantWp($cadre, 'extent');
+        if ($decalage === null) {
+            return 'fixe';
+        }
+        $milieu = (int) trim($decalage->textContent)
+            + (int) ($etendue?->getAttribute('cx') ?? 0) / 2;
+
+        return $milieu > $largeurUtile / 2 ? 'droite' : 'gauche';
+    }
+
+    /** L'enfant direct « wp:… » de ce nom, s'il y en a un. */
+    private static function enfantWp(DOMElement $parent, string $nom): ?DOMElement
+    {
+        foreach ($parent->childNodes as $enfant) {
+            if ($enfant instanceof DOMElement && $enfant->namespaceURI === self::NS_WP
+                && $enfant->localName === $nom) {
+                return $enfant;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Place une image dans la ligne, ou sur un bord avec le texte à côté.
+     *
+     * Passer d'un bord à l'autre ne touche qu'à la position : l'image garde
+     * son écart au texte, son contour, tout ce que Word y avait réglé. Passer
+     * de la ligne à un bord réécrit son cadre en image flottante, collée au
+     * haut de son paragraphe, le texte l'entourant des deux côtés possibles.
+     * Revenir dans la ligne ne garde que ce qu'une image dans la ligne sait
+     * porter : sa taille, sa description, l'image elle-même.
+     */
+    private static function habillerDessin(DOMElement $dessin, string $voulu, int $numero): void
+    {
+        $doc = $dessin->ownerDocument;
+        $cadre = self::enfantWp($dessin, 'inline') ?? self::enfantWp($dessin, 'anchor');
+        if ($doc === null || $cadre === null) {
+            return;
+        }
+
+        $bord = $voulu === 'droite' ? 'right' : 'left';
+        if ($voulu !== 'ligne' && $cadre->localName === 'anchor') {
+            $horizontal = self::enfantWp($cadre, 'positionH');
+            if ($horizontal !== null) {
+                while ($horizontal->firstChild !== null) {
+                    $horizontal->removeChild($horizontal->firstChild);
+                }
+                $horizontal->setAttribute('relativeFrom', 'column');
+                $horizontal->appendChild($doc->createElementNS(self::NS_WP, 'wp:align', $bord));
+            }
+            return;
+        }
+        if ($voulu === 'ligne' && $cadre->localName === 'inline') {
+            return;
+        }
+
+        // Ce que les deux sortes de cadre ont en commun, dans leur ordre.
+        $graphique = null;
+        foreach ($cadre->childNodes as $enfant) {
+            if ($enfant instanceof DOMElement && $enfant->namespaceURI === self::NS_A
+                && $enfant->localName === 'graphic') {
+                $graphique = $enfant;
+            }
+        }
+        $etendue = self::enfantWp($cadre, 'extent');
+        $marge = self::enfantWp($cadre, 'effectExtent');
+        $description = self::enfantWp($cadre, 'docPr');
+        $verrous = self::enfantWp($cadre, 'cNvGraphicFramePr');
+        if ($graphique === null || $etendue === null || $description === null) {
+            return;
+        }
+
+        if ($voulu === 'ligne') {
+            $neuf = $doc->createElementNS(self::NS_WP, 'wp:inline');
+            foreach (['distT', 'distB', 'distL', 'distR'] as $attribut) {
+                $neuf->setAttribute($attribut, '0');
+            }
+            foreach ([$etendue, $marge, $description, $verrous, $graphique] as $morceau) {
+                if ($morceau !== null) {
+                    $neuf->appendChild($morceau);
+                }
+            }
+        } else {
+            $neuf = $doc->createElementNS(self::NS_WP, 'wp:anchor');
+            foreach (['distT' => '0', 'distB' => '0', 'distL' => '114300', 'distR' => '114300',
+                      'simplePos' => '0', 'relativeHeight' => (string) (251658240 + $numero),
+                      'behindDoc' => '0', 'locked' => '0', 'layoutInCell' => '1',
+                      'allowOverlap' => '1'] as $attribut => $valeur) {
+                $neuf->setAttribute($attribut, $valeur);
+            }
+            $origine = $doc->createElementNS(self::NS_WP, 'wp:simplePos');
+            $origine->setAttribute('x', '0');
+            $origine->setAttribute('y', '0');
+            $neuf->appendChild($origine);
+
+            $horizontal = $doc->createElementNS(self::NS_WP, 'wp:positionH');
+            $horizontal->setAttribute('relativeFrom', 'column');
+            $horizontal->appendChild($doc->createElementNS(self::NS_WP, 'wp:align', $bord));
+            $neuf->appendChild($horizontal);
+
+            $vertical = $doc->createElementNS(self::NS_WP, 'wp:positionV');
+            $vertical->setAttribute('relativeFrom', 'paragraph');
+            $vertical->appendChild($doc->createElementNS(self::NS_WP, 'wp:posOffset', '0'));
+            $neuf->appendChild($vertical);
+
+            $neuf->appendChild($etendue);
+            if ($marge !== null) {
+                $neuf->appendChild($marge);
+            }
+            $habillage = $doc->createElementNS(self::NS_WP, 'wp:wrapSquare');
+            $habillage->setAttribute('wrapText', 'bothSides');
+            $neuf->appendChild($habillage);
+            $neuf->appendChild($description);
+            if ($verrous !== null) {
+                $neuf->appendChild($verrous);
+            }
+            $neuf->appendChild($graphique);
+        }
+
+        $dessin->replaceChild($neuf, $cadre);
     }
 
     /** L'enfant du passage qui porte ce noeud, ou null s'il n'est dans aucun passage. */
@@ -3151,7 +3322,12 @@ final class EditionDocument
             return '<img src="' . $e((string) $adresseImage((int) $image)) . '" class="riche-image"'
                 . ' data-dessin="' . $rang . '" data-redim="' . (!empty($dessin['redim']) ? '1' : '0') . '"'
                 . ($largeur === null ? '' : ' data-largeur="' . (int) $largeur . '"')
-                . ' alt="' . $e($dessin['alt'] !== '' ? (string) $dessin['alt'] : 'Image du document') . '"'
+                . ' data-habillage="' . $e((string) ($dessin['habillage'] ?? 'fixe')) . '"'
+                // Sur une seule ligne : une description coupée en plusieurs
+                // n'a rien à gagner à le rester dans une page.
+                . ' alt="' . $e($dessin['alt'] !== ''
+                    ? trim((string) preg_replace('/\s+/u', ' ', (string) $dessin['alt']))
+                    : 'Image du document') . '"'
                 . $taille . ' loading="lazy" decoding="async">';
         }
 
@@ -3192,7 +3368,12 @@ final class EditionDocument
         $largeur = $element->getAttribute('data-largeur');
         $largeur = preg_match('/^\d{1,5}$/', $largeur) === 1 ? max(8, (int) $largeur) : null;
 
-        return ['rang' => $ajout === null ? $rang : null, 'ajout' => $ajout, 'largeur' => $largeur];
+        // « fixe » ou rien : on ne demande pas de changement.
+        $habillage = $element->getAttribute('data-habillage');
+        $habillage = in_array($habillage, ['ligne', 'gauche', 'droite'], true) ? $habillage : null;
+
+        return ['rang' => $ajout === null ? $rang : null, 'ajout' => $ajout, 'largeur' => $largeur,
+            'habillage' => $habillage];
     }
 
     /**
@@ -3251,6 +3432,9 @@ final class EditionDocument
                 }
                 $porteur = self::dessinNeuf($doc, $ajouts[$repere->getAttribute('ajout')], $chemin,
                     $parties, $largeurUtile, ++$dessin, $largeur);
+                if (in_array($repere->getAttribute('habillage'), ['gauche', 'droite'], true)) {
+                    self::habillerDessin($porteur, $repere->getAttribute('habillage'), $dessin);
+                }
             } elseif ($repere->hasAttribute('rang') && isset($parRang[(int) $repere->getAttribute('rang')])) {
                 $rang = (int) $repere->getAttribute('rang');
                 $porteur = $parRang[$rang]['noeud'];
@@ -3263,6 +3447,14 @@ final class EditionDocument
                 $places[$rang] = true;
                 if ($largeur !== null && $parRang[$rang]['redim']) {
                     self::redimensionnerDessin($porteur, $largeur, $largeurUtile);
+                }
+                // Un habillage qui ne change rien ne touche pas au fichier :
+                // une image flottante réglée dans Word garde ses réglages.
+                $habillage = $repere->getAttribute('habillage');
+                if (in_array($habillage, ['ligne', 'gauche', 'droite'], true)
+                    && $parRang[$rang]['habillage'] !== 'fixe'
+                    && $habillage !== $parRang[$rang]['habillage']) {
+                    self::habillerDessin($porteur, $habillage, ++$dessin);
                 }
             }
 
