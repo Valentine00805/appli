@@ -11,7 +11,7 @@ $total = array_sum(array_map('count', $parColonne));
   </div>
   <div class="actions">
     <a class="bouton bouton--secondaire" href="<?= url('taches') ?>">Mes tâches</a>
-    <a class="bouton" href="<?= url('evenements/nouveau') ?>">+ Évènement</a>
+    <a class="bouton" href="<?= url('evenements/nouveau') ?>" data-fenetre>+ Évènement</a>
   </div>
 </div>
 
