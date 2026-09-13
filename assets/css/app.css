@@ -1509,6 +1509,31 @@ input.depot__champ {
 /* Le refus d'une image se lit sous la barre, sur toute sa largeur. */
 .barre-outils__souci { flex-basis: 100%; margin: .3rem 0 0; }
 
+/*
+ * Une image dans le texte, dans l'éditeur comme dans l'aperçu. Elle ne
+ * dépasse jamais la colonne, même quand le document la veut plus large que
+ * l'écran, et garde ses proportions quand on change sa largeur. Posée sur la
+ * ligne de base, comme Word la pose : un mot et une image se tiennent côte à
+ * côte.
+ */
+.riche-image { max-width: 100%; height: auto; vertical-align: baseline; }
+[data-zone-riche] .riche-image { cursor: pointer; }
+.riche-image.est-choisie { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Ce qui ne s'affiche pas garde sa place : une étiquette qu'on peut
+   déplacer ou effacer comme un mot. */
+.riche-image-absente {
+  display: inline-block; padding: 0 .4em; margin: 0 .1em;
+  border: 1px dashed var(--bordure-forte); border-radius: 4px;
+  color: var(--texte-doux); font-size: .85em; white-space: nowrap;
+}
+
+.barre-outils__taille-image input[type="range"] { width: 8rem; }
+.barre-outils__taille-image output {
+  min-width: 3.8rem; color: var(--texte-doux); font-size: .85rem;
+  font-variant-numeric: tabular-nums;
+}
+
 /* L'aperçu rend la mise en forme : un surlignage ou un mot plus grand ne doit
    pas venir toucher la ligne du dessus. */
 .apercu-document p { line-height: 1.9; }

@@ -25,6 +25,7 @@ final class ImagesDocument
     private const NS_DRAW  = 'urn:oasis:names:tc:opendocument:xmlns:drawing:1.0';
     private const NS_XLINK = 'http://www.w3.org/1999/xlink';
     private const NS_RELS  = 'http://schemas.openxmlformats.org/package/2006/relationships';
+    private const NS_MC    = 'http://schemas.openxmlformats.org/markup-compatibility/2006';
 
     /** Où lire le texte, et où lire les relations, selon l'extension. */
     private const PARTIES = [
@@ -77,7 +78,7 @@ final class ImagesDocument
                 continue;
             }
             $source = self::sourceDe($noeud, $relations);
-            if ($source === null) {
+            if ($source === null || self::dansUnSecours($noeud)) {
                 continue;
             }
             [$largeur, $hauteur] = self::taille($noeud);
@@ -224,6 +225,24 @@ final class ImagesDocument
     }
 
     /* --- Interne -------------------------------------------------------- */
+
+    /**
+     * Ce noeud est-il dans la variante de secours d'une image ?
+     *
+     * Word écrit parfois une image deux fois : le dessin, et une version à
+     * l'ancienne pour les logiciels d'avant. C'est une seule image — la
+     * compter deux fois la montrerait en double.
+     */
+    private static function dansUnSecours(DOMElement $noeud): bool
+    {
+        for ($parent = $noeud->parentNode; $parent instanceof DOMElement; $parent = $parent->parentNode) {
+            if ($parent->namespaceURI === self::NS_MC && $parent->localName === 'Fallback') {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     /** L'image que désigne ce noeud, s'il en désigne une. */
     private static function sourceDe(DOMElement $noeud, array $relations): ?string

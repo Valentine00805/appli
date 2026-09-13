@@ -308,7 +308,8 @@
   </article>
   <p class="champ__aide" style="margin-top:.6rem">
     <?php $nbImages = array_sum(array_map(
-        static fn (array $b): int => count($b['images'] ?? []), $blocs)); ?>
+        static fn (array $b): int => count($b['images'] ?? []) + (int) ($b['images_texte'] ?? 0),
+        $blocs)); ?>
     <?= count($paragraphes) ?> paragraphe<?= count($paragraphes) > 1 ? 's' : '' ?> lu<?= count($paragraphes) > 1 ? 's' : '' ?><?php
     ?><?= $nbImages > 0 ? ', ' . $nbImages . ' image' . ($nbImages > 1 ? 's' : '') : '' ?>.
   </p>

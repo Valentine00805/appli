@@ -49,6 +49,23 @@ final class EditionDocument
     /** Une page A4 aux marges de 2,5 cm, si le document n'en dit rien : 16 cm utiles. */
     private const LARGEUR_UTILE_DEFAUT = 5760720;
 
+    /** Les variantes : un dessin, et sa version de secours pour les vieux Word. */
+    private const NS_MC = 'http://schemas.openxmlformats.org/markup-compatibility/2006';
+
+    /**
+     * Les repères d'image, le temps d'un enregistrement.
+     *
+     * Le texte arrive de l'éditeur avec ses images marquées à leur place. En
+     * réécrivant les passages, on pose un repère à chacun de ces endroits ;
+     * les dessins viennent ensuite prendre la place des repères. Aucun ne
+     * survit à l'enregistrement : ceux qui ne désignent rien sont retirés.
+     *
+     * Une balise sans espace de noms, et non une balise à nous dans un espace
+     * à nous : celui-ci laissait sa déclaration dans le fichier, même une fois
+     * tous les repères partis. Sans espace, il ne reste rien.
+     */
+    private const REPERE = 'mescours-repere';
+
     /* --- Les listes à puces ---------------------------------------------- */
 
     /** Où Word range ses listes et ses styles, et comment on les y annonce. */
@@ -286,7 +303,7 @@ final class EditionDocument
         [, , $paragraphes] = self::ouvrir($chemin, $nomOrigine);
 
         return array_map(
-            static fn (DOMElement $p): string => (string) $p->textContent,
+            static fn (DOMElement $p): string => self::texteDuParagraphe($p),
             $paragraphes
         );
     }
@@ -303,7 +320,7 @@ final class EditionDocument
      *                    numero: ?int, niveau: int, titre: int}>
      * @throws RuntimeException si le fichier est illisible
      */
-    public static function lireRiche(string $chemin, string $nomOrigine): array
+    public static function lireRiche(string $chemin, string $nomOrigine, ?callable $adresseImage = null): array
     {
         [$doc, , $paragraphes] = self::ouvrir($chemin, $nomOrigine);
         $stylesOdf = self::stylesDeTexteOdf($doc);
@@ -314,12 +331,14 @@ final class EditionDocument
         $numeros = self::numeroter($paragraphes, $numsWord, $listesOdf);
 
         /*
-         * Les images de chaque paragraphe, pour que l'éditeur les montre sous
-         * leur texte. Elles ne repassent pas par le formulaire : à
-         * l'enregistrement, le serveur les garde de lui-même dans le
-         * paragraphe qui les portait.
+         * Les images. Dans un document Word, elles prennent place dans le
+         * texte même, là où elles sont : l'éditeur les y montre, on peut les
+         * déplacer et changer leur taille. En OpenDocument, elles se montrent
+         * sous leur paragraphe, et le serveur les y garde de lui-même.
          */
-        $images = ImagesDocument::possible($nomOrigine)
+        $word = $doc->documentElement?->namespaceURI === self::NS_W;
+        $dessins = $word ? self::dessinsDuDocument($doc, $chemin, $nomOrigine) : [];
+        $images = !$word && ImagesDocument::possible($nomOrigine)
             ? ImagesDocument::parParagraphe(
                 $paragraphes,
                 ImagesDocument::trouver($doc, ImagesDocument::relations($chemin, $nomOrigine))
@@ -328,10 +347,12 @@ final class EditionDocument
 
         $rendus = [];
         foreach ($paragraphes as $rang => $p) {
+            $passages = $p->namespaceURI === self::NS_W
+                ? self::passagesWord($p, $dessins)
+                : self::passagesOdf($p, $stylesOdf);
             $rendus[] = [
-                'html' => self::html($p->namespaceURI === self::NS_W
-                    ? self::passagesWord($p)
-                    : self::passagesOdf($p, $stylesOdf)),
+                'html' => self::html($passages, $adresseImage),
+                'images_texte' => self::imagesDansLesPassages($passages),
                 'alignement' => self::alignement($p, $alignementsOdf),
                 'liste' => (string) self::sorteDeListe($p, $numsWord, $listesOdf),
                 'numero' => $numeros[$rang],
@@ -364,7 +385,7 @@ final class EditionDocument
      *                    images: list<array>}>
      * @throws RuntimeException si le fichier est illisible
      */
-    public static function apercuRiche(string $chemin, string $nomOrigine): array
+    public static function apercuRiche(string $chemin, string $nomOrigine, ?callable $adresseImage = null): array
     {
         [$doc, , , $format, $horsTexte] = self::ouvrir($chemin, $nomOrigine);
         $stylesOdf = self::stylesDeTexteOdf($doc);
@@ -386,7 +407,11 @@ final class EditionDocument
         }
         $numeros = self::numeroter($tous, $numsWord, $listesOdf);
 
-        $images = ImagesDocument::possible($nomOrigine)
+        // Les images : dans le texte pour un document Word, sous leur
+        // paragraphe pour un OpenDocument — comme dans l'éditeur.
+        $word = $doc->documentElement?->namespaceURI === self::NS_W;
+        $dessins = $word ? self::dessinsDuDocument($doc, $chemin, $nomOrigine) : [];
+        $images = !$word && ImagesDocument::possible($nomOrigine)
             ? ImagesDocument::parParagraphe(
                 $tous,
                 ImagesDocument::trouver($doc, ImagesDocument::relations($chemin, $nomOrigine))
@@ -396,13 +421,25 @@ final class EditionDocument
         $rendus = [];
         foreach ($tous as $rang => $noeud) {
             $passages = self::resserrer($noeud->namespaceURI === self::NS_W
-                ? self::passagesWord($noeud)
+                ? self::passagesWord($noeud, $dessins)
                 : self::passagesOdf($noeud, $stylesOdf));
             $siennes = $images[$rang] ?? [];
 
+            // Du texte, et pas seulement des images : c'est ce que compte la
+            // lecture nue, et les deux lectures doivent tomber d'accord.
+            $textuel = false;
+            foreach ($passages as $passage) {
+                if (!isset($passage['image']) && trim($passage['texte']) !== '') {
+                    $textuel = true;
+                    break;
+                }
+            }
+
             if ($passages !== [] || $siennes !== []) {
                 $rendus[] = [
-                    'html' => $passages === [] ? '' : self::html($passages),
+                    'html' => $passages === [] ? '' : self::html($passages, $adresseImage),
+                    'textuel' => $textuel,
+                    'images_texte' => self::imagesDansLesPassages($passages),
                     'alignement' => self::alignement($noeud, $alignementsOdf),
                     'liste' => (string) self::sorteDeListe($noeud, $numsWord, $listesOdf),
                     'numero' => $numeros[$rang],
@@ -428,27 +465,30 @@ final class EditionDocument
      */
     private static function resserrer(array $passages): array
     {
+        $garder = static fn (array $p): bool => isset($p['image']) || $p['texte'] !== '';
+
         foreach ($passages as $rang => $passage) {
-            $passages[$rang]['texte'] = (string) preg_replace('/\s+/u', ' ', $passage['texte']);
+            if (!isset($passage['image'])) {
+                $passages[$rang]['texte'] = (string) preg_replace('/\s+/u', ' ', $passage['texte']);
+            }
         }
-        $passages = array_values(array_filter(
-            $passages,
-            static fn (array $p): bool => $p['texte'] !== ''
-        ));
+        $passages = array_values(array_filter($passages, $garder));
         if ($passages === []) {
             return [];
         }
 
-        $passages[0]['texte'] = ltrim($passages[0]['texte']);
+        // Les bords du paragraphe seulement : l'espace entre un mot et une
+        // image qui le suit fait partie de la phrase.
+        if (!isset($passages[0]['image'])) {
+            $passages[0]['texte'] = ltrim($passages[0]['texte']);
+        }
         $dernier = count($passages) - 1;
-        $passages[$dernier]['texte'] = rtrim($passages[$dernier]['texte']);
+        if (!isset($passages[$dernier]['image'])) {
+            $passages[$dernier]['texte'] = rtrim($passages[$dernier]['texte']);
+        }
 
-        return array_values(array_filter(
-            $passages,
-            static fn (array $p): bool => $p['texte'] !== ''
-        ));
+        return array_values(array_filter($passages, $garder));
     }
-
     /**
      * Réécrit le corps du document avec les paragraphes fournis, dans l'ordre.
      *
@@ -475,7 +515,9 @@ final class EditionDocument
         string $nomOrigine,
         array $entrees,
         bool $riche = false,
-        ?int $sommaire = null
+        ?int $sommaire = null,
+        array $ajouts = [],
+        bool $enLigne = false
     ): void {
         foreach ($entrees as $entree) {
             // Un XML n'accepte que de l'UTF-8. Mieux vaut refuser d'écrire que
@@ -555,6 +597,29 @@ final class EditionDocument
         }
         $largeurUtile = $avecImages ? self::largeurUtileWord($doc) : 0;
         $dessin = $avecImages ? self::dernierDessinWord($doc) : 0;
+
+        /*
+         * Les éléments du texte — images, formes, graphiques — que l'éditeur
+         * a renvoyés à leur place, et les images ajoutées au fil du texte.
+         * Chacun arrive comme un repère, et ce sont les dessins qui viennent
+         * ensuite prendre la place des repères.
+         */
+        if ($ajouts !== [] && (!$word || !self::imagesAjoutables($nomOrigine))) {
+            throw new RuntimeException('une image ne s’ajoute pour l’instant qu’à un document Word (.docx).');
+        }
+        $parRang = [];
+        $porteurs = [];
+        if ($word) {
+            foreach (self::dessinsDuDocument($doc, $chemin, $nomOrigine) as $id => $d) {
+                $parRang[$d['rang']] = $d;
+                $porteurs[$id] = $d['noeud'];
+            }
+        }
+        if ($ajouts !== [] || $parRang !== []) {
+            $largeurUtile = $largeurUtile ?: self::largeurUtileWord($doc);
+            $dessin = $dessin ?: self::dernierDessinWord($doc);
+        }
+        $places = [];
         $utilises = [];
         $nouveaux = [];
         // Les sous-listes dont il faudra vérifier que la définition les prévoit.
@@ -598,7 +663,22 @@ final class EditionDocument
                 }
             }
 
-            self::remplacerTexte($doc, $noeud, $entree['texte'], $gabarit, $riche);
+            /*
+             * Sans script, le texte arrive nu : un paragraphe dont le texte
+             * n'a pas changé n'est pas réécrit. Ses images, et tout ce qu'une
+             * zone de texte ne sait pas montrer, restent alors exactement à
+             * leur place.
+             */
+            // Comparé comme le formulaire l'envoie : sa fin de ligne rognée.
+            $intact = !$riche && $noeud === $existant
+                && $entree['texte'] === rtrim(self::texteDuParagraphe($noeud));
+            if (!$intact) {
+                self::remplacerTexte($doc, $noeud, $entree['texte'], $gabarit, $riche);
+            }
+            if ($word) {
+                self::placerLesImages($doc, $noeud, $parRang, $porteurs, $places, $ajouts,
+                    $chemin, $parties, $largeurUtile, $dessin, $enLigne && $riche);
+            }
             self::alignerParagraphe($doc, $noeud, $entree['alignement'] ?? null);
 
             // L'image ajoutée se pose après le texte du paragraphe, comme
@@ -610,7 +690,7 @@ final class EditionDocument
 
             // Le texte du titre se relit sur le paragraphe : le formulaire, lui,
             // envoie du balisage, qui n'a rien à faire dans un sommaire.
-            $intitule = trim((string) preg_replace('/\s+/u', ' ', $noeud->textContent));
+            $intitule = trim((string) preg_replace('/\s+/u', ' ', self::texteDuParagraphe($noeud)));
             if ($titre > 0 && $titre <= self::TITRE_MAX && $intitule !== '') {
                 $plan[] = ['niveau' => $titre, 'texte' => $intitule];
             }
@@ -674,6 +754,11 @@ final class EditionDocument
 
         if ($sommaire !== null) {
             self::sommaire($doc, $corps, $plan, $sommaire, $chemin, $parties);
+        }
+
+        // Aucun repère ne doit survivre : Word ne saurait pas quoi en faire.
+        foreach (iterator_to_array($doc->getElementsByTagName(self::REPERE)) as $reste) {
+            $reste->parentNode?->removeChild($reste);
         }
 
         $xml = $doc->saveXML();
@@ -1085,38 +1170,48 @@ final class EditionDocument
      */
     private static function detacherLesImages(DOMElement $paragraphe): array
     {
-        $porteuses = [
-            self::NS_W    => ['drawing', 'pict', 'object'],
-            self::NS_DRAW => ['frame'],
-        ];
-
         $images = [];
-        foreach (iterator_to_array($paragraphe->getElementsByTagName('*')) as $noeud) {
-            if (!$noeud instanceof DOMElement
-                || !in_array($noeud->localName, $porteuses[$noeud->namespaceURI] ?? [], true)) {
-                continue;
+        if ($paragraphe->namespaceURI === self::NS_W) {
+            // Chez Word, ce qui n'est pas du texte se tient dans un passage :
+            // on prend l'enfant du passage tout entier — le dessin, ou
+            // l'enveloppe qui en propose deux variantes — pour ne jamais
+            // séparer une image de sa version de secours. Les séparer, c'était
+            // les rendre toutes les deux, et Word montrait l'image en double.
+            foreach (iterator_to_array($paragraphe->getElementsByTagNameNS(self::NS_W, 'r')) as $run) {
+                foreach (iterator_to_array($run->childNodes) as $enfant) {
+                    if (self::estUnite($enfant)) {
+                        $images[] = $enfant;
+                    }
+                }
             }
-            // Une image posée dans une zone de texte, elle-même dans une
-            // image : la retenir deux fois la donnerait deux fois.
+        } else {
+            foreach (iterator_to_array($paragraphe->getElementsByTagNameNS(self::NS_DRAW, 'frame')) as $cadre) {
+                $images[] = $cadre;
+            }
+        }
+
+        // Une image posée dans une zone de texte, elle-même dans une forme :
+        // la retenir deux fois la donnerait deux fois.
+        $retenues = [];
+        foreach ($images as $image) {
             $dedans = false;
-            for ($parent = $noeud->parentNode; $parent !== null; $parent = $parent->parentNode) {
-                if (in_array($parent, $images, true)) {
+            for ($parent = $image->parentNode; $parent !== null; $parent = $parent->parentNode) {
+                if (in_array($parent, $retenues, true)) {
                     $dedans = true;
                     break;
                 }
             }
             if (!$dedans) {
-                $images[] = $noeud;
+                $retenues[] = $image;
             }
         }
 
-        foreach ($images as $image) {
+        foreach ($retenues as $image) {
             $image->parentNode?->removeChild($image);
         }
 
-        return $images;
+        return $retenues;
     }
-
     /**
      * Remet à la fin du paragraphe les images mises de côté.
      *
@@ -1131,7 +1226,8 @@ final class EditionDocument
         array $images
     ): void {
         foreach ($images as $image) {
-            if ($image->namespaceURI === self::NS_W) {
+            // Chez Word, dessins et variantes se tiennent dans un passage.
+            if (in_array($image->namespaceURI, [self::NS_W, self::NS_MC], true)) {
                 $run = $doc->createElementNS(self::NS_W, 'w:r');
                 $run->appendChild($image);
                 $paragraphe->appendChild($run);
@@ -1139,6 +1235,37 @@ final class EditionDocument
             }
             $paragraphe->appendChild($image);
         }
+    }
+    /**
+     * Le texte d'un paragraphe, tel qu'on le lit à l'écran.
+     *
+     * Chez Word, seulement ce que portent ses passages (<w:t>) — comme
+     * l'aperçu. Le reste du paragraphe contient aussi du texte que personne
+     * ne voit : la position d'une image flottante, écrite en chiffres, les
+     * instructions d'un champ, le texte supprimé d'une révision. Sans cela,
+     * la zone de texte montrait « 152400762000 » à la place d'une image, et
+     * le titre d'un sommaire pouvait s'en trouver allongé.
+     */
+    private static function texteDuParagraphe(DOMElement $paragraphe): string
+    {
+        if ($paragraphe->namespaceURI !== self::NS_W) {
+            return (string) $paragraphe->textContent;
+        }
+        $texte = '';
+        foreach ($paragraphe->getElementsByTagNameNS(self::NS_W, 't') as $t) {
+            $texte .= $t->textContent;
+        }
+
+        return $texte;
+    }
+
+    /** Un enfant de passage qui n'est pas du texte : un dessin, une image, un objet. */
+    private static function estUnite(DOMNode $noeud): bool
+    {
+        return $noeud instanceof DOMElement
+            && (($noeud->namespaceURI === self::NS_W
+                    && in_array($noeud->localName, ['drawing', 'pict', 'object'], true))
+                || ($noeud->namespaceURI === self::NS_MC && $noeud->localName === 'AlternateContent'));
     }
 
     /** Cet enfant est-il l'élément Word attendu ? */
@@ -1382,10 +1509,14 @@ final class EditionDocument
      *
      * @param list<array{texte: string, gras: bool, italique: bool, souligne: bool, taille: ?int}> $passages
      */
-    private static function html(array $passages): string
+    private static function html(array $passages, ?callable $adresseImage = null): string
     {
         $html = '';
         foreach ($passages as $passage) {
+            if (isset($passage['image'])) {
+                $html .= self::htmlImage($passage['image'], $adresseImage);
+                continue;
+            }
             if ($passage['texte'] === '') {
                 continue;
             }
@@ -1430,7 +1561,9 @@ final class EditionDocument
      */
     private static function passagesDuHtml(string $html): array
     {
-        if (trim(strip_tags($html)) === '' && !str_contains($html, '&nbsp;')) {
+        // Une image seule est un paragraphe à part entière, même sans texte.
+        if (trim(strip_tags($html)) === '' && !str_contains($html, '&nbsp;')
+            && !str_contains($html, 'data-dessin') && !str_contains($html, 'data-ajout')) {
             return [];
         }
 
@@ -1466,6 +1599,14 @@ final class EditionDocument
                 continue;
             }
             if (!$enfant instanceof DOMElement) {
+                continue;
+            }
+
+            // Une image : sa place dans le texte, et rien de ce qu'elle porte
+            // — l'étiquette d'une forme n'est pas du texte à écrire.
+            $image = self::imageDuHtml($enfant);
+            if ($image !== null) {
+                $passages[] = $etat + ['texte' => '', 'image' => $image];
                 continue;
             }
 
@@ -1626,8 +1767,14 @@ final class EditionDocument
     {
         $fondus = [];
         foreach ($passages as $passage) {
+            // Une image ne se fond dans rien : elle garde sa place, seule.
+            if (isset($passage['image'])) {
+                $fondus[] = $passage;
+                continue;
+            }
             $dernier = $fondus === [] ? null : count($fondus) - 1;
             if ($dernier !== null
+                && !isset($fondus[$dernier]['image'])
                 && $fondus[$dernier]['gras'] === $passage['gras']
                 && $fondus[$dernier]['italique'] === $passage['italique']
                 && $fondus[$dernier]['souligne'] === $passage['souligne']
@@ -1644,9 +1791,9 @@ final class EditionDocument
                 'fond' => $passage['fond']];
         }
 
-        return array_values(array_filter($fondus, static fn (array $p): bool => $p['texte'] !== ''));
+        return array_values(array_filter($fondus,
+            static fn (array $p): bool => isset($p['image']) || $p['texte'] !== ''));
     }
-
     /* --- Côté Word ------------------------------------------------------- */
 
     /**
@@ -1654,22 +1801,10 @@ final class EditionDocument
      *
      * @return list<array{texte: string, gras: bool, italique: bool, souligne: bool, taille: ?int}>
      */
-    private static function passagesWord(DOMElement $paragraphe): array
+    private static function passagesWord(DOMElement $paragraphe, array $dessins = []): array
     {
         $passages = [];
         foreach ($paragraphe->getElementsByTagNameNS(self::NS_W, 'r') as $run) {
-            $texte = '';
-            foreach ($run->childNodes as $enfant) {
-                if (self::estElement($enfant, 't')) {
-                    $texte .= $enfant->textContent;
-                } elseif (self::estElement($enfant, 'tab')) {
-                    $texte .= "\t";
-                }
-            }
-            if ($texte === '') {
-                continue;
-            }
-
             $rPr = null;
             foreach ($run->childNodes as $enfant) {
                 if (self::estElement($enfant, 'rPr')) {
@@ -1677,9 +1812,7 @@ final class EditionDocument
                     break;
                 }
             }
-
-            $passages[] = [
-                'texte'    => $texte,
+            $marques = [
                 'gras'     => self::marqueWord($rPr, 'b'),
                 'italique' => self::marqueWord($rPr, 'i'),
                 'souligne' => self::souligneWord($rPr),
@@ -1687,11 +1820,30 @@ final class EditionDocument
                 'couleur'  => self::couleurWord($rPr),
                 'fond'     => self::fondWord($rPr),
             ];
+
+            // Le texte du passage, et ses images à leur place : un même
+            // passage peut porter du texte, une image, puis du texte encore.
+            $texte = '';
+            foreach ($run->childNodes as $enfant) {
+                if (self::estElement($enfant, 't')) {
+                    $texte .= $enfant->textContent;
+                } elseif (self::estElement($enfant, 'tab')) {
+                    $texte .= "\t";
+                } elseif ($enfant instanceof DOMElement && isset($dessins[spl_object_id($enfant)])) {
+                    if ($texte !== '') {
+                        $passages[] = ['texte' => $texte] + $marques;
+                        $texte = '';
+                    }
+                    $passages[] = ['texte' => '', 'image' => $dessins[spl_object_id($enfant)]] + $marques;
+                }
+            }
+            if ($texte !== '') {
+                $passages[] = ['texte' => $texte] + $marques;
+            }
         }
 
         return self::fondrePassages($passages);
     }
-
     /** Un <w:b/> sans valeur veut dire « oui » ; « 0 » et « false » disent non. */
     private static function marqueWord(?DOMElement $rPr, string $nom): bool
     {
@@ -1810,6 +1962,20 @@ final class EditionDocument
         }
 
         foreach ($passages as $passage) {
+            if (isset($passage['image'])) {
+                // Un repère, à la place exacte de l'image dans la phrase : le
+                // dessin viendra le remplacer.
+                $porteur = $doc->createElementNS(self::NS_W, 'w:r');
+                $repere = $doc->createElement(self::REPERE);
+                foreach (['rang', 'ajout', 'largeur'] as $cle) {
+                    if (($passage['image'][$cle] ?? null) !== null) {
+                        $repere->setAttribute($cle, (string) $passage['image'][$cle]);
+                    }
+                }
+                $porteur->appendChild($repere);
+                $paragraphe->appendChild($porteur);
+                continue;
+            }
             $run = $moule !== null
                 ? $moule->cloneNode(true)
                 : $doc->createElementNS(self::NS_W, 'w:r');
@@ -2748,27 +2914,26 @@ final class EditionDocument
     /* --- Les images ajoutées --------------------------------------------- */
 
     /**
-     * Ajoute une image à la fin d'un paragraphe Word.
+     * Le dessin d'une image ajoutée, prêt à prendre place dans un passage.
      *
-     * Quatre écritures, et toutes sont nécessaires : sans l'une d'elles, Word
-     * tient l'archive pour abîmée et refuse de l'ouvrir.
-     * - l'image elle-même, rangée dans « word/media » ;
-     * - son extension, déclarée dans « [Content_Types].xml » ;
-     * - une relation qui lui donne un numéro depuis le document ;
-     * - le dessin, dans le paragraphe, qui cite ce numéro.
+     * L'image elle-même, son extension et sa relation sont écrites ici ; le
+     * dessin est rendu à qui l'a demandé, qui choisit où le poser. Sa taille
+     * est celle de l'image, ou la largeur choisie dans l'éditeur — la hauteur
+     * suivant toujours dans la même proportion —, sans jamais dépasser la
+     * largeur de la page.
      *
      * @param array{octets: string, extension: string, largeur: int, hauteur: int, nom: string} $image
      * @param array<string, string> $parties  complété des parties à écrire
      */
-    private static function insererImageWord(
+    private static function dessinNeuf(
         DOMDocument $doc,
-        DOMElement $paragraphe,
         array $image,
         string $chemin,
         array &$parties,
         int $largeurUtile,
-        int $numero
-    ): void {
+        int $numero,
+        ?int $largeurVoulue
+    ): DOMElement {
         $extension = (string) $image['extension'];
         if (!isset(self::IMAGES_INSERABLES[$extension])) {
             throw new RuntimeException('ce format d’image ne s’ajoute pas à un document Word.');
@@ -2781,9 +2946,13 @@ final class EditionDocument
         self::declarerExtension($chemin, $parties, $extension, self::IMAGES_INSERABLES[$extension]);
         $relation = self::relierImage($chemin, $parties, $cible);
 
-        // La taille d'origine, ramenée à la largeur de la page s'il le faut.
         $cx = (int) $image['largeur'] * self::EMU_PAR_PIXEL;
         $cy = (int) $image['hauteur'] * self::EMU_PAR_PIXEL;
+        if ($largeurVoulue !== null && $cx > 0) {
+            $voulu = $largeurVoulue * self::EMU_PAR_PIXEL;
+            $cy = (int) round($cy * $voulu / $cx);
+            $cx = $voulu;
+        }
         if ($cx > $largeurUtile) {
             $cy = (int) round($cy * $largeurUtile / $cx);
             $cx = $largeurUtile;
@@ -2813,14 +2982,398 @@ final class EditionDocument
             . '</wp:inline></w:drawing>';
 
         $fragment = self::analyser($xml);
-        if ($fragment === null || $fragment->documentElement === null) {
+        $noeud = $fragment?->documentElement === null ? false : $doc->importNode($fragment->documentElement, true);
+        if (!$noeud instanceof DOMElement) {
             throw new RuntimeException('l’image n’a pas pu être placée dans le document.');
         }
-        $run = $doc->createElementNS(self::NS_W, 'w:r');
-        $run->appendChild($doc->importNode($fragment->documentElement, true));
-        $paragraphe->appendChild($run);
+
+        return $noeud;
     }
 
+    /**
+     * Ce que le texte porte d'autre que du texte, dans l'ordre du document.
+     *
+     * Chez Word, une image, une forme, un graphique se tiennent dans un
+     * passage (<w:r>), comme un mot. On retient l'enfant du passage tout
+     * entier — le dessin, ou l'enveloppe qui en propose deux variantes.
+     *
+     * Le rang d'un élément dans cette liste est ce qui le désigne dans
+     * l'éditeur : le même à la lecture et à l'enregistrement, tant que le
+     * fichier n'a pas changé entre les deux.
+     *
+     * @return list<DOMElement>
+     */
+    private static function unitesDuCorps(DOMDocument $doc): array
+    {
+        $corps = $doc->getElementsByTagNameNS(self::NS_W, 'body')->item(0);
+        if (!$corps instanceof DOMElement) {
+            return [];
+        }
+        $unites = [];
+        foreach ($corps->getElementsByTagNameNS(self::NS_W, 'r') as $run) {
+            foreach ($run->childNodes as $enfant) {
+                if (!self::estUnite($enfant)) {
+                    continue;
+                }
+                // Ce qui se tient dans la zone de texte d'une forme voyage
+                // avec elle : on ne le compte pas une seconde fois.
+                $dedans = false;
+                for ($p = $enfant->parentNode; $p !== null; $p = $p->parentNode) {
+                    if (in_array($p, $unites, true)) {
+                        $dedans = true;
+                        break;
+                    }
+                }
+                if (!$dedans) {
+                    $unites[] = $enfant;
+                }
+            }
+        }
+
+        return $unites;
+    }
+
+    /**
+     * Les éléments du texte, rangés par le noeud qui les porte.
+     *
+     * Une image connue d'« ImagesDocument » garde aussi le rang qui la sert à
+     * l'adresse ; les autres éléments — formes, graphiques, objets — n'ont
+     * que leur rang dans le texte, et se montrent sous forme d'étiquette.
+     * Les noeuds sont gardés dans le tableau : PHP recycle le numéro d'une
+     * enveloppe qu'on ne tient plus.
+     *
+     * @return array<int, array>  clé : identifiant d'objet du noeud porteur
+     */
+    private static function dessinsDuDocument(DOMDocument $doc, string $chemin, string $nomOrigine): array
+    {
+        $images = [];
+        foreach (ImagesDocument::trouver($doc, ImagesDocument::relations($chemin, $nomOrigine)) as $rang => $image) {
+            $unite = self::porteurDansLePassage($image['noeud']);
+            if ($unite !== null && !isset($images[spl_object_id($unite)])) {
+                $images[spl_object_id($unite)] = ['image' => $rang, 'unite' => $unite] + $image;
+            }
+        }
+
+        $dessins = [];
+        foreach (self::unitesDuCorps($doc) as $rang => $unite) {
+            $image = $images[spl_object_id($unite)] ?? null;
+            $dessins[spl_object_id($unite)] = [
+                'rang'    => $rang,
+                'image'   => $image['image'] ?? null,
+                'type'    => $image['type'] ?? null,
+                'source'  => $image['source'] ?? null,
+                'alt'     => (string) ($image['alt'] ?? ''),
+                'largeur' => $image['largeur'] ?? null,
+                'hauteur' => $image['hauteur'] ?? null,
+                'redim'   => $image !== null
+                    && $unite->getElementsByTagNameNS(self::NS_WP, 'extent')->length > 0,
+                'sorte'   => $image !== null ? 'image' : self::sorteDObjet($unite),
+                'noeud'   => $unite,
+            ];
+        }
+
+        return $dessins;
+    }
+
+    /** L'enfant du passage qui porte ce noeud, ou null s'il n'est dans aucun passage. */
+    private static function porteurDansLePassage(?DOMNode $noeud): ?DOMElement
+    {
+        for ($n = $noeud; $n instanceof DOMElement; $n = $n->parentNode) {
+            $parent = $n->parentNode;
+            if ($parent instanceof DOMElement && $parent->namespaceURI === self::NS_W
+                && $parent->localName === 'r') {
+                return $n;
+            }
+        }
+
+        return null;
+    }
+
+    /** Ce qu'est un élément du texte qui n'est pas une image, pour l'étiqueter. */
+    private static function sorteDObjet(DOMElement $unite): string
+    {
+        if ($unite->localName === 'object') {
+            return 'objet inséré';
+        }
+        $donnees = $unite->getElementsByTagNameNS(self::NS_A, 'graphicData')->item(0);
+        $uri = $donnees instanceof DOMElement ? $donnees->getAttribute('uri') : '';
+
+        return match (true) {
+            str_ends_with($uri, '/wordprocessingShape')  => 'forme',
+            str_ends_with($uri, '/wordprocessingGroup')  => 'groupe de formes',
+            str_ends_with($uri, '/wordprocessingCanvas') => 'zone de dessin',
+            str_ends_with($uri, '/chart')                => 'graphique',
+            str_ends_with($uri, '/diagram')              => 'SmartArt',
+            $unite->localName === 'pict'                 => 'forme',
+            default                                      => 'objet',
+        };
+    }
+
+    /**
+     * Combien d'images le texte porte, montrables ou non.
+     *
+     * Une image dans un vieux format, ou restée chez son auteur, reste une
+     * image du document : on la compte, et la corbeille qui l'emporterait le
+     * dit. Une forme ou un graphique, eux, n'en sont pas.
+     */
+    private static function imagesDansLesPassages(array $passages): int
+    {
+        $n = 0;
+        foreach ($passages as $passage) {
+            if (($passage['image']['image'] ?? null) !== null) {
+                $n++;
+            }
+        }
+
+        return $n;
+    }
+
+    /**
+     * Un élément du texte, tel que l'éditeur et l'aperçu le montrent.
+     *
+     * Une image s'affiche, avec son rang — c'est lui qui la désignera à
+     * l'enregistrement — et sa largeur, que l'éditeur fait varier. Ce qui ne
+     * s'affiche pas — une image dans un vieux format, une image liée, une
+     * forme — garde sa place sous la forme d'une étiquette : on peut encore
+     * la déplacer ou la retirer, et l'on sait qu'elle est là.
+     */
+    private static function htmlImage(array $dessin, ?callable $adresseImage): string
+    {
+        $e = static fn (string $v): string => htmlspecialchars($v, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+        $rang = (int) $dessin['rang'];
+        $image = $dessin['image'] ?? null;
+
+        if ($image !== null && ($dessin['type'] ?? null) !== null && $adresseImage !== null) {
+            $largeur = $dessin['largeur'] ?? null;
+            $taille = $largeur === null ? ''
+                : ' width="' . (int) $largeur . '" height="' . (int) $dessin['hauteur'] . '"';
+
+            return '<img src="' . $e((string) $adresseImage((int) $image)) . '" class="riche-image"'
+                . ' data-dessin="' . $rang . '" data-redim="' . (!empty($dessin['redim']) ? '1' : '0') . '"'
+                . ($largeur === null ? '' : ' data-largeur="' . (int) $largeur . '"')
+                . ' alt="' . $e($dessin['alt'] !== '' ? (string) $dessin['alt'] : 'Image du document') . '"'
+                . $taille . ' loading="lazy" decoding="async">';
+        }
+
+        $etiquette = match (true) {
+            $image === null                  => (string) ($dessin['sorte'] ?? 'objet'),
+            ($dessin['source'] ?? '') === '' => 'image liée',
+            default                          => 'image ' . strtoupper(
+                (string) pathinfo((string) $dessin['source'], PATHINFO_EXTENSION)),
+        };
+        $explication = $image === null
+            ? 'Un élément que l’éditeur ne sait pas montrer. Il reste tel quel dans le fichier ; on peut le déplacer ou le supprimer.'
+            : 'Une image que le navigateur ne peut pas afficher. Elle reste dans le fichier ; on peut la déplacer ou la supprimer.';
+
+        return '<span class="riche-image-absente" contenteditable="false" data-dessin="' . $rang . '"'
+            . ' title="' . $e($explication) . '">' . ($image === null ? '◆ ' : '🖼 ')
+            . $e($etiquette) . '</span>';
+    }
+
+    /**
+     * Le repère d'image que porte un élément de l'éditeur, s'il en porte un.
+     *
+     * Un élément du document se désigne par son rang, une image ajoutée par
+     * la clé de son fichier. Rien d'autre n'est lu : ni l'adresse, ni le
+     * texte de remplacement — le dessin garde les siens, qui sont dans le
+     * fichier.
+     *
+     * @return ?array{rang: ?int, ajout: ?string, largeur: ?int}
+     */
+    private static function imageDuHtml(DOMElement $element): ?array
+    {
+        $rang = $element->getAttribute('data-dessin');
+        $ajout = $element->getAttribute('data-ajout');
+        $rang = preg_match('/^\d{1,5}$/', $rang) === 1 ? (int) $rang : null;
+        $ajout = preg_match('/^[a-z0-9]{1,32}$/', $ajout) === 1 ? $ajout : null;
+        if ($rang === null && $ajout === null) {
+            return null;
+        }
+        $largeur = $element->getAttribute('data-largeur');
+        $largeur = preg_match('/^\d{1,5}$/', $largeur) === 1 ? max(8, (int) $largeur) : null;
+
+        return ['rang' => $ajout === null ? $rang : null, 'ajout' => $ajout, 'largeur' => $largeur];
+    }
+
+    /**
+     * Met les éléments du paragraphe à la place que l'éditeur leur a donnée.
+     *
+     * En trois temps :
+     * - quand l'éditeur a renvoyé les images dans le texte, celles que le
+     *   paragraphe portait encore sont d'abord retirées : chacune est revenue
+     *   sous forme de repère, et celle dont le repère manque est une image
+     *   qu'on a supprimée ;
+     * - chaque repère est ensuite remplacé par son dessin — déplacé depuis
+     *   n'importe quel paragraphe, ou recopié s'il sert deux fois, et mis à
+     *   la largeur choisie ;
+     * - un repère qui ne désigne rien est retiré.
+     *
+     * @param array<int, array> $parRang   les éléments, par leur rang
+     * @param array<int, DOMElement> $porteurs  les mêmes, par identifiant d'objet
+     * @param array<int, true> $places     les rangs déjà posés
+     * @param array<string, array> $ajouts les images ajoutées, par clé
+     * @param array<string, string> $parties  complété des parties à écrire
+     */
+    private static function placerLesImages(
+        DOMDocument $doc,
+        DOMElement $paragraphe,
+        array $parRang,
+        array $porteurs,
+        array &$places,
+        array $ajouts,
+        string $chemin,
+        array &$parties,
+        int &$largeurUtile,
+        int &$dessin,
+        bool $enLigne
+    ): void {
+        if ($enLigne && $porteurs !== []) {
+            foreach (iterator_to_array($paragraphe->getElementsByTagName('*')) as $noeud) {
+                if (!isset($porteurs[spl_object_id($noeud)])) {
+                    continue;
+                }
+                $run = $noeud->parentNode;
+                $run?->removeChild($noeud);
+                if ($run instanceof DOMElement && self::runVide($run)) {
+                    $run->parentNode?->removeChild($run);
+                }
+            }
+        }
+
+        foreach (iterator_to_array($paragraphe->getElementsByTagName(self::REPERE)) as $repere) {
+            $run = $repere->parentNode;
+            $largeur = $repere->hasAttribute('largeur') ? (int) $repere->getAttribute('largeur') : null;
+            $porteur = null;
+
+            if ($repere->hasAttribute('ajout') && isset($ajouts[$repere->getAttribute('ajout')])) {
+                if ($largeurUtile === 0) {
+                    $largeurUtile = self::largeurUtileWord($doc);
+                }
+                $porteur = self::dessinNeuf($doc, $ajouts[$repere->getAttribute('ajout')], $chemin,
+                    $parties, $largeurUtile, ++$dessin, $largeur);
+            } elseif ($repere->hasAttribute('rang') && isset($parRang[(int) $repere->getAttribute('rang')])) {
+                $rang = (int) $repere->getAttribute('rang');
+                $porteur = $parRang[$rang]['noeud'];
+                if (isset($places[$rang])) {
+                    // Cité deux fois : la seconde est une copie, avec son
+                    // propre numéro de dessin — Word refuse les doublons.
+                    $porteur = $porteur->cloneNode(true);
+                    self::renumeroterDessin($porteur, ++$dessin);
+                }
+                $places[$rang] = true;
+                if ($largeur !== null && $parRang[$rang]['redim']) {
+                    self::redimensionnerDessin($porteur, $largeur, $largeurUtile);
+                }
+            }
+
+            if (!$porteur instanceof DOMElement || !$run instanceof DOMElement) {
+                if ($run instanceof DOMElement) {
+                    $run->parentNode?->removeChild($run);
+                } else {
+                    $repere->parentNode?->removeChild($repere);
+                }
+                continue;
+            }
+            $run->replaceChild($porteur, $repere);
+        }
+    }
+
+    /** Ce passage ne porte plus rien, hors sa mise en forme. */
+    private static function runVide(DOMElement $run): bool
+    {
+        foreach ($run->childNodes as $enfant) {
+            if ($enfant instanceof DOMElement && !self::estElement($enfant, 'rPr')) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /** Donne un nouveau numéro de dessin à une copie. */
+    private static function renumeroterDessin(DOMElement $porteur, int $numero): void
+    {
+        foreach ($porteur->getElementsByTagNameNS(self::NS_WP, 'docPr') as $pr) {
+            $pr->setAttribute('id', (string) $numero);
+        }
+    }
+
+    /**
+     * Donne à une image la largeur choisie dans l'éditeur, hauteur comprise.
+     *
+     * La hauteur suit dans la même proportion : une image étirée d'un seul
+     * côté n'est jamais ce qu'on voulait. La largeur ne dépasse pas celle de
+     * la page, comme à l'ajout. Un écart d'un pixel ne vaut pas qu'on touche
+     * au fichier : les arrondis d'une relecture à l'autre ne doivent pas
+     * faire dériver la taille d'une image qu'on n'a pas touchée.
+     */
+    private static function redimensionnerDessin(DOMElement $porteur, int $largeurPx, int $largeurUtile): void
+    {
+        $etendue = $porteur->getElementsByTagNameNS(self::NS_WP, 'extent')->item(0);
+        if (!$etendue instanceof DOMElement) {
+            return;
+        }
+        $cx = (int) $etendue->getAttribute('cx');
+        $cy = (int) $etendue->getAttribute('cy');
+        if ($cx <= 0 || $cy <= 0 || abs((int) round($cx / self::EMU_PAR_PIXEL) - $largeurPx) <= 1) {
+            return;
+        }
+
+        $nouveau = min($largeurPx * self::EMU_PAR_PIXEL, $largeurUtile > 0 ? $largeurUtile : PHP_INT_MAX);
+        $haut = (int) round($cy * $nouveau / $cx);
+        $etendue->setAttribute('cx', (string) $nouveau);
+        $etendue->setAttribute('cy', (string) $haut);
+
+        // L'image porte aussi sa taille dans son propre cadre : les deux
+        // doivent dire la même chose, sinon Word la déforme.
+        foreach ($porteur->getElementsByTagNameNS(self::NS_A, 'xfrm') as $cadre) {
+            foreach ($cadre->getElementsByTagNameNS(self::NS_A, 'ext') as $ext) {
+                $ext->setAttribute('cx', (string) $nouveau);
+                $ext->setAttribute('cy', (string) $haut);
+            }
+        }
+    }
+
+    /**
+     * La largeur utile de la page, en pixels : ce qu'une image peut occuper
+     * au plus, et l'échelle du curseur de taille de l'éditeur.
+     */
+    public static function largeurUtilePixels(string $chemin, string $nomOrigine): int
+    {
+        if (!self::imagesAjoutables($nomOrigine)) {
+            return 0;
+        }
+        [$doc] = self::ouvrir($chemin, $nomOrigine);
+
+        return (int) round(self::largeurUtileWord($doc) / self::EMU_PAR_PIXEL);
+    }
+
+    /**
+     * Ajoute une image à la fin d'un paragraphe Word.
+     *
+     * Quatre écritures, et toutes sont nécessaires : sans l'une d'elles, Word
+     * tient l'archive pour abîmée et refuse de l'ouvrir.
+     * - l'image elle-même, rangée dans « word/media » ;
+     * - son extension, déclarée dans « [Content_Types].xml » ;
+     * - une relation qui lui donne un numéro depuis le document ;
+     * - le dessin, dans le paragraphe, qui cite ce numéro.
+     *
+     * @param array{octets: string, extension: string, largeur: int, hauteur: int, nom: string} $image
+     * @param array<string, string> $parties  complété des parties à écrire
+     */
+    private static function insererImageWord(
+        DOMDocument $doc,
+        DOMElement $paragraphe,
+        array $image,
+        string $chemin,
+        array &$parties,
+        int $largeurUtile,
+        int $numero
+    ): void {
+        $run = $doc->createElementNS(self::NS_W, 'w:r');
+        $run->appendChild(self::dessinNeuf($doc, $image, $chemin, $parties, $largeurUtile, $numero, null));
+        $paragraphe->appendChild($run);
+    }
     /**
      * La largeur où une image peut s'étendre : la page moins ses marges.
      *

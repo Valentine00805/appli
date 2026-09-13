@@ -294,11 +294,37 @@ final class ApercuDocument
             if (!in_array($noeud->nodeName, $balises, true)) {
                 continue;
             }
-            $texte = trim(preg_replace('/\s+/u', ' ', (string) $noeud->textContent) ?? '');
+            $texte = trim(preg_replace('/\s+/u', ' ', self::texteDe($noeud)) ?? '');
             if ($texte !== '') {
                 $paragraphes[] = $texte;
             }
         }
         return $paragraphes;
+    }
+
+    private const NS_W = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+
+    /**
+     * Le texte d'un paragraphe, tel qu'on le lit.
+     *
+     * Chez Word, seulement ce que portent ses passages (<w:t>). Le reste du
+     * paragraphe contient aussi du texte que personne ne voit : la position
+     * d'une image flottante, écrite en chiffres, les instructions d'un champ,
+     * le texte supprimé d'une révision. Les compter faisait d'une image
+     * flottante un paragraphe « 152400762000 » — et, les deux lectures ne
+     * tombant plus d'accord, l'aperçu renonçait à la mise en forme et aux
+     * images de tout le document.
+     */
+    private static function texteDe(DOMElement $noeud): string
+    {
+        if ($noeud->namespaceURI !== self::NS_W) {
+            return (string) $noeud->textContent;
+        }
+        $texte = '';
+        foreach ($noeud->getElementsByTagNameNS(self::NS_W, 't') as $t) {
+            $texte .= $t->textContent;
+        }
+
+        return $texte;
     }
 }

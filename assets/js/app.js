@@ -1470,6 +1470,9 @@
 
       zone.addEventListener("input", function () {
         if (ligne.getAttribute("data-liste")) { return; }
+        // Une ligne qui porte une image ne devient pas une liste : la vider
+        // pour y poser la marque emporterait l'image.
+        if (zone.querySelector("[data-dessin], [data-ajout]")) { return; }
         for (var i = 0; i < DEBUTS.length; i++) {
           if (DEBUTS[i].motif.test(zone.textContent)) {
             zone.textContent = "";
@@ -1523,7 +1526,16 @@
       // couleurs comprises : on ne garde que le texte.
       zone.addEventListener("paste", function (evenement) {
         evenement.preventDefault();
-        var texte = (evenement.clipboardData || window.clipboardData).getData("text");
+        var presse = evenement.clipboardData || window.clipboardData;
+        var texte = presse.getData("text");
+        // Une image coupée ici pour être collée ailleurs revient avec : c'est
+        // ainsi qu'on la déplace au clavier. Rien d'autre ne passe.
+        var html = presse.getData ? presse.getData("text/html") : "";
+        var avecImages = html && typeof imagesCollables === "function" ? imagesCollables(html) : null;
+        if (avecImages) {
+          document.execCommand("insertHTML", false, avecImages);
+          return;
+        }
         document.execCommand("insertText", false, texte.replace(/\s*\n\s*/g, " "));
       });
     };
@@ -1807,24 +1819,171 @@
       }
 
       /*
-       * Ajouter une image.
+       * Les images, dans le texte.
        *
-       * Elle s'installe dans un paragraphe neuf, sous celui où se trouve le
-       * curseur — à la fin du document si le curseur n'est nulle part. Rien
-       * n'est écrit avant l'enregistrement : le fichier choisi part avec le
-       * formulaire, rangé dans la ligne de l'image, et la corbeille de cette
-       * ligne suffit pour y renoncer.
+       * Une image fait partie de sa phrase : on la glisse où l'on veut, on la
+       * coupe pour la coller ailleurs, on l'efface comme un mot. Un clic la
+       * choisit, et la barre propose alors sa largeur. « 🖼 Image » en ajoute
+       * une à l'endroit du curseur.
        *
-       * Le format et le poids se vérifient ici, dès le choix : un refus du
-       * serveur ferait perdre tout ce qu'on a tapé depuis l'ouverture.
+       * Le drapeau dit au serveur que les images reviennent à leur place dans
+       * le texte : sans lui, une image absente serait gardée en fin de
+       * paragraphe, faute de savoir si on l'a effacée ou si la page venait
+       * d'une version d'avant.
        */
+      var drapeauImages = formulaireDocument.querySelector("[data-images-en-ligne]");
+      var largeurPage = Number(formulaireDocument.getAttribute("data-largeur-page") || 0);
+      var reserveFichiers = formulaireDocument.querySelector("[data-fichiers-images]");
+      var groupeTaille = barreOutils.querySelector("[data-taille-image]");
+      var curseurTaille = barreOutils.querySelector("[data-taille-image-curseur]");
+      var valeurTaille = barreOutils.querySelector("[data-taille-image-valeur]");
+      var origineTaille = barreOutils.querySelector("[data-taille-image-origine]");
+      var imageChoisie = null;
+      var imagesConnues = {};
+
+      if (drapeauImages && largeurPage > 0) { drapeauImages.value = "1"; }
+
+      var cleImage = function (image) {
+        var ajout = image.getAttribute("data-ajout");
+        return ajout ? "a:" + ajout : "d:" + image.getAttribute("data-dessin");
+      };
+
+      // Chaque image connue est retenue telle quelle : c'est d'après ce
+      // modèle, et non d'après le presse-papiers, qu'on la recolle.
+      var retenirImage = function (image) {
+        var modele = image.cloneNode(true);
+        modele.classList.remove("est-choisie");
+        imagesConnues[cleImage(image)] = modele;
+      };
+
+      [].slice.call(zoneParagraphes.querySelectorAll("[data-zone-riche] [data-dessin]")).forEach(function (image) {
+        image.setAttribute("data-largeur-origine", image.getAttribute("data-largeur") || "");
+        retenirImage(image);
+      });
+
+      var recopierLaLigne = function (element) {
+        var ligne = element && element.closest("[data-paragraphe]");
+        var zone = ligne && ligne.querySelector("[data-zone-riche]");
+        var champ = ligne && ligne.querySelector("textarea");
+        if (zone && champ) { champ.value = zone.innerHTML; }
+      };
+
+      var enCm = function (px) {
+        return String(Math.round(px * 25.4 / 96) / 10).replace(".", ",") + " cm";
+      };
+
+      var montrerTaille = function () {
+        if (!groupeTaille || !curseurTaille || !valeurTaille) { return; }
+        var possible = imageChoisie !== null && imageChoisie.tagName === "IMG"
+          && imageChoisie.getAttribute("data-redim") !== "0" && largeurPage > 0;
+        groupeTaille.hidden = !possible;
+        if (!possible) { return; }
+        var largeur = Number(imageChoisie.getAttribute("data-largeur")) || imageChoisie.naturalWidth || largeurPage;
+        curseurTaille.value = String(Math.max(3, Math.min(100, Math.round(largeur * 100 / largeurPage))));
+        valeurTaille.textContent = enCm(Math.min(largeur, largeurPage));
+      };
+
+      var choisirImage = function (image) {
+        if (imageChoisie) { imageChoisie.classList.remove("est-choisie"); }
+        imageChoisie = image;
+        if (image) { image.classList.add("est-choisie"); }
+        montrerTaille();
+      };
+
+      zoneParagraphes.addEventListener("click", function (evenement) {
+        var image = evenement.target.closest
+          && evenement.target.closest("[data-zone-riche] img[data-dessin], [data-zone-riche] img[data-ajout]");
+        choisirImage(image || null);
+        if (!image) { return; }
+        // La sélection entoure l'image : Suppr l'efface, Ctrl+X l'emporte.
+        var autour = document.createRange();
+        autour.selectNode(image);
+        var selection = document.getSelection();
+        selection.removeAllRanges();
+        selection.addRange(autour);
+      });
+      zoneParagraphes.addEventListener("input", function () {
+        if (imageChoisie && !imageChoisie.isConnected) { choisirImage(null); }
+      });
+
+      var donnerLargeur = function (image, largeur) {
+        largeur = Math.max(8, Math.round(largeurPage > 0 ? Math.min(largeur, largeurPage) : largeur));
+        image.setAttribute("data-largeur", String(largeur));
+        image.removeAttribute("width");
+        image.removeAttribute("height");
+        image.style.width = largeur + "px";
+        image.style.height = "auto";
+        retenirImage(image);
+        recopierLaLigne(image);
+        if (image === imageChoisie && valeurTaille) { valeurTaille.textContent = enCm(largeur); }
+      };
+
+      if (curseurTaille) {
+        curseurTaille.addEventListener("input", function () {
+          if (imageChoisie) { donnerLargeur(imageChoisie, largeurPage * Number(curseurTaille.value) / 100); }
+        });
+      }
+      if (origineTaille) {
+        origineTaille.addEventListener("click", function () {
+          var origine = imageChoisie ? Number(imageChoisie.getAttribute("data-largeur-origine")) : 0;
+          if (origine > 0) {
+            donnerLargeur(imageChoisie, origine);
+            montrerTaille();
+          }
+        });
+      }
+
+      /*
+       * Coller : le texte seul, comme toujours — sauf les images connues de
+       * cette page, qu'on reprend d'après leur modèle, avec leur largeur.
+       * Une image venue d'ailleurs ne passe pas : on ne sait pas ce qu'elle
+       * est, ni si le document pourrait la garder.
+       */
+      var imagesCollables = function (html) {
+        var recu = new DOMParser().parseFromString(html, "text/html");
+        var morceaux = [];
+        var trouvees = 0;
+        var echapper = function (texte) {
+          var boite = document.createElement("div");
+          boite.textContent = texte;
+          return boite.innerHTML;
+        };
+        var parcourir = function (noeud) {
+          [].slice.call(noeud.childNodes).forEach(function (enfant) {
+            if (enfant.nodeType === 3) {
+              morceaux.push(echapper(enfant.data.replace(/\s*\n\s*/g, " ")));
+              return;
+            }
+            if (enfant.nodeType !== 1 || /^(script|style|head|title)$/i.test(enfant.tagName)) { return; }
+            if (enfant.hasAttribute("data-dessin") || enfant.hasAttribute("data-ajout")) {
+              var modele = imagesConnues[cleImage(enfant)];
+              if (!modele) { return; }
+              var copie = modele.cloneNode(true);
+              var largeur = enfant.getAttribute("data-largeur") || "";
+              if (copie.tagName === "IMG" && /^\d{1,5}$/.test(largeur)) {
+                copie.setAttribute("data-largeur", largeur);
+                copie.style.width = largeur + "px";
+                copie.style.height = "auto";
+              }
+              morceaux.push(copie.outerHTML);
+              trouvees++;
+              return;
+            }
+            parcourir(enfant);
+          });
+        };
+        parcourir(recu.body);
+        return trouvees > 0 ? morceaux.join("") : null;
+      };
+
       var boutonImage = barreOutils.querySelector("[data-inserer-image]");
       var choixImage = barreOutils.querySelector("[data-choisir-image]");
       var souciImage = barreOutils.querySelector("[data-souci-image]");
-      if (boutonImage && choixImage && modeleParagraphe && modeleParagraphe.content) {
+      if (boutonImage && choixImage && reserveFichiers && modeleParagraphe && modeleParagraphe.content) {
         var formatsImage = ["image/png", "image/jpeg", "image/gif"];
         var poidsMax = Number(formulaireDocument.getAttribute("data-taille-max") || 0);
-        var ligneDeLImage = null;
+        var zoneDeLImage = null;
+        var plageDeLImage = null;
         var imagesPosees = 0;
 
         var direSouci = function (texte) {
@@ -1837,22 +1996,34 @@
           return String(Math.round(octets / 104857.6) / 10).replace(".", ",") + " Mo";
         };
 
-        // Ce que pèsent déjà les images en attente : elles partiront ensemble.
+        // Ce que pèsent les images en attente dont l'image est encore dans le
+        // texte : elles partiront ensemble.
         var poidsEnAttente = function () {
           var total = 0;
-          [].slice.call(zoneParagraphes.querySelectorAll("input[type='file']")).forEach(function (champ) {
-            if (champ.files && champ.files[0]) { total += champ.files[0].size; }
+          [].slice.call(reserveFichiers.querySelectorAll("input[type='file']")).forEach(function (champ) {
+            var cle = (champ.name.match(/^images\[([a-z0-9]+)\]$/) || [])[1];
+            if (cle && champ.files && champ.files[0]
+              && zoneParagraphes.querySelector("[data-ajout='" + cle + "']") !== null) {
+              total += champ.files[0].size;
+            }
           });
           return total;
         };
 
-        // Garder la sélection : c'est elle qui dit sous quelle ligne poser l'image.
+        // Garder la sélection : c'est elle qui dit où poser l'image.
         boutonImage.addEventListener("mousedown", function (evenement) {
           evenement.preventDefault();
         });
         boutonImage.addEventListener("click", function () {
-          var zone = zoneDeLaSelection() || zoneChoisie;
-          ligneDeLImage = zone ? zone.closest("[data-paragraphe]") : null;
+          var zone = zoneDeLaSelection();
+          var selection = document.getSelection();
+          if (zone && selection.rangeCount > 0) {
+            zoneDeLImage = zone;
+            plageDeLImage = selection.getRangeAt(0).cloneRange();
+          } else {
+            zoneDeLImage = zoneChoisie;
+            plageDeLImage = plageChoisie ? plageChoisie.cloneRange() : null;
+          }
           direSouci("");
           choixImage.click();
         });
@@ -1876,39 +2047,43 @@
 
           imagesPosees++;
           var cle = "n" + Date.now().toString(36) + imagesPosees;
-          var ligne = modeleParagraphe.content.firstElementChild.cloneNode(true);
-          ligne.querySelector("input[name='origine[]']").value = "image:" + cle;
-          var suivante = ligneDeLImage && ligneDeLImage.parentNode === zoneParagraphes
-            ? ligneDeLImage.nextSibling
-            : null;
-          zoneParagraphes.insertBefore(ligne, suivante);
+          var image = document.createElement("img");
+          image.className = "riche-image";
+          image.setAttribute("data-ajout", cle);
+          image.setAttribute("data-redim", "1");
+          image.alt = fichier.name.replace(/\.[^.]+$/, "");
 
-          var corbeille = ligne.querySelector("[data-supprimer-paragraphe]");
-          if (corbeille) { corbeille.title = "Renoncer à cette image"; }
+          // À l'endroit du curseur ; sans curseur, dans une ligne neuve en fin
+          // de document.
+          if (zoneDeLImage && zoneDeLImage.isConnected && plageDeLImage
+            && zoneDeLImage.contains(plageDeLImage.startContainer)) {
+            plageDeLImage.deleteContents();
+            plageDeLImage.insertNode(image);
+          } else {
+            var ligne = modeleParagraphe.content.firstElementChild.cloneNode(true);
+            zoneParagraphes.appendChild(ligne);
+            enrichir(ligne);
+            renumeroter();
+            renumeroterListes();
+            var zoneNeuve = ligne.querySelector("[data-zone-riche]");
+            (zoneNeuve || ligne).appendChild(image);
+          }
 
-          // Le champ de fichier rejoint sa ligne : c'est de là qu'il partira.
+          // Le fichier attend l'enregistrement, sous la clé que porte l'image.
           champ.removeAttribute("data-choisir-image");
           champ.name = "images[" + cle + "]";
-          ligne.appendChild(champ);
+          reserveFichiers.appendChild(champ);
 
-          var cadre = document.createElement("div");
-          cadre.className = "paragraphe__images";
-          var figure = document.createElement("figure");
-          figure.className = "document-image";
-          var apercu = document.createElement("img");
-          apercu.alt = fichier.name;
-          apercu.src = URL.createObjectURL(fichier);
-          figure.appendChild(apercu);
-          cadre.appendChild(figure);
-          var attente = document.createElement("p");
-          attente.className = "paragraphe__attente";
-          attente.textContent = "Ajoutée au document à l'enregistrement. Une légende peut s'écrire au-dessus.";
-          cadre.appendChild(attente);
-          ligne.appendChild(cadre);
-
-          enrichir(ligne);
-          renumeroter();
-          renumeroterListes();
+          // Sa largeur d'origine, ramenée à celle de la page, dès qu'on la connaît.
+          image.addEventListener("load", function () {
+            var largeur = largeurPage > 0 ? Math.min(image.naturalWidth, largeurPage) : image.naturalWidth;
+            image.setAttribute("data-largeur-origine", String(largeur));
+            donnerLargeur(image, largeur);
+            if (image === imageChoisie) { montrerTaille(); }
+          }, { once: true });
+          image.src = URL.createObjectURL(fichier);
+          retenirImage(image);
+          recopierLaLigne(image);
 
           // Un champ neuf pour l'image suivante.
           var neuf = document.createElement("input");
@@ -1921,12 +2096,25 @@
           boutonImage.parentNode.insertBefore(neuf, boutonImage.nextSibling);
           choixImage = neuf;
 
-          ligne.scrollIntoView({ block: "nearest" });
+          choisirImage(image);
+          image.scrollIntoView({ block: "nearest" });
         };
 
         choixImage.addEventListener("change", poserLImage);
       }
 
+      // À l'envoi : la marque de sélection n'a rien à faire dans le document,
+      // et le fichier d'une image retirée du texte ne part pas.
+      formulaireDocument.addEventListener("submit", function () {
+        choisirImage(null);
+        if (!reserveFichiers) { return; }
+        [].slice.call(reserveFichiers.querySelectorAll("input[type='file']")).forEach(function (champ) {
+          var cle = (champ.name.match(/^images\[([a-z0-9]+)\]$/) || [])[1];
+          if (!cle || zoneParagraphes.querySelector("[data-ajout='" + cle + "']") === null) {
+            champ.parentNode.removeChild(champ);
+          }
+        });
+      });
       formulaireDocument.addEventListener("submit", recopier);
     }
   }

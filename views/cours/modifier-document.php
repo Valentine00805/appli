@@ -35,10 +35,12 @@ $ajoutImages = EditionDocument::imagesAjoutables((string) $fichier['nom_origine'
   <div class="flash flash--info" style="margin-bottom:1.25rem">
     <strong>Le gras, l'italique, le souligné, la taille, la couleur, le
     surlignage, l'alignement, les titres, les listes et le sommaire se modifient
-    ici.</strong> Les images s'affichent sous leur paragraphe : elles restent
-    à leur place à l'enregistrement, et ne partent qu'avec la corbeille de leur
-    ligne.<?php if ($ajoutImages): ?> Le bouton « 🖼 Image » en ajoute une, sous la
-    ligne où se trouve le curseur.<?php endif; ?> Le reste de la mise en forme —
+    ici.</strong><?php if ($ajoutImages): ?> Les images font partie du texte :
+    glissez-les où vous voulez, même au milieu d'une phrase, et cliquez-en une
+    pour changer sa taille. Le bouton « 🖼 Image » en ajoute une à l'endroit du
+    curseur.<?php else: ?> Les images s'affichent sous leur paragraphe : elles
+    restent à leur place à l'enregistrement, et ne partent qu'avec la corbeille
+    de leur ligne.<?php endif; ?> Le reste de la mise en forme —
     styles, polices, retraits, tableaux —
     reste dans le document sans passer par cette page, et n'est donc pas
     perdu. Une copie du document d'origine est gardée avant la première
@@ -55,10 +57,15 @@ $ajoutImages = EditionDocument::imagesAjoutables((string) $fichier['nom_origine'
   ?>
   <form method="post" action="<?= url('fichiers/' . $fichier['id'] . '/modifier') ?>"
         enctype="multipart/form-data" data-edition-document
-        data-taille-max="<?= (int) Fichiers::tailleMax() ?>">
+        data-taille-max="<?= (int) Fichiers::tailleMax() ?>"
+        data-largeur-page="<?= (int) ($largeurPage ?? 0) ?>">
     <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
     <?php // Posé par le script : il dit au serveur que le texte arrive balisé. ?>
     <input type="hidden" name="riche" value="" data-riche>
+    <?php // Posé par le script : chaque image revient à sa place dans le texte. ?>
+    <input type="hidden" name="images_en_ligne" value="" data-images-en-ligne>
+    <?php // Les fichiers des images ajoutées attendent ici l'enregistrement. ?>
+    <div hidden data-fichiers-images></div>
 
 
     <?php
@@ -205,6 +212,21 @@ $ajoutImages = EditionDocument::imagesAjoutables((string) $fichier['nom_origine'
         </button>
         <input type="file" accept="image/png,image/jpeg,image/gif" hidden data-choisir-image
                aria-label="Choisir une image à ajouter">
+        <?php
+        /*
+         * La largeur de l'image choisie. Le groupe n'apparaît que lorsqu'on a
+         * cliqué une image : il n'a rien à dire le reste du temps. La hauteur
+         * suit toujours, dans la même proportion.
+         */
+        ?>
+        <span class="barre-outils__couleurs barre-outils__taille-image" data-taille-image hidden>
+          <span class="discret">Largeur</span>
+          <input type="range" min="3" max="100" step="1" value="100" data-taille-image-curseur
+                 aria-label="Largeur de l'image, en part de la largeur de la page">
+          <output data-taille-image-valeur>—</output>
+          <button type="button" class="barre-outils__bouton" data-taille-image-origine
+                  title="Revenir à la taille qu'avait l'image à l'ouverture">↺</button>
+        </span>
       <?php endif; ?>
       <span class="champ__aide barre-outils__aide">
         Sélectionnez du texte, puis cliquez sur une commande.
@@ -238,13 +260,17 @@ $ajoutImages = EditionDocument::imagesAjoutables((string) $fichier['nom_origine'
             <input type="hidden" name="titre[]" value="<?= $titre ?>">
             <textarea name="texte[]" rows="1" class="paragraphe__texte"
                       aria-label="Paragraphe <?= $rang + 1 ?>"><?= e($paragraphe) ?></textarea>
-            <?php $images = $enrichis[$rang]['images'] ?? []; ?>
+            <?php
+            $images = $enrichis[$rang]['images'] ?? [];
+            // Dans un document Word, les images sont dans le texte même.
+            $nbImages = count($images) + (int) ($enrichis[$rang]['images_texte'] ?? 0);
+            ?>
             <button type="button" class="bouton bouton--discret bouton--petit"
                     data-supprimer-paragraphe
                     title="<?= match (true) {
-                        $images === []       => 'Supprimer ce paragraphe',
-                        count($images) === 1 => 'Supprimer ce paragraphe, et son image avec lui',
-                        default              => 'Supprimer ce paragraphe, et ses images avec lui',
+                        $nbImages === 0 => 'Supprimer ce paragraphe',
+                        $nbImages === 1 => 'Supprimer ce paragraphe, et son image avec lui',
+                        default         => 'Supprimer ce paragraphe, et ses images avec lui',
                     } ?>">🗑</button>
             <?php
             /*

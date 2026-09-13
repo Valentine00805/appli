@@ -695,7 +695,8 @@ final class CoursController
                      */
                     if (EditionDocument::modifiable($nom)) {
                         try {
-                            $enrichis = EditionDocument::apercuRiche((string) $chemin, $nom);
+                            $enrichis = EditionDocument::apercuRiche((string) $chemin, $nom,
+                                $this->adresseImage($id));
                         } catch (Throwable) {
                             $enrichis = [];
                         }
@@ -711,7 +712,7 @@ final class CoursController
                          */
                         $textuels = count(array_filter(
                             $enrichis,
-                            static fn (array $e): bool => ($e['html'] ?? '') !== ''
+                            static fn (array $e): bool => (bool) ($e['textuel'] ?? (($e['html'] ?? '') !== ''))
                         ));
                         if ($textuels !== count($paragraphes)) {
                             $enrichis = [];
@@ -1205,7 +1206,8 @@ final class CoursController
             // Deux lectures du même document : le texte nu pour le formulaire
             // sans JavaScript, la mise en forme pour l'éditeur.
             $paragraphes = EditionDocument::lire($chemin, $nom);
-            $enrichis = EditionDocument::lireRiche($chemin, $nom);
+            $enrichis = EditionDocument::lireRiche($chemin, $nom, $this->adresseImage($id));
+            $largeurPage = EditionDocument::largeurUtilePixels($chemin, $nom);
             $sommaire = EditionDocument::profondeurDuSommaire($chemin, $nom);
             $erreur = null;
         } catch (Throwable $e) {
@@ -1213,6 +1215,7 @@ final class CoursController
             $enrichis = [];
             $sommaire = 0;
             $erreur = $e->getMessage();
+            $largeurPage = 0;
         }
 
         Vue::afficher('cours/modifier-document', [
@@ -1220,6 +1223,7 @@ final class CoursController
             'paragraphes' => $paragraphes,
             'enrichis'    => $enrichis,
             'sommaire'    => $sommaire,
+            'largeurPage' => $largeurPage,
             'titreMax'    => EditionDocument::TITRE_MAX,
             'tailles'     => EditionDocument::TAILLES,
             'format'      => ApercuDocument::format($nom),
@@ -1236,6 +1240,7 @@ final class CoursController
         $chemin = $this->cheminDe($fichier);
 
         $entrees = $this->imagesSoumises($id, $this->paragraphesSoumis(), $nom);
+        $ajouts = $this->imagesDansLeTexte($id, $entrees, $nom);
         if ($entrees === []) {
             Session::flash('erreur', 'Un document ne peut pas être entièrement vidé : gardez au moins une ligne.');
             redirect('fichiers/' . $id . '/modifier');
@@ -1251,8 +1256,10 @@ final class CoursController
                 ? max(0, min((int) $profondeur, EditionDocument::TITRE_MAX))
                 : null;
 
+            // « images_en_ligne » : l'éditeur a renvoyé chaque image à sa
+            // place dans le texte, et une image absente est une image effacée.
             EditionDocument::enregistrer($chemin, $nom, $entrees, ($_POST['riche'] ?? '') === '1',
-                $profondeur);
+                $profondeur, $ajouts, ($_POST['images_en_ligne'] ?? '') === '1');
         } catch (Throwable $e) {
             Session::flash('erreur', 'Le document n’a pas été modifié : ' . $e->getMessage());
             redirect('fichiers/' . $id . '/modifier');
@@ -1529,6 +1536,57 @@ final class CoursController
     private function cheminDe(array $fichier): string
     {
         return Config::get('app', 'dossier_uploads') . DIRECTORY_SEPARATOR . $fichier['nom_stocke'];
+    }
+
+    /** L'adresse d'une image du document, par son rang. */
+    private function adresseImage(int $id): callable
+    {
+        return static fn (int $rang): string => url('fichiers/' . $id . '/image', ['n' => $rang]);
+    }
+
+    /**
+     * Les images ajoutées au fil du texte, vérifiées une à une.
+     *
+     * L'éditeur les marque à leur place par la clé de leur fichier. Seuls
+     * les fichiers qu'un repère annonce sont lus : un fichier resté sans
+     * repère — une image ajoutée puis retirée du texte — ne demande rien, et
+     * un repère sans fichier sera simplement retiré.
+     *
+     * @param list<array> $entrees
+     * @return array<string, array>  la clé vers l'image vérifiée
+     */
+    private function imagesDansLeTexte(int $id, array $entrees, string $nom): array
+    {
+        $cles = [];
+        foreach ($entrees as $entree) {
+            if (preg_match_all('/data-ajout="([a-z0-9]{1,32})"/', (string) $entree['texte'], $m) > 0) {
+                foreach ($m[1] as $cle) {
+                    $cles[$cle] = true;
+                }
+            }
+        }
+        if ($cles === []) {
+            return [];
+        }
+        if (!EditionDocument::imagesAjoutables($nom)) {
+            $this->refuserImage($id, 'une image ne s’ajoute pour l’instant qu’à un document Word (.docx).');
+        }
+
+        $fichiers = (array) ($_FILES['images'] ?? []);
+        $ajouts = [];
+        foreach (array_keys($cles) as $cle) {
+            $erreur = isset($fichiers['error'][$cle]) ? (int) $fichiers['error'][$cle] : UPLOAD_ERR_NO_FILE;
+            if ($erreur === UPLOAD_ERR_NO_FILE) {
+                continue;
+            }
+            $image = $this->imageEnvoyee($fichiers, (string) $cle, $erreur);
+            if (is_string($image)) {
+                $this->refuserImage($id, $image);
+            }
+            $ajouts[(string) $cle] = $image;
+        }
+
+        return $ajouts;
     }
 
     /**
