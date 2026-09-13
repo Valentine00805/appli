@@ -3,7 +3,11 @@
  * @var array $cours, $fichiers, $tags, $evenements
  * @var array $fichiersFiche, $elements, $autresCours, $evenementsChoix
  * @var bool $revision  le volet de révision est-il ouvert ?
+ * @var bool $dansUneFenetre  rendue seule, pour être posée dans une fenêtre
  */
+$dansUneFenetre = $dansUneFenetre ?? false;
+// Les formulaires qui s'enregistrent sans quitter la fenêtre.
+$surPlace = $dansUneFenetre ? ' data-envoi-fenetre' : '';
 $images = array_filter($fichiers, static fn (array $f): bool => Fichiers::estImage($f['mime']));
 $fiche = (string) ($cours['fiche_revision'] ?? '');
 
@@ -15,11 +19,14 @@ foreach ($elements as $element) {
 $nbElements = count($elements) + count($fichiersFiche);
 ?>
 
-<div class="entete-page">
+<div class="entete-page"<?= $dansUneFenetre ? ' data-large data-document' : '' ?>>
   <div>
-    <p class="discret" style="margin-bottom:.35rem">
-      <a href="<?= url('cours') ?>">← Mes cours</a>
-    </p>
+    <?php // Dans une fenêtre, la liste des cours est juste derrière : la croix y ramène. ?>
+    <?php if (!$dansUneFenetre): ?>
+      <p class="discret" style="margin-bottom:.35rem">
+        <a href="<?= url('cours') ?>">← Mes cours</a>
+      </p>
+    <?php endif; ?>
     <h1><?= e($cours['titre']) ?></h1>
     <p>
       <?php if ($cours['matiere_nom'] !== null): ?>
@@ -33,7 +40,7 @@ $nbElements = count($elements) + count($fichiersFiche);
   </div>
 
   <div class="actions">
-    <form method="post" action="<?= url('cours/' . $cours['id'] . '/favori') ?>" class="en-ligne">
+    <form method="post" action="<?= url('cours/' . $cours['id'] . '/favori') ?>" class="en-ligne"<?= $surPlace ?>>
       <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
       <button class="bouton bouton--secondaire" type="submit"
               title="<?= (int) $cours['favori'] === 1 ? 'Retirer des favoris' : 'Ajouter aux favoris' ?>">
@@ -76,7 +83,7 @@ $nbElements = count($elements) + count($fichiersFiche);
           ✏️ <?= $sansContenu ? 'Écrire le contenu' : 'Modifier le contenu' ?>
         </summary>
 
-        <form method="post" action="<?= url('cours/' . $cours['id'] . '/contenu') ?>">
+        <form method="post" action="<?= url('cours/' . $cours['id'] . '/contenu') ?>"<?= $surPlace ?>>
           <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
           <?php // Revenir là où l'on était : le volet de révision reste ouvert. ?>
           <?php if ($revision): ?>
@@ -122,7 +129,7 @@ $nbElements = count($elements) + count($fichiersFiche);
                 <span class="fichier__actions">
                   <a class="bouton bouton--discret bouton--petit"
                      href="<?= url('fichiers/' . $f['id'], ['telecharger' => 1]) ?>" title="Télécharger">⬇</a>
-                  <form method="post" action="<?= url('fichiers/' . $f['id'] . '/supprimer') ?>" class="en-ligne"
+                  <form method="post" action="<?= url('fichiers/' . $f['id'] . '/supprimer') ?>" class="en-ligne"<?= $surPlace ?>
                         data-confirmation="Supprimer définitivement ce fichier ?">
                     <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
                     <button class="bouton bouton--discret bouton--petit" type="submit" title="Supprimer">✕</button>
@@ -135,7 +142,7 @@ $nbElements = count($elements) + count($fichiersFiche);
 
         <?php // Déposer des fichiers ici, sans passer par « Modifier ». ?>
         <form method="post" action="<?= url('cours/' . $cours['id'] . '/fichiers') ?>"
-              enctype="multipart/form-data" class="depot" data-depot>
+              enctype="multipart/form-data" class="depot" data-depot<?= $surPlace ?>>
           <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
 
           <label class="depot__zone" for="depot-<?= (int) $cours['id'] ?>">

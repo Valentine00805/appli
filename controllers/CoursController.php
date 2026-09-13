@@ -85,9 +85,10 @@ final class CoursController
         }
 
         // Le volet de révision s'ouvre et se referme depuis le même bouton.
-        $revision = isset($_GET['revision']);
+        // Le volet de révision est un poste de travail : il ne s'ouvre qu'en page entière.
+        $revision = isset($_GET['revision']) && !Vue::enFenetre();
 
-        Vue::afficher('cours/afficher', [
+        $donnees = [
             'cours'      => $cours,
             'revision'   => $revision,
             'fichiers'   => Database::all(
@@ -118,7 +119,16 @@ final class CoursController
                  WHERE e.cours_id = ? AND e.user_id = ? ORDER BY e.debut',
                 [$id, $userId]
             ),
-        ], $cours['titre']);
+        ];
+
+        // Depuis la liste des cours, la page du cours s'ouvre dans une fenêtre.
+        if (Vue::enFenetre()) {
+            Vue::fragment('cours/afficher', $donnees);
+
+            return;
+        }
+
+        Vue::afficher('cours/afficher', $donnees, $cours['titre']);
     }
 
     /**

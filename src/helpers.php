@@ -22,6 +22,15 @@ function url(string $chemin = '', array $params = []): string
 /** Redirige puis stoppe le script. */
 function redirect(string $chemin, array $params = []): never
 {
+    /*
+     * Un formulaire envoyé depuis une fenêtre le dit par « fenetre » : la
+     * page où l'on repart garde la marque, et répond par un fragment que la
+     * fenêtre pose à la place du formulaire. Seuls les formulaires faits pour
+     * la fenêtre l'envoient.
+     */
+    if (($_POST['fenetre'] ?? '') === '1' && !array_key_exists('fenetre', $params)) {
+        $params['fenetre'] = 1;
+    }
     header('Location: ' . url($chemin, $params));
     exit;
 }

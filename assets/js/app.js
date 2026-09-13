@@ -181,10 +181,26 @@
    * « Modifier » de la fiche n'existe pas au chargement de la page, il arrive
    * dans la fenêtre. Un lien qui naît là doit s'ouvrir comme les autres.
    */
+  // Le message d'un enregistrement fait dans une fenêtre, qui a rechargé la page.
+  try {
+    var messagesGardes = sessionStorage.getItem('mesCoursMessages');
+    var contenuPage = document.getElementById('contenu');
+    if (messagesGardes && contenuPage) {
+      sessionStorage.removeItem('mesCoursMessages');
+      var accueil = document.createElement('div');
+      accueil.innerHTML = messagesGardes;
+      var bloc = accueil.querySelector('.flashs');
+      if (bloc && !contenuPage.querySelector(':scope > .flashs')) {
+        contenuPage.insertBefore(bloc, contenuPage.firstChild);
+      }
+    }
+  } catch (e) { /* rien de gardé, ou stockage refusé */ }
+
   if (typeof HTMLDialogElement === 'function') {
     var fenetre = document.createElement('dialog');
     fenetre.className = 'fenetre';
     fenetre.innerHTML =
+      '<button class="fenetre__retour" type="button" aria-label="Revenir" title="Revenir" hidden>←</button>' +
       '<button class="fenetre__fermer" type="button" aria-label="Fermer">✕</button>' +
       '<div class="fenetre__corps"></div>';
     document.body.appendChild(fenetre);
@@ -200,11 +216,43 @@
       if (corps.querySelector('form[data-modifie]') === null) { return true; }
       return window.confirm('Fermer sans enregistrer ? Les modifications du document seront perdues.');
     };
+    /*
+     * Le chemin parcouru dans la fenêtre : un cours, puis l'aperçu d'un de ses
+     * fichiers, puis l'éditeur. Le bouton de retour remonte d'un cran ; revenir
+     * à une page déjà ouverte y ramène le chemin, pour qu'on ne tourne pas en
+     * rond entre l'aperçu et l'éditeur.
+     */
+    var historique = [];
+    var boutonRetour = fenetre.querySelector('.fenetre__retour');
+    var sansFenetre = function (adresse) {
+      var lien = new URL(adresse, window.location.href);
+      lien.searchParams.delete('fenetre');
+      return lien.pathname + lien.search;
+    };
+    var majRetour = function () { boutonRetour.hidden = historique.length < 2; };
+
+    /*
+     * Ce qui a été enregistré depuis la fenêtre change la page derrière elle :
+     * un cours renommé, un favori, un fichier de plus. On la recharge quand la
+     * fenêtre se ferme, pour qu'elle dise la même chose.
+     */
+    var aChange = false;
+
     var fermer = function () {
       if (!peutQuitter()) { return; }
       corps.innerHTML = '';
+      historique = [];
+      majRetour();
       fenetre.close();
+      if (aChange) {
+        aChange = false;
+        window.location.reload();
+      }
     };
+
+    boutonRetour.addEventListener('click', function () {
+      if (historique.length > 1) { ouvrir(historique[historique.length - 2]); }
+    });
     // « dialog » se ferme parfois toute seule sur Échap : on la retient.
     fenetre.addEventListener('cancel', function (evenement) {
       evenement.preventDefault();
@@ -280,12 +328,18 @@
         (aPortee ? premier : fenetre.querySelector('.fenetre__fermer'))
           .focus({ preventScroll: true });
 
-        // L'éditeur de document, s'il vient d'arriver dans la fenêtre.
+        // L'éditeur de document, le dépôt de fichiers, s'ils viennent d'arriver.
         initialiserEditeur(corps);
+        initialiserDepots(corps);
     };
 
     var ouvrir = function (adresse) {
       if (fenetre.open && !peutQuitter()) { return; }
+      var cle = sansFenetre(adresse);
+      if (!fenetre.open) { historique = []; }
+      var deja = historique.indexOf(cle);
+      if (deja >= 0) { historique = historique.slice(0, deja + 1); } else { historique.push(cle); }
+      majRetour();
       corps.innerHTML = '<p class="discret" style="padding:1rem">Un instant…</p>';
       if (!fenetre.open) { fenetre.showModal(); }
 
@@ -314,6 +368,11 @@
       var formulaire = evenement.target;
       if (evenement.defaultPrevented || !formulaire.hasAttribute('data-envoi-fenetre')) { return; }
       evenement.preventDefault();
+      // La confirmation d'une suppression se demande ici, et une seule fois :
+      // l'écoute générale, plus haut dans la page, n'a pas à la reposer.
+      evenement.stopPropagation();
+      var confirmation = formulaire.getAttribute('data-confirmation');
+      if (confirmation && !window.confirm(confirmation)) { return; }
 
       var donnees = new FormData(formulaire);
       donnees.append('fenetre', '1');
@@ -323,9 +382,40 @@
       fetch(formulaire.action, { method: 'POST', body: donnees, credentials: 'same-origin' })
         .then(function (reponse) {
           if (!reponse.ok) { throw new Error('refus'); }
-          return reponse.text();
+          return reponse.text().then(function (html) { return { html: html, adresse: reponse.url }; });
         })
-        .then(poser)
+        .then(function (reponse) {
+          aChange = true;
+          var cle = sansFenetre(reponse.adresse);
+
+          // Une page entière n'a rien à faire dans la fenêtre : on y va.
+          if (/<header class="entete"/.test(reponse.html)) {
+            window.location.href = cle;
+            return;
+          }
+          // La page qu'on regarde derrière la fenêtre : c'est elle qui a changé.
+          // Le message du serveur est déjà arrivé dans la réponse : il est
+          // gardé le temps du rechargement, pour s'afficher sur la page.
+          if (cle === sansFenetre(window.location.href)) {
+            var recu = document.createElement('div');
+            recu.innerHTML = reponse.html;
+            var messages = recu.querySelector('.flashs');
+            try {
+              if (messages) { sessionStorage.setItem('mesCoursMessages', messages.outerHTML); }
+            } catch (e) { /* stockage refusé : le message sera perdu, pas l'enregistrement */ }
+            window.location.reload();
+            return;
+          }
+
+          var deja = historique.indexOf(cle);
+          if (deja >= 0) {
+            historique = historique.slice(0, deja + 1);
+          } else {
+            historique[Math.max(0, historique.length - 1)] = cle;
+          }
+          majRetour();
+          poser(reponse.html);
+        })
         .catch(function () {
           // Faute de mieux, l'envoi ordinaire : la page entière s'en chargera.
           formulaire.removeAttribute('data-envoi-fenetre');
@@ -1159,16 +1249,24 @@
 
   // Deposer des fichiers sur la page d un cours.
   // Sans JavaScript, la zone reste un champ de fichiers avec son bouton.
-  [].slice.call(document.querySelectorAll("[data-depot]")).forEach(function (forme) {
+  // « requestSubmit » plutôt que « submit » : l'envoi passe alors par ceux qui
+  // l'écoutent — la fenêtre, qui l'enregistre sans quitter la liste des cours.
+  var envoyerForme = function (forme) {
+    if (forme.requestSubmit) { forme.requestSubmit(); } else { forme.submit(); }
+  };
+
+  var initialiserDepots = function (racine) {
+  [].slice.call(racine.querySelectorAll("[data-depot]")).forEach(function (forme) {
     var champ = forme.querySelector("[data-depot-champ]");
     var envoi = forme.querySelector("[data-depot-envoi]");
-    if (!champ) { return; }
+    if (!champ || forme.hasAttribute("data-depot-lance")) { return; }
+    forme.setAttribute("data-depot-lance", "");
 
     // Avec JavaScript, le depot suffit : le bouton ne sert plus qu au clavier.
     var transfertPossible = "DataTransfer" in window && "files" in champ;
 
     champ.addEventListener("change", function () {
-      if (champ.files && champ.files.length) { forme.submit(); }
+      if (champ.files && champ.files.length) { envoyerForme(forme); }
     });
 
     ["dragenter", "dragover"].forEach(function (nom) {
@@ -1188,11 +1286,13 @@
       var fichiers = evenement.dataTransfer && evenement.dataTransfer.files;
       if (!fichiers || !fichiers.length || !transfertPossible) { return; }
       champ.files = fichiers;
-      forme.submit();
+      envoyerForme(forme);
     });
 
     if (envoi) { envoi.textContent = "Joindre les fichiers choisis"; }
   });
+  };
+  initialiserDepots(document);
 
   /*
    * Modifier le texte d un document : ajouter, supprimer, et laisser chaque

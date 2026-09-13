@@ -27,7 +27,8 @@ $dossierActif  = $edition ? entier_ou_null($cours['dossier_id']) : entier_ou_nul
   </div>
 </div>
 
-<form method="post" action="<?= $action ?>" enctype="multipart/form-data">
+<?php // Dans une fenêtre, le formulaire s'y enregistre, et le cours revient à sa place. ?>
+<form method="post" action="<?= $action ?>" enctype="multipart/form-data"<?= $dansUneFenetre ? ' data-envoi-fenetre' : '' ?>>
   <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
 
   <div class="colonnes">

@@ -34,7 +34,7 @@
   <?php else: ?>
     <div class="grille grille--3" style="margin-bottom:2rem">
       <?php foreach ($cours as $c): ?>
-        <a class="carte cours-carte" href="<?= url('cours/' . $c['id']) ?>">
+        <a class="carte cours-carte" href="<?= url('cours/' . $c['id']) ?>" data-fenetre>
           <?php if ($c['matiere_nom'] !== null): ?>
             <span class="pastille" style="background:<?= e($c['matiere_couleur']) ?>;color:<?= e(couleur_texte($c['matiere_couleur'])) ?>">
               <?= e($c['matiere_nom']) ?>

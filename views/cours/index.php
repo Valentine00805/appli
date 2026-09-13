@@ -405,8 +405,9 @@ for ($haut = $courant; $haut !== null;) {
 <?php else: ?>
   <div class="grille grille--3">
     <?php foreach ($cours as $c): ?>
+      <?php // Le cours s'ouvre dans une fenêtre, par-dessus la liste. ?>
       <a class="carte cours-carte" href="<?= url('cours/' . $c['id']) ?>"
-         data-cours="<?= (int) $c['id'] ?>">
+         data-cours="<?= (int) $c['id'] ?>" data-fenetre>
         <div style="display:flex;align-items:center;gap:.4rem;flex-wrap:wrap">
           <?php if ($c['matiere_nom'] !== null): ?>
             <span class="pastille" style="background:<?= e($c['matiere_couleur']) ?>;color:<?= e(couleur_texte($c['matiere_couleur'])) ?>">
