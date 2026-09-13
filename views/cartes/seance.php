@@ -13,17 +13,26 @@
  * @var int $rezeroTotal  combien le paquet en compte en tout
  * @var int $paquetTotal  cartes du paquet entier ; 0 hors d'un cours
  * @var int $paquetSomme  la somme de leurs boîtes, pour l'anneau
+ * @var bool $dansUneFenetre  rendue seule, pour être posée dans une fenêtre
  */
+$dansUneFenetre = $dansUneFenetre ?? false;
 $retour = $cours !== null ? url('cours/' . $cours['id'] . '/cartes') : url('cartes');
 ?>
 
-<p><a href="<?= e($retour) ?>">← <?= $cours !== null ? e($cours['titre']) : 'Cartes' ?></a></p>
+<?php if ($dansUneFenetre): ?>
+  <?php // Dans une fenêtre, la page des cartes est juste derrière : la croix y ramène. ?>
+  <div data-large>
+    <?php if ($cours !== null): ?><h1 class="seance__titre-fenetre"><?= e($cours['titre']) ?></h1><?php endif; ?>
+  </div>
+<?php else: ?>
+  <p><a href="<?= e($retour) ?>">← <?= $cours !== null ? e($cours['titre']) : 'Cartes' ?></a></p>
+<?php endif; ?>
 
 <?php if ($cartes === []): ?>
   <div class="vide">
     <span class="vide__icone">✅</span>
     <p>Rien à revoir<?= $cours !== null ? ' dans ce cours' : '' ?> pour aujourd'hui.</p>
-    <a class="bouton bouton--secondaire" href="<?= e($retour) ?>">Retour</a>
+    <a class="bouton bouton--secondaire" href="<?= e($retour) ?>"<?= $dansUneFenetre ? ' data-fermer' : '' ?>>Retour</a>
   </div>
 <?php else: ?>
 
@@ -34,6 +43,9 @@ $retour = $cours !== null ? url('cours/' . $cours['id'] . '/cartes') : url('cart
       'paquetSomme' => $paquetSomme,
       'rezeroCours'    => $cours === null ? null : (int) $cours['id'],
       'rezeroTotal'    => $rezeroTotal,
+      // Dans une fenêtre, la remise à zéro s'y enregistre et la séance repart.
+      'rezeroRetour'   => $dansUneFenetre ? 'seance' : null,
+      'dansUneFenetre' => $dansUneFenetre,
   ]) ?>
 
 <?php endif; ?>

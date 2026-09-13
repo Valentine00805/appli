@@ -256,6 +256,9 @@
       }
     };
 
+    // Quelque chose a changé dans la fenêtre sans passer par un formulaire.
+    document.addEventListener('fenetre:changee', function () { aChange = true; });
+
     // Une séance de cartes terminée dans la fenêtre : on y relit la fiche, à jour.
     document.addEventListener('fenetre:relire', function () {
       if (!fenetre.open || historique.length === 0) { return; }
@@ -2984,6 +2987,11 @@
     var file = Promise.resolve();
 
     var envoyer = function (carte, sue) {
+      // Dans une fenêtre, la page derrière compte encore cette carte à revoir :
+      // elle se rechargera quand la fenêtre se fermera.
+      if (seance.closest(".fenetre__corps")) {
+        document.dispatchEvent(new CustomEvent("fenetre:changee"));
+      }
       var corps = new URLSearchParams();
       corps.set("_csrf", jetonSeance);
       corps.set("sue", sue ? "1" : "0");

@@ -2700,6 +2700,8 @@ summary.cal-volet__groupe:focus-visible {
    « Modifier » sont côte à côte plutôt qu'aux deux bouts d'une page. */
 .fenetre__corps .entete-page { margin-bottom: .9rem; gap: .75rem; }
 .fenetre__corps .entete-page h1 { font-size: 1.25rem; }
+/* Le cours révisé, en tête de la séance ouverte en fenêtre. */
+.seance__titre-fenetre { margin: 0 0 .6rem; font-size: 1.25rem; }
 .fenetre__corps .pile { gap: .75rem; }
 
 .fenetre__fermer {

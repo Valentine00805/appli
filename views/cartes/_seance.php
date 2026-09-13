@@ -168,7 +168,8 @@ $paquetSomme = $paquetSomme ?? 0;
     <p class="actions seance__fin-actions">
       <button class="bouton" type="button" data-recommencer>🔄 Recommencer</button>
       <?php if ($retour !== null): ?>
-        <a class="bouton bouton--secondaire" href="<?= e($retour) ?>">Retour</a>
+        <?php // Dans une fenêtre, « Retour » la ferme, et la page derrière se met à jour. ?>
+        <a class="bouton bouton--secondaire" href="<?= e($retour) ?>"<?= ($dansUneFenetre ?? false) ? ' data-fermer' : '' ?>>Retour</a>
       <?php else: ?>
         <?php // Sur la fiche, on recharge : les compteurs doivent dire le vrai. ?>
         <button class="bouton bouton--secondaire" type="button" data-fermer-seance>Terminer</button>

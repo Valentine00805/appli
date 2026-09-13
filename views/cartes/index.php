@@ -29,7 +29,7 @@
   </div>
 
   <?php if ($aRevoir > 0): ?>
-    <a class="bouton" href="<?= url('cartes/seance') ?>">Réviser <?= $aRevoir ?> carte<?= $aRevoir > 1 ? 's' : '' ?></a>
+    <a class="bouton" href="<?= url('cartes/seance') ?>" data-fenetre>Réviser <?= $aRevoir ?> carte<?= $aRevoir > 1 ? 's' : '' ?></a>
   <?php endif; ?>
 </div>
 
@@ -253,7 +253,7 @@
 
         <p class="actions paquet-bloc__actions">
           <?php if ($dues > 0): ?>
-            <a class="bouton bouton--petit" href="<?= url('cartes/seance', ['cours' => $p['id']]) ?>">Réviser</a>
+            <a class="bouton bouton--petit" href="<?= url('cartes/seance', ['cours' => $p['id']]) ?>" data-fenetre>Réviser</a>
           <?php endif; ?>
           <a class="bouton bouton--secondaire bouton--petit" href="<?= url('cours/' . $p['id']) ?>">Voir le cours</a>
         </p>

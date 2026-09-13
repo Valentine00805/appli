@@ -711,6 +711,9 @@ final class CartesController
         if ($retour === 'onglet') {
             redirect('cartes');
         }
+        if ($retour === 'seance') {
+            redirect('cartes/seance', ['cours' => $coursId]);
+        }
 
         redirect('cours/' . $coursId . '/cartes');
     }
@@ -783,7 +786,7 @@ final class CartesController
             [(int) $cours['id'], $userId]
         );
 
-        Vue::afficher('cartes/seance', [
+        $donnees = [
             'cartes' => $cartes,
             'cours'  => $cours,
             // Combien sont dues en tout, pour dire ce que la séance laisse de côté.
@@ -797,7 +800,16 @@ final class CartesController
             // plusieurs cours n'en mesure aucun, et n'en montre donc pas.
             'paquetTotal' => (int) $paquet['total'],
             'paquetSomme' => (int) $paquet['somme'],
-        ], $cours !== null ? 'Réviser — ' . $cours['titre'] : 'Réviser');
+        ];
+
+        // Depuis la page des cartes, la séance s'ouvre dans une fenêtre.
+        if (Vue::enFenetre()) {
+            Vue::fragment('cartes/seance', $donnees);
+
+            return;
+        }
+
+        Vue::afficher('cartes/seance', $donnees, $cours !== null ? 'Réviser — ' . $cours['titre'] : 'Réviser');
     }
 
     /**

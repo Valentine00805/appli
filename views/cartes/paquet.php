@@ -34,7 +34,7 @@ foreach ($cartes as $c) {
   <div class="actions">
     <a class="bouton bouton--secondaire" href="<?= url('cartes') ?>">Fabriquer des cartes</a>
     <?php if ($dues > 0): ?>
-      <a class="bouton" href="<?= url('cartes/seance', ['cours' => $cours['id']]) ?>">Réviser</a>
+      <a class="bouton" href="<?= url('cartes/seance', ['cours' => $cours['id']]) ?>" data-fenetre>Réviser</a>
     <?php endif; ?>
     <a class="bouton bouton--secondaire" href="<?= url('cours/' . $cours['id']) ?>">Voir le cours</a>
   </div>
