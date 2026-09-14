@@ -222,6 +222,11 @@ textarea { min-height: 260px; resize: vertical; line-height: 1.65; }
 .menu-telecharger__choix .discret { font-size: .8rem; }
 /* « Contenu en PDF », en haut à droite du texte du cours. */
 .contenu-cours__actions { display: flex; justify-content: flex-end; margin: 0 0 .5rem; }
+
+/* La page « Notifications ». */
+.notifications__etat { font-weight: 600; }
+.notifications [hidden] { display: none !important; }
+.notifications__liste { margin: 0; padding-left: 1.2rem; display: grid; gap: .45rem; }
 /* Le petit « ⬇ » des listes de fichiers : la flèche du menu reste discrète. */
 .menu-telecharger--compact > summary { gap: .1rem; }
 .menu-telecharger--compact > summary [aria-hidden] { font-size: .65rem; opacity: .7; }

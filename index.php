@@ -39,6 +39,8 @@ require __DIR__ . '/src/GenerateurCartes.php';
 require __DIR__ . '/src/TexteRiche.php';
 require __DIR__ . '/src/PdfSimple.php';
 require __DIR__ . '/src/ExportPdf.php';
+require __DIR__ . '/src/WebPush.php';
+require __DIR__ . '/src/Rappels.php';
 require __DIR__ . '/src/PlanningJour.php';
 require __DIR__ . '/src/Fournisseur.php';
 require __DIR__ . '/src/FournisseurMicrosoft.php';
@@ -69,6 +71,7 @@ require __DIR__ . '/controllers/TachesController.php';
 require __DIR__ . '/controllers/KanbanController.php';
 require __DIR__ . '/controllers/TableauBordController.php';
 require __DIR__ . '/controllers/CartesController.php';
+require __DIR__ . '/controllers/NotificationsController.php';
 
 /*
  * Réglages par défaut : ceux d'une installation WAMP ordinaire. Ils vivent ici
@@ -188,6 +191,14 @@ $routes = [
     ['POST', 'connexion',                 [AuthController::class, 'connecter']],
     ['POST', 'deconnexion',               [AuthController::class, 'deconnecter']],
     ['GET',  'compte',                    [AuthController::class, 'compte']],
+    ['GET',  'notifications',             [NotificationsController::class, 'index']],
+    ['GET',  'service-worker.js',         [NotificationsController::class, 'serviceWorker']],
+    ['POST', 'notifications/abonnement',  [NotificationsController::class, 'abonner']],
+    ['POST', 'notifications/desabonnement', [NotificationsController::class, 'desabonner']],
+    ['POST', 'notifications/essai',       [NotificationsController::class, 'essai']],
+    ['POST', 'notifications/battement',   [NotificationsController::class, 'battement']],
+    ['GET',  'notifications/envoyer',     [NotificationsController::class, 'envoyer']],
+    ['POST', 'notifications/envoyer',     [NotificationsController::class, 'envoyer']],
     ['POST', 'compte/mot-de-passe',       [AuthController::class, 'changerMotDePasse']],
     ['POST', 'compte/fuseau',            [AuthController::class, 'changerFuseau']],
     /*

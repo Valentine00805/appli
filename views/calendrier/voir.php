@@ -94,6 +94,9 @@ $ligne = static function (string $etiquette, string $valeur): string {
         '<a href="' . url('cours/' . (int) $evenement['cours_id']) . '">'
         . e((string) $evenement['cours_titre']) . '</a>');
     echo $ligne('État', (int) $evenement['termine'] === 1 ? 'Terminé' : '');
+    // Le rappel : seulement s'il y en a un, dit comme dans le formulaire.
+    $rappel = $evenement['rappel_minutes'] ?? null;
+    echo $ligne('Rappel', $rappel === null ? '' : '🔔 ' . e(Rappels::DELAIS[(int) $rappel] ?? ((int) $rappel . ' minutes avant')));
     ?>
 
     <?php if ((string) ($evenement['description'] ?? '') !== ''): ?>

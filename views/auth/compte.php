@@ -90,6 +90,15 @@ $moi = Auth::utilisateur();
   </div>
 
   <div class="pile">
+    <div class="carte">
+      <h2>🔔 Notifications</h2>
+      <p class="discret" style="margin-bottom:.8rem">
+        Des rappels avant vos évènements et le matin de vos échéances, sur cet
+        ordinateur ou votre téléphone — même application fermée.
+      </p>
+      <a class="bouton bouton--secondaire bouton--bloc" href="<?= url('notifications') ?>">Régler les notifications</a>
+    </div>
+
     <div class="carte" style="border-color:var(--accent)">
       <h2>💾 Sauvegarde</h2>
       <p class="discret" style="margin-bottom:.8rem">

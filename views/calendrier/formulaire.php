@@ -292,6 +292,27 @@ $matiereActive = $edition ? entier_ou_null($evenement['matiere_id']) : null;
                value="<?= e($valeur('lieu')) ?>">
       </div>
 
+      <?php
+      /*
+       * Le rappel : une notification sur les appareils abonnés, ce délai avant
+       * l'évènement. Quinze minutes pour un nouvel évènement ; un évènement
+       * « toute la journée » se rappelle à 8 h.
+       */
+      $rappelActuel = $edition
+          ? ($evenement['rappel_minutes'] === null ? '' : (string) (int) $evenement['rappel_minutes'])
+          : post('rappel_minutes', '15');
+      ?>
+      <div class="champ">
+        <label for="rappel_minutes">🔔 Rappel</label>
+        <select id="rappel_minutes" name="rappel_minutes">
+          <option value=""<?= $rappelActuel === '' ? ' selected' : '' ?>>Aucun rappel</option>
+          <?php foreach (Rappels::DELAIS as $minutes => $libelle): ?>
+            <option value="<?= (int) $minutes ?>"<?= $rappelActuel === (string) $minutes ? ' selected' : '' ?>><?= e($libelle) ?></option>
+          <?php endforeach; ?>
+        </select>
+        <span class="champ__aide">Une notification sur vos appareils abonnés (<a href="<?= url('notifications') ?>">régler</a>).</span>
+      </div>
+
       <div class="champ">
         <label for="description">Notes</label>
         <textarea id="description" name="description" style="min-height:120px" data-texte-riche

@@ -70,6 +70,16 @@ $actif = static function (string $prefixe) use ($route): string {
   </div>
 </header>
 
+<?php
+/*
+ * Tant qu'un onglet est ouvert, la page déclenche elle-même l'envoi des
+ * rappels chaque minute : ils partent alors même sans tâche planifiée. Seulement
+ * pour qui a abonné un appareil — les autres n'ont rien à recevoir.
+ */
+if ($utilisateur !== null
+    && (int) Database::valeur('SELECT COUNT(*) FROM abonnements_push WHERE user_id = ?', [(int) $utilisateur['id']]) > 0): ?>
+  <span hidden data-battement-rappels="<?= e(url('notifications/battement')) ?>" data-jeton="<?= e(Session::jetonCsrf()) ?>"></span>
+<?php endif; ?>
 <main id="contenu" class="conteneur">
   <?php if ($flashs !== []): ?>
     <div class="flashs">

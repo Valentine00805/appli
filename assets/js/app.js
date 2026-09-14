@@ -621,6 +621,149 @@
   });
 
   /*
+   * Les notifications de rappel, sur la page « Notifications » : la permission
+   * du navigateur, le service worker, et l'abonnement confié au serveur.
+   */
+  var zoneNotifications = document.querySelector('[data-notifications]');
+  if (zoneNotifications) {
+    (function () {
+      var etat = zoneNotifications.querySelector('[data-notifications-etat]');
+      var aide = zoneNotifications.querySelector('[data-notifications-aide]');
+      var activer = zoneNotifications.querySelector('[data-notifications-activer]');
+      var essai = zoneNotifications.querySelector('[data-notifications-essai]');
+      var desactiver = zoneNotifications.querySelector('[data-notifications-desactiver]');
+      var d = zoneNotifications.dataset;
+
+      var dire = function (texte) { etat.textContent = texte; };
+      var montrer = function (abonne) {
+        activer.hidden = abonne;
+        essai.hidden = !abonne;
+        desactiver.hidden = !abonne;
+      };
+      var octets = function (base64url) {
+        var texte = atob((base64url + '==='.slice((base64url.length + 3) % 4)).replace(/-/g, '+').replace(/_/g, '/'));
+        var tableau = new Uint8Array(texte.length);
+        for (var i = 0; i < texte.length; i++) { tableau[i] = texte.charCodeAt(i); }
+        return tableau;
+      };
+      var champs = function (abonnement) {
+        var j = abonnement.toJSON();
+        return { point_final: j.endpoint, cle_p256dh: j.keys.p256dh, cle_auth: j.keys.auth };
+      };
+      var poster = function (adresse, valeurs) {
+        var corps = new FormData();
+        corps.append('_csrf', d.jeton);
+        Object.keys(valeurs).forEach(function (k) { corps.append(k, valeurs[k]); });
+        return fetch(adresse, { method: 'POST', body: corps, credentials: 'same-origin', headers: { 'Accept': 'application/json' } })
+          .then(function (r) { return r.json(); });
+      };
+
+      if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
+        dire('Ce navigateur ne sait pas recevoir de notifications. Sur iPhone, ajoutez d’abord l’application à l’écran d’accueil (Partager → Sur l’écran d’accueil), puis ouvrez-la depuis là.');
+        return;
+      }
+      if (!window.isSecureContext) {
+        dire('Les notifications demandent une adresse sécurisée : https, ou localhost sur cet ordinateur.');
+        return;
+      }
+
+      var enregistrement = navigator.serviceWorker.register(d.serviceWorker, { scope: d.portee });
+
+      var verifier = function () {
+        return enregistrement.then(function (reg) { return reg.pushManager.getSubscription(); }).then(function (abonnement) {
+          if (Notification.permission === 'denied') {
+            dire('Les notifications sont bloquées pour ce site. Autorisez-les dans les réglages du site (le cadenas à gauche de l’adresse), puis rechargez la page.');
+            montrer(false);
+            activer.hidden = true;
+            return;
+          }
+          if (abonnement && Notification.permission === 'granted') {
+            // Le serveur a pu l'oublier (appareil retiré ailleurs) : on le lui redit.
+            poster(d.abonner, champs(abonnement));
+            dire('✅ Activées sur cet appareil : vous recevrez les rappels ici.');
+            montrer(true);
+          } else {
+            dire('Désactivées sur cet appareil.');
+            montrer(false);
+          }
+        }).catch(function (e) {
+          dire('Le service des notifications n’a pas pu démarrer sur ce navigateur : ' + e.message);
+          montrer(false);
+          activer.hidden = true;
+        });
+      };
+
+      activer.addEventListener('click', function () {
+        activer.disabled = true;
+        Notification.requestPermission().then(function (permission) {
+          if (permission !== 'granted') { return verifier(); }
+          return enregistrement
+            .then(function () { return navigator.serviceWorker.ready; })
+            .then(function (reg) {
+              // Un ancien abonnement, fait avec une autre clé, empêcherait le nouveau.
+              return reg.pushManager.getSubscription().then(function (ancien) {
+                return ancien ? ancien.unsubscribe().then(function () { return reg; }) : reg;
+              });
+            })
+            .then(function (reg) {
+              return reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: octets(d.clePublique) });
+            })
+            .then(function (abonnement) { return poster(d.abonner, champs(abonnement)); })
+            .then(function (reponse) {
+              if (!reponse.fait) { throw new Error(reponse.message || 'refus du serveur'); }
+              window.location.reload();
+            });
+        }).catch(function (e) {
+          dire('L’activation a échoué : ' + e.message);
+        }).then(function () { activer.disabled = false; });
+      });
+
+      essai.addEventListener('click', function () {
+        essai.disabled = true;
+        poster(d.essai, {}).then(function (reponse) {
+          aide.hidden = false;
+          aide.textContent = reponse.message + (reponse.fait ? ' Elle devrait apparaître dans quelques secondes.' : '');
+        }).catch(function () {
+          aide.hidden = false;
+          aide.textContent = 'L’essai n’a pas pu partir.';
+        }).then(function () { essai.disabled = false; });
+      });
+
+      desactiver.addEventListener('click', function () {
+        enregistrement.then(function (reg) { return reg.pushManager.getSubscription(); }).then(function (abonnement) {
+          if (!abonnement) { return null; }
+          var valeurs = champs(abonnement);
+          return abonnement.unsubscribe().then(function () { return poster(d.desabonner, valeurs); });
+        }).then(function () { window.location.reload(); });
+      });
+
+      verifier();
+    })();
+  }
+
+  /*
+   * Le battement : tant qu'un onglet est ouvert, la page déclenche l'envoi des
+   * rappels chaque minute — un seul onglet à la fois, grâce à l'heure du
+   * dernier battement gardée dans le navigateur.
+   */
+  var battement = document.querySelector('[data-battement-rappels]');
+  if (battement && window.fetch && window.FormData) {
+    var battre = function () {
+      try {
+        if (Date.now() - Number(localStorage.getItem('mesCoursBattement') || 0) < 50000) { return; }
+        localStorage.setItem('mesCoursBattement', String(Date.now()));
+      } catch (e) { /* stockage refusé : on bat quand même */ }
+      var corps = new FormData();
+      corps.append('_csrf', battement.getAttribute('data-jeton'));
+      fetch(battement.getAttribute('data-battement-rappels'), {
+        method: 'POST', body: corps, credentials: 'same-origin', headers: { 'Accept': 'application/json' }
+      }).catch(function () { /* hors ligne : la minute suivante réessaiera */ });
+    };
+    window.setTimeout(battre, 3000);
+    window.setInterval(battre, 60000);
+  }
+
+  /*
    * Le menu « Télécharger » se referme une fois le format choisi, ou quand on
    * clique ailleurs — le téléchargement, lui, ne quitte pas la page.
    */
