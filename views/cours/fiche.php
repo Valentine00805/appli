@@ -43,6 +43,9 @@ $dansUneFenetre = $dansUneFenetre ?? false;
     <?php else: ?>
       <button class="bouton bouton--secondaire" type="button" onclick="window.print()">🖨 Imprimer</button>
     <?php endif; ?>
+    <?php // La fiche enregistrée, à emporter : son texte et ce qui lui est rattaché. ?>
+    <a class="bouton bouton--secondaire" href="<?= url('revision/' . $cours['id'] . '/pdf') ?>"
+       title="Télécharger la fiche de révision en PDF">⬇ PDF</a>
     <a class="bouton bouton--secondaire" href="<?= url('cours/' . $cours['id']) ?>"
        <?= $dansUneFenetre ? 'data-fenetre' : '' ?>>
       Voir le cours

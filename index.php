@@ -237,6 +237,7 @@ $routes = [
     ['POST', 'cours/{id}/revision/fichiers', [CoursController::class, 'joindreFiche']],
     ['POST', 'cours/{id}/revision/elements', [CoursController::class, 'ajouterElement']],
     ['GET',  'revision/{id}',              [CoursController::class, 'fiche']],
+    ['GET',  'revision/{id}/pdf',          [CoursController::class, 'pdfFiche']],
     ['POST', 'revision/element/{id}/supprimer', [CoursController::class, 'supprimerElement']],
     ['GET',  'fichiers/{id}',             [CoursController::class, 'telechargerFichier']],
     ['GET',  'fichiers/{id}/apercu',      [CoursController::class, 'apercuFichier']],

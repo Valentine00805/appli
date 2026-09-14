@@ -1251,6 +1251,52 @@ final class CoursController
         exit;
     }
 
+    /**
+     * La fiche de révision d'un cours en PDF : son texte, et ce qui lui est
+     * rattaché. C'est la fiche enregistrée qui sort — pas ce qu'on tape encore.
+     */
+    public function pdfFiche(int $id): void
+    {
+        Auth::exiger();
+        $userId = Auth::id();
+        $cours = Database::one(
+            'SELECT c.titre, c.fiche_revision, m.nom AS matiere_nom
+               FROM cours c LEFT JOIN matieres m ON m.id = c.matiere_id
+              WHERE c.id = ? AND c.user_id = ?',
+            [$id, $userId]
+        );
+        if ($cours === null) {
+            $this->introuvable();
+        }
+
+        try {
+            $pdf = ExportPdf::depuisFiche($cours, $this->fichiersDeFiche($id, $userId), $this->elementsDeFiche($id, $userId));
+        } catch (Throwable) {
+            Session::flash('erreur', 'Cette fiche de révision n’a pas pu être mise en PDF.');
+            redirect('revision/' . $id);
+        }
+
+        $this->envoyerPdf($pdf, 'Fiche — ' . $cours['titre']);
+    }
+
+    /** Un PDF en pièce jointe, sous un nom lisible. */
+    private function envoyerPdf(string $pdf, string $titre): never
+    {
+        $nom = (trim((string) preg_replace('/[\\\\\/:*?"<>|]+/', ' ', $titre)) ?: 'document') . '.pdf';
+        header('Content-Type: application/pdf');
+        header('Content-Length: ' . strlen($pdf));
+        header('X-Content-Type-Options: nosniff');
+        header('Cache-Control: private, no-store');
+        header(sprintf(
+            "Content-Disposition: attachment; filename=\"%s\"; filename*=UTF-8''%s",
+            // Repli ASCII pour les navigateurs anciens, nom complet en UTF-8 ensuite.
+            preg_replace('/[^A-Za-z0-9._-]+/', '_', $nom) ?? 'document.pdf',
+            rawurlencode($nom)
+        ));
+        echo $pdf;
+        exit;
+    }
+
     public function telechargerFichier(int $id): void
     {
         Auth::exiger();

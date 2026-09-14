@@ -101,6 +101,78 @@ final class ExportPdf
     {
         [$blocs, $profondeur] = self::blocsDuTexteRiche($cours['contenu'] ?? null);
 
+        return self::publier(
+            ['titre' => (string) $cours['titre'], 'sous_titre' => trim((string) ($cours['matiere_nom'] ?? ''))],
+            $blocs, $profondeur, 'Ce cours n’a pas encore de contenu écrit.', (string) $cours['titre']
+        );
+    }
+
+    /**
+     * La fiche de révision d'un cours, en PDF : ce qu'il faut retenir, puis ce
+     * qui lui est rattaché — fichiers, liens, autres cours, évènements —, en
+     * listes, comme sur la fiche.
+     *
+     * @param array{titre: string, fiche_revision: ?string, matiere_nom?: ?string} $cours
+     * @param list<array> $fichiers les fichiers de la fiche
+     * @param list<array> $elements les liens, cours et évènements rattachés
+     */
+    public static function depuisFiche(array $cours, array $fichiers, array $elements): string
+    {
+        [$blocs, $profondeur] = self::blocsDuTexteRiche($cours['fiche_revision'] ?? null);
+        $e = static fn (string $texte): string => htmlspecialchars($texte, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+        $gris = static fn (string $texte): string => '<span data-couleur="6b7280">' . $texte . '</span>';
+
+        $rayons = [];
+        $rayon = static function (string $titre, array $lignes) use (&$rayons): void {
+            if ($lignes === []) {
+                return;
+            }
+            $rayons[] = ['html' => $titre, 'titre' => 3];
+            foreach ($lignes as $ligne) {
+                $rayons[] = ['html' => $ligne, 'liste' => 'puce'];
+            }
+        };
+
+        $rayon('Fichiers et images', array_map(static fn (array $f): string =>
+            $e((string) $f['nom_origine']) . ' ' . $gris('(' . $e(taille_lisible((int) $f['taille'])) . ')'), $fichiers));
+
+        $parType = ['lien' => [], 'cours' => [], 'evenement' => []];
+        foreach ($elements as $element) {
+            $parType[$element['type']][] = $element;
+        }
+        $rayon('Liens', array_map(static fn (array $l): string =>
+            '<b>' . $e((string) ($l['libelle'] ?: $l['url'])) . '</b> '
+            . '<span data-couleur="2563eb">' . $e((string) $l['url']) . '</span>', $parType['lien']));
+        $rayon('Autres cours', array_map(static fn (array $c): string =>
+            $e((string) $c['cours_titre']) . ((string) ($c['libelle'] ?? '') !== '' ? ' ' . $gris('— ' . $e((string) $c['libelle'])) : ''),
+            $parType['cours']));
+        $rayon('Au calendrier', array_map(static fn (array $v): string =>
+            $e((string) $v['evenement_titre']) . ' '
+            . $gris('— ' . $e(date_fr((string) $v['evenement_debut'], (int) $v['journee_entiere'] === 0))
+                . ((int) $v['termine'] === 1 ? ' · terminé' : '')),
+            $parType['evenement']));
+
+        if ($rayons !== []) {
+            $blocs[] = ['html' => 'Éléments rattachés', 'titre' => 2];
+            array_push($blocs, ...$rayons);
+        }
+
+        $matiere = trim((string) ($cours['matiere_nom'] ?? ''));
+
+        return self::publier(
+            ['titre' => (string) $cours['titre'], 'sous_titre' => 'Fiche de révision' . ($matiere === '' ? '' : ' · ' . $matiere)],
+            $blocs, $profondeur, 'Cette fiche de révision est vide.', 'Fiche — ' . $cours['titre']
+        );
+    }
+
+    /**
+     * Mettre en pages un texte sous son en-tête, sommaire compris, et rendre le PDF.
+     *
+     * @param array{titre: string, sous_titre: string} $entete
+     * @param list<array> $blocs
+     */
+    private static function publier(array $entete, array $blocs, int $profondeur, string $vide, string $nomDocument): string
+    {
         $plan = [];
         foreach ($blocs as $rang => $bloc) {
             $niveau = (int) ($bloc['titre'] ?? 0);
@@ -111,12 +183,12 @@ final class ExportPdf
         }
 
         $essai = new self();
-        $essai->mettreEnPagesLeCours($cours, $blocs, $plan, $profondeur, null);
+        $essai->mettreEnPagesLeTexte($entete, $blocs, $plan, $profondeur, null, $vide);
 
         $final = new self();
-        $final->mettreEnPagesLeCours($cours, $blocs, $plan, $profondeur, $essai->pagesDesTitres);
+        $final->mettreEnPagesLeTexte($entete, $blocs, $plan, $profondeur, $essai->pagesDesTitres, $vide);
 
-        return $final->pdf->sortie((string) $cours['titre']);
+        return $final->pdf->sortie($nomDocument);
     }
 
     /**
@@ -124,16 +196,15 @@ final class ExportPdf
      * @param list<array{rang: int, niveau: int, texte: string}> $plan
      * @param ?list<int> $pages la page de chaque titre, connue au second passage
      */
-    private function mettreEnPagesLeCours(array $cours, array $blocs, array $plan, int $profondeur, ?array $pages): void
+    private function mettreEnPagesLeTexte(array $entete, array $blocs, array $plan, int $profondeur, ?array $pages, string $vide): void
     {
         $this->nouvellePage();
 
         // L'en-tête : le titre du cours, et ce qui le situe.
-        $this->bloc(['html' => htmlspecialchars((string) $cours['titre'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'),
+        $this->bloc(['html' => htmlspecialchars($entete['titre'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'),
                      'titre' => 1, 'taille_titre' => 22.0]);
-        $matiere = trim((string) ($cours['matiere_nom'] ?? ''));
-        if ($matiere !== '') {
-            $this->bloc(['html' => '<span data-couleur="6b7280">' . htmlspecialchars($matiere, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</span>']);
+        if ($entete['sous_titre'] !== '') {
+            $this->bloc(['html' => '<span data-couleur="6b7280">' . htmlspecialchars($entete['sous_titre'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</span>']);
         }
         $this->y -= 6;
 
@@ -149,7 +220,7 @@ final class ExportPdf
         }
 
         if ($blocs === []) {
-            $this->bloc(['html' => '<i><span data-couleur="6b7280">Ce cours n’a pas encore de contenu écrit.</span></i>']);
+            $this->bloc(['html' => '<i><span data-couleur="6b7280">' . htmlspecialchars($vide, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</span></i>']);
         }
         foreach ($blocs as $bloc) {
             $this->bloc($bloc);
