@@ -41,6 +41,7 @@ require __DIR__ . '/src/PdfSimple.php';
 require __DIR__ . '/src/ExportPdf.php';
 require __DIR__ . '/src/WebPush.php';
 require __DIR__ . '/src/Rappels.php';
+require __DIR__ . '/src/Amis.php';
 require __DIR__ . '/src/PlanningJour.php';
 require __DIR__ . '/src/Fournisseur.php';
 require __DIR__ . '/src/FournisseurMicrosoft.php';
@@ -54,6 +55,7 @@ require __DIR__ . '/src/helpers.php';
 require __DIR__ . '/src/Vue.php';
 
 require __DIR__ . '/controllers/AuthController.php';
+require __DIR__ . '/controllers/AmisController.php';
 require __DIR__ . '/controllers/CoursController.php';
 require __DIR__ . '/controllers/CalendrierController.php';
 require __DIR__ . '/controllers/MatieresController.php';
@@ -202,6 +204,15 @@ $routes = [
     ['POST', 'compte/mot-de-passe',       [AuthController::class, 'changerMotDePasse']],
     ['POST', 'compte/fuseau',            [AuthController::class, 'changerFuseau']],
     ['POST', 'compte/pseudo',            [AuthController::class, 'changerPseudo']],
+
+    // Les amis : chercher un pseudo, les demandes, et les conversations.
+    ['GET',  'amis',                      [AmisController::class, 'index']],
+    ['POST', 'amis/demande',              [AmisController::class, 'demander']],
+    ['POST', 'amis/{id}/accepter',        [AmisController::class, 'accepter']],
+    ['POST', 'amis/{id}/retirer',         [AmisController::class, 'retirer']],
+    ['GET',  'amis/{id}',                 [AmisController::class, 'conversation']],
+    ['GET',  'amis/{id}/messages',        [AmisController::class, 'nouveaux']],
+    ['POST', 'amis/{id}/messages',        [AmisController::class, 'envoyer']],
     /*
      * Les agendas distants. Le fournisseur est dans l'adresse : chacun a
      * ainsi sa page et son retour d'autorisation, sans une ligne de plus.

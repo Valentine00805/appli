@@ -46,6 +46,11 @@ $actif = static function (string $prefixe) use ($route): string {
       <a href="<?= url('tableau') ?>"<?= $actif('tableau') ?>>Tableau</a>
       <a href="<?= url('budget') ?>"<?= $actif('budget') ?>>Budget</a>
       <a href="<?= url('organisation/matieres') ?>"<?= $actif('organisation') ?>>Organisation</a>
+      <?php // Les amis : la pastille compte les messages non lus et les demandes reçues. ?>
+      <?php $attenteAmis = $utilisateur !== null ? Amis::enAttente((int) $utilisateur['id']) : 0; ?>
+      <a href="<?= url('amis') ?>"<?= $actif('amis') ?> class="nav__amis">
+        Amis<?php if ($attenteAmis > 0): ?> <span class="compteur" title="<?= $attenteAmis ?> en attente"><?= $attenteAmis > 99 ? '99+' : $attenteAmis ?></span><?php endif; ?>
+      </a>
 
       <form class="recherche-rapide" action="<?= url('recherche') ?>" method="get" role="search">
         <input type="search" name="q" placeholder="Rechercher…" aria-label="Rechercher dans mes cours"

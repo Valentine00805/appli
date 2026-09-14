@@ -228,6 +228,66 @@ textarea { min-height: 260px; resize: vertical; line-height: 1.65; }
 .notifications [hidden] { display: none !important; }
 .notifications__liste { margin: 0; padding-left: 1.2rem; display: grid; gap: .45rem; }
 
+/* --- Amis et discussions --------------------------------------------- */
+
+.compteur {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 1.25rem; height: 1.25rem; padding: 0 .35rem; border-radius: 999px;
+  background: var(--accent); color: #fff; font-size: .72rem; font-weight: 700; line-height: 1;
+  vertical-align: middle;
+}
+.nav__amis .compteur { margin-left: .15rem; }
+
+.amis-liste, .amis-resultats { list-style: none; margin: 0; padding: 0; display: grid; gap: .25rem; }
+.amis-resultats { margin-top: .75rem; }
+.ami {
+  display: flex; align-items: center; gap: .65rem; padding: .55rem .6rem;
+  border-radius: var(--rayon-s); color: inherit; text-decoration: none;
+}
+.ami:hover { background: var(--fond-doux); }
+.ami--actif { background: var(--accent-doux); }
+.ami__texte { flex: 1; min-width: 0; display: grid; }
+.ami__ligne { display: flex; align-items: center; justify-content: space-between; gap: .5rem; min-width: 0; }
+.ami__pseudo { font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ami__quand { flex: none; font-size: .75rem; color: var(--texte-doux); }
+.ami__apercu { font-size: .85rem; color: var(--texte-doux); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ami--non-lu .ami__apercu { color: var(--texte); font-weight: 600; }
+.amis-resultat { display: flex; align-items: center; gap: .65rem; padding: .4rem 0; border-top: 1px solid var(--bordure); }
+.amis-resultat:first-child { border-top: 0; }
+.amis-resultat__pseudo { flex: 1; min-width: 0; font-weight: 600; overflow-wrap: anywhere; }
+
+.chat { display: grid; grid-template-columns: minmax(14rem, 18rem) 1fr; gap: 1rem; align-items: stretch; }
+.chat__amis { align-self: start; max-height: calc(100vh - 8rem); overflow-y: auto; }
+.chat__fil { display: flex; flex-direction: column; height: calc(100vh - 8rem); min-height: 24rem; padding: 0; overflow: hidden; }
+.chat__entete { display: flex; align-items: center; gap: .6rem; padding: .75rem 1rem; border-bottom: 1px solid var(--bordure); }
+.chat__titre { flex: 1; min-width: 0; margin: 0; font-size: 1.1rem; overflow-wrap: anywhere; }
+.chat__retour { display: none; text-decoration: none; font-size: 1.2rem; padding: 0 .3rem; }
+.chat__messages { flex: 1; overflow-y: auto; padding: 1rem; display: flex; flex-direction: column; gap: .35rem; }
+.chat__vide { margin: auto; color: var(--texte-doux); text-align: center; }
+.chat__jour { text-align: center; margin: .6rem 0 .2rem; font-size: .75rem; color: var(--texte-doux); }
+.chat__jour span { background: var(--fond-doux); padding: .15rem .6rem; border-radius: 999px; }
+.bulle {
+  align-self: flex-start; max-width: min(75%, 34rem); padding: .45rem .7rem .3rem;
+  background: var(--fond-doux); border-radius: 16px 16px 16px 4px;
+}
+.bulle--moi { align-self: flex-end; background: var(--accent); color: #fff; border-radius: 16px 16px 4px 16px; }
+.bulle__texte { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.bulle__heure { display: block; text-align: right; font-size: .68rem; opacity: .7; margin-top: .1rem; }
+.chat__vu { align-self: flex-end; margin: 0; font-size: .72rem; color: var(--texte-doux); }
+.chat__vu[hidden] { display: none; }
+.chat__saisie { display: flex; gap: .5rem; align-items: flex-end; padding: .75rem 1rem; border-top: 1px solid var(--bordure); }
+.chat__saisie textarea { flex: 1; resize: none; min-height: 2.6rem; max-height: 10rem; overflow-y: hidden; }
+.chat__erreur { margin: 0; padding: 0 1rem .6rem; color: var(--erreur); font-size: .85rem; }
+.chat__erreur[hidden] { display: none; }
+
+@media (max-width: 780px) {
+  .chat { grid-template-columns: 1fr; }
+  .chat__amis { display: none; }
+  .chat__retour { display: inline; }
+  .chat__fil { height: calc(100vh - 6rem); }
+  .chat__retirer .bouton { padding: .25rem .4rem; }
+}
+
 /* Un réglage de « Mon compte » (pseudo, fuseau), lu avant d'être modifié. */
 .reglage-lecture { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem; margin-bottom: .6rem; }
 .reglage-lecture__valeur { margin: 0; font-size: 1.15rem; font-weight: 650; overflow-wrap: anywhere; }

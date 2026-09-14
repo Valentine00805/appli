@@ -1002,6 +1002,163 @@
   });
 
   /*
+   * Une conversation entre amis.
+   *
+   * L'envoi part sans recharger la page ; les nouveaux messages arrivent en
+   * allant les chercher toutes les quatre secondes — une demi-minute quand
+   * l'onglet est caché, pour ne pas solliciter le serveur pour rien. Entrée
+   * envoie, Maj+Entrée va à la ligne. Tout le texte est posé en textContent :
+   * un message ne peut pas glisser de balise dans la page.
+   */
+  var chat = document.querySelector('[data-chat]');
+  if (chat) {
+    (function () {
+      var fil = chat.querySelector('[data-chat-messages]');
+      var formulaire = chat.querySelector('[data-chat-formulaire]');
+      var champ = formulaire.querySelector('textarea');
+      var bouton = formulaire.querySelector('button[type="submit"]');
+      var erreur = chat.querySelector('[data-chat-erreur]');
+      var vu = chat.querySelector('[data-chat-vu]');
+      var dernier = Number(chat.getAttribute('data-dernier')) || 0;
+      var vuJusqua = Number(chat.getAttribute('data-vu')) || 0;
+      var dernierMien = 0;
+      var enCours = false;
+
+      fil.querySelectorAll('.bulle--moi[data-message]').forEach(function (b) {
+        dernierMien = Math.max(dernierMien, Number(b.getAttribute('data-message')));
+      });
+
+      var enBas = function () { fil.scrollTop = fil.scrollHeight; };
+      var presqueEnBas = function () { return fil.scrollHeight - fil.scrollTop - fil.clientHeight < 80; };
+
+      // La discussion tient dans l'écran, sous le menu quelle que soit sa hauteur :
+      // la zone de saisie reste visible sans faire défiler la page.
+      var liste = document.querySelector('.chat__amis');
+      var caler = function () {
+        var haut = chat.getBoundingClientRect().top + window.scrollY;
+        var hauteur = Math.max(384, window.innerHeight - haut - 16);
+        var etaitEnBas = presqueEnBas();
+        chat.style.height = hauteur + 'px';
+        if (liste) { liste.style.maxHeight = hauteur + 'px'; }
+        if (etaitEnBas) { enBas(); }
+      };
+      caler();
+      window.addEventListener('resize', caler);
+      enBas();
+
+      var majVu = function () { vu.hidden = !(dernierMien > 0 && vuJusqua >= dernierMien); if (!vu.hidden) { fil.appendChild(vu); } };
+
+      var ajouter = function (message) {
+        if (fil.querySelector('[data-message="' + message.id + '"]')) { return; }
+        var vide = fil.querySelector('[data-chat-vide]');
+        if (vide) { vide.remove(); }
+
+        var jours = fil.querySelectorAll('[data-jour]');
+        var jourPrecedent = jours.length ? jours[jours.length - 1].getAttribute('data-jour') : null;
+        if (jourPrecedent !== message.jour) {
+          var separateur = document.createElement('p');
+          separateur.className = 'chat__jour';
+          separateur.setAttribute('data-jour', message.jour);
+          var libelle = document.createElement('span');
+          libelle.textContent = message.jour_libelle;
+          separateur.appendChild(libelle);
+          fil.appendChild(separateur);
+        }
+
+        var bulle = document.createElement('div');
+        bulle.className = 'bulle' + (message.moi ? ' bulle--moi' : '');
+        bulle.setAttribute('data-message', String(message.id));
+        var texte = document.createElement('p');
+        texte.className = 'bulle__texte';
+        texte.textContent = message.texte;
+        var heure = document.createElement('span');
+        heure.className = 'bulle__heure';
+        heure.textContent = message.heure;
+        bulle.appendChild(texte);
+        bulle.appendChild(heure);
+        fil.appendChild(bulle);
+
+        dernier = Math.max(dernier, message.id);
+        if (message.moi) { dernierMien = Math.max(dernierMien, message.id); }
+      };
+
+      var relever = function () {
+        if (enCours) { return Promise.resolve(); }
+        enCours = true;
+        var enBasAvant = presqueEnBas();
+        return fetch(chat.getAttribute('data-nouveaux') + '?apres=' + dernier, {
+          credentials: 'same-origin', headers: { Accept: 'application/json' }
+        }).then(function (r) {
+          if (r.status === 403) { window.location.reload(); throw new Error('plus amis'); }
+          return r.json();
+        }).then(function (reponse) {
+          if (!reponse.fait) { return; }
+          (reponse.messages || []).forEach(ajouter);
+          vuJusqua = reponse.vu_jusqua || vuJusqua;
+          majVu();
+          if (enBasAvant && reponse.messages && reponse.messages.length) { enBas(); }
+        }).catch(function () { /* réseau coupé : on réessaiera au prochain tour */ })
+          .then(function () { enCours = false; });
+      };
+
+      var montrerErreur = function (texte) {
+        erreur.textContent = texte;
+        erreur.hidden = !texte;
+      };
+
+      formulaire.addEventListener('submit', function (evenement) {
+        evenement.preventDefault();
+        var texte = champ.value.trim();
+        if (!texte) { return; }
+        montrerErreur('');
+        bouton.disabled = true;
+
+        var donnees = new FormData();
+        donnees.append('_csrf', chat.getAttribute('data-jeton'));
+        donnees.append('texte', texte);
+        fetch(chat.getAttribute('data-envoyer'), {
+          method: 'POST', body: donnees, credentials: 'same-origin', headers: { Accept: 'application/json' }
+        }).then(function (r) { return r.json(); })
+          .then(function (reponse) {
+            if (!reponse.fait) { throw new Error(reponse.message || 'Le message n’est pas parti.'); }
+            champ.value = '';
+            ajuster();
+            return relever().then(enBas);
+          })
+          .catch(function (e) { montrerErreur(e.message || 'Le message n’est pas parti. Réessayez.'); })
+          .then(function () { bouton.disabled = false; champ.focus(); });
+      });
+
+      // Entrée envoie ; Maj+Entrée, ou une saisie en cours de composition, va à la ligne.
+      champ.addEventListener('keydown', function (evenement) {
+        if (evenement.key === 'Enter' && !evenement.shiftKey && !evenement.isComposing) {
+          evenement.preventDefault();
+          if (typeof formulaire.requestSubmit === 'function') { formulaire.requestSubmit(); }
+          else { formulaire.dispatchEvent(new Event('submit', { cancelable: true })); }
+        }
+      });
+
+      // La zone de saisie grandit avec le texte, jusqu'à six lignes environ.
+      var ajuster = function () {
+        champ.style.height = 'auto';
+        champ.style.height = Math.min(champ.scrollHeight, 160) + 'px';
+        champ.style.overflowY = champ.scrollHeight > 160 ? 'auto' : 'hidden';
+      };
+      champ.addEventListener('input', ajuster);
+
+      var minuterie = null;
+      var planifier = function () {
+        clearTimeout(minuterie);
+        minuterie = setTimeout(function () { relever().then(planifier); }, document.hidden ? 30000 : 4000);
+      };
+      document.addEventListener('visibilitychange', function () {
+        if (!document.hidden) { relever().then(planifier); }
+      });
+      planifier();
+    })();
+  }
+
+  /*
    * Les réglages de « Mon compte » — le pseudo, le fuseau horaire : ils se
    * lisent, et ne s'ouvrent à la modification que par leur bouton.
    * « Annuler » referme et remet la valeur enregistrée.
