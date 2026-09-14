@@ -77,7 +77,6 @@ final class CalendrierController
             'matiereId'     => $matiereId,
             'types'         => TypesEvenementController::pourUtilisateur($userId),
             'typeId'        => $typeId,
-            'aVenir'        => $this->aVenir($userId, 6),
             'sources'       => Agenda::sourcesDuCalendrier($userId),
             'voletFerme'    => Agenda::voletFerme($userId),
         ], 'Calendrier');
@@ -1108,9 +1107,8 @@ final class CalendrierController
     /**
      * La condition qui écarte les agendas décochés dans le volet.
      *
-     * Elle vaut partout où l'on montre des évènements, y compris dans
-     * « Prochainement » : décocher un agenda et le retrouver plus bas ferait
-     * douter de la case autant que de la liste.
+     * Elle vaut partout où l'on montre des évènements : décocher un agenda et
+     * le retrouver ailleurs ferait douter de la case autant que de la liste.
      *
      * Un évènement est montré si l'agenda où il se trouve l'est. Reste à
      * savoir où il se trouve, et la réponse n'est pas la même des deux côtés :
@@ -1319,44 +1317,6 @@ final class CalendrierController
             }
         }
         return $parJour;
-    }
-
-    private function aVenir(int $userId, int $limite): array
-    {
-        $params = [$userId];
-        [$nomDest, $couleurDest] = self::agendaDeDestination();
-        $lignes = Database::all(
-            'SELECT e.*, m.nom AS matiere_nom, m.couleur AS matiere_couleur,
-                    t.nom AS type_nom, t.icone AS type_icone, t.couleur AS type_couleur,
-                    COALESCE(oc.nom, ' . $nomDest . ') AS agenda_nom,
-                    COALESCE(oc.couleur, ' . $couleurDest . ') AS agenda_couleur
-             FROM evenements e
-             LEFT JOIN matieres m        ON m.id = e.matiere_id
-             LEFT JOIN types_evenement t ON t.id = e.type_id
-             LEFT JOIN agenda_liens ol  ON ol.evenement_id = e.id AND ol.user_id = e.user_id
-             LEFT JOIN agenda_calendriers oc
-                    ON oc.user_id = e.user_id AND oc.empreinte = ol.calendrier
-             WHERE e.user_id = ? AND e.fin >= NOW() AND e.termine = 0'
-             . self::masqueDesAgendas($userId, $params)
-             . ' ORDER BY e.debut ASC LIMIT ' . $limite,
-            $params
-        );
-
-        // Les échéances encore ouvertes s'y ajoutent, sur un horizon large —
-        // et suivent le sort de « Mes évènements », comme dans la grille.
-        $horizon = (new DateTimeImmutable('today'))->modify('+1 year');
-        $echeances = Agenda::masques($userId)['miens']
-            ? []
-            : self::echeancesEntre($userId, new DateTimeImmutable('today'), $horizon);
-        foreach ($echeances as $echeance) {
-            if ((int) $echeance['termine'] === 0) {
-                $lignes[] = $echeance;
-            }
-        }
-
-        usort($lignes, static fn (array $a, array $b): int => $a['debut'] <=> $b['debut']);
-
-        return array_slice($lignes, 0, $limite);
     }
 
     private function dateAncre(): DateTimeImmutable

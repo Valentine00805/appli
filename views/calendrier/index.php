@@ -2,7 +2,7 @@
 /**
  * @var string $vue
  * @var DateTimeImmutable $ancre, $debut, $fin
- * @var array $evenements, $parJour, $matieres, $types, $aVenir
+ * @var array $evenements, $parJour, $matieres, $types
  * @var ?int $matiereId, $typeId
  * @var array $sources  les agendas à montrer ou masquer, par fournisseur
  * @var bool $voletFerme  le volet est-il replié contre le bord ?
@@ -507,14 +507,3 @@ $puce = static function (array $evt) use ($destination): string {
   <a class="pastille" href="<?= url('organisation/types') ?>">⚙ Gérer</a>
 </div>
 
-<?php if ($aVenir !== []): ?>
-  <section class="carte" style="margin-top:1.5rem">
-    <h2>Prochainement</h2>
-    <p class="discret" style="margin:-.4rem 0 .75rem">Les prochains évènements et échéances, quels que soient les filtres ci-dessus.</p>
-    <div class="pile">
-      <?php foreach ($aVenir as $evt): ?>
-        <?= Vue::rendre('calendrier/_ligne', ['evt' => $evt, 'avecDate' => true]) ?>
-      <?php endforeach; ?>
-    </div>
-  </section>
-<?php endif; ?>
