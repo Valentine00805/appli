@@ -8,9 +8,10 @@
   <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
 
   <div class="champ">
-    <label for="email">Adresse e-mail</label>
-    <input type="email" id="email" name="email" required autocomplete="email" autofocus
-           value="<?= e(post('email')) ?>">
+    <label for="identifiant">Adresse e-mail ou pseudo</label>
+    <input type="text" id="identifiant" name="identifiant" required autocomplete="username" autofocus
+           autocapitalize="none" spellcheck="false"
+           value="<?= e(post('identifiant') !== '' ? post('identifiant') : post('email')) ?>">
   </div>
 
   <div class="champ">

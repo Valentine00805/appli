@@ -51,7 +51,7 @@ $pseudoSaisi = Session::reprendre('pseudo_saisi');
   </form>
   <p class="champ__aide">
     De <?= Auth::PSEUDO_MIN ?> à <?= Auth::PSEUDO_MAX ?> caractères : lettres, chiffres, point, tiret et tiret bas, sans espace.
-    Unique : deux comptes ne peuvent pas porter le même.
+    Unique : deux comptes ne peuvent pas porter le même. Il sert aussi à se connecter, à la place de l’adresse e-mail.
   </p>
 </section>
 

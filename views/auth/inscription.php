@@ -14,7 +14,7 @@
     <input type="text" id="pseudo" name="pseudo" required autocomplete="nickname"
            minlength="<?= Auth::PSEUDO_MIN ?>" maxlength="<?= Auth::PSEUDO_MAX ?>"
            value="<?= e(post('pseudo')) ?>">
-    <span class="champ__aide">Le nom sous lequel l’application vous appelle — modifiable ensuite dans « Mon compte ».
+    <span class="champ__aide">Le nom sous lequel l’application vous appelle, et avec lequel vous pourrez vous connecter — modifiable ensuite dans « Mon compte ».
       Lettres, chiffres, point, tiret et tiret bas, sans espace.</span>
     <?php if (isset($erreurs['pseudo'])): ?><span class="message-erreur"><?= e($erreurs['pseudo']) ?></span><?php endif; ?>
   </div>

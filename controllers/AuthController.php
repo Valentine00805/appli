@@ -105,9 +105,21 @@ final class AuthController
     public function connecter(): void
     {
         Session::verifierCsrf();
-        $email = mb_strtolower(post('email'));
+        // L'adresse e-mail ou le pseudo : un pseudo n'a jamais d'arobase, une adresse toujours.
+        $identifiant = post('identifiant') !== '' ? post('identifiant') : post('email');
         $mdp = $_POST['mot_de_passe'] ?? '';
         $ip = LimiteurConnexion::adresse();
+
+        $utilisateur = str_contains($identifiant, '@')
+            ? Database::one('SELECT * FROM users WHERE email = ?', [mb_strtolower($identifiant)])
+            : ($identifiant === '' ? null : Database::one('SELECT * FROM users WHERE pseudo = ?', [$identifiant]));
+
+        /*
+         * Les tentatives se comptent par compte, quel que soit le nom tapé :
+         * sans quoi l'adresse et le pseudo donneraient deux fois plus d'essais.
+         * Un identifiant qui ne mène à rien se compte tel quel.
+         */
+        $email = $utilisateur !== null ? (string) $utilisateur['email'] : mb_strtolower($identifiant);
 
         // Le blocage est vérifié avant même de regarder le mot de passe : sinon
         // la durée de la réponse trahirait l'existence du compte.
@@ -119,14 +131,13 @@ final class AuthController
             return;
         }
 
-        $utilisateur = Database::one('SELECT * FROM users WHERE email = ?', [$email]);
         if ($utilisateur === null || !password_verify($mdp, $utilisateur['password_hash'])) {
             LimiteurConnexion::enregistrer($email, $ip, false);
 
             // Message volontairement générique : on n'indique pas si le compte existe.
             usleep(300000);
             Vue::afficherNu('auth/connexion', [
-                'erreurs' => ['global' => 'Adresse e-mail ou mot de passe incorrect.'],
+                'erreurs' => ['global' => 'Identifiant ou mot de passe incorrect.'],
             ], 'Connexion');
             return;
         }
