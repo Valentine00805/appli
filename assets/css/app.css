@@ -202,6 +202,31 @@ textarea { min-height: 260px; resize: vertical; line-height: 1.65; }
 .texte-riche-affiche ul, .texte-riche-affiche ol { margin: .25rem 0; padding-left: 1.5rem; }
 .barre-outils__bouton[aria-pressed="true"] { background: var(--accent-doux); border-color: var(--accent); }
 @media print { .texte-riche .barre-outils { display: none; } }
+.texte-riche .barre-outils select { width: auto; padding: .3rem .5rem; }
+/* Les réglages d'image n'apparaissent qu'une image choisie : « hidden » l'emporte sur le groupe. */
+.texte-riche [hidden] { display: none !important; }
+
+/* Titres, retraits, images : dans l'éditeur comme à l'affichage. */
+.texte-riche__zone h2, .texte-riche-affiche h2 { font-size: 1.35rem; margin: .9rem 0 .4rem; line-height: 1.3; }
+.texte-riche__zone h3, .texte-riche-affiche h3 { font-size: 1.15rem; margin: .8rem 0 .35rem; line-height: 1.3; }
+.texte-riche__zone h4, .texte-riche-affiche h4 { font-size: 1rem; margin: .7rem 0 .3rem; }
+.texte-riche__zone blockquote, .texte-riche-affiche blockquote { margin: .2rem 0 .2rem 2.5rem; padding: 0; border: 0; }
+.texte-riche__zone img, .texte-riche-affiche img { max-width: 100%; height: auto; }
+.texte-riche__zone img { cursor: pointer; }
+.texte-riche__image-choisie { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* Une image flottante ne déborde pas du bloc qui la porte. */
+.texte-riche__zone::after, .texte-riche-affiche::after { content: ""; display: block; clear: both; }
+
+/* Le sommaire d'un texte, en tête, quand on l'a demandé. */
+.sommaire-texte {
+  margin: 0 0 1rem; padding: .6rem .9rem; white-space: normal;
+  background: var(--fond-doux); border: 1px solid var(--bordure); border-radius: var(--rayon-s);
+}
+.sommaire-texte__titre { margin: 0 0 .3rem; font-weight: 700; font-size: .9rem; }
+.sommaire-texte ul { list-style: none; margin: 0; padding: 0; }
+.sommaire-texte li { margin: .1rem 0; }
+.sommaire-texte__niveau2 { padding-left: 1rem; }
+.sommaire-texte__niveau3 { padding-left: 2rem; }
 input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-color: var(--accent); }
 .champ--erreur input, .champ--erreur select { border-color: var(--erreur); }
 .message-erreur { color: var(--erreur); font-size: .85rem; margin-top: .3rem; display: block; }

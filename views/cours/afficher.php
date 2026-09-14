@@ -98,7 +98,7 @@ $nbElements = count($elements) + count($fichiersFiche);
 
           <div class="champ">
             <label for="contenu-cours" class="legende">Le cours lui-même</label>
-            <textarea id="contenu-cours" name="contenu" class="edition-contenu__texte" data-texte-riche
+            <textarea id="contenu-cours" name="contenu" class="edition-contenu__texte" data-texte-riche="complet" data-tailles="<?= e(implode(',', TexteRiche::TAILLES)) ?>"
                       placeholder="Le plan, les notes prises en amphi, ce que le professeur a dicté…"><?= e(TexteRiche::pourEditeur($cours['contenu'])) ?></textarea>
           </div>
 

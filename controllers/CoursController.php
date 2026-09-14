@@ -1412,7 +1412,28 @@ final class CoursController
         };
         $sql .= ' LIMIT 300';
 
-        return Database::all($sql, $params);
+        $lignes = Database::all($sql, $params);
+        $termes = preg_split('/\s+/u', $recherche, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        if ($termes === []) {
+            return $lignes;
+        }
+
+        /*
+         * Un texte mis en forme est rangé en HTML, images comprises : « span »
+         * ou deux lettres prises dans une image encodée y trouveraient un cours
+         * qui n'en parle pas. La base a fait le gros du tri ; on vérifie ici
+         * chaque terme sur le texte seul.
+         */
+        return array_values(array_filter($lignes, static function (array $c) use ($termes): bool {
+            $texte = $c['titre'] . ' ' . ($c['matiere_nom'] ?? '') . ' '
+                . TexteRiche::versTexte($c['contenu']) . ' ' . TexteRiche::versTexte($c['fiche_revision']);
+            foreach ($termes as $terme) {
+                if (mb_stripos($texte, $terme) === false) {
+                    return false;
+                }
+            }
+            return true;
+        }));
     }
 
     private function matieres(int $userId): array

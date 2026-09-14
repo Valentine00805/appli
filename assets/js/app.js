@@ -2477,7 +2477,8 @@
 
   /*
    * Le petit traitement de texte des zones marquées « data-texte-riche » :
-   * fiche de révision, contenu d'un cours, notes d'un évènement.
+   * fiche de révision, notes d'un évènement, et — « complet », avec tous les
+   * réglages de l'éditeur de documents — contenu d'un cours.
    *
    * La zone de texte reste dans le formulaire, cachée : c'est elle qui part.
    * On écrit dans un bloc éditable posé à sa place, et ce qu'il contient y est
@@ -2487,29 +2488,131 @@
    */
   var MARQUE_RICHE = '<!--riche-->';
 
-  var BARRE_RICHE =
-    '<button type="button" class="barre-outils__bouton" data-riche="bold" aria-pressed="false" title="Gras (Ctrl+B)"><b>G</b></button>' +
-    '<button type="button" class="barre-outils__bouton" data-riche="italic" aria-pressed="false" title="Italique (Ctrl+I)"><i>I</i></button>' +
-    '<button type="button" class="barre-outils__bouton" data-riche="underline" aria-pressed="false" title="Souligné (Ctrl+U)"><u>S</u></button>' +
-    '<button type="button" class="barre-outils__bouton" data-riche="insertUnorderedList" aria-pressed="false" title="Liste à puces">•—</button>' +
-    '<button type="button" class="barre-outils__bouton" data-riche="insertOrderedList" aria-pressed="false" title="Liste numérotée">1—</button>' +
-    '<span class="barre-outils__couleurs"><span class="discret">Couleur</span>' +
-      '<button type="button" class="barre-outils__bouton barre-outils__appliquer" data-riche-couleur title="Appliquer cette couleur au texte choisi">' +
-        '<span aria-hidden="true">A</span><span class="barre-outils__trait"></span><span class="sr-only">Appliquer la couleur</span></button>' +
-      '<input type="color" class="barre-outils__couleur" data-riche-teinte value="#dc2626" aria-label="Choisir la couleur du texte">' +
-      '<button type="button" class="barre-outils__bouton" data-riche-couleur-defaut title="Remettre la couleur normale">⌫</button>' +
-    '</span>' +
-    '<span class="barre-outils__couleurs"><span class="discret">Surlignage</span>' +
-      '<button type="button" class="barre-outils__bouton barre-outils__surligner" data-riche-fond title="Surligner le texte choisi">' +
-        '<span aria-hidden="true">🖍</span><span class="sr-only">Surligner</span></button>' +
-      '<input type="color" class="barre-outils__couleur" data-riche-fond-teinte value="#ffff00" aria-label="Choisir la couleur du surlignage">' +
-      '<button type="button" class="barre-outils__bouton" data-riche-fond-defaut title="Retirer le surlignage">⌫</button>' +
-    '</span>';
+  /*
+   * La barre. Réduite pour une fiche ou des notes ; « complète » pour le
+   * contenu d'un cours, avec tout ce que propose l'éditeur de documents :
+   * alignement, retraits, titres, sommaire, taille, saut de ligne, images.
+   */
+  var barreRiche = function (complet, tailles) {
+    var bouton = function (attributs, titre, contenu) {
+      var classe = /class="/.test(attributs) ? '' : 'class="barre-outils__bouton" ';
+      return '<button type="button" ' + classe + attributs + ' title="' + titre + '">' + contenu + '</button>';
+    };
+    var groupe = function (contenu, attributs) {
+      return '<span class="barre-outils__couleurs"' + (attributs || '') + '>' + contenu + '</span>';
+    };
+    var h = bouton('data-riche="bold" aria-pressed="false"', 'Gras (Ctrl+B)', '<b>G</b>')
+      + bouton('data-riche="italic" aria-pressed="false"', 'Italique (Ctrl+I)', '<i>I</i>')
+      + bouton('data-riche="underline" aria-pressed="false"', 'Souligné (Ctrl+U)', '<u>S</u>');
+
+    var listes = bouton('data-riche="insertUnorderedList" aria-pressed="false"', 'Liste à puces', '•—')
+      + bouton('data-riche="insertOrderedList" aria-pressed="false"', 'Liste numérotée', '1—');
+    if (complet) {
+      h += groupe(
+        bouton('data-riche="justifyLeft" aria-pressed="false"', 'Aligner à gauche', '<span aria-hidden="true">◧</span><span class="sr-only">Aligner à gauche</span>')
+        + bouton('data-riche="justifyCenter" aria-pressed="false"', 'Centrer', '<span aria-hidden="true">▣</span><span class="sr-only">Centrer</span>')
+        + bouton('data-riche="justifyRight" aria-pressed="false"', 'Aligner à droite', '<span aria-hidden="true">◨</span><span class="sr-only">Aligner à droite</span>')
+        + listes
+        + bouton('data-riche-retrait="1"', 'Sous-liste, ou retrait (Tab)', '<span aria-hidden="true">⇥</span><span class="sr-only">Abaisser d’un niveau</span>')
+        + bouton('data-riche-retrait="-1"', 'Remonter d’un niveau (Maj+Tab)', '<span aria-hidden="true">⇤</span><span class="sr-only">Remonter d’un niveau</span>'));
+      h += groupe(
+        bouton('data-riche-titre="h2" aria-pressed="false"', 'Mettre ou retirer le Titre 1', 'T1')
+        + bouton('data-riche-titre="h3" aria-pressed="false"', 'Mettre ou retirer le Titre 2', 'T2')
+        + bouton('data-riche-titre="h4" aria-pressed="false"', 'Mettre ou retirer le Titre 3', 'T3'));
+      h += '<label class="barre-outils__taille"><span class="discret">Sommaire</span>'
+        + '<select data-riche-sommaire title="Jusqu’à quel niveau de titre le sommaire descend">'
+        + '<option value="0">Aucun</option><option value="1">Titres 1</option>'
+        + '<option value="2">Jusqu’aux Titres 2</option><option value="3">Jusqu’aux Titres 3</option>'
+        + '</select></label>';
+      h += '<label class="barre-outils__taille"><span class="discret">Taille</span><select data-riche-taille>'
+        + '<option value="">Celle du texte</option>'
+        + tailles.map(function (t) { return '<option value="' + t + '">' + t + ' pt</option>'; }).join('')
+        + '</select></label>';
+    } else {
+      h += listes;
+    }
+
+    h += groupe('<span class="discret">Couleur</span>'
+      + bouton('class="barre-outils__bouton barre-outils__appliquer" data-riche-couleur', 'Appliquer cette couleur au texte choisi',
+        '<span aria-hidden="true">A</span><span class="barre-outils__trait"></span><span class="sr-only">Appliquer la couleur</span>')
+      + '<input type="color" class="barre-outils__couleur" data-riche-teinte value="#dc2626" aria-label="Choisir la couleur du texte">'
+      + bouton('data-riche-couleur-defaut', 'Remettre la couleur normale', '⌫'));
+    h += groupe('<span class="discret">Surlignage</span>'
+      + bouton('class="barre-outils__bouton barre-outils__surligner" data-riche-fond', 'Surligner le texte choisi',
+        '<span aria-hidden="true">🖍</span><span class="sr-only">Surligner</span>')
+      + '<input type="color" class="barre-outils__couleur" data-riche-fond-teinte value="#ffff00" aria-label="Choisir la couleur du surlignage">'
+      + bouton('data-riche-fond-defaut', 'Retirer le surlignage', '⌫'));
+
+    if (complet) {
+      h += bouton('data-riche-saut', 'Aller à la ligne sans changer de paragraphe (Maj+Entrée)', '↵');
+      h += bouton('class="barre-outils__bouton barre-outils__image" data-riche-image', 'Ajouter une image à l’endroit du curseur',
+        '<span aria-hidden="true">🖼</span> Image')
+        + '<input type="file" accept="image/png,image/jpeg,image/gif,image/webp" hidden data-riche-fichier aria-label="Choisir une image à ajouter">';
+      h += groupe('<span class="discret">Largeur</span>'
+        + '<input type="range" min="10" max="100" step="1" value="100" data-riche-largeur aria-label="Largeur de l’image, en part de la largeur du texte">'
+        + '<output data-riche-largeur-valeur>—</output>'
+        + bouton('data-riche-largeur-origine', 'Toute la largeur', '↺'), ' data-riche-groupe-image hidden');
+      h += groupe('<span class="discret">Texte</span>'
+        + bouton('data-riche-habillage="ligne" aria-pressed="false"', 'L’image dans la ligne, comme un mot', '▭')
+        + bouton('data-riche-habillage="gauche" aria-pressed="false"', 'L’image à gauche, le texte à sa droite', '◧≡')
+        + bouton('data-riche-habillage="centre" aria-pressed="false"', 'L’image centrée, le texte au-dessus et en dessous', '▣')
+        + bouton('data-riche-habillage="droite" aria-pressed="false"', 'L’image à droite, le texte à sa gauche', '≡◨'), ' data-riche-groupe-image hidden');
+      h += '<p class="message-erreur barre-outils__souci" data-riche-souci role="alert" hidden></p>';
+    }
+
+    return h;
+  };
+
+  /*
+   * Une image choisie sur l'ordinateur, prête à ranger dans le texte : ramenée à
+   * 1600 pixels au plus, et réencodée si elle est trop lourde. Elle voyage dans
+   * la page elle-même ; le serveur n'en garde que les formats d'image connus.
+   */
+  var IMAGE_RICHE_MAX = 6 * 1024 * 1024;
+  var preparerImage = function (fichier, fini, echec) {
+    if (!/^image\/(png|jpeg|gif|webp)$/.test(fichier.type)) {
+      echec('Seules les images PNG, JPEG, GIF ou WebP peuvent être ajoutées.');
+      return;
+    }
+    var lecteur = new FileReader();
+    lecteur.onerror = function () { echec('Cette image n’a pas pu être lue.'); };
+    lecteur.onload = function () {
+      var origine = String(lecteur.result);
+      var image = new Image();
+      image.onerror = function () { echec('Cette image n’a pas pu être lue.'); };
+      image.onload = function () {
+        var cote = 1600;
+        var echelle = Math.min(1, cote / Math.max(image.naturalWidth, image.naturalHeight));
+        var resultat = origine;
+        // Une image déjà petite et légère reste telle quelle (un GIF garde son animation).
+        if (echelle < 1 || origine.length > 1.5 * 1024 * 1024) {
+          var toile = document.createElement('canvas');
+          toile.width = Math.max(1, Math.round(image.naturalWidth * echelle));
+          toile.height = Math.max(1, Math.round(image.naturalHeight * echelle));
+          toile.getContext('2d').drawImage(image, 0, 0, toile.width, toile.height);
+          resultat = fichier.type === 'image/png' || fichier.type === 'image/gif'
+            ? toile.toDataURL('image/png')
+            : toile.toDataURL('image/jpeg', 0.85);
+          // Un PNG réencodé peut rester lourd : le JPEG tranche.
+          if (resultat.length > IMAGE_RICHE_MAX) { resultat = toile.toDataURL('image/jpeg', 0.8); }
+        }
+        if (resultat.length > IMAGE_RICHE_MAX) {
+          echec('Cette image est trop lourde, même réduite.');
+          return;
+        }
+        fini(resultat, Math.round(image.naturalWidth * echelle));
+      };
+      image.src = origine;
+    };
+    lecteur.readAsDataURL(fichier);
+  };
 
   var initialiserTexteRiche = function (racine) {
     [].slice.call(racine.querySelectorAll('textarea[data-texte-riche]')).forEach(function (zone) {
       if (zone.hasAttribute('data-riche-lance') || typeof document.execCommand !== 'function') { return; }
       zone.setAttribute('data-riche-lance', '');
+      var complet = zone.getAttribute('data-texte-riche') === 'complet';
+      var tailles = (zone.getAttribute('data-tailles') || '').split(',').filter(Boolean);
 
       var bloc = document.createElement('div');
       bloc.className = 'texte-riche';
@@ -2517,7 +2620,7 @@
       barre.className = 'barre-outils';
       barre.setAttribute('role', 'toolbar');
       barre.setAttribute('aria-label', 'Mise en forme');
-      barre.innerHTML = BARRE_RICHE;
+      barre.innerHTML = barreRiche(complet, tailles);
 
       var edition = document.createElement('div');
       edition.className = 'texte-riche__zone ' + zone.className;
@@ -2532,11 +2635,21 @@
         etiquette.addEventListener('click', function (e) { e.preventDefault(); edition.focus(); });
       }
 
+      var choixSommaire = barre.querySelector('[data-riche-sommaire]');
+      var choixTaille = barre.querySelector('[data-riche-taille]');
+      var souci = barre.querySelector('[data-riche-souci]');
+
       // Le contenu de départ : déjà nettoyé par le serveur s'il est mis en forme,
       // du texte à échapper sinon.
       var depart = zone.value;
       if (depart.indexOf(MARQUE_RICHE) === 0) {
-        edition.innerHTML = depart.slice(MARQUE_RICHE.length);
+        depart = depart.slice(MARQUE_RICHE.length);
+        var niveau = depart.match(/^<!--sommaire:([1-3])-->/);
+        if (niveau) {
+          depart = depart.slice(niveau[0].length);
+          if (choixSommaire) { choixSommaire.value = niveau[1]; }
+        }
+        edition.innerHTML = depart;
       } else {
         edition.textContent = depart;
         edition.innerHTML = edition.innerHTML.replace(/\n/g, '<br>');
@@ -2547,14 +2660,42 @@
       bloc.appendChild(barre);
       bloc.appendChild(edition);
 
+      var imageChoisie = null;
+
       var recopier = function () {
-        var vide = edition.textContent.trim() === '' && !edition.querySelector('li');
-        zone.value = vide ? '' : MARQUE_RICHE + edition.innerHTML;
+        var html = edition.innerHTML.replace(/\sclass="texte-riche__image-choisie"/g, '');
+        var vide = edition.textContent.trim() === '' && !edition.querySelector('li, img');
+        var sommaire = choixSommaire && choixSommaire.value !== '0' ? '<!--sommaire:' + choixSommaire.value + '-->' : '';
+        zone.value = vide ? '' : MARQUE_RICHE + sommaire + html;
         zone.dispatchEvent(new Event('input', { bubbles: true }));
       };
 
-      // La sélection se perd quand on ouvre le nuancier : on garde la dernière.
+      var dire = function (message) {
+        if (!souci) { return; }
+        souci.textContent = message;
+        souci.hidden = message === '';
+      };
+
+      // La sélection se perd quand on ouvre un nuancier ou un menu : on garde la dernière.
       var plage = null;
+      var majEtats = function () {
+        [].slice.call(barre.querySelectorAll('[data-riche]')).forEach(function (bouton) {
+          var actif = false;
+          try { actif = document.queryCommandState(bouton.getAttribute('data-riche')); } catch (e) {}
+          bouton.setAttribute('aria-pressed', actif ? 'true' : 'false');
+        });
+        var bloc = '';
+        try { bloc = String(document.queryCommandValue('formatBlock') || '').toLowerCase(); } catch (e) {}
+        [].slice.call(barre.querySelectorAll('[data-riche-titre]')).forEach(function (bouton) {
+          bouton.setAttribute('aria-pressed', bloc === bouton.getAttribute('data-riche-titre') ? 'true' : 'false');
+        });
+        if (choixTaille && plage) {
+          var noeud = plage.startContainer.nodeType === 1 ? plage.startContainer : plage.startContainer.parentNode;
+          var porteur = noeud && noeud.closest ? noeud.closest('span[style*="font-size"]') : null;
+          var pt = porteur && edition.contains(porteur) ? parseInt(porteur.style.fontSize, 10) : NaN;
+          choixTaille.value = isNaN(pt) ? '' : String(pt);
+        }
+      };
       document.addEventListener('selectionchange', function () {
         var sel = window.getSelection();
         if (sel.rangeCount && edition.contains(sel.getRangeAt(0).commonAncestorContainer)) {
@@ -2563,23 +2704,25 @@
         }
       });
 
-      var majEtats = function () {
-        [].slice.call(barre.querySelectorAll('[data-riche]')).forEach(function (bouton) {
-          var actif = false;
-          try { actif = document.queryCommandState(bouton.getAttribute('data-riche')); } catch (e) {}
-          bouton.setAttribute('aria-pressed', actif ? 'true' : 'false');
-        });
-      };
-
-      var executer = function (commande, valeur) {
+      var remettreSelection = function () {
+        // La sélection du moment d'abord, si elle est dans le texte : « selectionchange »
+        // arrive un peu après, et la plage gardée pourrait être la précédente.
+        var actuelle = window.getSelection();
+        if (actuelle.rangeCount && edition.contains(actuelle.getRangeAt(0).commonAncestorContainer)) {
+          plage = actuelle.getRangeAt(0).cloneRange();
+        }
         edition.focus();
         if (plage) {
           var sel = window.getSelection();
           sel.removeAllRanges();
           sel.addRange(plage);
         }
-        // Les couleurs en style, pour que le serveur les reconnaisse ; le reste en balises.
-        document.execCommand('styleWithCSS', false, commande === 'foreColor' || commande === 'hiliteColor');
+      };
+
+      var executer = function (commande, valeur) {
+        remettreSelection();
+        // Couleurs et alignements en style, pour que le serveur les reconnaisse ; le reste en balises.
+        document.execCommand('styleWithCSS', false, /^(foreColor|hiliteColor|justify)/.test(commande));
         document.execCommand(commande, false, valeur);
         recopier();
         majEtats();
@@ -2595,6 +2738,92 @@
       };
       peindre();
 
+      /* --- Les images ------------------------------------------------------ */
+      var groupesImage = [].slice.call(barre.querySelectorAll('[data-riche-groupe-image]'));
+      var curseurLargeur = barre.querySelector('[data-riche-largeur]');
+      var valeurLargeur = barre.querySelector('[data-riche-largeur-valeur]');
+
+      var habillageDe = function (img) {
+        if (img.style.float === 'left') { return 'gauche'; }
+        if (img.style.float === 'right') { return 'droite'; }
+        return img.style.display === 'block' ? 'centre' : 'ligne';
+      };
+      var choisirImage = function (img) {
+        if (imageChoisie && imageChoisie !== img) { imageChoisie.classList.remove('texte-riche__image-choisie'); }
+        imageChoisie = img;
+        groupesImage.forEach(function (g) { g.hidden = img === null; });
+        if (!img) { return; }
+        img.classList.add('texte-riche__image-choisie');
+        var largeur = parseInt(img.style.width, 10) || 100;
+        curseurLargeur.value = String(largeur);
+        valeurLargeur.textContent = largeur + ' %';
+        var habillage = habillageDe(img);
+        [].slice.call(barre.querySelectorAll('[data-riche-habillage]')).forEach(function (b) {
+          b.setAttribute('aria-pressed', b.getAttribute('data-riche-habillage') === habillage ? 'true' : 'false');
+        });
+      };
+      var habiller = function (img, habillage) {
+        img.style.float = habillage === 'gauche' ? 'left' : (habillage === 'droite' ? 'right' : '');
+        img.style.display = habillage === 'centre' ? 'block' : '';
+        img.style.margin = '';
+      };
+
+      var insererImage = function (fichier, ou) {
+        dire('');
+        preparerImage(fichier, function (source, largeurPixels) {
+          if (ou) { plage = ou; }
+          var utile = Math.max(1, edition.clientWidth - 24);
+          var part = Math.max(10, Math.min(100, Math.round(largeurPixels / utile * 100)));
+          var img = document.createElement('img');
+          img.src = source;
+          img.alt = fichier.name.replace(/\.[^.]+$/, '');
+          img.style.width = part + '%';
+          remettreSelection();
+          var sel = window.getSelection();
+          if (sel.rangeCount && edition.contains(sel.getRangeAt(0).commonAncestorContainer)) {
+            var r = sel.getRangeAt(0);
+            r.deleteContents();
+            r.insertNode(img);
+            r.setStartAfter(img);
+            r.collapse(true);
+            sel.removeAllRanges();
+            sel.addRange(r);
+          } else {
+            edition.appendChild(img);
+          }
+          recopier();
+          choisirImage(img);
+        }, dire);
+      };
+
+      if (complet) {
+        var champImage = barre.querySelector('[data-riche-fichier]');
+        champImage.addEventListener('change', function () {
+          if (champImage.files && champImage.files[0]) { insererImage(champImage.files[0]); }
+          champImage.value = '';
+        });
+        curseurLargeur.addEventListener('input', function () {
+          if (!imageChoisie) { return; }
+          imageChoisie.style.width = curseurLargeur.value + '%';
+          valeurLargeur.textContent = curseurLargeur.value + ' %';
+          recopier();
+        });
+        edition.addEventListener('click', function (e) {
+          choisirImage(e.target.tagName === 'IMG' ? e.target : null);
+        });
+        // Glisser une image depuis l'ordinateur la pose là où on la lâche.
+        edition.addEventListener('dragover', function (e) {
+          if (e.dataTransfer && [].indexOf.call(e.dataTransfer.types || [], 'Files') >= 0) { e.preventDefault(); }
+        });
+        edition.addEventListener('drop', function (e) {
+          var fichiers = e.dataTransfer ? e.dataTransfer.files : null;
+          if (!fichiers || !fichiers.length) { return; }
+          e.preventDefault();
+          var ou = document.caretRangeFromPoint ? document.caretRangeFromPoint(e.clientX, e.clientY) : null;
+          insererImage(fichiers[0], ou);
+        });
+      }
+
       // Cliquer un bouton ne doit pas voler la sélection au texte.
       barre.addEventListener('mousedown', function (e) {
         if (e.target.closest('button')) { e.preventDefault(); }
@@ -2607,18 +2836,94 @@
         if (bouton.hasAttribute('data-riche-couleur-defaut')) { executer('foreColor', getComputedStyle(edition).color); }
         if (bouton.hasAttribute('data-riche-fond')) { executer('hiliteColor', fond.value); }
         if (bouton.hasAttribute('data-riche-fond-defaut')) { executer('hiliteColor', 'transparent'); }
+        if (bouton.hasAttribute('data-riche-retrait')) {
+          executer(bouton.getAttribute('data-riche-retrait') === '1' ? 'indent' : 'outdent');
+        }
+        if (bouton.hasAttribute('data-riche-titre')) {
+          var voulu = bouton.getAttribute('data-riche-titre');
+          var courant = '';
+          remettreSelection();
+          try { courant = String(document.queryCommandValue('formatBlock') || '').toLowerCase(); } catch (err) {}
+          // Recliquer sur le même titre le ramène à du texte ordinaire.
+          executer('formatBlock', courant === voulu ? 'div' : voulu);
+        }
+        if (bouton.hasAttribute('data-riche-saut')) {
+          remettreSelection();
+          if (!document.execCommand('insertLineBreak')) { document.execCommand('insertHTML', false, '<br>'); }
+          recopier();
+        }
+        if (bouton.hasAttribute('data-riche-image')) { barre.querySelector('[data-riche-fichier]').click(); }
+        if (bouton.hasAttribute('data-riche-largeur-origine') && imageChoisie) {
+          imageChoisie.style.width = '100%';
+          choisirImage(imageChoisie);
+          recopier();
+        }
+        if (bouton.hasAttribute('data-riche-habillage') && imageChoisie) {
+          habiller(imageChoisie, bouton.getAttribute('data-riche-habillage'));
+          choisirImage(imageChoisie);
+          recopier();
+        }
       });
+
+      // La taille : le navigateur ne sait poser qu'une taille « 1 à 7 » ; on la
+      // remplace aussitôt par des points, comme dans l'éditeur de documents.
+      if (choixTaille) {
+        choixTaille.addEventListener('change', function () {
+          remettreSelection();
+          document.execCommand('styleWithCSS', false, false);
+          document.execCommand('fontSize', false, '7');
+          [].slice.call(edition.querySelectorAll('font[size]')).forEach(function (police) {
+            [].slice.call(police.querySelectorAll('span')).forEach(function (s) { s.style.fontSize = ''; });
+            if (choixTaille.value === '') {
+              while (police.firstChild) { police.parentNode.insertBefore(police.firstChild, police); }
+              police.remove();
+              return;
+            }
+            var porteur = document.createElement('span');
+            porteur.style.fontSize = choixTaille.value + 'pt';
+            while (police.firstChild) { porteur.appendChild(police.firstChild); }
+            police.replaceWith(porteur);
+          });
+          recopier();
+        });
+      }
+      if (choixSommaire) { choixSommaire.addEventListener('change', recopier); }
+
       // Choisir une couleur l'applique aussitôt au texte choisi.
       teinte.addEventListener('change', function () { peindre(); executer('foreColor', teinte.value); });
       fond.addEventListener('change', function () { peindre(); executer('hiliteColor', fond.value); });
 
       edition.addEventListener('input', recopier);
       edition.addEventListener('keyup', majEtats);
-      // Coller n'apporte que le texte : les styles d'une page web n'ont rien à faire ici.
+      edition.addEventListener('keydown', function (e) {
+        // Une image choisie s'efface au clavier, comme un mot.
+        if (imageChoisie && (e.key === 'Delete' || e.key === 'Backspace')) {
+          e.preventDefault();
+          imageChoisie.remove();
+          choisirImage(null);
+          recopier();
+          return;
+        }
+        // Dans une liste, la tabulation fait une sous-liste, comme dans l'éditeur de documents.
+        if (complet && e.key === 'Tab') {
+          var dansListe = false;
+          try { dansListe = document.queryCommandState('insertUnorderedList') || document.queryCommandState('insertOrderedList'); } catch (err) {}
+          if (dansListe) {
+            e.preventDefault();
+            executer(e.shiftKey ? 'outdent' : 'indent');
+          }
+        }
+      });
+      // Coller n'apporte que le texte — ou, dans un cours, l'image copiée.
       edition.addEventListener('paste', function (e) {
         var presse = e.clipboardData || window.clipboardData;
         if (!presse) { return; }
         e.preventDefault();
+        var fichier = complet && presse.files && presse.files.length ? presse.files[0] : null;
+        if (fichier && /^image\//.test(fichier.type)) {
+          insererImage(fichier);
+          return;
+        }
         document.execCommand('insertText', false, presse.getData('text/plain'));
       });
       if (zone.form) { zone.form.addEventListener('submit', recopier); }
