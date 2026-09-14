@@ -1046,7 +1046,25 @@
       window.addEventListener('resize', caler);
       enBas();
 
-      var majVu = function () { vu.hidden = !(dernierMien > 0 && vuJusqua >= dernierMien); if (!vu.hidden) { fil.appendChild(vu); } };
+      /*
+       * Collé en bas tant qu'on n'est pas remonté lire plus haut : une image
+       * qui finit de charger allonge la conversation, et la vue la suit au
+       * lieu de rester accrochée au milieu.
+       */
+      var colle = true;
+      fil.addEventListener('scroll', function () { colle = presqueEnBas(); });
+      var suivreImage = function (img) {
+        if (img.complete) { return; }
+        img.addEventListener('load', function () { if (colle) { enBas(); } });
+      };
+      fil.querySelectorAll('img').forEach(suivreImage);
+
+      // « Vu » se place sous mon dernier message, et seulement s'il a été lu.
+      var majVu = function () {
+        var mienne = dernierMien > 0 ? fil.querySelector('[data-message="' + dernierMien + '"]') : null;
+        vu.hidden = !(mienne && vuJusqua >= dernierMien);
+        if (mienne && mienne.nextElementSibling !== vu) { mienne.after(vu); }
+      };
 
       var ajouter = function (message) {
         if (fil.querySelector('[data-message="' + message.id + '"]')) { return; }
@@ -1066,15 +1084,32 @@
         }
 
         var bulle = document.createElement('div');
-        bulle.className = 'bulle' + (message.moi ? ' bulle--moi' : '');
+        bulle.className = 'bulle' + (message.moi ? ' bulle--moi' : '') + (message.image ? ' bulle--image' : '');
         bulle.setAttribute('data-message', String(message.id));
-        var texte = document.createElement('p');
-        texte.className = 'bulle__texte';
-        texte.textContent = message.texte;
+        if (message.image) {
+          var lienImage = document.createElement('a');
+          lienImage.className = 'bulle__image';
+          lienImage.href = message.image;
+          lienImage.target = '_blank';
+          lienImage.rel = 'noopener';
+          lienImage.setAttribute('data-visionneuse', '');
+          var img = document.createElement('img');
+          img.alt = 'Photo';
+          if (message.largeur > 0) { img.width = message.largeur; img.height = message.hauteur; }
+          img.src = message.image;
+          suivreImage(img);
+          lienImage.appendChild(img);
+          bulle.appendChild(lienImage);
+        }
+        if (message.texte) {
+          var texte = document.createElement('p');
+          texte.className = 'bulle__texte';
+          texte.textContent = message.texte;
+          bulle.appendChild(texte);
+        }
         var heure = document.createElement('span');
         heure.className = 'bulle__heure';
         heure.textContent = message.heure;
-        bulle.appendChild(texte);
         bulle.appendChild(heure);
         fil.appendChild(bulle);
 
@@ -1107,27 +1142,148 @@
         erreur.hidden = !texte;
       };
 
-      formulaire.addEventListener('submit', function (evenement) {
-        evenement.preventDefault();
-        var texte = champ.value.trim();
-        if (!texte) { return; }
-        montrerErreur('');
-        bouton.disabled = true;
+      /*
+       * Les images à envoyer : choisies par le bouton 📷, collées dans la zone
+       * de saisie, ou déposées sur la conversation. Elles attendent en
+       * vignettes au-dessus de la saisie, chacune avec sa croix, et partent à
+       * l'envoi — une par message, la légende avec la première.
+       */
+      var TYPES_IMAGES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+      var IMAGE_MAX = 10 * 1024 * 1024;
+      var IMAGES_MAX = 10;
+      var apercus = chat.querySelector('[data-chat-apercus]');
+      var choixImage = formulaire.querySelector('[data-chat-image]');
+      var enAttente = [];
 
+      var dessinerApercus = function () {
+        apercus.textContent = '';
+        enAttente.forEach(function (element, rang) {
+          var vignette = document.createElement('div');
+          vignette.className = 'chat__apercu';
+          var img = document.createElement('img');
+          img.src = element.adresse;
+          img.alt = element.fichier.name;
+          var retirer = document.createElement('button');
+          retirer.type = 'button';
+          retirer.className = 'chat__apercu-retirer';
+          retirer.setAttribute('aria-label', 'Retirer ' + element.fichier.name);
+          retirer.textContent = '✕';
+          retirer.addEventListener('click', function () {
+            URL.revokeObjectURL(element.adresse);
+            enAttente.splice(rang, 1);
+            dessinerApercus();
+            champ.focus();
+          });
+          vignette.appendChild(img);
+          vignette.appendChild(retirer);
+          apercus.appendChild(vignette);
+        });
+        apercus.hidden = enAttente.length === 0;
+        champ.required = enAttente.length === 0;
+      };
+
+      var ajouterImages = function (liste) {
+        var refus = '';
+        Array.prototype.forEach.call(liste, function (fichier) {
+          if (TYPES_IMAGES.indexOf(fichier.type) === -1) { refus = '« ' + fichier.name + ' » n’est pas une image acceptée (JPEG, PNG, GIF ou WebP).'; return; }
+          if (fichier.size > IMAGE_MAX) { refus = '« ' + fichier.name + ' » est trop lourde : 10 Mo au plus.'; return; }
+          if (enAttente.length >= IMAGES_MAX) { refus = 'Dix images au plus à la fois.'; return; }
+          enAttente.push({ fichier: fichier, adresse: URL.createObjectURL(fichier) });
+        });
+        montrerErreur(refus);
+        dessinerApercus();
+      };
+
+      choixImage.addEventListener('change', function () {
+        ajouterImages(choixImage.files);
+        choixImage.value = '';
+        champ.focus();
+      });
+      champ.addEventListener('paste', function (evenement) {
+        var images = Array.prototype.filter.call((evenement.clipboardData && evenement.clipboardData.files) || [], function (f) {
+          return f.type.indexOf('image/') === 0;
+        });
+        if (images.length) { evenement.preventDefault(); ajouterImages(images); }
+      });
+      chat.addEventListener('dragover', function (evenement) {
+        if (evenement.dataTransfer && Array.prototype.indexOf.call(evenement.dataTransfer.types, 'Files') !== -1) {
+          evenement.preventDefault();
+          chat.classList.add('chat__fil--depot');
+        }
+      });
+      chat.addEventListener('dragleave', function (evenement) {
+        if (!chat.contains(evenement.relatedTarget)) { chat.classList.remove('chat__fil--depot'); }
+      });
+      chat.addEventListener('drop', function (evenement) {
+        chat.classList.remove('chat__fil--depot');
+        if (evenement.dataTransfer && evenement.dataTransfer.files.length) {
+          evenement.preventDefault();
+          ajouterImages(evenement.dataTransfer.files);
+        }
+      });
+
+      var envoyerUn = function (texte, fichier) {
         var donnees = new FormData();
         donnees.append('_csrf', chat.getAttribute('data-jeton'));
         donnees.append('texte', texte);
-        fetch(chat.getAttribute('data-envoyer'), {
+        if (fichier) { donnees.append('image', fichier, fichier.name || 'image'); }
+        return fetch(chat.getAttribute('data-envoyer'), {
           method: 'POST', body: donnees, credentials: 'same-origin', headers: { Accept: 'application/json' }
-        }).then(function (r) { return r.json(); })
-          .then(function (reponse) {
-            if (!reponse.fait) { throw new Error(reponse.message || 'Le message n’est pas parti.'); }
-            champ.value = '';
-            ajuster();
-            return relever().then(enBas);
-          })
-          .catch(function (e) { montrerErreur(e.message || 'Le message n’est pas parti. Réessayez.'); })
-          .then(function () { bouton.disabled = false; champ.focus(); });
+        }).then(function (r) {
+          return r.json().catch(function () { throw new Error('Le message n’est pas parti. Réessayez.'); });
+        }).then(function (reponse) {
+          if (!reponse.fait) { throw new Error(reponse.message || 'Le message n’est pas parti.'); }
+        });
+      };
+
+      formulaire.addEventListener('submit', function (evenement) {
+        evenement.preventDefault();
+        var texte = champ.value.trim();
+        if (!texte && !enAttente.length) { return; }
+        montrerErreur('');
+        bouton.disabled = true;
+        var libelle = bouton.textContent;
+        if (enAttente.length) { bouton.textContent = 'Envoi…'; }
+
+        // Les images partent l'une après l'autre ; la légende voyage avec la première.
+        var suite = Promise.resolve();
+        if (!enAttente.length) {
+          suite = envoyerUn(texte, null).then(function () { champ.value = ''; });
+        }
+        enAttente.slice().forEach(function (element) {
+          suite = suite.then(function () {
+            return envoyerUn(champ.value.trim(), element.fichier).then(function () {
+              champ.value = '';
+              URL.revokeObjectURL(element.adresse);
+              enAttente.splice(enAttente.indexOf(element), 1);
+              dessinerApercus();
+            });
+          });
+        });
+
+        suite.then(function () { ajuster(); return relever().then(enBas); })
+          .catch(function (e) { montrerErreur(e.message || 'Le message n’est pas parti. Réessayez.'); relever(); })
+          .then(function () { bouton.disabled = false; bouton.textContent = libelle; champ.focus(); });
+      });
+
+      /*
+       * Une image s'agrandit dans une visionneuse, par-dessus la discussion.
+       * Comme les autres fenêtres de l'application, seule sa croix la ferme.
+       */
+      var visionneuse = document.createElement('dialog');
+      visionneuse.className = 'visionneuse';
+      visionneuse.innerHTML = '<button class="fenetre__fermer" type="button" aria-label="Fermer">✕</button>'
+        + '<img alt="Photo"><a class="bouton bouton--secondaire bouton--petit visionneuse__ouvrir" target="_blank" rel="noopener">Ouvrir en grand</a>';
+      document.body.appendChild(visionneuse);
+      visionneuse.querySelector('.fenetre__fermer').addEventListener('click', function () { visionneuse.close(); });
+      visionneuse.addEventListener('cancel', function (evenement) { evenement.preventDefault(); });
+      fil.addEventListener('click', function (evenement) {
+        var lienImage = evenement.target.closest('[data-visionneuse]');
+        if (!lienImage || typeof visionneuse.showModal !== 'function' || evenement.ctrlKey || evenement.metaKey) { return; }
+        evenement.preventDefault();
+        visionneuse.querySelector('img').src = lienImage.href;
+        visionneuse.querySelector('.visionneuse__ouvrir').href = lienImage.href;
+        visionneuse.showModal();
       });
 
       // Entrée envoie ; Maj+Entrée, ou une saisie en cours de composition, va à la ligne.

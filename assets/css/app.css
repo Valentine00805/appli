@@ -282,6 +282,41 @@ textarea { min-height: 260px; resize: vertical; line-height: 1.65; }
 }
 .chat__emoji-bouton:hover, .chat__emoji-bouton[aria-expanded="true"] { background: var(--accent-doux); border-color: var(--accent); }
 .chat__emoji-bouton[hidden] { display: none; }
+.chat__image-bouton { display: inline-flex; align-items: center; justify-content: center; }
+#chat-image:focus-visible + .chat__image-bouton { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Une image dans une bulle : à sa taille, sans dépasser la colonne. */
+.bulle--image { padding: .25rem .25rem .3rem; max-width: min(75%, 270px); }
+.bulle--image .bulle__texte { padding: .3rem .45rem 0; }
+.bulle--image .bulle__heure { padding: 0 .45rem; }
+.bulle__image { display: block; line-height: 0; }
+.bulle__image img {
+  display: block; max-width: min(260px, 100%); max-height: 320px; width: auto; height: auto;
+  border-radius: 12px; background: var(--fond-doux); object-fit: cover; cursor: zoom-in;
+}
+
+/* Les images choisies, en attente d'envoi. */
+.chat__apercus { display: flex; gap: .5rem; overflow-x: auto; padding: .6rem 1rem 0; border-top: 1px solid var(--bordure); }
+.chat__apercus[hidden] { display: none; }
+.chat__apercus + .chat__saisie { border-top: 0; }
+.chat__apercu { position: relative; flex: none; }
+.chat__apercu img { display: block; width: 4.5rem; height: 4.5rem; object-fit: cover; border-radius: 10px; border: 1px solid var(--bordure); }
+.chat__apercu-retirer {
+  position: absolute; top: -.35rem; right: -.35rem; width: 1.4rem; height: 1.4rem; border-radius: 50%;
+  border: 0; background: var(--texte); color: var(--fond-carte); font-size: .7rem; line-height: 1; cursor: pointer;
+}
+.chat__fil--depot { box-shadow: 0 0 0 3px var(--accent); }
+
+/* La visionneuse d'une image. */
+.visionneuse {
+  border: 0; border-radius: var(--rayon); padding: 2.6rem .75rem .75rem; background: var(--fond-carte);
+  max-width: min(92vw, 70rem); max-height: 92vh; overflow: visible;
+  display: none; flex-direction: column; align-items: center; gap: .6rem;
+}
+.visionneuse[open] { display: flex; }
+.visionneuse::backdrop { background: rgb(15 23 42 / 75%); }
+.visionneuse img { display: block; max-width: 100%; max-height: calc(92vh - 6rem); object-fit: contain; border-radius: 8px; }
+.visionneuse .fenetre__fermer { position: absolute; top: .5rem; right: .5rem; }
 
 .emojis {
   position: absolute; bottom: calc(100% - .25rem); right: 1rem; z-index: 5;

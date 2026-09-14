@@ -148,7 +148,10 @@ final class AmisController
         $moi = Auth::id();
 
         $texte = (string) ($_POST['texte'] ?? '');
-        [$messageId, $refus] = Amis::ecrire($moi, $id, $texte);
+        $image = isset($_FILES['image']) && is_array($_FILES['image']) && !is_array($_FILES['image']['name'] ?? null)
+            ? $_FILES['image'] : null;
+        [$messageId, $refus] = Amis::ecrire($moi, $id, $texte, $image);
+        $avecImage = $messageId !== null && $image !== null && ($image['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK;
 
         if (veut_du_json()) {
             if ($messageId === null) {
@@ -157,16 +160,40 @@ final class AmisController
             }
             // La réponse part d'abord : l'envoi aux téléphones ne fait pas attendre la page.
             $this->repondreAvant(['fait' => true, 'id' => $messageId]);
-            Amis::notifier($moi, $id, $texte);
+            Amis::notifier($moi, $id, $texte, $avecImage);
             exit;
         }
 
         if ($refus !== null) {
             Session::flash('erreur', $refus);
         } else {
-            Amis::notifier($moi, $id, $texte);
+            Amis::notifier($moi, $id, $texte, $avecImage);
         }
         redirect('amis/' . $id);
+    }
+
+    /** L'image d'un message, pour les deux amis seulement. */
+    public function image(int $id): void
+    {
+        Auth::exiger();
+        session_write_close();
+        $message = Amis::image(Auth::id(), $id);
+        $chemin = $message === null ? null : Amis::dossierImages() . DIRECTORY_SEPARATOR . basename((string) $message['image_nom']);
+
+        if ($chemin === null || !is_file($chemin) || !in_array($message['image_mime'], array_column(Amis::IMAGE_TYPES, 0), true)) {
+            http_response_code(404);
+            exit('Image introuvable.');
+        }
+
+        header('Content-Type: ' . $message['image_mime']);
+        header('Content-Length: ' . (string) filesize($chemin));
+        header('X-Content-Type-Options: nosniff');
+        header("Content-Security-Policy: default-src 'none'; img-src 'self'; style-src 'unsafe-inline'");
+        header('Content-Disposition: inline; filename="photo-' . (int) $message['id'] . '.' . pathinfo($chemin, PATHINFO_EXTENSION) . '"');
+        // Une image ne change jamais : le navigateur la garde, mais pour lui seul.
+        header('Cache-Control: private, max-age=604800, immutable');
+        readfile($chemin);
+        exit;
     }
 
     /**

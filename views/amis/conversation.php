@@ -54,19 +54,43 @@ foreach ($messages as $m) {
         <?php if ($m['jour'] !== $jour): $jour = $m['jour']; ?>
           <p class="chat__jour" data-jour="<?= e($m['jour']) ?>"><span><?= e($m['jour_libelle']) ?></span></p>
         <?php endif; ?>
-        <div class="bulle<?= $m['moi'] ? ' bulle--moi' : '' ?>" data-message="<?= (int) $m['id'] ?>">
-          <p class="bulle__texte"><?= nl2br(e($m['texte'])) ?></p>
+        <div class="bulle<?= $m['moi'] ? ' bulle--moi' : '' ?><?= $m['image'] !== null ? ' bulle--image' : '' ?>" data-message="<?= (int) $m['id'] ?>">
+          <?php if ($m['image'] !== null): ?>
+            <a class="bulle__image" href="<?= e($m['image']) ?>" target="_blank" rel="noopener" data-visionneuse>
+              <img src="<?= e($m['image']) ?>" alt="Photo"
+                   <?= $m['largeur'] > 0 ? 'width="' . $m['largeur'] . '" height="' . $m['hauteur'] . '"' : '' ?>>
+            </a>
+          <?php endif; ?>
+          <?php if ($m['texte'] !== ''): ?>
+            <p class="bulle__texte"><?= nl2br(e($m['texte'])) ?></p>
+          <?php endif; ?>
           <span class="bulle__heure"><?= e($m['heure']) ?></span>
         </div>
+        <?php // « Vu » sous mon dernier message, s'il a été lu — pas sous la réponse qui l'a suivi. ?>
+        <?php if ($m['id'] === $dernierMien): ?>
+          <p class="chat__vu" data-chat-vu<?= $vuJusqua >= $dernierMien ? '' : ' hidden' ?>>Vu</p>
+        <?php endif; ?>
       <?php endforeach; ?>
-      <p class="chat__vu" data-chat-vu<?= $dernierMien > 0 && $vuJusqua >= $dernierMien ? '' : ' hidden' ?>>Vu</p>
+      <?php if ($dernierMien === 0): ?>
+        <p class="chat__vu" data-chat-vu hidden>Vu</p>
+      <?php endif; ?>
     </div>
 
-    <form class="chat__saisie" method="post" action="<?= url('amis/' . $actif . '/messages') ?>" data-chat-formulaire>
+    <?php // Les images choisies, en attente d'envoi : le script les montre ici. ?>
+    <div class="chat__apercus" data-chat-apercus hidden></div>
+
+    <form class="chat__saisie" method="post" action="<?= url('amis/' . $actif . '/messages') ?>" data-chat-formulaire
+          enctype="multipart/form-data">
       <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
       <label class="sr-only" for="chat-texte">Message à <?= e((string) $ami['pseudo']) ?></label>
       <textarea id="chat-texte" name="texte" rows="1" maxlength="<?= Amis::MESSAGE_MAX ?>" required
                 placeholder="Écrire à <?= e((string) $ami['pseudo']) ?>…" autofocus></textarea>
+      <?php // Joindre des images : le bouton ouvre le choix de fichiers, gardé caché. ?>
+      <input type="file" name="image" accept="image/jpeg,image/png,image/gif,image/webp" multiple
+             class="sr-only" id="chat-image" data-chat-image>
+      <label class="chat__emoji-bouton chat__image-bouton" for="chat-image" title="Joindre une image" data-chat-image-bouton>
+        <span aria-hidden="true">📷</span><span class="sr-only">Joindre une image</span>
+      </label>
       <?php // Le choix des emojis : le panneau est rempli par le script, qui seul peut les insérer. ?>
       <button class="chat__emoji-bouton" type="button" data-emoji-bouton hidden
               aria-label="Insérer un emoji" title="Emojis" aria-expanded="false" aria-controls="chat-emojis">😊</button>

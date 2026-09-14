@@ -3,3 +3,5 @@
 !/storage/uploads/.gitignore
 /storage/versions/*
 !/storage/versions/.gitignore
+/storage/messages/*
+!/storage/messages/.gitignore

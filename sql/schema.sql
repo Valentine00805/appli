@@ -607,6 +607,11 @@ CREATE TABLE IF NOT EXISTS `messages` (
   `expediteur_id`   INT UNSIGNED NOT NULL,
   `destinataire_id` INT UNSIGNED NOT NULL,
   `texte`           TEXT         NOT NULL,
+  -- Une image jointe, rangée dans storage/messages ; le texte peut alors être vide.
+  `image_nom`       VARCHAR(64)       NULL,
+  `image_mime`      VARCHAR(40)       NULL,
+  `image_largeur`   SMALLINT UNSIGNED NULL,
+  `image_hauteur`   SMALLINT UNSIGNED NULL,
   `created_at`      DATETIME     NOT NULL,
   `lu_le`           DATETIME     NULL,
   PRIMARY KEY (`id`),

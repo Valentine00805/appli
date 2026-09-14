@@ -212,6 +212,7 @@ $routes = [
     ['POST', 'amis/{id}/retirer',         [AmisController::class, 'retirer']],
     ['GET',  'amis/{id}',                 [AmisController::class, 'conversation']],
     ['GET',  'amis/{id}/messages',        [AmisController::class, 'nouveaux']],
+    ['GET',  'amis/images/{id}',          [AmisController::class, 'image']],
     ['POST', 'amis/{id}/messages',        [AmisController::class, 'envoyer']],
     /*
      * Les agendas distants. Le fournisseur est dans l'adresse : chacun a

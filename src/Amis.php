@@ -31,6 +31,29 @@ final class Amis
     /** Longueur du texte repris dans une notification. */
     public const APERCU_NOTIFICATION = 140;
 
+    /** Poids maximal d'une image envoyée. */
+    public const IMAGE_MAX_OCTETS = 10 * 1024 * 1024;
+
+    /** Au-delà, une image est réduite : assez pour la regarder en grand, pas pour remplir le disque. */
+    public const IMAGE_COTE_MAX = 1600;
+
+    /** Pixels qu'on accepte de décoder : une image plus grande épuiserait la mémoire du serveur. */
+    public const IMAGE_PIXELS_MAX = 50_000_000;
+
+    /** Les formats acceptés, et le type sous lequel chacun est servi. */
+    public const IMAGE_TYPES = [
+        IMAGETYPE_JPEG => ['image/jpeg', 'jpg'],
+        IMAGETYPE_PNG  => ['image/png', 'png'],
+        IMAGETYPE_GIF  => ['image/gif', 'gif'],
+        IMAGETYPE_WEBP => ['image/webp', 'webp'],
+    ];
+
+    /** Le dossier des images des discussions, à côté des pièces jointes des cours. */
+    public static function dossierImages(): string
+    {
+        return dirname((string) Config::get('app', 'dossier_uploads')) . DIRECTORY_SEPARATOR . 'messages';
+    }
+
     /** Le compte d'un autre, tel qu'on peut le voir : son identifiant et son pseudo. */
     public static function compte(int $id): ?array
     {
@@ -120,7 +143,7 @@ final class Amis
             return [];
         }
         $lignes = Database::all(
-            'SELECT id, expediteur_id, texte, created_at FROM messages WHERE id IN (' . implode(',', array_fill(0, count($ids), '?')) . ')',
+            'SELECT id, expediteur_id, texte, image_nom, created_at FROM messages WHERE id IN (' . implode(',', array_fill(0, count($ids), '?')) . ')',
             $ids
         );
 
@@ -235,14 +258,16 @@ final class Amis
     }
 
     /**
-     * Écrit à un ami.
+     * Écrit à un ami, avec ou sans image.
      *
+     * @param ?array $image le fichier téléversé ($_FILES['image']), s'il y en a un
      * @return array{0: ?int, 1: ?string} l'identifiant du message, ou la raison du refus
      */
-    public static function ecrire(int $moi, int $autre, string $texte): array
+    public static function ecrire(int $moi, int $autre, string $texte, ?array $image = null): array
     {
         $texte = trim(str_replace(["\r\n", "\r"], "\n", $texte));
-        if ($texte === '') {
+        $avecImage = $image !== null && ($image['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE;
+        if ($texte === '' && !$avecImage) {
             return [null, 'Le message est vide.'];
         }
         if (mb_strlen($texte) > self::MESSAGE_MAX) {
@@ -259,12 +284,166 @@ final class Amis
             return [null, 'Trop de messages d’un coup : patientez un instant.'];
         }
 
-        Database::run(
-            'INSERT INTO messages (expediteur_id, destinataire_id, texte, created_at) VALUES (?, ?, ?, UTC_TIMESTAMP())',
-            [$moi, $autre, $texte]
-        );
+        // L'image en dernier : on ne range rien sur le disque pour un message refusé.
+        $rangee = null;
+        if ($avecImage) {
+            $rangee = self::rangerImage($image);
+            if (is_string($rangee)) {
+                return [null, $rangee];
+            }
+        }
+
+        try {
+            Database::run(
+                'INSERT INTO messages (expediteur_id, destinataire_id, texte, image_nom, image_mime, image_largeur, image_hauteur, created_at)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, UTC_TIMESTAMP())',
+                [$moi, $autre, $texte, $rangee['nom'] ?? null, $rangee['mime'] ?? null, $rangee['largeur'] ?? null, $rangee['hauteur'] ?? null]
+            );
+        } catch (Throwable $e) {
+            if ($rangee !== null) {
+                @unlink(self::dossierImages() . DIRECTORY_SEPARATOR . $rangee['nom']);
+            }
+            throw $e;
+        }
 
         return [Database::dernierId(), null];
+    }
+
+    /**
+     * Vérifie une image téléversée et la range dans le dossier des discussions.
+     *
+     * Le fichier n'est jamais gardé tel quel, sauf un GIF (pour qu'il reste
+     * animé) : l'image est redessinée, ce qui retire ses métadonnées — la
+     * position GPS d'une photo prise au téléphone, notamment — et tout ce
+     * qu'on aurait pu cacher dedans. Une photo penchée est remise d'aplomb
+     * d'après son orientation, et une trop grande est réduite.
+     *
+     * @return array{nom: string, mime: string, largeur: int, hauteur: int}|string l'image rangée, ou la raison du refus
+     */
+    public static function rangerImage(array $fichier): array|string
+    {
+        $code = (int) ($fichier['error'] ?? UPLOAD_ERR_NO_FILE);
+        if ($code !== UPLOAD_ERR_OK) {
+            return 'L’image n’a pas pu être envoyée : ' . Fichiers::messageErreur($code);
+        }
+        $tmp = (string) ($fichier['tmp_name'] ?? '');
+        if (!is_uploaded_file($tmp)) {
+            return 'L’image n’a pas pu être envoyée.';
+        }
+        if ((int) filesize($tmp) > self::IMAGE_MAX_OCTETS) {
+            return 'Cette image est trop lourde : ' . intdiv(self::IMAGE_MAX_OCTETS, 1024 * 1024) . ' Mo au plus.';
+        }
+
+        $infos = @getimagesize($tmp);
+        if ($infos === false || !isset(self::IMAGE_TYPES[$infos[2]])) {
+            return 'Ce fichier n’est pas une image acceptée (JPEG, PNG, GIF ou WebP).';
+        }
+        [$largeur, $hauteur, $type] = $infos;
+        if ($largeur < 1 || $hauteur < 1 || $largeur * $hauteur > self::IMAGE_PIXELS_MAX) {
+            return 'Cette image est trop grande pour être envoyée.';
+        }
+        [$mime, $extension] = self::IMAGE_TYPES[$type];
+
+        $dossier = self::dossierImages();
+        if (!is_dir($dossier) && !mkdir($dossier, 0775, true) && !is_dir($dossier)) {
+            return 'Impossible de ranger l’image sur le serveur.';
+        }
+        $nom = bin2hex(random_bytes(16)) . '.' . $extension;
+        $destination = $dossier . DIRECTORY_SEPARATOR . $nom;
+
+        if ($type === IMAGETYPE_GIF) {
+            if (!move_uploaded_file($tmp, $destination)) {
+                return 'Impossible de ranger l’image sur le serveur.';
+            }
+            return ['nom' => $nom, 'mime' => $mime, 'largeur' => min($largeur, 65535), 'hauteur' => min($hauteur, 65535)];
+        }
+
+        // Décoder une grande photo demande de la place : pour cette seule requête.
+        $memoire = ini_get('memory_limit');
+        @ini_set('memory_limit', '512M');
+        try {
+            $source = match ($type) {
+                IMAGETYPE_JPEG => @imagecreatefromjpeg($tmp),
+                IMAGETYPE_PNG  => @imagecreatefrompng($tmp),
+                IMAGETYPE_WEBP => @imagecreatefromwebp($tmp),
+            };
+            if ($source === false) {
+                return 'Cette image est illisible.';
+            }
+
+            if ($type === IMAGETYPE_JPEG && function_exists('exif_read_data')) {
+                $exif = @exif_read_data($tmp);
+                $source = self::redresser($source, (int) ($exif['Orientation'] ?? 1));
+            }
+
+            $largeur = imagesx($source);
+            $hauteur = imagesy($source);
+            $echelle = min(1, self::IMAGE_COTE_MAX / max($largeur, $hauteur));
+            $l = max(1, (int) round($largeur * $echelle));
+            $h = max(1, (int) round($hauteur * $echelle));
+
+            $finale = imagecreatetruecolor($l, $h);
+            if ($type !== IMAGETYPE_JPEG) {
+                imagealphablending($finale, false);
+                imagesavealpha($finale, true);
+                imagefill($finale, 0, 0, imagecolorallocatealpha($finale, 0, 0, 0, 127));
+            }
+            imagecopyresampled($finale, $source, 0, 0, 0, 0, $l, $h, $largeur, $hauteur);
+            imagedestroy($source);
+
+            $ecrit = match ($type) {
+                IMAGETYPE_JPEG => imagejpeg($finale, $destination, 85),
+                IMAGETYPE_PNG  => imagepng($finale, $destination, 6),
+                IMAGETYPE_WEBP => imagewebp($finale, $destination, 85),
+            };
+            imagedestroy($finale);
+            if (!$ecrit) {
+                @unlink($destination);
+                return 'Impossible de ranger l’image sur le serveur.';
+            }
+
+            return ['nom' => $nom, 'mime' => $mime, 'largeur' => $l, 'hauteur' => $h];
+        } finally {
+            @ini_set('memory_limit', (string) $memoire);
+        }
+    }
+
+    /** Remet d'aplomb une photo d'après son orientation EXIF. */
+    private static function redresser(GdImage $image, int $orientation): GdImage
+    {
+        $tournee = match ($orientation) {
+            3, 4 => imagerotate($image, 180, 0),
+            5, 6 => imagerotate($image, -90, 0),
+            7, 8 => imagerotate($image, 90, 0),
+            default => $image,
+        };
+        if ($tournee === false) {
+            return $image;
+        }
+        if (in_array($orientation, [2, 4, 5, 7], true)) {
+            imageflip($tournee, IMG_FLIP_HORIZONTAL);
+        }
+        if ($tournee !== $image) {
+            imagedestroy($image);
+        }
+
+        return $tournee;
+    }
+
+    /** Le message et son image, si la personne connectée a le droit de la voir. */
+    public static function image(int $moi, int $messageId): ?array
+    {
+        $message = Database::one(
+            'SELECT id, expediteur_id, destinataire_id, image_nom, image_mime FROM messages
+              WHERE id = ? AND image_nom IS NOT NULL AND (expediteur_id = ? OR destinataire_id = ?)',
+            [$messageId, $moi, $moi]
+        );
+        if ($message === null) {
+            return null;
+        }
+        $autre = (int) $message['expediteur_id'] === $moi ? (int) $message['destinataire_id'] : (int) $message['expediteur_id'];
+
+        return self::sontAmis($moi, $autre) ? $message : null;
     }
 
     /**
@@ -279,7 +458,7 @@ final class Amis
         );
 
         $messages = Database::all(
-            'SELECT id, expediteur_id, texte, created_at, lu_le FROM messages
+            'SELECT id, expediteur_id, texte, image_nom, image_largeur, image_hauteur, created_at, lu_le FROM messages
               WHERE ((expediteur_id = ? AND destinataire_id = ?) OR (expediteur_id = ? AND destinataire_id = ?))
                 AND id > ?
               ORDER BY id DESC LIMIT ' . self::FIL_MAX,
@@ -308,7 +487,7 @@ final class Amis
      *
      * @return string « envoyee », « silencieuse », « regarde » ou « aucun_appareil »
      */
-    public static function notifier(int $expediteur, int $destinataire, string $texte): string
+    public static function notifier(int $expediteur, int $destinataire, string $texte, bool $avecImage = false): string
     {
         $appareils = (int) Database::valeur('SELECT COUNT(*) FROM abonnements_push WHERE user_id = ?', [$destinataire]);
         if ($appareils === 0) {
@@ -335,6 +514,9 @@ final class Amis
 
         $compte = self::compte($expediteur);
         $apercu = trim((string) preg_replace('/\s+/u', ' ', $texte));
+        if ($avecImage) {
+            $apercu = '📷 Photo' . ($apercu === '' ? '' : ' · ' . $apercu);
+        }
         Rappels::envoyerAuCompte($destinataire, [
             'title' => '💬 ' . ($compte['pseudo'] ?? 'Nouveau message'),
             'body' => mb_strimwidth($apercu, 0, self::APERCU_NOTIFICATION, '…'),
@@ -364,6 +546,9 @@ final class Amis
             'id' => (int) $message['id'],
             'moi' => (int) $message['expediteur_id'] === $moi,
             'texte' => (string) $message['texte'],
+            'image' => ($message['image_nom'] ?? null) === null ? null : url('amis/images/' . (int) $message['id']),
+            'largeur' => (int) ($message['image_largeur'] ?? 0),
+            'hauteur' => (int) ($message['image_hauteur'] ?? 0),
             'heure' => $moment->format('H:i'),
             'jour' => $moment->format('Y-m-d'),
             'jour_libelle' => self::jour($moment),
