@@ -20,7 +20,7 @@ $champsCommuns = '<input type="hidden" name="_csrf" value="' . e($csrf) . '">'
     . '<input type="hidden" name="retour" value="' . e($retour) . '">';
 ?>
 
-<div class="entete-page"<?= $dansUneFenetre ? ' data-large data-croix-seule' : '' ?>>
+<div class="entete-page"<?= $dansUneFenetre ? ' data-large' : '' ?>>
   <div>
     <?php if (!$dansUneFenetre): ?>
       <p class="discret" style="margin-bottom:.35rem">

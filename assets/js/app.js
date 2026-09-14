@@ -238,11 +238,6 @@
      */
     var aChange = false;
 
-    // Certains contenus ne se quittent que par la croix : un clic à côté ou
-    // la touche Échap n'y font rien.
-    var croixSeule = function () {
-      return corps.querySelector('[data-croix-seule]') !== null;
-    };
 
     var fermer = function () {
       if (!peutQuitter()) { return; }
@@ -269,34 +264,25 @@
     boutonRetour.addEventListener('click', function () {
       if (historique.length > 1) { ouvrir(historique[historique.length - 2]); }
     });
-    // « dialog » se ferme parfois toute seule sur Échap : on la retient.
+    /*
+     * Une fenêtre ne se quitte que par sa croix (ou par un bouton qui le dit,
+     * « Annuler », « Retour ») : ni un clic à côté, ni la touche Échap, qui
+     * perdraient d'un geste ce qu'on était en train de lire ou d'écrire.
+     *
+     * « dialog » se ferme d'elle-même sur Échap : on la retient.
+     */
     fenetre.addEventListener('cancel', function (evenement) {
       evenement.preventDefault();
-      if (!croixSeule()) { fermer(); }
     });
 
     fenetre.querySelector('.fenetre__fermer').addEventListener('click', fermer);
 
-    /*
-     * La touche d'échappement, écrite noir sur blanc.
-     *
-     * « dialog » est censée s'en charger seule, et le fait dans la plupart des
-     * cas. Mesuré ici, l'évènement arrive bien mais la fenêtre ne se ferme
-     * pas : trois lignes valent mieux qu'une fenêtre qu'on ne sait plus
-     * quitter au clavier.
-     */
+    // Et certains navigateurs la ferment sur Échap sans passer par « cancel ».
     fenetre.addEventListener('keydown', function (evenement) {
-      if (evenement.key === 'Escape') {
-        evenement.preventDefault();
-        if (!croixSeule()) { fermer(); }
-      }
+      if (evenement.key === 'Escape') { evenement.preventDefault(); }
     });
 
-    // Le fond grisé fait partie de la « dialog » : un clic dessus arrive sur
-    // elle et non sur son contenu. C'est ce qui les distingue.
     fenetre.addEventListener('click', function (evenement) {
-      if (evenement.target === fenetre && !croixSeule()) { fermer(); }
-
       /*
        * Le sommaire d'un aperçu ouvert en fenêtre : c'est la fenêtre qui
        * défile, pas la page derrière. On amène le titre en haut de la

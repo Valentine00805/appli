@@ -21,8 +21,7 @@ $dansUneFenetre = $dansUneFenetre ?? false;
 $versApercu = $dansUneFenetre ? ' data-fenetre' : '';
 ?>
 
-<?php // Comme un cours ou un évènement, le document ne se quitte que par la croix : un clic à côté perdrait les modifications. ?>
-<div class="entete-page"<?= $dansUneFenetre ? ' data-large data-document data-croix-seule' : '' ?>>
+<div class="entete-page"<?= $dansUneFenetre ? ' data-large data-document' : '' ?>>
   <div>
     <?php
     /*

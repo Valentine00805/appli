@@ -103,8 +103,7 @@ $matiereActive = $edition ? entier_ou_null($evenement['matiere_id']) : null;
  * devine ce qu'il vient de charger.
  */
 ?>
-<?php // Comme un cours, un évènement ne se quitte que par la croix : un clic à côté perdrait la saisie. ?>
-<div class="entete-page"<?= $dansUneFenetre ? ' data-large data-croix-seule' : '' ?>>
+<div class="entete-page"<?= $dansUneFenetre ? ' data-large' : '' ?>>
   <div>
     <?php if (!$dansUneFenetre): ?>
       <p class="discret" style="margin-bottom:.35rem">

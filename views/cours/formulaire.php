@@ -17,11 +17,9 @@ $dossierActif  = $edition ? entier_ou_null($cours['dossier_id']) : entier_ou_nul
 <?php
 /*
  * « data-large » : le formulaire tient sur deux colonnes, il lui faut de la place.
- * « data-croix-seule » : un cours, créé ou modifié, ne se quitte que par la croix — un clic
- * à côté de la fenêtre ou la touche Échap perdraient ce qu'on vient de taper.
  */
 ?>
-<div class="entete-page"<?= $dansUneFenetre ? ' data-large data-croix-seule' : '' ?>>
+<div class="entete-page"<?= $dansUneFenetre ? ' data-large' : '' ?>>
   <div>
     <?php // Dans une fenêtre, le cours est juste derrière : la croix y ramène. ?>
     <?php if (!$dansUneFenetre): ?>
