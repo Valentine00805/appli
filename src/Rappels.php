@@ -5,7 +5,8 @@ declare(strict_types=1);
  * Les rappels : ce qui doit partir maintenant, et le faire partir.
  *
  * Deux sortes de rappels :
- *   - avant un évènement, du délai qu'il porte (quinze minutes par défaut) —
+ *   - avant un évènement, de chacun des délais qu'il porte (quinze minutes par
+ *     défaut) —
  *     un évènement « toute la journée » se rappelle à 8 h le jour même, ou
  *     les jours d'avant pour un délai d'un jour ou plus ;
  *   - le matin d'une échéance, à 8 h, pour une sous-tâche pas encore faite ou
@@ -31,7 +32,65 @@ final class Rappels
         120  => '2 heures avant',
         1440 => '1 jour avant',
         2880 => '2 jours avant',
+        10080 => '1 semaine avant',
     ];
+
+    /** Les mêmes, en court, pour les pastilles du formulaire. */
+    public const DELAIS_COURTS = [
+        0    => 'À l’heure',
+        5    => '5 min',
+        10   => '10 min',
+        15   => '15 min',
+        30   => '30 min',
+        60   => '1 h',
+        120  => '2 h',
+        1440 => '1 jour',
+        2880 => '2 jours',
+        10080 => '1 semaine',
+    ];
+
+    /**
+     * Les délais d'un évènement, lus depuis la base : « 1440,15 ».
+     * Du plus lointain au plus proche, sans doublon ni délai inconnu.
+     *
+     * @return list<int>
+     */
+    public static function lire(?string $valeur): array
+    {
+        return self::depuisFormulaire(explode(',', (string) $valeur));
+    }
+
+    /**
+     * Les délais cochés dans un formulaire, nettoyés de la même façon.
+     *
+     * @return list<int>
+     */
+    public static function depuisFormulaire(mixed $valeurs): array
+    {
+        $delais = [];
+        foreach (is_array($valeurs) ? $valeurs : [] as $valeur) {
+            if (is_string($valeur) && preg_match('/^\d+$/', trim($valeur))
+                && array_key_exists((int) $valeur, self::DELAIS)) {
+                $delais[(int) $valeur] = true;
+            }
+        }
+        $delais = array_keys($delais);
+        rsort($delais);
+
+        return $delais;
+    }
+
+    /** @param list<int> $delais */
+    public static function ecrire(array $delais): string
+    {
+        return implode(',', $delais);
+    }
+
+    /** « 1 jour avant · 15 minutes avant », ou une chaîne vide. */
+    public static function dire(?string $valeur): string
+    {
+        return implode(' · ', array_map(static fn (int $d): string => self::DELAIS[$d], self::lire($valeur)));
+    }
 
     /** L'heure des rappels qui ne tombent pas à une heure précise. */
     private const HEURE_DU_MATIN = 8;
@@ -71,6 +130,16 @@ final class Rappels
                 $bilan['envoyes'] += $resultat['envoyes'];
                 $bilan['echecs'] += $resultat['echecs'];
                 $bilan['retires'] += $resultat['retires'];
+
+                // Inscrit pour de bon : les rappels plus anciens du même évènement n'ont plus lieu d'être.
+                if ($resultat['envoyes'] > 0 || $resultat['echecs'] === 0) {
+                    foreach ($rappel['aussi'] ?? [] as $avant) {
+                        Database::run(
+                            'INSERT IGNORE INTO rappels_envoyes (user_id, nature, objet_id, moment) VALUES (?, ?, ?, ?)',
+                            [(int) $compte['id'], $rappel['nature'], $rappel['objet_id'], $avant]
+                        );
+                    }
+                }
 
                 // Aucun appareil n'a pu être joint : on réessaiera à la minute suivante.
                 if ($resultat['envoyes'] === 0 && $resultat['echecs'] > 0) {
@@ -120,38 +189,54 @@ final class Rappels
     /**
      * Les rappels qui doivent partir à cet instant pour un compte.
      *
-     * @return list<array{nature: string, objet_id: int, moment: string, message: array}>
+     * @return list<array{nature: string, objet_id: int, moment: string, aussi?: list<string>, message: array}>
      */
     public static function dus(int $userId, DateTimeImmutable $maintenant): array
     {
         $fuseau = $maintenant->getTimezone();
         $rappels = [];
 
-        // --- Les évènements : d'un jour avant à trois jours après, de quoi couvrir les délais.
+        // --- Les évènements : d'un jour avant à huit jours après, de quoi couvrir les délais.
         $evenements = Database::all(
-            'SELECT id, titre, lieu, debut, fin, journee_entiere, rappel_minutes
+            "SELECT id, titre, lieu, debut, fin, journee_entiere, rappels
                FROM evenements
-              WHERE user_id = ? AND rappel_minutes IS NOT NULL AND termine = 0 AND debut BETWEEN ? AND ?',
-            [$userId, $maintenant->modify('-1 day')->format('Y-m-d H:i:s'), $maintenant->modify('+3 days')->format('Y-m-d H:i:s')]
+              WHERE user_id = ? AND rappels <> '' AND termine = 0 AND debut BETWEEN ? AND ?",
+            [$userId, $maintenant->modify('-1 day')->format('Y-m-d H:i:s'), $maintenant->modify('+8 days')->format('Y-m-d H:i:s')]
         );
         foreach ($evenements as $evt) {
             $debut = new DateTimeImmutable((string) $evt['debut'], $fuseau);
-            $delai = (int) $evt['rappel_minutes'];
 
-            if ((int) $evt['journee_entiere'] === 1) {
-                $matin = $debut->setTime(self::HEURE_DU_MATIN, 0);
-                $moment = $delai >= 1440 ? $matin->modify('-' . intdiv($delai, 1440) . ' days') : $matin;
-                $limite = $debut->setTime(23, 59, 59);
-            } else {
-                $moment = $debut->modify('-' . $delai . ' minutes');
-                // Un rappel « à l'heure » garde quelques minutes de grâce ; les autres s'arrêtent au début.
-                $limite = $delai === 0 ? $debut->modify('+5 minutes') : $debut;
+            /*
+             * Chaque délai donne un moment ; ceux qui sont passés sans que
+             * l'évènement ait commencé sont dus. Un seul part — le plus
+             * récent : après une veille, « 1 heure avant » et « 15 minutes
+             * avant » ne sonnent pas ensemble. Les plus anciens sont inscrits
+             * avec lui, pour ne pas partir à la minute suivante.
+             */
+            $moments = [];
+            foreach (self::lire((string) $evt['rappels']) as $delai) {
+                if ((int) $evt['journee_entiere'] === 1) {
+                    $matin = $debut->setTime(self::HEURE_DU_MATIN, 0);
+                    $moment = $delai >= 1440 ? $matin->modify('-' . intdiv($delai, 1440) . ' days') : $matin;
+                    $limite = $debut->setTime(23, 59, 59);
+                } else {
+                    $moment = $debut->modify('-' . $delai . ' minutes');
+                    // Un rappel « à l'heure » garde quelques minutes de grâce ; les autres s'arrêtent au début.
+                    $limite = $delai === 0 ? $debut->modify('+5 minutes') : $debut;
+                }
+                if ($moment <= $maintenant && $maintenant <= $limite) {
+                    $moments[$moment->format('Y-m-d H:i:s')] = true;
+                }
             }
 
-            if ($moment <= $maintenant && $maintenant <= $limite) {
+            if ($moments !== []) {
+                $moments = array_keys($moments);
+                sort($moments);
+                $moment = array_pop($moments);
                 $rappels[] = [
                     'nature' => 'evenement', 'objet_id' => (int) $evt['id'],
-                    'moment' => $moment->format('Y-m-d H:i:s'),
+                    'moment' => $moment,
+                    'aussi' => $moments,
                     'message' => [
                         'title' => '📅 ' . $evt['titre'],
                         'body' => self::quand($debut, (int) $evt['journee_entiere'] === 1, $maintenant,

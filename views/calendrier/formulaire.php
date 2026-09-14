@@ -181,6 +181,31 @@ $matiereActive = $edition ? entier_ou_null($evenement['matiere_id']) : null;
 
       <?php
       /*
+       * Les rappels : une notification sur les appareils abonnés, à chacun des
+       * délais cochés. Juste sous l'heure, qu'ils accompagnent. Quinze minutes
+       * pour un nouvel évènement.
+       */
+      $rappelsActuels = $edition ? Rappels::lire((string) ($evenement['rappels'] ?? '')) : [15];
+      ?>
+      <fieldset class="rappels-choix">
+        <legend>🔔 Rappels</legend>
+        <div class="rappels-choix__liste">
+          <?php foreach (array_reverse(Rappels::DELAIS_COURTS, true) as $minutes => $court): ?>
+            <label class="rappels-choix__option" title="<?= e(Rappels::DELAIS[$minutes]) ?>">
+              <input type="checkbox" name="rappels[]" value="<?= (int) $minutes ?>"<?= in_array($minutes, $rappelsActuels, true) ? ' checked' : '' ?>>
+              <span class="pastille"><?= e($court) ?></span>
+            </label>
+          <?php endforeach; ?>
+        </div>
+        <span class="champ__aide">
+          Avant l’évènement — cochez-en autant que vous voulez, aucun pour ne pas être prévenu.
+          En journée entière, le rappel tombe à 8 h.
+          (<a href="<?= url('notifications') ?>" target="_blank" rel="noopener">Régler les notifications</a>)
+        </span>
+      </fieldset>
+
+      <?php
+      /*
        * La répétition ne se propose qu'à la création.
        *
        * Les occurrences sont écrites une par une : modifier celle-ci ne touche
@@ -292,26 +317,6 @@ $matiereActive = $edition ? entier_ou_null($evenement['matiere_id']) : null;
                value="<?= e($valeur('lieu')) ?>">
       </div>
 
-      <?php
-      /*
-       * Le rappel : une notification sur les appareils abonnés, ce délai avant
-       * l'évènement. Quinze minutes pour un nouvel évènement ; un évènement
-       * « toute la journée » se rappelle à 8 h.
-       */
-      $rappelActuel = $edition
-          ? ($evenement['rappel_minutes'] === null ? '' : (string) (int) $evenement['rappel_minutes'])
-          : post('rappel_minutes', '15');
-      ?>
-      <div class="champ">
-        <label for="rappel_minutes">🔔 Rappel</label>
-        <select id="rappel_minutes" name="rappel_minutes">
-          <option value=""<?= $rappelActuel === '' ? ' selected' : '' ?>>Aucun rappel</option>
-          <?php foreach (Rappels::DELAIS as $minutes => $libelle): ?>
-            <option value="<?= (int) $minutes ?>"<?= $rappelActuel === (string) $minutes ? ' selected' : '' ?>><?= e($libelle) ?></option>
-          <?php endforeach; ?>
-        </select>
-        <span class="champ__aide">Une notification sur vos appareils abonnés (<a href="<?= url('notifications') ?>" target="_blank" rel="noopener">régler</a>).</span>
-      </div>
 
       <div class="champ">
         <label for="description">Notes</label>

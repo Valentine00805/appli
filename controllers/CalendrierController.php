@@ -387,7 +387,7 @@ final class CalendrierController
     {
         Database::run(
             'INSERT INTO evenements (user_id, matiere_id, cours_id, serie_id, type_id, titre,
-                                     description, lieu, debut, fin, journee_entiere, rappel_minutes)
+                                     description, lieu, debut, fin, journee_entiere, rappels)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             [
                 $userId,
@@ -401,7 +401,7 @@ final class CalendrierController
                 $quand === null ? $donnees['debut'] : $quand['debut']->format('Y-m-d H:i:s'),
                 $quand === null ? $donnees['fin'] : $quand['fin']->format('Y-m-d H:i:s'),
                 $donnees['journee_entiere'],
-                $donnees['rappel_minutes'],
+                $donnees['rappels'],
             ]
         );
 
@@ -826,7 +826,7 @@ final class CalendrierController
         Database::run(
             'UPDATE evenements
              SET matiere_id = ?, cours_id = ?, type_id = ?, titre = ?, description = ?, lieu = ?,
-                 debut = ?, fin = ?, journee_entiere = ?, rappel_minutes = ?
+                 debut = ?, fin = ?, journee_entiere = ?, rappels = ?
              WHERE id = ? AND user_id = ?',
             [
                 $donnees['matiere_id'],
@@ -838,7 +838,7 @@ final class CalendrierController
                 $donnees['debut'],
                 $donnees['fin'],
                 $donnees['journee_entiere'],
-                $donnees['rappel_minutes'],
+                $donnees['rappels'],
                 $id,
                 $userId,
             ]
@@ -908,13 +908,13 @@ final class CalendrierController
             Database::run(
                 'UPDATE evenements
                     SET matiere_id = ?, cours_id = ?, type_id = ?, titre = ?, description = ?,
-                        lieu = ?, debut = ?, fin = ?, journee_entiere = ?, rappel_minutes = ?
+                        lieu = ?, debut = ?, fin = ?, journee_entiere = ?, rappels = ?
                   WHERE id = ? AND user_id = ?',
                 [
                     $donnees['matiere_id'], $donnees['cours_id'], $donnees['type_id'],
                     $donnees['titre'], $donnees['description'], $donnees['lieu'],
                     $neuf->format('Y-m-d H:i:s'), $fin->format('Y-m-d H:i:s'),
-                    $donnees['journee_entiere'], $donnees['rappel_minutes'],
+                    $donnees['journee_entiere'], $donnees['rappels'],
                     (int) $occurrence['id'], $userId,
                 ]
             );
@@ -964,7 +964,7 @@ final class CalendrierController
 
         Database::run(
             'INSERT INTO evenements (user_id, matiere_id, cours_id, copie_de, type_id, titre,
-                                     description, lieu, debut, fin, journee_entiere, rappel_minutes)
+                                     description, lieu, debut, fin, journee_entiere, rappels)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             [
                 $userId,
@@ -978,7 +978,7 @@ final class CalendrierController
                 $donnees['debut'],
                 $donnees['fin'],
                 $donnees['journee_entiere'],
-                $donnees['rappel_minutes'],
+                $donnees['rappels'],
             ]
         );
 
@@ -1421,9 +1421,8 @@ final class CalendrierController
             'debut'           => date('Y-m-d H:i:s', $tsDebut),
             'fin'             => date('Y-m-d H:i:s', $tsFin),
             'journee_entiere' => $journeeEntiere,
-            // Un délai connu, ou aucun rappel.
-            'rappel_minutes'  => array_key_exists((int) post('rappel_minutes', '-1'), Rappels::DELAIS)
-                && post('rappel_minutes') !== '' ? (int) post('rappel_minutes') : null,
+            // Les délais cochés, parmi ceux qu'on connaît ; aucun, pas de rappel.
+            'rappels'         => Rappels::ecrire(Rappels::depuisFormulaire($_POST['rappels'] ?? [])),
         ];
     }
 

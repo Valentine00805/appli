@@ -227,6 +227,22 @@ textarea { min-height: 260px; resize: vertical; line-height: 1.65; }
 .notifications__etat { font-weight: 600; }
 .notifications [hidden] { display: none !important; }
 .notifications__liste { margin: 0; padding-left: 1.2rem; display: grid; gap: .45rem; }
+
+/* Les rappels d'un évènement : des pastilles à cocher, plusieurs à la fois. */
+.rappels-choix__liste { display: flex; flex-wrap: wrap; gap: .45rem; }
+.rappels-choix__option { position: relative; cursor: pointer; margin: 0; }
+/* La case reste là pour le clavier, mais c'est la pastille qu'on voit. */
+.rappels-choix__option input { position: absolute; opacity: 0; width: 0; height: 0; }
+.rappels-choix__option .pastille {
+  font-size: .85rem; padding: .3rem .8rem;
+  border: 1px solid var(--bordure); background: var(--fond); color: var(--texte-doux);
+  transition: background .12s, color .12s, border-color .12s;
+}
+.rappels-choix__option:hover .pastille { border-color: var(--accent); }
+.rappels-choix__option input:checked + .pastille { background: var(--accent); border-color: var(--accent); color: #fff; }
+.rappels-choix__option input:checked + .pastille::before { content: "✓"; }
+.rappels-choix__option input:focus-visible + .pastille { outline: 2px solid var(--accent); outline-offset: 3px; }
+.rappels-choix .champ__aide { display: block; margin-top: .55rem; }
 /* Le petit « ⬇ » des listes de fichiers : la flèche du menu reste discrète. */
 .menu-telecharger--compact > summary { gap: .1rem; }
 .menu-telecharger--compact > summary [aria-hidden] { font-size: .65rem; opacity: .7; }

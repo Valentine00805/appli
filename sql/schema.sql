@@ -165,8 +165,9 @@ CREATE TABLE IF NOT EXISTS `evenements` (
   `journee_entiere` TINYINT(1) NOT NULL DEFAULT 0,
   `termine`     TINYINT(1)   NOT NULL DEFAULT 0,
   `etape`       TINYINT UNSIGNED NOT NULL DEFAULT 0,
-  -- Minutes avant l'évènement pour le rappel ; NULL, pas de rappel.
-  `rappel_minutes` SMALLINT UNSIGNED NULL DEFAULT 15,
+  -- Les délais des rappels, en minutes, du plus lointain au plus proche
+  -- (« 1440,15 ») ; vide, pas de rappel.
+  `rappels`     VARCHAR(80)  NOT NULL DEFAULT '15',
   `created_at`  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `idx_evt_user_debut` (`user_id`, `debut`),

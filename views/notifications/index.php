@@ -54,7 +54,8 @@ $dansUneFenetre = $dansUneFenetre ?? false;
       <h2 style="margin-top:0">Ce qui vous est rappelé</h2>
       <ul class="notifications__liste">
         <li><strong>Les évènements</strong> — ceux de l’application comme ceux d’Outlook et de Google —,
-          15 minutes avant par défaut. Chaque évènement a son choix « Rappel » dans son formulaire.</li>
+          15 minutes avant par défaut. Chaque évènement choisit ses rappels dans son formulaire,
+          autant qu’il en faut : la semaine d’avant, la veille, un quart d’heure avant…</li>
         <li><strong>Un évènement « toute la journée »</strong> : à 8 h le jour même, ou les jours d’avant
           pour un rappel d’un jour ou plus.</li>
         <li><strong>Les échéances de tâches</strong> : à 8 h le jour de l’échéance, pour une sous-tâche pas
