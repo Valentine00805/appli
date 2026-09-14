@@ -18,14 +18,23 @@ final class NotificationsController
         Auth::exiger();
         $userId = Auth::id();
 
-        Vue::afficher('notifications/index', [
+        $donnees = [
             'appareils' => Database::all(
                 'SELECT id, appareil, created_at, dernier_envoi FROM abonnements_push WHERE user_id = ? ORDER BY created_at',
                 [$userId]
             ),
             'clePublique' => WebPush::clesVapid()['publique'],
             'adresseEnvoi' => self::adresseAbsolue(url('notifications/envoyer', ['cle' => self::cleEnvoi()])),
-        ], 'Notifications');
+        ];
+
+        // Depuis « Mon compte », la page s'ouvre dans une fenêtre.
+        if (Vue::enFenetre()) {
+            Vue::fragment('notifications/index', $donnees);
+
+            return;
+        }
+
+        Vue::afficher('notifications/index', $donnees, 'Notifications');
     }
 
     /**

@@ -310,7 +310,7 @@ $matiereActive = $edition ? entier_ou_null($evenement['matiere_id']) : null;
             <option value="<?= (int) $minutes ?>"<?= $rappelActuel === (string) $minutes ? ' selected' : '' ?>><?= e($libelle) ?></option>
           <?php endforeach; ?>
         </select>
-        <span class="champ__aide">Une notification sur vos appareils abonnés (<a href="<?= url('notifications') ?>">régler</a>).</span>
+        <span class="champ__aide">Une notification sur vos appareils abonnés (<a href="<?= url('notifications') ?>" target="_blank" rel="noopener">régler</a>).</span>
       </div>
 
       <div class="champ">

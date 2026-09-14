@@ -96,7 +96,7 @@ $moi = Auth::utilisateur();
         Des rappels avant vos évènements et le matin de vos échéances, sur cet
         ordinateur ou votre téléphone — même application fermée.
       </p>
-      <a class="bouton bouton--secondaire bouton--bloc" href="<?= url('notifications') ?>">Régler les notifications</a>
+      <a class="bouton bouton--secondaire bouton--bloc" href="<?= url('notifications') ?>" data-fenetre>Régler les notifications</a>
     </div>
 
     <div class="carte" style="border-color:var(--accent)">

@@ -9,13 +9,18 @@
  * @var list<array> $appareils
  * @var string $clePublique  la clé VAPID de l'application, en base64url
  * @var string $adresseEnvoi l'adresse que la tâche planifiée appelle chaque minute
+ * @var bool $dansUneFenetre  rendue seule, pour être posée dans une fenêtre
  */
 $csrf = Session::jetonCsrf();
+$dansUneFenetre = $dansUneFenetre ?? false;
 ?>
 
-<div class="entete-page">
+<div class="entete-page"<?= $dansUneFenetre ? ' data-large' : '' ?>>
   <div>
-    <p class="discret" style="margin-bottom:.35rem"><a href="<?= url('compte') ?>">← Mon compte</a></p>
+    <?php // Dans une fenêtre, « Mon compte » est juste derrière : la croix y ramène. ?>
+    <?php if (!$dansUneFenetre): ?>
+      <p class="discret" style="margin-bottom:.35rem"><a href="<?= url('compte') ?>">← Mon compte</a></p>
+    <?php endif; ?>
     <h1>🔔 Notifications</h1>
     <p>Des rappels avant vos évènements et le matin de vos échéances — même application fermée.</p>
   </div>
@@ -76,7 +81,7 @@ $csrf = Session::jetonCsrf();
                 </span>
               </span>
               <span class="fichier__actions">
-                <form method="post" action="<?= url('notifications/desabonnement') ?>" class="en-ligne"
+                <form method="post" action="<?= url('notifications/desabonnement') ?>" class="en-ligne"<?= $dansUneFenetre ? ' data-envoi-fenetre' : '' ?>
                       data-confirmation="Retirer cet appareil ? Il ne recevra plus de rappels.">
                   <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
                   <input type="hidden" name="id" value="<?= (int) $a['id'] ?>">

@@ -338,6 +338,7 @@
         initialiserEditeur(corps);
         initialiserDepots(corps);
         initialiserTexteRiche(corps);
+        initialiserNotifications(corps);
         initialiserFiche(corps);
         initialiserSeance(corps);
     };
@@ -624,8 +625,18 @@
    * Les notifications de rappel, sur la page « Notifications » : la permission
    * du navigateur, le service worker, et l'abonnement confié au serveur.
    */
-  var zoneNotifications = document.querySelector('[data-notifications]');
-  if (zoneNotifications) {
+  var initialiserNotifications = function (racine) {
+    var zoneNotifications = racine.querySelector('[data-notifications]');
+    if (!zoneNotifications) { return; }
+    // Une fois l'appareil activé ou désactivé, la page se relit : dans la
+    // fenêtre, c'est elle qu'on relit, pas la page qu'elle recouvre.
+    var relire = function () {
+      if (zoneNotifications.closest('.fenetre__corps')) {
+        document.dispatchEvent(new CustomEvent('fenetre:relire'));
+      } else {
+        window.location.reload();
+      }
+    };
     (function () {
       var etat = zoneNotifications.querySelector('[data-notifications-etat]');
       var aide = zoneNotifications.querySelector('[data-notifications-aide]');
@@ -711,7 +722,7 @@
             .then(function (abonnement) { return poster(d.abonner, champs(abonnement)); })
             .then(function (reponse) {
               if (!reponse.fait) { throw new Error(reponse.message || 'refus du serveur'); }
-              window.location.reload();
+              relire();
             });
         }).catch(function (e) {
           dire('L’activation a échoué : ' + e.message);
@@ -734,12 +745,13 @@
           if (!abonnement) { return null; }
           var valeurs = champs(abonnement);
           return abonnement.unsubscribe().then(function () { return poster(d.desabonner, valeurs); });
-        }).then(function () { window.location.reload(); });
+        }).then(relire);
       });
 
       verifier();
     })();
-  }
+  };
+  initialiserNotifications(document);
 
   /*
    * Le battement : tant qu'un onglet est ouvert, la page déclenche l'envoi des
