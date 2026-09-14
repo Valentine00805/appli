@@ -124,9 +124,23 @@ $enEdition = is_string($pseudoSaisi);
 </section>
 
 <div class="colonnes">
-  <div class="carte">
-    <h2>Changer de mot de passe</h2>
-    <form method="post" action="<?= url('compte/mot-de-passe') ?>">
+  <?php
+  /*
+   * Le mot de passe, comme le pseudo et le fuseau : rien à remplir tant
+   * qu'on n'a pas cliqué sur « Modifier ». Après un refus, les champs se
+   * rouvrent d'eux-mêmes — vides, un mot de passe ne se garde pas.
+   */
+  $motDePasseOuvert = Session::reprendre('mot_de_passe_ouvert') === true;
+  ?>
+  <div class="carte" id="mot-de-passe-carte" data-reglage>
+    <h2>🔒 Mot de passe</h2>
+
+    <div class="reglage-lecture" data-reglage-lecture<?= $motDePasseOuvert ? ' hidden' : '' ?>>
+      <p class="reglage-lecture__valeur" aria-label="Mot de passe masqué">••••••••</p>
+      <button class="bouton bouton--secondaire" type="button" data-reglage-modifier>✎ Modifier</button>
+    </div>
+
+    <form method="post" action="<?= url('compte/mot-de-passe') ?>" data-reglage-edition<?= $motDePasseOuvert ? '' : ' hidden' ?>>
       <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
 
       <div class="champ">
@@ -148,8 +162,13 @@ $enEdition = is_string($pseudoSaisi);
         </div>
       </div>
 
-      <button class="bouton" type="submit">Mettre à jour</button>
+      <div class="actions">
+        <button class="bouton" type="submit">Enregistrer</button>
+        <button class="bouton bouton--discret" type="button" data-reglage-annuler>Annuler</button>
+      </div>
     </form>
+
+    <p class="champ__aide" style="margin-bottom:0">Huit caractères au moins. Le mot de passe actuel est demandé pour le changer.</p>
   </div>
 
   <div class="pile">

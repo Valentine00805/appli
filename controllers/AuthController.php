@@ -283,14 +283,18 @@ final class AuthController
         $hash = (string) Database::valeur('SELECT password_hash FROM users WHERE id = ?', [$userId]);
         if (!password_verify($actuel, $hash)) {
             Session::flash('erreur', 'Mot de passe actuel incorrect.');
+            // Le formulaire se rouvre, pour réessayer sans recliquer sur « Modifier ».
+            Session::garder('mot_de_passe_ouvert', true);
             redirect('compte');
         }
         if (strlen($nouveau) < 8) {
             Session::flash('erreur', 'Le nouveau mot de passe doit faire au moins 8 caractères.');
+            Session::garder('mot_de_passe_ouvert', true);
             redirect('compte');
         }
         if ($nouveau !== $confirmation) {
             Session::flash('erreur', 'La confirmation ne correspond pas.');
+            Session::garder('mot_de_passe_ouvert', true);
             redirect('compte');
         }
 
