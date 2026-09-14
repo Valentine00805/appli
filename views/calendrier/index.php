@@ -116,7 +116,6 @@ $puce = static function (array $evt) use ($destination): string {
       </form>
     <?php endif; ?>
     <a class="bouton bouton--secondaire" href="<?= url('agenda') ?>" data-fenetre>📆 Mes agendas</a>
-    <a class="bouton bouton--secondaire" href="<?= url('organisation/types') ?>">Gérer les types</a>
     <a class="bouton" href="<?= url('evenements/nouveau') ?>" data-fenetre>+ Évènement</a>
   </div>
 </div>
