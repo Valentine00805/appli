@@ -1147,6 +1147,147 @@
       };
       champ.addEventListener('input', ajuster);
 
+      /*
+       * Les emojis : un bouton ouvre un panneau par catégories, avec les
+       * derniers utilisés en tête. Un clic insère l'emoji là où est le
+       * curseur ; le panneau reste ouvert pour en mettre plusieurs, et se
+       * ferme d'un clic à côté, par Échap, ou à l'envoi.
+       */
+      var boutonEmoji = formulaire.querySelector('[data-emoji-bouton]');
+      var panneauEmoji = formulaire.querySelector('[data-emoji-panneau]');
+      if (boutonEmoji && panneauEmoji) {
+        var EMOJIS = [
+          ['😀', 'Visages', '😀 😃 😄 😁 😆 😅 🤣 😂 🙂 😉 😊 😇 🥰 😍 🤩 😘 😗 😚 😋 😛 😜 🤪 😝 🤗 🤭 🤫 🤔 🤐 🤨 😐 😑 😶 😏 😒 🙄 😬 😌 😔 😪 🤤 😴 😷 🤒 🤕 🤢 🤮 🥵 🥶 🥴 😵 🤯 🤠 🥳 😎 🤓 🧐 😕 😟 🙁 😮 😯 😲 😳 🥺 😦 😧 😨 😰 😥 😢 😭 😱 😖 😣 😞 😓 😩 😫 🥱 😤 😡 😠 🤬 😈 💀 💩 🤡 👻 👽 🤖'],
+          ['👍', 'Gestes', '👍 👎 👌 🤌 ✌️ 🤞 🤟 🤘 🤙 👈 👉 👆 👇 ☝️ ✋ 🤚 🖐️ 🖖 👋 🤏 💪 🙏 🤝 👏 🙌 👐 🤲 ✍️ 💅 🤳 👀 👁️ 🧠 🫶 🙋 🙆 🙅 🤷 🤦 🙇 💁 🧑‍🎓 👩‍🎓 👨‍🎓 🧑‍🏫 🏃 💃 🕺'],
+          ['❤️', 'Cœurs', '❤️ 🧡 💛 💚 💙 💜 🖤 🤍 🤎 💔 ❣️ 💕 💞 💓 💗 💖 💘 💝 💟 ♥️ 😻 💌 💋 🌹 💐'],
+          ['🐶', 'Nature', '🐶 🐱 🐭 🐹 🐰 🦊 🐻 🐼 🐨 🐯 🦁 🐮 🐷 🐸 🐵 🐔 🐧 🐦 🐤 🦆 🦉 🐴 🦄 🐝 🦋 🐌 🐞 🐢 🐍 🐙 🐬 🐳 🦈 🌸 🌼 🌻 🌺 🌷 🌱 🌲 🌳 🍀 🍁 🍂 🌈 ☀️ 🌤️ ⛅ 🌧️ ⛈️ ❄️ ☃️ 🔥 💧 🌊 ⭐ 🌟 🌙'],
+          ['🍕', 'Nourriture', '🍎 🍐 🍊 🍋 🍌 🍉 🍇 🍓 🍒 🍑 🥭 🍍 🥥 🥝 🍅 🥑 🥕 🌽 🥐 🥖 🧀 🥚 🍳 🥞 🧇 🥓 🍔 🍟 🍕 🌭 🥪 🌮 🌯 🥗 🍝 🍜 🍣 🍱 🍩 🍪 🎂 🍰 🧁 🍫 🍬 🍭 🍿 ☕ 🍵 🧃 🥤 🧋 🍺 🍷 🥂'],
+          ['⚽', 'Activités', '⚽ 🏀 🏈 ⚾ 🎾 🏐 🏉 🎱 🏓 🏸 🥊 ⛸️ 🎿 🏂 🏋️ 🚴 🏊 🧘 🎮 🕹️ 🎲 🧩 ♟️ 🎯 🎳 🎨 🎭 🎤 🎧 🎸 🎹 🥁 🎬 📷 🎉 🎊 🎈 🎁 🏆 🥇 🥈 🥉 🏅 ✈️ 🚗 🚌 🚆 🚲 🏠 🏫 🏖️ ⛰️ 🗺️'],
+          ['📚', 'École', '📚 📖 📝 ✏️ 🖊️ 🖍️ 📒 📓 📔 📕 📗 📘 📙 📄 📃 📑 🗂️ 📁 📂 📅 📆 🗓️ 📌 📍 📎 🖇️ 📏 📐 ✂️ 🧮 🔬 🔭 🧪 🧬 💻 🖥️ ⌨️ 🖱️ 📱 ☎️ 🔋 💡 🔦 ⏰ ⏳ ⌛ 🎒 🎓 🏫 💯 ✅ ❌ ❓ ❗ ⚠️'],
+          ['✨', 'Symboles', '✨ 💫 💥 💢 💦 💨 🕳️ 💬 💭 🗯️ 💤 ✔️ ☑️ ➕ ➖ ✖️ ➗ 🟰 ♾️ ‼️ ⁉️ 🔝 🆗 🆕 🆒 🔴 🟠 🟡 🟢 🔵 🟣 ⚫ ⚪ 🟥 🟧 🟨 🟩 🟦 🟪 ⬛ ⬜ 🔶 🔷 ➡️ ⬅️ ⬆️ ⬇️ 🔁 🔄 ⏩ ⏪ 🎵 🎶 💲 💰 🔒 🔓 🔑 🚀']
+        ];
+        var CLE_RECENTS = 'mesCoursEmojisRecents';
+        var lireRecents = function () {
+          try { var r = JSON.parse(localStorage.getItem(CLE_RECENTS) || '[]'); return Array.isArray(r) ? r : []; }
+          catch (e) { return []; }
+        };
+        var retenir = function (emoji) {
+          var recents = lireRecents().filter(function (x) { return x !== emoji; });
+          recents.unshift(emoji);
+          try { localStorage.setItem(CLE_RECENTS, JSON.stringify(recents.slice(0, 24))); } catch (e) { /* stockage refusé */ }
+        };
+
+        var onglets = document.createElement('div');
+        onglets.className = 'emojis__onglets';
+        onglets.setAttribute('role', 'tablist');
+        var grille = document.createElement('div');
+        grille.className = 'emojis__grille';
+        grille.setAttribute('role', 'tabpanel');
+        var titre = document.createElement('p');
+        titre.className = 'emojis__titre';
+        panneauEmoji.appendChild(onglets);
+        panneauEmoji.appendChild(titre);
+        panneauEmoji.appendChild(grille);
+
+        var montrer = function (rang) {
+          var liste = rang < 0 ? lireRecents() : EMOJIS[rang][2].split(' ');
+          titre.textContent = rang < 0 ? 'Récents' : EMOJIS[rang][1];
+          grille.textContent = '';
+          if (!liste.length) {
+            var vide = document.createElement('p');
+            vide.className = 'emojis__vide';
+            vide.textContent = 'Les emojis que vous utiliserez apparaîtront ici.';
+            grille.appendChild(vide);
+          }
+          liste.forEach(function (emoji) {
+            var b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'emojis__emoji';
+            b.textContent = emoji;
+            b.setAttribute('data-emoji', emoji);
+            b.setAttribute('aria-label', emoji);
+            grille.appendChild(b);
+          });
+          onglets.querySelectorAll('button').forEach(function (o) {
+            o.setAttribute('aria-selected', Number(o.getAttribute('data-rang')) === rang ? 'true' : 'false');
+          });
+          grille.scrollTop = 0;
+        };
+
+        [['🕘', 'Récents', -1]].concat(EMOJIS.map(function (c, i) { return [c[0], c[1], i]; })).forEach(function (o) {
+          var onglet = document.createElement('button');
+          onglet.type = 'button';
+          onglet.className = 'emojis__onglet';
+          onglet.setAttribute('role', 'tab');
+          onglet.setAttribute('data-rang', String(o[2]));
+          onglet.title = o[1];
+          onglet.setAttribute('aria-label', o[1]);
+          onglet.textContent = o[0];
+          onglets.appendChild(onglet);
+        });
+
+        // Où était le curseur avant d'ouvrir le panneau : c'est là qu'on insère.
+        var debutSelection = null;
+        var finSelection = null;
+        var retenirCurseur = function () {
+          debutSelection = champ.selectionStart;
+          finSelection = champ.selectionEnd;
+        };
+        champ.addEventListener('keyup', retenirCurseur);
+        champ.addEventListener('click', retenirCurseur);
+        champ.addEventListener('input', retenirCurseur);
+
+        var ouvrirEmojis = function () {
+          retenirCurseur();
+          montrer(lireRecents().length ? -1 : 0);
+          panneauEmoji.hidden = false;
+          boutonEmoji.setAttribute('aria-expanded', 'true');
+        };
+        var fermerEmojis = function (rendreLaMain) {
+          if (panneauEmoji.hidden) { return; }
+          panneauEmoji.hidden = true;
+          boutonEmoji.setAttribute('aria-expanded', 'false');
+          if (rendreLaMain) { champ.focus(); }
+        };
+
+        boutonEmoji.hidden = false;
+        boutonEmoji.addEventListener('click', function () {
+          if (panneauEmoji.hidden) { ouvrirEmojis(); } else { fermerEmojis(true); }
+        });
+
+        onglets.addEventListener('click', function (evenement) {
+          var onglet = evenement.target.closest('[data-rang]');
+          if (onglet) { montrer(Number(onglet.getAttribute('data-rang'))); }
+        });
+
+        grille.addEventListener('click', function (evenement) {
+          var b = evenement.target.closest('[data-emoji]');
+          if (!b) { return; }
+          var emoji = b.getAttribute('data-emoji');
+          var debut = debutSelection === null ? champ.value.length : debutSelection;
+          var fin = finSelection === null ? champ.value.length : finSelection;
+          // Pas au-delà de la longueur permise : l'emoji ne tiendrait qu'à moitié.
+          var place = Number(champ.getAttribute('maxlength')) || Infinity;
+          if (champ.value.length - (fin - debut) + emoji.length > place) { return; }
+          champ.setRangeText(emoji, debut, fin, 'end');
+          debutSelection = finSelection = debut + emoji.length;
+          retenir(emoji);
+          champ.dispatchEvent(new Event('input', { bubbles: true }));
+          champ.focus({ preventScroll: true });
+          champ.setSelectionRange(debutSelection, finSelection);
+        });
+
+        document.addEventListener('click', function (evenement) {
+          if (!panneauEmoji.hidden && !panneauEmoji.contains(evenement.target) && evenement.target !== boutonEmoji) {
+            fermerEmojis(false);
+          }
+        });
+        document.addEventListener('keydown', function (evenement) {
+          if (evenement.key === 'Escape' && !panneauEmoji.hidden) { fermerEmojis(true); }
+        });
+        formulaire.addEventListener('submit', function () { fermerEmojis(false); });
+      }
+
       var minuterie = null;
       var planifier = function () {
         clearTimeout(minuterie);

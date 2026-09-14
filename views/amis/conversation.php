@@ -67,7 +67,11 @@ foreach ($messages as $m) {
       <label class="sr-only" for="chat-texte">Message à <?= e((string) $ami['pseudo']) ?></label>
       <textarea id="chat-texte" name="texte" rows="1" maxlength="<?= Amis::MESSAGE_MAX ?>" required
                 placeholder="Écrire à <?= e((string) $ami['pseudo']) ?>…" autofocus></textarea>
+      <?php // Le choix des emojis : le panneau est rempli par le script, qui seul peut les insérer. ?>
+      <button class="chat__emoji-bouton" type="button" data-emoji-bouton hidden
+              aria-label="Insérer un emoji" title="Emojis" aria-expanded="false" aria-controls="chat-emojis">😊</button>
       <button class="bouton" type="submit">Envoyer</button>
+      <div class="emojis" id="chat-emojis" data-emoji-panneau role="dialog" aria-label="Emojis" hidden></div>
     </form>
     <p class="chat__erreur" data-chat-erreur role="alert" hidden></p>
   </section>
