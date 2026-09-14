@@ -289,6 +289,8 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
 /* Le tableau : ses listes, les pastilles des types, puis son compte — sur une
    seule ligne tant qu'il y a la place, et à la ligne sur un écran étroit. */
 .tableau-filtres { flex-wrap: wrap; }
+/* Au calendrier, les pastilles ont leur propre ligne, sous la barre. */
+.cal-types { margin: -.35rem 0 1rem; }
 
 /* « + Tâche » : la sous-tâche et la tâche principale côte à côte. */
 .nouvelle-tache-choix {
@@ -400,7 +402,6 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
 .evt-ligne__droite { margin-left: auto; display: flex; align-items: center; gap: .4rem; }
 .evt-ligne--termine .evt-ligne__titre { text-decoration: line-through; opacity: .6; }
 
-.legende-types { display: flex; gap: .6rem; flex-wrap: wrap; font-size: .82rem; color: var(--texte-doux); }
 
 /* --- Matières ------------------------------------------------------------ */
 

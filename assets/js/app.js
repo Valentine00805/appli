@@ -692,8 +692,10 @@
   });
 
   document.querySelectorAll('[data-auto-envoi]').forEach(function (formulaire) {
-    formulaire.querySelectorAll('select, input[type="checkbox"], input[type="radio"], input[type="color"]')
-      .forEach(function (champ) {
+    // « elements », et non les seuls descendants : un champ rangé ailleurs dans
+    // la page mais rattaché au formulaire (« form="…" ») s'envoie aussi.
+    [].slice.call(formulaire.elements).forEach(function (champ) {
+      if (!champ.matches('select, input[type="checkbox"], input[type="radio"], input[type="color"]')) { return; }
       champ.addEventListener('change', function () { formulaire.submit(); });
     });
   });

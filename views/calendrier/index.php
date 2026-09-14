@@ -129,7 +129,7 @@ $puce = static function (array $evt) use ($destination): string {
   </div>
 
   <div class="actions">
-    <form class="cal-filtres" method="get" action="<?= url('calendrier') ?>" data-auto-envoi>
+    <form class="cal-filtres" id="cal-filtres" method="get" action="<?= url('calendrier') ?>" data-auto-envoi>
       <input type="hidden" name="vue" value="<?= e($vue) ?>">
       <input type="hidden" name="date" value="<?= e($ancre->format('Y-m-d')) ?>">
       <select name="matiere" aria-label="Filtrer par matière">
@@ -137,14 +137,6 @@ $puce = static function (array $evt) use ($destination): string {
         <?php foreach ($matieres as $m): ?>
           <option value="<?= (int) $m['id'] ?>"<?= $matiereId === (int) $m['id'] ? ' selected' : '' ?>>
             <?= e($m['nom']) ?>
-          </option>
-        <?php endforeach; ?>
-      </select>
-      <select name="type" aria-label="Filtrer par type">
-        <option value="">Tous les types</option>
-        <?php foreach ($types as $t): ?>
-          <option value="<?= (int) $t['id'] ?>"<?= $typeId === (int) $t['id'] ? ' selected' : '' ?>>
-            <?= e($t['icone'] . ' ' . $t['nom']) ?>
           </option>
         <?php endforeach; ?>
       </select>
@@ -159,6 +151,30 @@ $puce = static function (array $evt) use ($destination): string {
     </nav>
   </div>
 </div>
+
+<?php
+/*
+ * Les types en pastilles, sous la barre, comme au tableau : un clic filtre le
+ * calendrier. Ils appartiennent au formulaire des filtres (« form ») sans y
+ * être rangés — la barre, sur une seule ligne, n'a pas la place de les tenir.
+ */
+?>
+<?php if ($types !== []): ?>
+  <div class="filtre-types cal-types" role="radiogroup" aria-label="Filtrer par type d'évènement">
+    <label class="filtre-types__choix">
+      <input type="radio" name="type" value="" form="cal-filtres"<?= $typeId === null ? ' checked' : '' ?>>
+      <span class="pastille pastille--muette">Tous les types</span>
+    </label>
+    <?php foreach ($types as $t): ?>
+      <label class="filtre-types__choix">
+        <input type="radio" name="type" value="<?= (int) $t['id'] ?>" form="cal-filtres"<?= $typeId === (int) $t['id'] ? ' checked' : '' ?>>
+        <span class="pastille" style="background:<?= e($t['couleur']) ?>;color:<?= e(couleur_texte($t['couleur'])) ?>">
+          <?= e($t['icone'] . ' ' . $t['nom']) ?>
+        </span>
+      </label>
+    <?php endforeach; ?>
+  </div>
+<?php endif; ?>
 
 <div class="cal-avec-volet<?= $sources === [] ? '' : ' cal-avec-volet--volet' ?><?php
     ?><?= $sources !== [] && $voletFerme ? ' cal-avec-volet--ferme' : '' ?>">
@@ -497,13 +513,4 @@ $puce = static function (array $evt) use ($destination): string {
 </div><!-- .cal-corps -->
 </div><!-- .cal-avec-volet -->
 
-<div class="legende-types" style="margin-top:1rem">
-  <?php foreach ($types as $t): ?>
-    <a class="pastille" href="<?= url('calendrier', ['vue' => $vue, 'date' => $ancre->format('Y-m-d'), 'type' => $t['id']]) ?>"
-       style="background:<?= e($t['couleur']) ?>;color:<?= e(couleur_texte($t['couleur'])) ?>">
-      <?= e($t['icone'] . ' ' . $t['nom']) ?>
-    </a>
-  <?php endforeach; ?>
-  <a class="pastille" href="<?= url('organisation/types') ?>">⚙ Gérer</a>
-</div>
 
