@@ -11,6 +11,10 @@ declare(strict_types=1);
  * celui de l'aperçu, en pages A4, numérotées.
  *
  * Un fichier texte (« brut ») sort en caractères à chasse fixe, ligne à ligne.
+ *
+ * Le contenu d'un cours sort de la même mise en pages : son HTML nettoyé
+ * (TexteRiche) est découpé en paragraphes du même genre, sous le titre du cours,
+ * avec son sommaire et les pages où l'on trouve chaque titre.
  */
 final class ExportPdf
 {
@@ -25,10 +29,13 @@ final class ExportPdf
     private PdfSimple $pdf;
     private float $y = 0;
 
-    /** @var array<int, ?array{0: int, 1: int, 2: int}> les images déjà posées, par rang */
+    /** @var array<int|string, ?array{0: int, 1: int, 2: int}> les images déjà posées, par rang ou par empreinte */
     private array $images = [];
 
-    private function __construct(private string $chemin, private string $nom)
+    /** @var list<int> la page (à partir de 1) de chaque titre, dans l'ordre du texte */
+    private array $pagesDesTitres = [];
+
+    private function __construct(private string $chemin = '', private string $nom = '')
     {
         $this->pdf = new PdfSimple();
     }
@@ -60,7 +67,14 @@ final class ExportPdf
             }
         }
 
-        // Les numéros de page, une fois le compte connu.
+        $this->numeroterPages();
+
+        return $this->pdf->sortie((string) pathinfo($this->nom, PATHINFO_FILENAME));
+    }
+
+    /** Les numéros de page, une fois le compte connu. */
+    private function numeroterPages(): void
+    {
         $total = $this->pdf->nombreDePages();
         for ($i = 0; $i < $total; $i++) {
             $this->pdf->allerALaPage($i);
@@ -68,8 +82,268 @@ final class ExportPdf
             $largeur = $this->pdf->largeur($mention, 'F1', 8.5);
             $this->pdf->texte((PdfSimple::LARGEUR - $largeur) / 2, self::MARGE / 2, $mention, 'F1', 8.5, [0.45, 0.45, 0.5]);
         }
+    }
 
-        return $this->pdf->sortie((string) pathinfo($this->nom, PATHINFO_FILENAME));
+    /* --- Le contenu d'un cours ------------------------------------------------ */
+
+    /**
+     * Le contenu écrit d'un cours, en PDF : le titre du cours, sa matière, puis
+     * le texte — et, si on l'a demandé dans l'éditeur, le sommaire avec la page
+     * de chaque titre.
+     *
+     * La page d'un titre ne se connaît qu'une fois tout mis en pages, et le
+     * sommaire prend lui-même de la place : on met donc en pages deux fois, la
+     * première avec un sommaire aux numéros provisoires, de même hauteur.
+     *
+     * @param array{titre: string, contenu: ?string, matiere_nom?: ?string} $cours
+     */
+    public static function depuisCours(array $cours): string
+    {
+        [$blocs, $profondeur] = self::blocsDuTexteRiche($cours['contenu'] ?? null);
+
+        $plan = [];
+        foreach ($blocs as $rang => $bloc) {
+            $niveau = (int) ($bloc['titre'] ?? 0);
+            if ($niveau > 0) {
+                $plan[] = ['rang' => $rang, 'niveau' => $niveau,
+                           'texte' => trim(html_entity_decode(strip_tags((string) $bloc['html']), ENT_QUOTES | ENT_HTML5, 'UTF-8'))];
+            }
+        }
+
+        $essai = new self();
+        $essai->mettreEnPagesLeCours($cours, $blocs, $plan, $profondeur, null);
+
+        $final = new self();
+        $final->mettreEnPagesLeCours($cours, $blocs, $plan, $profondeur, $essai->pagesDesTitres);
+
+        return $final->pdf->sortie((string) $cours['titre']);
+    }
+
+    /**
+     * @param list<array> $blocs
+     * @param list<array{rang: int, niveau: int, texte: string}> $plan
+     * @param ?list<int> $pages la page de chaque titre, connue au second passage
+     */
+    private function mettreEnPagesLeCours(array $cours, array $blocs, array $plan, int $profondeur, ?array $pages): void
+    {
+        $this->nouvellePage();
+
+        // L'en-tête : le titre du cours, et ce qui le situe.
+        $this->bloc(['html' => htmlspecialchars((string) $cours['titre'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'),
+                     'titre' => 1, 'taille_titre' => 22.0]);
+        $matiere = trim((string) ($cours['matiere_nom'] ?? ''));
+        if ($matiere !== '') {
+            $this->bloc(['html' => '<span data-couleur="6b7280">' . htmlspecialchars($matiere, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</span>']);
+        }
+        $this->y -= 6;
+
+        // Le sommaire, s'il a été demandé et s'il y a des titres à y mettre.
+        $entrees = [];
+        foreach ($plan as $numero => $titre) {
+            if ($titre['niveau'] <= $profondeur && $titre['texte'] !== '') {
+                $entrees[] = $titre + ['page' => $pages[$numero] ?? null];
+            }
+        }
+        if ($entrees !== []) {
+            $this->sommaire($entrees);
+        }
+
+        if ($blocs === []) {
+            $this->bloc(['html' => '<i><span data-couleur="6b7280">Ce cours n’a pas encore de contenu écrit.</span></i>']);
+        }
+        foreach ($blocs as $bloc) {
+            $this->bloc($bloc);
+        }
+
+        $this->numeroterPages();
+    }
+
+    /**
+     * Le sommaire : une ligne par titre, décalée selon son niveau, la page au
+     * bout. Une ligne trop longue est raccourcie : elle doit tenir sur une
+     * ligne, pour que les deux passages prennent la même place.
+     *
+     * @param list<array{niveau: int, texte: string, page: ?int}> $entrees
+     */
+    private function sommaire(array $entrees): void
+    {
+        // « taille_titre » : un titre de mise en page, qui n'entre pas lui-même au sommaire.
+        $this->bloc(['html' => 'Sommaire', 'titre' => 3, 'taille_titre' => 13.0]);
+        $taille = 10.5;
+        $largeurTotale = PdfSimple::LARGEUR - 2 * self::MARGE;
+
+        foreach ($entrees as $entree) {
+            $retrait = ($entree['niveau'] - 1) * self::RETRAIT;
+            $police = $entree['niveau'] === 1 ? 'F2' : 'F1';
+            $page = PdfSimple::encoder((string) ($entree['page'] ?? '00'));
+            $largeurPage = $this->pdf->largeur($page, 'F1', $taille);
+            $place = $largeurTotale - $retrait - $largeurPage - 18;
+
+            $texte = PdfSimple::encoder($entree['texte']);
+            if ($this->pdf->largeur($texte, $police, $taille) > $place) {
+                while ($texte !== '' && $this->pdf->largeur($texte . "\x85", $police, $taille) > $place) {
+                    $texte = substr($texte, 0, -1);
+                }
+                $texte = rtrim($texte) . "\x85";
+            }
+
+            $this->place($taille * 1.55);
+            $base = $this->y - $taille;
+            $x = self::MARGE + $retrait;
+            $this->pdf->texte($x, $base, $texte, $police, $taille);
+
+            // Des points de conduite, jusqu'au numéro.
+            $debut = $x + $this->pdf->largeur($texte, $police, $taille) + 4;
+            $fin = self::MARGE + $largeurTotale - $largeurPage - 4;
+            $point = $this->pdf->largeur('. ', 'F1', $taille);
+            $points = (int) max(0, floor(($fin - $debut) / $point));
+            if ($points > 0 && $entree['page'] !== null) {
+                $this->pdf->texte($fin - $points * $point, $base, str_repeat('. ', $points), 'F1', $taille, [0.6, 0.6, 0.65]);
+            }
+            if ($entree['page'] !== null) {
+                $this->pdf->texte(self::MARGE + $largeurTotale - $largeurPage, $base, $page, 'F1', $taille);
+            }
+            $this->y -= $taille * 1.55;
+        }
+        $this->y -= 10;
+    }
+
+    /**
+     * Le contenu d'un cours découpé en paragraphes que la mise en pages connaît.
+     *
+     * Le HTML est celui que TexteRiche garde — nettoyé, aux balises connues :
+     * les blocs (div, titres, retraits, listes) deviennent des paragraphes, le
+     * reste (gras, couleurs, images, sauts de ligne) passe tel quel à l'intérieur.
+     * Un texte d'avant, brut, donne un paragraphe par ligne.
+     *
+     * @return array{0: list<array>, 1: int} les paragraphes, et la profondeur du sommaire
+     */
+    private static function blocsDuTexteRiche(?string $contenu): array
+    {
+        $contenu = (string) $contenu;
+        if (trim($contenu) === '') {
+            return [[], 0];
+        }
+        if (!TexteRiche::estRiche($contenu)) {
+            $blocs = [];
+            foreach (preg_split('/\r\n|\r|\n/', trim($contenu)) ?: [] as $ligne) {
+                $blocs[] = ['html' => htmlspecialchars($ligne, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')];
+            }
+            return [$blocs, 0];
+        }
+
+        $propre = substr(TexteRiche::pourEditeur($contenu), strlen(TexteRiche::MARQUE));
+        $profondeur = 0;
+        if (preg_match('/^<!--sommaire:([1-3])-->/', $propre, $m) === 1) {
+            $profondeur = (int) $m[1];
+            $propre = substr($propre, strlen($m[0]));
+        }
+
+        $doc = new DOMDocument();
+        $avant = libxml_use_internal_errors(true);
+        $doc->loadHTML('<?xml encoding="UTF-8"><div>' . $propre . '</div>',
+            LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD | LIBXML_NONET | LIBXML_PARSEHUGE);
+        libxml_clear_errors();
+        libxml_use_internal_errors($avant);
+
+        $blocs = [];
+        foreach ($doc->childNodes as $racine) {
+            if ($racine instanceof DOMElement) {
+                self::blocsDe($doc, $racine, null, 0, $blocs);
+            }
+        }
+
+        return [$blocs, $profondeur];
+    }
+
+    /** @param list<array> $blocs */
+    private static function blocsDe(DOMDocument $doc, DOMNode $parent, ?string $alignement, int $retrait, array &$blocs): void
+    {
+        $enCours = '';
+        $vider = static function () use (&$enCours, &$blocs, $alignement, $retrait): void {
+            if (trim(strip_tags($enCours)) !== '' || str_contains($enCours, '<img')) {
+                $blocs[] = ['html' => $enCours, 'alignement' => $alignement, 'retrait' => $retrait];
+            }
+            $enCours = '';
+        };
+
+        foreach ($parent->childNodes as $enfant) {
+            if ($enfant instanceof DOMText) {
+                $enCours .= htmlspecialchars((string) $enfant->nodeValue, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+                continue;
+            }
+            if (!$enfant instanceof DOMElement) {
+                continue;
+            }
+            $nom = strtolower($enfant->nodeName);
+            $sien = self::alignementDe($enfant) ?? $alignement;
+
+            if ($nom === 'div') {
+                $vider();
+                self::blocsDe($doc, $enfant, $sien, $retrait, $blocs);
+            } elseif ($nom === 'blockquote') {
+                $vider();
+                self::blocsDe($doc, $enfant, $sien, $retrait + 1, $blocs);
+            } elseif (in_array($nom, ['h2', 'h3', 'h4'], true)) {
+                $vider();
+                $blocs[] = ['html' => self::interieur($doc, $enfant), 'titre' => (int) substr($nom, 1) - 1,
+                            'alignement' => $sien, 'retrait' => $retrait];
+            } elseif ($nom === 'ul' || $nom === 'ol') {
+                $vider();
+                self::liste($doc, $enfant, 0, $sien, $retrait, $blocs);
+            } else {
+                $enCours .= $doc->saveHTML($enfant);
+            }
+        }
+        $vider();
+    }
+
+    /** Une liste : un paragraphe par élément, les sous-listes un niveau plus bas. */
+    private static function liste(DOMDocument $doc, DOMElement $liste, int $niveau, ?string $alignement, int $retrait, array &$blocs): void
+    {
+        $sorte = strtolower($liste->nodeName) === 'ol' ? 'numero' : 'puce';
+        $numero = 0;
+        foreach ($liste->childNodes as $element) {
+            if (!$element instanceof DOMElement || strtolower($element->nodeName) !== 'li') {
+                continue;
+            }
+            $numero++;
+            $texte = '';
+            $sousListes = [];
+            foreach ($element->childNodes as $enfant) {
+                if ($enfant instanceof DOMElement && in_array(strtolower($enfant->nodeName), ['ul', 'ol'], true)) {
+                    $sousListes[] = $enfant;
+                } else {
+                    $texte .= $enfant instanceof DOMText
+                        ? htmlspecialchars((string) $enfant->nodeValue, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')
+                        : $doc->saveHTML($enfant);
+                }
+            }
+            $blocs[] = ['html' => $texte, 'liste' => $sorte, 'numero' => $numero, 'niveau' => min($niveau, 4),
+                        'alignement' => self::alignementDe($element) ?? $alignement, 'retrait' => $retrait];
+            foreach ($sousListes as $sous) {
+                self::liste($doc, $sous, $niveau + 1, $alignement, $retrait, $blocs);
+            }
+        }
+    }
+
+    private static function interieur(DOMDocument $doc, DOMElement $element): string
+    {
+        $html = '';
+        foreach ($element->childNodes as $enfant) {
+            $html .= $doc->saveHTML($enfant);
+        }
+
+        return $html;
+    }
+
+    private static function alignementDe(DOMElement $element): ?string
+    {
+        if (preg_match('/text-align:\s*(left|center|right|justify)/i', $element->getAttribute('style'), $m) !== 1) {
+            return null;
+        }
+
+        return ['left' => 'gauche', 'center' => 'centre', 'right' => 'droite', 'justify' => 'justifie'][strtolower($m[1])];
     }
 
     /**
@@ -113,10 +387,12 @@ final class ExportPdf
         $titre = min((int) ($bloc['titre'] ?? 0), 3);
         $liste = $titre > 0 ? '' : (string) ($bloc['liste'] ?? '');
         $niveau = (int) ($bloc['niveau'] ?? 0);
-        $gauche = $liste === '' ? 0.0 : ($niveau + 1) * self::RETRAIT;
+        // Un retrait (« blockquote » du contenu d'un cours) décale tout le paragraphe.
+        $gauche = (int) ($bloc['retrait'] ?? 0) * self::RETRAIT * 1.5
+            + ($liste === '' ? 0.0 : ($niveau + 1) * self::RETRAIT);
         $disponible = PdfSimple::LARGEUR - 2 * self::MARGE - $gauche;
 
-        $jetons = $this->jetons((string) ($bloc['html'] ?? ''), $titre);
+        $jetons = $this->jetons((string) ($bloc['html'] ?? ''), $titre, $bloc['taille_titre'] ?? null);
         foreach ($bloc['images'] ?? [] as $image) {
             $jeton = $this->jetonImage((int) $image['rang'], isset($image['largeur']) ? (int) $image['largeur'] : null, 'centre');
             if ($jeton !== null) {
@@ -124,6 +400,10 @@ final class ExportPdf
             }
         }
         if ($jetons === []) {
+            // Un titre vide garde sa place dans le compte des titres du sommaire.
+            if ($titre > 0 && !isset($bloc['taille_titre'])) {
+                $this->pagesDesTitres[] = $this->pdf->nombreDePages();
+            }
             $this->y -= self::TAILLE * 0.6;
             return;
         }
@@ -150,6 +430,10 @@ final class ExportPdf
             $this->place($hauteur);
             $base = $this->y - $taille * 1.0;
 
+            // La page d'un titre, pour le sommaire : celle de sa première ligne.
+            if ($premiere && $titre > 0 && !isset($bloc['taille_titre'])) {
+                $this->pagesDesTitres[] = $this->pdf->nombreDePages();
+            }
             if ($premiere && $liste !== '') {
                 $this->marqueDeListe($liste, $niveau, $bloc['numero'] ?? null, $gauche, $base, $ligne['jetons'][0]['taille'] ?? self::TAILLE);
             }
@@ -168,21 +452,22 @@ final class ExportPdf
      *
      * @return list<array>
      */
-    private function jetons(string $html, int $titre): array
+    private function jetons(string $html, int $titre, ?float $tailleTitre = null): array
     {
         if (trim($html) === '') {
             return [];
         }
         $doc = new DOMDocument();
         $avant = libxml_use_internal_errors(true);
-        $doc->loadHTML('<?xml encoding="UTF-8"><div>' . $html . '</div>', LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD | LIBXML_NONET);
+        $doc->loadHTML('<?xml encoding="UTF-8"><div>' . $html . '</div>',
+            LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD | LIBXML_NONET | LIBXML_PARSEHUGE);
         libxml_clear_errors();
         libxml_use_internal_errors($avant);
 
         $jetons = [];
         $style = [
             'gras' => $titre > 0, 'italique' => false, 'souligne' => false,
-            'taille' => $titre > 0 ? self::TITRES[$titre] : self::TAILLE,
+            'taille' => $titre > 0 ? ($tailleTitre ?? self::TITRES[$titre]) : self::TAILLE,
             'couleur' => [0.0, 0.0, 0.0], 'fond' => null,
         ];
         foreach ($doc->childNodes as $racine) {
@@ -219,6 +504,12 @@ final class ExportPdf
                         if ($jeton !== null) {
                             $jetons[] = $jeton;
                         }
+                    } elseif (preg_match('~^data:image/(?:png|jpeg|gif|webp);base64,([A-Za-z0-9+/]+={0,2})$~', $source, $m) === 1) {
+                        // Une image du contenu d'un cours, embarquée dans le texte.
+                        $jeton = $this->jetonImageEmbarquee($m[1], $enfant->getAttribute('style'));
+                        if ($jeton !== null) {
+                            $jetons[] = $jeton;
+                        }
                     }
                     continue 2;
                 case 'b': case 'strong':
@@ -241,6 +532,17 @@ final class ExportPdf
                     $fond = self::rgb($enfant->getAttribute('data-fond'));
                     if ($fond !== null) {
                         $sien['fond'] = $fond;
+                    }
+                    // Le contenu d'un cours écrit ses styles en CSS, déjà vérifiés par TexteRiche.
+                    $css = $enfant->getAttribute('style');
+                    if (preg_match('/font-size:\s*(\d{1,2})pt/i', $css, $m) === 1) {
+                        $sien['taille'] = max(4.0, min(96.0, (float) $m[1]));
+                    }
+                    if (preg_match('/(?<![-\w])color:\s*([^;]+)/i', $css, $m) === 1 && ($couleur = self::rgb($m[1])) !== null) {
+                        $sien['couleur'] = $couleur;
+                    }
+                    if (preg_match('/background-color:\s*([^;]+)/i', $css, $m) === 1) {
+                        $sien['fond'] = self::rgb($m[1]);
                     }
                     break;
                 // Les figures « impossibles » de l'aperçu ne portent que des explications.
@@ -433,14 +735,53 @@ final class ExportPdf
         ];
     }
 
+    /**
+     * Une image embarquée dans le contenu d'un cours : sa largeur en part de la
+     * ligne, et sa place — à gauche, à droite, centrée ou dans la ligne.
+     */
+    private function jetonImageEmbarquee(string $base64, string $style): ?array
+    {
+        $cle = 'embarquee:' . md5($base64);
+        if (!array_key_exists($cle, $this->images)) {
+            $octets = base64_decode($base64, true);
+            $this->images[$cle] = $octets === false ? null : $this->imageDepuisOctets($octets);
+        }
+        $image = $this->images[$cle];
+        if ($image === null) {
+            return null;
+        }
+        [$numero, $px, $py] = $image;
+        $part = preg_match('/width:\s*(\d{1,3})%/', $style, $m) === 1 ? max(3, min(100, (int) $m[1])) : null;
+        $habillage = match (true) {
+            (bool) preg_match('/float:\s*left/', $style)    => 'gauche',
+            (bool) preg_match('/float:\s*right/', $style)   => 'droite',
+            (bool) preg_match('/display:\s*block/', $style) => 'centre',
+            default                                         => '',
+        };
+        $largeur = $px * self::PX_EN_PT;
+
+        return [
+            'sorte' => 'image', 'numero' => $numero, 'part' => $part,
+            'largeur' => $largeur, 'hauteur' => $largeur * $py / max(1, $px),
+            'habillage' => $habillage,
+        ];
+    }
+
     /** @return ?array{0: int, 1: int, 2: int} le numéro dans le PDF, et la taille en pixels */
     private function preparerImage(int $rang): ?array
     {
         $trouvee = ImagesDocument::octets($this->chemin, $this->nom, $rang);
-        if ($trouvee === null || !function_exists('imagecreatefromstring')) {
+
+        return $trouvee === null ? null : $this->imageDepuisOctets($trouvee['octets']);
+    }
+
+    /** @return ?array{0: int, 1: int, 2: int} */
+    private function imageDepuisOctets(string $octets): ?array
+    {
+        if (!function_exists('imagecreatefromstring')) {
             return null;
         }
-        $source = @imagecreatefromstring($trouvee['octets']);
+        $source = @imagecreatefromstring($octets);
         if ($source === false) {
             // Un format que GD ne lit pas (EMF, WMF…) : l'aperçu ne le montre pas non plus.
             return null;
@@ -466,7 +807,10 @@ final class ExportPdf
 
     private function poserImage(array $image, float $gauche, float $disponible, string $alignement): void
     {
-        $largeur = min($image['largeur'], $disponible);
+        // Une largeur donnée en part de la ligne (contenu d'un cours) se rapporte à la place qu'on a.
+        $largeur = isset($image['part']) && $image['part'] !== null
+            ? $disponible * $image['part'] / 100
+            : min($image['largeur'], $disponible);
         $hauteur = $image['hauteur'] * $largeur / max(0.01, $image['largeur']);
         // Plus haute qu'une page : réduite pour tenir.
         $hauteurMax = PdfSimple::HAUTEUR - 2 * self::MARGE - self::PIED;
@@ -526,7 +870,15 @@ final class ExportPdf
     /** @return ?array{0: float, 1: float, 2: float} */
     private static function rgb(string $hexa): ?array
     {
-        if (preg_match('/^#?([0-9a-fA-F]{6})$/', trim($hexa), $m) !== 1) {
+        $hexa = strtolower(trim($hexa));
+        if (preg_match('/^rgba?\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})/', $hexa, $m) === 1) {
+            return [min(255, (int) $m[1]) / 255, min(255, (int) $m[2]) / 255, min(255, (int) $m[3]) / 255];
+        }
+        // « transparent » : pas de fond.
+        if (preg_match('/^#([0-9a-f])([0-9a-f])([0-9a-f])$/', $hexa, $m) === 1) {
+            $hexa = $m[1] . $m[1] . $m[2] . $m[2] . $m[3] . $m[3];
+        }
+        if (preg_match('/^#?([0-9a-f]{6})$/', $hexa, $m) !== 1) {
             return null;
         }
         $v = hexdec($m[1]);

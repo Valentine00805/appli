@@ -242,6 +242,7 @@ $routes = [
     ['GET',  'fichiers/{id}/apercu',      [CoursController::class, 'apercuFichier']],
     ['GET',  'fichiers/{id}/image',       [CoursController::class, 'imageFichier']],
     ['GET',  'fichiers/{id}/pdf',         [CoursController::class, 'pdfFichier']],
+    ['GET',  'cours/{id}/pdf',            [CoursController::class, 'pdfCours']],
     ['GET',  'fichiers/{id}/modifier',    [CoursController::class, 'modifierFichier']],
     ['POST', 'fichiers/{id}/modifier',    [CoursController::class, 'enregistrerFichier']],
     ['POST', 'fichiers/{id}/position',    [CoursController::class, 'positionLecture']],

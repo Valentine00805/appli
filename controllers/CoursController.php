@@ -1212,6 +1212,45 @@ final class CoursController
         exit;
     }
 
+    /**
+     * Le contenu écrit d'un cours en PDF : son titre, sa matière, son texte mis
+     * en forme — titres, listes, images —, et son sommaire s'il en a un.
+     */
+    public function pdfCours(int $id): void
+    {
+        Auth::exiger();
+        $cours = Database::one(
+            'SELECT c.titre, c.contenu, m.nom AS matiere_nom
+               FROM cours c LEFT JOIN matieres m ON m.id = c.matiere_id
+              WHERE c.id = ? AND c.user_id = ?',
+            [$id, Auth::id()]
+        );
+        if ($cours === null) {
+            $this->introuvable();
+        }
+
+        try {
+            $pdf = ExportPdf::depuisCours($cours);
+        } catch (Throwable) {
+            Session::flash('erreur', 'Le contenu de ce cours n’a pas pu être mis en PDF.');
+            redirect('cours/' . $id);
+        }
+
+        $nom = trim((string) preg_replace('/[\\\\\/:*?"<>|]+/', ' ', (string) $cours['titre'])) ?: 'cours';
+        $nom .= '.pdf';
+        header('Content-Type: application/pdf');
+        header('Content-Length: ' . strlen($pdf));
+        header('X-Content-Type-Options: nosniff');
+        header('Cache-Control: private, no-store');
+        header(sprintf(
+            "Content-Disposition: attachment; filename=\"%s\"; filename*=UTF-8''%s",
+            preg_replace('/[^A-Za-z0-9._-]+/', '_', $nom) ?? 'cours.pdf',
+            rawurlencode($nom)
+        ));
+        echo $pdf;
+        exit;
+    }
+
     public function telechargerFichier(int $id): void
     {
         Auth::exiger();

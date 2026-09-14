@@ -73,6 +73,11 @@ $nbElements = count($elements) + count($fichiersFiche);
       <?php if ($sansContenu): ?>
         <p class="discret">Ce cours n'a pas encore de contenu écrit.</p>
       <?php else: ?>
+        <?php // Le contenu, à emporter : en PDF, mis en pages avec son sommaire. ?>
+        <p class="contenu-cours__actions">
+          <a class="bouton bouton--secondaire bouton--petit" href="<?= url('cours/' . $cours['id'] . '/pdf') ?>"
+             title="Télécharger le contenu de ce cours en PDF">⬇ Contenu en PDF</a>
+        </p>
         <?php // Nettoyé à l'affichage : la mise en forme passe, rien d'autre. ?>
         <div class="contenu-cours texte-riche-affiche"><?= TexteRiche::versHtml($cours['contenu']) ?></div>
       <?php endif; ?>
