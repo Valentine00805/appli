@@ -54,7 +54,7 @@ $relies = array_filter($etats, static fn (array $e): bool => $e['relie']);
         <label for="vue-calendrier">La vue du calendrier à l'ouverture</label>
         <select id="vue-calendrier" name="vue">
           <?php foreach (['jour' => 'Jour', 'semaine' => 'Semaine',
-                          'mois' => 'Mois', 'liste' => 'Liste'] as $cle => $libelle): ?>
+                          'mois' => 'Mois', 'annee' => 'Année', 'liste' => 'Liste'] as $cle => $libelle): ?>
             <option value="<?= e($cle) ?>"<?= $vue === $cle ? ' selected' : '' ?>>
               <?= e($libelle) ?>
             </option>

@@ -45,6 +45,8 @@ final class CalendrierController
         [$debut, $fin] = match ($vue) {
             'jour'    => [$ancre->setTime(0, 0), $ancre->setTime(23, 59, 59)],
             'semaine' => $this->bornesSemaine($ancre),
+            'annee'   => [$ancre->setDate((int) $ancre->format('Y'), 1, 1)->setTime(0, 0),
+                          $ancre->setDate((int) $ancre->format('Y'), 12, 31)->setTime(23, 59, 59)],
             'liste'   => [(clone $ancre)->modify('first day of this month')->setTime(0, 0),
                           (clone $ancre)->modify('+1 year')->setTime(23, 59, 59)],
             default   => $this->bornesMois($ancre),
@@ -83,7 +85,7 @@ final class CalendrierController
     }
 
     /** Les vues que le calendrier sait afficher. */
-    public const VUES = ['jour', 'semaine', 'mois', 'liste'];
+    public const VUES = ['jour', 'semaine', 'mois', 'annee', 'liste'];
 
     /**
      * La vue à ouvrir : celle demandée, sinon celle qu'on préfère.
@@ -129,6 +131,7 @@ final class CalendrierController
             . match ($voulue) {
                 'jour'    => 'la journée',
                 'semaine' => 'la semaine',
+                'annee'   => 'l’année',
                 'liste'   => 'la liste',
                 default   => 'le mois',
             } . '.');

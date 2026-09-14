@@ -23,6 +23,7 @@ $lien = static function (string $vueCible, DateTimeInterface $date) use ($filtre
 $pas = match ($vue) {
     'jour'    => '1 day',
     'semaine' => '7 days',
+    'annee'   => '1 year',
     default   => '1 month',
 };
 $precedent = $ancre->modify('-' . $pas);
@@ -61,6 +62,8 @@ if ($vue === 'jour') {
             . ' – ' . $fin->format('j') . ' ' . nom_mois_court($moisFin)
             . ' ' . $fin->format('Y');
     }
+} elseif ($vue === 'annee') {
+    $titre = $ancre->format('Y');
 } else {
     $titre = nom_mois((int) $ancre->format('n')) . ' ' . $ancre->format('Y');
 }
@@ -147,6 +150,7 @@ $puce = static function (array $evt) use ($destination): string {
       <a href="<?= $lien('jour', $ancre) ?>"<?= $vue === 'jour' ? ' aria-current="page"' : '' ?>>Jour</a>
       <a href="<?= $lien('semaine', $ancre) ?>"<?= $vue === 'semaine' ? ' aria-current="page"' : '' ?>>Semaine</a>
       <a href="<?= $lien('mois', $ancre) ?>"<?= $vue === 'mois' ? ' aria-current="page"' : '' ?>>Mois</a>
+      <a href="<?= $lien('annee', $ancre) ?>"<?= $vue === 'annee' ? ' aria-current="page"' : '' ?>>Année</a>
       <a href="<?= $lien('liste', $ancre) ?>"<?= $vue === 'liste' ? ' aria-current="page"' : '' ?>>Liste</a>
     </nav>
   </div>
@@ -369,6 +373,87 @@ $puce = static function (array $evt) use ($destination): string {
         $curseur = $curseur->modify('+1 day');
     endwhile;
     ?>
+  </div>
+
+<?php elseif ($vue === 'annee'): ?>
+
+  <?php
+  /*
+   * L'année : douze petits mois, pour voir d'un coup d'œil où sont les
+   * examens, les vacances, les semaines chargées.
+   *
+   * Un jour n'y porte pas ses évènements en toutes lettres — il n'y a pas la
+   * place — mais jusqu'à trois pastilles de leurs couleurs, et leur liste en
+   * infobulle. Un clic ouvre la journée ; le nom du mois ouvre le mois.
+   */
+  $annee = (int) $ancre->format('Y');
+  $initiales = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
+  ?>
+  <div class="cal-annee">
+    <?php for ($mois = 1; $mois <= 12; $mois++): ?>
+      <?php
+      $premier = new DateTimeImmutable(sprintf('%04d-%02d-01', $annee, $mois));
+      $joursDuMois = (int) $premier->format('t');
+      // Les évènements du mois, chacun compté une fois même s'il dure plusieurs jours.
+      $vus = [];
+      for ($j = 1; $j <= $joursDuMois; $j++) {
+          foreach ($parJour[$premier->format('Y-m-') . sprintf('%02d', $j)] ?? [] as $evt) {
+              $vus[(empty($evt['est_tache']) ? 'e' : 't') . $evt['id']] = true;
+          }
+      }
+      $combien = count($vus);
+      $estCeMois = $premier->format('Y-m') === substr($aujourdhui, 0, 7);
+      ?>
+      <section class="cal-annee__mois<?= $estCeMois ? ' cal-annee__mois--courant' : '' ?>">
+        <h3 class="cal-annee__titre">
+          <a href="<?= $lien('mois', $premier) ?>"><?= e(nom_mois($mois)) ?></a>
+          <?php if ($combien > 0): ?>
+            <span class="cal-annee__compte"><?= $combien ?> évènement<?= $combien > 1 ? 's' : '' ?></span>
+          <?php endif; ?>
+        </h3>
+        <div class="cal-annee__grille">
+          <?php foreach ($initiales as $initiale): ?>
+            <span class="cal-annee__initiale" aria-hidden="true"><?= $initiale ?></span>
+          <?php endforeach; ?>
+          <?php for ($vide = 1; $vide < (int) $premier->format('N'); $vide++): ?>
+            <span class="cal-annee__vide" aria-hidden="true"></span>
+          <?php endfor; ?>
+          <?php for ($j = 1; $j <= $joursDuMois; $j++): ?>
+            <?php
+            $jour = $premier->setDate($annee, $mois, $j);
+            $cle = $jour->format('Y-m-d');
+            $duJour = $parJour[$cle] ?? [];
+            $classes = 'cal-annee__jour';
+            if ($duJour !== []) { $classes .= ' cal-annee__jour--occupe'; }
+            if ((int) $jour->format('N') >= 6) { $classes .= ' cal-annee__jour--weekend'; }
+            if ($cle === $aujourdhui) { $classes .= ' cal-annee__jour--aujourdhui'; }
+
+            $infobulle = ucfirst(date_fr($cle . ' 00:00:00', false));
+            foreach (array_slice($duJour, 0, 8) as $evt) {
+                $infobulle .= "\n• " . ($evt['journee_entiere'] ? '' : date('H:i', strtotime((string) $evt['debut'])) . ' ')
+                    . icone_evenement($evt) . ' ' . $evt['titre'];
+            }
+            if (count($duJour) > 8) {
+                $infobulle .= "\n… et " . (count($duJour) - 8) . ' autre' . (count($duJour) - 8 > 1 ? 's' : '');
+            }
+            // Une pastille par couleur, pas par évènement : trois cours de maths ne font qu'un point.
+            $couleurs = array_slice(array_values(array_unique(array_map('couleur_evenement', $duJour))), 0, 3);
+            ?>
+            <a class="<?= $classes ?>" href="<?= $lien('jour', $jour) ?>" title="<?= e($infobulle) ?>"
+               aria-label="<?= e(ucfirst(date_fr($cle . ' 00:00:00', false)) . ($duJour === [] ? '' : ', ' . count($duJour) . ' évènement' . (count($duJour) > 1 ? 's' : ''))) ?>">
+              <span class="cal-annee__numero"><?= $j ?></span>
+              <?php if ($couleurs !== []): ?>
+                <span class="cal-annee__points" aria-hidden="true">
+                  <?php foreach ($couleurs as $couleur): ?>
+                    <span style="background:<?= e($couleur) ?>"></span>
+                  <?php endforeach; ?>
+                </span>
+              <?php endif; ?>
+            </a>
+          <?php endfor; ?>
+        </div>
+      </section>
+    <?php endfor; ?>
   </div>
 
 <?php elseif ($vue === 'semaine'): ?>
