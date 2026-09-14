@@ -203,6 +203,23 @@ textarea { min-height: 260px; resize: vertical; line-height: 1.65; }
 .barre-outils__bouton[aria-pressed="true"] { background: var(--accent-doux); border-color: var(--accent); }
 @media print { .texte-riche .barre-outils { display: none; } }
 .texte-riche .barre-outils select { width: auto; padding: .3rem .5rem; }
+
+/* « Télécharger » : un menu posé sous le bouton, le format au choix. */
+.menu-telecharger { position: relative; display: inline-block; }
+.menu-telecharger > summary { list-style: none; cursor: pointer; }
+.menu-telecharger > summary::-webkit-details-marker { display: none; }
+.menu-telecharger > summary::marker { content: ""; }
+.menu-telecharger__choix {
+  position: absolute; right: 0; top: calc(100% + .35rem); z-index: 30;
+  min-width: 17rem; padding: .35rem; display: grid; gap: .15rem;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, .18);
+}
+.menu-telecharger__choix a {
+  display: flex; align-items: flex-start; gap: .6rem; padding: .5rem .65rem;
+  border-radius: var(--rayon-s); color: var(--texte); text-decoration: none; line-height: 1.35;
+}
+.menu-telecharger__choix a:hover, .menu-telecharger__choix a:focus-visible { background: var(--fond-doux); }
+.menu-telecharger__choix .discret { font-size: .8rem; }
 /* Les réglages d'image n'apparaissent qu'une image choisie : « hidden » l'emporte sur le groupe. */
 .texte-riche [hidden] { display: none !important; }
 

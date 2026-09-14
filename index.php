@@ -37,6 +37,8 @@ require __DIR__ . '/src/ReleveExcel.php';
 require __DIR__ . '/src/TextePdf.php';
 require __DIR__ . '/src/GenerateurCartes.php';
 require __DIR__ . '/src/TexteRiche.php';
+require __DIR__ . '/src/PdfSimple.php';
+require __DIR__ . '/src/ExportPdf.php';
 require __DIR__ . '/src/PlanningJour.php';
 require __DIR__ . '/src/Fournisseur.php';
 require __DIR__ . '/src/FournisseurMicrosoft.php';
@@ -239,6 +241,7 @@ $routes = [
     ['GET',  'fichiers/{id}',             [CoursController::class, 'telechargerFichier']],
     ['GET',  'fichiers/{id}/apercu',      [CoursController::class, 'apercuFichier']],
     ['GET',  'fichiers/{id}/image',       [CoursController::class, 'imageFichier']],
+    ['GET',  'fichiers/{id}/pdf',         [CoursController::class, 'pdfFichier']],
     ['GET',  'fichiers/{id}/modifier',    [CoursController::class, 'modifierFichier']],
     ['POST', 'fichiers/{id}/modifier',    [CoursController::class, 'enregistrerFichier']],
     ['POST', 'fichiers/{id}/position',    [CoursController::class, 'positionLecture']],

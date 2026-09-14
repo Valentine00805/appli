@@ -1173,6 +1173,45 @@ final class CoursController
         redirect('cours/' . $id);
     }
 
+    /**
+     * Un document en PDF : la mise en pages de ce que montre son aperçu.
+     *
+     * Fabriqué à la demande, jamais rangé : le fichier d'origine reste le seul
+     * exemplaire, et le PDF suit toujours sa dernière version.
+     */
+    public function pdfFichier(int $id): void
+    {
+        Auth::exiger();
+        $fichier = Database::one(
+            'SELECT * FROM fichiers WHERE id = ? AND user_id = ?',
+            [$id, Auth::id()]
+        );
+        if ($fichier === null || !ExportPdf::possible((string) $fichier['nom_origine'])) {
+            $this->introuvable();
+        }
+
+        try {
+            $pdf = ExportPdf::fabriquer($this->cheminDe($fichier), (string) $fichier['nom_origine']);
+        } catch (Throwable) {
+            Session::flash('erreur', 'Ce document n’a pas pu être mis en PDF. Le fichier d’origine reste téléchargeable.');
+            redirect('fichiers/' . $id . '/apercu');
+        }
+
+        $nom = (string) pathinfo((string) $fichier['nom_origine'], PATHINFO_FILENAME) . '.pdf';
+        header('Content-Type: application/pdf');
+        header('Content-Length: ' . strlen($pdf));
+        header('X-Content-Type-Options: nosniff');
+        header('Cache-Control: private, no-store');
+        header(sprintf(
+            "Content-Disposition: attachment; filename=\"%s\"; filename*=UTF-8''%s",
+            // Repli ASCII pour les navigateurs anciens, nom complet en UTF-8 ensuite.
+            preg_replace('/[^A-Za-z0-9._-]+/', '_', $nom) ?? 'document.pdf',
+            rawurlencode($nom)
+        ));
+        echo $pdf;
+        exit;
+    }
+
     public function telechargerFichier(int $id): void
     {
         Auth::exiger();

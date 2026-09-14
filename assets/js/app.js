@@ -621,6 +621,19 @@
   });
 
   /*
+   * Le menu « Télécharger » se referme une fois le format choisi, ou quand on
+   * clique ailleurs — le téléchargement, lui, ne quitte pas la page.
+   */
+  document.addEventListener('click', function (evenement) {
+    [].slice.call(document.querySelectorAll('details.menu-telecharger[open]')).forEach(function (menu) {
+      var dedans = menu.contains(evenement.target);
+      if (!dedans || evenement.target.closest('a')) {
+        window.setTimeout(function () { menu.open = false; }, 0);
+      }
+    });
+  });
+
+  /*
    * « Annuler » dans un formulaire qui se replie (une remarque du tableau) :
    * le navigateur remet le texte d'avant, on referme le volet par-dessus.
    */
