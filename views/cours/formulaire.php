@@ -46,9 +46,9 @@ $dossierActif  = $edition ? entier_ou_null($cours['dossier_id']) : entier_ou_nul
 
       <div class="champ">
         <label for="contenu">Contenu</label>
-        <textarea id="contenu" name="contenu"
-                  placeholder="Notes, définitions, formules, plan du cours…"><?= e($edition ? (string) $cours['contenu'] : post('contenu')) ?></textarea>
-        <span class="champ__aide">Le texte est affiché tel quel, sauts de ligne compris.</span>
+        <textarea id="contenu" name="contenu" data-texte-riche
+                  placeholder="Notes, définitions, formules, plan du cours…"><?= e(TexteRiche::pourEditeur($edition ? (string) $cours['contenu'] : post('contenu'))) ?></textarea>
+        <span class="champ__aide">Gras, italique, souligné, listes et couleurs : sélectionnez du texte, puis la barre au-dessus.</span>
       </div>
     </div>
 

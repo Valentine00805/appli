@@ -99,9 +99,8 @@ $ligne = static function (string $etiquette, string $valeur): string {
     <?php if ((string) ($evenement['description'] ?? '') !== ''): ?>
       <div class="fiche__notes">
         <span class="fiche__etiquette">Notes</span>
-        <?php // « pre-line » garde déjà les retours à la ligne : les doubler
-           // avec nl2br ferait un blanc entre chaque phrase. ?>
-        <p><?= e((string) $evenement['description']) ?></p>
+        <?php // Un bloc, et non un paragraphe : une liste ne se range pas dans un « p ». ?>
+        <div class="texte-riche-affiche"><?= TexteRiche::versHtml($evenement['description']) ?></div>
       </div>
     <?php endif; ?>
   </section>

@@ -322,7 +322,8 @@ function couleur_texte(string $hex): string
 /** Extrait un résumé texte d'un contenu de cours. */
 function extrait(?string $texte, int $longueur = 160): string
 {
-    $texte = trim(preg_replace('/\s+/u', ' ', (string) $texte) ?? '');
+    // Un texte mis en forme s'extrait sans ses balises.
+    $texte = trim(preg_replace('/\s+/u', ' ', TexteRiche::versTexte($texte)) ?? '');
     if ($texte === '') {
         return '';
     }
@@ -342,7 +343,7 @@ function extrait(?string $texte, int $longueur = 160): string
  */
 function extrait_autour(?string $texte, array $termes, int $longueur = 240): string
 {
-    $texte = trim(preg_replace('/\s+/u', ' ', (string) $texte) ?? '');
+    $texte = trim(preg_replace('/\s+/u', ' ', TexteRiche::versTexte($texte)) ?? '');
     if ($texte === '' || mb_strlen($texte) <= $longueur) {
         return $texte;
     }

@@ -150,7 +150,8 @@ final class CoursController
             $this->introuvable();
         }
 
-        $contenu = trim((string) ($_POST['contenu'] ?? ''));
+        // Mis en forme par l'éditeur, le texte arrive en HTML : il est nettoyé ici.
+        $contenu = TexteRiche::depuisFormulaire((string) ($_POST['contenu'] ?? ''));
 
         Database::run(
             'UPDATE cours SET contenu = ? WHERE id = ? AND user_id = ?',
@@ -174,7 +175,7 @@ final class CoursController
             $this->introuvable();
         }
 
-        $fiche = trim((string) ($_POST['fiche_revision'] ?? ''));
+        $fiche = TexteRiche::depuisFormulaire((string) ($_POST['fiche_revision'] ?? ''));
 
         Database::run(
             'UPDATE cours SET fiche_revision = ? WHERE id = ? AND user_id = ?',
@@ -325,7 +326,7 @@ final class CoursController
             // Le terme se cache peut-être dans un lien ou un nom de fichier :
             // la carte le dira, plutôt que d'afficher un extrait sans surlignage.
             $c['trouve_ailleurs'] = $termes !== []
-                && !$this->contient((string) $c['titre'] . ' ' . (string) $c['fiche_revision'], $termes);
+                && !$this->contient((string) $c['titre'] . ' ' . TexteRiche::versTexte($c['fiche_revision']), $termes);
 
             if (trim((string) $c['fiche_revision']) !== '' || $elements > 0) {
                 $garnies[] = $c;
@@ -1098,7 +1099,7 @@ final class CoursController
                 $this->matiereValide($userId, $_POST['matiere_id'] ?? null),
                 DossiersController::valide($userId, $_POST['dossier_id'] ?? null),
                 mb_substr($titre, 0, 200),
-                post('contenu'),
+                TexteRiche::depuisFormulaire(post('contenu')),
             ]
         );
         $coursId = Database::dernierId();
@@ -1132,7 +1133,7 @@ final class CoursController
                 $this->matiereValide($userId, $_POST['matiere_id'] ?? null),
                 DossiersController::valide($userId, $_POST['dossier_id'] ?? null),
                 mb_substr($titre, 0, 200),
-                post('contenu'),
+                TexteRiche::depuisFormulaire(post('contenu')),
                 $id,
                 $userId,
             ]

@@ -294,8 +294,8 @@ $matiereActive = $edition ? entier_ou_null($evenement['matiere_id']) : null;
 
       <div class="champ">
         <label for="description">Notes</label>
-        <textarea id="description" name="description" style="min-height:120px"
-                  placeholder="Chapitres à réviser, matériel à apporter…"><?= e($valeur('description')) ?></textarea>
+        <textarea id="description" name="description" style="min-height:120px" data-texte-riche
+                  placeholder="Chapitres à réviser, matériel à apporter…"><?= e(TexteRiche::pourEditeur($valeur('description'))) ?></textarea>
       </div>
     </div>
 

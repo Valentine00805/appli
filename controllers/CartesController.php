@@ -167,9 +167,9 @@ final class CartesController
 
             $brutes = array_merge(
                 in_array('cours', $siennes, true)
-                    ? GenerateurCartes::depuisTexte((string) $cours['contenu'], 'cours') : [],
+                    ? GenerateurCartes::depuisTexte(TexteRiche::versTexte($cours['contenu']), 'cours') : [],
                 in_array('fiche', $siennes, true)
-                    ? GenerateurCartes::depuisTexte((string) $cours['fiche_revision'], 'fiche') : [],
+                    ? GenerateurCartes::depuisTexte(TexteRiche::versTexte($cours['fiche_revision']), 'fiche') : [],
                 in_array('documents', $siennes, true)
                     ? $this->depuisLesFichiers($id, $userId, $muets, $documents) : []
             );

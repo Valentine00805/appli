@@ -225,7 +225,7 @@ final class KanbanController
                 'icone'    => (string) ($e['type_icone'] ?? '') !== '' ? (string) $e['type_icone'] : '📌',
                 'origine'  => trim(((string) ($e['type_nom'] ?? 'Évènement'))
                     . ((string) ($e['matiere_nom'] ?? '') !== '' ? ' · ' . (string) $e['matiere_nom'] : '')),
-                'note'     => (string) ($e['description'] ?? ''),
+                'note'     => TexteRiche::versTexte($e['description'] ?? ''),
                 'lien'     => url('evenements/' . (int) $e['id'] . '/modifier'),
                 'detail'   => url('evenements/' . (int) $e['id']),
                 // De quoi rejoindre le cours et sa fiche, comme au calendrier.

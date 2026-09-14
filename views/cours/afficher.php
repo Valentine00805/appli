@@ -73,7 +73,8 @@ $nbElements = count($elements) + count($fichiersFiche);
       <?php if ($sansContenu): ?>
         <p class="discret">Ce cours n'a pas encore de contenu écrit.</p>
       <?php else: ?>
-        <div class="contenu-cours"><?= e($cours['contenu']) ?></div>
+        <?php // Nettoyé à l'affichage : la mise en forme passe, rien d'autre. ?>
+        <div class="contenu-cours texte-riche-affiche"><?= TexteRiche::versHtml($cours['contenu']) ?></div>
       <?php endif; ?>
 
       <?php
@@ -97,8 +98,8 @@ $nbElements = count($elements) + count($fichiersFiche);
 
           <div class="champ">
             <label for="contenu-cours" class="legende">Le cours lui-même</label>
-            <textarea id="contenu-cours" name="contenu" class="edition-contenu__texte"
-                      placeholder="Le plan, les notes prises en amphi, ce que le professeur a dicté…"><?= e($cours['contenu']) ?></textarea>
+            <textarea id="contenu-cours" name="contenu" class="edition-contenu__texte" data-texte-riche
+                      placeholder="Le plan, les notes prises en amphi, ce que le professeur a dicté…"><?= e(TexteRiche::pourEditeur($cours['contenu'])) ?></textarea>
           </div>
 
           <p class="actions">

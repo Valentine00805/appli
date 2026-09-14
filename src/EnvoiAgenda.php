@@ -593,7 +593,8 @@ final class EnvoiAgenda
 
         return $this->corps(
             (string) $evt['titre'],
-            (string) ($evt['description'] ?? ''),
+            // Outlook et Google reçoivent du texte : la mise en forme reste ici.
+            TexteRiche::versTexte($evt['description'] ?? ''),
             (string) ($evt['lieu'] ?? ''),
             $debut,
             $fin,

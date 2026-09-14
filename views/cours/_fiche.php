@@ -75,8 +75,8 @@ $avancementFiche = avancement_anneaux(
 
     <div class="champ">
       <label for="fiche_revision">Ce qu'il faut retenir</label>
-      <textarea id="fiche_revision" name="fiche_revision" class="fiche__texte"
-                placeholder="Définitions, formules, dates, plan du chapitre, questions à se poser…"><?= e($fiche) ?></textarea>
+      <textarea id="fiche_revision" name="fiche_revision" class="fiche__texte" data-texte-riche
+                placeholder="Définitions, formules, dates, plan du chapitre, questions à se poser…"><?= e(TexteRiche::pourEditeur($fiche)) ?></textarea>
       <?php
       /*
        * Une zone de saisie s'imprime mal : seule la partie visible sort, avec
@@ -85,8 +85,8 @@ $avancementFiche = avancement_anneaux(
        * pas encore enregistré.
        */
       ?>
-      <div class="fiche__impression" data-impression-fiche aria-hidden="true"><?= e($fiche) ?></div>
-      <span class="champ__aide">Le texte est affiché tel quel, sauts de ligne compris.</span>
+      <div class="fiche__impression texte-riche-affiche" data-impression-fiche aria-hidden="true"><?= TexteRiche::versHtml($fiche) ?></div>
+      <span class="champ__aide">Gras, italique, souligné, listes et couleurs : sélectionnez du texte, puis la barre au-dessus.</span>
     </div>
 
     <div class="actions">

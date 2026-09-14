@@ -1413,7 +1413,7 @@ final class CalendrierController
             'cours_id'        => $coursId,
             'type_id'         => $typeId,
             'titre'           => mb_substr($titre, 0, 200),
-            'description'     => post('description') ?: null,
+            'description'     => TexteRiche::depuisFormulaire(post('description')) ?: null,
             'lieu'            => mb_substr(post('lieu'), 0, 160) ?: null,
             'debut'           => date('Y-m-d H:i:s', $tsDebut),
             'fin'             => date('Y-m-d H:i:s', $tsFin),

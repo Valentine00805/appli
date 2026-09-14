@@ -337,6 +337,7 @@
         // le dépôt de fichiers, la fiche de révision et sa séance de cartes.
         initialiserEditeur(corps);
         initialiserDepots(corps);
+        initialiserTexteRiche(corps);
         initialiserFiche(corps);
         initialiserSeance(corps);
     };
@@ -2475,6 +2476,157 @@
   initialiserEditeur(document);
 
   /*
+   * Le petit traitement de texte des zones marquées « data-texte-riche » :
+   * fiche de révision, contenu d'un cours, notes d'un évènement.
+   *
+   * La zone de texte reste dans le formulaire, cachée : c'est elle qui part.
+   * On écrit dans un bloc éditable posé à sa place, et ce qu'il contient y est
+   * recopié à chaque frappe, derrière la marque qui dit « mis en forme ». Le
+   * serveur nettoie ce HTML à l'arrivée ; sans script, la zone de texte reste
+   * une zone de texte.
+   */
+  var MARQUE_RICHE = '<!--riche-->';
+
+  var BARRE_RICHE =
+    '<button type="button" class="barre-outils__bouton" data-riche="bold" aria-pressed="false" title="Gras (Ctrl+B)"><b>G</b></button>' +
+    '<button type="button" class="barre-outils__bouton" data-riche="italic" aria-pressed="false" title="Italique (Ctrl+I)"><i>I</i></button>' +
+    '<button type="button" class="barre-outils__bouton" data-riche="underline" aria-pressed="false" title="Souligné (Ctrl+U)"><u>S</u></button>' +
+    '<button type="button" class="barre-outils__bouton" data-riche="insertUnorderedList" aria-pressed="false" title="Liste à puces">•—</button>' +
+    '<button type="button" class="barre-outils__bouton" data-riche="insertOrderedList" aria-pressed="false" title="Liste numérotée">1—</button>' +
+    '<span class="barre-outils__couleurs"><span class="discret">Couleur</span>' +
+      '<button type="button" class="barre-outils__bouton barre-outils__appliquer" data-riche-couleur title="Appliquer cette couleur au texte choisi">' +
+        '<span aria-hidden="true">A</span><span class="barre-outils__trait"></span><span class="sr-only">Appliquer la couleur</span></button>' +
+      '<input type="color" class="barre-outils__couleur" data-riche-teinte value="#dc2626" aria-label="Choisir la couleur du texte">' +
+      '<button type="button" class="barre-outils__bouton" data-riche-couleur-defaut title="Remettre la couleur normale">⌫</button>' +
+    '</span>' +
+    '<span class="barre-outils__couleurs"><span class="discret">Surlignage</span>' +
+      '<button type="button" class="barre-outils__bouton barre-outils__surligner" data-riche-fond title="Surligner le texte choisi">' +
+        '<span aria-hidden="true">🖍</span><span class="sr-only">Surligner</span></button>' +
+      '<input type="color" class="barre-outils__couleur" data-riche-fond-teinte value="#ffff00" aria-label="Choisir la couleur du surlignage">' +
+      '<button type="button" class="barre-outils__bouton" data-riche-fond-defaut title="Retirer le surlignage">⌫</button>' +
+    '</span>';
+
+  var initialiserTexteRiche = function (racine) {
+    [].slice.call(racine.querySelectorAll('textarea[data-texte-riche]')).forEach(function (zone) {
+      if (zone.hasAttribute('data-riche-lance') || typeof document.execCommand !== 'function') { return; }
+      zone.setAttribute('data-riche-lance', '');
+
+      var bloc = document.createElement('div');
+      bloc.className = 'texte-riche';
+      var barre = document.createElement('div');
+      barre.className = 'barre-outils';
+      barre.setAttribute('role', 'toolbar');
+      barre.setAttribute('aria-label', 'Mise en forme');
+      barre.innerHTML = BARRE_RICHE;
+
+      var edition = document.createElement('div');
+      edition.className = 'texte-riche__zone ' + zone.className;
+      edition.contentEditable = 'true';
+      edition.setAttribute('role', 'textbox');
+      edition.setAttribute('aria-multiline', 'true');
+      edition.setAttribute('data-placeholder', zone.getAttribute('placeholder') || '');
+      if (zone.style.minHeight) { edition.style.minHeight = zone.style.minHeight; }
+      var etiquette = zone.id ? document.querySelector('label[for="' + zone.id + '"]') : null;
+      if (etiquette) {
+        edition.setAttribute('aria-label', etiquette.textContent.trim());
+        etiquette.addEventListener('click', function (e) { e.preventDefault(); edition.focus(); });
+      }
+
+      // Le contenu de départ : déjà nettoyé par le serveur s'il est mis en forme,
+      // du texte à échapper sinon.
+      var depart = zone.value;
+      if (depart.indexOf(MARQUE_RICHE) === 0) {
+        edition.innerHTML = depart.slice(MARQUE_RICHE.length);
+      } else {
+        edition.textContent = depart;
+        edition.innerHTML = edition.innerHTML.replace(/\n/g, '<br>');
+      }
+
+      zone.hidden = true;
+      zone.parentNode.insertBefore(bloc, zone);
+      bloc.appendChild(barre);
+      bloc.appendChild(edition);
+
+      var recopier = function () {
+        var vide = edition.textContent.trim() === '' && !edition.querySelector('li');
+        zone.value = vide ? '' : MARQUE_RICHE + edition.innerHTML;
+        zone.dispatchEvent(new Event('input', { bubbles: true }));
+      };
+
+      // La sélection se perd quand on ouvre le nuancier : on garde la dernière.
+      var plage = null;
+      document.addEventListener('selectionchange', function () {
+        var sel = window.getSelection();
+        if (sel.rangeCount && edition.contains(sel.getRangeAt(0).commonAncestorContainer)) {
+          plage = sel.getRangeAt(0).cloneRange();
+          majEtats();
+        }
+      });
+
+      var majEtats = function () {
+        [].slice.call(barre.querySelectorAll('[data-riche]')).forEach(function (bouton) {
+          var actif = false;
+          try { actif = document.queryCommandState(bouton.getAttribute('data-riche')); } catch (e) {}
+          bouton.setAttribute('aria-pressed', actif ? 'true' : 'false');
+        });
+      };
+
+      var executer = function (commande, valeur) {
+        edition.focus();
+        if (plage) {
+          var sel = window.getSelection();
+          sel.removeAllRanges();
+          sel.addRange(plage);
+        }
+        // Les couleurs en style, pour que le serveur les reconnaisse ; le reste en balises.
+        document.execCommand('styleWithCSS', false, commande === 'foreColor' || commande === 'hiliteColor');
+        document.execCommand(commande, false, valeur);
+        recopier();
+        majEtats();
+      };
+
+      var teinte = barre.querySelector('[data-riche-teinte]');
+      var fond = barre.querySelector('[data-riche-fond-teinte]');
+      var boutonCouleur = barre.querySelector('[data-riche-couleur]');
+      var boutonFond = barre.querySelector('[data-riche-fond]');
+      var peindre = function () {
+        boutonCouleur.style.color = teinte.value;
+        boutonFond.style.background = fond.value;
+      };
+      peindre();
+
+      // Cliquer un bouton ne doit pas voler la sélection au texte.
+      barre.addEventListener('mousedown', function (e) {
+        if (e.target.closest('button')) { e.preventDefault(); }
+      });
+      barre.addEventListener('click', function (e) {
+        var bouton = e.target.closest('button');
+        if (!bouton) { return; }
+        if (bouton.hasAttribute('data-riche')) { executer(bouton.getAttribute('data-riche')); }
+        if (bouton.hasAttribute('data-riche-couleur')) { executer('foreColor', teinte.value); }
+        if (bouton.hasAttribute('data-riche-couleur-defaut')) { executer('foreColor', getComputedStyle(edition).color); }
+        if (bouton.hasAttribute('data-riche-fond')) { executer('hiliteColor', fond.value); }
+        if (bouton.hasAttribute('data-riche-fond-defaut')) { executer('hiliteColor', 'transparent'); }
+      });
+      // Choisir une couleur l'applique aussitôt au texte choisi.
+      teinte.addEventListener('change', function () { peindre(); executer('foreColor', teinte.value); });
+      fond.addEventListener('change', function () { peindre(); executer('hiliteColor', fond.value); });
+
+      edition.addEventListener('input', recopier);
+      edition.addEventListener('keyup', majEtats);
+      // Coller n'apporte que le texte : les styles d'une page web n'ont rien à faire ici.
+      edition.addEventListener('paste', function (e) {
+        var presse = e.clipboardData || window.clipboardData;
+        if (!presse) { return; }
+        e.preventDefault();
+        document.execCommand('insertText', false, presse.getData('text/plain'));
+      });
+      if (zone.form) { zone.form.addEventListener('submit', recopier); }
+    });
+  };
+  initialiserTexteRiche(document);
+
+  /*
    * La fiche de révision — sa copie imprimable, ses lecteurs, ses anneaux —
    * se lance sur une racine : la page, ou la fenêtre où elle vient d'arriver.
    */
@@ -2487,7 +2639,12 @@
   var copieFiche = racine.querySelector("[data-impression-fiche]");
   if (zoneFiche && copieFiche) {
     zoneFiche.addEventListener("input", function () {
-      copieFiche.textContent = zoneFiche.value;
+      // Mis en forme, le texte vient de l'éditeur d'à côté, tapé ici même.
+      if (zoneFiche.value.indexOf(MARQUE_RICHE) === 0) {
+        copieFiche.innerHTML = zoneFiche.value.slice(MARQUE_RICHE.length);
+      } else {
+        copieFiche.textContent = zoneFiche.value;
+      }
     });
   }
 
