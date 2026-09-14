@@ -200,7 +200,7 @@ $matiereActive = $edition ? entier_ou_null($evenement['matiere_id']) : null;
         <span class="champ__aide">
           Avant l’évènement — cochez-en autant que vous voulez, aucun pour ne pas être prévenu.
           En journée entière, le rappel tombe à 8 h.
-          (<a href="<?= url('notifications') ?>" target="_blank" rel="noopener">Régler les notifications</a>)
+          (<a href="<?= url('notifications') ?>" data-fenetre-dessus>Régler les notifications</a>)
         </span>
       </fieldset>
 

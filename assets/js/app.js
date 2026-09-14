@@ -255,7 +255,9 @@
     document.addEventListener('fenetre:changee', function () { aChange = true; });
 
     // Une séance de cartes terminée dans la fenêtre : on y relit la fiche, à jour.
-    document.addEventListener('fenetre:relire', function () {
+    document.addEventListener('fenetre:relire', function (evenement) {
+      // Ce qui se relit ailleurs — dans la fenêtre du dessus — ne la regarde pas.
+      if (evenement.target !== document && !fenetre.contains(evenement.target)) { return; }
       if (!fenetre.open || historique.length === 0) { return; }
       aChange = true;
       ouvrir(historique[historique.length - 1]);
@@ -465,6 +467,100 @@
       evenement.preventDefault();
       ouvrir(lien.getAttribute('href'));
     });
+
+    /*
+     * La fenêtre du dessus.
+     *
+     * Un lien « data-fenetre-dessus » s'ouvre par-dessus ce qu'on est en train
+     * de faire, sans le remplacer : « Régler les notifications » depuis le
+     * formulaire d'un évènement laisse l'évènement tel qu'on l'a écrit, et la
+     * croix y ramène. Une seule page à la fois, pas de chemin : c'est un
+     * détour, pas une navigation.
+     */
+    var dessus = document.createElement('dialog');
+    dessus.className = 'fenetre fenetre--dessus';
+    dessus.innerHTML =
+      '<button class="fenetre__fermer" type="button" aria-label="Fermer">✕</button>' +
+      '<div class="fenetre__corps"></div>';
+    document.body.appendChild(dessus);
+    var corpsDessus = dessus.querySelector('.fenetre__corps');
+    var adresseDessus = null;
+
+    var poserDessus = function (html) {
+      corpsDessus.innerHTML = html;
+      dessus.classList.toggle('fenetre--large', corpsDessus.querySelector('[data-large]') !== null);
+      corpsDessus.scrollTop = 0;
+      dessus.querySelector('.fenetre__fermer').focus({ preventScroll: true });
+      initialiserTexteRiche(corpsDessus);
+      initialiserNotifications(corpsDessus);
+    };
+    var ouvrirDessus = function (adresse) {
+      adresseDessus = adresse;
+      corpsDessus.innerHTML = '<p class="discret" style="padding:1rem">Un instant…</p>';
+      if (!dessus.open) { dessus.showModal(); }
+      fetch(adresse + (adresse.indexOf('?') === -1 ? '?' : '&') + 'fenetre=1', { credentials: 'same-origin' })
+        .then(function (reponse) {
+          if (!reponse.ok) { throw new Error('refus'); }
+          return reponse.text();
+        })
+        .then(poserDessus)
+        .catch(function () {
+          // Faute de mieux, un onglet : ce qu'on écrivait dessous reste intact.
+          dessus.close();
+          window.open(adresse, '_blank', 'noopener');
+        });
+    };
+    var fermerDessus = function () {
+      corpsDessus.innerHTML = '';
+      adresseDessus = null;
+      dessus.close();
+    };
+
+    // Comme l'autre : la croix seule la ferme.
+    dessus.addEventListener('cancel', function (evenement) { evenement.preventDefault(); });
+    dessus.addEventListener('keydown', function (evenement) {
+      if (evenement.key === 'Escape') { evenement.preventDefault(); }
+    });
+    dessus.querySelector('.fenetre__fermer').addEventListener('click', fermerDessus);
+
+    // Activer ou désactiver les notifications : c'est elle qui se relit.
+    dessus.addEventListener('fenetre:relire', function (evenement) {
+      evenement.stopPropagation();
+      if (dessus.open && adresseDessus !== null) { ouvrirDessus(adresseDessus); }
+    });
+
+    // Un formulaire marqué pour la fenêtre s'y enregistre, et la page y revient.
+    corpsDessus.addEventListener('submit', function (evenement) {
+      var formulaire = evenement.target;
+      if (evenement.defaultPrevented || !formulaire.hasAttribute('data-envoi-fenetre')) { return; }
+      evenement.preventDefault();
+      evenement.stopPropagation();
+      var confirmation = formulaire.getAttribute('data-confirmation');
+      if (confirmation && !window.confirm(confirmation)) { return; }
+
+      var donnees = new FormData(formulaire);
+      donnees.append('fenetre', '1');
+      fetch(formulaire.action, { method: 'POST', body: donnees, credentials: 'same-origin' })
+        .then(function (reponse) {
+          if (!reponse.ok) { throw new Error('refus'); }
+          return reponse.text();
+        })
+        .then(function (html) {
+          if (/<header class="entete"/.test(html)) { ouvrirDessus(adresseDessus); } else { poserDessus(html); }
+        })
+        .catch(function () { if (adresseDessus !== null) { ouvrirDessus(adresseDessus); } });
+    });
+
+    document.addEventListener('click', function (evenement) {
+      if (evenement.metaKey || evenement.ctrlKey || evenement.shiftKey
+          || evenement.altKey || evenement.button !== 0) {
+        return;
+      }
+      var lien = evenement.target.closest('[data-fenetre-dessus]');
+      if (lien === null) { return; }
+      evenement.preventDefault();
+      ouvrirDessus(lien.getAttribute('href'));
+    });
   }
   /*
    * Le volet d'une journée chargée se ferme comme on s'y attend.
@@ -632,7 +728,7 @@
     // fenêtre, c'est elle qu'on relit, pas la page qu'elle recouvre.
     var relire = function () {
       if (zoneNotifications.closest('.fenetre__corps')) {
-        document.dispatchEvent(new CustomEvent('fenetre:relire'));
+        zoneNotifications.dispatchEvent(new CustomEvent('fenetre:relire', { bubbles: true }));
       } else {
         window.location.reload();
       }
