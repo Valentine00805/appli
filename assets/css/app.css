@@ -220,6 +220,9 @@ textarea { min-height: 260px; resize: vertical; line-height: 1.65; }
 }
 .menu-telecharger__choix a:hover, .menu-telecharger__choix a:focus-visible { background: var(--fond-doux); }
 .menu-telecharger__choix .discret { font-size: .8rem; }
+/* Le petit « ⬇ » des listes de fichiers : la flèche du menu reste discrète. */
+.menu-telecharger--compact > summary { gap: .1rem; }
+.menu-telecharger--compact > summary [aria-hidden] { font-size: .65rem; opacity: .7; }
 /* Les réglages d'image n'apparaissent qu'une image choisie : « hidden » l'emporte sur le groupe. */
 .texte-riche [hidden] { display: none !important; }
 

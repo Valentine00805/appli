@@ -133,8 +133,8 @@ $nbElements = count($elements) + count($fichiersFiche);
                   <span class="fichier__meta"><?= e(taille_lisible((int) $f['taille'])) ?></span>
                 </span>
                 <span class="fichier__actions">
-                  <a class="bouton bouton--discret bouton--petit"
-                     href="<?= url('fichiers/' . $f['id'], ['telecharger' => 1]) ?>" title="Télécharger">⬇</a>
+                  <?php // Le fichier d'origine, ou le PDF pour un document. ?>
+                  <?= Vue::rendre('cours/_telecharger', ['fichier' => $f, 'compact' => true]) ?>
                   <form method="post" action="<?= url('fichiers/' . $f['id'] . '/supprimer') ?>" class="en-ligne"<?= $surPlace ?>
                         data-confirmation="Supprimer définitivement ce fichier ?">
                     <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">

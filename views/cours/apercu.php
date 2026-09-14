@@ -38,34 +38,8 @@ $dansUneFenetre = $dansUneFenetre ?? false;
         ✎ Modifier le texte
       </a>
     <?php endif; ?>
-    <?php if (ExportPdf::possible((string) $fichier['nom_origine'])): ?>
-      <?php
-      /*
-       * Télécharger, au choix : le fichier d'origine, ou sa mise en pages en
-       * PDF. « details » suffit à ouvrir le menu, sans une ligne de script.
-       */
-      $extension = strtolower((string) pathinfo((string) $fichier['nom_origine'], PATHINFO_EXTENSION));
-      ?>
-      <details class="menu-telecharger">
-        <summary class="bouton">⬇ Télécharger <span aria-hidden="true">▾</span></summary>
-        <div class="menu-telecharger__choix carte" role="menu">
-          <a role="menuitem" href="<?= url('fichiers/' . $fichier['id'], ['telecharger' => 1]) ?>">
-            <span aria-hidden="true">📄</span>
-            <span><strong><?= e(ucfirst($format)) ?></strong> (.<?= e($extension) ?>)<br>
-              <span class="discret">le fichier d’origine, modifiable</span></span>
-          </a>
-          <a role="menuitem" href="<?= url('fichiers/' . $fichier['id'] . '/pdf') ?>">
-            <span aria-hidden="true">📕</span>
-            <span><strong>PDF</strong> (.pdf)<br>
-              <span class="discret">pour lire ou imprimer, tel que l’aperçu</span></span>
-          </a>
-        </div>
-      </details>
-    <?php else: ?>
-      <a class="bouton" href="<?= url('fichiers/' . $fichier['id'], ['telecharger' => 1]) ?>">
-        ⬇ Télécharger le fichier
-      </a>
-    <?php endif; ?>
+    <?php // Télécharger : le fichier d'origine, ou le PDF. ?>
+    <?= Vue::rendre('cours/_telecharger', ['fichier' => $fichier]) ?>
   </div>
 </div>
 
