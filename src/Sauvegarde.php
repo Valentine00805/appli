@@ -69,7 +69,7 @@ final class Sauvegarde
     /** Construit l'archive et l'envoie au navigateur. */
     public static function telecharger(int $userId): never
     {
-        $utilisateur = Database::one('SELECT nom, email, created_at FROM users WHERE id = ?', [$userId]);
+        $utilisateur = Database::one('SELECT nom, pseudo, email, created_at FROM users WHERE id = ?', [$userId]);
         if ($utilisateur === null) {
             throw new RuntimeException('Compte introuvable.');
         }
@@ -446,7 +446,9 @@ final class Sauvegarde
             'SAUVEGARDE — ' . $donnees['application'],
             str_repeat('=', 40),
             '',
-            'Compte  : ' . $donnees['compte']['nom'] . ' <' . $donnees['compte']['email'] . '>',
+            'Compte  : ' . $donnees['compte']['nom']
+                . ((string) ($donnees['compte']['pseudo'] ?? '') !== '' ? ' (' . $donnees['compte']['pseudo'] . ')' : '')
+                . ' <' . $donnees['compte']['email'] . '>',
             'Exporté : ' . date('d/m/Y à H\hi'),
             'Contenu : ' . $lignes . ' lignes de données et '
                 . count($donnees['tables']['fichiers']) . ' pièce(s) jointe(s).',

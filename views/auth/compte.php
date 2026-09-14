@@ -6,7 +6,10 @@ $moi = Auth::utilisateur();
 <div class="entete-page">
   <div>
     <h1>Mon compte</h1>
-    <p><?= e((string) $moi['email']) ?> — inscrit le <?= e(date_fr((string) $moi['created_at'], false)) ?></p>
+    <p>
+      <?php if ((string) ($moi['pseudo'] ?? '') !== ''): ?><strong><?= e((string) $moi['pseudo']) ?></strong> · <?php endif; ?>
+      <?= e((string) $moi['email']) ?> — inscrit le <?= e(date_fr((string) $moi['created_at'], false)) ?>
+    </p>
   </div>
 </div>
 
@@ -19,6 +22,38 @@ $moi = Auth::utilisateur();
     <div class="stat__libelle">fichiers · <?= e(taille_lisible((int) $stats['octets'])) ?></div>
   </div>
 </div>
+
+<?php
+/*
+ * Le pseudo : choisi à l'inscription, il se change ici. Un compte d'avant
+ * n'en a pas encore — la carte l'invite à en choisir un. Après un refus, le
+ * champ garde ce qu'on avait tapé.
+ */
+$pseudoActuel = (string) ($moi['pseudo'] ?? '');
+$pseudoSaisi = Session::reprendre('pseudo_saisi');
+?>
+<section class="carte" style="margin-bottom:1rem" id="pseudo-carte">
+  <h2 style="margin-top:0">🏷️ Mon pseudo</h2>
+  <p class="champ__aide" style="margin-top:0">
+    <?php if ($pseudoActuel === ''): ?>
+      Vous n’avez pas encore de pseudo : choisissez le nom sous lequel l’application vous appellera.
+    <?php else: ?>
+      Le nom sous lequel l’application vous appelle. Vous pouvez le changer quand vous voulez.
+    <?php endif; ?>
+  </p>
+  <form method="post" action="<?= url('compte/pseudo') ?>" class="fuseau-choix">
+    <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
+    <label class="sr-only" for="pseudo">Pseudo</label>
+    <input type="text" id="pseudo" name="pseudo" required autocomplete="nickname"
+           minlength="<?= Auth::PSEUDO_MIN ?>" maxlength="<?= Auth::PSEUDO_MAX ?>"
+           placeholder="Votre pseudo" value="<?= e(is_string($pseudoSaisi) ? $pseudoSaisi : $pseudoActuel) ?>">
+    <button class="bouton bouton--secondaire" type="submit"><?= $pseudoActuel === '' ? 'Créer mon pseudo' : 'Enregistrer' ?></button>
+  </form>
+  <p class="champ__aide">
+    De <?= Auth::PSEUDO_MIN ?> à <?= Auth::PSEUDO_MAX ?> caractères : lettres, chiffres, point, tiret et tiret bas, sans espace.
+    Unique : deux comptes ne peuvent pas porter le même.
+  </p>
+</section>
 
 <?php
 /*

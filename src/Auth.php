@@ -33,12 +33,51 @@ final class Auth
         if (!$id) {
             return null;
         }
-        $u = Database::one('SELECT id, nom, email, fuseau, created_at FROM users WHERE id = ?', [$id]);
+        $u = Database::one('SELECT id, nom, pseudo, email, fuseau, created_at FROM users WHERE id = ?', [$id]);
         if ($u === null) {
             self::deconnecter();
             return null;
         }
         return self::$utilisateur = $u;
+    }
+
+    /** Longueurs admises pour un pseudo. */
+    public const PSEUDO_MIN = 3;
+    public const PSEUDO_MAX = 30;
+
+    /**
+     * Ce qui ne va pas dans un pseudo, ou null s'il convient.
+     *
+     * Lettres (accents compris), chiffres, point, tiret et tiret bas, sans
+     * espace, et commençant par une lettre ou un chiffre. Unique : la
+     * comparaison de la base ignore majuscules et accents, « Valou » et
+     * « valóu » sont donc un seul et même pseudo.
+     */
+    public static function problemePseudo(string $pseudo, ?int $sauf = null): ?string
+    {
+        $longueur = mb_strlen($pseudo);
+        if ($longueur < self::PSEUDO_MIN || $longueur > self::PSEUDO_MAX) {
+            return 'Le pseudo doit faire de ' . self::PSEUDO_MIN . ' à ' . self::PSEUDO_MAX . ' caractères.';
+        }
+        if (!preg_match('/^[\p{L}\p{N}][\p{L}\p{N}_.\-]*$/u', $pseudo)) {
+            return 'Le pseudo ne peut contenir que des lettres, des chiffres, « . », « - » et « _ », sans espace.';
+        }
+        $pris = Database::valeur('SELECT id FROM users WHERE pseudo = ?' . ($sauf === null ? '' : ' AND id <> ?'),
+            $sauf === null ? [$pseudo] : [$pseudo, $sauf]);
+        if ($pris !== null) {
+            return 'Ce pseudo est déjà pris.';
+        }
+
+        return null;
+    }
+
+    /** Le nom à afficher : le pseudo s'il y en a un, sinon le nom. */
+    public static function nomAffiche(?array $utilisateur = null): string
+    {
+        $utilisateur ??= self::utilisateur();
+        $pseudo = (string) ($utilisateur['pseudo'] ?? '');
+
+        return $pseudo !== '' ? $pseudo : (string) ($utilisateur['nom'] ?? '');
     }
 
     /** Faute de mieux : là où l'application a été écrite. */

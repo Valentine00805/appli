@@ -8,7 +8,9 @@
 
 <div class="entete-page">
   <div>
-    <h1>Bonjour <?= e(explode(' ', (string) Auth::utilisateur()['nom'])[0]) ?> 👋</h1>
+    <?php // Par son pseudo ; à défaut, par son prénom. ?>
+    <h1>Bonjour <?= e((string) (Auth::utilisateur()['pseudo'] ?? '') !== ''
+        ? (string) Auth::utilisateur()['pseudo'] : explode(' ', (string) Auth::utilisateur()['nom'])[0]) ?> 👋</h1>
     <p>Nous sommes le <?= e(date_fr($aujourdhui->format('Y-m-d H:i:s'), false)) ?>.</p>
   </div>
   <div class="actions">

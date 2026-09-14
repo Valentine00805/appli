@@ -201,6 +201,7 @@ $routes = [
     ['POST', 'notifications/envoyer',     [NotificationsController::class, 'envoyer']],
     ['POST', 'compte/mot-de-passe',       [AuthController::class, 'changerMotDePasse']],
     ['POST', 'compte/fuseau',            [AuthController::class, 'changerFuseau']],
+    ['POST', 'compte/pseudo',            [AuthController::class, 'changerPseudo']],
     /*
      * Les agendas distants. Le fournisseur est dans l'adresse : chacun a
      * ainsi sa page et son retour d'autorisation, sans une ligne de plus.

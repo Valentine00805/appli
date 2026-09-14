@@ -55,8 +55,8 @@ $actif = static function (string $prefixe) use ($route): string {
       <div class="nav__compte">
         <?php if ($utilisateur !== null): ?>
           <a class="nav__utilisateur" href="<?= url('compte') ?>" title="Mon compte">
-            <span class="avatar" aria-hidden="true"><?= e(mb_strtoupper(mb_substr((string) $utilisateur['nom'], 0, 1))) ?></span>
-            <span class="nav__utilisateur-nom"><?= e((string) $utilisateur['nom']) ?></span>
+            <span class="avatar" aria-hidden="true"><?= e(mb_strtoupper(mb_substr(Auth::nomAffiche($utilisateur), 0, 1))) ?></span>
+            <span class="nav__utilisateur-nom"><?= e(Auth::nomAffiche($utilisateur)) ?></span>
           </a>
           <form action="<?= url('deconnexion') ?>" method="post">
             <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">

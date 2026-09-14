@@ -9,6 +9,8 @@ USE `mon_appli_cours`;
 CREATE TABLE IF NOT EXISTS `users` (
   `id`            INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `nom`           VARCHAR(80)  NOT NULL,
+  -- Le nom sous lequel l'application vous appelle ; unique, NULL pour un compte d'avant.
+  `pseudo`        VARCHAR(30)  NULL,
   `fuseau`        VARCHAR(64)  NOT NULL DEFAULT 'Europe/Paris',
   `afficher_miens` TINYINT(1)  NOT NULL DEFAULT 1,
   `couleur_miens`  VARCHAR(7)  NULL,
@@ -20,7 +22,8 @@ CREATE TABLE IF NOT EXISTS `users` (
   `password_hash` VARCHAR(255) NOT NULL,
   `created_at`    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uniq_users_email` (`email`)
+  UNIQUE KEY `uniq_users_email` (`email`),
+  UNIQUE KEY `uniq_users_pseudo` (`pseudo`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `matieres` (

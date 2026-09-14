@@ -9,6 +9,16 @@
     <?php if (isset($erreurs['nom'])): ?><span class="message-erreur"><?= e($erreurs['nom']) ?></span><?php endif; ?>
   </div>
 
+  <div class="champ<?= isset($erreurs['pseudo']) ? ' champ--erreur' : '' ?>">
+    <label for="pseudo">Pseudo</label>
+    <input type="text" id="pseudo" name="pseudo" required autocomplete="nickname"
+           minlength="<?= Auth::PSEUDO_MIN ?>" maxlength="<?= Auth::PSEUDO_MAX ?>"
+           value="<?= e(post('pseudo')) ?>">
+    <span class="champ__aide">Le nom sous lequel l’application vous appelle — modifiable ensuite dans « Mon compte ».
+      Lettres, chiffres, point, tiret et tiret bas, sans espace.</span>
+    <?php if (isset($erreurs['pseudo'])): ?><span class="message-erreur"><?= e($erreurs['pseudo']) ?></span><?php endif; ?>
+  </div>
+
   <div class="champ<?= isset($erreurs['email']) ? ' champ--erreur' : '' ?>">
     <label for="email">Adresse e-mail</label>
     <input type="email" id="email" name="email" required autocomplete="email" value="<?= e(post('email')) ?>">

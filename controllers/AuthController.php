@@ -29,6 +29,7 @@ final class AuthController
         }
 
         $nom = post('nom');
+        $pseudo = post('pseudo');
         $email = mb_strtolower(post('email'));
         $mdp = $_POST['mot_de_passe'] ?? '';
         $mdp2 = $_POST['mot_de_passe_confirmation'] ?? '';
@@ -44,6 +45,9 @@ final class AuthController
 
         if (mb_strlen($nom) < 2) {
             $erreurs['nom'] = 'Indiquez un nom d’au moins 2 caractères.';
+        }
+        if (($probleme = Auth::problemePseudo($pseudo)) !== null) {
+            $erreurs['pseudo'] = $probleme;
         }
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
             $erreurs['email'] = 'Adresse e-mail invalide.';
@@ -64,17 +68,29 @@ final class AuthController
             return;
         }
 
-        Database::run(
-            'INSERT INTO users (nom, email, password_hash) VALUES (?, ?, ?)',
-            [$nom, $email, password_hash($mdp, PASSWORD_DEFAULT)]
-        );
+        try {
+            Database::run(
+                'INSERT INTO users (nom, pseudo, email, password_hash) VALUES (?, ?, ?, ?)',
+                [$nom, $pseudo, $email, password_hash($mdp, PASSWORD_DEFAULT)]
+            );
+        } catch (PDOException $e) {
+            // Pris entre la vérification et l'écriture, par une inscription simultanée.
+            if ($e->getCode() !== '23000') {
+                throw $e;
+            }
+            Vue::afficherNu('auth/inscription', [
+                'erreurs' => ['pseudo' => 'Ce pseudo vient d’être pris. Choisissez-en un autre.'],
+                'codeExige' => $code !== '',
+            ], 'Inscription');
+            return;
+        }
         $userId = Database::dernierId();
         $this->creerMatieresParDefaut($userId);
         TypesEvenementController::creerParDefaut($userId);
         BudgetController::creerCategoriesParDefaut($userId);
 
         Auth::connecter($userId);
-        Session::flash('succes', 'Bienvenue ' . $nom . ' ! Votre espace est prêt.');
+        Session::flash('succes', 'Bienvenue ' . $pseudo . ' ! Votre espace est prêt.');
         redirect('');
     }
 
@@ -125,7 +141,7 @@ final class AuthController
 
         $destination = $_SESSION['_apres_connexion'] ?? null;
         Auth::connecter((int) $utilisateur['id']);
-        Session::flash('succes', 'Content de vous revoir, ' . $utilisateur['nom'] . '.');
+        Session::flash('succes', 'Content de vous revoir, ' . Auth::nomAffiche($utilisateur) . '.');
 
         if (is_string($destination) && $destination !== '') {
             header('Location: ' . $destination);
@@ -160,6 +176,39 @@ final class AuthController
             'fuseau'  => Auth::fuseau(),
             'fuseaux' => self::fuseauxParRegion(),
         ], 'Mon compte');
+    }
+
+    /** Choisit ou change son pseudo. */
+    public function changerPseudo(): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $userId = Auth::id();
+
+        $pseudo = post('pseudo');
+        if ($pseudo === (string) (Auth::utilisateur()['pseudo'] ?? '')) {
+            Session::flash('info', 'Votre pseudo reste « ' . $pseudo . ' ».');
+            redirect('compte');
+        }
+        if (($probleme = Auth::problemePseudo($pseudo, $userId)) !== null) {
+            Session::flash('erreur', $probleme);
+            Session::garder('pseudo_saisi', $pseudo);
+            redirect('compte');
+        }
+
+        try {
+            Database::run('UPDATE users SET pseudo = ? WHERE id = ?', [$pseudo, $userId]);
+        } catch (PDOException $e) {
+            if ($e->getCode() !== '23000') {
+                throw $e;
+            }
+            Session::flash('erreur', 'Ce pseudo vient d’être pris. Choisissez-en un autre.');
+            Session::garder('pseudo_saisi', $pseudo);
+            redirect('compte');
+        }
+
+        Session::flash('succes', 'Pseudo enregistré : vous êtes désormais « ' . $pseudo . ' ».');
+        redirect('compte');
     }
 
     /**
