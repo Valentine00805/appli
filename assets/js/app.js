@@ -1001,6 +1001,30 @@
     majQui(false);
   });
 
+  /*
+   * Le pseudo, dans « Mon compte » : il se lit, et ne s'ouvre à la
+   * modification que par son bouton. « Annuler » referme sans rien garder.
+   */
+  document.querySelectorAll('[data-pseudo]').forEach(function (carte) {
+    var lecture = carte.querySelector('[data-pseudo-lecture]');
+    var edition = carte.querySelector('[data-pseudo-edition]');
+    var champ = edition && edition.querySelector('input[name="pseudo"]');
+    if (!lecture || !edition || !champ) { return; }
+
+    carte.querySelector('[data-pseudo-modifier]').addEventListener('click', function () {
+      lecture.hidden = true;
+      edition.hidden = false;
+      champ.focus();
+      champ.select();
+    });
+    carte.querySelector('[data-pseudo-annuler]').addEventListener('click', function () {
+      champ.value = champ.getAttribute('data-valeur-actuelle') || '';
+      edition.hidden = true;
+      lecture.hidden = false;
+      carte.querySelector('[data-pseudo-modifier]').focus();
+    });
+  });
+
   // Édition rapide d'une matière
   document.querySelectorAll('[data-bascule]').forEach(function (bouton) {
     bouton.addEventListener('click', function () {

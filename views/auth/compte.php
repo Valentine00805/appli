@@ -26,32 +26,49 @@ $moi = Auth::utilisateur();
 <?php
 /*
  * Le pseudo : choisi à l'inscription, il se change ici. Un compte d'avant
- * n'en a pas encore — la carte l'invite à en choisir un. Après un refus, le
- * champ garde ce qu'on avait tapé.
+ * n'en a pas encore — la carte l'invite à en choisir un.
+ *
+ * Le pseudo se lit d'abord, sans champ : on ne le change qu'en passant par
+ * « Modifier », et « Annuler » le remet tel qu'il était. Après un refus, le
+ * champ reste ouvert avec ce qu'on avait tapé.
  */
 $pseudoActuel = (string) ($moi['pseudo'] ?? '');
 $pseudoSaisi = Session::reprendre('pseudo_saisi');
+$enEdition = is_string($pseudoSaisi);
 ?>
-<section class="carte" style="margin-bottom:1rem" id="pseudo-carte">
+<section class="carte" style="margin-bottom:1rem" id="pseudo-carte" data-pseudo>
   <h2 style="margin-top:0">🏷️ Mon pseudo</h2>
-  <p class="champ__aide" style="margin-top:0">
+
+  <div class="pseudo-lecture" data-pseudo-lecture<?= $enEdition ? ' hidden' : '' ?>>
     <?php if ($pseudoActuel === ''): ?>
-      Vous n’avez pas encore de pseudo : choisissez le nom sous lequel l’application vous appellera.
+      <p class="discret" style="margin:0">Vous n’avez pas encore de pseudo.</p>
     <?php else: ?>
-      Le nom sous lequel l’application vous appelle. Vous pouvez le changer quand vous voulez.
+      <p class="pseudo-lecture__valeur"><?= e($pseudoActuel) ?></p>
     <?php endif; ?>
-  </p>
-  <form method="post" action="<?= url('compte/pseudo') ?>" class="fuseau-choix">
+    <button class="bouton bouton--secondaire" type="button" data-pseudo-modifier>
+      <?= $pseudoActuel === '' ? 'Créer mon pseudo' : '✎ Modifier' ?>
+    </button>
+  </div>
+
+  <form method="post" action="<?= url('compte/pseudo') ?>" data-pseudo-edition<?= $enEdition ? '' : ' hidden' ?>>
     <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
-    <label class="sr-only" for="pseudo">Pseudo</label>
-    <input type="text" id="pseudo" name="pseudo" required autocomplete="nickname"
-           minlength="<?= Auth::PSEUDO_MIN ?>" maxlength="<?= Auth::PSEUDO_MAX ?>"
-           placeholder="Votre pseudo" value="<?= e(is_string($pseudoSaisi) ? $pseudoSaisi : $pseudoActuel) ?>">
-    <button class="bouton bouton--secondaire" type="submit"><?= $pseudoActuel === '' ? 'Créer mon pseudo' : 'Enregistrer' ?></button>
+    <label class="legende" for="pseudo"><?= $pseudoActuel === '' ? 'Votre pseudo' : 'Nouveau pseudo' ?></label>
+    <div class="fuseau-choix">
+      <input type="text" id="pseudo" name="pseudo" required autocomplete="nickname"
+             minlength="<?= Auth::PSEUDO_MIN ?>" maxlength="<?= Auth::PSEUDO_MAX ?>"
+             placeholder="Votre pseudo" data-valeur-actuelle="<?= e($pseudoActuel) ?>"
+             value="<?= e($enEdition ? $pseudoSaisi : $pseudoActuel) ?>">
+      <button class="bouton" type="submit">Enregistrer</button>
+      <button class="bouton bouton--discret" type="button" data-pseudo-annuler>Annuler</button>
+    </div>
+    <p class="champ__aide">
+      De <?= Auth::PSEUDO_MIN ?> à <?= Auth::PSEUDO_MAX ?> caractères : lettres, chiffres, point, tiret et tiret bas, sans espace.
+      Unique : deux comptes ne peuvent pas porter le même.
+    </p>
   </form>
-  <p class="champ__aide">
-    De <?= Auth::PSEUDO_MIN ?> à <?= Auth::PSEUDO_MAX ?> caractères : lettres, chiffres, point, tiret et tiret bas, sans espace.
-    Unique : deux comptes ne peuvent pas porter le même. Il sert aussi à se connecter, à la place de l’adresse e-mail.
+
+  <p class="champ__aide" style="margin-bottom:0">
+    Le nom sous lequel l’application vous appelle. Il sert aussi à se connecter, à la place de l’adresse e-mail.
   </p>
 </section>
 
