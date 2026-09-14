@@ -228,12 +228,12 @@ textarea { min-height: 260px; resize: vertical; line-height: 1.65; }
 .notifications [hidden] { display: none !important; }
 .notifications__liste { margin: 0; padding-left: 1.2rem; display: grid; gap: .45rem; }
 
-/* Le pseudo, lu avant d'être modifié. */
-.pseudo-lecture { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem; margin-bottom: .6rem; }
-.pseudo-lecture__valeur { margin: 0; font-size: 1.15rem; font-weight: 650; overflow-wrap: anywhere; }
-.pseudo-lecture[hidden], [data-pseudo-edition][hidden] { display: none; }
-[data-pseudo-edition] { margin-bottom: .6rem; }
-[data-pseudo-edition] .fuseau-choix { margin-top: .3rem; }
+/* Un réglage de « Mon compte » (pseudo, fuseau), lu avant d'être modifié. */
+.reglage-lecture { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem; margin-bottom: .6rem; }
+.reglage-lecture__valeur { margin: 0; font-size: 1.15rem; font-weight: 650; overflow-wrap: anywhere; }
+.reglage-lecture[hidden], [data-reglage-edition][hidden] { display: none; }
+[data-reglage-edition] { margin-bottom: .6rem; }
+[data-reglage-edition] .fuseau-choix { margin-top: .3rem; }
 
 /* Les rappels d'un évènement : des pastilles à cocher, plusieurs à la fois. */
 .rappels-choix__liste { display: flex; flex-wrap: wrap; gap: .45rem; }

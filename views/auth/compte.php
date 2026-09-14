@@ -36,21 +36,21 @@ $pseudoActuel = (string) ($moi['pseudo'] ?? '');
 $pseudoSaisi = Session::reprendre('pseudo_saisi');
 $enEdition = is_string($pseudoSaisi);
 ?>
-<section class="carte" style="margin-bottom:1rem" id="pseudo-carte" data-pseudo>
+<section class="carte" style="margin-bottom:1rem" id="pseudo-carte" data-reglage>
   <h2 style="margin-top:0">🏷️ Mon pseudo</h2>
 
-  <div class="pseudo-lecture" data-pseudo-lecture<?= $enEdition ? ' hidden' : '' ?>>
+  <div class="reglage-lecture" data-reglage-lecture<?= $enEdition ? ' hidden' : '' ?>>
     <?php if ($pseudoActuel === ''): ?>
       <p class="discret" style="margin:0">Vous n’avez pas encore de pseudo.</p>
     <?php else: ?>
-      <p class="pseudo-lecture__valeur"><?= e($pseudoActuel) ?></p>
+      <p class="reglage-lecture__valeur"><?= e($pseudoActuel) ?></p>
     <?php endif; ?>
-    <button class="bouton bouton--secondaire" type="button" data-pseudo-modifier>
+    <button class="bouton bouton--secondaire" type="button" data-reglage-modifier>
       <?= $pseudoActuel === '' ? 'Créer mon pseudo' : '✎ Modifier' ?>
     </button>
   </div>
 
-  <form method="post" action="<?= url('compte/pseudo') ?>" data-pseudo-edition<?= $enEdition ? '' : ' hidden' ?>>
+  <form method="post" action="<?= url('compte/pseudo') ?>" data-reglage-edition<?= $enEdition ? '' : ' hidden' ?>>
     <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
     <label class="legende" for="pseudo"><?= $pseudoActuel === '' ? 'Votre pseudo' : 'Nouveau pseudo' ?></label>
     <div class="fuseau-choix">
@@ -59,7 +59,7 @@ $enEdition = is_string($pseudoSaisi);
              placeholder="Votre pseudo" data-valeur-actuelle="<?= e($pseudoActuel) ?>"
              value="<?= e($enEdition ? $pseudoSaisi : $pseudoActuel) ?>">
       <button class="bouton" type="submit">Enregistrer</button>
-      <button class="bouton bouton--discret" type="button" data-pseudo-annuler>Annuler</button>
+      <button class="bouton bouton--discret" type="button" data-reglage-annuler>Annuler</button>
     </div>
     <p class="champ__aide">
       De <?= Auth::PSEUDO_MIN ?> à <?= Auth::PSEUDO_MAX ?> caractères : lettres, chiffres, point, tiret et tiret bas, sans espace.
@@ -81,34 +81,45 @@ $enEdition = is_string($pseudoSaisi);
  * Mal réglé, il décale tout d'un bloc sans rien signaler.
  */
 ?>
-<section class="carte" style="margin-bottom:1rem">
+<section class="carte" style="margin-bottom:1rem" id="fuseau-carte" data-reglage>
   <h2 style="margin-top:0">🕑 Fuseau horaire</h2>
-  <p class="champ__aide" style="margin-top:0">
+
+  <?php // Comme le pseudo : il se lit, et ne se change qu'en passant par « Modifier ». ?>
+  <div class="reglage-lecture" data-reglage-lecture>
+    <p class="reglage-lecture__valeur"><?= e(str_replace('_', ' ', $fuseau)) ?></p>
+    <button class="bouton bouton--secondaire" type="button" data-reglage-modifier>✎ Modifier</button>
+  </div>
+
+  <form method="post" action="<?= url('compte/fuseau') ?>" data-reglage-edition hidden>
+    <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
+    <label class="legende" for="fuseau">Nouveau fuseau horaire</label>
+    <div class="fuseau-choix">
+      <select id="fuseau" name="fuseau">
+        <?php foreach ($fuseaux as $region => $liste): ?>
+          <optgroup label="<?= e($region) ?>">
+            <?php foreach ($liste as $f): ?>
+              <option value="<?= e($f) ?>"<?= $f === $fuseau ? ' selected' : '' ?>>
+                <?= e(str_replace('_', ' ', $f)) ?>
+              </option>
+            <?php endforeach; ?>
+          </optgroup>
+        <?php endforeach; ?>
+      </select>
+      <button class="bouton" type="submit">Enregistrer</button>
+      <button class="bouton bouton--discret" type="button" data-reglage-annuler>Annuler</button>
+    </div>
+    <p class="champ__aide">
+      Changer de fuseau ne déplace pas ce qui est déjà noté : un cours à 8 h
+      reste à 8 h, simplement lu dans la nouvelle heure. C'est ce qu'on veut en
+      déménageant — moins en corrigeant un mauvais réglage, où il faudra
+      reprendre les horaires à la main.
+    </p>
+  </form>
+
+  <p class="champ__aide" style="margin-bottom:0">
     Il est <strong><?= e(date('H:i')) ?></strong> pour l'application.
     Vos horaires d'évènements, ici comme dans Outlook, sont lus et écrits dans
     ce fuseau.
-  </p>
-  <form method="post" action="<?= url('compte/fuseau') ?>" class="fuseau-choix">
-    <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
-    <label class="sr-only" for="fuseau">Fuseau horaire</label>
-    <select id="fuseau" name="fuseau">
-      <?php foreach ($fuseaux as $region => $liste): ?>
-        <optgroup label="<?= e($region) ?>">
-          <?php foreach ($liste as $f): ?>
-            <option value="<?= e($f) ?>"<?= $f === $fuseau ? ' selected' : '' ?>>
-              <?= e(str_replace('_', ' ', $f)) ?>
-            </option>
-          <?php endforeach; ?>
-        </optgroup>
-      <?php endforeach; ?>
-    </select>
-    <button class="bouton bouton--secondaire" type="submit">Enregistrer</button>
-  </form>
-  <p class="champ__aide">
-    Changer de fuseau ne déplace pas ce qui est déjà noté : un cours à 8 h
-    reste à 8 h, simplement lu dans la nouvelle heure. C'est ce qu'on veut en
-    déménageant — moins en corrigeant un mauvais réglage, où il faudra
-    reprendre les horaires à la main.
   </p>
 </section>
 

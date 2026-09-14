@@ -1002,26 +1002,35 @@
   });
 
   /*
-   * Le pseudo, dans « Mon compte » : il se lit, et ne s'ouvre à la
-   * modification que par son bouton. « Annuler » referme sans rien garder.
+   * Les réglages de « Mon compte » — le pseudo, le fuseau horaire : ils se
+   * lisent, et ne s'ouvrent à la modification que par leur bouton.
+   * « Annuler » referme et remet la valeur enregistrée.
    */
-  document.querySelectorAll('[data-pseudo]').forEach(function (carte) {
-    var lecture = carte.querySelector('[data-pseudo-lecture]');
-    var edition = carte.querySelector('[data-pseudo-edition]');
-    var champ = edition && edition.querySelector('input[name="pseudo"]');
-    if (!lecture || !edition || !champ) { return; }
+  document.querySelectorAll('[data-reglage]').forEach(function (carte) {
+    var lecture = carte.querySelector('[data-reglage-lecture]');
+    var edition = carte.querySelector('[data-reglage-edition]');
+    var modifier = carte.querySelector('[data-reglage-modifier]');
+    var annuler = carte.querySelector('[data-reglage-annuler]');
+    if (!lecture || !edition || !modifier || !annuler) { return; }
+    var champ = edition.querySelector('input:not([type="hidden"]), select');
 
-    carte.querySelector('[data-pseudo-modifier]').addEventListener('click', function () {
+    modifier.addEventListener('click', function () {
       lecture.hidden = true;
       edition.hidden = false;
-      champ.focus();
-      champ.select();
+      if (champ) {
+        champ.focus();
+        if (champ.select && champ.tagName === 'INPUT') { champ.select(); }
+      }
     });
-    carte.querySelector('[data-pseudo-annuler]').addEventListener('click', function () {
-      champ.value = champ.getAttribute('data-valeur-actuelle') || '';
+    annuler.addEventListener('click', function () {
+      edition.reset();
+      // Après un refus, le champ montrait la saisie : on revient à ce qui est enregistré.
+      edition.querySelectorAll('[data-valeur-actuelle]').forEach(function (c) {
+        c.value = c.getAttribute('data-valeur-actuelle');
+      });
       edition.hidden = true;
       lecture.hidden = false;
-      carte.querySelector('[data-pseudo-modifier]').focus();
+      modifier.focus();
     });
   });
 
