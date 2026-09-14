@@ -60,6 +60,8 @@ $dansUneFenetre = $dansUneFenetre ?? false;
           pour un rappel d’un jour ou plus.</li>
         <li><strong>Les échéances de tâches</strong> : à 8 h le jour de l’échéance, pour une sous-tâche pas
           encore faite ou une tâche principale qui en a encore.</li>
+        <li><strong>Les messages de vos amis</strong>, dès qu’ils arrivent — sauf si la discussion est
+          ouverte sous vos yeux. Plusieurs messages d’affilée ne font vibrer qu’une fois.</li>
       </ul>
     </section>
   </div>

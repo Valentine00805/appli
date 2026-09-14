@@ -1086,7 +1086,8 @@
         if (enCours) { return Promise.resolve(); }
         enCours = true;
         var enBasAvant = presqueEnBas();
-        return fetch(chat.getAttribute('data-nouveaux') + '?apres=' + dernier, {
+        // « visible » : la discussion est sous les yeux, inutile d'en notifier les messages.
+        return fetch(chat.getAttribute('data-nouveaux') + '?apres=' + dernier + '&visible=' + (document.hidden ? 0 : 1), {
           credentials: 'same-origin', headers: { Accept: 'application/json' }
         }).then(function (r) {
           if (r.status === 403) { window.location.reload(); throw new Error('plus amis'); }

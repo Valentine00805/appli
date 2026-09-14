@@ -44,6 +44,7 @@ final class AmisController
             'acceptee' => Session::flash('succes', $pseudo . ' vous l’avait déjà demandé : vous êtes maintenant amis.'),
             'deja' => Session::flash('info', 'Une demande est déjà en cours avec ' . $pseudo . ', ou vous êtes déjà amis.'),
             'trop' => Session::flash('erreur', 'Vous avez déjà ' . Amis::DEMANDES_MAX . ' demandes en attente : attendez des réponses.'),
+            'sans_pseudo' => Session::flash('erreur', 'Choisissez d’abord un pseudo dans « Mon compte » : c’est lui que verra la personne.'),
             default => Session::flash('erreur', 'Ce compte est introuvable.'),
         };
 
@@ -102,6 +103,7 @@ final class AmisController
 
         // Le fil d'abord : il marque les messages reçus comme lus, et la liste le reflète.
         $messages = Amis::fil($moi, $id);
+        Amis::regarder($moi, $id);
         $amis = Amis::liste($moi);
 
         Vue::afficher('amis/conversation', [
@@ -126,6 +128,11 @@ final class AmisController
             repondre_json(['fait' => false, 'message' => 'Vous n’êtes plus amis.']);
         }
 
+        // Onglet visible : la discussion est sous les yeux, ses messages n'ont pas à être notifiés.
+        if (($_GET['visible'] ?? '') === '1') {
+            Amis::regarder($moi, $id);
+        }
+
         repondre_json([
             'fait' => true,
             'messages' => Amis::fil($moi, $id, max(0, (int) ($_GET['apres'] ?? 0))),
@@ -140,20 +147,48 @@ final class AmisController
         Session::verifierCsrf();
         $moi = Auth::id();
 
-        [$messageId, $refus] = Amis::ecrire($moi, $id, (string) ($_POST['texte'] ?? ''));
+        $texte = (string) ($_POST['texte'] ?? '');
+        [$messageId, $refus] = Amis::ecrire($moi, $id, $texte);
 
         if (veut_du_json()) {
             if ($messageId === null) {
                 http_response_code(422);
                 repondre_json(['fait' => false, 'message' => $refus]);
             }
-            repondre_json(['fait' => true, 'id' => $messageId]);
+            // La réponse part d'abord : l'envoi aux téléphones ne fait pas attendre la page.
+            $this->repondreAvant(['fait' => true, 'id' => $messageId]);
+            Amis::notifier($moi, $id, $texte);
+            exit;
         }
 
         if ($refus !== null) {
             Session::flash('erreur', $refus);
+        } else {
+            Amis::notifier($moi, $id, $texte);
         }
         redirect('amis/' . $id);
+    }
+
+    /**
+     * Envoie la réponse et ferme la connexion, puis laisse le script continuer :
+     * le navigateur a son résultat pendant que les notifications partent.
+     */
+    private function repondreAvant(array $donnees): void
+    {
+        session_write_close();
+        ignore_user_abort(true);
+        $corps = (string) json_encode($donnees, JSON_UNESCAPED_UNICODE);
+        while (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+        header('Content-Type: application/json; charset=utf-8');
+        header('Content-Length: ' . strlen($corps));
+        header('Connection: close');
+        echo $corps;
+        flush();
+        if (function_exists('fastcgi_finish_request')) {
+            fastcgi_finish_request();
+        }
     }
 
     /** Revient à la page d'où venait le geste, recherche comprise. */

@@ -60,7 +60,9 @@ self.addEventListener('push', function (evenement) {
   evenement.waitUntil(self.registration.showNotification(message.title || 'Mes Cours', {
     body: message.body || '',
     tag: message.tag || undefined,
-    renotify: !!message.tag,
+    // Un message qui suit de près le précédent remplace sa notification sans refaire vibrer.
+    renotify: !!message.tag && !message.silencieux,
+    silent: !!message.silencieux,
     lang: 'fr',
     data: { url: message.url || './' }
   }));

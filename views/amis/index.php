@@ -29,7 +29,8 @@ $geste = static function (string $action, int $compte, string $libelle, string $
 <div class="entete-page">
   <div>
     <h1>💬 Amis</h1>
-    <p>Retrouvez d’autres comptes par leur pseudo, et discutez avec vos amis.</p>
+    <p>Retrouvez d’autres comptes par leur pseudo, et discutez avec vos amis.
+      <a href="<?= url('notifications') ?>" data-fenetre>🔔 Être prévenu des messages</a></p>
   </div>
 </div>
 

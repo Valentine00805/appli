@@ -22,6 +22,15 @@ final class Amis
     /** Messages montrés à l'ouverture d'une conversation. */
     public const FIL_MAX = 200;
 
+    /** Une discussion regardée il y a moins de tant de secondes est encore sous les yeux. */
+    public const PRESENCE_SECONDES = 15;
+
+    /** Dans ce délai après une notification, la suivante remplace la première sans faire vibrer. */
+    public const RELANCE_SECONDES = 30;
+
+    /** Longueur du texte repris dans une notification. */
+    public const APERCU_NOTIFICATION = 140;
+
     /** Le compte d'un autre, tel qu'on peut le voir : son identifiant et son pseudo. */
     public static function compte(int $id): ?array
     {
@@ -166,6 +175,10 @@ final class Amis
         if ($autre === $moi || self::compte($autre) === null) {
             return 'introuvable';
         }
+        // L'autre ne verrait de nous qu'un nom vide : il faut un pseudo pour se présenter.
+        if (self::compte($moi) === null) {
+            return 'sans_pseudo';
+        }
 
         $relation = self::relation($moi, $autre);
         if ($relation !== null) {
@@ -274,6 +287,63 @@ final class Amis
         );
 
         return array_map(static fn (array $m): array => self::pourAffichage($m, $moi), array_reverse($messages));
+    }
+
+    /** Note que la discussion avec cet ami est sous les yeux de la personne. */
+    public static function regarder(int $moi, int $ami): void
+    {
+        Database::run(
+            'INSERT INTO discussions_etat (user_id, ami_id, regarde_le) VALUES (?, ?, UTC_TIMESTAMP())
+             ON DUPLICATE KEY UPDATE regarde_le = UTC_TIMESTAMP()',
+            [$moi, $ami]
+        );
+    }
+
+    /**
+     * Prévient le destinataire d'un message sur ses appareils abonnés.
+     *
+     * Pas s'il a la discussion ouverte sous les yeux : il voit le message
+     * arriver. Et plusieurs messages d'affilée remplacent la même notification
+     * — une par ami — sans refaire vibrer le téléphone à chaque fois.
+     *
+     * @return string « envoyee », « silencieuse », « regarde » ou « aucun_appareil »
+     */
+    public static function notifier(int $expediteur, int $destinataire, string $texte): string
+    {
+        $appareils = (int) Database::valeur('SELECT COUNT(*) FROM abonnements_push WHERE user_id = ?', [$destinataire]);
+        if ($appareils === 0) {
+            return 'aucun_appareil';
+        }
+
+        $etat = Database::one(
+            'SELECT TIMESTAMPDIFF(SECOND, regarde_le, UTC_TIMESTAMP()) AS depuis_regarde,
+                    TIMESTAMPDIFF(SECOND, notifie_le, UTC_TIMESTAMP()) AS depuis_notifie
+               FROM discussions_etat WHERE user_id = ? AND ami_id = ?',
+            [$destinataire, $expediteur]
+        );
+        if ($etat !== null && $etat['depuis_regarde'] !== null && (int) $etat['depuis_regarde'] < self::PRESENCE_SECONDES) {
+            return 'regarde';
+        }
+        $silencieuse = $etat !== null && $etat['depuis_notifie'] !== null
+            && (int) $etat['depuis_notifie'] < self::RELANCE_SECONDES;
+
+        Database::run(
+            'INSERT INTO discussions_etat (user_id, ami_id, notifie_le) VALUES (?, ?, UTC_TIMESTAMP())
+             ON DUPLICATE KEY UPDATE notifie_le = UTC_TIMESTAMP()',
+            [$destinataire, $expediteur]
+        );
+
+        $compte = self::compte($expediteur);
+        $apercu = trim((string) preg_replace('/\s+/u', ' ', $texte));
+        Rappels::envoyerAuCompte($destinataire, [
+            'title' => '💬 ' . ($compte['pseudo'] ?? 'Nouveau message'),
+            'body' => mb_strimwidth($apercu, 0, self::APERCU_NOTIFICATION, '…'),
+            'url' => url('amis/' . $expediteur),
+            'tag' => 'message-' . $expediteur,
+            'silencieux' => $silencieuse,
+        ]);
+
+        return $silencieuse ? 'silencieuse' : 'envoyee';
     }
 
     /** Le dernier de mes messages que l'autre a lu, pour afficher « Vu ». */
