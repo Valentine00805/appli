@@ -48,6 +48,10 @@ $dansUneFenetre = $dansUneFenetre ?? false;
         <button class="bouton bouton--discret" type="button" data-notifications-desactiver hidden>Désactiver sur cet appareil</button>
       </p>
       <p class="champ__aide" data-notifications-aide hidden></p>
+      <p class="champ__aide" style="margin-bottom:0">
+        Un navigateur reçoit les notifications d’un seul compte : celui qui les a activées
+        le dernier. Pour deux comptes, activez-les dans deux navigateurs (ou profils) différents.
+      </p>
     </section>
 
     <section class="carte">
@@ -60,8 +64,9 @@ $dansUneFenetre = $dansUneFenetre ?? false;
           pour un rappel d’un jour ou plus.</li>
         <li><strong>Les échéances de tâches</strong> : à 8 h le jour de l’échéance, pour une sous-tâche pas
           encore faite ou une tâche principale qui en a encore.</li>
-        <li><strong>Les messages de vos amis</strong>, dès qu’ils arrivent — sauf si la discussion est
-          ouverte sous vos yeux. Plusieurs messages d’affilée ne font vibrer qu’une fois.</li>
+        <li><strong>Les messages de vos amis</strong>, dès qu’ils arrivent — sauf si vous êtes à ce
+          moment-là dans la discussion, fenêtre active.</li>
+        <li><strong>Les demandes d’ami</strong> reçues, et vos demandes acceptées.</li>
       </ul>
     </section>
   </div>

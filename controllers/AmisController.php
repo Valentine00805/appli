@@ -48,7 +48,14 @@ final class AmisController
             default => Session::flash('erreur', 'Ce compte est introuvable.'),
         };
 
-        $this->retour();
+        // Prévenir l'autre : d'une demande, ou — demandes croisées — de l'acceptation.
+        $aEnvoyer = match ($resultat) {
+            'envoyee' => Amis::notifierDemande($moi, $autre),
+            'acceptee' => Amis::notifierAcceptation($moi, $autre),
+            default => null,
+        };
+
+        $this->retour($aEnvoyer);
     }
 
     public function accepter(int $id): void
@@ -57,12 +64,14 @@ final class AmisController
         Session::verifierCsrf();
         $compte = Amis::compte($id);
 
+        $aEnvoyer = null;
         if ($compte !== null && Amis::accepter(Auth::id(), $id)) {
             Session::flash('succes', 'Vous êtes maintenant amis avec ' . $compte['pseudo'] . '.');
+            $aEnvoyer = Amis::notifierAcceptation(Auth::id(), $id);
         } else {
             Session::flash('erreur', 'Cette demande n’existe plus.');
         }
-        $this->retour();
+        $this->retour($aEnvoyer);
     }
 
     /** Refuser une demande, annuler la sienne, ou retirer un ami : le lien disparaît. */
@@ -159,17 +168,46 @@ final class AmisController
                 repondre_json(['fait' => false, 'message' => $refus]);
             }
             // La réponse part d'abord : l'envoi aux téléphones ne fait pas attendre la page.
+            // La notification est écrite avant de répondre : même si l'envoi qui suit échoue, la file la retentera.
+            $aEnvoyer = Amis::notifier($moi, $id, $texte, $avecImage);
             $this->repondreAvant(['fait' => true, 'id' => $messageId]);
-            Amis::notifier($moi, $id, $texte, $avecImage);
+            if ($aEnvoyer !== null) {
+                FileNotifications::envoyer($aEnvoyer);
+            }
             exit;
         }
 
         if ($refus !== null) {
             Session::flash('erreur', $refus);
-        } else {
-            Amis::notifier($moi, $id, $texte, $avecImage);
+            redirect('amis/' . $id);
         }
-        redirect('amis/' . $id);
+        $this->redirigerPuisEnvoyer(url('amis/' . $id), Amis::notifier($moi, $id, $texte, $avecImage));
+    }
+
+    /**
+     * Renvoie vers une page, ferme la connexion, puis envoie la notification
+     * en file : la page suivante n'attend pas le service de notifications.
+     */
+    private function redirigerPuisEnvoyer(string $adresse, ?int $notification): never
+    {
+        if ($notification === null) {
+            header('Location: ' . $adresse);
+            exit;
+        }
+        session_write_close();
+        ignore_user_abort(true);
+        while (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+        header('Location: ' . $adresse);
+        header('Content-Length: 0');
+        header('Connection: close');
+        flush();
+        if (function_exists('fastcgi_finish_request')) {
+            fastcgi_finish_request();
+        }
+        FileNotifications::envoyer($notification);
+        exit;
     }
 
     /** L'image d'un message, pour les deux amis seulement. */
@@ -219,9 +257,9 @@ final class AmisController
     }
 
     /** Revient à la page d'où venait le geste, recherche comprise. */
-    private function retour(): never
+    private function retour(?int $notification = null): never
     {
         $pseudo = trim((string) ($_POST['recherche'] ?? ''));
-        redirect('amis', $pseudo === '' ? [] : ['pseudo' => $pseudo]);
+        $this->redirigerPuisEnvoyer(url('amis', $pseudo === '' ? [] : ['pseudo' => $pseudo]), $notification);
     }
 }

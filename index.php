@@ -41,6 +41,7 @@ require __DIR__ . '/src/PdfSimple.php';
 require __DIR__ . '/src/ExportPdf.php';
 require __DIR__ . '/src/WebPush.php';
 require __DIR__ . '/src/Rappels.php';
+require __DIR__ . '/src/FileNotifications.php';
 require __DIR__ . '/src/Amis.php';
 require __DIR__ . '/src/PlanningJour.php';
 require __DIR__ . '/src/Fournisseur.php';

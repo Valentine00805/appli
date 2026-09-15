@@ -22,11 +22,12 @@ final class Amis
     /** Messages montrés à l'ouverture d'une conversation. */
     public const FIL_MAX = 200;
 
-    /** Une discussion regardée il y a moins de tant de secondes est encore sous les yeux. */
-    public const PRESENCE_SECONDES = 15;
-
-    /** Dans ce délai après une notification, la suivante remplace la première sans faire vibrer. */
-    public const RELANCE_SECONDES = 30;
+    /**
+     * Une discussion regardée — onglet affiché et fenêtre active — il y a
+     * moins de tant de secondes est encore sous les yeux. La page le redit
+     * toutes les quatre secondes tant que c'est le cas.
+     */
+    public const PRESENCE_SECONDES = 10;
 
     /** Longueur du texte repris dans une notification. */
     public const APERCU_NOTIFICATION = 140;
@@ -479,53 +480,70 @@ final class Amis
     }
 
     /**
-     * Prévient le destinataire d'un message sur ses appareils abonnés.
+     * Met en file la notification d'un message, comme un rappel d'évènement.
      *
-     * Pas s'il a la discussion ouverte sous les yeux : il voit le message
-     * arriver. Et plusieurs messages d'affilée remplacent la même notification
-     * — une par ami — sans refaire vibrer le téléphone à chaque fois.
+     * Chaque message a la sienne. Une seule exception : le destinataire a la
+     * discussion ouverte, affichée et active à l'instant — il voit le message
+     * arriver, une notification ne ferait que doubler l'écran.
      *
-     * @return string « envoyee », « silencieuse », « regarde » ou « aucun_appareil »
+     * @return ?int la notification en file, ou null s'il n'y a personne à prévenir
      */
-    public static function notifier(int $expediteur, int $destinataire, string $texte, bool $avecImage = false): string
+    public static function notifier(int $expediteur, int $destinataire, string $texte, bool $avecImage = false): ?int
     {
-        $appareils = (int) Database::valeur('SELECT COUNT(*) FROM abonnements_push WHERE user_id = ?', [$destinataire]);
-        if ($appareils === 0) {
-            return 'aucun_appareil';
-        }
-
-        $etat = Database::one(
-            'SELECT TIMESTAMPDIFF(SECOND, regarde_le, UTC_TIMESTAMP()) AS depuis_regarde,
-                    TIMESTAMPDIFF(SECOND, notifie_le, UTC_TIMESTAMP()) AS depuis_notifie
-               FROM discussions_etat WHERE user_id = ? AND ami_id = ?',
+        $depuis = Database::valeur(
+            'SELECT TIMESTAMPDIFF(SECOND, regarde_le, UTC_TIMESTAMP()) FROM discussions_etat WHERE user_id = ? AND ami_id = ?',
             [$destinataire, $expediteur]
         );
-        if ($etat !== null && $etat['depuis_regarde'] !== null && (int) $etat['depuis_regarde'] < self::PRESENCE_SECONDES) {
-            return 'regarde';
+        if ($depuis !== null && (int) $depuis < self::PRESENCE_SECONDES) {
+            return null;
         }
-        $silencieuse = $etat !== null && $etat['depuis_notifie'] !== null
-            && (int) $etat['depuis_notifie'] < self::RELANCE_SECONDES;
-
-        Database::run(
-            'INSERT INTO discussions_etat (user_id, ami_id, notifie_le) VALUES (?, ?, UTC_TIMESTAMP())
-             ON DUPLICATE KEY UPDATE notifie_le = UTC_TIMESTAMP()',
-            [$destinataire, $expediteur]
-        );
 
         $compte = self::compte($expediteur);
         $apercu = trim((string) preg_replace('/\s+/u', ' ', $texte));
         if ($avecImage) {
             $apercu = '📷 Photo' . ($apercu === '' ? '' : ' · ' . $apercu);
         }
-        Rappels::envoyerAuCompte($destinataire, [
+        $id = FileNotifications::ajouter($destinataire, 'message', [
             'title' => '💬 ' . ($compte['pseudo'] ?? 'Nouveau message'),
             'body' => mb_strimwidth($apercu, 0, self::APERCU_NOTIFICATION, '…'),
             'url' => url('amis/' . $expediteur),
             'tag' => 'message-' . $expediteur,
-            'silencieux' => $silencieuse,
         ]);
+        if ($id !== null) {
+            Database::run(
+                'INSERT INTO discussions_etat (user_id, ami_id, notifie_le) VALUES (?, ?, UTC_TIMESTAMP())
+                 ON DUPLICATE KEY UPDATE notifie_le = UTC_TIMESTAMP()',
+                [$destinataire, $expediteur]
+            );
+        }
 
-        return $silencieuse ? 'silencieuse' : 'envoyee';
+        return $id;
+    }
+
+    /** Met en file la notification d'une demande d'ami reçue. */
+    public static function notifierDemande(int $demandeur, int $destinataire): ?int
+    {
+        $pseudo = (string) (self::compte($demandeur)['pseudo'] ?? 'Quelqu’un');
+
+        return FileNotifications::ajouter($destinataire, 'demande', [
+            'title' => '👋 Nouvelle demande d’ami',
+            'body' => $pseudo . ' veut vous ajouter en ami.',
+            'url' => url('amis'),
+            'tag' => 'demande-' . $demandeur,
+        ]);
+    }
+
+    /** Met en file, pour qui avait demandé, la notification d'une demande acceptée. */
+    public static function notifierAcceptation(int $accepteur, int $demandeur): ?int
+    {
+        $pseudo = (string) (self::compte($accepteur)['pseudo'] ?? 'Votre ami');
+
+        return FileNotifications::ajouter($demandeur, 'acceptation', [
+            'title' => '🤝 Demande acceptée',
+            'body' => $pseudo . ' a accepté votre demande : vous pouvez discuter.',
+            'url' => url('amis/' . $accepteur),
+            'tag' => 'acceptation-' . $accepteur,
+        ]);
     }
 
     /** Le dernier de mes messages que l'autre a lu, pour afficher « Vu ». */

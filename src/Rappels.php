@@ -151,6 +151,11 @@ final class Rappels
             }
         }
 
+        // Les messages et demandes d'ami restés en file : même tâche, même rythme que les rappels.
+        $file = FileNotifications::envoyerEnAttente($seulement);
+        $bilan['file_envoyees'] = $file['envoyees'];
+        $bilan['file_retenues'] = $file['retenues'];
+
         return $bilan;
     }
 
