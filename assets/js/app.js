@@ -130,6 +130,36 @@
     });
   }
 
+  /*
+   * Les fenêtres de confirmation : un bouton « data-ouvrir-dialogue » ouvre
+   * la fenêtre qu'il nomme, par-dessus tout le reste — même une autre
+   * fenêtre. Écoutées sur le document, elles marchent aussi dans un contenu
+   * chargé après coup. Seuls leur croix et « Annuler » les ferment ; le
+   * curseur part sur « Annuler », pour qu'un Entrée distrait ne confirme rien.
+   */
+  document.addEventListener('click', function (evenement) {
+    var cible = evenement.target;
+    if (!cible || !cible.closest) { return; }
+    var ouvrir = cible.closest('[data-ouvrir-dialogue]');
+    if (ouvrir) {
+      var dialogue = document.getElementById(ouvrir.getAttribute('data-ouvrir-dialogue'));
+      if (dialogue && typeof dialogue.showModal === 'function') {
+        evenement.preventDefault();
+        dialogue.showModal();
+        var annuler = dialogue.querySelector('.confirmation__choix [data-fermer-dialogue]');
+        if (annuler) { annuler.focus(); }
+      }
+      return;
+    }
+    var fermer = cible.closest('[data-fermer-dialogue]');
+    if (fermer && fermer.closest('dialog')) {
+      fermer.closest('dialog').close();
+    }
+  });
+  document.addEventListener('cancel', function (evenement) {
+    if (evenement.target.matches && evenement.target.matches('[data-confirmation-dialogue]')) { evenement.preventDefault(); }
+  }, true);
+
   // Confirmation avant les suppressions
   document.addEventListener('submit', function (evenement) {
     var formulaire = evenement.target;

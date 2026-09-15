@@ -3,9 +3,10 @@
  * Le profil d'un ami, ouvert depuis la discussion : ce que vous avez échangé
  * (photos, fichiers) et, tout en bas, de quoi le retirer de vos amis.
  *
- * Retirer, comme bloquer, demande une confirmation : le premier bouton ne fait qu'ouvrir la
- * question, un second — nommé, sans ambiguïté — retire vraiment. Un « details »
- * suffit, et fonctionne aussi bien dans une fenêtre qu'en page entière.
+ * Retirer, comme bloquer, demande une confirmation : le bouton ouvre une
+ * fenêtre par-dessus le profil, et c'est un second bouton — nommé, sans
+ * ambiguïté — qui agit vraiment. Comme les autres fenêtres de l'application,
+ * elle ne se ferme que par sa croix ou par « Annuler ».
  *
  * @var array{id: int, pseudo: string} $ami
  * @var ?string $amisDepuis
@@ -74,35 +75,34 @@ $pseudo = (string) $ami['pseudo'];
 </section>
 
 <section class="carte profil-ami__section profil-ami__danger">
-  <details class="profil-ami__retirer">
-    <summary class="bouton bouton--danger">Retirer <?= e($pseudo) ?> de mes amis</summary>
-    <div class="profil-ami__confirmation" role="alertdialog" aria-label="Confirmer le retrait">
-      <p style="margin-top:0">
-        <strong>Retirer <?= e($pseudo) ?> de vos amis ?</strong><br>
-        Vous ne pourrez plus vous écrire, ni voir les photos et fichiers échangés.
-        Vos messages sont gardés : ils reviendront si vous redevenez amis.
-      </p>
-      <form method="post" action="<?= url('amis/' . (int) $ami['id'] . '/retirer') ?>" class="actions">
-        <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
-        <button class="bouton bouton--danger" type="submit">Oui, retirer <?= e($pseudo) ?></button>
-        <button class="bouton bouton--discret" type="button" onclick="this.closest('details').open = false">Annuler</button>
-      </form>
-    </div>
-  </details>
-
-  <details class="profil-ami__retirer profil-ami__bloquer">
-    <summary class="bouton bouton--danger">🚫 Bloquer <?= e($pseudo) ?></summary>
-    <div class="profil-ami__confirmation" role="alertdialog" aria-label="Confirmer le blocage">
-      <p style="margin-top:0">
-        <strong>Bloquer <?= e($pseudo) ?> ?</strong><br>
-        Vous ne serez plus amis. <?= e($pseudo) ?> ne pourra plus vous trouver par votre pseudo, ni vous écrire,
-        ni vous redemander en ami — sans qu’on le lui dise. Vous pourrez le débloquer depuis la page « Amis ».
-      </p>
-      <form method="post" action="<?= url('amis/' . (int) $ami['id'] . '/bloquer') ?>" class="actions">
-        <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
-        <button class="bouton bouton--danger" type="submit">Oui, bloquer <?= e($pseudo) ?></button>
-        <button class="bouton bouton--discret" type="button" onclick="this.closest('details').open = false">Annuler</button>
-      </form>
-    </div>
-  </details>
+  <button class="bouton bouton--danger" type="button" data-ouvrir-dialogue="confirmer-retrait-ami">Retirer <?= e($pseudo) ?> de mes amis</button>
+  <button class="bouton bouton--danger" type="button" data-ouvrir-dialogue="confirmer-blocage-ami">🚫 Bloquer <?= e($pseudo) ?></button>
 </section>
+
+<dialog class="confirmation" id="confirmer-retrait-ami" data-confirmation-dialogue aria-labelledby="titre-retrait-ami">
+  <button class="fenetre__fermer" type="button" data-fermer-dialogue aria-label="Fermer">✕</button>
+  <h2 class="confirmation__titre" id="titre-retrait-ami">Retirer <?= e($pseudo) ?> de vos amis ?</h2>
+  <p class="confirmation__texte">
+    Vous ne pourrez plus vous écrire, ni voir les photos et fichiers échangés.
+    Vos messages sont gardés : ils reviendront si vous redevenez amis.
+  </p>
+  <form method="post" action="<?= url('amis/' . (int) $ami['id'] . '/retirer') ?>" class="confirmation__choix">
+    <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
+    <button class="bouton bouton--danger" type="submit">Oui, retirer <?= e($pseudo) ?></button>
+    <button class="bouton bouton--discret" type="button" data-fermer-dialogue>Annuler</button>
+  </form>
+</dialog>
+
+<dialog class="confirmation" id="confirmer-blocage-ami" data-confirmation-dialogue aria-labelledby="titre-blocage-ami">
+  <button class="fenetre__fermer" type="button" data-fermer-dialogue aria-label="Fermer">✕</button>
+  <h2 class="confirmation__titre" id="titre-blocage-ami">🚫 Bloquer <?= e($pseudo) ?> ?</h2>
+  <p class="confirmation__texte">
+    Vous ne serez plus amis. <?= e($pseudo) ?> ne pourra plus vous trouver par votre pseudo, ni vous écrire,
+    ni vous redemander en ami — sans qu’on le lui dise. Vous pourrez le débloquer depuis la page « Amis ».
+  </p>
+  <form method="post" action="<?= url('amis/' . (int) $ami['id'] . '/bloquer') ?>" class="confirmation__choix">
+    <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
+    <button class="bouton bouton--danger" type="submit">Oui, bloquer <?= e($pseudo) ?></button>
+    <button class="bouton bouton--discret" type="button" data-fermer-dialogue>Annuler</button>
+  </form>
+</dialog>
