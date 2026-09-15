@@ -142,11 +142,36 @@ final class AmisController
             Amis::regarder($moi, $id);
         }
 
+        $apres = max(0, (int) ($_GET['apres'] ?? 0));
         repondre_json([
             'fait' => true,
-            'messages' => Amis::fil($moi, $id, max(0, (int) ($_GET['apres'] ?? 0))),
+            'messages' => Amis::fil($moi, $id, $apres),
             'vu_jusqua' => Amis::vuJusqua($moi, $id),
-        ]);
+        ] + Amis::changements($moi, $id, $apres));
+    }
+
+    /** Supprime un message, pour soi (« moi ») ou pour les deux (« tous »). */
+    public function supprimerMessage(int $id): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+
+        $portee = ($_POST['portee'] ?? '') === 'tous' ? 'tous' : 'moi';
+        $resultat = Amis::supprimerMessage(Auth::id(), $id, $portee);
+        $message = match ($resultat) {
+            'fait' => $portee === 'tous' ? 'Message supprimé pour tout le monde.' : 'Message supprimé de votre conversation.',
+            'interdit' => 'Seul qui a écrit un message peut le supprimer pour tout le monde.',
+            default => 'Ce message est introuvable.',
+        };
+
+        if (veut_du_json()) {
+            if ($resultat !== 'fait') {
+                http_response_code($resultat === 'interdit' ? 403 : 404);
+            }
+            repondre_json(['fait' => $resultat === 'fait', 'message' => $message]);
+        }
+        Session::flash($resultat === 'fait' ? 'succes' : 'erreur', $message);
+        redirect('amis');
     }
 
     /** Envoie un message ; en JSON pour la page, ou par un envoi ordinaire. */

@@ -1061,10 +1061,117 @@
 
       // « Vu » se place sous mon dernier message, et seulement s'il a été lu.
       var majVu = function () {
+        dernierMien = 0;
+        fil.querySelectorAll('.bulle--moi[data-message]').forEach(function (b) {
+          dernierMien = Math.max(dernierMien, Number(b.getAttribute('data-message')));
+        });
         var mienne = dernierMien > 0 ? fil.querySelector('[data-message="' + dernierMien + '"]') : null;
         vu.hidden = !(mienne && vuJusqua >= dernierMien);
         if (mienne && mienne.nextElementSibling !== vu) { mienne.after(vu); }
       };
+
+      /*
+       * Supprimer un message.
+       *
+       * Un bouton 🗑 apparaît au survol de chaque bulle. Il demande : « pour
+       * moi » — le message disparaît de ma conversation seulement — ou, pour
+       * un message que j'ai écrit, « pour tout le monde » — il est effacé et
+       * les deux côtés voient « Message supprimé ». Comme les autres fenêtres
+       * de l'application, la question ne se ferme que par ses boutons.
+       */
+      var boutonSupprimer = function () {
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'bulle__supprimer';
+        b.setAttribute('data-supprimer-message', '');
+        b.title = 'Supprimer le message';
+        b.setAttribute('aria-label', 'Supprimer le message');
+        b.textContent = '🗑';
+        return b;
+      };
+      var marquerSupprime = function (id) {
+        var bulle = fil.querySelector('[data-message="' + id + '"]');
+        if (!bulle || bulle.classList.contains('bulle--supprime')) { return; }
+        bulle.classList.add('bulle--supprime');
+        bulle.classList.remove('bulle--image');
+        bulle.querySelectorAll('.bulle__image, .bulle__fichier, .bulle__texte').forEach(function (e) { e.remove(); });
+        var efface = document.createElement('p');
+        efface.className = 'bulle__texte';
+        efface.textContent = '🚫 Message supprimé';
+        bulle.insertBefore(efface, bulle.querySelector('.bulle__heure'));
+      };
+      var retirerBulle = function (id) {
+        var bulle = fil.querySelector('[data-message="' + id + '"]');
+        if (!bulle) { return; }
+        bulle.remove();
+        // Un séparateur de jour resté sans message n'a plus rien à séparer.
+        fil.querySelectorAll('[data-jour]').forEach(function (jour) {
+          var suivant = jour.nextElementSibling;
+          while (suivant && suivant.matches('[data-chat-vu]')) { suivant = suivant.nextElementSibling; }
+          if (!suivant || suivant.matches('[data-jour]')) { jour.remove(); }
+        });
+        majVu();
+      };
+
+      var question = document.createElement('dialog');
+      question.className = 'question-suppression';
+      question.innerHTML = '<h2 class="question-suppression__titre">Supprimer ce message ?</h2>'
+        + '<p class="question-suppression__aide" data-aide></p>'
+        + '<div class="question-suppression__choix">'
+        + '<button type="button" class="bouton bouton--danger" data-portee="tous">Supprimer pour tout le monde</button>'
+        + '<button type="button" class="bouton bouton--secondaire" data-portee="moi">Supprimer pour moi</button>'
+        + '<button type="button" class="bouton bouton--discret" data-portee="">Annuler</button>'
+        + '</div>'
+        + '<p class="question-suppression__erreur" data-erreur hidden></p>';
+      document.body.appendChild(question);
+      question.addEventListener('cancel', function (evenement) { evenement.preventDefault(); });
+      var aSupprimer = null;
+
+      fil.addEventListener('click', function (evenement) {
+        var declencheur = evenement.target.closest('[data-supprimer-message]');
+        if (!declencheur) { return; }
+        var bulle = declencheur.closest('[data-message]');
+        aSupprimer = bulle;
+        var mien = bulle.classList.contains('bulle--moi');
+        var dejaEfface = bulle.classList.contains('bulle--supprime');
+        question.querySelector('[data-portee="tous"]').hidden = !mien || dejaEfface;
+        question.querySelector('[data-aide]').textContent = !mien
+          ? 'Il disparaîtra de votre conversation. Votre ami, lui, le verra toujours : seul qui l’a écrit peut le supprimer pour tout le monde.'
+          : (dejaEfface ? 'Il disparaîtra de votre conversation.'
+            : '« Pour moi » le retire de votre conversation seulement. « Pour tout le monde » l’efface des deux côtés, pièce jointe comprise : il restera « Message supprimé ».');
+        question.querySelector('[data-erreur]').hidden = true;
+        question.showModal();
+        question.querySelector(mien && !dejaEfface ? '[data-portee="tous"]' : '[data-portee="moi"]').focus();
+      });
+
+      question.addEventListener('click', function (evenement) {
+        var choix = evenement.target.closest('[data-portee]');
+        if (!choix) { return; }
+        var portee = choix.getAttribute('data-portee');
+        if (!portee || !aSupprimer) { question.close(); aSupprimer = null; return; }
+
+        var bulle = aSupprimer;
+        var id = bulle.getAttribute('data-message');
+        var donnees = new FormData();
+        donnees.append('_csrf', chat.getAttribute('data-jeton'));
+        donnees.append('portee', portee);
+        question.querySelectorAll('button').forEach(function (b) { b.disabled = true; });
+        fetch(chat.getAttribute('data-supprimer').replace('/0/', '/' + id + '/'), {
+          method: 'POST', body: donnees, credentials: 'same-origin', headers: { Accept: 'application/json' }
+        }).then(function (r) { return r.json(); })
+          .then(function (reponse) {
+            if (!reponse.fait) { throw new Error(reponse.message || 'Le message n’a pas pu être supprimé.'); }
+            if (portee === 'tous') { marquerSupprime(id); } else { retirerBulle(id); }
+            question.close();
+            aSupprimer = null;
+          })
+          .catch(function (e) {
+            var zone = question.querySelector('[data-erreur]');
+            zone.textContent = e.message || 'Le message n’a pas pu être supprimé.';
+            zone.hidden = false;
+          })
+          .then(function () { question.querySelectorAll('button').forEach(function (b) { b.disabled = false; }); });
+      });
 
       var ajouter = function (message) {
         if (fil.querySelector('[data-message="' + message.id + '"]')) { return; }
@@ -1084,8 +1191,16 @@
         }
 
         var bulle = document.createElement('div');
-        bulle.className = 'bulle' + (message.moi ? ' bulle--moi' : '') + (message.image ? ' bulle--image' : '');
+        bulle.className = 'bulle' + (message.moi ? ' bulle--moi' : '') + (message.image ? ' bulle--image' : '')
+          + (message.supprime ? ' bulle--supprime' : '');
         bulle.setAttribute('data-message', String(message.id));
+        bulle.appendChild(boutonSupprimer());
+        if (message.supprime) {
+          var efface = document.createElement('p');
+          efface.className = 'bulle__texte';
+          efface.textContent = '🚫 Message supprimé';
+          bulle.appendChild(efface);
+        }
         if (message.image) {
           var lienImage = document.createElement('a');
           lienImage.className = 'bulle__image';
@@ -1163,6 +1278,9 @@
         }).then(function (reponse) {
           if (!reponse.fait) { return; }
           (reponse.messages || []).forEach(ajouter);
+          // Ce qui a été supprimé depuis : par l'autre pour tout le monde, ou par moi dans un autre onglet.
+          (reponse.supprimes || []).forEach(marquerSupprime);
+          (reponse.masques || []).forEach(retirerBulle);
           vuJusqua = reponse.vu_jusqua || vuJusqua;
           majVu();
           if (enBasAvant && reponse.messages && reponse.messages.length) { enBas(); }

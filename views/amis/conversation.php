@@ -33,6 +33,7 @@ foreach ($messages as $m) {
            data-envoyer="<?= e(url('amis/' . $actif . '/messages')) ?>"
            data-jeton="<?= e($csrf) ?>"
            data-dernier="<?= $dernierId ?>"
+           data-supprimer="<?= e(url('amis/messages/0/supprimer')) ?>"
            data-vu="<?= (int) $vuJusqua ?>">
     <header class="chat__entete">
       <a class="chat__retour" href="<?= url('amis') ?>" aria-label="Retour aux amis">←</a>
@@ -54,7 +55,13 @@ foreach ($messages as $m) {
         <?php if ($m['jour'] !== $jour): $jour = $m['jour']; ?>
           <p class="chat__jour" data-jour="<?= e($m['jour']) ?>"><span><?= e($m['jour_libelle']) ?></span></p>
         <?php endif; ?>
-        <div class="bulle<?= $m['moi'] ? ' bulle--moi' : '' ?><?= $m['image'] !== null ? ' bulle--image' : '' ?>" data-message="<?= (int) $m['id'] ?>">
+        <div class="bulle<?= $m['moi'] ? ' bulle--moi' : '' ?><?= $m['image'] !== null ? ' bulle--image' : '' ?><?= $m['supprime'] ? ' bulle--supprime' : '' ?>" data-message="<?= (int) $m['id'] ?>">
+          <?php // Supprimer : le script ouvre la question « pour moi » ou « pour tout le monde ». ?>
+          <button class="bulle__supprimer" type="button" data-supprimer-message title="Supprimer le message"
+                  aria-label="Supprimer le message">🗑</button>
+          <?php if ($m['supprime']): ?>
+            <p class="bulle__texte">🚫 Message supprimé</p>
+          <?php endif; ?>
           <?php if ($m['image'] !== null): ?>
             <a class="bulle__image" href="<?= e($m['image']) ?>" target="_blank" rel="noopener" data-visionneuse>
               <img src="<?= e($m['image']) ?>" alt="Photo"

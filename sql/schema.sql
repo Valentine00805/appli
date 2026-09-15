@@ -619,6 +619,10 @@ CREATE TABLE IF NOT EXISTS `messages` (
   `fichier_taille`  INT UNSIGNED NULL,
   `created_at`      DATETIME     NOT NULL,
   `lu_le`           DATETIME     NULL,
+  -- Supprimé pour les deux par qui l'a écrit (contenu vidé), ou caché d'un seul côté.
+  `supprime_le`         DATETIME   NULL,
+  `masque_expediteur`   TINYINT(1) NOT NULL DEFAULT 0,
+  `masque_destinataire` TINYINT(1) NOT NULL DEFAULT 0,
   PRIMARY KEY (`id`),
   KEY `idx_messages_fil` (`expediteur_id`, `destinataire_id`, `id`),
   KEY `idx_messages_non_lus` (`destinataire_id`, `lu_le`),

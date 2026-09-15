@@ -17,10 +17,11 @@ $actif = $actif ?? null;
       $dernier = $a['dernier_id'] !== null ? ($derniers[(int) $a['dernier_id']] ?? null) : null;
       $nonLus = (int) $a['non_lus'];
       $apercu = $dernier === null ? 'Dites bonjour 👋'
+          : (($dernier['supprime_le'] ?? null) !== null ? '🚫 Message supprimé'
           : ((int) $dernier['expediteur_id'] === Auth::id() ? 'Vous : ' : '')
             . (($dernier['image_nom'] ?? null) !== null ? '📷 Photo' . ((string) $dernier['texte'] !== '' ? ' · ' : '') : '')
             . (($dernier['fichier_origine'] ?? null) !== null ? '📎 ' . $dernier['fichier_origine'] . ((string) $dernier['texte'] !== '' ? ' · ' : '') : '')
-            . preg_replace('/\s+/u', ' ', (string) $dernier['texte']);
+            . preg_replace('/\s+/u', ' ', (string) $dernier['texte']));
       ?>
       <li>
         <a class="ami<?= $actif === (int) $a['id'] ? ' ami--actif' : '' ?><?= $nonLus > 0 ? ' ami--non-lu' : '' ?>"

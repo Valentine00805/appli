@@ -306,6 +306,34 @@ textarea { min-height: 260px; resize: vertical; line-height: 1.65; }
   border: 0; background: var(--texte); color: var(--fond-carte); font-size: .7rem; line-height: 1; cursor: pointer;
 }
 .chat__fil--depot { box-shadow: 0 0 0 3px var(--accent); }
+
+/* Supprimer un message : un bouton qui apparaît à côté de la bulle, au survol. */
+.bulle { position: relative; }
+.bulle__supprimer {
+  position: absolute; top: 50%; transform: translateY(-50%); left: calc(100% + .3rem);
+  width: 1.9rem; height: 1.9rem; border: 1px solid var(--bordure); border-radius: 50%;
+  background: var(--fond-carte); font-size: .85rem; line-height: 1; cursor: pointer;
+  opacity: 0; transition: opacity .12s;
+}
+.bulle--moi .bulle__supprimer { left: auto; right: calc(100% + .3rem); }
+.bulle:hover .bulle__supprimer, .bulle__supprimer:focus-visible { opacity: 1; }
+/* Sur un écran tactile, pas de survol : le bouton reste visible, en discret. */
+@media (hover: none) { .bulle__supprimer { opacity: .55; } }
+.bulle--supprime { background: transparent; border: 1px dashed var(--bordure-forte); color: var(--texte-doux); }
+.bulle--moi.bulle--supprime { background: transparent; color: var(--texte-doux); }
+.bulle--supprime .bulle__texte { font-style: italic; }
+
+.question-suppression {
+  border: 0; border-radius: var(--rayon); padding: 1.25rem; width: min(26rem, calc(100vw - 2rem));
+  background: var(--fond-carte); color: var(--texte); box-shadow: var(--ombre);
+}
+.question-suppression::backdrop { background: rgb(15 23 42 / 45%); }
+.question-suppression__titre { margin: 0 0 .4rem; font-size: 1.1rem; }
+.question-suppression__aide { margin: 0 0 1rem; font-size: .9rem; color: var(--texte-doux); }
+.question-suppression__choix { display: grid; gap: .5rem; }
+.question-suppression__choix [hidden] { display: none; }
+.question-suppression__erreur { margin: .75rem 0 0; color: var(--erreur); font-size: .85rem; }
+.question-suppression__erreur[hidden] { display: none; }
 .chat__apercu--fichier { max-width: 13rem; }
 .chat__apercu-fichier {
   display: grid; align-content: center; height: 4.5rem; padding: 0 .75rem; min-width: 8rem;

@@ -138,9 +138,11 @@ final class Amis
         return Database::all(
             "SELECT u.id, u.pseudo, a.acceptee_le,
                     (SELECT COUNT(*) FROM messages m
-                      WHERE m.expediteur_id = u.id AND m.destinataire_id = ? AND m.lu_le IS NULL) AS non_lus,
+                      WHERE m.expediteur_id = u.id AND m.destinataire_id = ? AND m.lu_le IS NULL
+                        AND m.supprime_le IS NULL AND m.masque_destinataire = 0) AS non_lus,
                     (SELECT m.id FROM messages m
-                      WHERE (m.expediteur_id = u.id AND m.destinataire_id = ?) OR (m.expediteur_id = ? AND m.destinataire_id = u.id)
+                      WHERE (m.expediteur_id = u.id AND m.destinataire_id = ? AND m.masque_destinataire = 0)
+                         OR (m.expediteur_id = ? AND m.destinataire_id = u.id AND m.masque_expediteur = 0)
                       ORDER BY m.id DESC LIMIT 1) AS dernier_id
                FROM amities a
                JOIN users u ON u.id = IF(a.demandeur_id = ?, a.destinataire_id, a.demandeur_id)
@@ -158,7 +160,7 @@ final class Amis
             return [];
         }
         $lignes = Database::all(
-            'SELECT id, expediteur_id, texte, image_nom, fichier_origine, created_at FROM messages WHERE id IN (' . implode(',', array_fill(0, count($ids), '?')) . ')',
+            'SELECT id, expediteur_id, texte, image_nom, fichier_origine, supprime_le, created_at FROM messages WHERE id IN (' . implode(',', array_fill(0, count($ids), '?')) . ')',
             $ids
         );
 
@@ -197,7 +199,7 @@ final class Amis
                       JOIN amities a ON a.petit_id = LEAST(m.expediteur_id, m.destinataire_id)
                                     AND a.grand_id = GREATEST(m.expediteur_id, m.destinataire_id)
                                     AND a.statut = 'acceptee'
-                     WHERE m.destinataire_id = ? AND m.lu_le IS NULL)
+                     WHERE m.destinataire_id = ? AND m.lu_le IS NULL AND m.supprime_le IS NULL AND m.masque_destinataire = 0)
                   + (SELECT COUNT(*) FROM amities WHERE destinataire_id = ? AND statut = 'attente')",
             [$moi, $moi]
         );
@@ -499,7 +501,8 @@ final class Amis
     {
         $message = Database::one(
             'SELECT id, expediteur_id, destinataire_id, fichier_nom, fichier_origine, fichier_mime FROM messages
-              WHERE id = ? AND fichier_nom IS NOT NULL AND (expediteur_id = ? OR destinataire_id = ?)',
+              WHERE id = ? AND fichier_nom IS NOT NULL
+                AND ((expediteur_id = ? AND masque_expediteur = 0) OR (destinataire_id = ? AND masque_destinataire = 0))',
             [$messageId, $moi, $moi]
         );
         if ($message === null) {
@@ -537,7 +540,8 @@ final class Amis
     {
         $message = Database::one(
             'SELECT id, expediteur_id, destinataire_id, image_nom, image_mime FROM messages
-              WHERE id = ? AND image_nom IS NOT NULL AND (expediteur_id = ? OR destinataire_id = ?)',
+              WHERE id = ? AND image_nom IS NOT NULL
+                AND ((expediteur_id = ? AND masque_expediteur = 0) OR (destinataire_id = ? AND masque_destinataire = 0))',
             [$messageId, $moi, $moi]
         );
         if ($message === null) {
@@ -560,14 +564,108 @@ final class Amis
         );
 
         $messages = Database::all(
-            'SELECT id, expediteur_id, texte, image_nom, image_largeur, image_hauteur, fichier_nom, fichier_origine, fichier_mime, fichier_taille, created_at, lu_le FROM messages
-              WHERE ((expediteur_id = ? AND destinataire_id = ?) OR (expediteur_id = ? AND destinataire_id = ?))
+            'SELECT id, expediteur_id, texte, image_nom, image_largeur, image_hauteur, fichier_nom, fichier_origine, fichier_mime, fichier_taille,
+                    created_at, lu_le, supprime_le FROM messages
+              WHERE ((expediteur_id = ? AND destinataire_id = ? AND masque_expediteur = 0)
+                  OR (expediteur_id = ? AND destinataire_id = ? AND masque_destinataire = 0))
                 AND id > ?
               ORDER BY id DESC LIMIT ' . self::FIL_MAX,
             [$moi, $autre, $autre, $moi, $apres]
         );
 
         return array_map(static fn (array $m): array => self::pourAffichage($m, $moi), array_reverse($messages));
+    }
+
+    /**
+     * Ce qui a changé dans les messages déjà affichés : ceux qu'on a supprimés
+     * pour tout le monde (à montrer « supprimé ») et ceux qu'on a cachés pour
+     * soi depuis un autre onglet (à retirer).
+     *
+     * @return array{supprimes: list<int>, masques: list<int>}
+     */
+    public static function changements(int $moi, int $autre, int $jusqua): array
+    {
+        $lignes = Database::all(
+            'SELECT id, supprime_le IS NOT NULL AS supprime,
+                    ((expediteur_id = ? AND masque_expediteur = 1) OR (destinataire_id = ? AND masque_destinataire = 1)) AS masque
+               FROM messages
+              WHERE ((expediteur_id = ? AND destinataire_id = ?) OR (expediteur_id = ? AND destinataire_id = ?))
+                AND id <= ? AND (supprime_le IS NOT NULL OR masque_expediteur = 1 OR masque_destinataire = 1)
+              ORDER BY id DESC LIMIT 500',
+            [$moi, $moi, $moi, $autre, $autre, $moi, $jusqua]
+        );
+        $supprimes = [];
+        $masques = [];
+        foreach ($lignes as $l) {
+            if ((int) $l['masque'] === 1) {
+                $masques[] = (int) $l['id'];
+            } elseif ((int) $l['supprime'] === 1) {
+                $supprimes[] = (int) $l['id'];
+            }
+        }
+
+        return ['supprimes' => $supprimes, 'masques' => $masques];
+    }
+
+    /**
+     * Supprime un message.
+     *
+     * « moi » : il disparaît de ma conversation seulement ; l'autre le garde.
+     * « tous » : réservé à qui l'a écrit ; le texte, l'image et le fichier
+     * sont effacés pour de bon, et les deux côtés voient « Message supprimé ».
+     * Un message caché des deux côtés n'a plus de lecteur : son contenu est
+     * effacé aussi.
+     *
+     * @return string « fait », « introuvable » ou « interdit »
+     */
+    public static function supprimerMessage(int $moi, int $messageId, string $portee): string
+    {
+        $message = Database::one(
+            'SELECT * FROM messages WHERE id = ? AND ((expediteur_id = ? AND masque_expediteur = 0) OR (destinataire_id = ? AND masque_destinataire = 0))',
+            [$messageId, $moi, $moi]
+        );
+        if ($message === null) {
+            return 'introuvable';
+        }
+        $jeSuisLAuteur = (int) $message['expediteur_id'] === $moi;
+        $autre = $jeSuisLAuteur ? (int) $message['destinataire_id'] : (int) $message['expediteur_id'];
+        if (!self::sontAmis($moi, $autre)) {
+            return 'introuvable';
+        }
+
+        if ($portee === 'tous') {
+            if (!$jeSuisLAuteur) {
+                return 'interdit';
+            }
+            self::viderMessage($message);
+            Database::run('UPDATE messages SET supprime_le = COALESCE(supprime_le, UTC_TIMESTAMP()) WHERE id = ?', [$messageId]);
+
+            return 'fait';
+        }
+
+        Database::run('UPDATE messages SET ' . ($jeSuisLAuteur ? 'masque_expediteur' : 'masque_destinataire') . ' = 1 WHERE id = ?', [$messageId]);
+        $apres = Database::one('SELECT * FROM messages WHERE id = ?', [$messageId]);
+        if ($apres !== null && (int) $apres['masque_expediteur'] === 1 && (int) $apres['masque_destinataire'] === 1) {
+            self::viderMessage($apres);
+        }
+
+        return 'fait';
+    }
+
+    /** Efface le contenu d'un message : son texte, et ses pièces jointes du disque. */
+    private static function viderMessage(array $message): void
+    {
+        foreach ([$message['image_nom'] ?? null, $message['fichier_nom'] ?? null] as $nom) {
+            if (is_string($nom) && preg_match('/^[0-9a-f]{32}\.[a-z0-9]{1,8}$/', $nom)) {
+                @unlink(self::dossierImages() . DIRECTORY_SEPARATOR . $nom);
+            }
+        }
+        Database::run(
+            "UPDATE messages SET texte = '', image_nom = NULL, image_mime = NULL, image_largeur = NULL, image_hauteur = NULL,
+                    fichier_nom = NULL, fichier_origine = NULL, fichier_mime = NULL, fichier_taille = NULL
+              WHERE id = ?",
+            [(int) $message['id']]
+        );
     }
 
     /** Note que la discussion avec cet ami est sous les yeux de la personne. */
@@ -668,6 +766,7 @@ final class Amis
             'id' => (int) $message['id'],
             'moi' => (int) $message['expediteur_id'] === $moi,
             'texte' => (string) $message['texte'],
+            'supprime' => ($message['supprime_le'] ?? null) !== null,
             'image' => ($message['image_nom'] ?? null) === null ? null : url('amis/images/' . (int) $message['id']),
             'largeur' => (int) ($message['image_largeur'] ?? 0),
             'hauteur' => (int) ($message['image_hauteur'] ?? 0),
