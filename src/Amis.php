@@ -108,19 +108,22 @@ final class Amis
         $motif = '%' . addcslashes($recherche, '\\%_') . '%';
 
         $lignes = Database::all(
-            "SELECT u.id, u.pseudo, a.statut, a.demandeur_id
+            "SELECT u.id, u.pseudo, a.statut, a.demandeur_id,
+                    EXISTS (SELECT 1 FROM blocages b WHERE b.bloqueur_id = ? AND b.bloque_id = u.id) AS bloque
                FROM users u
                LEFT JOIN amities a ON a.petit_id = LEAST(u.id, ?) AND a.grand_id = GREATEST(u.id, ?)
               WHERE u.id <> ? AND u.pseudo IS NOT NULL AND u.pseudo LIKE ?
+                AND NOT EXISTS (SELECT 1 FROM blocages b WHERE b.bloqueur_id = u.id AND b.bloque_id = ?)
               ORDER BY (u.pseudo = ?) DESC, CHAR_LENGTH(u.pseudo), u.pseudo
               LIMIT 20",
-            [$moi, $moi, $moi, $motif, $recherche]
+            [$moi, $moi, $moi, $moi, $motif, $moi, $recherche]
         );
 
         return array_map(static fn (array $l): array => [
             'id' => (int) $l['id'],
             'pseudo' => (string) $l['pseudo'],
             'etat' => match (true) {
+                (int) $l['bloque'] === 1 => 'bloque',
                 $l['statut'] === 'acceptee' => 'ami',
                 $l['statut'] === 'attente' && (int) $l['demandeur_id'] === $moi => 'envoyee',
                 $l['statut'] === 'attente' => 'recue',
@@ -219,6 +222,13 @@ final class Amis
         if (self::compte($moi) === null) {
             return 'sans_pseudo';
         }
+        if (self::aBloque($moi, $autre)) {
+            return 'bloque';
+        }
+        // Qui a été bloqué ne l'apprend pas : pour lui, ce compte est simplement introuvable.
+        if (self::aBloque($autre, $moi)) {
+            return 'introuvable';
+        }
 
         $relation = self::relation($moi, $autre);
         if ($relation !== null) {
@@ -254,11 +264,56 @@ final class Amis
     /** Accepte la demande que l'autre nous a faite. */
     public static function accepter(int $moi, int $autre): bool
     {
+        if (self::aBloque($moi, $autre) || self::aBloque($autre, $moi)) {
+            return false;
+        }
         return Database::run(
             "UPDATE amities SET statut = 'acceptee', acceptee_le = UTC_TIMESTAMP()
               WHERE demandeur_id = ? AND destinataire_id = ? AND statut = 'attente'",
             [$autre, $moi]
         )->rowCount() > 0;
+    }
+
+    /** Ce compte en a-t-il bloqué cet autre ? */
+    public static function aBloque(int $bloqueur, int $bloque): bool
+    {
+        return Database::valeur('SELECT 1 FROM blocages WHERE bloqueur_id = ? AND bloque_id = ?', [$bloqueur, $bloque]) !== null;
+    }
+
+    /**
+     * Bloque un compte : l'amitié et les demandes en cours disparaissent, et
+     * les notifications qu'il avait provoquées et qui n'étaient pas encore
+     * parties ne partiront pas.
+     */
+    public static function bloquer(int $moi, int $autre): bool
+    {
+        if ($autre === $moi || self::compte($autre) === null) {
+            return false;
+        }
+        Database::run('INSERT IGNORE INTO blocages (bloqueur_id, bloque_id, created_at) VALUES (?, ?, UTC_TIMESTAMP())', [$moi, $autre]);
+        self::defaire($moi, $autre);
+        Database::run(
+            "DELETE FROM notifications_file WHERE user_id = ? AND envoye_le IS NULL AND etiquette IN (?, ?, ?)",
+            [$moi, 'message-' . $autre, 'demande-' . $autre, 'acceptation-' . $autre]
+        );
+
+        return true;
+    }
+
+    /** Débloque un compte ; l'amitié, elle, ne revient pas d'elle-même. */
+    public static function debloquer(int $moi, int $autre): bool
+    {
+        return Database::run('DELETE FROM blocages WHERE bloqueur_id = ? AND bloque_id = ?', [$moi, $autre])->rowCount() > 0;
+    }
+
+    /** Les comptes que la personne a bloqués. */
+    public static function bloques(int $moi): array
+    {
+        return Database::all(
+            'SELECT u.id, u.pseudo, b.created_at FROM blocages b JOIN users u ON u.id = b.bloque_id
+              WHERE b.bloqueur_id = ? ORDER BY u.pseudo',
+            [$moi]
+        );
     }
 
     /**

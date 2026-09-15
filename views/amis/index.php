@@ -9,6 +9,7 @@
  * @var list<array> $amis
  * @var array<int, array> $derniers
  * @var bool $aUnPseudo
+ * @var list<array> $bloques
  */
 $csrf = Session::jetonCsrf();
 
@@ -70,7 +71,10 @@ $geste = static function (string $action, int $compte, string $libelle, string $
                 <span class="avatar" aria-hidden="true"><?= e(mb_strtoupper(mb_substr($r['pseudo'], 0, 1))) ?></span>
                 <span class="amis-resultat__pseudo"><?= e($r['pseudo']) ?></span>
                 <span class="actions">
-                  <?php if ($r['etat'] === 'ami'): ?>
+                  <?php if ($r['etat'] === 'bloque'): ?>
+                    <span class="pastille">Bloqué</span>
+                    <?= $geste('debloquer', $r['id'], 'Débloquer', 'bouton--discret') ?>
+                  <?php elseif ($r['etat'] === 'ami'): ?>
                     <a class="bouton bouton--petit bouton--secondaire" href="<?= url('amis/' . $r['id']) ?>">💬 Discuter</a>
                   <?php elseif ($r['etat'] === 'envoyee'): ?>
                     <span class="pastille">Demande envoyée</span>
@@ -86,6 +90,25 @@ $geste = static function (string $action, int $compte, string $libelle, string $
         <?php endif; ?>
       <?php endif; ?>
     </section>
+
+    <?php if ($bloques !== []): ?>
+      <section class="carte">
+        <h2 style="margin-top:0">🚫 Comptes bloqués</h2>
+        <p class="champ__aide" style="margin-top:0">Ils ne peuvent ni vous trouver, ni vous écrire, ni vous demander en ami.</p>
+        <ul class="amis-resultats">
+          <?php foreach ($bloques as $b): ?>
+            <li class="amis-resultat">
+              <span class="avatar" aria-hidden="true"><?= e(mb_strtoupper(mb_substr((string) $b['pseudo'], 0, 1))) ?></span>
+              <span class="amis-resultat__pseudo"><?= e((string) $b['pseudo']) ?></span>
+              <span class="actions">
+                <?= $geste('debloquer', (int) $b['id'], 'Débloquer', 'bouton--secondaire',
+                    'Débloquer ' . $b['pseudo'] . ' ? Il pourra de nouveau vous trouver et vous demander en ami.') ?>
+              </span>
+            </li>
+          <?php endforeach; ?>
+        </ul>
+      </section>
+    <?php endif; ?>
 
     <?php if ($recues !== []): ?>
       <section class="carte">

@@ -25,6 +25,7 @@ final class AmisController
             'amis' => $amis,
             'derniers' => Amis::messagesParId(array_column($amis, 'dernier_id')),
             'aUnPseudo' => (string) (Auth::utilisateur()['pseudo'] ?? '') !== '',
+            'bloques' => Amis::bloques($moi),
         ], 'Amis');
     }
 
@@ -45,6 +46,7 @@ final class AmisController
             'deja' => Session::flash('info', 'Une demande est déjà en cours avec ' . $pseudo . ', ou vous êtes déjà amis.'),
             'trop' => Session::flash('erreur', 'Vous avez déjà ' . Amis::DEMANDES_MAX . ' demandes en attente : attendez des réponses.'),
             'sans_pseudo' => Session::flash('erreur', 'Choisissez d’abord un pseudo dans « Mon compte » : c’est lui que verra la personne.'),
+            'bloque' => Session::flash('erreur', 'Vous avez bloqué ' . $pseudo . ' : débloquez-le d’abord.'),
             default => Session::flash('erreur', 'Ce compte est introuvable.'),
         };
 
@@ -124,6 +126,36 @@ final class AmisController
             'amis' => $amis,
             'derniers' => Amis::messagesParId(array_column($amis, 'dernier_id')),
         ], 'Discussion avec ' . $ami['pseudo']);
+    }
+
+    /** Bloque un compte, depuis son profil. */
+    public function bloquer(int $id): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $compte = Amis::compte($id);
+
+        if ($compte !== null && Amis::bloquer(Auth::id(), $id)) {
+            Session::flash('succes', $compte['pseudo'] . ' est bloqué : il ne peut plus vous trouver, vous écrire ni vous demander en ami.');
+        } else {
+            Session::flash('erreur', 'Ce compte est introuvable.');
+        }
+        redirect('amis');
+    }
+
+    /** Débloque un compte, depuis la page « Amis ». */
+    public function debloquer(int $id): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $compte = Amis::compte($id);
+
+        if ($compte !== null && Amis::debloquer(Auth::id(), $id)) {
+            Session::flash('succes', $compte['pseudo'] . ' est débloqué. Vous pouvez de nouveau le demander en ami.');
+        } else {
+            Session::flash('erreur', 'Ce compte n’était pas bloqué.');
+        }
+        $this->retour();
     }
 
     /** Le profil d'un ami : ce qu'on a échangé, et de quoi le retirer de ses amis. */

@@ -211,6 +211,8 @@ $routes = [
     ['POST', 'amis/demande',              [AmisController::class, 'demander']],
     ['POST', 'amis/{id}/accepter',        [AmisController::class, 'accepter']],
     ['POST', 'amis/{id}/retirer',         [AmisController::class, 'retirer']],
+    ['POST', 'amis/{id}/bloquer',         [AmisController::class, 'bloquer']],
+    ['POST', 'amis/{id}/debloquer',       [AmisController::class, 'debloquer']],
     ['GET',  'amis/{id}',                 [AmisController::class, 'conversation']],
     ['GET',  'amis/{id}/messages',        [AmisController::class, 'nouveaux']],
     ['GET',  'amis/{id}/profil',          [AmisController::class, 'profil']],

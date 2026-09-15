@@ -3,7 +3,7 @@
  * Le profil d'un ami, ouvert depuis la discussion : ce que vous avez échangé
  * (photos, fichiers) et, tout en bas, de quoi le retirer de vos amis.
  *
- * Retirer demande une confirmation : le premier bouton ne fait qu'ouvrir la
+ * Retirer, comme bloquer, demande une confirmation : le premier bouton ne fait qu'ouvrir la
  * question, un second — nommé, sans ambiguïté — retire vraiment. Un « details »
  * suffit, et fonctionne aussi bien dans une fenêtre qu'en page entière.
  *
@@ -85,6 +85,22 @@ $pseudo = (string) $ami['pseudo'];
       <form method="post" action="<?= url('amis/' . (int) $ami['id'] . '/retirer') ?>" class="actions">
         <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
         <button class="bouton bouton--danger" type="submit">Oui, retirer <?= e($pseudo) ?></button>
+        <button class="bouton bouton--discret" type="button" onclick="this.closest('details').open = false">Annuler</button>
+      </form>
+    </div>
+  </details>
+
+  <details class="profil-ami__retirer profil-ami__bloquer">
+    <summary class="bouton bouton--danger">🚫 Bloquer <?= e($pseudo) ?></summary>
+    <div class="profil-ami__confirmation" role="alertdialog" aria-label="Confirmer le blocage">
+      <p style="margin-top:0">
+        <strong>Bloquer <?= e($pseudo) ?> ?</strong><br>
+        Vous ne serez plus amis. <?= e($pseudo) ?> ne pourra plus vous trouver par votre pseudo, ni vous écrire,
+        ni vous redemander en ami — sans qu’on le lui dise. Vous pourrez le débloquer depuis la page « Amis ».
+      </p>
+      <form method="post" action="<?= url('amis/' . (int) $ami['id'] . '/bloquer') ?>" class="actions">
+        <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
+        <button class="bouton bouton--danger" type="submit">Oui, bloquer <?= e($pseudo) ?></button>
         <button class="bouton bouton--discret" type="button" onclick="this.closest('details').open = false">Annuler</button>
       </form>
     </div>
