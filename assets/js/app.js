@@ -1734,8 +1734,8 @@
       document.body.appendChild(visionneuse);
       visionneuse.querySelector('.fenetre__fermer').addEventListener('click', function () { visionneuse.close(); });
       visionneuse.addEventListener('cancel', function (evenement) { evenement.preventDefault(); });
-      fil.addEventListener('click', function (evenement) {
-        var lienImage = evenement.target.closest('[data-visionneuse]');
+      document.addEventListener('click', function (evenement) {
+        var lienImage = evenement.target.closest && evenement.target.closest('[data-visionneuse]');
         if (!lienImage || typeof visionneuse.showModal !== 'function' || evenement.ctrlKey || evenement.metaKey) { return; }
         evenement.preventDefault();
         visionneuse.querySelector('img').src = lienImage.href;

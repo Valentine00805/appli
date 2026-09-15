@@ -847,6 +847,49 @@ final class Amis
         ]);
     }
 
+    /**
+     * Ce qu'on a échangé avec un ami : les photos et les fichiers encore
+     * visibles pour soi, du plus récent au plus ancien.
+     *
+     * @return array{photos: list<array>, fichiers: list<array>, messages: int}
+     */
+    public static function partages(int $moi, int $autre): array
+    {
+        $visibles = '((expediteur_id = ? AND destinataire_id = ? AND masque_expediteur = 0)
+                   OR (expediteur_id = ? AND destinataire_id = ? AND masque_destinataire = 0))';
+        $parametres = [$moi, $autre, $autre, $moi];
+        $date = static fn (string $utc): string => date_fr(self::local($utc)->format('Y-m-d H:i:s'), false);
+
+        $photos = array_map(static fn (array $l): array => [
+            'id' => (int) $l['id'],
+            'url' => url('amis/images/' . (int) $l['id']),
+            'moi' => (int) $l['expediteur_id'] === $moi,
+            'date' => $date((string) $l['created_at']),
+        ], Database::all(
+            "SELECT id, expediteur_id, created_at FROM messages WHERE $visibles AND image_nom IS NOT NULL ORDER BY id DESC LIMIT 300",
+            $parametres
+        ));
+
+        $fichiers = array_map(static fn (array $l): array => [
+            'id' => (int) $l['id'],
+            'url' => url('amis/fichiers/' . (int) $l['id']),
+            'telecharger' => url('amis/fichiers/' . (int) $l['id'], ['telecharger' => 1]),
+            'nom' => (string) $l['fichier_origine'],
+            'taille' => taille_lisible((int) $l['fichier_taille']),
+            'icone' => Fichiers::icone((string) $l['fichier_mime'], (string) $l['fichier_origine']),
+            'moi' => (int) $l['expediteur_id'] === $moi,
+            'date' => $date((string) $l['created_at']),
+        ], Database::all(
+            "SELECT id, expediteur_id, fichier_origine, fichier_mime, fichier_taille, created_at
+               FROM messages WHERE $visibles AND fichier_nom IS NOT NULL ORDER BY id DESC LIMIT 300",
+            $parametres
+        ));
+
+        $messages = (int) Database::valeur("SELECT COUNT(*) FROM messages WHERE $visibles AND supprime_le IS NULL", $parametres);
+
+        return ['photos' => $photos, 'fichiers' => $fichiers, 'messages' => $messages];
+    }
+
     /** Le dernier de mes messages que l'autre a lu, pour afficher « Vu ». */
     public static function vuJusqua(int $moi, int $autre): int
     {

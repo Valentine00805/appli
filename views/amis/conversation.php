@@ -40,13 +40,15 @@ foreach ($messages as $m) {
            data-vu="<?= (int) $vuJusqua ?>">
     <header class="chat__entete">
       <a class="chat__retour" href="<?= url('amis') ?>" aria-label="Retour aux amis">←</a>
-      <span class="avatar" aria-hidden="true"><?= e(mb_strtoupper(mb_substr((string) $ami['pseudo'], 0, 1))) ?></span>
-      <h1 class="chat__titre"><?= e((string) $ami['pseudo']) ?></h1>
-      <form method="post" action="<?= url('amis/' . $actif . '/retirer') ?>" class="en-ligne chat__retirer"
-            data-confirmation="Retirer <?= e((string) $ami['pseudo']) ?> de vos amis ? Vous ne pourrez plus vous écrire.">
-        <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
-        <button class="bouton bouton--discret bouton--petit" type="submit">Retirer des amis</button>
-      </form>
+      <?php // Le profil, en fenêtre : photos et fichiers échangés, et le retrait des amis. ?>
+      <a class="chat__profil" href="<?= url('amis/' . $actif . '/profil') ?>" data-fenetre title="Voir le profil">
+        <span class="avatar" aria-hidden="true"><?= e(mb_strtoupper(mb_substr((string) $ami['pseudo'], 0, 1))) ?></span>
+        <span class="chat__profil-texte">
+          <h1 class="chat__titre"><?= e((string) $ami['pseudo']) ?></h1>
+          <span class="chat__profil-aide">Profil, photos et fichiers</span>
+        </span>
+      </a>
+      <a class="bouton bouton--secondaire bouton--petit chat__profil-bouton" href="<?= url('amis/' . $actif . '/profil') ?>" data-fenetre>ℹ️ Profil</a>
     </header>
 
     <div class="chat__messages" data-chat-messages aria-live="polite">

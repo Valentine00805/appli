@@ -126,6 +126,35 @@ final class AmisController
         ], 'Discussion avec ' . $ami['pseudo']);
     }
 
+    /** Le profil d'un ami : ce qu'on a échangé, et de quoi le retirer de ses amis. */
+    public function profil(int $id): void
+    {
+        Auth::exiger();
+        $moi = Auth::id();
+        $ami = Amis::compte($id);
+        if ($ami === null || !Amis::sontAmis($moi, $id)) {
+            Session::flash('erreur', 'Ce profil n’est visible que de ses amis.');
+            redirect('amis');
+        }
+
+        $relation = Amis::relation($moi, $id);
+        $partages = Amis::partages($moi, $id);
+        $donnees = [
+            'ami' => $ami,
+            'amisDepuis' => ($relation['acceptee_le'] ?? null) === null ? null
+                : date_fr(Amis::local((string) $relation['acceptee_le'])->format('Y-m-d H:i:s'), false),
+            'photos' => $partages['photos'],
+            'fichiersPartages' => $partages['fichiers'],
+            'messages' => $partages['messages'],
+        ];
+
+        if (Vue::enFenetre()) {
+            Vue::fragment('amis/profil', $donnees);
+            return;
+        }
+        Vue::afficher('amis/profil', $donnees, $ami['pseudo'] . ' · Profil');
+    }
+
     /** Les nouveaux messages d'une conversation, pour la page ouverte. */
     public function nouveaux(int $id): void
     {
