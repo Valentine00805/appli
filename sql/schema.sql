@@ -619,6 +619,9 @@ CREATE TABLE IF NOT EXISTS `messages` (
   `fichier_origine` VARCHAR(255) NULL,
   `fichier_mime`    VARCHAR(120) NULL,
   `fichier_taille`  INT UNSIGNED NULL,
+  -- Un message vocal enregistré dans le navigateur, et sa durée en secondes.
+  `audio_nom`       VARCHAR(64)       NULL,
+  `audio_duree`     SMALLINT UNSIGNED NULL,
   `created_at`      DATETIME     NOT NULL,
   -- La dernière modification du texte par qui l'a écrit.
   `modifie_le`      DATETIME     NULL,

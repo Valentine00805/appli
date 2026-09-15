@@ -323,7 +323,11 @@ final class AmisController
             && !is_array($_FILES[$champ]['name'] ?? null) ? $_FILES[$champ] : null;
         $image = $televerse('image');
         $fichier = $televerse('fichier');
-        [$messageId, $refus] = Amis::ecrire($moi, $id, $texte, $image, $fichier, entier_ou_null($_POST['reponse_a'] ?? null));
+        $vocal = $televerse('vocal');
+        [$messageId, $refus] = Amis::ecrire($moi, $id, $texte, $image, $fichier, entier_ou_null($_POST['reponse_a'] ?? null),
+            $vocal, (int) ($_POST['duree'] ?? 0));
+        $dureeVocal = $messageId !== null && $vocal !== null && ($vocal['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK
+            ? (int) Database::valeur('SELECT audio_duree FROM messages WHERE id = ?', [$messageId]) : null;
         $avecImage = $messageId !== null && $image !== null && ($image['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK;
         $nomFichier = $messageId !== null && $fichier !== null && ($fichier['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK
             ? (string) Database::valeur('SELECT fichier_origine FROM messages WHERE id = ?', [$messageId]) : null;
@@ -335,7 +339,7 @@ final class AmisController
             }
             // La réponse part d'abord : l'envoi aux téléphones ne fait pas attendre la page.
             // La notification est écrite avant de répondre : même si l'envoi qui suit échoue, la file la retentera.
-            $aEnvoyer = Amis::notifier($moi, $id, $texte, $avecImage, $nomFichier);
+            $aEnvoyer = Amis::notifier($moi, $id, $texte, $avecImage, $nomFichier, $dureeVocal);
             $this->repondreAvant(['fait' => true, 'id' => $messageId]);
             if ($aEnvoyer !== null) {
                 FileNotifications::envoyer($aEnvoyer);
@@ -347,7 +351,7 @@ final class AmisController
             Session::flash('erreur', $refus);
             redirect('amis/' . $id);
         }
-        $this->redirigerPuisEnvoyer(url('amis/' . $id), Amis::notifier($moi, $id, $texte, $avecImage, $nomFichier));
+        $this->redirigerPuisEnvoyer(url('amis/' . $id), Amis::notifier($moi, $id, $texte, $avecImage, $nomFichier, $dureeVocal));
     }
 
     /**
@@ -393,6 +397,24 @@ final class AmisController
             'nom_origine' => (string) $message['fichier_origine'],
             'mime' => (string) $message['fichier_mime'],
         ], ($_GET['telecharger'] ?? '') === '1', Amis::dossierImages());
+    }
+
+    /** Un message vocal, pour les deux amis seulement ; lu par morceaux pour pouvoir s'y déplacer. */
+    public function vocal(int $id): void
+    {
+        Auth::exiger();
+        session_write_close();
+        $message = Amis::vocal(Auth::id(), $id);
+        if ($message === null) {
+            http_response_code(404);
+            exit('Message vocal introuvable.');
+        }
+        $extension = pathinfo((string) $message['audio_nom'], PATHINFO_EXTENSION);
+        Fichiers::envoyer([
+            'nom_stocke' => (string) $message['audio_nom'],
+            'nom_origine' => 'message-vocal-' . (int) $message['id'] . '.' . $extension,
+            'mime' => match ($extension) { 'ogg' => 'audio/ogg', 'm4a' => 'audio/mp4', default => 'audio/webm' },
+        ], false, Amis::dossierImages());
     }
 
     /** L'image d'un message, pour les deux amis seulement. */

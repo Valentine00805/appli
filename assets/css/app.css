@@ -339,6 +339,29 @@ textarea { min-height: 260px; resize: vertical; line-height: 1.65; }
 .chat__vu { align-self: flex-end; margin: 0; font-size: .72rem; color: var(--texte-doux); }
 .chat__vu[hidden] { display: none; }
 .chat__saisie { position: relative; display: flex; gap: .5rem; align-items: flex-end; padding: .75rem 1rem; border-top: 1px solid var(--bordure); }
+.chat__saisie[hidden] { display: none; }
+
+/* L'enregistrement d'un message vocal, à la place de la saisie. */
+.chat__enregistrement { display: flex; align-items: center; gap: .6rem; padding: .75rem 1rem; border-top: 1px solid var(--bordure); }
+.chat__enregistrement[hidden] { display: none; }
+.chat__enregistrement-point { width: .75rem; height: .75rem; border-radius: 50%; background: #dc2626; animation: enregistrement 1s ease-in-out infinite; }
+@keyframes enregistrement { 50% { opacity: .25; } }
+.chat__enregistrement-texte { flex: 1; color: var(--texte-doux); }
+.chat__enregistrement-texte strong { color: var(--texte); font-variant-numeric: tabular-nums; }
+
+/* Un message vocal dans une bulle. */
+.bulle__vocal { display: flex; align-items: center; gap: .55rem; min-width: min(14rem, 60vw); padding: .15rem 0; cursor: default; }
+.bulle__vocal audio { display: none; }
+.bulle__vocal-lecture {
+  flex: none; width: 2.2rem; height: 2.2rem; border: 0; border-radius: 50%; cursor: pointer;
+  background: var(--accent); color: #fff; font-size: .9rem; line-height: 1;
+}
+.bulle--moi .bulle__vocal-lecture { background: #fff; color: var(--accent); }
+.bulle__vocal-piste { flex: 1; height: .35rem; border-radius: 999px; background: rgb(0 0 0 / 12%); overflow: hidden; cursor: pointer; }
+.bulle--moi .bulle__vocal-piste { background: rgb(255 255 255 / 30%); }
+.bulle__vocal-avance { display: block; height: 100%; width: 0; background: var(--accent); border-radius: inherit; }
+.bulle--moi .bulle__vocal-avance { background: #fff; }
+.bulle__vocal-temps { flex: none; font-size: .78rem; font-variant-numeric: tabular-nums; opacity: .85; }
 .chat__emoji-bouton {
   flex: none; width: 2.6rem; height: 2.6rem; border: 1px solid var(--bordure); border-radius: var(--rayon-s);
   background: var(--fond-carte); font-size: 1.3rem; line-height: 1; cursor: pointer;

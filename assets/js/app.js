@@ -1127,7 +1127,8 @@
         bulle.classList.add('bulle--supprime');
         bulle.classList.remove('bulle--image');
         bulle.removeAttribute('data-piece');
-        bulle.querySelectorAll('.bulle__image, .bulle__fichier, .bulle__texte, .bulle__citation, .bulle__modifie, .bulle__reactions').forEach(function (e) { e.remove(); });
+        bulle.querySelectorAll('.bulle__vocal audio').forEach(function (a) { a.pause(); });
+        bulle.querySelectorAll('.bulle__image, .bulle__fichier, .bulle__vocal, .bulle__texte, .bulle__citation, .bulle__modifie, .bulle__reactions').forEach(function (e) { e.remove(); });
         var efface = document.createElement('p');
         efface.className = 'bulle__texte';
         efface.textContent = '🚫 Message supprimé';
@@ -1292,7 +1293,7 @@
           return;
         }
         var bulle = evenement.target.closest('[data-message]');
-        if (!bulle || evenement.target.closest('a, button')) { return; }
+        if (!bulle || evenement.target.closest('a, button, .bulle__vocal')) { return; }
         if (Date.now() - finAppuiLong < 700) { return; }
         var selection = window.getSelection ? String(window.getSelection()) : '';
         if (selection.trim() !== '' && bulle.contains(window.getSelection().anchorNode)) { return; }
@@ -1360,7 +1361,8 @@
         if (bulle.classList.contains('bulle--supprime')) { return '🚫 Message supprimé'; }
         var texte = texteDe(bulle).replace(/\s+/g, ' ').trim();
         var nomFichier = bulle.querySelector('.bulle__fichier-nom');
-        var piece = bulle.querySelector('.bulle__image') ? '📷 Photo' : (nomFichier ? '📎 ' + nomFichier.textContent : '');
+        var piece = bulle.querySelector('.bulle__image') ? '📷 Photo' : (nomFichier ? '📎 ' + nomFichier.textContent
+          : (bulle.querySelector('.bulle__vocal') ? '🎤 Message vocal' : ''));
         var extrait = texte === '' ? piece : (piece === '' ? texte : piece + ' · ' + texte);
         return extrait.length > 120 ? extrait.slice(0, 119) + '…' : extrait;
       };
@@ -1748,7 +1750,7 @@
         bulle.id = 'message-' + message.id;
         bulle.tabIndex = 0;
         bulle.setAttribute('aria-haspopup', 'menu');
-        if (message.image || message.fichier) { bulle.setAttribute('data-piece', ''); }
+        if (message.image || message.fichier || message.vocal) { bulle.setAttribute('data-piece', ''); }
         if (message.reponse) {
           var citation = document.createElement('a');
           citation.className = 'bulle__citation';
@@ -1785,6 +1787,37 @@
           suivreImage(img);
           lienImage.appendChild(img);
           bulle.appendChild(lienImage);
+        }
+        if (message.vocal) {
+          var lecteur = document.createElement('div');
+          lecteur.className = 'bulle__vocal';
+          lecteur.setAttribute('data-vocal', '');
+          lecteur.setAttribute('data-duree', String(message.vocal.duree));
+          var lecture = document.createElement('button');
+          lecture.type = 'button';
+          lecture.className = 'bulle__vocal-lecture';
+          lecture.setAttribute('data-vocal-lecture', '');
+          lecture.setAttribute('aria-label', 'Écouter le message vocal');
+          lecture.textContent = '▶';
+          var piste = document.createElement('span');
+          piste.className = 'bulle__vocal-piste';
+          piste.setAttribute('data-vocal-piste', '');
+          var avance = document.createElement('span');
+          avance.className = 'bulle__vocal-avance';
+          avance.setAttribute('data-vocal-avance', '');
+          piste.appendChild(avance);
+          var temps = document.createElement('span');
+          temps.className = 'bulle__vocal-temps';
+          temps.setAttribute('data-vocal-temps', '');
+          temps.textContent = message.vocal.duree_texte;
+          var audio = document.createElement('audio');
+          audio.preload = 'none';
+          audio.src = message.vocal.url;
+          lecteur.appendChild(lecture);
+          lecteur.appendChild(piste);
+          lecteur.appendChild(temps);
+          lecteur.appendChild(audio);
+          bulle.appendChild(lecteur);
         }
         if (message.fichier) {
           var carte = document.createElement('div');
@@ -1997,6 +2030,158 @@
           ajouterImages(evenement.dataTransfer.files);
         }
       });
+
+      /*
+       * Écouter un message vocal.
+       *
+       * Un seul joue à la fois. La piste avance avec la lecture, et un clic
+       * dessus y déplace l'écoute ; le temps affiché décompte ce qui reste.
+       * La durée enregistrée avec le message sert quand le fichier ne la dit
+       * pas lui-même — c'est le cas des enregistrements WebM des navigateurs.
+       */
+      var dureeDe = function (lecteur, audio) {
+        return isFinite(audio.duration) && audio.duration > 0 ? audio.duration : Number(lecteur.getAttribute('data-duree')) || 0;
+      };
+      var formatDuree = function (secondes) {
+        secondes = Math.max(0, Math.round(secondes));
+        return Math.floor(secondes / 60) + ':' + String(secondes % 60).padStart(2, '0');
+      };
+      var brancherLecteur = function (lecteur) {
+        if (lecteur.dataset.branche) { return; }
+        lecteur.dataset.branche = '1';
+        var audio = lecteur.querySelector('audio');
+        var bouton = lecteur.querySelector('[data-vocal-lecture]');
+        var avance = lecteur.querySelector('[data-vocal-avance]');
+        var temps = lecteur.querySelector('[data-vocal-temps]');
+        audio.addEventListener('timeupdate', function () {
+          var duree = dureeDe(lecteur, audio);
+          avance.style.width = duree ? Math.min(100, audio.currentTime / duree * 100) + '%' : '0';
+          temps.textContent = formatDuree(duree - audio.currentTime);
+        });
+        audio.addEventListener('play', function () { bouton.textContent = '⏸'; bouton.setAttribute('aria-label', 'Mettre en pause'); lecteur.classList.add('bulle__vocal--joue'); });
+        audio.addEventListener('pause', function () { bouton.textContent = '▶'; bouton.setAttribute('aria-label', 'Écouter le message vocal'); lecteur.classList.remove('bulle__vocal--joue'); });
+        audio.addEventListener('ended', function () {
+          avance.style.width = '0';
+          temps.textContent = formatDuree(dureeDe(lecteur, audio));
+        });
+        audio.addEventListener('error', function () { temps.textContent = 'Illisible'; });
+      };
+      fil.addEventListener('click', function (evenement) {
+        var lecteur = evenement.target.closest('[data-vocal]');
+        if (!lecteur) { return; }
+        brancherLecteur(lecteur);
+        var audio = lecteur.querySelector('audio');
+        if (evenement.target.closest('[data-vocal-lecture]')) {
+          if (audio.paused) {
+            fil.querySelectorAll('[data-vocal] audio').forEach(function (autre) { if (autre !== audio) { autre.pause(); } });
+            audio.play().catch(function () { lecteur.querySelector('[data-vocal-temps]').textContent = 'Illisible'; });
+          } else {
+            audio.pause();
+          }
+          return;
+        }
+        var piste = evenement.target.closest('[data-vocal-piste]');
+        if (piste) {
+          var cadre = piste.getBoundingClientRect();
+          var part = Math.min(1, Math.max(0, (evenement.clientX - cadre.left) / cadre.width));
+          var duree = dureeDe(lecteur, audio);
+          if (duree) { try { audio.currentTime = part * duree; } catch (e) { /* pas encore chargé */ } }
+          if (audio.paused) { audio.play().catch(function () {}); }
+        }
+      });
+
+      /*
+       * Enregistrer un message vocal.
+       *
+       * Le bouton 🎤 n'apparaît que si le navigateur sait enregistrer. Un clic
+       * demande le micro, puis une barre remplace la saisie : le temps qui
+       * passe, « Annuler » et « Envoyer ». Cinq minutes au plus : au-delà, le
+       * message part de lui-même. Il répond au message choisi, s'il y en a un.
+       */
+      var boutonVocal = formulaire.querySelector('[data-vocal-bouton]');
+      var barreVocal = chat.querySelector('[data-vocal-barre]');
+      var chronoVocal = barreVocal.querySelector('[data-vocal-chrono]');
+      var VOCAL_MAX = 300;
+      var enregistreur = null;
+      var morceaux = [];
+      var debutVocal = 0;
+      var minuterieVocal = null;
+      var fluxVocal = null;
+      var sortieVocal = null;
+
+      var terminerEnregistrement = function () {
+        clearInterval(minuterieVocal);
+        if (fluxVocal) { fluxVocal.getTracks().forEach(function (piste) { piste.stop(); }); }
+        fluxVocal = null;
+        enregistreur = null;
+        barreVocal.hidden = true;
+        formulaire.hidden = false;
+        champ.focus();
+      };
+      var arreter = function (envoyer) {
+        if (!enregistreur) { return; }
+        sortieVocal = envoyer;
+        if (enregistreur.state !== 'inactive') { enregistreur.stop(); } else { terminerEnregistrement(); }
+      };
+
+      if (boutonVocal && navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder) {
+        boutonVocal.hidden = false;
+        boutonVocal.addEventListener('click', function () {
+          montrerErreur('');
+          navigator.mediaDevices.getUserMedia({ audio: true }).then(function (flux) {
+            fluxVocal = flux;
+            var formats = ['audio/webm;codecs=opus', 'audio/ogg;codecs=opus', 'audio/mp4', 'audio/webm'];
+            var format = formats.filter(function (f) { return MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(f); })[0];
+            enregistreur = format ? new MediaRecorder(flux, { mimeType: format }) : new MediaRecorder(flux);
+            morceaux = [];
+            enregistreur.addEventListener('dataavailable', function (e) { if (e.data && e.data.size) { morceaux.push(e.data); } });
+            enregistreur.addEventListener('stop', function () {
+              var duree = Math.round((Date.now() - debutVocal) / 1000);
+              var type = (enregistreur && enregistreur.mimeType) || format || 'audio/webm';
+              var envoyer = sortieVocal;
+              terminerEnregistrement();
+              if (!envoyer) { return; }
+              if (duree < 1 || !morceaux.length) { montrerErreur('Message vocal trop court : maintenez l’enregistrement au moins une seconde.'); return; }
+              var extension = type.indexOf('ogg') !== -1 ? 'ogg' : (type.indexOf('mp4') !== -1 ? 'm4a' : 'webm');
+              var donnees = new FormData();
+              donnees.append('_csrf', chat.getAttribute('data-jeton'));
+              donnees.append('texte', '');
+              donnees.append('duree', String(Math.min(duree, VOCAL_MAX)));
+              donnees.append('vocal', new Blob(morceaux, { type: type }), 'message-vocal.' + extension);
+              if (mode && mode.type === 'reponse') { donnees.append('reponse_a', mode.id); }
+              bouton.disabled = true;
+              fetch(chat.getAttribute('data-envoyer'), {
+                method: 'POST', body: donnees, credentials: 'same-origin', headers: { Accept: 'application/json' }
+              }).then(function (r) { return r.json(); })
+                .then(function (reponse) {
+                  if (!reponse.fait) { throw new Error(reponse.message || 'Le message vocal n’est pas parti.'); }
+                  if (mode && mode.type === 'reponse') { sortirMode(); }
+                  return relever().then(enBas);
+                })
+                .catch(function (e) { montrerErreur(e.message || 'Le message vocal n’est pas parti.'); })
+                .then(function () { bouton.disabled = false; });
+            });
+            enregistreur.start(250);
+            debutVocal = Date.now();
+            chronoVocal.textContent = '0:00';
+            formulaire.hidden = true;
+            barreVocal.hidden = false;
+            barreVocal.querySelector('[data-vocal-envoyer]').focus();
+            minuterieVocal = setInterval(function () {
+              var ecoule = (Date.now() - debutVocal) / 1000;
+              chronoVocal.textContent = formatDuree(ecoule);
+              if (ecoule >= VOCAL_MAX) { arreter(true); }
+            }, 250);
+          }).catch(function () {
+            montrerErreur('Le micro n’est pas accessible : autorisez-le pour ce site (le cadenas à gauche de l’adresse), puis réessayez.');
+          });
+        });
+        barreVocal.querySelector('[data-vocal-annuler]').addEventListener('click', function () { arreter(false); });
+        barreVocal.querySelector('[data-vocal-envoyer]').addEventListener('click', function () { arreter(true); });
+        document.addEventListener('keydown', function (evenement) {
+          if (evenement.key === 'Escape' && enregistreur) { arreter(false); }
+        });
+      }
 
       var envoyerUn = function (texte, element, reponseA) {
         var donnees = new FormData();

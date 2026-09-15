@@ -109,7 +109,7 @@ foreach ($messages as $m) {
         ?>
         <div class="bulle<?= $m['moi'] ? ' bulle--moi' : '' ?><?= $m['image'] !== null ? ' bulle--image' : '' ?><?= $m['supprime'] ? ' bulle--supprime' : '' ?><?= $m['epingle'] ? ' bulle--epingle' : '' ?>"
              data-message="<?= (int) $m['id'] ?>" id="message-<?= (int) $m['id'] ?>" tabindex="0" aria-haspopup="menu"
-             <?= $m['image'] !== null || $m['fichier'] !== null ? 'data-piece' : '' ?>>
+             <?= $m['image'] !== null || $m['fichier'] !== null || $m['vocal'] !== null ? 'data-piece' : '' ?>>
           <?php if ($m['reponse'] !== null): ?>
             <a class="bulle__citation" href="#message-<?= $m['reponse']['id'] ?>" data-citation="<?= $m['reponse']['id'] ?>">
               <span class="bulle__citation-auteur"><?= e($m['reponse']['auteur']) ?></span>
@@ -124,6 +124,15 @@ foreach ($messages as $m) {
               <img src="<?= e($m['image']) ?>" alt="Photo"
                    <?= $m['largeur'] > 0 ? 'width="' . $m['largeur'] . '" height="' . $m['hauteur'] . '"' : '' ?>>
             </a>
+          <?php endif; ?>
+          <?php if ($m['vocal'] !== null): ?>
+            <?php // Un message vocal : un lecteur compact, que le script anime. ?>
+            <div class="bulle__vocal" data-vocal data-duree="<?= $m['vocal']['duree'] ?>">
+              <button type="button" class="bulle__vocal-lecture" data-vocal-lecture aria-label="Écouter le message vocal">▶</button>
+              <span class="bulle__vocal-piste" data-vocal-piste><span class="bulle__vocal-avance" data-vocal-avance></span></span>
+              <span class="bulle__vocal-temps" data-vocal-temps><?= e($m['vocal']['duree_texte']) ?></span>
+              <audio preload="none" src="<?= e($m['vocal']['url']) ?>"></audio>
+            </div>
           <?php endif; ?>
           <?php if ($m['fichier'] !== null): ?>
             <div class="bulle__fichier">
@@ -169,6 +178,14 @@ foreach ($messages as $m) {
       <button class="chat__contexte-annuler" type="button" data-contexte-annuler aria-label="Annuler" title="Annuler">✕</button>
     </div>
 
+    <?php // Pendant un enregistrement vocal, cette barre prend la place de la saisie. ?>
+    <div class="chat__enregistrement" data-vocal-barre hidden>
+      <span class="chat__enregistrement-point" aria-hidden="true"></span>
+      <span class="chat__enregistrement-texte">Enregistrement… <strong data-vocal-chrono>0:00</strong></span>
+      <button class="bouton bouton--discret" type="button" data-vocal-annuler>✕ Annuler</button>
+      <button class="bouton" type="button" data-vocal-envoyer>Envoyer</button>
+    </div>
+
     <?php // Les photos et fichiers choisis, en attente d'envoi : le script les montre ici. ?>
     <div class="chat__apercus" data-chat-apercus hidden></div>
 
@@ -187,6 +204,9 @@ foreach ($messages as $m) {
       <label class="chat__emoji-bouton chat__image-bouton" for="chat-image" title="Joindre une photo ou un fichier" data-chat-image-bouton>
         <span aria-hidden="true">📎</span><span class="sr-only">Joindre une photo ou un fichier</span>
       </label>
+      <?php // Un message vocal : le bouton n'apparaît que si le navigateur sait enregistrer. ?>
+      <button class="chat__emoji-bouton chat__vocal-bouton" type="button" data-vocal-bouton hidden
+              title="Enregistrer un message vocal" aria-label="Enregistrer un message vocal">🎤</button>
       <?php // Le choix des emojis : le panneau est rempli par le script, qui seul peut les insérer. ?>
       <button class="chat__emoji-bouton" type="button" data-emoji-bouton hidden
               aria-label="Insérer un emoji" title="Emojis" aria-expanded="false" aria-controls="chat-emojis">😊</button>

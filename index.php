@@ -219,6 +219,7 @@ $routes = [
     ['GET',  'amis/{id}/recherche',       [AmisController::class, 'rechercher']],
     ['GET',  'amis/images/{id}',          [AmisController::class, 'image']],
     ['GET',  'amis/fichiers/{id}',        [AmisController::class, 'fichier']],
+    ['GET',  'amis/vocaux/{id}',          [AmisController::class, 'vocal']],
     ['POST', 'amis/messages/{id}/supprimer', [AmisController::class, 'supprimerMessage']],
     ['POST', 'amis/messages/{id}/modifier', [AmisController::class, 'modifierMessage']],
     ['POST', 'amis/messages/{id}/reaction', [AmisController::class, 'reagir']],

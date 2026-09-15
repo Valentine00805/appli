@@ -66,6 +66,84 @@ final class Amis
         return array_values(array_map('strtolower', (array) Config::get('app', 'extensions_autorisees')));
     }
 
+    /** Un message vocal : poids et durée au plus. */
+    public const VOCAL_MAX_OCTETS = 10 * 1024 * 1024;
+    public const VOCAL_MAX_SECONDES = 300;
+
+    /**
+     * Vérifie un enregistrement vocal et le range. Ce doit être un vrai fichier
+     * audio — reconnu à ses premiers octets, pas à ce qu'il annonce : WebM
+     * (Chrome, Firefox, Edge), Ogg, ou MP4 (Safari).
+     *
+     * @return array{nom: string, duree: int}|string l'enregistrement rangé, ou la raison du refus
+     */
+    public static function rangerVocal(array $fichier, int $duree): array|string
+    {
+        $code = (int) ($fichier['error'] ?? UPLOAD_ERR_NO_FILE);
+        if ($code !== UPLOAD_ERR_OK) {
+            return 'Le message vocal n’a pas pu être envoyé : ' . Fichiers::messageErreur($code);
+        }
+        $tmp = (string) ($fichier['tmp_name'] ?? '');
+        if (!is_uploaded_file($tmp)) {
+            return 'Le message vocal n’a pas pu être envoyé.';
+        }
+        $taille = (int) filesize($tmp);
+        if ($taille < 100) {
+            return 'Le message vocal est vide.';
+        }
+        if ($taille > self::VOCAL_MAX_OCTETS) {
+            return 'Ce message vocal est trop long.';
+        }
+        if ($duree < 1 || $duree > self::VOCAL_MAX_SECONDES) {
+            return 'Un message vocal dure de 1 seconde à ' . intdiv(self::VOCAL_MAX_SECONDES, 60) . ' minutes.';
+        }
+
+        $debut = (string) file_get_contents($tmp, false, null, 0, 16);
+        $extension = match (true) {
+            str_starts_with($debut, "\x1A\x45\xDF\xA3") => 'weba',
+            str_starts_with($debut, 'OggS') => 'ogg',
+            substr($debut, 4, 4) === 'ftyp' => 'm4a',
+            default => null,
+        };
+        if ($extension === null) {
+            return 'Ce fichier n’est pas un enregistrement audio.';
+        }
+
+        $dossier = self::dossierImages();
+        if (!is_dir($dossier) && !mkdir($dossier, 0775, true) && !is_dir($dossier)) {
+            return 'Impossible de ranger le message vocal sur le serveur.';
+        }
+        $nom = bin2hex(random_bytes(16)) . '.' . $extension;
+        if (!move_uploaded_file($tmp, $dossier . DIRECTORY_SEPARATOR . $nom)) {
+            return 'Impossible de ranger le message vocal sur le serveur.';
+        }
+
+        return ['nom' => $nom, 'duree' => $duree];
+    }
+
+    /** « 0:42 », « 3:05 ». */
+    public static function duree(int $secondes): string
+    {
+        return intdiv($secondes, 60) . ':' . str_pad((string) ($secondes % 60), 2, '0', STR_PAD_LEFT);
+    }
+
+    /** Le message et son enregistrement vocal, si la personne connectée a le droit de l'écouter. */
+    public static function vocal(int $moi, int $messageId): ?array
+    {
+        $message = Database::one(
+            'SELECT id, expediteur_id, destinataire_id, audio_nom FROM messages
+              WHERE id = ? AND audio_nom IS NOT NULL
+                AND ((expediteur_id = ? AND masque_expediteur = 0) OR (destinataire_id = ? AND masque_destinataire = 0))',
+            [$messageId, $moi, $moi]
+        );
+        if ($message === null) {
+            return null;
+        }
+        $autre = (int) $message['expediteur_id'] === $moi ? (int) $message['destinataire_id'] : (int) $message['expediteur_id'];
+
+        return self::sontAmis($moi, $autre) ? $message : null;
+    }
+
     /** Le dossier des images des discussions, à côté des pièces jointes des cours. */
     public static function dossierImages(): string
     {
@@ -166,7 +244,7 @@ final class Amis
             return [];
         }
         $lignes = Database::all(
-            'SELECT id, expediteur_id, texte, image_nom, fichier_origine, supprime_le, created_at FROM messages WHERE id IN (' . implode(',', array_fill(0, count($ids), '?')) . ')',
+            'SELECT id, expediteur_id, texte, image_nom, fichier_origine, audio_nom, supprime_le, created_at FROM messages WHERE id IN (' . implode(',', array_fill(0, count($ids), '?')) . ')',
             $ids
         );
 
@@ -340,15 +418,17 @@ final class Amis
      * @param ?int   $reponseA le message auquel celui-ci répond ; ignoré s'il n'est pas de la conversation
      * @return array{0: ?int, 1: ?string} l'identifiant du message, ou la raison du refus
      */
-    public static function ecrire(int $moi, int $autre, string $texte, ?array $image = null, ?array $fichier = null, ?int $reponseA = null): array
+    public static function ecrire(int $moi, int $autre, string $texte, ?array $image = null, ?array $fichier = null, ?int $reponseA = null,
+                                  ?array $vocal = null, int $dureeVocal = 0): array
     {
         $texte = trim(str_replace(["\r\n", "\r"], "\n", $texte));
         $avecImage = $image !== null && ($image['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE;
         $avecFichier = $fichier !== null && ($fichier['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE;
-        if ($texte === '' && !$avecImage && !$avecFichier) {
+        $avecVocal = $vocal !== null && ($vocal['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE;
+        if ($texte === '' && !$avecImage && !$avecFichier && !$avecVocal) {
             return [null, 'Le message est vide.'];
         }
-        if ($avecImage && $avecFichier) {
+        if ((int) $avecImage + (int) $avecFichier + (int) $avecVocal > 1) {
             return [null, 'Une seule pièce jointe par message.'];
         }
         if (mb_strlen($texte) > self::MESSAGE_MAX) {
@@ -380,18 +460,26 @@ final class Amis
                 return [null, $joint];
             }
         }
+        $enregistre = null;
+        if ($avecVocal) {
+            $enregistre = self::rangerVocal($vocal, $dureeVocal);
+            if (is_string($enregistre)) {
+                return [null, $enregistre];
+            }
+        }
 
         try {
             Database::run(
                 'INSERT INTO messages (expediteur_id, destinataire_id, reponse_a, texte, image_nom, image_mime, image_largeur, image_hauteur,
-                                       fichier_nom, fichier_origine, fichier_mime, fichier_taille, created_at)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, UTC_TIMESTAMP())',
+                                       fichier_nom, fichier_origine, fichier_mime, fichier_taille, audio_nom, audio_duree, created_at)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, UTC_TIMESTAMP())',
                 [$moi, $autre, $reponseA !== null && self::visible($moi, $autre, $reponseA) ? $reponseA : null,
                  $texte, $rangee['nom'] ?? null, $rangee['mime'] ?? null, $rangee['largeur'] ?? null, $rangee['hauteur'] ?? null,
-                 $joint['nom'] ?? null, $joint['origine'] ?? null, $joint['mime'] ?? null, $joint['taille'] ?? null]
+                 $joint['nom'] ?? null, $joint['origine'] ?? null, $joint['mime'] ?? null, $joint['taille'] ?? null,
+                 $enregistre['nom'] ?? null, $enregistre['duree'] ?? null]
             );
         } catch (Throwable $e) {
-            foreach ([$rangee, $joint] as $range) {
+            foreach ([$rangee, $joint, $enregistre] as $range) {
                 if ($range !== null) {
                     @unlink(self::dossierImages() . DIRECTORY_SEPARATOR . $range['nom']);
                 }
@@ -639,10 +727,10 @@ final class Amis
     {
         return Database::all(
             'SELECT m.id, m.expediteur_id, m.texte, m.image_nom, m.image_largeur, m.image_hauteur,
-                    m.fichier_nom, m.fichier_origine, m.fichier_mime, m.fichier_taille,
+                    m.fichier_nom, m.fichier_origine, m.fichier_mime, m.fichier_taille, m.audio_nom, m.audio_duree,
                     m.created_at, m.modifie_le, m.lu_le, m.supprime_le, m.reponse_a,
                     r.expediteur_id AS r_expediteur, r.texte AS r_texte, r.image_nom AS r_image,
-                    r.fichier_origine AS r_fichier, r.supprime_le AS r_supprime,
+                    r.fichier_origine AS r_fichier, r.audio_nom AS r_audio, r.supprime_le AS r_supprime,
                     ((r.expediteur_id = ? AND r.masque_expediteur = 1) OR (r.destinataire_id = ? AND r.masque_destinataire = 1)) AS r_masque
                FROM messages m
                LEFT JOIN messages r ON r.id = m.reponse_a
@@ -710,7 +798,7 @@ final class Amis
         if (mb_strlen($texte) > self::MESSAGE_MAX) {
             return [false, 'Un message ne peut pas dépasser ' . self::MESSAGE_MAX . ' caractères.'];
         }
-        if ($texte === '' && $message['image_nom'] === null && $message['fichier_nom'] === null) {
+        if ($texte === '' && $message['image_nom'] === null && $message['fichier_nom'] === null && $message['audio_nom'] === null) {
             return [false, 'Le message ne peut pas être vide : pour l’enlever, supprimez-le.'];
         }
         if ($texte !== (string) $message['texte']) {
@@ -731,7 +819,8 @@ final class Amis
         }
         $texte = trim((string) preg_replace('/\s+/u', ' ', (string) ($cite['r_texte'] ?? '')));
         $piece = ($cite['r_image'] ?? null) !== null ? '📷 Photo'
-            : (($cite['r_fichier'] ?? null) !== null ? '📎 ' . $cite['r_fichier'] : '');
+            : (($cite['r_fichier'] ?? null) !== null ? '📎 ' . $cite['r_fichier']
+            : (($cite['r_audio'] ?? null) !== null ? '🎤 Message vocal' : ''));
 
         return mb_strimwidth($texte === '' ? $piece : ($piece === '' ? $texte : $piece . ' · ' . $texte), 0, 120, '…');
     }
@@ -815,14 +904,14 @@ final class Amis
     /** Efface le contenu d'un message : son texte, et ses pièces jointes du disque. */
     private static function viderMessage(array $message): void
     {
-        foreach ([$message['image_nom'] ?? null, $message['fichier_nom'] ?? null] as $nom) {
+        foreach ([$message['image_nom'] ?? null, $message['fichier_nom'] ?? null, $message['audio_nom'] ?? null] as $nom) {
             if (is_string($nom) && preg_match('/^[0-9a-f]{32}\.[a-z0-9]{1,8}$/', $nom)) {
                 @unlink(self::dossierImages() . DIRECTORY_SEPARATOR . $nom);
             }
         }
         Database::run(
             "UPDATE messages SET texte = '', image_nom = NULL, image_mime = NULL, image_largeur = NULL, image_hauteur = NULL,
-                    fichier_nom = NULL, fichier_origine = NULL, fichier_mime = NULL, fichier_taille = NULL, reponse_a = NULL
+                    fichier_nom = NULL, fichier_origine = NULL, fichier_mime = NULL, fichier_taille = NULL, audio_nom = NULL, audio_duree = NULL, reponse_a = NULL
               WHERE id = ?",
             [(int) $message['id']]
         );
@@ -1098,7 +1187,7 @@ final class Amis
     public static function epingles(int $moi, int $autre): array
     {
         $lignes = Database::all(
-            'SELECT m.id, m.expediteur_id, m.texte AS r_texte, m.image_nom AS r_image, m.fichier_origine AS r_fichier,
+            'SELECT m.id, m.expediteur_id, m.texte AS r_texte, m.image_nom AS r_image, m.fichier_origine AS r_fichier, m.audio_nom AS r_audio,
                     m.supprime_le AS r_supprime, 0 AS r_masque, m.created_at
                FROM epingles e JOIN messages m ON m.id = e.message_id
               WHERE e.user_id = ?
@@ -1165,7 +1254,8 @@ final class Amis
      *
      * @return ?int la notification en file, ou null s'il n'y a personne à prévenir
      */
-    public static function notifier(int $expediteur, int $destinataire, string $texte, bool $avecImage = false, ?string $nomFichier = null): ?int
+    public static function notifier(int $expediteur, int $destinataire, string $texte, bool $avecImage = false, ?string $nomFichier = null,
+                                    ?int $dureeVocal = null): ?int
     {
         $depuis = Database::valeur(
             'SELECT TIMESTAMPDIFF(SECOND, regarde_le, UTC_TIMESTAMP()) FROM discussions_etat WHERE user_id = ? AND ami_id = ?',
@@ -1182,6 +1272,9 @@ final class Amis
         }
         if ($nomFichier !== null) {
             $apercu = '📎 ' . $nomFichier . ($apercu === '' ? '' : ' · ' . $apercu);
+        }
+        if ($dureeVocal !== null) {
+            $apercu = '🎤 Message vocal (' . self::duree($dureeVocal) . ')' . ($apercu === '' ? '' : ' · ' . $apercu);
         }
         $id = FileNotifications::ajouter($destinataire, 'message', [
             'title' => '💬 ' . ($compte['pseudo'] ?? 'Nouveau message'),
@@ -1300,6 +1393,11 @@ final class Amis
             'image' => ($message['image_nom'] ?? null) === null ? null : url('amis/images/' . (int) $message['id']),
             'largeur' => (int) ($message['image_largeur'] ?? 0),
             'hauteur' => (int) ($message['image_hauteur'] ?? 0),
+            'vocal' => ($message['audio_nom'] ?? null) === null ? null : [
+                'url' => url('amis/vocaux/' . (int) $message['id']),
+                'duree' => (int) $message['audio_duree'],
+                'duree_texte' => self::duree((int) $message['audio_duree']),
+            ],
             'fichier' => ($message['fichier_nom'] ?? null) === null ? null : [
                 'url' => url('amis/fichiers/' . (int) $message['id']),
                 'telecharger' => url('amis/fichiers/' . (int) $message['id'], ['telecharger' => 1]),
