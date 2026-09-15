@@ -1101,6 +1101,37 @@
           lienImage.appendChild(img);
           bulle.appendChild(lienImage);
         }
+        if (message.fichier) {
+          var carte = document.createElement('div');
+          carte.className = 'bulle__fichier';
+          var icone = document.createElement('span');
+          icone.className = 'bulle__fichier-icone';
+          icone.setAttribute('aria-hidden', 'true');
+          icone.textContent = message.fichier.icone;
+          var infos = document.createElement('span');
+          infos.className = 'bulle__fichier-infos';
+          var nom = document.createElement('a');
+          nom.className = 'bulle__fichier-nom';
+          nom.href = message.fichier.url;
+          nom.target = '_blank';
+          nom.rel = 'noopener';
+          nom.textContent = message.fichier.nom;
+          var poids = document.createElement('span');
+          poids.className = 'bulle__fichier-taille';
+          poids.textContent = message.fichier.taille;
+          infos.appendChild(nom);
+          infos.appendChild(poids);
+          var telecharger = document.createElement('a');
+          telecharger.className = 'bulle__fichier-telecharger';
+          telecharger.href = message.fichier.telecharger;
+          telecharger.title = 'Télécharger';
+          telecharger.setAttribute('aria-label', 'Télécharger ' + message.fichier.nom);
+          telecharger.textContent = '⬇';
+          carte.appendChild(icone);
+          carte.appendChild(infos);
+          carte.appendChild(telecharger);
+          bulle.appendChild(carte);
+        }
         if (message.texte) {
           var texte = document.createElement('p');
           texte.className = 'bulle__texte';
@@ -1145,14 +1176,26 @@
       };
 
       /*
-       * Les images à envoyer : choisies par le bouton 📷, collées dans la zone
-       * de saisie, ou déposées sur la conversation. Elles attendent en
-       * vignettes au-dessus de la saisie, chacune avec sa croix, et partent à
-       * l'envoi — une par message, la légende avec la première.
+       * Les photos et fichiers à envoyer : choisis par le bouton 📎, collés
+       * dans la zone de saisie, ou déposés sur la conversation. Ils attendent
+       * au-dessus de la saisie — une vignette pour une photo, une étiquette
+       * pour un fichier —, chacun avec sa croix, et partent à l'envoi : un par
+       * message, la légende avec le premier.
+       *
+       * Une photo (JPEG, PNG, GIF, WebP de 10 Mo au plus) part comme image, et
+       * s'affiche dans la conversation ; tout le reste part comme fichier.
        */
       var TYPES_IMAGES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
       var IMAGE_MAX = 10 * 1024 * 1024;
       var IMAGES_MAX = 10;
+      var EXTENSIONS = (formulaire.getAttribute('data-extensions') || '').split(',');
+      var FICHIER_MAX = Number(formulaire.getAttribute('data-fichier-max')) || 50 * 1024 * 1024;
+      var enMo = function (octets) { return Math.round(octets / 1048576) + ' Mo'; };
+      var poidsLisible = function (octets) {
+        if (octets < 1024) { return octets + ' o'; }
+        if (octets < 1048576) { return Math.round(octets / 1024) + ' Ko'; }
+        return (octets / 1048576).toFixed(1).replace('.', ',') + ' Mo';
+      };
       var apercus = chat.querySelector('[data-chat-apercus]');
       var choixImage = formulaire.querySelector('[data-chat-image]');
       var enAttente = [];
@@ -1161,17 +1204,31 @@
         apercus.textContent = '';
         enAttente.forEach(function (element, rang) {
           var vignette = document.createElement('div');
-          vignette.className = 'chat__apercu';
-          var img = document.createElement('img');
-          img.src = element.adresse;
-          img.alt = element.fichier.name;
+          vignette.className = 'chat__apercu' + (element.image ? '' : ' chat__apercu--fichier');
+          var img;
+          if (element.image) {
+            img = document.createElement('img');
+            img.src = element.adresse;
+            img.alt = element.fichier.name;
+          } else {
+            img = document.createElement('span');
+            img.className = 'chat__apercu-fichier';
+            var nomFichier = document.createElement('span');
+            nomFichier.className = 'chat__apercu-nom';
+            nomFichier.textContent = '📎 ' + element.fichier.name;
+            var poidsFichier = document.createElement('span');
+            poidsFichier.className = 'chat__apercu-poids';
+            poidsFichier.textContent = poidsLisible(element.fichier.size);
+            img.appendChild(nomFichier);
+            img.appendChild(poidsFichier);
+          }
           var retirer = document.createElement('button');
           retirer.type = 'button';
           retirer.className = 'chat__apercu-retirer';
           retirer.setAttribute('aria-label', 'Retirer ' + element.fichier.name);
           retirer.textContent = '✕';
           retirer.addEventListener('click', function () {
-            URL.revokeObjectURL(element.adresse);
+            if (element.adresse) { URL.revokeObjectURL(element.adresse); }
             enAttente.splice(rang, 1);
             dessinerApercus();
             champ.focus();
@@ -1187,10 +1244,17 @@
       var ajouterImages = function (liste) {
         var refus = '';
         Array.prototype.forEach.call(liste, function (fichier) {
-          if (TYPES_IMAGES.indexOf(fichier.type) === -1) { refus = '« ' + fichier.name + ' » n’est pas une image acceptée (JPEG, PNG, GIF ou WebP).'; return; }
-          if (fichier.size > IMAGE_MAX) { refus = '« ' + fichier.name + ' » est trop lourde : 10 Mo au plus.'; return; }
-          if (enAttente.length >= IMAGES_MAX) { refus = 'Dix images au plus à la fois.'; return; }
-          enAttente.push({ fichier: fichier, adresse: URL.createObjectURL(fichier) });
+          if (enAttente.length >= IMAGES_MAX) { refus = 'Dix pièces jointes au plus à la fois.'; return; }
+          var estImage = TYPES_IMAGES.indexOf(fichier.type) !== -1 && fichier.size <= IMAGE_MAX;
+          if (!estImage) {
+            var extension = (fichier.name.split('.').pop() || '').toLowerCase();
+            if (fichier.name.indexOf('.') === -1 || EXTENSIONS.indexOf(extension) === -1) {
+              refus = '« ' + fichier.name + ' » : ce type de fichier n’est pas accepté.'; return;
+            }
+            if (fichier.size > FICHIER_MAX) { refus = '« ' + fichier.name + ' » est trop lourd : ' + enMo(FICHIER_MAX) + ' au plus.'; return; }
+            if (fichier.size === 0) { refus = '« ' + fichier.name + ' » est vide.'; return; }
+          }
+          enAttente.push({ fichier: fichier, image: estImage, adresse: estImage ? URL.createObjectURL(fichier) : null });
         });
         montrerErreur(refus);
         dessinerApercus();
@@ -1202,10 +1266,8 @@
         champ.focus();
       });
       champ.addEventListener('paste', function (evenement) {
-        var images = Array.prototype.filter.call((evenement.clipboardData && evenement.clipboardData.files) || [], function (f) {
-          return f.type.indexOf('image/') === 0;
-        });
-        if (images.length) { evenement.preventDefault(); ajouterImages(images); }
+        var colles = (evenement.clipboardData && evenement.clipboardData.files) || [];
+        if (colles.length) { evenement.preventDefault(); ajouterImages(colles); }
       });
       chat.addEventListener('dragover', function (evenement) {
         if (evenement.dataTransfer && Array.prototype.indexOf.call(evenement.dataTransfer.types, 'Files') !== -1) {
@@ -1224,11 +1286,11 @@
         }
       });
 
-      var envoyerUn = function (texte, fichier) {
+      var envoyerUn = function (texte, element) {
         var donnees = new FormData();
         donnees.append('_csrf', chat.getAttribute('data-jeton'));
         donnees.append('texte', texte);
-        if (fichier) { donnees.append('image', fichier, fichier.name || 'image'); }
+        if (element) { donnees.append(element.image ? 'image' : 'fichier', element.fichier, element.fichier.name || 'fichier'); }
         return fetch(chat.getAttribute('data-envoyer'), {
           method: 'POST', body: donnees, credentials: 'same-origin', headers: { Accept: 'application/json' }
         }).then(function (r) {
@@ -1254,9 +1316,9 @@
         }
         enAttente.slice().forEach(function (element) {
           suite = suite.then(function () {
-            return envoyerUn(champ.value.trim(), element.fichier).then(function () {
+            return envoyerUn(champ.value.trim(), element).then(function () {
               champ.value = '';
-              URL.revokeObjectURL(element.adresse);
+              if (element.adresse) { URL.revokeObjectURL(element.adresse); }
               enAttente.splice(enAttente.indexOf(element), 1);
               dessinerApercus();
             });

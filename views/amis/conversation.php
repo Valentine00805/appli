@@ -61,6 +61,17 @@ foreach ($messages as $m) {
                    <?= $m['largeur'] > 0 ? 'width="' . $m['largeur'] . '" height="' . $m['hauteur'] . '"' : '' ?>>
             </a>
           <?php endif; ?>
+          <?php if ($m['fichier'] !== null): ?>
+            <div class="bulle__fichier">
+              <span class="bulle__fichier-icone" aria-hidden="true"><?= e($m['fichier']['icone']) ?></span>
+              <span class="bulle__fichier-infos">
+                <a class="bulle__fichier-nom" href="<?= e($m['fichier']['url']) ?>" target="_blank" rel="noopener"><?= e($m['fichier']['nom']) ?></a>
+                <span class="bulle__fichier-taille"><?= e($m['fichier']['taille']) ?></span>
+              </span>
+              <a class="bulle__fichier-telecharger" href="<?= e($m['fichier']['telecharger']) ?>"
+                 title="Télécharger" aria-label="Télécharger <?= e($m['fichier']['nom']) ?>">⬇</a>
+            </div>
+          <?php endif; ?>
           <?php if ($m['texte'] !== ''): ?>
             <p class="bulle__texte"><?= nl2br(e($m['texte'])) ?></p>
           <?php endif; ?>
@@ -76,20 +87,23 @@ foreach ($messages as $m) {
       <?php endif; ?>
     </div>
 
-    <?php // Les images choisies, en attente d'envoi : le script les montre ici. ?>
+    <?php // Les photos et fichiers choisis, en attente d'envoi : le script les montre ici. ?>
     <div class="chat__apercus" data-chat-apercus hidden></div>
 
     <form class="chat__saisie" method="post" action="<?= url('amis/' . $actif . '/messages') ?>" data-chat-formulaire
-          enctype="multipart/form-data">
+          enctype="multipart/form-data"
+          data-extensions="<?= e(implode(',', Amis::extensionsFichiers())) ?>"
+          data-fichier-max="<?= Amis::fichierMax() ?>">
       <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
       <label class="sr-only" for="chat-texte">Message à <?= e((string) $ami['pseudo']) ?></label>
       <textarea id="chat-texte" name="texte" rows="1" maxlength="<?= Amis::MESSAGE_MAX ?>" required
                 placeholder="Écrire à <?= e((string) $ami['pseudo']) ?>…" autofocus></textarea>
-      <?php // Joindre des images : le bouton ouvre le choix de fichiers, gardé caché. ?>
-      <input type="file" name="image" accept="image/jpeg,image/png,image/gif,image/webp" multiple
+      <?php // Joindre des photos ou des fichiers : le bouton ouvre le choix de fichiers, gardé caché. ?>
+      <input type="file" name="fichier" multiple
+             accept="<?= e(implode(',', array_map(static fn (string $x): string => '.' . $x, Amis::extensionsFichiers()))) ?>"
              class="sr-only" id="chat-image" data-chat-image>
-      <label class="chat__emoji-bouton chat__image-bouton" for="chat-image" title="Joindre une image" data-chat-image-bouton>
-        <span aria-hidden="true">📷</span><span class="sr-only">Joindre une image</span>
+      <label class="chat__emoji-bouton chat__image-bouton" for="chat-image" title="Joindre une photo ou un fichier" data-chat-image-bouton>
+        <span aria-hidden="true">📎</span><span class="sr-only">Joindre une photo ou un fichier</span>
       </label>
       <?php // Le choix des emojis : le panneau est rempli par le script, qui seul peut les insérer. ?>
       <button class="chat__emoji-bouton" type="button" data-emoji-bouton hidden

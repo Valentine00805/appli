@@ -144,9 +144,10 @@ final class Fichiers
     }
 
     /** Envoie le fichier au navigateur (affichage en ligne ou téléchargement). */
-    public static function envoyer(array $fichier, bool $telecharger): never
+    public static function envoyer(array $fichier, bool $telecharger, ?string $dossier = null): never
     {
-        $chemin = Config::get('app', 'dossier_uploads') . DIRECTORY_SEPARATOR . $fichier['nom_stocke'];
+        // Le dossier des pièces jointes des cours, ou un autre — celui des discussions.
+        $chemin = ($dossier ?? Config::get('app', 'dossier_uploads')) . DIRECTORY_SEPARATOR . basename((string) $fichier['nom_stocke']);
         if (!is_file($chemin)) {
             http_response_code(404);
             exit('Fichier introuvable sur le disque.');
@@ -420,7 +421,7 @@ final class Fichiers
         };
     }
 
-    private static function detecterMime(string $chemin): ?string
+    public static function detecterMime(string $chemin): ?string
     {
         if (function_exists('finfo_open')) {
             $finfo = finfo_open(FILEINFO_MIME_TYPE);

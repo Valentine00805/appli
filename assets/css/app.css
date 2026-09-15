@@ -306,6 +306,31 @@ textarea { min-height: 260px; resize: vertical; line-height: 1.65; }
   border: 0; background: var(--texte); color: var(--fond-carte); font-size: .7rem; line-height: 1; cursor: pointer;
 }
 .chat__fil--depot { box-shadow: 0 0 0 3px var(--accent); }
+.chat__apercu--fichier { max-width: 13rem; }
+.chat__apercu-fichier {
+  display: grid; align-content: center; height: 4.5rem; padding: 0 .75rem; min-width: 8rem;
+  border: 1px solid var(--bordure); border-radius: 10px; background: var(--fond-doux);
+}
+.chat__apercu-nom { font-size: .82rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chat__apercu-poids { font-size: .72rem; color: var(--texte-doux); }
+
+/* Un fichier dans une bulle : icône, nom, poids, et de quoi le télécharger. */
+.bulle__fichier {
+  display: flex; align-items: center; gap: .55rem; min-width: min(15rem, 100%);
+  padding: .45rem .5rem; margin: .1rem 0 .2rem; border-radius: 10px;
+  background: color-mix(in srgb, var(--fond-carte) 70%, transparent);
+}
+.bulle--moi .bulle__fichier { background: rgb(255 255 255 / 16%); }
+.bulle__fichier-icone { flex: none; font-size: 1.6rem; line-height: 1; }
+.bulle__fichier-infos { flex: 1; min-width: 0; display: grid; }
+.bulle__fichier-nom { font-weight: 650; color: inherit; overflow-wrap: anywhere; line-height: 1.3; }
+.bulle__fichier-taille { font-size: .72rem; opacity: .75; }
+.bulle__fichier-telecharger {
+  flex: none; display: grid; place-items: center; width: 2rem; height: 2rem; border-radius: 50%;
+  color: inherit; text-decoration: none; font-weight: 700; background: rgb(0 0 0 / 8%);
+}
+.bulle--moi .bulle__fichier-telecharger { background: rgb(255 255 255 / 22%); }
+.bulle__fichier-telecharger:hover { background: rgb(0 0 0 / 16%); }
 
 /* La visionneuse d'une image. */
 .visionneuse {

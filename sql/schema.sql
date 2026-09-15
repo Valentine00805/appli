@@ -612,6 +612,11 @@ CREATE TABLE IF NOT EXISTS `messages` (
   `image_mime`      VARCHAR(40)       NULL,
   `image_largeur`   SMALLINT UNSIGNED NULL,
   `image_hauteur`   SMALLINT UNSIGNED NULL,
+  -- Un fichier joint (PDF, document, audio…), rangé au même endroit sous un nom tiré au hasard.
+  `fichier_nom`     VARCHAR(64)  NULL,
+  `fichier_origine` VARCHAR(255) NULL,
+  `fichier_mime`    VARCHAR(120) NULL,
+  `fichier_taille`  INT UNSIGNED NULL,
   `created_at`      DATETIME     NOT NULL,
   `lu_le`           DATETIME     NULL,
   PRIMARY KEY (`id`),

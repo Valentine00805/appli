@@ -49,6 +49,20 @@ final class Amis
         IMAGETYPE_WEBP => ['image/webp', 'webp'],
     ];
 
+    /** Poids maximal d'un fichier joint (et jamais plus que ce que le serveur accepte). */
+    public const FICHIER_MAX_OCTETS = 50 * 1024 * 1024;
+
+    public static function fichierMax(): int
+    {
+        return min(self::FICHIER_MAX_OCTETS, Fichiers::tailleMax());
+    }
+
+    /** Les extensions acceptées : les mêmes que pour les pièces jointes des cours. */
+    public static function extensionsFichiers(): array
+    {
+        return array_values(array_map('strtolower', (array) Config::get('app', 'extensions_autorisees')));
+    }
+
     /** Le dossier des images des discussions, à côté des pièces jointes des cours. */
     public static function dossierImages(): string
     {
@@ -144,7 +158,7 @@ final class Amis
             return [];
         }
         $lignes = Database::all(
-            'SELECT id, expediteur_id, texte, image_nom, created_at FROM messages WHERE id IN (' . implode(',', array_fill(0, count($ids), '?')) . ')',
+            'SELECT id, expediteur_id, texte, image_nom, fichier_origine, created_at FROM messages WHERE id IN (' . implode(',', array_fill(0, count($ids), '?')) . ')',
             $ids
         );
 
@@ -259,17 +273,22 @@ final class Amis
     }
 
     /**
-     * Écrit à un ami, avec ou sans image.
+     * Écrit à un ami, avec ou sans image, avec ou sans fichier.
      *
-     * @param ?array $image le fichier téléversé ($_FILES['image']), s'il y en a un
+     * @param ?array $image   l'image téléversée ($_FILES['image']), s'il y en a une
+     * @param ?array $fichier le fichier téléversé ($_FILES['fichier']), s'il y en a un
      * @return array{0: ?int, 1: ?string} l'identifiant du message, ou la raison du refus
      */
-    public static function ecrire(int $moi, int $autre, string $texte, ?array $image = null): array
+    public static function ecrire(int $moi, int $autre, string $texte, ?array $image = null, ?array $fichier = null): array
     {
         $texte = trim(str_replace(["\r\n", "\r"], "\n", $texte));
         $avecImage = $image !== null && ($image['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE;
-        if ($texte === '' && !$avecImage) {
+        $avecFichier = $fichier !== null && ($fichier['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE;
+        if ($texte === '' && !$avecImage && !$avecFichier) {
             return [null, 'Le message est vide.'];
+        }
+        if ($avecImage && $avecFichier) {
+            return [null, 'Une seule pièce jointe par message.'];
         }
         if (mb_strlen($texte) > self::MESSAGE_MAX) {
             return [null, 'Un message ne peut pas dépasser ' . self::MESSAGE_MAX . ' caractères.'];
@@ -285,24 +304,35 @@ final class Amis
             return [null, 'Trop de messages d’un coup : patientez un instant.'];
         }
 
-        // L'image en dernier : on ne range rien sur le disque pour un message refusé.
+        // La pièce jointe en dernier : on ne range rien sur le disque pour un message refusé.
         $rangee = null;
+        $joint = null;
         if ($avecImage) {
             $rangee = self::rangerImage($image);
             if (is_string($rangee)) {
                 return [null, $rangee];
             }
         }
+        if ($avecFichier) {
+            $joint = self::rangerFichier($fichier);
+            if (is_string($joint)) {
+                return [null, $joint];
+            }
+        }
 
         try {
             Database::run(
-                'INSERT INTO messages (expediteur_id, destinataire_id, texte, image_nom, image_mime, image_largeur, image_hauteur, created_at)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, UTC_TIMESTAMP())',
-                [$moi, $autre, $texte, $rangee['nom'] ?? null, $rangee['mime'] ?? null, $rangee['largeur'] ?? null, $rangee['hauteur'] ?? null]
+                'INSERT INTO messages (expediteur_id, destinataire_id, texte, image_nom, image_mime, image_largeur, image_hauteur,
+                                       fichier_nom, fichier_origine, fichier_mime, fichier_taille, created_at)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, UTC_TIMESTAMP())',
+                [$moi, $autre, $texte, $rangee['nom'] ?? null, $rangee['mime'] ?? null, $rangee['largeur'] ?? null, $rangee['hauteur'] ?? null,
+                 $joint['nom'] ?? null, $joint['origine'] ?? null, $joint['mime'] ?? null, $joint['taille'] ?? null]
             );
         } catch (Throwable $e) {
-            if ($rangee !== null) {
-                @unlink(self::dossierImages() . DIRECTORY_SEPARATOR . $rangee['nom']);
+            foreach ([$rangee, $joint] as $range) {
+                if ($range !== null) {
+                    @unlink(self::dossierImages() . DIRECTORY_SEPARATOR . $range['nom']);
+                }
             }
             throw $e;
         }
@@ -409,6 +439,77 @@ final class Amis
         }
     }
 
+    /**
+     * Vérifie un fichier joint et le range, tel quel, dans le dossier des
+     * discussions.
+     *
+     * Un fichier n'est jamais exécuté ni affiché dans la page : il est rangé
+     * sous un nom tiré au hasard, dans un dossier fermé au navigateur, et ne
+     * se lit que par l'application — qui le donne à télécharger, et n'ouvre
+     * directement que les types sans danger (PDF, texte, audio, vidéo).
+     *
+     * @return array{nom: string, origine: string, mime: string, taille: int}|string le fichier rangé, ou la raison du refus
+     */
+    public static function rangerFichier(array $fichier): array|string
+    {
+        $code = (int) ($fichier['error'] ?? UPLOAD_ERR_NO_FILE);
+        if ($code !== UPLOAD_ERR_OK) {
+            return 'Le fichier n’a pas pu être envoyé : ' . Fichiers::messageErreur($code);
+        }
+        $tmp = (string) ($fichier['tmp_name'] ?? '');
+        if (!is_uploaded_file($tmp)) {
+            return 'Le fichier n’a pas pu être envoyé.';
+        }
+        $taille = (int) filesize($tmp);
+        if ($taille > self::fichierMax()) {
+            return 'Ce fichier est trop lourd : ' . intdiv(self::fichierMax(), 1024 * 1024) . ' Mo au plus.';
+        }
+        if ($taille === 0) {
+            return 'Ce fichier est vide.';
+        }
+
+        // Le nom d'origine, débarrassé de tout chemin et des caractères invisibles.
+        $origine = trim((string) preg_replace('/[\x00-\x1F\x7F]/u', '', basename(str_replace('\\', '/', (string) ($fichier['name'] ?? '')))));
+        $extension = strtolower(pathinfo($origine, PATHINFO_EXTENSION));
+        if ($extension === '' || !in_array($extension, self::extensionsFichiers(), true)) {
+            return 'Ce type de fichier n’est pas accepté.';
+        }
+        if (mb_strlen($origine) > 255) {
+            $origine = mb_substr(pathinfo($origine, PATHINFO_FILENAME), 0, 240) . '.' . $extension;
+        }
+
+        $dossier = self::dossierImages();
+        if (!is_dir($dossier) && !mkdir($dossier, 0775, true) && !is_dir($dossier)) {
+            return 'Impossible de ranger le fichier sur le serveur.';
+        }
+        // Un texte reste un texte, même s'il contient des balises : il s'ouvrira en texte brut, jamais en page.
+        $mime = in_array($extension, ['txt', 'md', 'csv'], true)
+            ? 'text/plain'
+            : (Fichiers::detecterMime($tmp) ?: 'application/octet-stream');
+        $nom = bin2hex(random_bytes(16)) . '.' . $extension;
+        if (!move_uploaded_file($tmp, $dossier . DIRECTORY_SEPARATOR . $nom)) {
+            return 'Impossible de ranger le fichier sur le serveur.';
+        }
+
+        return ['nom' => $nom, 'origine' => $origine, 'mime' => mb_substr($mime, 0, 120), 'taille' => $taille];
+    }
+
+    /** Le message et son fichier, si la personne connectée a le droit de le voir. */
+    public static function fichier(int $moi, int $messageId): ?array
+    {
+        $message = Database::one(
+            'SELECT id, expediteur_id, destinataire_id, fichier_nom, fichier_origine, fichier_mime FROM messages
+              WHERE id = ? AND fichier_nom IS NOT NULL AND (expediteur_id = ? OR destinataire_id = ?)',
+            [$messageId, $moi, $moi]
+        );
+        if ($message === null) {
+            return null;
+        }
+        $autre = (int) $message['expediteur_id'] === $moi ? (int) $message['destinataire_id'] : (int) $message['expediteur_id'];
+
+        return self::sontAmis($moi, $autre) ? $message : null;
+    }
+
     /** Remet d'aplomb une photo d'après son orientation EXIF. */
     private static function redresser(GdImage $image, int $orientation): GdImage
     {
@@ -459,7 +560,7 @@ final class Amis
         );
 
         $messages = Database::all(
-            'SELECT id, expediteur_id, texte, image_nom, image_largeur, image_hauteur, created_at, lu_le FROM messages
+            'SELECT id, expediteur_id, texte, image_nom, image_largeur, image_hauteur, fichier_nom, fichier_origine, fichier_mime, fichier_taille, created_at, lu_le FROM messages
               WHERE ((expediteur_id = ? AND destinataire_id = ?) OR (expediteur_id = ? AND destinataire_id = ?))
                 AND id > ?
               ORDER BY id DESC LIMIT ' . self::FIL_MAX,
@@ -488,7 +589,7 @@ final class Amis
      *
      * @return ?int la notification en file, ou null s'il n'y a personne à prévenir
      */
-    public static function notifier(int $expediteur, int $destinataire, string $texte, bool $avecImage = false): ?int
+    public static function notifier(int $expediteur, int $destinataire, string $texte, bool $avecImage = false, ?string $nomFichier = null): ?int
     {
         $depuis = Database::valeur(
             'SELECT TIMESTAMPDIFF(SECOND, regarde_le, UTC_TIMESTAMP()) FROM discussions_etat WHERE user_id = ? AND ami_id = ?',
@@ -502,6 +603,9 @@ final class Amis
         $apercu = trim((string) preg_replace('/\s+/u', ' ', $texte));
         if ($avecImage) {
             $apercu = '📷 Photo' . ($apercu === '' ? '' : ' · ' . $apercu);
+        }
+        if ($nomFichier !== null) {
+            $apercu = '📎 ' . $nomFichier . ($apercu === '' ? '' : ' · ' . $apercu);
         }
         $id = FileNotifications::ajouter($destinataire, 'message', [
             'title' => '💬 ' . ($compte['pseudo'] ?? 'Nouveau message'),
@@ -567,6 +671,13 @@ final class Amis
             'image' => ($message['image_nom'] ?? null) === null ? null : url('amis/images/' . (int) $message['id']),
             'largeur' => (int) ($message['image_largeur'] ?? 0),
             'hauteur' => (int) ($message['image_hauteur'] ?? 0),
+            'fichier' => ($message['fichier_nom'] ?? null) === null ? null : [
+                'url' => url('amis/fichiers/' . (int) $message['id']),
+                'telecharger' => url('amis/fichiers/' . (int) $message['id'], ['telecharger' => 1]),
+                'nom' => (string) $message['fichier_origine'],
+                'taille' => taille_lisible((int) $message['fichier_taille']),
+                'icone' => Fichiers::icone((string) $message['fichier_mime'], (string) $message['fichier_origine']),
+            ],
             'heure' => $moment->format('H:i'),
             'jour' => $moment->format('Y-m-d'),
             'jour_libelle' => self::jour($moment),

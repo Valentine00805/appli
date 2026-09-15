@@ -19,6 +19,7 @@ $actif = $actif ?? null;
       $apercu = $dernier === null ? 'Dites bonjour 👋'
           : ((int) $dernier['expediteur_id'] === Auth::id() ? 'Vous : ' : '')
             . (($dernier['image_nom'] ?? null) !== null ? '📷 Photo' . ((string) $dernier['texte'] !== '' ? ' · ' : '') : '')
+            . (($dernier['fichier_origine'] ?? null) !== null ? '📎 ' . $dernier['fichier_origine'] . ((string) $dernier['texte'] !== '' ? ' · ' : '') : '')
             . preg_replace('/\s+/u', ' ', (string) $dernier['texte']);
       ?>
       <li>

@@ -157,10 +157,15 @@ final class AmisController
         $moi = Auth::id();
 
         $texte = (string) ($_POST['texte'] ?? '');
-        $image = isset($_FILES['image']) && is_array($_FILES['image']) && !is_array($_FILES['image']['name'] ?? null)
-            ? $_FILES['image'] : null;
-        [$messageId, $refus] = Amis::ecrire($moi, $id, $texte, $image);
+        // Une pièce jointe à la fois : un envoi de plusieurs fichiers sous le même nom est ignoré.
+        $televerse = static fn (string $champ): ?array => isset($_FILES[$champ]) && is_array($_FILES[$champ])
+            && !is_array($_FILES[$champ]['name'] ?? null) ? $_FILES[$champ] : null;
+        $image = $televerse('image');
+        $fichier = $televerse('fichier');
+        [$messageId, $refus] = Amis::ecrire($moi, $id, $texte, $image, $fichier);
         $avecImage = $messageId !== null && $image !== null && ($image['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK;
+        $nomFichier = $messageId !== null && $fichier !== null && ($fichier['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK
+            ? (string) Database::valeur('SELECT fichier_origine FROM messages WHERE id = ?', [$messageId]) : null;
 
         if (veut_du_json()) {
             if ($messageId === null) {
@@ -169,7 +174,7 @@ final class AmisController
             }
             // La réponse part d'abord : l'envoi aux téléphones ne fait pas attendre la page.
             // La notification est écrite avant de répondre : même si l'envoi qui suit échoue, la file la retentera.
-            $aEnvoyer = Amis::notifier($moi, $id, $texte, $avecImage);
+            $aEnvoyer = Amis::notifier($moi, $id, $texte, $avecImage, $nomFichier);
             $this->repondreAvant(['fait' => true, 'id' => $messageId]);
             if ($aEnvoyer !== null) {
                 FileNotifications::envoyer($aEnvoyer);
@@ -181,7 +186,7 @@ final class AmisController
             Session::flash('erreur', $refus);
             redirect('amis/' . $id);
         }
-        $this->redirigerPuisEnvoyer(url('amis/' . $id), Amis::notifier($moi, $id, $texte, $avecImage));
+        $this->redirigerPuisEnvoyer(url('amis/' . $id), Amis::notifier($moi, $id, $texte, $avecImage, $nomFichier));
     }
 
     /**
@@ -208,6 +213,25 @@ final class AmisController
         }
         FileNotifications::envoyer($notification);
         exit;
+    }
+
+    /** Le fichier joint à un message, pour les deux amis seulement ; « telecharger=1 » le donne à enregistrer. */
+    public function fichier(int $id): void
+    {
+        Auth::exiger();
+        session_write_close();
+        $message = Amis::fichier(Auth::id(), $id);
+        if ($message === null) {
+            http_response_code(404);
+            exit('Fichier introuvable.');
+        }
+
+        // Même envoi que les pièces jointes des cours : seuls les types sûrs s'ouvrent dans le navigateur.
+        Fichiers::envoyer([
+            'nom_stocke' => (string) $message['fichier_nom'],
+            'nom_origine' => (string) $message['fichier_origine'],
+            'mime' => (string) $message['fichier_mime'],
+        ], ($_GET['telecharger'] ?? '') === '1', Amis::dossierImages());
     }
 
     /** L'image d'un message, pour les deux amis seulement. */
