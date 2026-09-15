@@ -130,6 +130,10 @@ html { scroll-padding-top: 4.5rem; }
 /* --- Structure ------------------------------------------------------- */
 
 .conteneur { max-width: 1140px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+/* Une discussion ouverte : la page ne défile pas, seule la conversation le fait. */
+html.page-discussion, html.page-discussion body { height: 100%; overflow: hidden; }
+html.page-discussion .conteneur { padding-bottom: 0; }
+html.page-discussion .haut-de-page { display: none; }
 
 .entete-page {
   display: flex; align-items: flex-end; justify-content: space-between;

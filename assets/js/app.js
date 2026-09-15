@@ -1031,12 +1031,18 @@
       var enBas = function () { fil.scrollTop = fil.scrollHeight; };
       var presqueEnBas = function () { return fil.scrollHeight - fil.scrollTop - fil.clientHeight < 80; };
 
-      // La discussion tient dans l'écran, sous le menu quelle que soit sa hauteur :
-      // la zone de saisie reste visible sans faire défiler la page.
+      /*
+       * La discussion tient dans l'écran, sous le menu quelle que soit sa
+       * hauteur, et la page elle-même ne défile pas : seules la conversation
+       * et la liste des amis ont leur barre. La zone de saisie reste ainsi
+       * toujours visible.
+       */
       var liste = document.querySelector('.chat__amis');
+      document.documentElement.classList.add('page-discussion');
       var caler = function () {
-        var haut = chat.getBoundingClientRect().top + window.scrollY;
-        var hauteur = Math.max(384, window.innerHeight - haut - 16);
+        window.scrollTo(0, 0);
+        var haut = chat.getBoundingClientRect().top;
+        var hauteur = Math.max(240, window.innerHeight - haut - 16);
         var etaitEnBas = presqueEnBas();
         chat.style.height = hauteur + 'px';
         if (liste) { liste.style.maxHeight = hauteur + 'px'; }
