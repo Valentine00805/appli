@@ -622,7 +622,7 @@ final class Amis
 
         $messages = self::lignes($moi, $autre, 'm.id > ?', [$apres], 'ORDER BY m.id DESC LIMIT ' . self::FIL_MAX);
 
-        return array_map(static fn (array $m): array => self::pourAffichage($m, $moi), array_reverse($messages));
+        return self::avecReactions(array_map(static fn (array $m): array => self::pourAffichage($m, $moi), array_reverse($messages)), $moi, $autre);
     }
 
     /**
@@ -670,7 +670,7 @@ final class Amis
         // Deux secondes de marge : une modification enregistrée pendant le relevé précédent n'est pas perdue.
         $lignes = self::lignes($moi, $autre, 'm.modifie_le >= ? - INTERVAL 2 SECOND', [$depuis], 'ORDER BY m.id LIMIT 200');
 
-        return array_map(static fn (array $m): array => self::pourAffichage($m, $moi), $lignes);
+        return self::avecReactions(array_map(static fn (array $m): array => self::pourAffichage($m, $moi), $lignes), $moi, $autre);
     }
 
     /** L'instant présent en temps universel, tel que la base le compte. */
@@ -820,6 +820,163 @@ final class Amis
               WHERE id = ?",
             [(int) $message['id']]
         );
+        // Un message effacé n'a plus de réactions.
+        if (Database::run('DELETE FROM reactions WHERE message_id = ?', [(int) $message['id']])->rowCount() > 0) {
+            Database::run('UPDATE messages SET reactions_le = UTC_TIMESTAMP() WHERE id = ?', [(int) $message['id']]);
+        }
+    }
+
+    /** Les réactions acceptées dans un menu : une poignée de raccourcis, le reste par le choix d'emojis. */
+    public const REACTIONS_RAPIDES = ['👍', '❤️', '😂', '😮', '😢', '🙏'];
+
+    /**
+     * Un emoji, et rien d'autre : pas de lettre, pas de chiffre, pas d'espace
+     * ni de balise, une dizaine de caractères au plus (un emoji composé en
+     * compte plusieurs : 👩‍🎓, 👍🏽…).
+     */
+    public static function emojiValide(string $emoji): bool
+    {
+        return $emoji !== '' && strlen($emoji) <= 32 && mb_strlen($emoji) <= 10
+            && preg_match('/[\x00-\x7F]/', $emoji) !== 1
+            && preg_match('/^[^\p{L}\p{N}\p{Z}]+$/u', $emoji) === 1
+            && preg_match('/[\p{So}\p{Sk}]/u', $emoji) === 1;
+    }
+
+    /**
+     * Réagit à un message : pose l'emoji, le remplace, ou l'enlève s'il était
+     * déjà le sien (un emoji vide l'enlève aussi).
+     *
+     * @return array{0: bool, 1: string, 2: list<array>, 3: ?int} réussi, message, les réactions, la notification en file
+     */
+    public static function reagir(int $moi, int $messageId, string $emoji): array
+    {
+        $emoji = trim($emoji);
+        $message = Database::one(
+            'SELECT * FROM messages WHERE id = ? AND ((expediteur_id = ? AND masque_expediteur = 0) OR (destinataire_id = ? AND masque_destinataire = 0))',
+            [$messageId, $moi, $moi]
+        );
+        if ($message === null) {
+            return [false, 'Ce message est introuvable.', [], null];
+        }
+        $auteur = (int) $message['expediteur_id'];
+        $autre = $auteur === $moi ? (int) $message['destinataire_id'] : $auteur;
+        if (!self::sontAmis($moi, $autre)) {
+            return [false, 'Ce message est introuvable.', [], null];
+        }
+        if ($message['supprime_le'] !== null) {
+            return [false, 'On ne réagit pas à un message supprimé.', [], null];
+        }
+        if ($emoji !== '' && !self::emojiValide($emoji)) {
+            return [false, 'Une réaction, c’est un emoji.', [], null];
+        }
+
+        $actuelle = Database::valeur('SELECT emoji FROM reactions WHERE message_id = ? AND user_id = ?', [$messageId, $moi]);
+        $pose = $emoji !== '' && $emoji !== $actuelle;
+        if ($pose) {
+            Database::run(
+                'INSERT INTO reactions (message_id, user_id, emoji, created_at) VALUES (?, ?, ?, UTC_TIMESTAMP())
+                 ON DUPLICATE KEY UPDATE emoji = VALUES(emoji), created_at = UTC_TIMESTAMP()',
+                [$messageId, $moi, $emoji]
+            );
+        } else {
+            Database::run('DELETE FROM reactions WHERE message_id = ? AND user_id = ?', [$messageId, $moi]);
+        }
+        Database::run('UPDATE messages SET reactions_le = UTC_TIMESTAMP() WHERE id = ?', [$messageId]);
+
+        // L'auteur est prévenu d'une réaction à son message — sauf s'il a la discussion sous les yeux.
+        $notification = null;
+        if ($pose && $auteur !== $moi) {
+            $depuis = Database::valeur(
+                'SELECT TIMESTAMPDIFF(SECOND, regarde_le, UTC_TIMESTAMP()) FROM discussions_etat WHERE user_id = ? AND ami_id = ?',
+                [$auteur, $moi]
+            );
+            if ($depuis === null || (int) $depuis >= self::PRESENCE_SECONDES) {
+                $extrait = self::extrait([
+                    'r_texte' => $message['texte'], 'r_image' => $message['image_nom'],
+                    'r_fichier' => $message['fichier_origine'], 'r_supprime' => null, 'r_masque' => 0,
+                ]);
+                $notification = FileNotifications::ajouter($auteur, 'reaction', [
+                    'title' => $emoji . ' ' . (self::compte($moi)['pseudo'] ?? 'Un ami') . ' a réagi',
+                    'body' => 'À votre message : « ' . $extrait . ' »',
+                    'url' => url('amis/' . $moi),
+                    'tag' => 'reaction-' . $moi,
+                ]);
+            }
+        }
+
+        return [true, $pose ? 'Réaction ajoutée.' : 'Réaction retirée.', self::reactionsDe([$messageId], $moi, $autre)[$messageId] ?? [], $notification];
+    }
+
+    /**
+     * Les réactions de plusieurs messages, regroupées par emoji dans l'ordre où
+     * elles sont apparues : l'emoji, combien, si j'en suis, et qui.
+     *
+     * @return array<int, list<array{emoji: string, nombre: int, moi: bool, qui: string}>>
+     */
+    public static function reactionsDe(array $ids, int $moi, int $autre): array
+    {
+        $ids = array_values(array_unique(array_filter(array_map('intval', $ids))));
+        if ($ids === []) {
+            return [];
+        }
+        $lignes = Database::all(
+            'SELECT message_id, user_id, emoji FROM reactions WHERE message_id IN (' . implode(',', array_fill(0, count($ids), '?')) . ')
+              ORDER BY created_at, user_id',
+            $ids
+        );
+        $pseudoAutre = (string) (self::compte($autre)['pseudo'] ?? '');
+        $parMessage = [];
+        foreach ($lignes as $l) {
+            $m = (int) $l['message_id'];
+            $e = (string) $l['emoji'];
+            $parMessage[$m][$e] ??= ['emoji' => $e, 'nombre' => 0, 'moi' => false, 'qui' => []];
+            $parMessage[$m][$e]['nombre']++;
+            if ((int) $l['user_id'] === $moi) {
+                $parMessage[$m][$e]['moi'] = true;
+                array_unshift($parMessage[$m][$e]['qui'], 'Vous');
+            } else {
+                $parMessage[$m][$e]['qui'][] = $pseudoAutre;
+            }
+        }
+
+        return array_map(static fn (array $groupes): array => array_values(array_map(
+            static fn (array $g): array => ['qui' => implode(', ', $g['qui'])] + $g, $groupes
+        )), $parMessage);
+    }
+
+    /** Ajoute leurs réactions à des messages prêts à montrer. */
+    private static function avecReactions(array $messages, int $moi, int $autre): array
+    {
+        $reactions = self::reactionsDe(array_column($messages, 'id'), $moi, $autre);
+        foreach ($messages as &$m) {
+            $m['reactions'] = $reactions[$m['id']] ?? [];
+        }
+
+        return $messages;
+    }
+
+    /**
+     * Les messages dont les réactions ont changé depuis tel instant, pour
+     * qu'une page déjà ouverte les redessine.
+     *
+     * @return list<array{id: int, reactions: list<array>}>
+     */
+    public static function reactionsModifiees(int $moi, int $autre, string $depuis): array
+    {
+        if (!preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', $depuis)) {
+            return [];
+        }
+        $ids = array_map('intval', array_column(Database::all(
+            'SELECT id FROM messages
+              WHERE ((expediteur_id = ? AND destinataire_id = ? AND masque_expediteur = 0)
+                  OR (expediteur_id = ? AND destinataire_id = ? AND masque_destinataire = 0))
+                AND reactions_le >= ? - INTERVAL 2 SECOND
+              ORDER BY id LIMIT 200',
+            [$moi, $autre, $autre, $moi, $depuis]
+        ), 'id'));
+        $reactions = self::reactionsDe($ids, $moi, $autre);
+
+        return array_map(static fn (int $id): array => ['id' => $id, 'reactions' => $reactions[$id] ?? []], $ids);
     }
 
     /** Note que la discussion avec cet ami est sous les yeux de la personne. */
@@ -965,6 +1122,7 @@ final class Amis
             'texte' => (string) $message['texte'],
             'supprime' => ($message['supprime_le'] ?? null) !== null,
             'modifie' => ($message['modifie_le'] ?? null) !== null && ($message['supprime_le'] ?? null) === null,
+            'reactions' => [],
             'reponse' => ($message['r_expediteur'] ?? null) === null ? null : [
                 'id' => (int) $message['reponse_a'],
                 'auteur' => (int) $message['r_expediteur'] === $moi ? 'Vous'

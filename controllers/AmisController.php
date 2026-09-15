@@ -213,8 +213,28 @@ final class AmisController
             'messages' => Amis::fil($moi, $id, $apres),
             'vu_jusqua' => Amis::vuJusqua($moi, $id),
             'modifies' => Amis::modifications($moi, $id, (string) ($_GET['modifies_depuis'] ?? '')),
+            'reactions' => Amis::reactionsModifiees($moi, $id, (string) ($_GET['modifies_depuis'] ?? '')),
             'maintenant' => $maintenant,
         ] + Amis::changements($moi, $id, $apres));
+    }
+
+    /** Réagit à un message avec un emoji, ou retire sa réaction. */
+    public function reagir(int $id): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+
+        [$fait, $message, $reactions, $notification] = Amis::reagir(Auth::id(), $id, (string) ($_POST['emoji'] ?? ''));
+        if (!$fait) {
+            http_response_code(422);
+            repondre_json(['fait' => false, 'message' => $message]);
+        }
+        // La réponse d'abord ; la notification à l'auteur ensuite, sans faire attendre.
+        $this->repondreAvant(['fait' => true, 'message' => $message, 'reactions' => $reactions]);
+        if ($notification !== null) {
+            FileNotifications::envoyer($notification);
+        }
+        exit;
     }
 
     /** Modifie le texte d'un de ses messages. */

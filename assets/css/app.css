@@ -360,6 +360,28 @@ textarea { min-height: 260px; resize: vertical; line-height: 1.65; }
 .menu-message button[hidden] { display: none; }
 .menu-message button:hover, .menu-message button:focus-visible { background: var(--fond-doux); outline: none; }
 .menu-message .menu-message__danger { color: var(--erreur); }
+.menu-message__reactions { display: flex; gap: .1rem; padding: .1rem .1rem .35rem; margin-bottom: .2rem; border-bottom: 1px solid var(--bordure); }
+.menu-message__reactions[hidden] { display: none; }
+.menu-message .menu-message__reaction {
+  width: 2.2rem; height: 2.2rem; padding: 0; text-align: center; font-size: 1.25rem; line-height: 1; border-radius: 50%;
+  transition: transform .1s;
+}
+.menu-message .menu-message__reaction:hover { transform: scale(1.18); }
+.menu-message .menu-message__reaction--moi { background: var(--accent-doux); box-shadow: inset 0 0 0 2px var(--accent); }
+.menu-message .menu-message__plus { font-size: .95rem; color: var(--texte-doux); }
+
+/* Les réactions, en pastilles au bas d'une bulle. */
+.bulle__reactions { display: flex; flex-wrap: wrap; gap: .25rem; margin: .3rem 0 0; }
+.bulle--moi .bulle__reactions { justify-content: flex-end; }
+.reaction {
+  display: inline-flex; align-items: center; gap: .15rem; padding: .08rem .45rem; border-radius: 999px;
+  border: 1px solid var(--bordure); background: var(--fond-carte); color: var(--texte);
+  font-size: .9rem; line-height: 1.35; cursor: pointer;
+}
+.reaction:hover { border-color: var(--accent); }
+.reaction--moi { background: var(--accent-doux); border-color: var(--accent); }
+.reaction__nombre { font-size: .75rem; font-weight: 700; color: var(--texte-doux); }
+.bulle--image .bulle__reactions { margin: .3rem .3rem 0; }
 
 /* La citation du message auquel on répond, en tête de la bulle. */
 .bulle__citation {

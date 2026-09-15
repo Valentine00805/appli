@@ -35,6 +35,8 @@ foreach ($messages as $m) {
            data-dernier="<?= $dernierId ?>"
            data-supprimer="<?= e(url('amis/messages/0/supprimer')) ?>"
            data-modifier="<?= e(url('amis/messages/0/modifier')) ?>"
+           data-reagir="<?= e(url('amis/messages/0/reaction')) ?>"
+           data-reactions-rapides="<?= e(implode(' ', Amis::REACTIONS_RAPIDES)) ?>"
            data-maintenant="<?= e($maintenant) ?>"
            data-ami="<?= e((string) $ami['pseudo']) ?>"
            data-vu="<?= (int) $vuJusqua ?>">
@@ -99,6 +101,15 @@ foreach ($messages as $m) {
             <p class="bulle__texte"><?= nl2br(e($m['texte'])) ?></p>
           <?php endif; ?>
           <span class="bulle__heure"><?php if ($m['modifie']): ?><span class="bulle__modifie">modifié · </span><?php endif; ?><?= e($m['heure']) ?></span>
+          <?php // Les réactions : un clic sur l'une pose ou retire la sienne. ?>
+          <?php if ($m['reactions'] !== []): ?>
+            <div class="bulle__reactions">
+              <?php foreach ($m['reactions'] as $r): ?>
+                <button type="button" class="reaction<?= $r['moi'] ? ' reaction--moi' : '' ?>" data-reaction="<?= e($r['emoji']) ?>"
+                        aria-pressed="<?= $r['moi'] ? 'true' : 'false' ?>" title="<?= e($r['qui']) ?>"><?= e($r['emoji']) ?><?php if ($r['nombre'] > 1): ?> <span class="reaction__nombre"><?= (int) $r['nombre'] ?></span><?php endif; ?></button>
+              <?php endforeach; ?>
+            </div>
+          <?php endif; ?>
         </div>
         <?php // « Vu » sous mon dernier message, s'il a été lu — pas sous la réponse qui l'a suivi. ?>
         <?php if ($m['id'] === $dernierMien): ?>

@@ -1120,7 +1120,7 @@
         bulle.classList.add('bulle--supprime');
         bulle.classList.remove('bulle--image');
         bulle.removeAttribute('data-piece');
-        bulle.querySelectorAll('.bulle__image, .bulle__fichier, .bulle__texte, .bulle__citation, .bulle__modifie').forEach(function (e) { e.remove(); });
+        bulle.querySelectorAll('.bulle__image, .bulle__fichier, .bulle__texte, .bulle__citation, .bulle__modifie, .bulle__reactions').forEach(function (e) { e.remove(); });
         var efface = document.createElement('p');
         efface.className = 'bulle__texte';
         efface.textContent = '🚫 Message supprimé';
@@ -1182,7 +1182,14 @@
       menu.className = 'menu-message';
       menu.setAttribute('role', 'menu');
       menu.hidden = true;
-      menu.innerHTML = '<button type="button" role="menuitem" data-action="repondre">↩ Répondre</button>'
+      var rapides = (chat.getAttribute('data-reactions-rapides') || '👍 ❤️ 😂 😮 😢 🙏').split(' ');
+      menu.innerHTML = '<div class="menu-message__reactions" data-menu-reactions>'
+        + rapides.map(function (e) {
+          return '<button type="button" class="menu-message__reaction" data-reagir-emoji="' + e + '" aria-label="Réagir ' + e + '">' + e + '</button>';
+        }).join('')
+        + '<button type="button" class="menu-message__reaction menu-message__plus" data-action="plus-reactions" aria-label="Choisir un autre emoji" title="Autre emoji">➕</button>'
+        + '</div>'
+        + '<button type="button" role="menuitem" data-action="repondre">↩ Répondre</button>'
         + '<button type="button" role="menuitem" data-action="modifier">✏️ Modifier</button>'
         + '<button type="button" role="menuitem" data-action="supprimer" class="menu-message__danger">🗑 Supprimer</button>';
       document.body.appendChild(menu);
@@ -1199,6 +1206,12 @@
         var mien = bulle.classList.contains('bulle--moi');
         var efface = bulle.classList.contains('bulle--supprime');
         menu.querySelector('[data-action="repondre"]').hidden = efface;
+        menu.querySelector('[data-menu-reactions]').hidden = efface;
+        // La réaction déjà posée est allumée : la reprendre l'enlève.
+        var miennes = bulle.querySelector('.reaction--moi');
+        menu.querySelectorAll('[data-reagir-emoji]').forEach(function (b) {
+          b.classList.toggle('menu-message__reaction--moi', !!miennes && miennes.getAttribute('data-reaction') === b.getAttribute('data-reagir-emoji'));
+        });
         menu.querySelector('[data-action="modifier"]').hidden = !mien || efface;
         bulleDuMenu = bulle;
         bulle.classList.add('bulle--menu');
@@ -1298,11 +1311,22 @@
       window.addEventListener('resize', fermerMenu);
 
       menu.addEventListener('click', function (evenement) {
+        var rapide = evenement.target.closest('[data-reagir-emoji]');
+        if (rapide && bulleDuMenu) {
+          var cible = bulleDuMenu;
+          fermerMenu();
+          reagir(cible, rapide.getAttribute('data-reagir-emoji'));
+          return;
+        }
         var choix = evenement.target.closest('[data-action]');
         if (!choix || !bulleDuMenu) { return; }
         var bulle = bulleDuMenu;
         fermerMenu();
         var action = choix.getAttribute('data-action');
+        if (action === 'plus-reactions') {
+          if (ouvrirEmojisPourReaction) { ouvrirEmojisPourReaction(bulle); }
+          return;
+        }
         if (action === 'repondre') { entrerMode('reponse', bulle); }
         if (action === 'modifier') { entrerMode('modifier', bulle); }
         if (action === 'supprimer') { demanderSuppression(bulle); }
@@ -1360,6 +1384,68 @@
       contexte.querySelector('[data-contexte-annuler]').addEventListener('click', function () { sortirMode(); champ.focus(); });
       champ.addEventListener('keydown', function (evenement) {
         if (evenement.key === 'Escape' && mode) { evenement.preventDefault(); sortirMode(); }
+      });
+
+      /*
+       * Les réactions.
+       *
+       * Sous la bulle, une pastille par emoji, avec le nombre et, au survol,
+       * qui a réagi. Cliquer sur une pastille pose sa réaction avec cet emoji,
+       * ou la retire si c'était déjà la sienne. On en choisit une depuis le
+       * menu de la bulle : les raccourcis, ou ➕ pour tous les emojis.
+       */
+      var ouvrirEmojisPourReaction = null;
+      var dessinerReactions = function (bulle, reactions) {
+        if (!bulle) { return; }
+        var zone = bulle.querySelector('.bulle__reactions');
+        if (!reactions || !reactions.length || bulle.classList.contains('bulle--supprime')) {
+          if (zone) { zone.remove(); }
+          return;
+        }
+        if (!zone) {
+          zone = document.createElement('div');
+          zone.className = 'bulle__reactions';
+          bulle.appendChild(zone);
+        }
+        zone.textContent = '';
+        reactions.forEach(function (r) {
+          var b = document.createElement('button');
+          b.type = 'button';
+          b.className = 'reaction' + (r.moi ? ' reaction--moi' : '');
+          b.setAttribute('data-reaction', r.emoji);
+          b.setAttribute('aria-pressed', r.moi ? 'true' : 'false');
+          b.title = r.qui;
+          b.textContent = r.emoji;
+          if (r.nombre > 1) {
+            var nombre = document.createElement('span');
+            nombre.className = 'reaction__nombre';
+            nombre.textContent = ' ' + r.nombre;
+            b.appendChild(nombre);
+          }
+          zone.appendChild(b);
+        });
+      };
+      var reagir = function (bulle, emoji) {
+        var donnees = new FormData();
+        donnees.append('_csrf', chat.getAttribute('data-jeton'));
+        donnees.append('emoji', emoji);
+        fetch(chat.getAttribute('data-reagir').replace('/0/', '/' + bulle.getAttribute('data-message') + '/'), {
+          method: 'POST', body: donnees, credentials: 'same-origin', headers: { Accept: 'application/json' }
+        }).then(function (r) { return r.json(); })
+          .then(function (reponse) {
+            if (!reponse.fait) { throw new Error(reponse.message || 'La réaction n’a pas pu être enregistrée.'); }
+            var enBasAvant = presqueEnBas();
+            dessinerReactions(bulle, reponse.reactions);
+            if (enBasAvant) { enBas(); }
+          })
+          .catch(function (e) { montrerErreur(e.message || 'La réaction n’a pas pu être enregistrée.'); });
+      };
+      fil.addEventListener('click', function (evenement) {
+        var pastille = evenement.target.closest('[data-reaction]');
+        if (!pastille) { return; }
+        var bulle = pastille.closest('[data-message]');
+        // La sienne se retire ; celle d'un autre se reprend à son compte.
+        reagir(bulle, pastille.getAttribute('aria-pressed') === 'true' ? '' : pastille.getAttribute('data-reaction'));
       });
 
       var appliquerTexte = function (bulle, texte, modifie) {
@@ -1525,6 +1611,7 @@
         }
         bulle.appendChild(heure);
         fil.appendChild(bulle);
+        dessinerReactions(bulle, message.reactions || []);
 
         dernier = Math.max(dernier, message.id);
         if (message.moi) { dernierMien = Math.max(dernierMien, message.id); }
@@ -1553,6 +1640,9 @@
           (reponse.modifies || []).forEach(function (m) {
             if (mode && mode.type === 'modifier' && String(mode.id) === String(m.id)) { return; }
             appliquerTexte(fil.querySelector('[data-message="' + m.id + '"]'), m.texte, m.modifie);
+          });
+          (reponse.reactions || []).forEach(function (m) {
+            dessinerReactions(fil.querySelector('[data-message="' + m.id + '"]'), m.reactions);
           });
           if (reponse.maintenant) { chat.setAttribute('data-maintenant', reponse.maintenant); }
           vuJusqua = reponse.vu_jusqua || vuJusqua;
@@ -1886,7 +1976,20 @@
           panneauEmoji.hidden = false;
           boutonEmoji.setAttribute('aria-expanded', 'true');
         };
+        var bullePourReaction = null;
+        ouvrirEmojisPourReaction = function (bulle) {
+          // Au tour suivant : le clic qui l'ouvre, en remontant jusqu'au document, le refermerait aussitôt.
+          setTimeout(function () {
+            bullePourReaction = bulle;
+            montrer(lireRecents().length ? -1 : 0);
+            panneauEmoji.hidden = false;
+            panneauEmoji.classList.add('emojis--reaction');
+            boutonEmoji.setAttribute('aria-expanded', 'true');
+          }, 0);
+        };
         var fermerEmojis = function (rendreLaMain) {
+          bullePourReaction = null;
+          panneauEmoji.classList.remove('emojis--reaction');
           if (panneauEmoji.hidden) { return; }
           panneauEmoji.hidden = true;
           boutonEmoji.setAttribute('aria-expanded', 'false');
@@ -1907,6 +2010,14 @@
           var b = evenement.target.closest('[data-emoji]');
           if (!b) { return; }
           var emoji = b.getAttribute('data-emoji');
+          // Ouvert depuis le menu d'une bulle : l'emoji choisi est une réaction, pas du texte.
+          if (bullePourReaction) {
+            var bulleVisee = bullePourReaction;
+            retenir(emoji);
+            fermerEmojis(false);
+            reagir(bulleVisee, emoji);
+            return;
+          }
           var debut = debutSelection === null ? champ.value.length : debutSelection;
           var fin = finSelection === null ? champ.value.length : finSelection;
           // Pas au-delà de la longueur permise : l'emoji ne tiendrait qu'à moitié.
