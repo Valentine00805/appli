@@ -1191,6 +1191,7 @@
         + '</div>'
         + '<button type="button" role="menuitem" data-action="repondre">↩ Répondre</button>'
         + '<button type="button" role="menuitem" data-action="modifier">✏️ Modifier</button>'
+        + '<button type="button" role="menuitem" data-action="epingler">📌 Épingler</button>'
         + '<button type="button" role="menuitem" data-action="supprimer" class="menu-message__danger">🗑 Supprimer</button>';
       document.body.appendChild(menu);
       var bulleDuMenu = null;
@@ -1206,6 +1207,7 @@
         var mien = bulle.classList.contains('bulle--moi');
         var efface = bulle.classList.contains('bulle--supprime');
         menu.querySelector('[data-action="repondre"]').hidden = efface;
+        menu.querySelector('[data-action="epingler"]').textContent = bulle.classList.contains('bulle--epingle') ? '📌 Désépingler' : '📌 Épingler';
         menu.querySelector('[data-menu-reactions]').hidden = efface;
         // La réaction déjà posée est allumée : la reprendre l'enlève.
         var miennes = bulle.querySelector('.reaction--moi');
@@ -1330,6 +1332,7 @@
         if (action === 'repondre') { entrerMode('reponse', bulle); }
         if (action === 'modifier') { entrerMode('modifier', bulle); }
         if (action === 'supprimer') { demanderSuppression(bulle); }
+        if (action === 'epingler') { epingler(bulle, !bulle.classList.contains('bulle--epingle')); }
       });
 
       /*
@@ -1447,6 +1450,105 @@
         // La sienne se retire ; celle d'un autre se reprend à son compte.
         reagir(bulle, pastille.getAttribute('aria-pressed') === 'true' ? '' : pastille.getAttribute('data-reaction'));
       });
+
+      /*
+       * Les épingles.
+       *
+       * Épingler un message (depuis son menu) le marque d'un 📌 et l'ajoute à
+       * la liste qu'ouvre le bouton 📌 de l'en-tête. Un clic dans la liste
+       * ramène au message et le fait clignoter ; s'il est trop ancien pour
+       * être affiché, la conversation se rouvre à partir de lui.
+       */
+      var boutonEpingles = chat.querySelector('[data-epingles-bouton]');
+      var panneauEpingles = chat.querySelector('[data-epingles-panneau]');
+      var fermerEpingles = function () {
+        if (panneauEpingles.hidden) { return; }
+        panneauEpingles.hidden = true;
+        boutonEpingles.setAttribute('aria-expanded', 'false');
+      };
+      var allerAuMessage = function (id) {
+        var bulle = fil.querySelector('[data-message="' + id + '"]');
+        if (!bulle) {
+          window.location.href = chat.getAttribute('data-conversation') + '?message=' + encodeURIComponent(id);
+          return;
+        }
+        colle = false;
+        bulle.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        bulle.classList.remove('bulle--repere');
+        void bulle.offsetWidth;
+        bulle.classList.add('bulle--repere');
+      };
+      var dessinerEpingles = function (liste) {
+        var ul = panneauEpingles.querySelector('[data-epingles-liste]');
+        ul.textContent = '';
+        liste.forEach(function (ep) {
+          var li = document.createElement('li');
+          var b = document.createElement('button');
+          b.type = 'button';
+          b.className = 'epingles__element';
+          b.setAttribute('data-aller-message', String(ep.id));
+          var entete = document.createElement('span');
+          entete.className = 'epingles__entete';
+          var auteur = document.createElement('strong');
+          auteur.textContent = ep.auteur;
+          var quand = document.createElement('span');
+          quand.textContent = ep.quand;
+          entete.appendChild(auteur);
+          entete.appendChild(quand);
+          var extrait = document.createElement('span');
+          extrait.className = 'epingles__extrait';
+          extrait.textContent = ep.extrait;
+          b.appendChild(entete);
+          b.appendChild(extrait);
+          li.appendChild(b);
+          ul.appendChild(li);
+        });
+        panneauEpingles.querySelector('[data-epingles-vide]').hidden = liste.length > 0;
+        boutonEpingles.querySelector('[data-epingles-nombre]').textContent = String(liste.length);
+      };
+      var epingler = function (bulle, voulu) {
+        var donnees = new FormData();
+        donnees.append('_csrf', chat.getAttribute('data-jeton'));
+        donnees.append('epingle', voulu ? '1' : '0');
+        fetch(chat.getAttribute('data-epingler').replace('/0/', '/' + bulle.getAttribute('data-message') + '/'), {
+          method: 'POST', body: donnees, credentials: 'same-origin', headers: { Accept: 'application/json' }
+        }).then(function (r) { return r.json(); })
+          .then(function (reponse) {
+            if (!reponse.fait) { throw new Error(reponse.message || 'L’épingle n’a pas pu être posée.'); }
+            bulle.classList.toggle('bulle--epingle', reponse.epingle);
+            dessinerEpingles(reponse.epingles || []);
+          })
+          .catch(function (e) { montrerErreur(e.message || 'L’épingle n’a pas pu être posée.'); });
+      };
+      boutonEpingles.addEventListener('click', function () {
+        if (panneauEpingles.hidden) {
+          fermerMenu();
+          panneauEpingles.hidden = false;
+          boutonEpingles.setAttribute('aria-expanded', 'true');
+          var premier = panneauEpingles.querySelector('[data-aller-message]');
+          if (premier) { premier.focus(); }
+        } else {
+          fermerEpingles();
+        }
+      });
+      panneauEpingles.addEventListener('click', function (evenement) {
+        var element = evenement.target.closest('[data-aller-message]');
+        if (!element) { return; }
+        fermerEpingles();
+        allerAuMessage(element.getAttribute('data-aller-message'));
+      });
+      document.addEventListener('click', function (evenement) {
+        if (!panneauEpingles.hidden && !panneauEpingles.contains(evenement.target) && !boutonEpingles.contains(evenement.target)) { fermerEpingles(); }
+      });
+      document.addEventListener('keydown', function (evenement) {
+        if (evenement.key === 'Escape' && !panneauEpingles.hidden) { fermerEpingles(); boutonEpingles.focus(); }
+      });
+      // Ouverte sur un message précis (depuis une épingle) : on s'y rend, plutôt qu'en bas.
+      if (chat.getAttribute('data-cible')) {
+        setTimeout(function () { allerAuMessage(chat.getAttribute('data-cible')); }, 60);
+        // L'adresse redevient celle de la conversation : la recharger ramène en bas, comme d'habitude.
+        if (window.history && history.replaceState) { history.replaceState(null, '', chat.getAttribute('data-conversation')); }
+      }
 
       var appliquerTexte = function (bulle, texte, modifie) {
         if (!bulle || bulle.classList.contains('bulle--supprime')) { return; }
@@ -1603,6 +1705,13 @@
         var heure = document.createElement('span');
         heure.className = 'bulle__heure';
         heure.textContent = message.heure;
+        var marqueEpingle = document.createElement('span');
+        marqueEpingle.className = 'bulle__epingle';
+        marqueEpingle.title = 'Épinglé';
+        marqueEpingle.setAttribute('aria-label', 'Épinglé');
+        marqueEpingle.textContent = '📌 ';
+        heure.insertBefore(marqueEpingle, heure.firstChild);
+        if (message.epingle) { bulle.classList.add('bulle--epingle'); }
         if (message.modifie) {
           var marque = document.createElement('span');
           marque.className = 'bulle__modifie';

@@ -114,7 +114,9 @@ final class AmisController
 
         // Le fil d'abord : il marque les messages reçus comme lus, et la liste le reflète.
         $maintenant = Amis::maintenant();
-        $messages = Amis::fil($moi, $id);
+        // « ?message= » : ouvrir la conversation sur un message précis (une épingle ancienne).
+        $cible = entier_ou_null($_GET['message'] ?? null);
+        $messages = Amis::fil($moi, $id, 0, $cible);
         Amis::regarder($moi, $id);
         $amis = Amis::liste($moi);
 
@@ -123,6 +125,8 @@ final class AmisController
             'messages' => $messages,
             'vuJusqua' => Amis::vuJusqua($moi, $id),
             'maintenant' => $maintenant,
+            'epingles' => Amis::epingles($moi, $id),
+            'cible' => $cible,
             'amis' => $amis,
             'derniers' => Amis::messagesParId(array_column($amis, 'dernier_id')),
         ], 'Discussion avec ' . $ami['pseudo']);
@@ -216,6 +220,21 @@ final class AmisController
             'reactions' => Amis::reactionsModifiees($moi, $id, (string) ($_GET['modifies_depuis'] ?? '')),
             'maintenant' => $maintenant,
         ] + Amis::changements($moi, $id, $apres));
+    }
+
+    /** Épingle un message pour soi (« epingle=1 »), ou retire l'épingle. */
+    public function epingler(int $id): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+
+        $voulu = ($_POST['epingle'] ?? '') === '1';
+        [$fait, $message, $autre] = Amis::epingler(Auth::id(), $id, $voulu);
+        if (!$fait) {
+            http_response_code(422);
+            repondre_json(['fait' => false, 'message' => $message]);
+        }
+        repondre_json(['fait' => true, 'message' => $message, 'epingle' => $voulu, 'epingles' => Amis::epingles(Auth::id(), (int) $autre)]);
     }
 
     /** Réagit à un message avec un emoji, ou retire sa réaction. */

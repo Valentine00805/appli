@@ -22,6 +22,9 @@ final class Amis
     /** Messages montrés à l'ouverture d'une conversation. */
     public const FIL_MAX = 200;
 
+    /** Au plus, quand la conversation s'ouvre sur un message plus ancien. */
+    public const FIL_DEPUIS_MAX = 2000;
+
     /**
      * Une discussion regardée — onglet affiché et fenêtre active — il y a
      * moins de tant de secondes est encore sous les yeux. La page le redit
@@ -613,14 +616,17 @@ final class Amis
      * Les messages d'une conversation après tel identifiant (ou les derniers),
      * du plus ancien au plus récent. Ceux qu'on reçoit sont marqués lus.
      */
-    public static function fil(int $moi, int $autre, int $apres = 0): array
+    public static function fil(int $moi, int $autre, int $apres = 0, ?int $depuisMessage = null): array
     {
         Database::run(
             'UPDATE messages SET lu_le = UTC_TIMESTAMP() WHERE expediteur_id = ? AND destinataire_id = ? AND lu_le IS NULL',
             [$autre, $moi]
         );
 
-        $messages = self::lignes($moi, $autre, 'm.id > ?', [$apres], 'ORDER BY m.id DESC LIMIT ' . self::FIL_MAX);
+        // Aller à un message plus ancien que les derniers affichés (une épingle) : le fil part de lui.
+        $messages = $depuisMessage !== null
+            ? self::lignes($moi, $autre, 'm.id >= ?', [$depuisMessage], 'ORDER BY m.id DESC LIMIT ' . self::FIL_DEPUIS_MAX)
+            : self::lignes($moi, $autre, 'm.id > ?', [$apres], 'ORDER BY m.id DESC LIMIT ' . self::FIL_MAX);
 
         return self::avecReactions(array_map(static fn (array $m): array => self::pourAffichage($m, $moi), array_reverse($messages)), $moi, $autre);
     }
@@ -947,12 +953,77 @@ final class Amis
     /** Ajoute leurs réactions à des messages prêts à montrer. */
     private static function avecReactions(array $messages, int $moi, int $autre): array
     {
-        $reactions = self::reactionsDe(array_column($messages, 'id'), $moi, $autre);
+        $ids = array_column($messages, 'id');
+        $reactions = self::reactionsDe($ids, $moi, $autre);
+        $epingles = $ids === [] ? [] : array_flip(array_map('intval', array_column(Database::all(
+            'SELECT message_id FROM epingles WHERE user_id = ? AND message_id IN (' . implode(',', array_fill(0, count($ids), '?')) . ')',
+            array_merge([$moi], $ids)
+        ), 'message_id')));
         foreach ($messages as &$m) {
             $m['reactions'] = $reactions[$m['id']] ?? [];
+            $m['epingle'] = isset($epingles[$m['id']]);
         }
 
         return $messages;
+    }
+
+    /**
+     * Épingle un message pour soi, ou retire l'épingle.
+     *
+     * @return array{0: bool, 1: string, 2: ?int} réussi, message, l'ami de la conversation
+     */
+    public static function epingler(int $moi, int $messageId, bool $epingler): array
+    {
+        $message = Database::one(
+            'SELECT expediteur_id, destinataire_id FROM messages
+              WHERE id = ? AND ((expediteur_id = ? AND masque_expediteur = 0) OR (destinataire_id = ? AND masque_destinataire = 0))',
+            [$messageId, $moi, $moi]
+        );
+        $autre = $message === null ? null
+            : ((int) $message['expediteur_id'] === $moi ? (int) $message['destinataire_id'] : (int) $message['expediteur_id']);
+        if ($autre === null || !self::sontAmis($moi, $autre)) {
+            return [false, 'Ce message est introuvable.', null];
+        }
+        if ($epingler) {
+            Database::run('INSERT IGNORE INTO epingles (user_id, message_id, created_at) VALUES (?, ?, UTC_TIMESTAMP())', [$moi, $messageId]);
+        } else {
+            Database::run('DELETE FROM epingles WHERE user_id = ? AND message_id = ?', [$moi, $messageId]);
+        }
+
+        return [true, $epingler ? 'Message épinglé.' : 'Épingle retirée.', $autre];
+    }
+
+    /**
+     * Les messages épinglés d'une conversation, de la dernière épingle à la
+     * plus ancienne : qui l'a écrit, le début du texte, quand.
+     *
+     * @return list<array{id: int, auteur: string, extrait: string, quand: string}>
+     */
+    public static function epingles(int $moi, int $autre): array
+    {
+        $lignes = Database::all(
+            'SELECT m.id, m.expediteur_id, m.texte AS r_texte, m.image_nom AS r_image, m.fichier_origine AS r_fichier,
+                    m.supprime_le AS r_supprime, 0 AS r_masque, m.created_at
+               FROM epingles e JOIN messages m ON m.id = e.message_id
+              WHERE e.user_id = ?
+                AND ((m.expediteur_id = ? AND m.destinataire_id = ? AND m.masque_expediteur = 0)
+                  OR (m.expediteur_id = ? AND m.destinataire_id = ? AND m.masque_destinataire = 0))
+              ORDER BY e.created_at DESC, m.id DESC',
+            [$moi, $moi, $autre, $autre, $moi]
+        );
+        $pseudo = (string) (self::compte($autre)['pseudo'] ?? '');
+
+        return array_map(static function (array $l) use ($moi, $pseudo): array {
+            $moment = self::local((string) $l['created_at']);
+            $jour = self::jour($moment);
+
+            return [
+                'id' => (int) $l['id'],
+                'auteur' => (int) $l['expediteur_id'] === $moi ? 'Vous' : $pseudo,
+                'extrait' => self::extrait($l),
+                'quand' => ($jour === 'Aujourd’hui' ? '' : $jour . ' · ') . $moment->format('H:i'),
+            ];
+        }, $lignes);
     }
 
     /**
@@ -1123,6 +1194,7 @@ final class Amis
             'supprime' => ($message['supprime_le'] ?? null) !== null,
             'modifie' => ($message['modifie_le'] ?? null) !== null && ($message['supprime_le'] ?? null) === null,
             'reactions' => [],
+            'epingle' => false,
             'reponse' => ($message['r_expediteur'] ?? null) === null ? null : [
                 'id' => (int) $message['reponse_a'],
                 'auteur' => (int) $message['r_expediteur'] === $moi ? 'Vous'

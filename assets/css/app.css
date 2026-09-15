@@ -267,6 +267,33 @@ textarea { min-height: 260px; resize: vertical; line-height: 1.65; }
 .chat__profil-texte { min-width: 0; display: grid; }
 .chat__profil-aide { font-size: .75rem; color: var(--texte-doux); }
 .chat__profil-bouton { flex: none; }
+.chat__epingles-bouton { flex: none; }
+.chat__epingles-bouton[aria-expanded="true"] { background: var(--accent-doux); border-color: var(--accent); }
+.chat__fil { position: relative; }
+
+/* La liste des messages épinglés, sous l'en-tête. */
+.epingles {
+  position: absolute; top: 3.6rem; right: .75rem; z-index: 20; width: min(24rem, calc(100% - 1.5rem));
+  max-height: min(24rem, 70%); overflow-y: auto; padding: .5rem;
+  background: var(--fond-carte); border: 1px solid var(--bordure); border-radius: var(--rayon); box-shadow: var(--ombre);
+}
+.epingles[hidden] { display: none; }
+.epingles__titre { margin: .1rem .35rem .4rem; font-size: .8rem; font-weight: 700; color: var(--texte-doux); }
+.epingles__liste { list-style: none; margin: 0; padding: 0; display: grid; gap: .15rem; }
+.epingles__element {
+  display: grid; gap: .1rem; width: 100%; text-align: left; border: 0; background: transparent; color: var(--texte);
+  padding: .5rem .6rem; border-radius: var(--rayon-s); font: inherit; cursor: pointer;
+}
+.epingles__element:hover, .epingles__element:focus-visible { background: var(--fond-doux); outline: none; }
+.epingles__entete { display: flex; justify-content: space-between; gap: .5rem; font-size: .8rem; }
+.epingles__entete span { color: var(--texte-doux); flex: none; }
+.epingles__extrait { font-size: .88rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.epingles__vide { margin: .3rem .35rem .4rem; font-size: .85rem; color: var(--texte-doux); }
+.epingles__vide[hidden] { display: none; }
+
+/* Le 📌 d'une bulle épinglée, à côté de l'heure. */
+.bulle__epingle { display: none; font-size: .7rem; }
+.bulle--epingle .bulle__epingle { display: inline; }
 
 /* Le profil d'un ami. */
 .profil-ami__identite { display: flex; align-items: center; gap: .9rem; }

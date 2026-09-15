@@ -11,6 +11,8 @@
  * @var int $vuJusqua
  * @var list<array> $amis
  * @var array<int, array> $derniers
+ * @var list<array> $epingles  mes messages épinglés dans cette conversation
+ * @var ?int $cible  le message sur lequel ouvrir la conversation
  */
 $csrf = Session::jetonCsrf();
 $actif = (int) $ami['id'];
@@ -36,6 +38,9 @@ foreach ($messages as $m) {
            data-supprimer="<?= e(url('amis/messages/0/supprimer')) ?>"
            data-modifier="<?= e(url('amis/messages/0/modifier')) ?>"
            data-reagir="<?= e(url('amis/messages/0/reaction')) ?>"
+           data-epingler="<?= e(url('amis/messages/0/epingle')) ?>"
+           data-conversation="<?= e(url('amis/' . $actif)) ?>"
+           <?= $cible !== null ? 'data-cible="' . (int) $cible . '"' : '' ?>
            data-reactions-rapides="<?= e(implode(' ', Amis::REACTIONS_RAPIDES)) ?>"
            data-maintenant="<?= e($maintenant) ?>"
            data-ami="<?= e((string) $ami['pseudo']) ?>"
@@ -50,8 +55,30 @@ foreach ($messages as $m) {
           <span class="chat__profil-aide">Profil, photos et fichiers</span>
         </span>
       </a>
+      <?php // Les messages épinglés : la liste s'ouvre sous le bouton, un clic ramène au message. ?>
+      <button class="bouton bouton--secondaire bouton--petit chat__epingles-bouton" type="button" data-epingles-bouton
+              aria-expanded="false" aria-controls="chat-epingles" title="Messages épinglés">
+        📌 <span class="chat__epingles-nombre" data-epingles-nombre><?= count($epingles) ?></span>
+      </button>
       <a class="bouton bouton--secondaire bouton--petit chat__profil-bouton" href="<?= url('amis/' . $actif . '/profil') ?>" data-fenetre>ℹ️ Profil</a>
     </header>
+
+    <div class="epingles" id="chat-epingles" data-epingles-panneau hidden>
+      <p class="epingles__titre">📌 Messages épinglés</p>
+      <ul class="epingles__liste" data-epingles-liste>
+        <?php foreach ($epingles as $ep): ?>
+          <li>
+            <button type="button" class="epingles__element" data-aller-message="<?= $ep['id'] ?>">
+              <span class="epingles__entete"><strong><?= e($ep['auteur']) ?></strong><span><?= e($ep['quand']) ?></span></span>
+              <span class="epingles__extrait"><?= e($ep['extrait']) ?></span>
+            </button>
+          </li>
+        <?php endforeach; ?>
+      </ul>
+      <p class="epingles__vide" data-epingles-vide<?= $epingles === [] ? '' : ' hidden' ?>>
+        Aucun message épinglé. Cliquez sur un message, puis « Épingler ».
+      </p>
+    </div>
 
     <div class="chat__messages" data-chat-messages aria-live="polite">
       <?php if ($messages === []): ?>
@@ -68,7 +95,7 @@ foreach ($messages as $m) {
          * répondre, modifier (ses messages), supprimer. C'est le script qui le montre.
          */
         ?>
-        <div class="bulle<?= $m['moi'] ? ' bulle--moi' : '' ?><?= $m['image'] !== null ? ' bulle--image' : '' ?><?= $m['supprime'] ? ' bulle--supprime' : '' ?>"
+        <div class="bulle<?= $m['moi'] ? ' bulle--moi' : '' ?><?= $m['image'] !== null ? ' bulle--image' : '' ?><?= $m['supprime'] ? ' bulle--supprime' : '' ?><?= $m['epingle'] ? ' bulle--epingle' : '' ?>"
              data-message="<?= (int) $m['id'] ?>" id="message-<?= (int) $m['id'] ?>" tabindex="0" aria-haspopup="menu"
              <?= $m['image'] !== null || $m['fichier'] !== null ? 'data-piece' : '' ?>>
           <?php if ($m['reponse'] !== null): ?>
@@ -100,7 +127,7 @@ foreach ($messages as $m) {
           <?php if ($m['texte'] !== ''): ?>
             <p class="bulle__texte"><?= nl2br(e($m['texte'])) ?></p>
           <?php endif; ?>
-          <span class="bulle__heure"><?php if ($m['modifie']): ?><span class="bulle__modifie">modifié · </span><?php endif; ?><?= e($m['heure']) ?></span>
+          <span class="bulle__heure"><span class="bulle__epingle" title="Épinglé" aria-label="Épinglé">📌 </span><?php if ($m['modifie']): ?><span class="bulle__modifie">modifié · </span><?php endif; ?><?= e($m['heure']) ?></span>
           <?php // Les réactions : un clic sur l'une pose ou retire la sienne. ?>
           <?php if ($m['reactions'] !== []): ?>
             <div class="bulle__reactions">
