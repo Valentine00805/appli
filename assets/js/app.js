@@ -1071,34 +1071,25 @@
       };
 
       /*
-       * Supprimer un message.
-       *
-       * Un bouton 🗑 apparaît au survol de chaque bulle. Il demande : « pour
-       * moi » — le message disparaît de ma conversation seulement — ou, pour
-       * un message que j'ai écrit, « pour tout le monde » — il est effacé et
-       * les deux côtés voient « Message supprimé ». Comme les autres fenêtres
-       * de l'application, la question ne se ferme que par ses boutons.
+       * Supprimer un message : « pour moi » — il disparaît de ma conversation
+       * seulement — ou, pour un message que j'ai écrit, « pour tout le monde »
+       * — il est effacé et les deux côtés voient « Message supprimé ». La
+       * question s'ouvre depuis le menu de la bulle ; comme les autres
+       * fenêtres de l'application, elle ne se ferme que par ses boutons.
        */
-      var boutonSupprimer = function () {
-        var b = document.createElement('button');
-        b.type = 'button';
-        b.className = 'bulle__supprimer';
-        b.setAttribute('data-supprimer-message', '');
-        b.title = 'Supprimer le message';
-        b.setAttribute('aria-label', 'Supprimer le message');
-        b.textContent = '🗑';
-        return b;
-      };
       var marquerSupprime = function (id) {
+        fil.querySelectorAll('[data-extrait-de="' + id + '"]').forEach(function (e) { e.textContent = '🚫 Message supprimé'; });
         var bulle = fil.querySelector('[data-message="' + id + '"]');
         if (!bulle || bulle.classList.contains('bulle--supprime')) { return; }
         bulle.classList.add('bulle--supprime');
         bulle.classList.remove('bulle--image');
-        bulle.querySelectorAll('.bulle__image, .bulle__fichier, .bulle__texte').forEach(function (e) { e.remove(); });
+        bulle.removeAttribute('data-piece');
+        bulle.querySelectorAll('.bulle__image, .bulle__fichier, .bulle__texte, .bulle__citation, .bulle__modifie').forEach(function (e) { e.remove(); });
         var efface = document.createElement('p');
         efface.className = 'bulle__texte';
         efface.textContent = '🚫 Message supprimé';
         bulle.insertBefore(efface, bulle.querySelector('.bulle__heure'));
+        if (mode && String(mode.id) === String(id)) { sortirMode(); }
       };
       var retirerBulle = function (id) {
         var bulle = fil.querySelector('[data-message="' + id + '"]');
@@ -1127,10 +1118,7 @@
       question.addEventListener('cancel', function (evenement) { evenement.preventDefault(); });
       var aSupprimer = null;
 
-      fil.addEventListener('click', function (evenement) {
-        var declencheur = evenement.target.closest('[data-supprimer-message]');
-        if (!declencheur) { return; }
-        var bulle = declencheur.closest('[data-message]');
+      var demanderSuppression = function (bulle) {
         aSupprimer = bulle;
         var mien = bulle.classList.contains('bulle--moi');
         var dejaEfface = bulle.classList.contains('bulle--supprime');
@@ -1142,7 +1130,225 @@
         question.querySelector('[data-erreur]').hidden = true;
         question.showModal();
         question.querySelector(mien && !dejaEfface ? '[data-portee="tous"]' : '[data-portee="moi"]').focus();
+      };
+
+      /*
+       * Le menu d'une bulle : un clic gauche, ou un appui long sur un écran
+       * tactile, l'ouvre juste à côté du message. Il propose de répondre, de
+       * modifier (un message qu'on a écrit) et de supprimer. Il se referme en
+       * cliquant ailleurs, par Échap, ou dès qu'on a choisi.
+       *
+       * Un clic sur ce qui a déjà son rôle dans la bulle — la photo, le nom
+       * d'un fichier, la citation — garde ce rôle, et une sélection de texte à
+       * la souris n'ouvre rien : on voulait copier.
+       */
+      var menu = document.createElement('div');
+      menu.className = 'menu-message';
+      menu.setAttribute('role', 'menu');
+      menu.hidden = true;
+      menu.innerHTML = '<button type="button" role="menuitem" data-action="repondre">↩ Répondre</button>'
+        + '<button type="button" role="menuitem" data-action="modifier">✏️ Modifier</button>'
+        + '<button type="button" role="menuitem" data-action="supprimer" class="menu-message__danger">🗑 Supprimer</button>';
+      document.body.appendChild(menu);
+      var bulleDuMenu = null;
+
+      var fermerMenu = function () {
+        if (menu.hidden) { return; }
+        menu.hidden = true;
+        if (bulleDuMenu) { bulleDuMenu.classList.remove('bulle--menu'); }
+        bulleDuMenu = null;
+      };
+      var ouvrirMenu = function (bulle) {
+        fermerMenu();
+        var mien = bulle.classList.contains('bulle--moi');
+        var efface = bulle.classList.contains('bulle--supprime');
+        menu.querySelector('[data-action="repondre"]').hidden = efface;
+        menu.querySelector('[data-action="modifier"]').hidden = !mien || efface;
+        bulleDuMenu = bulle;
+        bulle.classList.add('bulle--menu');
+        menu.hidden = false;
+
+        // À côté de la bulle, du côté où elle est rangée ; au-dessus s'il n'y a pas la place dessous.
+        var cadre = bulle.getBoundingClientRect();
+        var largeur = menu.offsetWidth;
+        var hauteur = menu.offsetHeight;
+        var gauche = mien ? cadre.right - largeur : cadre.left;
+        gauche = Math.max(8, Math.min(gauche, window.innerWidth - largeur - 8));
+        var haut = cadre.bottom + 6;
+        if (haut + hauteur > window.innerHeight - 8) { haut = Math.max(8, cadre.top - hauteur - 6); }
+        menu.style.left = gauche + 'px';
+        menu.style.top = haut + 'px';
+        var premier = menu.querySelector('button:not([hidden])');
+        if (premier) { premier.focus({ preventScroll: true }); }
+      };
+
+      var appuiLong = null;
+      var appuiLongFait = false;
+      var finAppuiLong = 0;
+      fil.addEventListener('touchstart', function (evenement) {
+        var bulle = evenement.target.closest('[data-message]');
+        if (!bulle || evenement.touches.length > 1) { return; }
+        var depart = evenement.touches[0];
+        appuiLongFait = false;
+        clearTimeout(appuiLong);
+        appuiLong = setTimeout(function () {
+          appuiLongFait = true;
+          if (navigator.vibrate) { navigator.vibrate(15); }
+          ouvrirMenu(bulle);
+        }, 450);
+        bulle.dataset.departX = String(depart.clientX);
+        bulle.dataset.departY = String(depart.clientY);
+      }, { passive: true });
+      fil.addEventListener('touchmove', function (evenement) {
+        var bulle = evenement.target.closest('[data-message]');
+        if (!bulle || !evenement.touches.length) { return; }
+        var dx = evenement.touches[0].clientX - Number(bulle.dataset.departX || 0);
+        var dy = evenement.touches[0].clientY - Number(bulle.dataset.departY || 0);
+        // On fait défiler la conversation : ce n'est pas un appui long.
+        if (Math.abs(dx) > 10 || Math.abs(dy) > 10) { clearTimeout(appuiLong); }
+      }, { passive: true });
+      fil.addEventListener('touchend', function (evenement) {
+        clearTimeout(appuiLong);
+        // Après un appui long, le « clic » qui suit aussitôt ne doit ni refermer le menu ni suivre un lien.
+        if (appuiLongFait) {
+          evenement.preventDefault();
+          appuiLongFait = false;
+          finAppuiLong = Date.now();
+        }
       });
+      fil.addEventListener('contextmenu', function (evenement) {
+        if (evenement.target.closest('[data-message]') && (appuiLongFait || appuiLong)) { evenement.preventDefault(); }
+      });
+
+      fil.addEventListener('click', function (evenement) {
+        var citation = evenement.target.closest('[data-citation]');
+        if (citation) {
+          evenement.preventDefault();
+          var cible = fil.querySelector('[data-message="' + citation.getAttribute('data-citation') + '"]');
+          if (cible) {
+            cible.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            cible.classList.remove('bulle--repere');
+            void cible.offsetWidth;
+            cible.classList.add('bulle--repere');
+          }
+          return;
+        }
+        var bulle = evenement.target.closest('[data-message]');
+        if (!bulle || evenement.target.closest('a, button')) { return; }
+        if (Date.now() - finAppuiLong < 700) { return; }
+        var selection = window.getSelection ? String(window.getSelection()) : '';
+        if (selection.trim() !== '' && bulle.contains(window.getSelection().anchorNode)) { return; }
+        if (bulleDuMenu === bulle) { fermerMenu(); return; }
+        ouvrirMenu(bulle);
+      });
+      fil.addEventListener('keydown', function (evenement) {
+        var bulle = evenement.target.matches && evenement.target.matches('[data-message]') ? evenement.target : null;
+        if (bulle && (evenement.key === 'Enter' || evenement.key === ' ' || evenement.key === 'ContextMenu')) {
+          evenement.preventDefault();
+          ouvrirMenu(bulle);
+        }
+      });
+      document.addEventListener('click', function (evenement) {
+        if (!menu.hidden && !menu.contains(evenement.target) && !(bulleDuMenu && bulleDuMenu.contains(evenement.target))) { fermerMenu(); }
+      });
+      document.addEventListener('keydown', function (evenement) {
+        if (evenement.key === 'Escape' && !menu.hidden) {
+          var bulle = bulleDuMenu;
+          fermerMenu();
+          if (bulle) { bulle.focus(); }
+        }
+      });
+      fil.addEventListener('scroll', fermerMenu, { passive: true });
+      window.addEventListener('resize', fermerMenu);
+
+      menu.addEventListener('click', function (evenement) {
+        var choix = evenement.target.closest('[data-action]');
+        if (!choix || !bulleDuMenu) { return; }
+        var bulle = bulleDuMenu;
+        fermerMenu();
+        var action = choix.getAttribute('data-action');
+        if (action === 'repondre') { entrerMode('reponse', bulle); }
+        if (action === 'modifier') { entrerMode('modifier', bulle); }
+        if (action === 'supprimer') { demanderSuppression(bulle); }
+      });
+
+      /*
+       * Répondre et modifier.
+       *
+       * Un bandeau au-dessus de la saisie dit ce qu'on fait — « Réponse à … »
+       * avec le début du message, ou « Modifier le message » — et sa croix (ou
+       * Échap) l'annule. Pour modifier, le texte du message revient dans la
+       * saisie ; Entrée l'enregistre.
+       */
+      var contexte = chat.querySelector('[data-chat-contexte]');
+      var mode = null;
+      var texteDe = function (bulle) {
+        var p = bulle.classList.contains('bulle--supprime') ? null : bulle.querySelector(':scope > .bulle__texte');
+        return p ? p.textContent.replace(/\r/g, '') : '';
+      };
+      var extraitDe = function (bulle) {
+        if (bulle.classList.contains('bulle--supprime')) { return '🚫 Message supprimé'; }
+        var texte = texteDe(bulle).replace(/\s+/g, ' ').trim();
+        var nomFichier = bulle.querySelector('.bulle__fichier-nom');
+        var piece = bulle.querySelector('.bulle__image') ? '📷 Photo' : (nomFichier ? '📎 ' + nomFichier.textContent : '');
+        var extrait = texte === '' ? piece : (piece === '' ? texte : piece + ' · ' + texte);
+        return extrait.length > 120 ? extrait.slice(0, 119) + '…' : extrait;
+      };
+      var sortirMode = function () {
+        if (!mode) { return; }
+        if (mode.type === 'modifier') { champ.value = ''; ajuster(); }
+        mode = null;
+        contexte.hidden = true;
+        contexte.classList.remove('chat__contexte--modifier');
+        champ.required = enAttente.length === 0;
+      };
+      var entrerMode = function (type, bulle) {
+        sortirMode();
+        mode = { type: type, id: bulle.getAttribute('data-message'), bulle: bulle };
+        var mien = bulle.classList.contains('bulle--moi');
+        contexte.querySelector('[data-contexte-titre]').textContent = type === 'reponse'
+          ? '↩ Réponse à ' + (mien ? 'vous-même' : chat.getAttribute('data-ami'))
+          : '✏️ Modifier le message';
+        contexte.querySelector('[data-contexte-extrait]').textContent = extraitDe(bulle);
+        contexte.classList.toggle('chat__contexte--modifier', type === 'modifier');
+        contexte.hidden = false;
+        if (type === 'modifier') {
+          champ.value = texteDe(bulle);
+          // Une photo ou un fichier peut perdre sa légende ; un message de texte seul, non.
+          champ.required = !bulle.hasAttribute('data-piece');
+          ajuster();
+        }
+        champ.focus();
+        champ.setSelectionRange(champ.value.length, champ.value.length);
+      };
+      contexte.querySelector('[data-contexte-annuler]').addEventListener('click', function () { sortirMode(); champ.focus(); });
+      champ.addEventListener('keydown', function (evenement) {
+        if (evenement.key === 'Escape' && mode) { evenement.preventDefault(); sortirMode(); }
+      });
+
+      var appliquerTexte = function (bulle, texte, modifie) {
+        if (!bulle || bulle.classList.contains('bulle--supprime')) { return; }
+        var p = bulle.querySelector(':scope > .bulle__texte');
+        if (texte === '') {
+          if (p) { p.remove(); }
+        } else {
+          if (!p) {
+            p = document.createElement('p');
+            p.className = 'bulle__texte';
+            bulle.insertBefore(p, bulle.querySelector('.bulle__heure'));
+          }
+          p.textContent = texte;
+        }
+        var heure = bulle.querySelector('.bulle__heure');
+        if (modifie && heure && !heure.querySelector('.bulle__modifie')) {
+          var marque = document.createElement('span');
+          marque.className = 'bulle__modifie';
+          marque.textContent = 'modifié · ';
+          heure.insertBefore(marque, heure.firstChild);
+        }
+        var id = bulle.getAttribute('data-message');
+        fil.querySelectorAll('[data-extrait-de="' + id + '"]').forEach(function (e) { e.textContent = extraitDe(bulle); });
+      };
 
       question.addEventListener('click', function (evenement) {
         var choix = evenement.target.closest('[data-portee]');
@@ -1194,7 +1400,26 @@
         bulle.className = 'bulle' + (message.moi ? ' bulle--moi' : '') + (message.image ? ' bulle--image' : '')
           + (message.supprime ? ' bulle--supprime' : '');
         bulle.setAttribute('data-message', String(message.id));
-        bulle.appendChild(boutonSupprimer());
+        bulle.id = 'message-' + message.id;
+        bulle.tabIndex = 0;
+        bulle.setAttribute('aria-haspopup', 'menu');
+        if (message.image || message.fichier) { bulle.setAttribute('data-piece', ''); }
+        if (message.reponse) {
+          var citation = document.createElement('a');
+          citation.className = 'bulle__citation';
+          citation.href = '#message-' + message.reponse.id;
+          citation.setAttribute('data-citation', String(message.reponse.id));
+          var auteur = document.createElement('span');
+          auteur.className = 'bulle__citation-auteur';
+          auteur.textContent = message.reponse.auteur;
+          var extraitCite = document.createElement('span');
+          extraitCite.className = 'bulle__citation-extrait';
+          extraitCite.setAttribute('data-extrait-de', String(message.reponse.id));
+          extraitCite.textContent = message.reponse.extrait;
+          citation.appendChild(auteur);
+          citation.appendChild(extraitCite);
+          bulle.appendChild(citation);
+        }
         if (message.supprime) {
           var efface = document.createElement('p');
           efface.className = 'bulle__texte';
@@ -1256,6 +1481,12 @@
         var heure = document.createElement('span');
         heure.className = 'bulle__heure';
         heure.textContent = message.heure;
+        if (message.modifie) {
+          var marque = document.createElement('span');
+          marque.className = 'bulle__modifie';
+          marque.textContent = 'modifié · ';
+          heure.insertBefore(marque, heure.firstChild);
+        }
         bulle.appendChild(heure);
         fil.appendChild(bulle);
 
@@ -1270,7 +1501,8 @@
         // « visible » : la discussion est sous les yeux, inutile d'en notifier les messages.
         // Sous les yeux : l'onglet affiché ET la fenêtre active — pas une discussion laissée ouverte à côté.
         var regardee = !document.hidden && document.hasFocus();
-        return fetch(chat.getAttribute('data-nouveaux') + '?apres=' + dernier + '&visible=' + (regardee ? 1 : 0), {
+        return fetch(chat.getAttribute('data-nouveaux') + '?apres=' + dernier + '&visible=' + (regardee ? 1 : 0)
+          + '&modifies_depuis=' + encodeURIComponent(chat.getAttribute('data-maintenant') || ''), {
           credentials: 'same-origin', headers: { Accept: 'application/json' }
         }).then(function (r) {
           if (r.status === 403) { window.location.reload(); throw new Error('plus amis'); }
@@ -1281,6 +1513,12 @@
           // Ce qui a été supprimé depuis : par l'autre pour tout le monde, ou par moi dans un autre onglet.
           (reponse.supprimes || []).forEach(marquerSupprime);
           (reponse.masques || []).forEach(retirerBulle);
+          // Les messages modifiés depuis le relevé précédent, de part et d'autre.
+          (reponse.modifies || []).forEach(function (m) {
+            if (mode && mode.type === 'modifier' && String(mode.id) === String(m.id)) { return; }
+            appliquerTexte(fil.querySelector('[data-message="' + m.id + '"]'), m.texte, m.modifie);
+          });
+          if (reponse.maintenant) { chat.setAttribute('data-maintenant', reponse.maintenant); }
           vuJusqua = reponse.vu_jusqua || vuJusqua;
           majVu();
           if (enBasAvant && reponse.messages && reponse.messages.length) { enBas(); }
@@ -1404,10 +1642,11 @@
         }
       });
 
-      var envoyerUn = function (texte, element) {
+      var envoyerUn = function (texte, element, reponseA) {
         var donnees = new FormData();
         donnees.append('_csrf', chat.getAttribute('data-jeton'));
         donnees.append('texte', texte);
+        if (reponseA) { donnees.append('reponse_a', reponseA); }
         if (element) { donnees.append(element.image ? 'image' : 'fichier', element.fichier, element.fichier.name || 'fichier'); }
         return fetch(chat.getAttribute('data-envoyer'), {
           method: 'POST', body: donnees, credentials: 'same-origin', headers: { Accept: 'application/json' }
@@ -1421,21 +1660,51 @@
       formulaire.addEventListener('submit', function (evenement) {
         evenement.preventDefault();
         var texte = champ.value.trim();
+
+        if (mode && mode.type === 'modifier') {
+          if (enAttente.length) { montrerErreur('Terminez la modification avant d’envoyer des pièces jointes.'); return; }
+          var enModification = mode;
+          if (!texte && !enModification.bulle.hasAttribute('data-piece')) {
+            montrerErreur('Le message ne peut pas être vide : pour l’enlever, supprimez-le.');
+            return;
+          }
+          montrerErreur('');
+          bouton.disabled = true;
+          var envoi = new FormData();
+          envoi.append('_csrf', chat.getAttribute('data-jeton'));
+          envoi.append('texte', texte);
+          fetch(chat.getAttribute('data-modifier').replace('/0/', '/' + enModification.id + '/'), {
+            method: 'POST', body: envoi, credentials: 'same-origin', headers: { Accept: 'application/json' }
+          }).then(function (r) { return r.json(); })
+            .then(function (reponse) {
+              if (!reponse.fait) { throw new Error(reponse.message || 'Le message n’a pas pu être modifié.'); }
+              appliquerTexte(enModification.bulle, texte, texte !== texteDe(enModification.bulle).trim() || enModification.bulle.querySelector('.bulle__modifie') !== null);
+              sortirMode();
+            })
+            .catch(function (e) { montrerErreur(e.message || 'Le message n’a pas pu être modifié.'); })
+            .then(function () { bouton.disabled = false; champ.focus(); });
+          return;
+        }
+
         if (!texte && !enAttente.length) { return; }
         montrerErreur('');
         bouton.disabled = true;
         var libelle = bouton.textContent;
         if (enAttente.length) { bouton.textContent = 'Envoi…'; }
+        // La réponse part avec le premier message envoyé : le texte, ou la première pièce jointe.
+        var reponseA = mode && mode.type === 'reponse' ? mode.id : null;
+        var prendreReponse = function () { var r = reponseA; reponseA = null; return r; };
 
         // Les images partent l'une après l'autre ; la légende voyage avec la première.
         var suite = Promise.resolve();
         if (!enAttente.length) {
-          suite = envoyerUn(texte, null).then(function () { champ.value = ''; });
+          suite = envoyerUn(texte, null, prendreReponse()).then(function () { champ.value = ''; sortirMode(); });
         }
         enAttente.slice().forEach(function (element) {
           suite = suite.then(function () {
-            return envoyerUn(champ.value.trim(), element).then(function () {
+            return envoyerUn(champ.value.trim(), element, prendreReponse()).then(function () {
               champ.value = '';
+              sortirMode();
               if (element.adresse) { URL.revokeObjectURL(element.adresse); }
               enAttente.splice(enAttente.indexOf(element), 1);
               dessinerApercus();

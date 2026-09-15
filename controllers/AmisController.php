@@ -111,6 +111,7 @@ final class AmisController
         }
 
         // Le fil d'abord : il marque les messages reçus comme lus, et la liste le reflète.
+        $maintenant = Amis::maintenant();
         $messages = Amis::fil($moi, $id);
         Amis::regarder($moi, $id);
         $amis = Amis::liste($moi);
@@ -119,6 +120,7 @@ final class AmisController
             'ami' => $ami,
             'messages' => $messages,
             'vuJusqua' => Amis::vuJusqua($moi, $id),
+            'maintenant' => $maintenant,
             'amis' => $amis,
             'derniers' => Amis::messagesParId(array_column($amis, 'dernier_id')),
         ], 'Discussion avec ' . $ami['pseudo']);
@@ -143,11 +145,32 @@ final class AmisController
         }
 
         $apres = max(0, (int) ($_GET['apres'] ?? 0));
+        // L'instant est pris avant de lire : ce qui change pendant le relevé sera vu au suivant.
+        $maintenant = Amis::maintenant();
         repondre_json([
             'fait' => true,
             'messages' => Amis::fil($moi, $id, $apres),
             'vu_jusqua' => Amis::vuJusqua($moi, $id),
+            'modifies' => Amis::modifications($moi, $id, (string) ($_GET['modifies_depuis'] ?? '')),
+            'maintenant' => $maintenant,
         ] + Amis::changements($moi, $id, $apres));
+    }
+
+    /** Modifie le texte d'un de ses messages. */
+    public function modifierMessage(int $id): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+
+        [$fait, $message] = Amis::modifierMessage(Auth::id(), $id, (string) ($_POST['texte'] ?? ''));
+        if (veut_du_json()) {
+            if (!$fait) {
+                http_response_code(422);
+            }
+            repondre_json(['fait' => $fait, 'message' => $message]);
+        }
+        Session::flash($fait ? 'succes' : 'erreur', $message);
+        redirect('amis');
     }
 
     /** Supprime un message, pour soi (« moi ») ou pour les deux (« tous »). */
@@ -187,7 +210,7 @@ final class AmisController
             && !is_array($_FILES[$champ]['name'] ?? null) ? $_FILES[$champ] : null;
         $image = $televerse('image');
         $fichier = $televerse('fichier');
-        [$messageId, $refus] = Amis::ecrire($moi, $id, $texte, $image, $fichier);
+        [$messageId, $refus] = Amis::ecrire($moi, $id, $texte, $image, $fichier, entier_ou_null($_POST['reponse_a'] ?? null));
         $avecImage = $messageId !== null && $image !== null && ($image['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK;
         $nomFichier = $messageId !== null && $fichier !== null && ($fichier['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK
             ? (string) Database::valeur('SELECT fichier_origine FROM messages WHERE id = ?', [$messageId]) : null;

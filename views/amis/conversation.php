@@ -34,6 +34,9 @@ foreach ($messages as $m) {
            data-jeton="<?= e($csrf) ?>"
            data-dernier="<?= $dernierId ?>"
            data-supprimer="<?= e(url('amis/messages/0/supprimer')) ?>"
+           data-modifier="<?= e(url('amis/messages/0/modifier')) ?>"
+           data-maintenant="<?= e($maintenant) ?>"
+           data-ami="<?= e((string) $ami['pseudo']) ?>"
            data-vu="<?= (int) $vuJusqua ?>">
     <header class="chat__entete">
       <a class="chat__retour" href="<?= url('amis') ?>" aria-label="Retour aux amis">←</a>
@@ -55,10 +58,21 @@ foreach ($messages as $m) {
         <?php if ($m['jour'] !== $jour): $jour = $m['jour']; ?>
           <p class="chat__jour" data-jour="<?= e($m['jour']) ?>"><span><?= e($m['jour_libelle']) ?></span></p>
         <?php endif; ?>
-        <div class="bulle<?= $m['moi'] ? ' bulle--moi' : '' ?><?= $m['image'] !== null ? ' bulle--image' : '' ?><?= $m['supprime'] ? ' bulle--supprime' : '' ?>" data-message="<?= (int) $m['id'] ?>">
-          <?php // Supprimer : le script ouvre la question « pour moi » ou « pour tout le monde ». ?>
-          <button class="bulle__supprimer" type="button" data-supprimer-message title="Supprimer le message"
-                  aria-label="Supprimer le message">🗑</button>
+        <?php
+        /*
+         * Un clic, ou un appui long sur un téléphone, ouvre le menu de la bulle :
+         * répondre, modifier (ses messages), supprimer. C'est le script qui le montre.
+         */
+        ?>
+        <div class="bulle<?= $m['moi'] ? ' bulle--moi' : '' ?><?= $m['image'] !== null ? ' bulle--image' : '' ?><?= $m['supprime'] ? ' bulle--supprime' : '' ?>"
+             data-message="<?= (int) $m['id'] ?>" id="message-<?= (int) $m['id'] ?>" tabindex="0" aria-haspopup="menu"
+             <?= $m['image'] !== null || $m['fichier'] !== null ? 'data-piece' : '' ?>>
+          <?php if ($m['reponse'] !== null): ?>
+            <a class="bulle__citation" href="#message-<?= $m['reponse']['id'] ?>" data-citation="<?= $m['reponse']['id'] ?>">
+              <span class="bulle__citation-auteur"><?= e($m['reponse']['auteur']) ?></span>
+              <span class="bulle__citation-extrait" data-extrait-de="<?= $m['reponse']['id'] ?>"><?= e($m['reponse']['extrait']) ?></span>
+            </a>
+          <?php endif; ?>
           <?php if ($m['supprime']): ?>
             <p class="bulle__texte">🚫 Message supprimé</p>
           <?php endif; ?>
@@ -82,7 +96,7 @@ foreach ($messages as $m) {
           <?php if ($m['texte'] !== ''): ?>
             <p class="bulle__texte"><?= nl2br(e($m['texte'])) ?></p>
           <?php endif; ?>
-          <span class="bulle__heure"><?= e($m['heure']) ?></span>
+          <span class="bulle__heure"><?php if ($m['modifie']): ?><span class="bulle__modifie">modifié · </span><?php endif; ?><?= e($m['heure']) ?></span>
         </div>
         <?php // « Vu » sous mon dernier message, s'il a été lu — pas sous la réponse qui l'a suivi. ?>
         <?php if ($m['id'] === $dernierMien): ?>
@@ -92,6 +106,15 @@ foreach ($messages as $m) {
       <?php if ($dernierMien === 0): ?>
         <p class="chat__vu" data-chat-vu hidden>Vu</p>
       <?php endif; ?>
+    </div>
+
+    <?php // Répondre à un message ou en modifier un : le bandeau le rappelle au-dessus de la saisie. ?>
+    <div class="chat__contexte" data-chat-contexte hidden>
+      <span class="chat__contexte-texte">
+        <strong data-contexte-titre></strong>
+        <span class="chat__contexte-extrait" data-contexte-extrait></span>
+      </span>
+      <button class="chat__contexte-annuler" type="button" data-contexte-annuler aria-label="Annuler" title="Annuler">✕</button>
     </div>
 
     <?php // Les photos et fichiers choisis, en attente d'envoi : le script les montre ici. ?>

@@ -606,6 +606,8 @@ CREATE TABLE IF NOT EXISTS `messages` (
   `id`              INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `expediteur_id`   INT UNSIGNED NOT NULL,
   `destinataire_id` INT UNSIGNED NOT NULL,
+  -- Le message auquel celui-ci répond (la citation disparaît avec lui).
+  `reponse_a`       INT UNSIGNED NULL,
   `texte`           TEXT         NOT NULL,
   -- Une image jointe, rangée dans storage/messages ; le texte peut alors être vide.
   `image_nom`       VARCHAR(64)       NULL,
@@ -618,6 +620,8 @@ CREATE TABLE IF NOT EXISTS `messages` (
   `fichier_mime`    VARCHAR(120) NULL,
   `fichier_taille`  INT UNSIGNED NULL,
   `created_at`      DATETIME     NOT NULL,
+  -- La dernière modification du texte par qui l'a écrit.
+  `modifie_le`      DATETIME     NULL,
   `lu_le`           DATETIME     NULL,
   -- Supprimé pour les deux par qui l'a écrit (contenu vidé), ou caché d'un seul côté.
   `supprime_le`         DATETIME   NULL,
@@ -626,8 +630,11 @@ CREATE TABLE IF NOT EXISTS `messages` (
   PRIMARY KEY (`id`),
   KEY `idx_messages_fil` (`expediteur_id`, `destinataire_id`, `id`),
   KEY `idx_messages_non_lus` (`destinataire_id`, `lu_le`),
+  KEY `idx_messages_reponse` (`reponse_a`),
+  KEY `idx_messages_modifies` (`expediteur_id`, `destinataire_id`, `modifie_le`),
   CONSTRAINT `fk_messages_expediteur`   FOREIGN KEY (`expediteur_id`)   REFERENCES `users`(`id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_messages_destinataire` FOREIGN KEY (`destinataire_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
+  CONSTRAINT `fk_messages_destinataire` FOREIGN KEY (`destinataire_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_messages_reponse`      FOREIGN KEY (`reponse_a`)       REFERENCES `messages`(`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Les notifications de messages.

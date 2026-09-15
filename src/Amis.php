@@ -279,9 +279,10 @@ final class Amis
      *
      * @param ?array $image   l'image téléversée ($_FILES['image']), s'il y en a une
      * @param ?array $fichier le fichier téléversé ($_FILES['fichier']), s'il y en a un
+     * @param ?int   $reponseA le message auquel celui-ci répond ; ignoré s'il n'est pas de la conversation
      * @return array{0: ?int, 1: ?string} l'identifiant du message, ou la raison du refus
      */
-    public static function ecrire(int $moi, int $autre, string $texte, ?array $image = null, ?array $fichier = null): array
+    public static function ecrire(int $moi, int $autre, string $texte, ?array $image = null, ?array $fichier = null, ?int $reponseA = null): array
     {
         $texte = trim(str_replace(["\r\n", "\r"], "\n", $texte));
         $avecImage = $image !== null && ($image['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE;
@@ -324,10 +325,11 @@ final class Amis
 
         try {
             Database::run(
-                'INSERT INTO messages (expediteur_id, destinataire_id, texte, image_nom, image_mime, image_largeur, image_hauteur,
+                'INSERT INTO messages (expediteur_id, destinataire_id, reponse_a, texte, image_nom, image_mime, image_largeur, image_hauteur,
                                        fichier_nom, fichier_origine, fichier_mime, fichier_taille, created_at)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, UTC_TIMESTAMP())',
-                [$moi, $autre, $texte, $rangee['nom'] ?? null, $rangee['mime'] ?? null, $rangee['largeur'] ?? null, $rangee['hauteur'] ?? null,
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, UTC_TIMESTAMP())',
+                [$moi, $autre, $reponseA !== null && self::visible($moi, $autre, $reponseA) ? $reponseA : null,
+                 $texte, $rangee['nom'] ?? null, $rangee['mime'] ?? null, $rangee['largeur'] ?? null, $rangee['hauteur'] ?? null,
                  $joint['nom'] ?? null, $joint['origine'] ?? null, $joint['mime'] ?? null, $joint['taille'] ?? null]
             );
         } catch (Throwable $e) {
@@ -563,17 +565,114 @@ final class Amis
             [$autre, $moi]
         );
 
-        $messages = Database::all(
-            'SELECT id, expediteur_id, texte, image_nom, image_largeur, image_hauteur, fichier_nom, fichier_origine, fichier_mime, fichier_taille,
-                    created_at, lu_le, supprime_le FROM messages
-              WHERE ((expediteur_id = ? AND destinataire_id = ? AND masque_expediteur = 0)
-                  OR (expediteur_id = ? AND destinataire_id = ? AND masque_destinataire = 0))
-                AND id > ?
-              ORDER BY id DESC LIMIT ' . self::FIL_MAX,
-            [$moi, $autre, $autre, $moi, $apres]
-        );
+        $messages = self::lignes($moi, $autre, 'm.id > ?', [$apres], 'ORDER BY m.id DESC LIMIT ' . self::FIL_MAX);
 
         return array_map(static fn (array $m): array => self::pourAffichage($m, $moi), array_reverse($messages));
+    }
+
+    /**
+     * Les messages d'une conversation que la personne peut voir, avec de quoi
+     * citer celui auquel chacun répond.
+     */
+    private static function lignes(int $moi, int $autre, string $condition, array $parametres, string $suite): array
+    {
+        return Database::all(
+            'SELECT m.id, m.expediteur_id, m.texte, m.image_nom, m.image_largeur, m.image_hauteur,
+                    m.fichier_nom, m.fichier_origine, m.fichier_mime, m.fichier_taille,
+                    m.created_at, m.modifie_le, m.lu_le, m.supprime_le, m.reponse_a,
+                    r.expediteur_id AS r_expediteur, r.texte AS r_texte, r.image_nom AS r_image,
+                    r.fichier_origine AS r_fichier, r.supprime_le AS r_supprime,
+                    ((r.expediteur_id = ? AND r.masque_expediteur = 1) OR (r.destinataire_id = ? AND r.masque_destinataire = 1)) AS r_masque
+               FROM messages m
+               LEFT JOIN messages r ON r.id = m.reponse_a
+              WHERE ((m.expediteur_id = ? AND m.destinataire_id = ? AND m.masque_expediteur = 0)
+                  OR (m.expediteur_id = ? AND m.destinataire_id = ? AND m.masque_destinataire = 0))
+                AND ' . $condition . ' ' . $suite,
+            array_merge([$moi, $moi, $moi, $autre, $autre, $moi], $parametres)
+        );
+    }
+
+    /** Ce message est-il de cette conversation, et encore visible pour la personne ? */
+    private static function visible(int $moi, int $autre, int $messageId): bool
+    {
+        return Database::valeur(
+            'SELECT id FROM messages WHERE id = ?
+                AND ((expediteur_id = ? AND destinataire_id = ? AND masque_expediteur = 0)
+                  OR (expediteur_id = ? AND destinataire_id = ? AND masque_destinataire = 0))',
+            [$messageId, $moi, $autre, $autre, $moi]
+        ) !== null;
+    }
+
+    /**
+     * Les messages modifiés depuis tel instant (en temps universel), pour
+     * qu'une page déjà ouverte reprenne leur nouveau texte.
+     */
+    public static function modifications(int $moi, int $autre, string $depuis): array
+    {
+        if (!preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/', $depuis)) {
+            return [];
+        }
+        // Deux secondes de marge : une modification enregistrée pendant le relevé précédent n'est pas perdue.
+        $lignes = self::lignes($moi, $autre, 'm.modifie_le >= ? - INTERVAL 2 SECOND', [$depuis], 'ORDER BY m.id LIMIT 200');
+
+        return array_map(static fn (array $m): array => self::pourAffichage($m, $moi), $lignes);
+    }
+
+    /** L'instant présent en temps universel, tel que la base le compte. */
+    public static function maintenant(): string
+    {
+        return (string) Database::valeur('SELECT UTC_TIMESTAMP()');
+    }
+
+    /**
+     * Modifie le texte d'un message envoyé.
+     *
+     * Seul qui l'a écrit le peut, tant qu'il n'est pas supprimé. Un message
+     * avec une photo ou un fichier peut perdre sa légende ; un message de
+     * texte seul ne peut pas devenir vide — c'est « Supprimer » qu'il faut.
+     *
+     * @return array{0: bool, 1: string} réussi ou non, et le message à montrer
+     */
+    public static function modifierMessage(int $moi, int $messageId, string $texte): array
+    {
+        $texte = trim(str_replace(["\r\n", "\r"], "\n", $texte));
+        $message = Database::one(
+            'SELECT * FROM messages WHERE id = ? AND expediteur_id = ? AND masque_expediteur = 0',
+            [$messageId, $moi]
+        );
+        if ($message === null || !self::sontAmis($moi, (int) $message['destinataire_id'])) {
+            return [false, 'Seul qui a écrit un message peut le modifier.'];
+        }
+        if ($message['supprime_le'] !== null) {
+            return [false, 'Un message supprimé ne peut plus être modifié.'];
+        }
+        if (mb_strlen($texte) > self::MESSAGE_MAX) {
+            return [false, 'Un message ne peut pas dépasser ' . self::MESSAGE_MAX . ' caractères.'];
+        }
+        if ($texte === '' && $message['image_nom'] === null && $message['fichier_nom'] === null) {
+            return [false, 'Le message ne peut pas être vide : pour l’enlever, supprimez-le.'];
+        }
+        if ($texte !== (string) $message['texte']) {
+            Database::run('UPDATE messages SET texte = ?, modifie_le = UTC_TIMESTAMP() WHERE id = ?', [$texte, $messageId]);
+        }
+
+        return [true, 'Message modifié.'];
+    }
+
+    /** De quoi reconnaître un message cité : le début de son texte, ou sa pièce jointe. */
+    private static function extrait(array $cite): string
+    {
+        if ((int) ($cite['r_masque'] ?? 0) === 1) {
+            return 'Message supprimé';
+        }
+        if (($cite['r_supprime'] ?? null) !== null) {
+            return '🚫 Message supprimé';
+        }
+        $texte = trim((string) preg_replace('/\s+/u', ' ', (string) ($cite['r_texte'] ?? '')));
+        $piece = ($cite['r_image'] ?? null) !== null ? '📷 Photo'
+            : (($cite['r_fichier'] ?? null) !== null ? '📎 ' . $cite['r_fichier'] : '');
+
+        return mb_strimwidth($texte === '' ? $piece : ($piece === '' ? $texte : $piece . ' · ' . $texte), 0, 120, '…');
     }
 
     /**
@@ -662,7 +761,7 @@ final class Amis
         }
         Database::run(
             "UPDATE messages SET texte = '', image_nom = NULL, image_mime = NULL, image_largeur = NULL, image_hauteur = NULL,
-                    fichier_nom = NULL, fichier_origine = NULL, fichier_mime = NULL, fichier_taille = NULL
+                    fichier_nom = NULL, fichier_origine = NULL, fichier_mime = NULL, fichier_taille = NULL, reponse_a = NULL
               WHERE id = ?",
             [(int) $message['id']]
         );
@@ -767,6 +866,13 @@ final class Amis
             'moi' => (int) $message['expediteur_id'] === $moi,
             'texte' => (string) $message['texte'],
             'supprime' => ($message['supprime_le'] ?? null) !== null,
+            'modifie' => ($message['modifie_le'] ?? null) !== null && ($message['supprime_le'] ?? null) === null,
+            'reponse' => ($message['r_expediteur'] ?? null) === null ? null : [
+                'id' => (int) $message['reponse_a'],
+                'auteur' => (int) $message['r_expediteur'] === $moi ? 'Vous'
+                    : (string) (self::compte((int) $message['r_expediteur'])['pseudo'] ?? ''),
+                'extrait' => self::extrait($message),
+            ],
             'image' => ($message['image_nom'] ?? null) === null ? null : url('amis/images/' . (int) $message['id']),
             'largeur' => (int) ($message['image_largeur'] ?? 0),
             'hauteur' => (int) ($message['image_hauteur'] ?? 0),
