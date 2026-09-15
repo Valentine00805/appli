@@ -1059,6 +1059,13 @@
       });
 
       var enBas = function () { fil.scrollTop = fil.scrollHeight; };
+      // Amène une bulle au milieu de la conversation. Calculé plutôt que « scrollIntoView » : le défilement
+      // animé ne s'exécute pas toujours, et ne doit pas faire bouger la page, figée, autour.
+      var auCentre = function (bulle) {
+        var cadre = fil.getBoundingClientRect();
+        var place = bulle.getBoundingClientRect();
+        fil.scrollTop += (place.top - cadre.top) - (fil.clientHeight - place.height) / 2;
+      };
       var presqueEnBas = function () { return fil.scrollHeight - fil.scrollTop - fil.clientHeight < 80; };
 
       /*
@@ -1277,7 +1284,7 @@
           evenement.preventDefault();
           var cible = fil.querySelector('[data-message="' + citation.getAttribute('data-citation') + '"]');
           if (cible) {
-            cible.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            auCentre(cible);
             cible.classList.remove('bulle--repere');
             void cible.offsetWidth;
             cible.classList.add('bulle--repere');
@@ -1473,7 +1480,7 @@
           return;
         }
         colle = false;
-        bulle.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        auCentre(bulle);
         bulle.classList.remove('bulle--repere');
         void bulle.offsetWidth;
         bulle.classList.add('bulle--repere');
@@ -1523,6 +1530,7 @@
       boutonEpingles.addEventListener('click', function () {
         if (panneauEpingles.hidden) {
           fermerMenu();
+          fermerRecherche();
           panneauEpingles.hidden = false;
           boutonEpingles.setAttribute('aria-expanded', 'true');
           var premier = panneauEpingles.querySelector('[data-aller-message]');
@@ -1543,6 +1551,119 @@
       document.addEventListener('keydown', function (evenement) {
         if (evenement.key === 'Escape' && !panneauEpingles.hidden) { fermerEpingles(); boutonEpingles.focus(); }
       });
+      /*
+       * Chercher dans la conversation.
+       *
+       * Le bouton 🔎 ouvre un champ sous l'en-tête. Dès deux caractères, les
+       * messages qui contiennent le mot (ou dont le fichier le porte) arrivent,
+       * du plus récent au plus ancien, le mot surligné. Un clic ramène au
+       * message, comme une épingle — même s'il faut rouvrir la conversation
+       * plus haut pour l'afficher.
+       */
+      var boutonRecherche = chat.querySelector('[data-recherche-bouton]');
+      var panneauRecherche = chat.querySelector('[data-recherche-panneau]');
+      var champRecherche = panneauRecherche.querySelector('[data-recherche-champ]');
+      var etatRecherche = panneauRecherche.querySelector('[data-recherche-etat]');
+      var listeRecherche = panneauRecherche.querySelector('[data-recherche-liste]');
+      var minuterieRecherche = null;
+      var numeroRecherche = 0;
+      function fermerRecherche() {
+        if (panneauRecherche.hidden) { return; }
+        panneauRecherche.hidden = true;
+        boutonRecherche.setAttribute('aria-expanded', 'false');
+      }
+      var dessinerResultats = function (reponse, recherche) {
+        listeRecherche.textContent = '';
+        var resultats = reponse.resultats || [];
+        etatRecherche.textContent = resultats.length === 0
+          ? 'Aucun message ne contient « ' + recherche + ' ».'
+          : reponse.total + ' message' + (reponse.total > 1 ? 's' : '') + ' trouvé' + (reponse.total > 1 ? 's' : '')
+            + (reponse.total > resultats.length ? ' — les ' + resultats.length + ' plus récents :' : '');
+        resultats.forEach(function (r) {
+          var li = document.createElement('li');
+          var b = document.createElement('button');
+          b.type = 'button';
+          b.className = 'epingles__element';
+          b.setAttribute('data-aller-message', String(r.id));
+          var entete = document.createElement('span');
+          entete.className = 'epingles__entete';
+          var auteur = document.createElement('strong');
+          auteur.textContent = r.auteur;
+          var quand = document.createElement('span');
+          quand.textContent = r.quand;
+          entete.appendChild(auteur);
+          entete.appendChild(quand);
+          var extrait = document.createElement('span');
+          extrait.className = 'epingles__extrait recherche-chat__extrait';
+          extrait.appendChild(document.createTextNode(r.piece + r.avant));
+          if (r.trouve) {
+            var surligne = document.createElement('mark');
+            surligne.textContent = r.trouve;
+            extrait.appendChild(surligne);
+          }
+          extrait.appendChild(document.createTextNode(r.apres));
+          b.appendChild(entete);
+          b.appendChild(extrait);
+          li.appendChild(b);
+          listeRecherche.appendChild(li);
+        });
+      };
+      var lancerRecherche = function () {
+        var recherche = champRecherche.value.trim();
+        clearTimeout(minuterieRecherche);
+        if (recherche.length < 2) {
+          listeRecherche.textContent = '';
+          etatRecherche.textContent = 'Tapez au moins deux caractères.';
+          return;
+        }
+        etatRecherche.textContent = 'Recherche…';
+        // Une frappe rapide ne lance qu'une recherche, et seule la dernière réponse compte.
+        minuterieRecherche = setTimeout(function () {
+          var numero = ++numeroRecherche;
+          fetch(chat.getAttribute('data-rechercher') + '?q=' + encodeURIComponent(recherche), {
+            credentials: 'same-origin', headers: { Accept: 'application/json' }
+          }).then(function (r) { return r.json(); })
+            .then(function (reponse) {
+              if (numero !== numeroRecherche) { return; }
+              if (!reponse.fait) { throw new Error(reponse.message || ''); }
+              dessinerResultats(reponse, recherche);
+            })
+            .catch(function (e) { if (numero === numeroRecherche) { etatRecherche.textContent = e.message || 'La recherche n’a pas abouti.'; } });
+        }, 250);
+      };
+      champRecherche.addEventListener('input', lancerRecherche);
+      boutonRecherche.addEventListener('click', function () {
+        if (panneauRecherche.hidden) {
+          fermerMenu();
+          fermerEpingles();
+          panneauRecherche.hidden = false;
+          boutonRecherche.setAttribute('aria-expanded', 'true');
+          champRecherche.focus();
+          champRecherche.select();
+        } else {
+          fermerRecherche();
+        }
+      });
+      panneauRecherche.addEventListener('click', function (evenement) {
+        var element = evenement.target.closest('[data-aller-message]');
+        if (!element) { return; }
+        fermerRecherche();
+        allerAuMessage(element.getAttribute('data-aller-message'));
+      });
+      document.addEventListener('click', function (evenement) {
+        if (!panneauRecherche.hidden && !panneauRecherche.contains(evenement.target) && !boutonRecherche.contains(evenement.target)) { fermerRecherche(); }
+      });
+      document.addEventListener('keydown', function (evenement) {
+        if (evenement.key === 'Escape' && !panneauRecherche.hidden) { fermerRecherche(); boutonRecherche.focus(); }
+      });
+      // Ctrl+F (ou Cmd+F) dans une discussion ouvre la recherche de la conversation.
+      document.addEventListener('keydown', function (evenement) {
+        if ((evenement.ctrlKey || evenement.metaKey) && !evenement.altKey && evenement.key.toLowerCase() === 'f') {
+          evenement.preventDefault();
+          if (panneauRecherche.hidden) { boutonRecherche.click(); } else { champRecherche.focus(); champRecherche.select(); }
+        }
+      });
+
       // Ouverte sur un message précis (depuis une épingle) : on s'y rend, plutôt qu'en bas.
       if (chat.getAttribute('data-cible')) {
         setTimeout(function () { allerAuMessage(chat.getAttribute('data-cible')); }, 60);

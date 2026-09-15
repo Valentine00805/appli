@@ -967,6 +967,102 @@ final class Amis
         return $messages;
     }
 
+    /** Résultats montrés au plus pour une recherche dans une conversation. */
+    public const RECHERCHE_MAX = 50;
+
+    /**
+     * Cherche un mot dans une conversation : le texte des messages et le nom
+     * des fichiers, sans tenir compte des majuscules ni des accents, du plus
+     * récent au plus ancien. Les messages supprimés ou cachés pour soi n'y
+     * sont pas.
+     *
+     * Chaque résultat est découpé autour du mot trouvé — avant, trouvé, après —
+     * pour que la page le surligne sans jamais interpréter le texte.
+     *
+     * @return array{total: int, resultats: list<array>}
+     */
+    public static function rechercher(int $moi, int $autre, string $recherche): array
+    {
+        $recherche = trim((string) preg_replace('/\s+/u', ' ', $recherche));
+        if (mb_strlen($recherche) < 2) {
+            return ['total' => 0, 'resultats' => []];
+        }
+        $motif = '%' . addcslashes($recherche, '\\%_') . '%';
+        $conditions = '((expediteur_id = ? AND destinataire_id = ? AND masque_expediteur = 0)
+                     OR (expediteur_id = ? AND destinataire_id = ? AND masque_destinataire = 0))
+                    AND supprime_le IS NULL AND (texte LIKE ? OR fichier_origine LIKE ?)';
+        $parametres = [$moi, $autre, $autre, $moi, $motif, $motif];
+
+        $total = (int) Database::valeur("SELECT COUNT(*) FROM messages WHERE $conditions", $parametres);
+        $lignes = Database::all(
+            "SELECT id, expediteur_id, texte, fichier_origine, image_nom, created_at FROM messages
+              WHERE $conditions ORDER BY id DESC LIMIT " . self::RECHERCHE_MAX,
+            $parametres
+        );
+        $pseudo = (string) (self::compte($autre)['pseudo'] ?? '');
+
+        $resultats = array_map(static function (array $l) use ($moi, $pseudo, $recherche): array {
+            $texte = trim((string) preg_replace('/\s+/u', ' ', (string) $l['texte']));
+            $nomFichier = (string) ($l['fichier_origine'] ?? '');
+            // Le mot peut être dans le texte ou, à défaut, dans le nom du fichier.
+            $source = self::trouver($texte, $recherche) !== null || $nomFichier === '' ? $texte : $nomFichier;
+            $moment = self::local((string) $l['created_at']);
+            $jour = self::jour($moment);
+
+            return [
+                'id' => (int) $l['id'],
+                'auteur' => (int) $l['expediteur_id'] === $moi ? 'Vous' : $pseudo,
+                'quand' => ($jour === 'Aujourd’hui' ? '' : $jour . ' · ') . $moment->format('H:i'),
+                'piece' => $nomFichier !== '' ? '📎 ' : ($l['image_nom'] !== null ? '📷 ' : ''),
+            ] + self::decouper($source, $recherche);
+        }, $lignes);
+
+        return ['total' => $total, 'resultats' => $resultats];
+    }
+
+    /** Un texte ramené à ses lettres de base, sans changer sa longueur : « Élève » → « eleve ». */
+    private static function plier(string $texte): string
+    {
+        static $sans = null;
+        $sans ??= array_combine(
+            preg_split('//u', 'àâäáãåçéèêëíìîïñóòôöõúùûüýÿœæÀÂÄÁÃÅÇÉÈÊËÍÌÎÏÑÓÒÔÖÕÚÙÛÜÝŸŒÆ', -1, PREG_SPLIT_NO_EMPTY),
+            preg_split('//u', 'aaaaaaceeeeiiiinooooouuuuyyoaaaaaaaceeeeiiiinooooouuuuyyoa', -1, PREG_SPLIT_NO_EMPTY)
+        );
+
+        return mb_strtolower(strtr($texte, $sans));
+    }
+
+    /** La position du mot cherché dans un texte, sans majuscules ni accents, ou null. */
+    private static function trouver(string $texte, string $recherche): ?int
+    {
+        $position = mb_strpos(self::plier($texte), self::plier($recherche));
+
+        return $position === false ? null : $position;
+    }
+
+    /**
+     * Un extrait d'une centaine de caractères autour du mot trouvé.
+     *
+     * @return array{avant: string, trouve: string, apres: string}
+     */
+    private static function decouper(string $texte, string $recherche): array
+    {
+        $position = self::trouver($texte, $recherche);
+        if ($position === null) {
+            return ['avant' => mb_strimwidth($texte, 0, 110, '…'), 'trouve' => '', 'apres' => ''];
+        }
+        $longueur = mb_strlen($recherche);
+        $debut = max(0, $position - 40);
+        $avant = mb_substr($texte, $debut, $position - $debut);
+        $apres = mb_substr($texte, $position + $longueur, 70);
+
+        return [
+            'avant' => ($debut > 0 ? '…' : '') . $avant,
+            'trouve' => mb_substr($texte, $position, $longueur),
+            'apres' => $apres . (mb_strlen($texte) > $position + $longueur + 70 ? '…' : ''),
+        ];
+    }
+
     /**
      * Épingle un message pour soi, ou retire l'épingle.
      *

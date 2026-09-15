@@ -40,6 +40,7 @@ foreach ($messages as $m) {
            data-reagir="<?= e(url('amis/messages/0/reaction')) ?>"
            data-epingler="<?= e(url('amis/messages/0/epingle')) ?>"
            data-conversation="<?= e(url('amis/' . $actif)) ?>"
+           data-rechercher="<?= e(url('amis/' . $actif . '/recherche')) ?>"
            <?= $cible !== null ? 'data-cible="' . (int) $cible . '"' : '' ?>
            data-reactions-rapides="<?= e(implode(' ', Amis::REACTIONS_RAPIDES)) ?>"
            data-maintenant="<?= e($maintenant) ?>"
@@ -55,6 +56,9 @@ foreach ($messages as $m) {
           <span class="chat__profil-aide">Profil, photos et fichiers</span>
         </span>
       </a>
+      <?php // Chercher dans la conversation : le champ s'ouvre sous le bouton, un résultat ramène au message. ?>
+      <button class="bouton bouton--secondaire bouton--petit chat__recherche-bouton" type="button" data-recherche-bouton
+              aria-expanded="false" aria-controls="chat-recherche" title="Rechercher dans la conversation" aria-label="Rechercher dans la conversation">🔎</button>
       <?php // Les messages épinglés : la liste s'ouvre sous le bouton, un clic ramène au message. ?>
       <button class="bouton bouton--secondaire bouton--petit chat__epingles-bouton" type="button" data-epingles-bouton
               aria-expanded="false" aria-controls="chat-epingles" title="Messages épinglés">
@@ -62,6 +66,14 @@ foreach ($messages as $m) {
       </button>
       <a class="bouton bouton--secondaire bouton--petit chat__profil-bouton" href="<?= url('amis/' . $actif . '/profil') ?>" data-fenetre>ℹ️ Profil</a>
     </header>
+
+    <div class="epingles recherche-chat" id="chat-recherche" data-recherche-panneau hidden role="search">
+      <label class="sr-only" for="chat-recherche-champ">Rechercher dans la conversation</label>
+      <input type="search" id="chat-recherche-champ" class="recherche-chat__champ" data-recherche-champ
+             placeholder="Rechercher un message…" autocomplete="off" maxlength="100">
+      <p class="epingles__titre recherche-chat__etat" data-recherche-etat aria-live="polite">Tapez au moins deux caractères.</p>
+      <ul class="epingles__liste" data-recherche-liste></ul>
+    </div>
 
     <div class="epingles" id="chat-epingles" data-epingles-panneau hidden>
       <p class="epingles__titre">📌 Messages épinglés</p>

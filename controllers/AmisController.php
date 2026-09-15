@@ -222,6 +222,19 @@ final class AmisController
         ] + Amis::changements($moi, $id, $apres));
     }
 
+    /** Cherche un mot dans la conversation avec un ami. */
+    public function rechercher(int $id): void
+    {
+        Auth::exiger();
+        $moi = Auth::id();
+        session_write_close();
+        if (!Amis::sontAmis($moi, $id)) {
+            http_response_code(403);
+            repondre_json(['fait' => false, 'message' => 'Vous n’êtes plus amis.']);
+        }
+        repondre_json(['fait' => true] + Amis::rechercher($moi, $id, (string) ($_GET['q'] ?? '')));
+    }
+
     /** Épingle un message pour soi (« epingle=1 »), ou retire l'épingle. */
     public function epingler(int $id): void
     {

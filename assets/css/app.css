@@ -267,7 +267,11 @@ textarea { min-height: 260px; resize: vertical; line-height: 1.65; }
 .chat__profil-texte { min-width: 0; display: grid; }
 .chat__profil-aide { font-size: .75rem; color: var(--texte-doux); }
 .chat__profil-bouton { flex: none; }
-.chat__epingles-bouton { flex: none; }
+.chat__epingles-bouton, .chat__recherche-bouton { flex: none; }
+.chat__recherche-bouton[aria-expanded="true"] { background: var(--accent-doux); border-color: var(--accent); }
+.recherche-chat__champ { width: 100%; margin-bottom: .35rem; }
+.recherche-chat__extrait { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.recherche-chat__extrait mark { background: color-mix(in srgb, #facc15 55%, transparent); color: inherit; border-radius: 3px; padding: 0 .1rem; }
 .chat__epingles-bouton[aria-expanded="true"] { background: var(--accent-doux); border-color: var(--accent); }
 .chat__fil { position: relative; }
 
