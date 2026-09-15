@@ -118,10 +118,6 @@ if ($utilisateur !== null
   <span class="sr-only">Remonter en haut de la page</span>
 </a>
 
-<footer class="pied">
-  <p><?= e((string) Config::get('app', 'nom')) ?> — vos cours et votre planning, en local.</p>
-</footer>
-
 <?php
 /*
  * La relecture de l'agenda Outlook, sans qu'on ait à la demander.

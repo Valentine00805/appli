@@ -130,10 +130,6 @@ html { scroll-padding-top: 4.5rem; }
 /* --- Structure ------------------------------------------------------- */
 
 .conteneur { max-width: 1140px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
-.pied {
-  border-top: 1px solid var(--bordure); color: var(--texte-doux);
-  font-size: .85rem; text-align: center; padding: 1.25rem 1rem;
-}
 
 .entete-page {
   display: flex; align-items: flex-end; justify-content: space-between;
@@ -1040,7 +1036,7 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
 .seance__fin-actions { justify-content: center; margin: 0; }
 
 @media print {
-  .entete, .pied, .actions, .filtres, .cal-jour__ajout { display: none !important; }
+  .entete, .actions, .filtres, .cal-jour__ajout { display: none !important; }
   body { background: #fff; }
   .carte { box-shadow: none; }
 }
