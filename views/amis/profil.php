@@ -13,6 +13,8 @@
  * @var list<array> $photos
  * @var list<array> $fichiersPartages
  * @var int $messages
+ * @var ?array $fond
+ * @var ?string $adresseFond
  * @var bool $dansUneFenetre
  */
 $dansUneFenetre = $dansUneFenetre ?? false;
@@ -34,6 +36,51 @@ $pseudo = (string) $ami['pseudo'];
     </div>
   </div>
 </div>
+
+<?php
+/*
+ * Le fond d'écran de la conversation : une image prise dans ses fichiers,
+ * que les deux amis voient derrière leurs messages.
+ */
+?>
+<section class="carte profil-ami__section" id="fond-discussion">
+  <h2 style="margin-top:0">🖼️ Fond d’écran de la conversation</h2>
+  <div class="fond-reglage">
+    <div class="fond-reglage__apercu<?= $adresseFond === null ? ' fond-reglage__apercu--vide' : '' ?>" data-fond-apercu
+         <?= $adresseFond !== null ? 'style="background-image: url(&quot;' . e($adresseFond) . '&quot;)"' : '' ?>>
+      <span class="fond-reglage__bulle">Bonjour !</span>
+      <span class="fond-reglage__bulle fond-reglage__bulle--moi">Coucou 👋</span>
+    </div>
+    <div class="fond-reglage__infos">
+      <p class="discret" style="margin:0 0 .75rem" data-fond-etat>
+        <?php if ($fond === null): ?>
+          Aucun fond pour l’instant.
+        <?php else: ?>
+          Choisi par <?= (int) ($fond['choisi_par'] ?? 0) === Auth::id() ? 'vous' : e($pseudo) ?>
+          le <?= e(date_fr(Amis::local((string) $fond['choisi_le'])->format('Y-m-d H:i:s'), false)) ?>.
+        <?php endif; ?>
+        <?= e($pseudo) ?> le voit aussi.
+      </p>
+      <form method="post" action="<?= url('amis/' . (int) $ami['id'] . '/fond') ?>" enctype="multipart/form-data" class="fond-reglage__choix" data-fond-formulaire>
+        <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
+        <input type="file" name="fond" id="fond-fichier" class="sr-only" required
+               accept="image/jpeg,image/png,image/gif,image/webp" data-fond-fichier>
+        <label class="bouton bouton--secondaire" for="fond-fichier">🖼️ <?= $fond === null ? 'Choisir une image' : 'Changer d’image' ?></label>
+        <span class="fond-reglage__nouveau" data-fond-nouveau hidden>
+          <button class="bouton" type="submit">Enregistrer</button>
+          <button class="bouton bouton--discret" type="button" data-fond-annuler>Annuler</button>
+        </span>
+      </form>
+      <?php if ($fond !== null): ?>
+        <form method="post" action="<?= url('amis/' . (int) $ami['id'] . '/fond/retirer') ?>" style="margin-top:.5rem" data-fond-retirer>
+          <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
+          <button class="bouton bouton--discret" type="submit">Retirer le fond</button>
+        </form>
+      <?php endif; ?>
+      <p class="champ__aide" style="margin-bottom:0">JPEG, PNG, GIF ou WebP, <?= intdiv(Amis::IMAGE_MAX_OCTETS, 1024 * 1024) ?> Mo au plus.</p>
+    </div>
+  </div>
+</section>
 
 <section class="carte profil-ami__section">
   <h2 style="margin-top:0">📷 Photos <span class="discret profil-ami__nombre"><?= count($photos) ?></span></h2>

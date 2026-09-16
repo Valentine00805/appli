@@ -126,6 +126,7 @@ final class AmisController
             'vuJusqua' => Amis::vuJusqua($moi, $id),
             'maintenant' => $maintenant,
             'epingles' => Amis::epingles($moi, $id),
+            'adresseFond' => Amis::adresseFond($moi, $id),
             'cible' => $cible,
             'amis' => $amis,
             'derniers' => Amis::messagesParId(array_column($amis, 'dernier_id')),
@@ -182,6 +183,8 @@ final class AmisController
             'photos' => $partages['photos'],
             'fichiersPartages' => $partages['fichiers'],
             'messages' => $partages['messages'],
+            'fond' => Amis::fond($moi, $id),
+            'adresseFond' => Amis::adresseFond($moi, $id),
         ];
 
         if (Vue::enFenetre()) {
@@ -219,7 +222,65 @@ final class AmisController
             'modifies' => Amis::modifications($moi, $id, (string) ($_GET['modifies_depuis'] ?? '')),
             'reactions' => Amis::reactionsModifiees($moi, $id, (string) ($_GET['modifies_depuis'] ?? '')),
             'maintenant' => $maintenant,
+            // Le fond, pour que le changement fait par l'ami se voie sans recharger.
+            'fond' => Amis::adresseFond($moi, $id),
         ] + Amis::changements($moi, $id, $apres));
+    }
+
+    /** L'image de fond de la conversation, pour les deux amis seulement. */
+    public function fond(int $id): void
+    {
+        Auth::exiger();
+        session_write_close();
+        $moi = Auth::id();
+        $fond = Amis::sontAmis($moi, $id) ? Amis::fond($moi, $id) : null;
+        $chemin = $fond === null ? null : Amis::dossierImages() . DIRECTORY_SEPARATOR . basename((string) $fond['image_nom']);
+
+        if ($chemin === null || !is_file($chemin) || !in_array($fond['image_mime'], array_column(Amis::IMAGE_TYPES, 0), true)) {
+            http_response_code(404);
+            exit('Fond introuvable.');
+        }
+
+        header('Content-Type: ' . $fond['image_mime']);
+        header('Content-Length: ' . (string) filesize($chemin));
+        header('X-Content-Type-Options: nosniff');
+        header("Content-Security-Policy: default-src 'none'; img-src 'self'; style-src 'unsafe-inline'");
+        header('Content-Disposition: inline; filename="fond.' . pathinfo($chemin, PATHINFO_EXTENSION) . '"');
+        // L'adresse change avec l'image : celle-ci peut rester longtemps chez le navigateur.
+        header('Cache-Control: private, max-age=604800, immutable');
+        readfile($chemin);
+        exit;
+    }
+
+    /** Pose un fond d'écran sur la conversation, choisi dans ses fichiers. */
+    public function changerFond(int $id): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $image = isset($_FILES['fond']) && is_array($_FILES['fond']) && !is_array($_FILES['fond']['name'] ?? null) ? $_FILES['fond'] : null;
+        $refus = Amis::changerFond(Auth::id(), $id, $image);
+        if ($refus !== null) {
+            Session::flash('erreur', $refus);
+            redirect(Amis::sontAmis(Auth::id(), $id) ? 'amis/' . $id : 'amis');
+        }
+        Session::flash('succes', 'Fond d’écran changé : vous le voyez tous les deux.');
+        redirect('amis/' . $id);
+    }
+
+    /** Retire le fond d'écran de la conversation, pour les deux. */
+    public function retirerFond(int $id): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        if (!Amis::sontAmis(Auth::id(), $id)) {
+            Session::flash('erreur', 'Vous ne pouvez régler que les conversations avec vos amis.');
+            redirect('amis');
+        }
+        $retire = Amis::retirerFond(Auth::id(), $id);
+        Session::flash($retire ? 'succes' : 'info', $retire
+            ? 'Fond d’écran retiré, pour vous deux.'
+            : 'Cette conversation n’avait pas de fond d’écran.');
+        redirect('amis/' . $id);
     }
 
     /** Cherche un mot dans la conversation avec un ami. */

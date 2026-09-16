@@ -197,6 +197,85 @@ final class Amis
         return Database::one("SELECT id, pseudo FROM users WHERE id = ? AND pseudo IS NOT NULL AND pseudo <> ''", [$id]);
     }
 
+    /** Le fond d'écran de la conversation entre deux comptes, ou null. */
+    public static function fond(int $moi, int $autre): ?array
+    {
+        return Database::one(
+            'SELECT image_nom, image_mime, choisi_par, choisi_le FROM fonds_discussion WHERE petit_id = ? AND grand_id = ?',
+            [min($moi, $autre), max($moi, $autre)]
+        );
+    }
+
+    /**
+     * L'adresse du fond, pour la page : elle change avec l'image (son nom tiré
+     * au hasard y figure), si bien que le navigateur peut la garder longtemps.
+     */
+    public static function adresseFond(int $moi, int $autre): ?string
+    {
+        $fond = self::fond($moi, $autre);
+
+        return $fond === null ? null : url('amis/' . $autre . '/fond', ['v' => substr((string) $fond['image_nom'], 0, 12)]);
+    }
+
+    /**
+     * Pose un fond d'écran sur la conversation, pour les deux.
+     *
+     * @return ?string la raison du refus, ou null
+     */
+    public static function changerFond(int $moi, int $autre, ?array $image): ?string
+    {
+        if (!self::sontAmis($moi, $autre)) {
+            return 'Vous ne pouvez régler que les conversations avec vos amis.';
+        }
+        if ($image === null || ($image['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) {
+            return 'Choisissez une image.';
+        }
+        $rangee = self::rangerImage($image);
+        if (is_string($rangee)) {
+            return $rangee;
+        }
+
+        $ancien = self::fond($moi, $autre);
+        try {
+            Database::run(
+                'INSERT INTO fonds_discussion (petit_id, grand_id, image_nom, image_mime, choisi_par, choisi_le)
+                 VALUES (?, ?, ?, ?, ?, UTC_TIMESTAMP())
+                 ON DUPLICATE KEY UPDATE image_nom = VALUES(image_nom), image_mime = VALUES(image_mime),
+                                         choisi_par = VALUES(choisi_par), choisi_le = VALUES(choisi_le)',
+                [min($moi, $autre), max($moi, $autre), $rangee['nom'], $rangee['mime'], $moi]
+            );
+        } catch (Throwable $e) {
+            @unlink(self::dossierImages() . DIRECTORY_SEPARATOR . $rangee['nom']);
+            throw $e;
+        }
+        if ($ancien !== null) {
+            self::effacerImageFond((string) $ancien['image_nom']);
+        }
+
+        return null;
+    }
+
+    /** Retire le fond d'écran de la conversation, pour les deux. Vrai s'il y en avait un. */
+    public static function retirerFond(int $moi, int $autre): bool
+    {
+        $ancien = self::fond($moi, $autre);
+        if ($ancien === null) {
+            return false;
+        }
+        Database::run('DELETE FROM fonds_discussion WHERE petit_id = ? AND grand_id = ? AND image_nom = ?',
+            [min($moi, $autre), max($moi, $autre), $ancien['image_nom']]);
+        self::effacerImageFond((string) $ancien['image_nom']);
+
+        return true;
+    }
+
+    private static function effacerImageFond(string $nom): void
+    {
+        if (preg_match('/^[0-9a-f]{32}\.[a-z0-9]{1,8}$/', $nom)) {
+            @unlink(self::dossierImages() . DIRECTORY_SEPARATOR . $nom);
+        }
+    }
+
     /** L'amitié entre deux comptes, quel qu'en soit le sens, ou null. */
     public static function relation(int $moi, int $autre): ?array
     {

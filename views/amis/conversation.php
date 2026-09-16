@@ -95,7 +95,9 @@ foreach ($messages as $m) {
       </p>
     </div>
 
-    <div class="chat__messages" data-chat-messages aria-live="polite">
+    <?php // Le fond d'écran, commun aux deux amis ; la page suit ses changements. ?>
+    <div class="chat__messages<?= $adresseFond !== null ? ' chat__messages--fond' : '' ?>" data-chat-messages aria-live="polite"
+         data-fond="<?= e((string) $adresseFond) ?>"<?= $adresseFond !== null ? ' style="--fond-discussion: url(&quot;' . e($adresseFond) . '&quot;)"' : '' ?>>
       <?php if ($messages === []): ?>
         <p class="chat__vide" data-chat-vide>Aucun message pour l’instant. Écrivez le premier !</p>
       <?php endif; ?>

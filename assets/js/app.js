@@ -131,6 +131,39 @@
   }
 
   /*
+   * Le fond d'écran d'une conversation, dans le profil de l'ami : l'image
+   * choisie s'essaie dans l'aperçu, et ne part qu'avec « Enregistrer ».
+   * « Annuler » remet l'aperçu tel qu'il était.
+   */
+  var apercuFond = null;
+  document.addEventListener('change', function (evenement) {
+    var champ = evenement.target;
+    if (!champ.matches || !champ.matches('[data-fond-fichier]')) { return; }
+    var carte = champ.closest('#fond-discussion');
+    var apercu = carte.querySelector('[data-fond-apercu]');
+    if (!apercu.hasAttribute('data-fond-avant')) { apercu.setAttribute('data-fond-avant', apercu.style.backgroundImage || ''); }
+    if (apercuFond) { URL.revokeObjectURL(apercuFond); apercuFond = null; }
+    var fichier = champ.files && champ.files[0];
+    carte.querySelector('[data-fond-nouveau]').hidden = !fichier;
+    if (!fichier) { return; }
+    apercuFond = URL.createObjectURL(fichier);
+    apercu.style.backgroundImage = 'url("' + apercuFond + '")';
+    apercu.classList.remove('fond-reglage__apercu--vide');
+  });
+  document.addEventListener('click', function (evenement) {
+    var annuler = evenement.target.closest && evenement.target.closest('[data-fond-annuler]');
+    if (!annuler) { return; }
+    var carte = annuler.closest('#fond-discussion');
+    var apercu = carte.querySelector('[data-fond-apercu]');
+    var avant = apercu.getAttribute('data-fond-avant') || '';
+    carte.querySelector('[data-fond-formulaire]').reset();
+    carte.querySelector('[data-fond-nouveau]').hidden = true;
+    apercu.style.backgroundImage = avant;
+    apercu.classList.toggle('fond-reglage__apercu--vide', !avant);
+    if (apercuFond) { URL.revokeObjectURL(apercuFond); apercuFond = null; }
+  });
+
+  /*
    * Les fenêtres de confirmation : un bouton « data-ouvrir-dialogue » ouvre
    * la fenêtre qu'il nomme, par-dessus tout le reste — même une autre
    * fenêtre. Écoutées sur le document, elles marchent aussi dans un contenu
@@ -2009,11 +2042,25 @@
             dessinerReactions(fil.querySelector('[data-message="' + m.id + '"]'), m.reactions);
           });
           if (reponse.maintenant) { chat.setAttribute('data-maintenant', reponse.maintenant); }
+          if ('fond' in reponse) { poserFond(reponse.fond); }
           vuJusqua = reponse.vu_jusqua || vuJusqua;
           majVu();
           if (enBasAvant && reponse.messages && reponse.messages.length) { enBas(); }
         }).catch(function () { /* réseau coupé : on réessaiera au prochain tour */ })
           .then(function () { enCours = false; });
+      };
+
+      // Le fond d'écran choisi par l'un paraît chez l'autre au relevé suivant.
+      var poserFond = function (adresse) {
+        adresse = adresse || '';
+        if (fil.getAttribute('data-fond') === adresse) { return; }
+        fil.setAttribute('data-fond', adresse);
+        fil.classList.toggle('chat__messages--fond', adresse !== '');
+        if (adresse) {
+          fil.style.setProperty('--fond-discussion', 'url("' + adresse.replace(/["\\\n]/g, '') + '")');
+        } else {
+          fil.style.removeProperty('--fond-discussion');
+        }
       };
 
       var montrerErreur = function (texte) {

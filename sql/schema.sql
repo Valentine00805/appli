@@ -735,3 +735,19 @@ CREATE TABLE IF NOT EXISTS `epingles` (
   CONSTRAINT `fk_epingles_user`    FOREIGN KEY (`user_id`)    REFERENCES `users`(`id`)    ON DELETE CASCADE,
   CONSTRAINT `fk_epingles_message` FOREIGN KEY (`message_id`) REFERENCES `messages`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Le fond d'écran d'une conversation, le même pour les deux amis.
+CREATE TABLE IF NOT EXISTS `fonds_discussion` (
+  `petit_id`   INT UNSIGNED NOT NULL,
+  `grand_id`   INT UNSIGNED NOT NULL,
+  `image_nom`  VARCHAR(64)  NOT NULL,
+  `image_mime` VARCHAR(40)  NOT NULL,
+  `choisi_par` INT UNSIGNED NULL,
+  `choisi_le`  DATETIME     NOT NULL,
+  PRIMARY KEY (`petit_id`, `grand_id`),
+  KEY `idx_fonds_grand` (`grand_id`),
+  KEY `idx_fonds_choisi_par` (`choisi_par`),
+  CONSTRAINT `fk_fonds_petit`      FOREIGN KEY (`petit_id`)   REFERENCES `users`(`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_fonds_grand`      FOREIGN KEY (`grand_id`)   REFERENCES `users`(`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_fonds_choisi_par` FOREIGN KEY (`choisi_par`) REFERENCES `users`(`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
