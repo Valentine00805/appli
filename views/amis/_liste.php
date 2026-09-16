@@ -40,7 +40,7 @@ $actif = $actif ?? null;
               <?php endif; ?>
             </span>
             <span class="ami__ligne">
-              <span class="ami__apercu"><?php if ($vocal): ?><?= e($vous) ?><svg class="ami__micro" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false"><rect x="9" y="3" width="6" height="12" rx="3" fill="currentColor"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0"/><path d="M12 17.5V21"/></svg> <?php endif; ?><?= e(mb_strimwidth($apercu, 0, 80, '…')) ?></span>
+              <span class="ami__apercu"><?php if ($vocal): ?><?= e($vous) ?><?= Amis::micro() ?> <?php endif; ?><?= e(mb_strimwidth($apercu, 0, 80, '…')) ?></span>
               <?php if ($nonLus > 0): ?>
                 <span class="compteur" title="<?= $nonLus ?> message<?= $nonLus > 1 ? 's' : '' ?> non lu<?= $nonLus > 1 ? 's' : '' ?>"><?= $nonLus > 99 ? '99+' : $nonLus ?></span>
               <?php endif; ?>

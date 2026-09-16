@@ -1366,6 +1366,25 @@
         var extrait = texte === '' ? piece : (piece === '' ? texte : piece + ' · ' + texte);
         return extrait.length > 120 ? extrait.slice(0, 119) + '…' : extrait;
       };
+      /* Un extrait « 🎤 Message vocal » s'affiche avec le micro dessiné. */
+      var poserExtrait = function (element, extrait) {
+        element.textContent = '';
+        if (extrait.indexOf('🎤 ') !== 0) { element.textContent = extrait; return; }
+        var ns = 'http://www.w3.org/2000/svg';
+        var svg = document.createElementNS(ns, 'svg');
+        [['class', 'micro'], ['viewBox', '0 0 24 24'], ['width', '14'], ['height', '14'], ['fill', 'none'], ['stroke', 'currentColor'],
+          ['stroke-width', '2'], ['stroke-linecap', 'round'], ['aria-hidden', 'true'], ['focusable', 'false']].forEach(function (a) { svg.setAttribute(a[0], a[1]); });
+        var capsule = document.createElementNS(ns, 'rect');
+        [['x', '9'], ['y', '3'], ['width', '6'], ['height', '12'], ['rx', '3'], ['fill', 'currentColor']].forEach(function (a) { capsule.setAttribute(a[0], a[1]); });
+        svg.appendChild(capsule);
+        ['M5.5 11a6.5 6.5 0 0 0 13 0', 'M12 17.5V21'].forEach(function (d) {
+          var trait = document.createElementNS(ns, 'path');
+          trait.setAttribute('d', d);
+          svg.appendChild(trait);
+        });
+        element.appendChild(svg);
+        element.appendChild(document.createTextNode(' ' + extrait.slice('🎤 '.length)));
+      };
       var sortirMode = function () {
         if (!mode) { return; }
         if (mode.type === 'modifier') { champ.value = ''; ajuster(); }
@@ -1381,7 +1400,7 @@
         contexte.querySelector('[data-contexte-titre]').textContent = type === 'reponse'
           ? '↩ Réponse à ' + (mien ? 'vous-même' : chat.getAttribute('data-ami'))
           : '✏️ Modifier le message';
-        contexte.querySelector('[data-contexte-extrait]').textContent = extraitDe(bulle);
+        poserExtrait(contexte.querySelector('[data-contexte-extrait]'), extraitDe(bulle));
         contexte.classList.toggle('chat__contexte--modifier', type === 'modifier');
         contexte.hidden = false;
         if (type === 'modifier') {
@@ -1506,7 +1525,7 @@
           entete.appendChild(quand);
           var extrait = document.createElement('span');
           extrait.className = 'epingles__extrait';
-          extrait.textContent = ep.extrait;
+          poserExtrait(extrait, ep.extrait);
           b.appendChild(entete);
           b.appendChild(extrait);
           li.appendChild(b);
@@ -1694,7 +1713,7 @@
           heure.insertBefore(marque, heure.firstChild);
         }
         var id = bulle.getAttribute('data-message');
-        fil.querySelectorAll('[data-extrait-de="' + id + '"]').forEach(function (e) { e.textContent = extraitDe(bulle); });
+        fil.querySelectorAll('[data-extrait-de="' + id + '"]').forEach(function (e) { poserExtrait(e, extraitDe(bulle)); });
       };
 
       question.addEventListener('click', function (evenement) {
@@ -1762,7 +1781,7 @@
           var extraitCite = document.createElement('span');
           extraitCite.className = 'bulle__citation-extrait';
           extraitCite.setAttribute('data-extrait-de', String(message.reponse.id));
-          extraitCite.textContent = message.reponse.extrait;
+          poserExtrait(extraitCite, message.reponse.extrait);
           citation.appendChild(auteur);
           citation.appendChild(extraitCite);
           bulle.appendChild(citation);

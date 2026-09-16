@@ -82,7 +82,7 @@ foreach ($messages as $m) {
           <li>
             <button type="button" class="epingles__element" data-aller-message="<?= $ep['id'] ?>">
               <span class="epingles__entete"><strong><?= e($ep['auteur']) ?></strong><span><?= e($ep['quand']) ?></span></span>
-              <span class="epingles__extrait"><?= e($ep['extrait']) ?></span>
+              <span class="epingles__extrait"><?= Amis::extraitHtml($ep['extrait']) ?></span>
             </button>
           </li>
         <?php endforeach; ?>
@@ -113,7 +113,7 @@ foreach ($messages as $m) {
           <?php if ($m['reponse'] !== null): ?>
             <a class="bulle__citation" href="#message-<?= $m['reponse']['id'] ?>" data-citation="<?= $m['reponse']['id'] ?>">
               <span class="bulle__citation-auteur"><?= e($m['reponse']['auteur']) ?></span>
-              <span class="bulle__citation-extrait" data-extrait-de="<?= $m['reponse']['id'] ?>"><?= e($m['reponse']['extrait']) ?></span>
+              <span class="bulle__citation-extrait" data-extrait-de="<?= $m['reponse']['id'] ?>"><?= Amis::extraitHtml($m['reponse']['extrait']) ?></span>
             </a>
           <?php endif; ?>
           <?php if ($m['supprime']): ?>

@@ -121,6 +121,23 @@ final class Amis
         return ['nom' => $nom, 'duree' => $duree];
     }
 
+    /** Le micro dessiné des messages vocaux, à la taille du texte. */
+    public static function micro(): string
+    {
+        return '<svg class="micro" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false"><rect x="9" y="3" width="6" height="12" rx="3" fill="currentColor"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0"/><path d="M12 17.5V21"/></svg>';
+    }
+
+    /**
+     * Un extrait prêt à afficher, échappé : « 🎤 Message vocal » y prend
+     * le micro dessiné (les notifications, elles, gardent l'emoji).
+     */
+    public static function extraitHtml(string $extrait): string
+    {
+        return str_starts_with($extrait, '🎤 ')
+            ? self::micro() . ' ' . e(substr($extrait, strlen('🎤 ')))
+            : e($extrait);
+    }
+
     /** « 0:42 », « 3:05 ». */
     public static function duree(int $secondes): string
     {
