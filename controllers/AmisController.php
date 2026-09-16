@@ -23,6 +23,7 @@ final class AmisController
             'envoyees' => Amis::demandesEnvoyees($moi),
             'aUnPseudo' => (string) (Auth::utilisateur()['pseudo'] ?? '') !== '',
             'bloques' => Amis::bloques($moi),
+            'invitationsGroupes' => Conversations::mesInvitations($moi),
         ] + ConversationsController::liste($moi), 'Amis');
     }
 

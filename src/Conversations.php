@@ -11,7 +11,9 @@ declare(strict_types=1);
  * recherche, fond d'écran), avec les mêmes contrôles, empruntés à Amis.
  *
  * Qui crée la conversation en est administrateur : les administrateurs
- * ajoutent et retirent des membres, et en nomment d'autres. Chacun peut la
+ * ajoutent leurs amis, invitent d'autres comptes par leur pseudo (qui
+ * acceptent ou refusent), retirent des membres, et nomment ou retirent
+ * d'autres administrateurs — il en reste toujours un. Chacun peut la
  * renommer, changer son fond d'écran, ou la quitter. Un nouveau membre ne
  * voit que ce qui s'écrit après son arrivée ; qui la quitte n'y voit plus rien.
  */
@@ -179,6 +181,7 @@ final class Conversations
                  VALUES (?, ?, 'membre', UTC_TIMESTAMP(), ?, ?)",
                 [$conversation, $id, $dernier, $dernier]
             );
+            Database::run('DELETE FROM conversation_invitations WHERE conversation_id = ? AND user_id = ?', [$conversation, $id]);
             self::noter($conversation, $moi, 'ajout', $id);
         }
 
@@ -220,6 +223,186 @@ final class Conversations
         self::noter($conversation, $moi, 'admin', $cible);
 
         return null;
+    }
+
+    /**
+     * Repasse un administrateur en simple membre (réservé aux administrateurs).
+     * On peut le faire pour soi, tant qu'il reste un autre administrateur :
+     * un groupe en a toujours au moins un.
+     */
+    public static function retirerAdmin(int $moi, int $conversation, int $cible): ?string
+    {
+        if (!self::estAdmin($conversation, $moi)) {
+            return 'Seuls les administrateurs du groupe peuvent retirer ce rôle.';
+        }
+        $membre = self::membre($conversation, $cible);
+        if ($membre === null) {
+            return 'Ce compte ne fait pas partie du groupe.';
+        }
+        if ($membre['role'] !== 'admin') {
+            return 'Ce membre n’est pas administrateur.';
+        }
+        $admins = (int) Database::valeur("SELECT COUNT(*) FROM conversation_membres WHERE conversation_id = ? AND role = 'admin'", [$conversation]);
+        if ($admins < 2) {
+            return 'Le groupe doit garder au moins un administrateur : nommez-en un autre d’abord.';
+        }
+        Database::run("UPDATE conversation_membres SET role = 'membre' WHERE conversation_id = ? AND user_id = ?", [$conversation, $cible]);
+        self::noter($conversation, $moi, 'admin_retire', $cible);
+
+        return null;
+    }
+
+    /**
+     * Des comptes trouvés par leur pseudo, pour les ajouter au groupe : ce
+     * qu'on peut faire de chacun. Les comptes qui nous ont bloqués n'y sont
+     * pas (Amis::chercher les écarte).
+     *
+     * @return list<array{id: int, pseudo: string, etat: string}> etat : membre, invite, bloque, ami, aucun
+     */
+    public static function chercher(int $moi, int $conversation, string $recherche): array
+    {
+        $membres = array_flip(array_map('intval', array_column(Database::all(
+            'SELECT user_id FROM conversation_membres WHERE conversation_id = ?', [$conversation]
+        ), 'user_id')));
+        $invites = array_flip(array_map('intval', array_column(Database::all(
+            'SELECT user_id FROM conversation_invitations WHERE conversation_id = ?', [$conversation]
+        ), 'user_id')));
+
+        return array_map(static fn (array $r): array => [
+            'id' => $r['id'],
+            'pseudo' => $r['pseudo'],
+            'etat' => match (true) {
+                isset($membres[$r['id']]) => 'membre',
+                isset($invites[$r['id']]) => 'invite',
+                $r['etat'] === 'bloque' => 'bloque',
+                $r['etat'] === 'ami' => 'ami',
+                default => 'aucun',
+            },
+        ], Amis::chercher($moi, $recherche));
+    }
+
+    /**
+     * Ajoute quelqu'un trouvé par son pseudo (réservé aux administrateurs) :
+     * un ami entre aussitôt, une autre personne reçoit une invitation.
+     *
+     * @return array{0: ?string, 1: ?string} « ajoute » ou « invite », ou la raison du refus
+     */
+    public static function inviter(int $moi, int $conversation, int $cible): array
+    {
+        if (!self::estAdmin($conversation, $moi)) {
+            return [null, 'Seuls les administrateurs du groupe peuvent ajouter des membres.'];
+        }
+        $compte = Amis::compte($cible);
+        if ($compte === null || $cible === $moi || Amis::aBloque($cible, $moi)) {
+            return [null, 'Ce compte est introuvable.'];
+        }
+        if (Amis::aBloque($moi, $cible)) {
+            return [null, 'Vous avez bloqué ' . $compte['pseudo'] . ' : débloquez-le d’abord.'];
+        }
+        if (self::membre($conversation, $cible) !== null) {
+            return [null, $compte['pseudo'] . ' fait déjà partie du groupe.'];
+        }
+        if (Amis::sontAmis($moi, $cible)) {
+            [, $refus] = self::ajouter($moi, $conversation, [$cible]);
+            return $refus === null ? ['ajoute', null] : [null, $refus];
+        }
+        if (Database::valeur('SELECT 1 FROM conversation_invitations WHERE conversation_id = ? AND user_id = ?', [$conversation, $cible]) !== null) {
+            return [null, $compte['pseudo'] . ' est déjà invité.'];
+        }
+        $places = (int) Database::valeur(
+            'SELECT (SELECT COUNT(*) FROM conversation_membres WHERE conversation_id = ?) + (SELECT COUNT(*) FROM conversation_invitations WHERE conversation_id = ?)',
+            [$conversation, $conversation]
+        );
+        if ($places >= self::MEMBRES_MAX) {
+            return [null, 'Un groupe réunit ' . self::MEMBRES_MAX . ' personnes au plus, invitations comprises.'];
+        }
+        Database::run(
+            'INSERT INTO conversation_invitations (conversation_id, user_id, invite_par, created_at) VALUES (?, ?, ?, UTC_TIMESTAMP())',
+            [$conversation, $cible, $moi]
+        );
+        self::noter($conversation, $moi, 'invitation', $cible);
+
+        return ['invite', null];
+    }
+
+    /** Les invitations en attente d'un groupe, pour ses réglages. */
+    public static function invitations(int $conversation): array
+    {
+        return Database::all(
+            "SELECT u.id, COALESCE(u.pseudo, '') AS pseudo, COALESCE(p.pseudo, '') AS par, i.created_at
+               FROM conversation_invitations i JOIN users u ON u.id = i.user_id LEFT JOIN users p ON p.id = i.invite_par
+              WHERE i.conversation_id = ? ORDER BY i.created_at, u.pseudo",
+            [$conversation]
+        );
+    }
+
+    /** Les invitations reçues, pour la page « Amis ». */
+    public static function mesInvitations(int $moi): array
+    {
+        return Database::all(
+            "SELECT c.id, c.nom, COALESCE(p.pseudo, '') AS par, i.created_at,
+                    (SELECT COUNT(*) FROM conversation_membres mb WHERE mb.conversation_id = c.id) AS membres
+               FROM conversation_invitations i JOIN conversations c ON c.id = i.conversation_id LEFT JOIN users p ON p.id = i.invite_par
+              WHERE i.user_id = ? ORDER BY i.created_at DESC",
+            [$moi]
+        );
+    }
+
+    public static function nombreInvitations(int $moi): int
+    {
+        return (int) Database::valeur('SELECT COUNT(*) FROM conversation_invitations WHERE user_id = ?', [$moi]);
+    }
+
+    /** Annule une invitation (réservé aux administrateurs). */
+    public static function annulerInvitation(int $moi, int $conversation, int $cible): ?string
+    {
+        if (!self::estAdmin($conversation, $moi)) {
+            return 'Seuls les administrateurs du groupe peuvent annuler une invitation.';
+        }
+        if (Database::run('DELETE FROM conversation_invitations WHERE conversation_id = ? AND user_id = ?', [$conversation, $cible])->rowCount() === 0) {
+            return 'Cette invitation n’existe plus.';
+        }
+
+        return null;
+    }
+
+    /**
+     * Répond à une invitation : l'accepter fait entrer dans le groupe, qui se
+     * lit à partir de là ; la refuser l'efface, sans rien dire au groupe.
+     */
+    public static function repondreInvitation(int $moi, int $conversation, bool $accepter): ?string
+    {
+        $invitation = Database::one('SELECT * FROM conversation_invitations WHERE conversation_id = ? AND user_id = ?', [$conversation, $moi]);
+        if ($invitation === null) {
+            return 'Cette invitation n’existe plus.';
+        }
+        Database::run('DELETE FROM conversation_invitations WHERE conversation_id = ? AND user_id = ?', [$conversation, $moi]);
+        if (!$accepter || self::membre($conversation, $moi) !== null) {
+            return null;
+        }
+        if ((int) Database::valeur('SELECT COUNT(*) FROM conversation_membres WHERE conversation_id = ?', [$conversation]) >= self::MEMBRES_MAX) {
+            return 'Ce groupe est complet.';
+        }
+        $dernier = (int) Database::valeur('SELECT COALESCE(MAX(id), 0) FROM conversation_messages WHERE conversation_id = ?', [$conversation]);
+        Database::run(
+            "INSERT INTO conversation_membres (conversation_id, user_id, role, rejoint_le, depuis_message, lu_jusqua)
+             VALUES (?, ?, 'membre', UTC_TIMESTAMP(), ?, ?)",
+            [$conversation, $moi, $dernier, $dernier]
+        );
+        self::noter($conversation, $moi, 'rejoint');
+
+        return null;
+    }
+
+    /** Prévient qui vient d'être invité. */
+    public static function notifierInvitation(int $auteur, int $conversation, int $cible): ?int
+    {
+        return FileNotifications::ajouter($cible, 'groupe', [
+            'title' => '✉️ Invitation dans un groupe',
+            'body' => (Amis::compte($auteur)['pseudo'] ?? 'Quelqu’un') . ' vous invite dans « ' . self::nom($conversation) . ' ».',
+            'url' => url('amis'),
+            'tag' => 'invitation-groupe-' . $conversation,
+        ]);
     }
 
     /**
@@ -378,16 +561,27 @@ final class Conversations
         $qui = $auteur === $moi ? 'Vous avez' : $pseudo($auteur) . ' a';
         $quiCible = $cible === $moi ? 'vous' : $pseudo($cible);
         $texte = (string) ($message['evenement_texte'] ?? '');
+        // « Alma vous a ajouté » plutôt que « Alma a ajouté vous ».
+        $geste = static fn (string $participe, string $suite = ''): string => $cible === $moi && $auteur !== $moi
+            ? $pseudo($auteur) . ' vous a ' . $participe . $suite
+            : $qui . ' ' . $participe . ' ' . $quiCible . $suite;
 
         return match ((string) $message['evenement']) {
             'creation' => '👥 ' . $qui . ' créé le groupe « ' . $texte . ' »',
-            'ajout' => '➕ ' . $qui . ' ajouté ' . $quiCible,
-            'retrait' => '➖ ' . $qui . ' retiré ' . $quiCible,
+            'ajout' => '➕ ' . $geste('ajouté'),
+            'retrait' => '➖ ' . $geste('retiré'),
             'depart' => '🚪 ' . ($auteur === $moi ? 'Vous avez' : $pseudo($auteur) . ' a') . ' quitté le groupe',
             'nom' => '✏️ ' . $qui . ' renommé le groupe « ' . $texte . ' »',
             'admin' => $auteur === null
                 ? '⭐ ' . ($cible === $moi ? 'Vous êtes' : $quiCible . ' est') . ' maintenant administrateur'
-                : '⭐ ' . $qui . ' nommé ' . $quiCible . ' administrateur',
+                : '⭐ ' . $geste('nommé', ' administrateur'),
+            'admin_retire' => $auteur === $cible
+                ? '⭐ ' . ($auteur === $moi ? 'Vous n’êtes' : $pseudo($auteur) . ' n’est') . ' plus administrateur'
+                : '⭐ ' . ($cible === $moi
+                    ? $pseudo($auteur) . ' vous a retiré le rôle d’administrateur'
+                    : $qui . ' retiré le rôle d’administrateur à ' . $quiCible),
+            'invitation' => '✉️ ' . $geste('invité'),
+            'rejoint' => '➕ ' . ($auteur === $moi ? 'Vous avez' : $pseudo($auteur) . ' a') . ' rejoint le groupe',
             'fond' => '🖼️ ' . $qui . ' changé le fond d’écran',
             'fond_retire' => '🖼️ ' . $qui . ' retiré le fond d’écran',
             default => $qui . ' modifié le groupe',

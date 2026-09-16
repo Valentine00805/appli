@@ -113,6 +113,32 @@ $geste = static function (string $action, int $compte, string $libelle, string $
       </section>
     <?php endif; ?>
 
+    <?php if ($invitationsGroupes !== []): ?>
+      <?php // Les invitations dans un groupe : on n'y entre qu'en acceptant. ?>
+      <section class="carte" id="invitations-groupes">
+        <h2 style="margin-top:0">✉️ Invitations à des groupes <span class="compteur"><?= count($invitationsGroupes) ?></span></h2>
+        <ul class="amis-resultats">
+          <?php foreach ($invitationsGroupes as $inv): ?>
+            <li class="amis-resultat">
+              <span class="avatar avatar--groupe" aria-hidden="true">👥</span>
+              <span class="amis-resultat__pseudo"><?= e((string) $inv['nom']) ?>
+                <span class="discret" style="font-size:.8rem;font-weight:400">· <?= (int) $inv['membres'] ?> membres<?= $inv['par'] !== '' ? ' · invité par ' . e((string) $inv['par']) : '' ?></span></span>
+              <span class="actions">
+                <form method="post" action="<?= url('groupes/' . (int) $inv['id'] . '/rejoindre') ?>">
+                  <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
+                  <button class="bouton bouton--petit" type="submit">Rejoindre</button>
+                </form>
+                <form method="post" action="<?= url('groupes/' . (int) $inv['id'] . '/refuser') ?>">
+                  <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
+                  <button class="bouton bouton--petit bouton--discret" type="submit">Refuser</button>
+                </form>
+              </span>
+            </li>
+          <?php endforeach; ?>
+        </ul>
+      </section>
+    <?php endif; ?>
+
     <?php if ($recues !== []): ?>
       <section class="carte">
         <h2 style="margin-top:0">Demandes reçues <span class="compteur"><?= count($recues) ?></span></h2>

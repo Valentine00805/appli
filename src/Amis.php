@@ -433,7 +433,7 @@ final class Amis
                      WHERE m.destinataire_id = ? AND m.lu_le IS NULL AND m.supprime_le IS NULL AND m.masque_destinataire = 0)
                   + (SELECT COUNT(*) FROM amities WHERE destinataire_id = ? AND statut = 'attente')",
             [$moi, $moi]
-        ) + Conversations::nonLus($moi);
+        ) + Conversations::nonLus($moi) + Conversations::nombreInvitations($moi);
     }
 
     /**

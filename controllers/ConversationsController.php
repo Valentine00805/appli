@@ -102,6 +102,8 @@ final class ConversationsController
             'groupe' => $groupe,
             'membres' => $membres,
             'admin' => $groupe['role'] === 'admin',
+            'nombreAdmins' => count(array_filter($membres, static fn (array $m): bool => $m['role'] === 'admin')),
+            'invitations' => Conversations::invitations($id),
             'aAjouter' => array_values(array_filter(Amis::liste($moi), static fn (array $a): bool => !isset($dans[(int) $a['id']]))),
             'photos' => $partages['photos'],
             'fichiersPartages' => $partages['fichiers'],
@@ -238,6 +240,87 @@ final class ConversationsController
         $refus = Conversations::nommerAdmin(Auth::id(), $id, $membre);
         Session::flash($refus === null ? 'succes' : 'erreur', $refus ?? $pseudo . ' est maintenant administrateur.');
         $this->retour($id);
+    }
+
+    public function retirerAdmin(int $id, int $membre): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $moi = Auth::id();
+        $pseudo = (string) (Amis::compte($membre)['pseudo'] ?? '');
+        $refus = Conversations::retirerAdmin($moi, $id, $membre);
+        Session::flash($refus === null ? 'succes' : 'erreur', $refus ?? ($membre === $moi
+            ? 'Vous n’êtes plus administrateur du groupe.'
+            : $pseudo . ' n’est plus administrateur.'));
+        $this->retour($id);
+    }
+
+    /** Des pseudos à ajouter au groupe, pour ses réglages (administrateurs). */
+    public function chercher(int $id): void
+    {
+        Auth::exiger();
+        $moi = Auth::id();
+        session_write_close();
+        if (!Conversations::estAdmin($id, $moi)) {
+            http_response_code(403);
+            repondre_json(['fait' => false, 'message' => 'Seuls les administrateurs du groupe peuvent ajouter des membres.']);
+        }
+        repondre_json(['fait' => true, 'resultats' => Conversations::chercher($moi, $id, (string) ($_GET['pseudo'] ?? ''))]);
+    }
+
+    /** Ajoute un ami, ou invite un autre compte, trouvé par son pseudo. */
+    public function inviter(int $id): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $moi = Auth::id();
+        $cible = (int) ($_POST['compte'] ?? 0);
+        $pseudo = (string) (Amis::compte($cible)['pseudo'] ?? '');
+        [$resultat, $refus] = Conversations::inviter($moi, $id, $cible);
+        if ($refus !== null) {
+            Session::flash('erreur', $refus);
+            $this->retour($id);
+        }
+        if ($resultat === 'ajoute') {
+            Session::flash('succes', $pseudo . ' a été ajouté au groupe.');
+            $this->redirigerPuisEnvoyer(url('groupes/' . $id), Conversations::notifierAjout($moi, $id, [$cible]));
+        }
+        Session::flash('succes', 'Invitation envoyée à ' . $pseudo . ' : il rejoindra le groupe s’il l’accepte.');
+        $notification = Conversations::notifierInvitation($moi, $id, $cible);
+        $this->redirigerPuisEnvoyer(url('groupes/' . $id), $notification === null ? [] : [$notification]);
+    }
+
+    public function annulerInvitation(int $id, int $membre): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $pseudo = (string) (Amis::compte($membre)['pseudo'] ?? '');
+        $refus = Conversations::annulerInvitation(Auth::id(), $id, $membre);
+        Session::flash($refus === null ? 'succes' : 'erreur', $refus ?? 'Invitation de ' . $pseudo . ' annulée.');
+        $this->retour($id);
+    }
+
+    /** Accepte une invitation reçue : on entre dans le groupe. */
+    public function rejoindre(int $id): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $refus = Conversations::repondreInvitation(Auth::id(), $id, true);
+        if ($refus !== null) {
+            Session::flash('erreur', $refus);
+            redirect('amis');
+        }
+        Session::flash('succes', 'Vous avez rejoint le groupe.');
+        redirect('groupes/' . $id);
+    }
+
+    public function refuser(int $id): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $refus = Conversations::repondreInvitation(Auth::id(), $id, false);
+        Session::flash($refus === null ? 'succes' : 'erreur', $refus ?? 'Invitation refusée.');
+        redirect('amis');
     }
 
     public function quitter(int $id): void

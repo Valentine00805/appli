@@ -11,6 +11,8 @@
  * @var array $groupe
  * @var list<array{id: int, pseudo: string, role: string}> $membres
  * @var bool $admin
+ * @var int $nombreAdmins
+ * @var list<array> $invitations  les invitations en attente
  * @var list<array> $aAjouter  mes amis qui ne sont pas encore dans le groupe
  * @var list<array> $photos
  * @var list<array> $fichiersPartages
@@ -107,12 +109,26 @@ $moi = Auth::id();
           <?= e($m['pseudo']) ?><?= $m['id'] === $moi ? ' <span class="discret">(vous)</span>' : '' ?>
           <?php if ($m['role'] === 'admin'): ?><span class="pastille">Administrateur</span><?php endif; ?>
         </span>
+        <?php if ($admin && $m['id'] === $moi && $nombreAdmins > 1): ?>
+          <?php // Un administrateur peut rendre son rôle, tant qu'il en reste un autre. ?>
+          <span class="groupe-membres__actions">
+            <form method="post" action="<?= url('groupes/' . $id . '/membres/' . $m['id'] . '/membre') ?>">
+              <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+              <button class="bouton bouton--discret bouton--petit" type="submit">Ne plus être admin</button>
+            </form>
+          </span>
+        <?php endif; ?>
         <?php if ($admin && $m['id'] !== $moi): ?>
           <span class="groupe-membres__actions">
             <?php if ($m['role'] !== 'admin'): ?>
               <form method="post" action="<?= url('groupes/' . $id . '/membres/' . $m['id'] . '/admin') ?>">
                 <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
                 <button class="bouton bouton--discret bouton--petit" type="submit">⭐ Nommer admin</button>
+              </form>
+            <?php else: ?>
+              <form method="post" action="<?= url('groupes/' . $id . '/membres/' . $m['id'] . '/membre') ?>">
+                <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+                <button class="bouton bouton--discret bouton--petit" type="submit">Retirer admin</button>
               </form>
             <?php endif; ?>
             <button class="bouton bouton--danger bouton--petit" type="button" data-ouvrir-dialogue="confirmer-retrait-membre-<?= $m['id'] ?>">Retirer</button>
@@ -132,7 +148,42 @@ $moi = Auth::id();
     <?php endforeach; ?>
   </ul>
 
+  <?php if ($invitations !== []): ?>
+    <h3 class="groupe-sous-titre">✉️ Invitations en attente</h3>
+    <ul class="groupe-membres">
+      <?php foreach ($invitations as $inv): ?>
+        <li class="groupe-membres__ligne">
+          <span class="avatar" aria-hidden="true"><?= e(mb_strtoupper(mb_substr((string) $inv['pseudo'], 0, 1))) ?></span>
+          <span class="groupe-membres__nom">
+            <?= e((string) $inv['pseudo']) ?>
+            <span class="discret" style="font-size:.8rem">· invité<?= $inv['par'] !== '' ? ' par ' . e((string) $inv['par']) : '' ?></span>
+          </span>
+          <?php if ($admin): ?>
+            <form method="post" action="<?= url('groupes/' . $id . '/invitations/' . (int) $inv['id'] . '/annuler') ?>">
+              <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+              <button class="bouton bouton--discret bouton--petit" type="submit">Annuler</button>
+            </form>
+          <?php endif; ?>
+        </li>
+      <?php endforeach; ?>
+    </ul>
+  <?php endif; ?>
+
   <?php if ($admin): ?>
+    <?php // Ajouter n'importe quel compte par son pseudo : un ami entre tout de suite, les autres sont invités. ?>
+    <div class="groupe-recherche" data-groupe-recherche
+         data-url="<?= e(url('groupes/' . $id . '/chercher')) ?>"
+         data-inviter="<?= e(url('groupes/' . $id . '/inviter')) ?>"
+         data-jeton="<?= e($csrf) ?>">
+      <label class="legende" for="groupe-recherche-champ">🔎 Ajouter quelqu’un par son pseudo</label>
+      <input type="search" id="groupe-recherche-champ" data-groupe-recherche-champ
+             placeholder="Pseudo…" minlength="2" maxlength="<?= Auth::PSEUDO_MAX ?>"
+             autocomplete="off" autocapitalize="none" spellcheck="false">
+      <p class="champ__aide" data-groupe-recherche-etat aria-live="polite">
+        Vos amis sont ajoutés tout de suite ; les autres reçoivent une invitation, qu’ils acceptent ou non.
+      </p>
+      <ul class="amis-resultats" data-groupe-recherche-liste></ul>
+    </div>
     <?php if ($aAjouter === []): ?>
       <p class="discret" style="margin:.75rem 0 0">Tous vos amis sont déjà dans le groupe.</p>
     <?php else: ?>

@@ -345,6 +345,11 @@ textarea { min-height: 260px; resize: vertical; line-height: 1.65; }
 .groupe-membres__actions { display: flex; flex-wrap: wrap; gap: .4rem; }
 .groupe-membres__actions form { margin: 0; }
 .groupe-ajout { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--bordure); }
+.groupe-sous-titre { margin: 1rem 0 .25rem; font-size: .95rem; }
+.groupe-recherche { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--bordure); }
+.groupe-recherche input[type="search"] { width: 100%; }
+.groupe-recherche .amis-resultats:empty { display: none; }
+.groupe-recherche .actions form { margin: 0; }
 
 /* Une fenêtre de confirmation, par-dessus le reste. */
 .confirmation {

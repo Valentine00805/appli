@@ -2726,6 +2726,85 @@
   }
 
   /*
+   * Ajouter quelqu'un à un groupe par son pseudo, dans les réglages du
+   * groupe : dès deux caractères, les comptes trouvés s'affichent avec ce
+   * qu'on peut en faire — « Ajouter » un ami, « Inviter » un autre compte.
+   * Le bouton envoie un formulaire ordinaire : la page du groupe se recharge.
+   */
+  var rechercheGroupe = { minuterie: null, numero: 0 };
+  document.addEventListener('input', function (evenement) {
+    var champ = evenement.target;
+    if (!champ.matches || !champ.matches('[data-groupe-recherche-champ]')) { return; }
+    var bloc = champ.closest('[data-groupe-recherche]');
+    var etat = bloc.querySelector('[data-groupe-recherche-etat]');
+    var liste = bloc.querySelector('[data-groupe-recherche-liste]');
+    clearTimeout(rechercheGroupe.minuterie);
+    var pseudo = champ.value.trim();
+    if (pseudo.length < 2) {
+      liste.textContent = '';
+      etat.textContent = 'Vos amis sont ajoutés tout de suite ; les autres reçoivent une invitation, qu’ils acceptent ou non.';
+      return;
+    }
+    rechercheGroupe.minuterie = setTimeout(function () {
+      var numero = ++rechercheGroupe.numero;
+      fetch(bloc.getAttribute('data-url') + '?pseudo=' + encodeURIComponent(pseudo), {
+        credentials: 'same-origin', headers: { Accept: 'application/json' }
+      }).then(function (r) { return r.json(); })
+        .then(function (reponse) {
+          if (numero !== rechercheGroupe.numero) { return; }
+          if (!reponse.fait) { throw new Error(reponse.message || ''); }
+          var resultats = reponse.resultats || [];
+          liste.textContent = '';
+          etat.textContent = resultats.length ? '' : 'Aucun pseudo ne contient « ' + pseudo + ' ».';
+          resultats.forEach(function (r) {
+            var li = document.createElement('li');
+            li.className = 'amis-resultat';
+            var avatar = document.createElement('span');
+            avatar.className = 'avatar';
+            avatar.setAttribute('aria-hidden', 'true');
+            avatar.textContent = r.pseudo.charAt(0).toUpperCase();
+            var nom = document.createElement('span');
+            nom.className = 'amis-resultat__pseudo';
+            nom.textContent = r.pseudo;
+            var actions = document.createElement('span');
+            actions.className = 'actions';
+            var pastilles = { membre: 'Déjà membre', invite: 'Invité', bloque: 'Bloqué' };
+            if (pastilles[r.etat]) {
+              var pastille = document.createElement('span');
+              pastille.className = 'pastille';
+              pastille.textContent = pastilles[r.etat];
+              actions.appendChild(pastille);
+            } else {
+              var formulaire = document.createElement('form');
+              formulaire.method = 'post';
+              formulaire.action = bloc.getAttribute('data-inviter');
+              [['_csrf', bloc.getAttribute('data-jeton')], ['compte', String(r.id)]].forEach(function (c) {
+                var cache = document.createElement('input');
+                cache.type = 'hidden';
+                cache.name = c[0];
+                cache.value = c[1];
+                formulaire.appendChild(cache);
+              });
+              var bouton = document.createElement('button');
+              bouton.type = 'submit';
+              bouton.className = 'bouton bouton--petit';
+              bouton.textContent = r.etat === 'ami' ? '+ Ajouter' : '✉️ Inviter';
+              formulaire.appendChild(bouton);
+              actions.appendChild(formulaire);
+            }
+            li.appendChild(avatar);
+            li.appendChild(nom);
+            li.appendChild(actions);
+            liste.appendChild(li);
+          });
+        })
+        .catch(function (e) {
+          if (numero === rechercheGroupe.numero) { etat.textContent = e.message || 'La recherche n’a pas abouti. Réessayez.'; }
+        });
+    }, 250);
+  });
+
+  /*
    * Les réglages — ceux de « Mon compte », le nom d'un groupe : ils se
    * lisent, et ne s'ouvrent à la modification que par leur bouton.
    * « Annuler » referme et remet la valeur enregistrée. Écoutés sur le
