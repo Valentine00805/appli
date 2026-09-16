@@ -178,6 +178,13 @@ foreach ($messages as $m) {
       <?php endif; ?>
     </div>
 
+    <?php // Remonté dans la conversation : la flèche ramène en bas, et compte les messages arrivés entre-temps. ?>
+    <button type="button" class="chat__en-bas" data-aller-en-bas hidden
+            title="Revenir en bas de la conversation" aria-label="Revenir en bas de la conversation">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 5v14"/><path d="M6 13l6 6 6-6"/></svg>
+      <span class="chat__en-bas-nombre" data-en-bas-nombre hidden></span>
+    </button>
+
     <?php // Répondre à un message ou en modifier un : le bandeau le rappelle au-dessus de la saisie. ?>
     <div class="chat__contexte" data-chat-contexte hidden>
       <span class="chat__contexte-texte">

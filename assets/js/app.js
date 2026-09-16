@@ -1096,6 +1096,40 @@
        */
       var colle = true;
       fil.addEventListener('scroll', function () { colle = presqueEnBas(); });
+
+      /*
+       * La flèche « tout en bas » : elle paraît dès qu'on est remonté, juste
+       * au-dessus de la saisie quelle que soit sa hauteur, et compte les
+       * messages de l'ami arrivés pendant qu'on lisait plus haut.
+       */
+      var boutonBas = chat.querySelector('[data-aller-en-bas]');
+      var nombreBas = boutonBas.querySelector('[data-en-bas-nombre]');
+      var arrivesPlusBas = 0;
+      var majBoutonBas = function () {
+        var loin = fil.scrollHeight - fil.scrollTop - fil.clientHeight > 150;
+        if (!loin) { arrivesPlusBas = 0; }
+        boutonBas.hidden = !loin;
+        nombreBas.hidden = arrivesPlusBas === 0;
+        nombreBas.textContent = arrivesPlusBas > 99 ? '99+' : String(arrivesPlusBas);
+        boutonBas.setAttribute('aria-label', 'Revenir en bas de la conversation'
+          + (arrivesPlusBas ? ' (' + arrivesPlusBas + (arrivesPlusBas > 1 ? ' nouveaux messages)' : ' nouveau message)') : ''));
+      };
+      var placerBoutonBas = function () {
+        boutonBas.style.bottom = Math.max(8, chat.getBoundingClientRect().bottom - fil.getBoundingClientRect().bottom + 14) + 'px';
+      };
+      fil.addEventListener('scroll', majBoutonBas, { passive: true });
+      if (window.ResizeObserver) {
+        new ResizeObserver(function () { placerBoutonBas(); majBoutonBas(); }).observe(fil);
+      }
+      window.addEventListener('resize', placerBoutonBas);
+      placerBoutonBas();
+      boutonBas.addEventListener('click', function () {
+        colle = true;
+        arrivesPlusBas = 0;
+        enBas();
+        majBoutonBas();
+        champ.focus({ preventScroll: true });
+      });
       var suivreImage = function (img) {
         if (img.complete) { return; }
         img.addEventListener('load', function () { if (colle) { enBas(); } });
@@ -1959,6 +1993,10 @@
         }).then(function (reponse) {
           if (!reponse.fait) { return; }
           (reponse.messages || []).forEach(ajouter);
+          if (!enBasAvant) {
+            arrivesPlusBas += (reponse.messages || []).filter(function (m) { return !m.moi; }).length;
+            majBoutonBas();
+          }
           // Ce qui a été supprimé depuis : par l'autre pour tout le monde, ou par moi dans un autre onglet.
           (reponse.supprimes || []).forEach(marquerSupprime);
           (reponse.masques || []).forEach(retirerBulle);
