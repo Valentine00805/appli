@@ -206,7 +206,11 @@ foreach ($messages as $m) {
       </label>
       <?php // Un message vocal : le bouton n'apparaît que si le navigateur sait enregistrer. ?>
       <button class="chat__emoji-bouton chat__vocal-bouton" type="button" data-vocal-bouton hidden
-              title="Enregistrer un message vocal" aria-label="Enregistrer un message vocal">🎤</button>
+              title="Enregistrer un message vocal" aria-label="Enregistrer un message vocal">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+          <rect x="9" y="3" width="6" height="12" rx="3" fill="currentColor"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0"/><path d="M12 17.5V21"/>
+        </svg>
+      </button>
       <?php // Le choix des emojis : le panneau est rempli par le script, qui seul peut les insérer. ?>
       <button class="chat__emoji-bouton" type="button" data-emoji-bouton hidden
               aria-label="Insérer un emoji" title="Emojis" aria-expanded="false" aria-controls="chat-emojis">😊</button>

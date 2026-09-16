@@ -368,7 +368,8 @@ textarea { min-height: 260px; resize: vertical; line-height: 1.65; }
 }
 .chat__emoji-bouton:hover, .chat__emoji-bouton[aria-expanded="true"] { background: var(--accent-doux); border-color: var(--accent); }
 .chat__emoji-bouton[hidden] { display: none; }
-.chat__image-bouton { display: inline-flex; align-items: center; justify-content: center; }
+.chat__image-bouton, .chat__vocal-bouton { display: inline-flex; align-items: center; justify-content: center; }
+.chat__vocal-bouton { color: var(--texte); }
 #chat-image:focus-visible + .chat__image-bouton { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* Une image dans une bulle : à sa taille, sans dépasser la colonne. */
