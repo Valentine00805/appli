@@ -251,8 +251,34 @@ final class Amis
         if ($ancien !== null) {
             self::effacerImageFond((string) $ancien['image_nom']);
         }
+        self::noter($moi, $autre, 'fond');
 
         return null;
+    }
+
+    /**
+     * Écrit une note dans la discussion, vue par les deux. Elle est tenue pour
+     * lue d'emblée : ce n'est pas un message qui attend une réponse.
+     */
+    private static function noter(int $moi, int $autre, string $evenement): void
+    {
+        Database::run(
+            "INSERT INTO messages (expediteur_id, destinataire_id, texte, evenement, created_at, lu_le)
+             VALUES (?, ?, '', ?, UTC_TIMESTAMP(), UTC_TIMESTAMP())",
+            [$moi, $autre, $evenement]
+        );
+    }
+
+    /** Le texte d'une note, du point de vue de qui la lit. */
+    public static function texteEvenement(string $evenement, bool $parMoi, string $pseudo): string
+    {
+        $qui = $parMoi ? 'Vous avez' : $pseudo . ' a';
+
+        return match ($evenement) {
+            'fond' => '🖼️ ' . $qui . ' changé le fond d’écran',
+            'fond_retire' => '🖼️ ' . $qui . ' retiré le fond d’écran',
+            default => $qui . ' modifié la conversation',
+        };
     }
 
     /** Retire le fond d'écran de la conversation, pour les deux. Vrai s'il y en avait un. */
@@ -265,6 +291,7 @@ final class Amis
         Database::run('DELETE FROM fonds_discussion WHERE petit_id = ? AND grand_id = ? AND image_nom = ?',
             [min($moi, $autre), max($moi, $autre), $ancien['image_nom']]);
         self::effacerImageFond((string) $ancien['image_nom']);
+        self::noter($moi, $autre, 'fond_retire');
 
         return true;
     }
@@ -364,7 +391,7 @@ final class Amis
             return [];
         }
         $lignes = Database::all(
-            'SELECT id, expediteur_id, texte, image_nom, fichier_origine, audio_nom, supprime_le, created_at FROM messages WHERE id IN (' . implode(',', array_fill(0, count($ids), '?')) . ')',
+            'SELECT id, expediteur_id, texte, evenement, image_nom, fichier_origine, audio_nom, supprime_le, created_at FROM messages WHERE id IN (' . implode(',', array_fill(0, count($ids), '?')) . ')',
             $ids
         );
 
@@ -850,7 +877,7 @@ final class Amis
     {
         return Database::all(
             'SELECT m.id, m.expediteur_id, m.texte, m.image_nom, m.image_largeur, m.image_hauteur,
-                    m.fichier_nom, m.fichier_origine, m.fichier_mime, m.fichier_taille, m.audio_nom, m.audio_duree, m.audio_transcription,
+                    m.fichier_nom, m.fichier_origine, m.fichier_mime, m.fichier_taille, m.audio_nom, m.audio_duree, m.audio_transcription, m.evenement,
                     m.created_at, m.modifie_le, m.lu_le, m.supprime_le, m.reponse_a,
                     r.expediteur_id AS r_expediteur, r.texte AS r_texte, r.image_nom AS r_image,
                     r.fichier_origine AS r_fichier, r.audio_nom AS r_audio, r.supprime_le AS r_supprime,
@@ -868,7 +895,7 @@ final class Amis
     private static function visible(int $moi, int $autre, int $messageId): bool
     {
         return Database::valeur(
-            'SELECT id FROM messages WHERE id = ?
+            'SELECT id FROM messages WHERE id = ? AND evenement IS NULL
                 AND ((expediteur_id = ? AND destinataire_id = ? AND masque_expediteur = 0)
                   OR (expediteur_id = ? AND destinataire_id = ? AND masque_destinataire = 0))',
             [$messageId, $moi, $autre, $autre, $moi]
@@ -909,7 +936,7 @@ final class Amis
     {
         $texte = trim(str_replace(["\r\n", "\r"], "\n", $texte));
         $message = Database::one(
-            'SELECT * FROM messages WHERE id = ? AND expediteur_id = ? AND masque_expediteur = 0',
+            'SELECT * FROM messages WHERE id = ? AND expediteur_id = ? AND masque_expediteur = 0 AND evenement IS NULL',
             [$messageId, $moi]
         );
         if ($message === null || !self::sontAmis($moi, (int) $message['destinataire_id'])) {
@@ -993,7 +1020,7 @@ final class Amis
     public static function supprimerMessage(int $moi, int $messageId, string $portee): string
     {
         $message = Database::one(
-            'SELECT * FROM messages WHERE id = ? AND ((expediteur_id = ? AND masque_expediteur = 0) OR (destinataire_id = ? AND masque_destinataire = 0))',
+            'SELECT * FROM messages WHERE id = ? AND evenement IS NULL AND ((expediteur_id = ? AND masque_expediteur = 0) OR (destinataire_id = ? AND masque_destinataire = 0))',
             [$messageId, $moi, $moi]
         );
         if ($message === null) {
@@ -1070,7 +1097,7 @@ final class Amis
     {
         $emoji = trim($emoji);
         $message = Database::one(
-            'SELECT * FROM messages WHERE id = ? AND ((expediteur_id = ? AND masque_expediteur = 0) OR (destinataire_id = ? AND masque_destinataire = 0))',
+            'SELECT * FROM messages WHERE id = ? AND evenement IS NULL AND ((expediteur_id = ? AND masque_expediteur = 0) OR (destinataire_id = ? AND masque_destinataire = 0))',
             [$messageId, $moi, $moi]
         );
         if ($message === null) {
@@ -1202,7 +1229,7 @@ final class Amis
         $motif = '%' . addcslashes($recherche, '\\%_') . '%';
         $conditions = '((expediteur_id = ? AND destinataire_id = ? AND masque_expediteur = 0)
                      OR (expediteur_id = ? AND destinataire_id = ? AND masque_destinataire = 0))
-                    AND supprime_le IS NULL AND (texte LIKE ? OR fichier_origine LIKE ?)';
+                    AND supprime_le IS NULL AND evenement IS NULL AND (texte LIKE ? OR fichier_origine LIKE ?)';
         $parametres = [$moi, $autre, $autre, $moi, $motif, $motif];
 
         $total = (int) Database::valeur("SELECT COUNT(*) FROM messages WHERE $conditions", $parametres);
@@ -1284,7 +1311,7 @@ final class Amis
     {
         $message = Database::one(
             'SELECT expediteur_id, destinataire_id FROM messages
-              WHERE id = ? AND ((expediteur_id = ? AND masque_expediteur = 0) OR (destinataire_id = ? AND masque_destinataire = 0))',
+              WHERE id = ? AND evenement IS NULL AND ((expediteur_id = ? AND masque_expediteur = 0) OR (destinataire_id = ? AND masque_destinataire = 0))',
             [$messageId, $moi, $moi]
         );
         $autre = $message === null ? null
@@ -1480,7 +1507,7 @@ final class Amis
             $parametres
         ));
 
-        $messages = (int) Database::valeur("SELECT COUNT(*) FROM messages WHERE $visibles AND supprime_le IS NULL", $parametres);
+        $messages = (int) Database::valeur("SELECT COUNT(*) FROM messages WHERE $visibles AND supprime_le IS NULL AND evenement IS NULL", $parametres);
 
         return ['photos' => $photos, 'fichiers' => $fichiers, 'messages' => $messages];
     }
@@ -1489,7 +1516,7 @@ final class Amis
     public static function vuJusqua(int $moi, int $autre): int
     {
         return (int) Database::valeur(
-            'SELECT COALESCE(MAX(id), 0) FROM messages WHERE expediteur_id = ? AND destinataire_id = ? AND lu_le IS NOT NULL',
+            'SELECT COALESCE(MAX(id), 0) FROM messages WHERE expediteur_id = ? AND destinataire_id = ? AND lu_le IS NOT NULL AND evenement IS NULL',
             [$moi, $autre]
         );
     }
@@ -1532,6 +1559,11 @@ final class Amis
             'heure' => $moment->format('H:i'),
             'jour' => $moment->format('Y-m-d'),
             'jour_libelle' => self::jour($moment),
+            'evenement' => ($message['evenement'] ?? null) === null ? null : self::texteEvenement(
+                (string) $message['evenement'],
+                (int) $message['expediteur_id'] === $moi,
+                (string) (self::compte((int) $message['expediteur_id'])['pseudo'] ?? '')
+            ),
         ];
     }
 

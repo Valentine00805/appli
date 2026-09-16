@@ -1846,7 +1846,7 @@
       });
 
       var ajouter = function (message) {
-        if (fil.querySelector('[data-message="' + message.id + '"]')) { return; }
+        if (fil.querySelector('[data-message="' + message.id + '"], [data-evenement="' + message.id + '"]')) { return; }
         var vide = fil.querySelector('[data-chat-vide]');
         if (vide) { vide.remove(); }
 
@@ -1860,6 +1860,19 @@
           libelle.textContent = message.jour_libelle;
           separateur.appendChild(libelle);
           fil.appendChild(separateur);
+        }
+
+        // Une note de la discussion (le fond d'écran a changé) : au centre, sans menu.
+        if (message.evenement) {
+          var note = document.createElement('p');
+          note.className = 'chat__evenement';
+          note.setAttribute('data-evenement', String(message.id));
+          var noteTexte = document.createElement('span');
+          noteTexte.textContent = message.evenement + ' · ' + message.heure;
+          note.appendChild(noteTexte);
+          fil.appendChild(note);
+          dernier = Math.max(dernier, message.id);
+          return;
         }
 
         var bulle = document.createElement('div');

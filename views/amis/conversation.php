@@ -19,7 +19,7 @@ $actif = (int) $ami['id'];
 $dernierId = $messages === [] ? 0 : (int) end($messages)['id'];
 $dernierMien = 0;
 foreach ($messages as $m) {
-    if ($m['moi']) { $dernierMien = $m['id']; }
+    if ($m['moi'] && $m['evenement'] === null) { $dernierMien = $m['id']; }
 }
 ?>
 
@@ -105,6 +105,11 @@ foreach ($messages as $m) {
       <?php foreach ($messages as $m): ?>
         <?php if ($m['jour'] !== $jour): $jour = $m['jour']; ?>
           <p class="chat__jour" data-jour="<?= e($m['jour']) ?>"><span><?= e($m['jour_libelle']) ?></span></p>
+        <?php endif; ?>
+        <?php if ($m['evenement'] !== null): ?>
+          <?php // Une note de la discussion : au centre, sans menu. ?>
+          <p class="chat__evenement" data-evenement="<?= (int) $m['id'] ?>"><span><?= e($m['evenement']) ?> · <?= e($m['heure']) ?></span></p>
+          <?php continue; ?>
         <?php endif; ?>
         <?php
         /*

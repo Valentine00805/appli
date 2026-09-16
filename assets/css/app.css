@@ -379,6 +379,8 @@ textarea { min-height: 260px; resize: vertical; line-height: 1.65; }
 .chat__vide { margin: auto; color: var(--texte-doux); text-align: center; }
 .chat__jour { text-align: center; margin: .6rem 0 .2rem; font-size: .75rem; color: var(--texte-doux); }
 .chat__jour span { background: var(--fond-doux); padding: .15rem .6rem; border-radius: 999px; }
+.chat__evenement { text-align: center; margin: .35rem 0; font-size: .78rem; color: var(--texte-doux); }
+.chat__evenement span { display: inline-block; max-width: 100%; background: var(--fond-carte); border: 1px solid var(--bordure); padding: .2rem .7rem; border-radius: 999px; }
 .bulle {
   align-self: flex-start; max-width: min(75%, 34rem); padding: .45rem .7rem .3rem;
   background: var(--fond-doux); border-radius: 16px 16px 16px 4px;

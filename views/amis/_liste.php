@@ -17,12 +17,14 @@ $actif = $actif ?? null;
       $dernier = $a['dernier_id'] !== null ? ($derniers[(int) $a['dernier_id']] ?? null) : null;
       $nonLus = (int) $a['non_lus'];
       $apercu = $dernier === null ? 'Dites bonjour 👋'
+          : (($dernier['evenement'] ?? null) !== null
+            ? Amis::texteEvenement((string) $dernier['evenement'], (int) $dernier['expediteur_id'] === Auth::id(), (string) $a['pseudo'])
           : (($dernier['supprime_le'] ?? null) !== null ? '🚫 Message supprimé'
           : ((int) $dernier['expediteur_id'] === Auth::id() ? 'Vous : ' : '')
             . (($dernier['image_nom'] ?? null) !== null ? '📷 Photo' . ((string) $dernier['texte'] !== '' ? ' · ' : '') : '')
             . (($dernier['fichier_origine'] ?? null) !== null ? '📎 ' . $dernier['fichier_origine'] . ((string) $dernier['texte'] !== '' ? ' · ' : '') : '')
             . (($dernier['audio_nom'] ?? null) !== null ? 'Message vocal' . ((string) $dernier['texte'] !== '' ? ' · ' : '') : '')
-            . preg_replace('/\s+/u', ' ', (string) $dernier['texte']));
+            . preg_replace('/\s+/u', ' ', (string) $dernier['texte'])));
       // Un message vocal : le micro dessiné, comme sur le bouton d'enregistrement.
       $vocal = $dernier !== null && ($dernier['supprime_le'] ?? null) === null && ($dernier['audio_nom'] ?? null) !== null;
       $vous = $vocal && (int) $dernier['expediteur_id'] === Auth::id() ? 'Vous : ' : '';
