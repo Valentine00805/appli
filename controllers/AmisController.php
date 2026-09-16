@@ -325,7 +325,7 @@ final class AmisController
         $fichier = $televerse('fichier');
         $vocal = $televerse('vocal');
         [$messageId, $refus] = Amis::ecrire($moi, $id, $texte, $image, $fichier, entier_ou_null($_POST['reponse_a'] ?? null),
-            $vocal, (int) ($_POST['duree'] ?? 0));
+            $vocal, (int) ($_POST['duree'] ?? 0), isset($_POST['transcription']) && is_string($_POST['transcription']) ? $_POST['transcription'] : null);
         $dureeVocal = $messageId !== null && $vocal !== null && ($vocal['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK
             ? (int) Database::valeur('SELECT audio_duree FROM messages WHERE id = ?', [$messageId]) : null;
         $avecImage = $messageId !== null && $image !== null && ($image['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK;

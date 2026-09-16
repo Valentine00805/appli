@@ -349,6 +349,9 @@ textarea { min-height: 260px; resize: vertical; line-height: 1.65; }
 @keyframes enregistrement { 50% { opacity: .25; } }
 .chat__enregistrement-texte { flex: 1; color: var(--texte-doux); }
 .chat__enregistrement-texte strong { color: var(--texte); font-variant-numeric: tabular-nums; }
+.chat__enregistrement-texte { min-width: 0; }
+.chat__enregistrement-transcription { display: block; font-size: .82rem; font-style: italic; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; direction: rtl; text-align: left; }
+.chat__enregistrement-transcription[hidden] { display: none; }
 
 /* Un message vocal dans une bulle. */
 .bulle__vocal { display: flex; align-items: center; gap: .55rem; min-width: min(14rem, 60vw); padding: .15rem 0; cursor: default; }
@@ -362,6 +365,10 @@ textarea { min-height: 260px; resize: vertical; line-height: 1.65; }
 .bulle--moi .bulle__vocal-piste { background: rgb(255 255 255 / 30%); }
 .bulle__vocal-avance { display: block; height: 100%; width: 0; background: var(--accent); border-radius: inherit; }
 .bulle--moi .bulle__vocal-avance { background: #fff; }
+.bulle__transcription { margin-top: .35rem; font-size: .85rem; }
+.bulle__transcription summary { cursor: pointer; width: fit-content; font-size: .78rem; font-weight: 600; opacity: .85; }
+.bulle__transcription summary:hover { opacity: 1; }
+.bulle__transcription p { margin: .3rem 0 0; white-space: pre-wrap; overflow-wrap: anywhere; font-style: italic; }
 .bulle__vocal-temps { flex: none; font-size: .78rem; font-variant-numeric: tabular-nums; opacity: .85; }
 .chat__emoji-bouton {
   flex: none; width: 2.6rem; height: 2.6rem; border: 1px solid var(--bordure); border-radius: var(--rayon-s);

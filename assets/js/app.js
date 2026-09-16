@@ -1128,7 +1128,7 @@
         bulle.classList.remove('bulle--image');
         bulle.removeAttribute('data-piece');
         bulle.querySelectorAll('.bulle__vocal audio').forEach(function (a) { a.pause(); });
-        bulle.querySelectorAll('.bulle__image, .bulle__fichier, .bulle__vocal, .bulle__texte, .bulle__citation, .bulle__modifie, .bulle__reactions').forEach(function (e) { e.remove(); });
+        bulle.querySelectorAll('.bulle__image, .bulle__fichier, .bulle__vocal, .bulle__transcription, .bulle__texte, .bulle__citation, .bulle__modifie, .bulle__reactions').forEach(function (e) { e.remove(); });
         var efface = document.createElement('p');
         efface.className = 'bulle__texte';
         efface.textContent = '🚫 Message supprimé';
@@ -1293,7 +1293,7 @@
           return;
         }
         var bulle = evenement.target.closest('[data-message]');
-        if (!bulle || evenement.target.closest('a, button, .bulle__vocal')) { return; }
+        if (!bulle || evenement.target.closest('a, button, .bulle__vocal, .bulle__transcription')) { return; }
         if (Date.now() - finAppuiLong < 700) { return; }
         var selection = window.getSelection ? String(window.getSelection()) : '';
         if (selection.trim() !== '' && bulle.contains(window.getSelection().anchorNode)) { return; }
@@ -1837,6 +1837,17 @@
           lecteur.appendChild(temps);
           lecteur.appendChild(audio);
           bulle.appendChild(lecteur);
+          if (message.vocal.transcription) {
+            var transcription = document.createElement('details');
+            transcription.className = 'bulle__transcription';
+            var resume = document.createElement('summary');
+            resume.textContent = 'Transcription';
+            var transcrit = document.createElement('p');
+            transcrit.textContent = message.vocal.transcription;
+            transcription.appendChild(resume);
+            transcription.appendChild(transcrit);
+            bulle.appendChild(transcription);
+          }
         }
         if (message.fichier) {
           var carte = document.createElement('div');
@@ -2108,6 +2119,13 @@
           if (audio.paused) { audio.play().catch(function () {}); }
         }
       });
+      // Une transcription dépliée reste en vue, même sous le bas de la discussion.
+      fil.addEventListener('toggle', function (evenement) {
+        var details = evenement.target;
+        if (!details.open || !details.classList || !details.classList.contains('bulle__transcription')) { return; }
+        var depasse = (details.closest('[data-message]') || details).getBoundingClientRect().bottom - fil.getBoundingClientRect().bottom + 8;
+        if (depasse > 0) { fil.scrollTop += depasse; }
+      }, true);
 
       /*
        * Enregistrer un message vocal.
@@ -2116,6 +2134,10 @@
        * demande le micro, puis une barre remplace la saisie : le temps qui
        * passe, « Annuler » et « Envoyer ». Cinq minutes au plus : au-delà, le
        * message part de lui-même. Il répond au message choisi, s'il y en a un.
+       *
+       * Si le navigateur sait reconnaître la parole (Chrome, Edge, Safari), il
+       * écrit en même temps ce qu'il entend : la transcription part avec le
+       * vocal. Sinon, le vocal part sans.
        */
       var boutonVocal = formulaire.querySelector('[data-vocal-bouton]');
       var barreVocal = chat.querySelector('[data-vocal-barre]');
@@ -2127,6 +2149,62 @@
       var minuterieVocal = null;
       var fluxVocal = null;
       var sortieVocal = null;
+      var Reconnaissance = window.SpeechRecognition || window.webkitSpeechRecognition;
+      var apercuTranscription = barreVocal.querySelector('[data-vocal-transcription]');
+      var reconnaissance = null;
+      var phrases = [];
+      var enCours = '';
+      var texteTranscrit = function () {
+        return phrases.concat(enCours ? [enCours] : []).join(' ').replace(/\s+/g, ' ').trim();
+      };
+      var ecouter = function () {
+        phrases = [];
+        enCours = '';
+        apercuTranscription.textContent = '';
+        apercuTranscription.hidden = true;
+        if (!Reconnaissance) { return; }
+        var r = new Reconnaissance();
+        r.lang = document.documentElement.lang || 'fr-FR';
+        r.continuous = true;
+        r.interimResults = true;
+        r.addEventListener('result', function (e) {
+          enCours = '';
+          for (var i = e.resultIndex; i < e.results.length; i++) {
+            var bout = e.results[i][0].transcript.trim();
+            if (e.results[i].isFinal) { if (bout) { phrases.push(bout); } } else { enCours += ' ' + bout; }
+          }
+          enCours = enCours.trim();
+          var vu = texteTranscrit();
+          // Le texte est écrit de droite à gauche pour montrer la fin ; le « \u200e » garde la ponctuation à sa place.
+          apercuTranscription.textContent = vu ? '\u200e' + vu + '\u200e' : '';
+          apercuTranscription.hidden = !vu;
+        });
+        // Le navigateur s'arrête de lui-même après un silence : on relance tant qu'on enregistre.
+        r.addEventListener('end', function () {
+          if (reconnaissance === r && enregistreur) {
+            if (enCours) { phrases.push(enCours); enCours = ''; }
+            try { r.start(); } catch (e) { reconnaissance = null; }
+          }
+        });
+        r.addEventListener('error', function (e) {
+          if (e.error === 'not-allowed' || e.error === 'service-not-allowed' || e.error === 'language-not-supported') { reconnaissance = null; }
+        });
+        reconnaissance = r;
+        try { r.start(); } catch (e) { reconnaissance = null; }
+      };
+      // Arrête l'écoute et rend le texte, après avoir laissé au navigateur le temps de finir sa phrase.
+      var finirEcoute = function () {
+        var r = reconnaissance;
+        reconnaissance = null;
+        if (!r) { return Promise.resolve(texteTranscrit()); }
+        return new Promise(function (fin) {
+          var fini = false;
+          var terminer = function () { if (!fini) { fini = true; fin(texteTranscrit()); } };
+          r.addEventListener('end', terminer);
+          setTimeout(terminer, 1500);
+          try { r.stop(); } catch (e) { terminer(); }
+        });
+      };
 
       var terminerEnregistrement = function () {
         clearInterval(minuterieVocal);
@@ -2158,6 +2236,7 @@
               var duree = Math.round((Date.now() - debutVocal) / 1000);
               var type = (enregistreur && enregistreur.mimeType) || format || 'audio/webm';
               var envoyer = sortieVocal;
+              var ecoute = finirEcoute();
               terminerEnregistrement();
               if (!envoyer) { return; }
               if (duree < 1 || !morceaux.length) { montrerErreur('Message vocal trop court : maintenez l’enregistrement au moins une seconde.'); return; }
@@ -2169,8 +2248,11 @@
               donnees.append('vocal', new Blob(morceaux, { type: type }), 'message-vocal.' + extension);
               if (mode && mode.type === 'reponse') { donnees.append('reponse_a', mode.id); }
               bouton.disabled = true;
-              fetch(chat.getAttribute('data-envoyer'), {
-                method: 'POST', body: donnees, credentials: 'same-origin', headers: { Accept: 'application/json' }
+              ecoute.then(function (texte) {
+                if (texte) { donnees.append('transcription', texte); }
+                return fetch(chat.getAttribute('data-envoyer'), {
+                  method: 'POST', body: donnees, credentials: 'same-origin', headers: { Accept: 'application/json' }
+                });
               }).then(function (r) { return r.json(); })
                 .then(function (reponse) {
                   if (!reponse.fait) { throw new Error(reponse.message || 'Le message vocal n’est pas parti.'); }
@@ -2182,6 +2264,7 @@
             });
             enregistreur.start(250);
             debutVocal = Date.now();
+            ecouter();
             chronoVocal.textContent = '0:00';
             formulaire.hidden = true;
             barreVocal.hidden = false;

@@ -622,6 +622,8 @@ CREATE TABLE IF NOT EXISTS `messages` (
   -- Un message vocal enregistré dans le navigateur, et sa durée en secondes.
   `audio_nom`       VARCHAR(64)       NULL,
   `audio_duree`     SMALLINT UNSIGNED NULL,
+  -- Ce que le navigateur a entendu pendant l'enregistrement.
+  `audio_transcription` TEXT NULL,
   `created_at`      DATETIME     NOT NULL,
   -- La dernière modification du texte par qui l'a écrit.
   `modifie_le`      DATETIME     NULL,

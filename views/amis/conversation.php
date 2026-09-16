@@ -133,6 +133,12 @@ foreach ($messages as $m) {
               <span class="bulle__vocal-temps" data-vocal-temps><?= e($m['vocal']['duree_texte']) ?></span>
               <audio preload="none" src="<?= e($m['vocal']['url']) ?>"></audio>
             </div>
+            <?php if ($m['vocal']['transcription'] !== null): ?>
+              <details class="bulle__transcription">
+                <summary>Transcription</summary>
+                <p><?= e($m['vocal']['transcription']) ?></p>
+              </details>
+            <?php endif; ?>
           <?php endif; ?>
           <?php if ($m['fichier'] !== null): ?>
             <div class="bulle__fichier">
@@ -181,7 +187,9 @@ foreach ($messages as $m) {
     <?php // Pendant un enregistrement vocal, cette barre prend la place de la saisie. ?>
     <div class="chat__enregistrement" data-vocal-barre hidden>
       <span class="chat__enregistrement-point" aria-hidden="true"></span>
-      <span class="chat__enregistrement-texte">Enregistrement… <strong data-vocal-chrono>0:00</strong></span>
+      <span class="chat__enregistrement-texte">Enregistrement… <strong data-vocal-chrono>0:00</strong>
+        <span class="chat__enregistrement-transcription" data-vocal-transcription hidden></span>
+      </span>
       <button class="bouton bouton--discret" type="button" data-vocal-annuler>✕ Annuler</button>
       <button class="bouton" type="button" data-vocal-envoyer>Envoyer</button>
     </div>

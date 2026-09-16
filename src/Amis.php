@@ -69,6 +69,7 @@ final class Amis
     /** Un message vocal : poids et durée au plus. */
     public const VOCAL_MAX_OCTETS = 10 * 1024 * 1024;
     public const VOCAL_MAX_SECONDES = 300;
+    public const TRANSCRIPTION_MAX = 10000;
 
     /**
      * Vérifie un enregistrement vocal et le range. Ce doit être un vrai fichier
@@ -136,6 +137,23 @@ final class Amis
         return str_starts_with($extrait, '🎤 ')
             ? self::micro() . ' ' . e(substr($extrait, strlen('🎤 ')))
             : e($extrait);
+    }
+
+    /**
+     * La transcription envoyée avec un vocal, sur une ligne, sans caractères
+     * de contrôle, raccourcie au besoin ; null s'il n'y a rien à garder.
+     */
+    public static function transcription(?string $texte): ?string
+    {
+        if ($texte === null || !mb_check_encoding($texte, 'UTF-8')) {
+            return null;
+        }
+        $texte = trim((string) preg_replace('/[\p{C}\s]+/u', ' ', $texte));
+        if ($texte === '') {
+            return null;
+        }
+
+        return mb_strlen($texte) > self::TRANSCRIPTION_MAX ? rtrim(mb_substr($texte, 0, self::TRANSCRIPTION_MAX - 1)) . '…' : $texte;
     }
 
     /** « 0:42 », « 3:05 ». */
@@ -436,7 +454,7 @@ final class Amis
      * @return array{0: ?int, 1: ?string} l'identifiant du message, ou la raison du refus
      */
     public static function ecrire(int $moi, int $autre, string $texte, ?array $image = null, ?array $fichier = null, ?int $reponseA = null,
-                                  ?array $vocal = null, int $dureeVocal = 0): array
+                                  ?array $vocal = null, int $dureeVocal = 0, ?string $transcription = null): array
     {
         $texte = trim(str_replace(["\r\n", "\r"], "\n", $texte));
         $avecImage = $image !== null && ($image['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE;
@@ -478,6 +496,7 @@ final class Amis
             }
         }
         $enregistre = null;
+        $transcrit = $avecVocal ? self::transcription($transcription) : null;
         if ($avecVocal) {
             $enregistre = self::rangerVocal($vocal, $dureeVocal);
             if (is_string($enregistre)) {
@@ -488,12 +507,12 @@ final class Amis
         try {
             Database::run(
                 'INSERT INTO messages (expediteur_id, destinataire_id, reponse_a, texte, image_nom, image_mime, image_largeur, image_hauteur,
-                                       fichier_nom, fichier_origine, fichier_mime, fichier_taille, audio_nom, audio_duree, created_at)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, UTC_TIMESTAMP())',
+                                       fichier_nom, fichier_origine, fichier_mime, fichier_taille, audio_nom, audio_duree, audio_transcription, created_at)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, UTC_TIMESTAMP())',
                 [$moi, $autre, $reponseA !== null && self::visible($moi, $autre, $reponseA) ? $reponseA : null,
                  $texte, $rangee['nom'] ?? null, $rangee['mime'] ?? null, $rangee['largeur'] ?? null, $rangee['hauteur'] ?? null,
                  $joint['nom'] ?? null, $joint['origine'] ?? null, $joint['mime'] ?? null, $joint['taille'] ?? null,
-                 $enregistre['nom'] ?? null, $enregistre['duree'] ?? null]
+                 $enregistre['nom'] ?? null, $enregistre['duree'] ?? null, $transcrit]
             );
         } catch (Throwable $e) {
             foreach ([$rangee, $joint, $enregistre] as $range) {
@@ -744,7 +763,7 @@ final class Amis
     {
         return Database::all(
             'SELECT m.id, m.expediteur_id, m.texte, m.image_nom, m.image_largeur, m.image_hauteur,
-                    m.fichier_nom, m.fichier_origine, m.fichier_mime, m.fichier_taille, m.audio_nom, m.audio_duree,
+                    m.fichier_nom, m.fichier_origine, m.fichier_mime, m.fichier_taille, m.audio_nom, m.audio_duree, m.audio_transcription,
                     m.created_at, m.modifie_le, m.lu_le, m.supprime_le, m.reponse_a,
                     r.expediteur_id AS r_expediteur, r.texte AS r_texte, r.image_nom AS r_image,
                     r.fichier_origine AS r_fichier, r.audio_nom AS r_audio, r.supprime_le AS r_supprime,
@@ -928,7 +947,7 @@ final class Amis
         }
         Database::run(
             "UPDATE messages SET texte = '', image_nom = NULL, image_mime = NULL, image_largeur = NULL, image_hauteur = NULL,
-                    fichier_nom = NULL, fichier_origine = NULL, fichier_mime = NULL, fichier_taille = NULL, audio_nom = NULL, audio_duree = NULL, reponse_a = NULL
+                    fichier_nom = NULL, fichier_origine = NULL, fichier_mime = NULL, fichier_taille = NULL, audio_nom = NULL, audio_duree = NULL, audio_transcription = NULL, reponse_a = NULL
               WHERE id = ?",
             [(int) $message['id']]
         );
@@ -1414,6 +1433,7 @@ final class Amis
                 'url' => url('amis/vocaux/' . (int) $message['id']),
                 'duree' => (int) $message['audio_duree'],
                 'duree_texte' => self::duree((int) $message['audio_duree']),
+                'transcription' => isset($message['audio_transcription']) ? (string) $message['audio_transcription'] : null,
             ],
             'fichier' => ($message['fichier_nom'] ?? null) === null ? null : [
                 'url' => url('amis/fichiers/' . (int) $message['id']),
