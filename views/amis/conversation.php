@@ -80,11 +80,13 @@ foreach ($messages as $m) {
       <p class="epingles__titre">📌 Messages épinglés</p>
       <ul class="epingles__liste" data-epingles-liste>
         <?php foreach ($epingles as $ep): ?>
-          <li>
+          <li class="epingles__ligne">
             <button type="button" class="epingles__element" data-aller-message="<?= $ep['id'] ?>">
               <span class="epingles__entete"><strong><?= e($ep['auteur']) ?></strong><span><?= e($ep['quand']) ?></span></span>
               <span class="epingles__extrait"><?= Amis::extraitHtml($ep['extrait']) ?></span>
             </button>
+            <button type="button" class="epingles__retirer" data-desepingler="<?= $ep['id'] ?>"
+                    title="Retirer des messages épinglés" aria-label="Retirer des messages épinglés"><?= Amis::poubelle() ?></button>
           </li>
         <?php endforeach; ?>
       </ul>

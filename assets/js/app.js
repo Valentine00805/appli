@@ -1506,11 +1506,18 @@
         void bulle.offsetWidth;
         bulle.classList.add('bulle--repere');
       };
+      // La poubelle, prise sur la page : la même que celle du serveur.
+      var dessinPoubelle = (function () {
+        var modele = document.createElement('template');
+        modele.innerHTML = "<svg viewBox=\"0 0 24 24\" width=\"18\" height=\"18\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\" focusable=\"false\"><path d=\"M3 6h18\"/><path d=\"M8 6V4h8v2\"/><path d=\"M19 6l-1 14H6L5 6\"/><path d=\"M10 11v6\"/><path d=\"M14 11v6\"/></svg>";
+        return modele.content.firstChild;
+      }());
       var dessinerEpingles = function (liste) {
         var ul = panneauEpingles.querySelector('[data-epingles-liste]');
         ul.textContent = '';
         liste.forEach(function (ep) {
           var li = document.createElement('li');
+          li.className = 'epingles__ligne';
           var b = document.createElement('button');
           b.type = 'button';
           b.className = 'epingles__element';
@@ -1529,25 +1536,36 @@
           b.appendChild(entete);
           b.appendChild(extrait);
           li.appendChild(b);
+          var retirer = document.createElement('button');
+          retirer.type = 'button';
+          retirer.className = 'epingles__retirer';
+          retirer.setAttribute('data-desepingler', String(ep.id));
+          retirer.title = 'Retirer des messages épinglés';
+          retirer.setAttribute('aria-label', 'Retirer des messages épinglés');
+          retirer.appendChild(dessinPoubelle.cloneNode(true));
+          li.appendChild(retirer);
           ul.appendChild(li);
         });
         panneauEpingles.querySelector('[data-epingles-vide]').hidden = liste.length > 0;
         boutonEpingles.querySelector('[data-epingles-nombre]').textContent = String(liste.length);
       };
-      var epingler = function (bulle, voulu) {
+      // Épingle ou désépingle un message, qu'il soit dans la page ou non.
+      var epinglerId = function (id, voulu) {
         var donnees = new FormData();
         donnees.append('_csrf', chat.getAttribute('data-jeton'));
         donnees.append('epingle', voulu ? '1' : '0');
-        fetch(chat.getAttribute('data-epingler').replace('/0/', '/' + bulle.getAttribute('data-message') + '/'), {
+        return fetch(chat.getAttribute('data-epingler').replace('/0/', '/' + id + '/'), {
           method: 'POST', body: donnees, credentials: 'same-origin', headers: { Accept: 'application/json' }
         }).then(function (r) { return r.json(); })
           .then(function (reponse) {
             if (!reponse.fait) { throw new Error(reponse.message || 'L’épingle n’a pas pu être posée.'); }
-            bulle.classList.toggle('bulle--epingle', reponse.epingle);
+            var bulle = fil.querySelector('[data-message="' + id + '"]');
+            if (bulle) { bulle.classList.toggle('bulle--epingle', reponse.epingle); }
             dessinerEpingles(reponse.epingles || []);
           })
           .catch(function (e) { montrerErreur(e.message || 'L’épingle n’a pas pu être posée.'); });
       };
+      var epingler = function (bulle, voulu) { epinglerId(bulle.getAttribute('data-message'), voulu); };
       boutonEpingles.addEventListener('click', function () {
         if (panneauEpingles.hidden) {
           fermerMenu();
@@ -1561,6 +1579,21 @@
         }
       });
       panneauEpingles.addEventListener('click', function (evenement) {
+        // La poubelle retire le message de la liste, sans le supprimer ; le panneau reste ouvert.
+        var retirer = evenement.target.closest('[data-desepingler]');
+        if (retirer) {
+          evenement.stopPropagation();
+          var ligne = retirer.closest('li');
+          var indice = ligne ? Array.prototype.indexOf.call(ligne.parentNode.children, ligne) : 0;
+          retirer.disabled = true;
+          epinglerId(retirer.getAttribute('data-desepingler'), false).then(function () {
+            var lignes = panneauEpingles.querySelectorAll('[data-epingles-liste] > li');
+            var cible = lignes[Math.min(indice, lignes.length - 1)];
+            if (cible) { cible.querySelector('[data-desepingler]').focus(); } else { boutonEpingles.focus(); }
+            retirer.disabled = false;
+          });
+          return;
+        }
         var element = evenement.target.closest('[data-aller-message]');
         if (!element) { return; }
         fermerEpingles();

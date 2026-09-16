@@ -290,6 +290,14 @@ textarea { min-height: 260px; resize: vertical; line-height: 1.65; }
   padding: .5rem .6rem; border-radius: var(--rayon-s); font: inherit; cursor: pointer;
 }
 .epingles__element:hover, .epingles__element:focus-visible { background: var(--fond-doux); outline: none; }
+.epingles__ligne { display: flex; align-items: center; gap: .15rem; }
+.epingles__ligne .epingles__element { flex: 1; min-width: 0; }
+.epingles__retirer {
+  flex: none; display: inline-flex; align-items: center; justify-content: center; width: 2.2rem; height: 2.2rem;
+  border: 0; border-radius: var(--rayon-s); background: transparent; color: var(--texte-doux); cursor: pointer;
+}
+.epingles__retirer:hover, .epingles__retirer:focus-visible { background: #fee2e2; color: #b91c1c; outline: none; }
+.epingles__retirer:disabled { opacity: .5; cursor: wait; }
 .epingles__entete { display: flex; justify-content: space-between; gap: .5rem; font-size: .8rem; }
 .epingles__entete span { color: var(--texte-doux); flex: none; }
 .epingles__extrait { font-size: .88rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
