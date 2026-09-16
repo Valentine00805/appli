@@ -252,6 +252,7 @@ textarea { min-height: 260px; resize: vertical; line-height: 1.65; }
 .ami__quand { flex: none; font-size: .75rem; color: var(--texte-doux); }
 .ami__apercu { font-size: .85rem; color: var(--texte-doux); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ami--non-lu .ami__apercu { color: var(--texte); font-weight: 600; }
+.ami__micro { vertical-align: -2px; }
 .amis-resultat { display: flex; align-items: center; gap: .65rem; padding: .4rem 0; border-top: 1px solid var(--bordure); }
 .amis-resultat:first-child { border-top: 0; }
 .amis-resultat__pseudo { flex: 1; min-width: 0; font-weight: 600; overflow-wrap: anywhere; }
