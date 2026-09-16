@@ -1083,6 +1083,7 @@
       var erreur = chat.querySelector('[data-chat-erreur]');
       var vu = chat.querySelector('[data-chat-vu]');
       var dernier = Number(chat.getAttribute('data-dernier')) || 0;
+      var enGroupe = chat.hasAttribute('data-groupe');
       var vuJusqua = Number(chat.getAttribute('data-vu')) || 0;
       var dernierMien = 0;
       var enCours = false;
@@ -1465,7 +1466,7 @@
         mode = { type: type, id: bulle.getAttribute('data-message'), bulle: bulle };
         var mien = bulle.classList.contains('bulle--moi');
         contexte.querySelector('[data-contexte-titre]').textContent = type === 'reponse'
-          ? '↩ Réponse à ' + (mien ? 'vous-même' : chat.getAttribute('data-ami'))
+          ? '↩ Réponse à ' + (mien ? 'vous-même' : (bulle.getAttribute('data-auteur') || chat.getAttribute('data-ami')))
           : '✏️ Modifier le message';
         poserExtrait(contexte.querySelector('[data-contexte-extrait]'), extraitDe(bulle));
         contexte.classList.toggle('chat__contexte--modifier', type === 'modifier');
@@ -1883,6 +1884,21 @@
         bulle.tabIndex = 0;
         bulle.setAttribute('aria-haspopup', 'menu');
         if (message.image || message.fichier || message.vocal) { bulle.setAttribute('data-piece', ''); }
+        // Dans un groupe, le nom de qui écrit, en tête d'une suite de ses messages.
+        if (enGroupe) {
+          var auteurId = String(message.auteur_id || '');
+          var precedent = fil.lastElementChild;
+          while (precedent && precedent.classList.contains('chat__vu')) { precedent = precedent.previousElementSibling; }
+          var memeAuteur = precedent && precedent.classList.contains('bulle') && precedent.getAttribute('data-auteur-id') === auteurId;
+          bulle.setAttribute('data-auteur', message.auteur || '');
+          bulle.setAttribute('data-auteur-id', auteurId);
+          if (!message.moi && !memeAuteur) {
+            var nomAuteur = document.createElement('span');
+            nomAuteur.className = 'bulle__auteur';
+            nomAuteur.textContent = message.auteur || '';
+            bulle.appendChild(nomAuteur);
+          }
+        }
         if (message.reponse) {
           var citation = document.createElement('a');
           citation.className = 'bulle__citation';
@@ -2056,6 +2072,11 @@
           });
           if (reponse.maintenant) { chat.setAttribute('data-maintenant', reponse.maintenant); }
           if ('fond' in reponse) { poserFond(reponse.fond); }
+          // Un groupe renommé par un autre membre.
+          if (reponse.titre) {
+            var titre = chat.querySelector('[data-chat-titre]');
+            if (titre && titre.textContent !== reponse.titre) { titre.textContent = reponse.titre; }
+          }
           vuJusqua = reponse.vu_jusqua || vuJusqua;
           majVu();
           if (enBasAvant && reponse.messages && reponse.messages.length) { enBas(); }
@@ -2705,36 +2726,38 @@
   }
 
   /*
-   * Les réglages de « Mon compte » — le pseudo, le fuseau horaire : ils se
+   * Les réglages — ceux de « Mon compte », le nom d'un groupe : ils se
    * lisent, et ne s'ouvrent à la modification que par leur bouton.
-   * « Annuler » referme et remet la valeur enregistrée.
+   * « Annuler » referme et remet la valeur enregistrée. Écoutés sur le
+   * document, ils marchent aussi dans une fenêtre ouverte après coup.
    */
-  document.querySelectorAll('[data-reglage]').forEach(function (carte) {
-    var lecture = carte.querySelector('[data-reglage-lecture]');
-    var edition = carte.querySelector('[data-reglage-edition]');
-    var modifier = carte.querySelector('[data-reglage-modifier]');
-    var annuler = carte.querySelector('[data-reglage-annuler]');
-    if (!lecture || !edition || !modifier || !annuler) { return; }
-    var champ = edition.querySelector('input:not([type="hidden"]), select');
+  document.addEventListener('click', function (evenement) {
+    var bouton = evenement.target.closest && evenement.target.closest('[data-reglage-modifier], [data-reglage-annuler]');
+    if (!bouton) { return; }
+    var carte = bouton.closest('[data-reglage]');
+    var lecture = carte && carte.querySelector('[data-reglage-lecture]');
+    var edition = carte && carte.querySelector('[data-reglage-edition]');
+    var modifier = carte && carte.querySelector('[data-reglage-modifier]');
+    if (!lecture || !edition || !modifier) { return; }
 
-    modifier.addEventListener('click', function () {
+    if (bouton.hasAttribute('data-reglage-modifier')) {
+      var champ = edition.querySelector('input:not([type="hidden"]), select');
       lecture.hidden = true;
       edition.hidden = false;
       if (champ) {
         champ.focus();
         if (champ.select && champ.tagName === 'INPUT') { champ.select(); }
       }
+      return;
+    }
+    edition.reset();
+    // Après un refus, le champ montrait la saisie : on revient à ce qui est enregistré.
+    edition.querySelectorAll('[data-valeur-actuelle]').forEach(function (c) {
+      c.value = c.getAttribute('data-valeur-actuelle');
     });
-    annuler.addEventListener('click', function () {
-      edition.reset();
-      // Après un refus, le champ montrait la saisie : on revient à ce qui est enregistré.
-      edition.querySelectorAll('[data-valeur-actuelle]').forEach(function (c) {
-        c.value = c.getAttribute('data-valeur-actuelle');
-      });
-      edition.hidden = true;
-      lecture.hidden = false;
-      modifier.focus();
-    });
+    edition.hidden = true;
+    lecture.hidden = false;
+    modifier.focus();
   });
 
   // Édition rapide d'une matière

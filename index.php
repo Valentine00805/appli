@@ -43,6 +43,7 @@ require __DIR__ . '/src/WebPush.php';
 require __DIR__ . '/src/Rappels.php';
 require __DIR__ . '/src/FileNotifications.php';
 require __DIR__ . '/src/Amis.php';
+require __DIR__ . '/src/Conversations.php';
 require __DIR__ . '/src/PlanningJour.php';
 require __DIR__ . '/src/Fournisseur.php';
 require __DIR__ . '/src/FournisseurMicrosoft.php';
@@ -57,6 +58,7 @@ require __DIR__ . '/src/Vue.php';
 
 require __DIR__ . '/controllers/AuthController.php';
 require __DIR__ . '/controllers/AmisController.php';
+require __DIR__ . '/controllers/ConversationsController.php';
 require __DIR__ . '/controllers/CoursController.php';
 require __DIR__ . '/controllers/CalendrierController.php';
 require __DIR__ . '/controllers/MatieresController.php';
@@ -229,6 +231,30 @@ $routes = [
     ['POST', 'amis/messages/{id}/reaction', [AmisController::class, 'reagir']],
     ['POST', 'amis/messages/{id}/epingle', [AmisController::class, 'epingler']],
     ['POST', 'amis/{id}/messages',        [AmisController::class, 'envoyer']],
+
+    // Les discussions de groupe (à ne pas confondre avec les groupes de personnes du budget).
+    ['GET',  'groupes/nouveau',             [ConversationsController::class, 'nouveau']],
+    ['POST', 'groupes',                     [ConversationsController::class, 'creer']],
+    ['GET',  'groupes/{id}',                [ConversationsController::class, 'conversation']],
+    ['GET',  'groupes/{id}/reglages',       [ConversationsController::class, 'reglages']],
+    ['GET',  'groupes/{id}/messages',       [ConversationsController::class, 'nouveaux']],
+    ['POST', 'groupes/{id}/messages',       [ConversationsController::class, 'envoyer']],
+    ['GET',  'groupes/{id}/recherche',      [ConversationsController::class, 'rechercher']],
+    ['POST', 'groupes/{id}/nom',            [ConversationsController::class, 'renommer']],
+    ['POST', 'groupes/{id}/membres',        [ConversationsController::class, 'ajouter']],
+    ['POST', 'groupes/{id}/membres/{id}/retirer', [ConversationsController::class, 'retirerMembre']],
+    ['POST', 'groupes/{id}/membres/{id}/admin',   [ConversationsController::class, 'nommerAdmin']],
+    ['POST', 'groupes/{id}/quitter',        [ConversationsController::class, 'quitter']],
+    ['GET',  'groupes/{id}/fond',           [ConversationsController::class, 'fond']],
+    ['POST', 'groupes/{id}/fond',           [ConversationsController::class, 'changerFond']],
+    ['POST', 'groupes/{id}/fond/retirer',   [ConversationsController::class, 'retirerFond']],
+    ['GET',  'groupes/images/{id}',         [ConversationsController::class, 'imageMessage']],
+    ['GET',  'groupes/fichiers/{id}',       [ConversationsController::class, 'fichier']],
+    ['GET',  'groupes/vocaux/{id}',         [ConversationsController::class, 'vocal']],
+    ['POST', 'groupes/messages/{id}/supprimer', [ConversationsController::class, 'supprimerMessage']],
+    ['POST', 'groupes/messages/{id}/modifier',  [ConversationsController::class, 'modifierMessage']],
+    ['POST', 'groupes/messages/{id}/reaction',  [ConversationsController::class, 'reagir']],
+    ['POST', 'groupes/messages/{id}/epingle',   [ConversationsController::class, 'epingler']],
     /*
      * Les agendas distants. Le fournisseur est dans l'adresse : chacun a
      * ainsi sa page et son retour d'autorisation, sans une ligne de plus.

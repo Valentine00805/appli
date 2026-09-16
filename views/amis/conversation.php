@@ -1,12 +1,15 @@
 <?php
 /**
- * Une conversation avec un ami : la liste des amis à gauche, le fil à droite.
+ * Une conversation avec un ami, ou un groupe : la liste des discussions à
+ * gauche, le fil à droite.
  *
  * Le script de la page envoie sans recharger et va chercher les nouveaux
  * messages toutes les quelques secondes. Sans lui, le formulaire s'envoie
  * normalement et la page se relit.
  *
- * @var array{id: int, pseudo: string} $ami
+ * @var ?array{id: int, pseudo: string} $ami     l'ami, pour une discussion à deux
+ * @var ?array $groupe                           le groupe, pour une discussion de groupe
+ * @var int $nombreMembres
  * @var list<array> $messages
  * @var int $vuJusqua
  * @var list<array> $amis
@@ -15,7 +18,31 @@
  * @var ?int $cible  le message sur lequel ouvrir la conversation
  */
 $csrf = Session::jetonCsrf();
-$actif = (int) $ami['id'];
+$enGroupe = isset($groupe);
+// Tout ce qui diffère entre une discussion à deux et un groupe : les adresses et les titres.
+if ($enGroupe) {
+    $actif = null;
+    $groupeActif = (int) $groupe['id'];
+    $base = 'groupes/' . $groupeActif;
+    $baseMessages = 'groupes/messages';
+    $titre = (string) $groupe['nom'];
+    $aide = $nombreMembres . ' membres · réglages, photos et fichiers';
+    $lienInfo = url($base . '/reglages');
+    $libelleInfo = '⚙️ Réglages';
+    $initiale = '👥';
+    $destinataire = 'au groupe';
+} else {
+    $actif = (int) $ami['id'];
+    $groupeActif = null;
+    $base = 'amis/' . $actif;
+    $baseMessages = 'amis/messages';
+    $titre = (string) $ami['pseudo'];
+    $aide = 'Profil, photos et fichiers';
+    $lienInfo = url($base . '/profil');
+    $libelleInfo = 'ℹ️ Profil';
+    $initiale = mb_strtoupper(mb_substr($titre, 0, 1));
+    $destinataire = 'à ' . $titre;
+}
 $dernierId = $messages === [] ? 0 : (int) end($messages)['id'];
 $dernierMien = 0;
 foreach ($messages as $m) {
@@ -25,36 +52,40 @@ foreach ($messages as $m) {
 
 <div class="chat">
   <aside class="carte chat__amis" aria-label="Mes discussions">
-    <p style="margin:0 0 .6rem"><a href="<?= url('amis') ?>">← Amis et demandes</a></p>
+    <p class="discussions-titre" style="margin:0 0 .6rem">
+      <a href="<?= url('amis') ?>">← Amis et demandes</a>
+      <a class="bouton bouton--secondaire bouton--petit" href="<?= url('groupes/nouveau') ?>" data-fenetre>👥 Nouveau groupe</a>
+    </p>
     <?php require __DIR__ . '/_liste.php'; ?>
   </aside>
 
   <section class="carte chat__fil"
            data-chat
-           data-nouveaux="<?= e(url('amis/' . $actif . '/messages')) ?>"
-           data-envoyer="<?= e(url('amis/' . $actif . '/messages')) ?>"
+           data-nouveaux="<?= e(url($base . '/messages')) ?>"
+           data-envoyer="<?= e(url($base . '/messages')) ?>"
            data-jeton="<?= e($csrf) ?>"
            data-dernier="<?= $dernierId ?>"
-           data-supprimer="<?= e(url('amis/messages/0/supprimer')) ?>"
-           data-modifier="<?= e(url('amis/messages/0/modifier')) ?>"
-           data-reagir="<?= e(url('amis/messages/0/reaction')) ?>"
-           data-epingler="<?= e(url('amis/messages/0/epingle')) ?>"
-           data-conversation="<?= e(url('amis/' . $actif)) ?>"
-           data-rechercher="<?= e(url('amis/' . $actif . '/recherche')) ?>"
+           data-supprimer="<?= e(url($baseMessages . '/0/supprimer')) ?>"
+           data-modifier="<?= e(url($baseMessages . '/0/modifier')) ?>"
+           data-reagir="<?= e(url($baseMessages . '/0/reaction')) ?>"
+           data-epingler="<?= e(url($baseMessages . '/0/epingle')) ?>"
+           data-conversation="<?= e(url($base)) ?>"
+           data-rechercher="<?= e(url($base . '/recherche')) ?>"
+           <?= $enGroupe ? 'data-groupe' : '' ?>
            <?= $cible !== null ? 'data-cible="' . (int) $cible . '"' : '' ?>
            data-reactions-rapides="<?= e(implode(' ', Amis::REACTIONS_RAPIDES)) ?>"
            data-maintenant="<?= e($maintenant) ?>"
-           data-ami="<?= e((string) $ami['pseudo']) ?>"
+           data-ami="<?= e($titre) ?>"
            data-transcription="<?= (int) (Auth::utilisateur()['transcription_vocale'] ?? 1) ?>"
            data-vu="<?= (int) $vuJusqua ?>">
     <header class="chat__entete">
       <a class="chat__retour" href="<?= url('amis') ?>" aria-label="Retour aux amis">←</a>
-      <?php // Le profil, en fenêtre : photos et fichiers échangés, et le retrait des amis. ?>
-      <a class="chat__profil" href="<?= url('amis/' . $actif . '/profil') ?>" data-fenetre title="Voir le profil">
-        <span class="avatar" aria-hidden="true"><?= e(mb_strtoupper(mb_substr((string) $ami['pseudo'], 0, 1))) ?></span>
+      <?php // Le profil de l'ami, ou les réglages du groupe, en fenêtre. ?>
+      <a class="chat__profil" href="<?= e($lienInfo) ?>" data-fenetre title="<?= $enGroupe ? 'Réglages du groupe' : 'Voir le profil' ?>">
+        <span class="avatar<?= $enGroupe ? ' avatar--groupe' : '' ?>" aria-hidden="true"><?= e($initiale) ?></span>
         <span class="chat__profil-texte">
-          <h1 class="chat__titre"><?= e((string) $ami['pseudo']) ?></h1>
-          <span class="chat__profil-aide">Profil, photos et fichiers</span>
+          <h1 class="chat__titre" data-chat-titre><?= e($titre) ?></h1>
+          <span class="chat__profil-aide"><?= e($aide) ?></span>
         </span>
       </a>
       <?php // Chercher dans la conversation : le champ s'ouvre sous le bouton, un résultat ramène au message. ?>
@@ -65,7 +96,7 @@ foreach ($messages as $m) {
               aria-expanded="false" aria-controls="chat-epingles" title="Messages épinglés">
         📌 <span class="chat__epingles-nombre" data-epingles-nombre><?= count($epingles) ?></span>
       </button>
-      <a class="bouton bouton--secondaire bouton--petit chat__profil-bouton" href="<?= url('amis/' . $actif . '/profil') ?>" data-fenetre>ℹ️ Profil</a>
+      <a class="bouton bouton--secondaire bouton--petit chat__profil-bouton" href="<?= e($lienInfo) ?>" data-fenetre><?= e($libelleInfo) ?></a>
     </header>
 
     <div class="epingles recherche-chat" id="chat-recherche" data-recherche-panneau hidden role="search">
@@ -101,12 +132,12 @@ foreach ($messages as $m) {
       <?php if ($messages === []): ?>
         <p class="chat__vide" data-chat-vide>Aucun message pour l’instant. Écrivez le premier !</p>
       <?php endif; ?>
-      <?php $jour = null; ?>
+      <?php $jour = null; $auteurPrecedent = null; ?>
       <?php foreach ($messages as $m): ?>
         <?php if ($m['jour'] !== $jour): $jour = $m['jour']; ?>
           <p class="chat__jour" data-jour="<?= e($m['jour']) ?>"><span><?= e($m['jour_libelle']) ?></span></p>
-        <?php endif; ?>
-        <?php if ($m['evenement'] !== null): ?>
+        <?php $auteurPrecedent = null; endif; ?>
+        <?php if ($m['evenement'] !== null): $auteurPrecedent = null; ?>
           <?php // Une note de la discussion : au centre, sans menu. ?>
           <p class="chat__evenement" data-evenement="<?= (int) $m['id'] ?>"><span><?= e($m['evenement']) ?> · <?= e($m['heure']) ?></span></p>
           <?php continue; ?>
@@ -119,7 +150,13 @@ foreach ($messages as $m) {
         ?>
         <div class="bulle<?= $m['moi'] ? ' bulle--moi' : '' ?><?= $m['image'] !== null ? ' bulle--image' : '' ?><?= $m['supprime'] ? ' bulle--supprime' : '' ?><?= $m['epingle'] ? ' bulle--epingle' : '' ?>"
              data-message="<?= (int) $m['id'] ?>" id="message-<?= (int) $m['id'] ?>" tabindex="0" aria-haspopup="menu"
+             <?= $enGroupe ? 'data-auteur="' . e($m['auteur']) . '" data-auteur-id="' . (int) $m['auteur_id'] . '"' : '' ?>
              <?= $m['image'] !== null || $m['fichier'] !== null || $m['vocal'] !== null ? 'data-piece' : '' ?>>
+          <?php // Dans un groupe, le nom de qui écrit, en tête d'une suite de ses messages. ?>
+          <?php if ($enGroupe && !$m['moi'] && $auteurPrecedent !== $m['auteur_id']): ?>
+            <span class="bulle__auteur"><?= e($m['auteur']) ?></span>
+          <?php endif; ?>
+          <?php $auteurPrecedent = $m['auteur_id'] ?? null; ?>
           <?php if ($m['reponse'] !== null): ?>
             <a class="bulle__citation" href="#message-<?= $m['reponse']['id'] ?>" data-citation="<?= $m['reponse']['id'] ?>">
               <span class="bulle__citation-auteur"><?= e($m['reponse']['auteur']) ?></span>
@@ -177,11 +214,11 @@ foreach ($messages as $m) {
         </div>
         <?php // « Vu » sous mon dernier message, s'il a été lu — pas sous la réponse qui l'a suivi. ?>
         <?php if ($m['id'] === $dernierMien): ?>
-          <p class="chat__vu" data-chat-vu<?= $vuJusqua >= $dernierMien ? '' : ' hidden' ?>>Vu</p>
+          <p class="chat__vu" data-chat-vu<?= $vuJusqua >= $dernierMien ? '' : ' hidden' ?>><?= $enGroupe ? 'Vu par tous' : 'Vu' ?></p>
         <?php endif; ?>
       <?php endforeach; ?>
       <?php if ($dernierMien === 0): ?>
-        <p class="chat__vu" data-chat-vu hidden>Vu</p>
+        <p class="chat__vu" data-chat-vu hidden><?= $enGroupe ? 'Vu par tous' : 'Vu' ?></p>
       <?php endif; ?>
     </div>
 
@@ -214,14 +251,14 @@ foreach ($messages as $m) {
     <?php // Les photos et fichiers choisis, en attente d'envoi : le script les montre ici. ?>
     <div class="chat__apercus" data-chat-apercus hidden></div>
 
-    <form class="chat__saisie" method="post" action="<?= url('amis/' . $actif . '/messages') ?>" data-chat-formulaire
+    <form class="chat__saisie" method="post" action="<?= url($base . '/messages') ?>" data-chat-formulaire
           enctype="multipart/form-data"
           data-extensions="<?= e(implode(',', Amis::extensionsFichiers())) ?>"
           data-fichier-max="<?= Amis::fichierMax() ?>">
       <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
-      <label class="sr-only" for="chat-texte">Message à <?= e((string) $ami['pseudo']) ?></label>
+      <label class="sr-only" for="chat-texte">Message <?= e($destinataire) ?></label>
       <textarea id="chat-texte" name="texte" rows="1" maxlength="<?= Amis::MESSAGE_MAX ?>" required
-                placeholder="Écrire à <?= e((string) $ami['pseudo']) ?>…" autofocus></textarea>
+                placeholder="Écrire <?= e($destinataire) ?>…" autofocus></textarea>
       <?php // Joindre des photos ou des fichiers : le bouton ouvre le choix de fichiers, gardé caché. ?>
       <input type="file" name="fichier" multiple
              accept="<?= e(implode(',', array_map(static fn (string $x): string => '.' . $x, Amis::extensionsFichiers()))) ?>"

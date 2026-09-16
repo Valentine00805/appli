@@ -15,18 +15,15 @@ final class AmisController
         $moi = Auth::id();
 
         $recherche = trim((string) ($_GET['pseudo'] ?? ''));
-        $amis = Amis::liste($moi);
 
         Vue::afficher('amis/index', [
             'recherche' => $recherche,
             'resultats' => Amis::chercher($moi, $recherche),
             'recues' => Amis::demandesRecues($moi),
             'envoyees' => Amis::demandesEnvoyees($moi),
-            'amis' => $amis,
-            'derniers' => Amis::messagesParId(array_column($amis, 'dernier_id')),
             'aUnPseudo' => (string) (Auth::utilisateur()['pseudo'] ?? '') !== '',
             'bloques' => Amis::bloques($moi),
-        ], 'Amis');
+        ] + ConversationsController::liste($moi), 'Amis');
     }
 
     /** Envoie une demande d'ami (ou accepte celle que l'autre avait faite). */
@@ -118,7 +115,6 @@ final class AmisController
         $cible = entier_ou_null($_GET['message'] ?? null);
         $messages = Amis::fil($moi, $id, 0, $cible);
         Amis::regarder($moi, $id);
-        $amis = Amis::liste($moi);
 
         Vue::afficher('amis/conversation', [
             'ami' => $ami,
@@ -128,9 +124,7 @@ final class AmisController
             'epingles' => Amis::epingles($moi, $id),
             'adresseFond' => Amis::adresseFond($moi, $id),
             'cible' => $cible,
-            'amis' => $amis,
-            'derniers' => Amis::messagesParId(array_column($amis, 'dernier_id')),
-        ], 'Discussion avec ' . $ami['pseudo']);
+        ] + ConversationsController::liste($moi), 'Discussion avec ' . $ami['pseudo']);
     }
 
     /** Bloque un compte, depuis son profil. */

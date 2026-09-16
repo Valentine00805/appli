@@ -324,6 +324,28 @@ textarea { min-height: 260px; resize: vertical; line-height: 1.65; }
 .profil-ami__danger { border-color: color-mix(in srgb, var(--erreur) 35%, var(--bordure)); }
 .profil-ami__danger { display: flex; flex-wrap: wrap; gap: .6rem; align-items: flex-start; }
 
+/* Les discussions de groupe. */
+.avatar--groupe { background: var(--accent-doux); color: var(--accent-fonce); font-size: .95rem; font-weight: 400; }
+.avatar--grand.avatar--groupe { font-size: 1.7rem; }
+.bulle__auteur { display: block; margin-bottom: .15rem; font-size: .75rem; font-weight: 700; color: var(--accent-fonce); }
+.discussions-titre { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem; margin-bottom: .75rem; }
+.discussions-titre h2 { margin: 0; }
+.groupe-choix { margin: 0 0 1rem; padding: 0; border: 0; min-width: 0; }
+.groupe-choix__liste {
+  list-style: none; margin: 0; padding: .25rem; display: grid; gap: .15rem; max-height: 16rem; overflow-y: auto;
+  border: 1px solid var(--bordure); border-radius: var(--rayon-s);
+}
+.groupe-choix__ami { display: flex; align-items: center; gap: .6rem; padding: .35rem .5rem; border-radius: var(--rayon-s); cursor: pointer; }
+.groupe-choix__ami:hover { background: var(--fond-doux); }
+.groupe-choix__ami input { width: 1.1rem; height: 1.1rem; accent-color: var(--accent); }
+.groupe-membres { list-style: none; margin: 0; padding: 0; }
+.groupe-membres__ligne { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; padding: .45rem 0; border-top: 1px solid var(--bordure); }
+.groupe-membres__ligne:first-child { border-top: 0; }
+.groupe-membres__nom { flex: 1; min-width: 8rem; display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; overflow-wrap: anywhere; }
+.groupe-membres__actions { display: flex; flex-wrap: wrap; gap: .4rem; }
+.groupe-membres__actions form { margin: 0; }
+.groupe-ajout { margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--bordure); }
+
 /* Une fenêtre de confirmation, par-dessus le reste. */
 .confirmation {
   border: 0; border-radius: var(--rayon); padding: 1.4rem 1.25rem 1.25rem; width: min(28rem, calc(100vw - 2rem));

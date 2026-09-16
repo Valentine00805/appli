@@ -44,7 +44,10 @@ $geste = static function (string $action, int $compte, string $libelle, string $
 
 <div class="colonnes">
   <section class="carte">
-    <h2 style="margin-top:0">Mes discussions</h2>
+    <div class="discussions-titre">
+      <h2>Mes discussions</h2>
+      <a class="bouton bouton--secondaire bouton--petit" href="<?= url('groupes/nouveau') ?>" data-fenetre>👥 Nouveau groupe</a>
+    </div>
     <?php require __DIR__ . '/_liste.php'; ?>
   </section>
 

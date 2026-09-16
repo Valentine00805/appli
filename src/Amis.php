@@ -433,7 +433,7 @@ final class Amis
                      WHERE m.destinataire_id = ? AND m.lu_le IS NULL AND m.supprime_le IS NULL AND m.masque_destinataire = 0)
                   + (SELECT COUNT(*) FROM amities WHERE destinataire_id = ? AND statut = 'attente')",
             [$moi, $moi]
-        );
+        ) + Conversations::nonLus($moi);
     }
 
     /**
@@ -959,7 +959,7 @@ final class Amis
     }
 
     /** De quoi reconnaître un message cité : le début de son texte, ou sa pièce jointe. */
-    private static function extrait(array $cite): string
+    public static function extrait(array $cite): string
     {
         if ((int) ($cite['r_masque'] ?? 0) === 1) {
             return 'Message supprimé';
@@ -1260,7 +1260,7 @@ final class Amis
     }
 
     /** Un texte ramené à ses lettres de base, sans changer sa longueur : « Élève » → « eleve ». */
-    private static function plier(string $texte): string
+    public static function plier(string $texte): string
     {
         static $sans = null;
         $sans ??= array_combine(
@@ -1272,7 +1272,7 @@ final class Amis
     }
 
     /** La position du mot cherché dans un texte, sans majuscules ni accents, ou null. */
-    private static function trouver(string $texte, string $recherche): ?int
+    public static function trouver(string $texte, string $recherche): ?int
     {
         $position = mb_strpos(self::plier($texte), self::plier($recherche));
 
@@ -1284,7 +1284,7 @@ final class Amis
      *
      * @return array{avant: string, trouve: string, apres: string}
      */
-    private static function decouper(string $texte, string $recherche): array
+    public static function decouper(string $texte, string $recherche): array
     {
         $position = self::trouver($texte, $recherche);
         if ($position === null) {
@@ -1521,8 +1521,11 @@ final class Amis
         );
     }
 
-    /** Un message prêt à montrer, à l'heure de celui qui le lit. */
-    public static function pourAffichage(array $message, int $moi): array
+    /**
+     * Un message prêt à montrer, à l'heure de celui qui le lit. « $prefixe » :
+     * l'adresse de ses pièces jointes — « amis » ou « groupes ».
+     */
+    public static function pourAffichage(array $message, int $moi, string $prefixe = 'amis'): array
     {
         $moment = self::local((string) $message['created_at']);
 
@@ -1540,18 +1543,18 @@ final class Amis
                     : (string) (self::compte((int) $message['r_expediteur'])['pseudo'] ?? ''),
                 'extrait' => self::extrait($message),
             ],
-            'image' => ($message['image_nom'] ?? null) === null ? null : url('amis/images/' . (int) $message['id']),
+            'image' => ($message['image_nom'] ?? null) === null ? null : url($prefixe . '/images/' . (int) $message['id']),
             'largeur' => (int) ($message['image_largeur'] ?? 0),
             'hauteur' => (int) ($message['image_hauteur'] ?? 0),
             'vocal' => ($message['audio_nom'] ?? null) === null ? null : [
-                'url' => url('amis/vocaux/' . (int) $message['id']),
+                'url' => url($prefixe . '/vocaux/' . (int) $message['id']),
                 'duree' => (int) $message['audio_duree'],
                 'duree_texte' => self::duree((int) $message['audio_duree']),
                 'transcription' => isset($message['audio_transcription']) ? (string) $message['audio_transcription'] : null,
             ],
             'fichier' => ($message['fichier_nom'] ?? null) === null ? null : [
-                'url' => url('amis/fichiers/' . (int) $message['id']),
-                'telecharger' => url('amis/fichiers/' . (int) $message['id'], ['telecharger' => 1]),
+                'url' => url($prefixe . '/fichiers/' . (int) $message['id']),
+                'telecharger' => url($prefixe . '/fichiers/' . (int) $message['id'], ['telecharger' => 1]),
                 'nom' => (string) $message['fichier_origine'],
                 'taille' => taille_lisible((int) $message['fichier_taille']),
                 'icone' => Fichiers::icone((string) $message['fichier_mime'], (string) $message['fichier_origine']),
