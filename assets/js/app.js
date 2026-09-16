@@ -2137,7 +2137,8 @@
        *
        * Si le navigateur sait reconnaître la parole (Chrome, Edge, Safari), il
        * écrit en même temps ce qu'il entend : la transcription part avec le
-       * vocal. Sinon, le vocal part sans.
+       * vocal. Sinon, ou si la transcription est coupée dans « Mon compte »,
+       * le vocal part sans.
        */
       var boutonVocal = formulaire.querySelector('[data-vocal-bouton]');
       var barreVocal = chat.querySelector('[data-vocal-barre]');
@@ -2149,7 +2150,8 @@
       var minuterieVocal = null;
       var fluxVocal = null;
       var sortieVocal = null;
-      var Reconnaissance = window.SpeechRecognition || window.webkitSpeechRecognition;
+      var Reconnaissance = chat.getAttribute('data-transcription') === '0' ? null
+        : (window.SpeechRecognition || window.webkitSpeechRecognition);
       var apercuTranscription = barreVocal.querySelector('[data-vocal-transcription]');
       var reconnaissance = null;
       var phrases = [];

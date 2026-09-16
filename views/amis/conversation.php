@@ -45,6 +45,7 @@ foreach ($messages as $m) {
            data-reactions-rapides="<?= e(implode(' ', Amis::REACTIONS_RAPIDES)) ?>"
            data-maintenant="<?= e($maintenant) ?>"
            data-ami="<?= e((string) $ami['pseudo']) ?>"
+           data-transcription="<?= (int) (Auth::utilisateur()['transcription_vocale'] ?? 1) ?>"
            data-vu="<?= (int) $vuJusqua ?>">
     <header class="chat__entete">
       <a class="chat__retour" href="<?= url('amis') ?>" aria-label="Retour aux amis">←</a>

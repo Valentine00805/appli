@@ -12,6 +12,8 @@ CREATE TABLE IF NOT EXISTS `users` (
   -- Le nom sous lequel l'application vous appelle ; unique, NULL pour un compte d'avant.
   `pseudo`        VARCHAR(30)  NULL,
   `fuseau`        VARCHAR(64)  NOT NULL DEFAULT 'Europe/Paris',
+  -- Transcrire ses messages vocaux pendant l'enregistrement.
+  `transcription_vocale` TINYINT(1) NOT NULL DEFAULT 1,
   `afficher_miens` TINYINT(1)  NOT NULL DEFAULT 1,
   `couleur_miens`  VARCHAR(7)  NULL,
   `volet_replie`    VARCHAR(190) NULL,

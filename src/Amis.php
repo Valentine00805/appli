@@ -496,7 +496,9 @@ final class Amis
             }
         }
         $enregistre = null;
-        $transcrit = $avecVocal ? self::transcription($transcription) : null;
+        // Une transcription n'est gardée que si la personne ne l'a pas coupée.
+        $transcrit = $avecVocal && (int) Database::valeur('SELECT transcription_vocale FROM users WHERE id = ?', [$moi]) === 1
+            ? self::transcription($transcription) : null;
         if ($avecVocal) {
             $enregistre = self::rangerVocal($vocal, $dureeVocal);
             if (is_string($enregistre)) {

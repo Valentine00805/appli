@@ -249,6 +249,25 @@ final class AuthController
         redirect('compte');
     }
 
+    /** Active ou coupe la transcription de ses messages vocaux. */
+    public function changerTranscription(): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+
+        $choix = (string) ($_POST['transcription'] ?? '');
+        if ($choix !== '0' && $choix !== '1') {
+            Session::flash('erreur', 'Choisissez « Activée » ou « Coupée ».');
+            redirect('compte');
+        }
+
+        Database::run('UPDATE users SET transcription_vocale = ? WHERE id = ?', [(int) $choix, Auth::id()]);
+        Session::flash('succes', $choix === '1'
+            ? 'Transcription activée : vos prochains messages vocaux seront transcrits.'
+            : 'Transcription coupée : vos messages vocaux partiront sans texte.');
+        redirect('compte');
+    }
+
     /**
      * Les fuseaux connus, rangés par région.
      *

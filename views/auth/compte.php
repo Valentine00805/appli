@@ -123,6 +123,41 @@ $enEdition = is_string($pseudoSaisi);
   </p>
 </section>
 
+<?php
+/*
+ * La transcription des messages vocaux, comme le pseudo et le fuseau : elle
+ * se lit, et ne se change qu'en passant par « Modifier ».
+ */
+$transcription = (int) ($moi['transcription_vocale'] ?? 1) === 1;
+?>
+<section class="carte" style="margin-bottom:1rem" id="transcription-carte" data-reglage>
+  <h2 style="margin-top:0"><?= str_replace(['width="14"', 'height="14"'], ['width="22"', 'height="22"'], Amis::micro()) ?> Transcription des messages vocaux</h2>
+
+  <div class="reglage-lecture" data-reglage-lecture>
+    <p class="reglage-lecture__valeur"><?= $transcription ? '✅ Activée' : '⛔ Coupée' ?></p>
+    <button class="bouton bouton--secondaire" type="button" data-reglage-modifier>✎ Modifier</button>
+  </div>
+
+  <form method="post" action="<?= url('compte/transcription') ?>" data-reglage-edition hidden>
+    <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
+    <fieldset class="reglage-choix">
+      <legend class="legende">Transcrire mes messages vocaux</legend>
+      <label><input type="radio" name="transcription" value="1"<?= $transcription ? ' checked' : '' ?>> Activée</label>
+      <label><input type="radio" name="transcription" value="0"<?= $transcription ? '' : ' checked' ?>> Coupée</label>
+    </fieldset>
+    <div class="actions">
+      <button class="bouton" type="submit">Enregistrer</button>
+      <button class="bouton bouton--discret" type="button" data-reglage-annuler>Annuler</button>
+    </div>
+  </form>
+
+  <p class="champ__aide" style="margin-bottom:0">
+    Activée, votre navigateur écrit ce que vous dites pendant l’enregistrement, et vos amis lisent le texte sous le vocal.
+    Chrome et Edge envoient pour cela le son à Google ou Microsoft ; Firefox ne sait pas transcrire.
+    Coupée, vos vocaux partent sans texte. Les vocaux déjà envoyés ne changent pas.
+  </p>
+</section>
+
 <div class="colonnes">
   <?php
   /*

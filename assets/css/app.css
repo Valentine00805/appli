@@ -562,6 +562,9 @@ textarea { min-height: 260px; resize: vertical; line-height: 1.65; }
 .reglage-lecture { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem; margin-bottom: .6rem; }
 .reglage-lecture__valeur { margin: 0; font-size: 1.15rem; font-weight: 650; overflow-wrap: anywhere; }
 .reglage-lecture[hidden], [data-reglage-edition][hidden] { display: none; }
+.reglage-choix { display: flex; flex-wrap: wrap; gap: .5rem 1.5rem; margin: 0 0 .75rem; padding: 0; border: 0; }
+.reglage-choix .legende { width: 100%; padding: 0; }
+.reglage-choix label { display: inline-flex; align-items: center; gap: .4rem; cursor: pointer; }
 [data-reglage-edition] { margin-bottom: .6rem; }
 [data-reglage-edition] .fuseau-choix { margin-top: .3rem; }
 
