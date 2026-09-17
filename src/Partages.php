@@ -20,10 +20,52 @@ declare(strict_types=1);
  * Partager un dossier ouvre tous les cours qu'il contient, y compris ceux de
  * ses sous-dossiers : ce qu'on y range ensuite est partagé aussi, ce qu'on en
  * sort ne l'est plus. Les fiches de révision de ces cours restent à soi.
+ *
+ * Chaque partage porte un droit : lire, commenter, ou modifier. Il vaut pour
+ * ce qu'on partage et pour ce qui en dépend — le droit donné sur un dossier
+ * vaut pour ses cours, celui d'un cours pour ses fichiers joints. Le
+ * propriétaire le change ou le reprend quand il veut ; un lien public, lui,
+ * ne donne jamais que la lecture.
  */
 final class Partages
 {
     public const TYPES = ['cours', 'fichier', 'fiche', 'dossier'];
+
+    /** Du plus restreint au plus large : l'ordre compte pour les comparer. */
+    public const DROITS = ['lecture', 'commentaire', 'modification'];
+
+    /** Ce qu'un droit permet, en un mot. */
+    public static function libelleDroit(string $droit): string
+    {
+        return match ($droit) {
+            'modification' => 'Modification',
+            'commentaire' => 'Commentaire',
+            default => 'Lecture seule',
+        };
+    }
+
+    /** Ce qu'il permet, en une phrase : pour l'expliquer avant de choisir. */
+    public static function expliqueDroit(string $droit): string
+    {
+        return match ($droit) {
+            'modification' => 'Écrire dans le document, y joindre des fichiers et en retirer.',
+            'commentaire' => 'Lire, et écrire des commentaires sous le document.',
+            default => 'Ouvrir le document et ses fichiers, sans rien y changer.',
+        };
+    }
+
+    /** Un droit reçu d'un formulaire, ou la lecture à défaut. */
+    public static function droitValide(mixed $droit): string
+    {
+        return is_string($droit) && in_array($droit, self::DROITS, true) ? $droit : 'lecture';
+    }
+
+    /** Ce droit en permet-il au moins autant que celui qu'on demande ? */
+    public static function permet(?string $droit, string $minimum): bool
+    {
+        return $droit !== null
+            && array_search($droit, self::DROITS, true) >= array_search($minimum, self::DROITS, true);
+    }
 
     /** Cours au plus dans la copie d'un dossier : au-delà, on préfère refuser. */
     public const COPIE_MAX = 100;
@@ -276,10 +318,63 @@ final class Partages
 
     private static function accesDirect(string $type, int $id, int $moi): bool
     {
-        return Database::valeur(
-            'SELECT 1 FROM partages_amis WHERE destinataire_id = ? AND cible_type = ? AND cible_id = ?',
+        return self::droitDirect($type, $id, $moi) !== null;
+    }
+
+    /** Le droit reçu sur ce document même, s'il y en a un. */
+    private static function droitDirect(string $type, int $id, int $moi): ?string
+    {
+        $droit = Database::valeur(
+            'SELECT droit FROM partages_amis WHERE destinataire_id = ? AND cible_type = ? AND cible_id = ?',
             [$moi, $type, $id]
-        ) !== null;
+        );
+
+        return $droit === null || $droit === false ? null : self::droitValide($droit);
+    }
+
+    /**
+     * Ce qu'une personne peut faire de ce document : le sien, elle peut tout ;
+     * sinon le droit qu'on lui a donné, directement ou par ce qui le contient.
+     * Le plus large l'emporte, et rien du tout vaut « null ».
+     */
+    public static function droit(string $type, int $id, int $moi): ?string
+    {
+        $cible = self::cible($type, $id);
+        if ($cible === null) {
+            return null;
+        }
+        if ((int) $cible['user_id'] === $moi) {
+            return 'modification';
+        }
+        $droits = [];
+        $direct = self::droitDirect($type, $id, $moi);
+        if ($direct !== null) {
+            $droits[] = $direct;
+        }
+        // Un cours suit aussi les dossiers qui le contiennent ; un fichier suit
+        // son cours, ou la fiche à laquelle il appartient.
+        if ($type === 'cours') {
+            foreach (self::chaineDossiers($id) as $dossierId) {
+                $herite = self::droitDirect('dossier', $dossierId, $moi);
+                if ($herite !== null) {
+                    $droits[] = $herite;
+                }
+            }
+        } elseif ($type === 'fichier') {
+            $herite = (int) $cible['pour_fiche'] === 1
+                ? self::droitDirect('fiche', (int) $cible['cours_id'], $moi)
+                : self::droit('cours', (int) $cible['cours_id'], $moi);
+            if ($herite !== null) {
+                $droits[] = $herite;
+            }
+        }
+        if ($droits === []) {
+            return null;
+        }
+        usort($droits, static fn (string $a, string $b): int =>
+            array_search($a, self::DROITS, true) <=> array_search($b, self::DROITS, true));
+
+        return end($droits);
     }
 
     /** Les fichiers joints d'un cours partagé (sa fiche de révision reste privée). */
@@ -297,7 +392,7 @@ final class Partages
      *
      * @return array{0: int, 1: ?string, 2: list<int>} les personnes atteintes, la raison d'un refus, les notifications en file
      */
-    public static function partagerAvecAmis(int $moi, string $type, int $id, array $amis, array $groupes, string $texte): array
+    public static function partagerAvecAmis(int $moi, string $type, int $id, array $amis, array $groupes, string $texte, string $droit = 'lecture'): array
     {
         $cible = self::mienne($type, $id, $moi);
         if ($cible === null) {
@@ -319,7 +414,7 @@ final class Partages
             . ' « ' . mb_strimwidth((string) ($cible['titre_cours'] ?? $cible['titre']), 0, 80, '…') . ' »';
 
         foreach ($amis as $a) {
-            self::donnerAcces($moi, $a, $type, $id);
+            self::donnerAcces($moi, $a, $type, $id, $droit);
             $atteints[$a] = true;
             Database::run(
                 'INSERT INTO messages (expediteur_id, destinataire_id, texte, partage_type, partage_id, created_at) VALUES (?, ?, ?, ?, ?, UTC_TIMESTAMP())',
@@ -333,7 +428,7 @@ final class Partages
         foreach ($groupes as $g) {
             foreach (Conversations::membres($g) as $membre) {
                 if ($membre['id'] !== $moi) {
-                    self::donnerAcces($moi, $membre['id'], $type, $id);
+                    self::donnerAcces($moi, $membre['id'], $type, $id, $droit);
                     $atteints[$membre['id']] = true;
                 }
             }
@@ -389,7 +484,7 @@ final class Partages
      * @param array<string, list<int|string>> $parType  les identifiants choisis, par type
      * @return array{0: string, 1: int, 2: ?string, 3: list<int>} ce qui est parti (« 3 cours »), les personnes atteintes, un refus, les notifications
      */
-    public static function partagerPlusieurs(int $moi, array $parType, array $amis, array $groupes, string $texte): array
+    public static function partagerPlusieurs(int $moi, array $parType, array $amis, array $groupes, string $texte, string $droit = 'lecture'): array
     {
         $texte = trim(str_replace(["\r\n", "\r"], "\n", $texte));
         if (mb_strlen($texte) > Amis::MESSAGE_MAX) {
@@ -433,7 +528,7 @@ final class Partages
 
         foreach ($amis as $a) {
             foreach ($documents as $rang => $doc) {
-                self::donnerAcces($moi, $a, $doc['type'], $doc['id']);
+                self::donnerAcces($moi, $a, $doc['type'], $doc['id'], $droit);
                 Database::run(
                     'INSERT INTO messages (expediteur_id, destinataire_id, texte, partage_type, partage_id, created_at) VALUES (?, ?, ?, ?, ?, UTC_TIMESTAMP())',
                     [$moi, $a, $rang === 0 ? $texte : '', $doc['type'], $doc['id']]
@@ -449,7 +544,7 @@ final class Partages
             foreach (Conversations::membres($g) as $membre) {
                 if ($membre['id'] !== $moi) {
                     foreach ($documents as $doc) {
-                        self::donnerAcces($moi, $membre['id'], $doc['type'], $doc['id']);
+                        self::donnerAcces($moi, $membre['id'], $doc['type'], $doc['id'], $droit);
                     }
                     $atteints[$membre['id']] = true;
                 }
@@ -495,12 +590,23 @@ final class Partages
         return $total . ' documents';
     }
 
-    private static function donnerAcces(int $moi, int $destinataire, string $type, int $id): void
+    private static function donnerAcces(int $moi, int $destinataire, string $type, int $id, string $droit = 'lecture'): void
     {
         Database::run(
-            'INSERT IGNORE INTO partages_amis (destinataire_id, cible_type, cible_id, proprietaire_id, created_at) VALUES (?, ?, ?, ?, UTC_TIMESTAMP())',
-            [$destinataire, $type, $id, $moi]
+            'INSERT INTO partages_amis (destinataire_id, cible_type, cible_id, droit, proprietaire_id, created_at)
+                  VALUES (?, ?, ?, ?, ?, UTC_TIMESTAMP())
+             ON DUPLICATE KEY UPDATE droit = VALUES(droit)',
+            [$destinataire, $type, $id, self::droitValide($droit), $moi]
         );
+    }
+
+    /** Change ce qu'un ami peut faire, sans lui renvoyer de carte. */
+    public static function changerDroit(int $moi, string $type, int $id, int $destinataire, string $droit): bool
+    {
+        return Database::run(
+            'UPDATE partages_amis SET droit = ? WHERE destinataire_id = ? AND cible_type = ? AND cible_id = ? AND proprietaire_id = ?',
+            [self::droitValide($droit), $destinataire, $type, $id, $moi]
+        )->rowCount() > 0;
     }
 
     /** Retire l'accès d'un ami (la carte déjà envoyée ne mène plus à rien pour lui). */
@@ -515,8 +621,10 @@ final class Partages
     /** Les personnes qui ont accès, par pseudo. */
     public static function destinataires(int $moi, string $type, int $id): array
     {
-        return array_map(static fn (array $l): array => ['id' => (int) $l['id'], 'pseudo' => (string) $l['pseudo']], Database::all(
-            "SELECT u.id, COALESCE(u.pseudo, '') AS pseudo FROM partages_amis p JOIN users u ON u.id = p.destinataire_id
+        return array_map(static fn (array $l): array => [
+            'id' => (int) $l['id'], 'pseudo' => (string) $l['pseudo'], 'droit' => self::droitValide($l['droit']),
+        ], Database::all(
+            "SELECT u.id, COALESCE(u.pseudo, '') AS pseudo, p.droit FROM partages_amis p JOIN users u ON u.id = p.destinataire_id
               WHERE p.proprietaire_id = ? AND p.cible_type = ? AND p.cible_id = ? ORDER BY u.pseudo",
             [$moi, $type, $id]
         ));
@@ -529,7 +637,7 @@ final class Partages
     public static function recus(int $moi): array
     {
         $lignes = Database::all(
-            "SELECT p.cible_type, p.cible_id, p.proprietaire_id, p.created_at, COALESCE(u.pseudo, '') AS proprietaire,
+            "SELECT p.cible_type, p.cible_id, p.droit, p.proprietaire_id, p.created_at, COALESCE(u.pseudo, '') AS proprietaire,
                     c.titre AS titre_cours, c.contenu, f.nom_origine, f.mime, f.taille,
                     cf.titre AS titre_fiche, cf.fiche_revision, d.nom AS nom_dossier, d.icone AS icone_dossier, d.user_id AS dossier_a
                FROM partages_amis p
@@ -570,6 +678,7 @@ final class Partages
                     'dossier' => self::compteCours(self::nbCours((int) $l['cible_id'], (int) $l['dossier_a'])),
                     default => taille_lisible((int) $l['taille']),
                 },
+                'droit' => self::droitValide($l['droit']),
                 'proprietaire' => (string) $l['proprietaire'],
                 'proprietaire_id' => (int) $l['proprietaire_id'],
                 'quand' => (string) $l['created_at'],
@@ -919,6 +1028,152 @@ final class Partages
     {
         Database::run('DELETE FROM partages_amis WHERE cible_type = ? AND cible_id = ?', [$type, $id]);
         Database::run('DELETE FROM liens_partage WHERE cible_type = ? AND cible_id = ?', [$type, $id]);
+        Database::run('DELETE FROM commentaires_partage WHERE cible_type = ? AND cible_id = ?', [$type, $id]);
+        Database::run('DELETE FROM lots_partage_documents WHERE cible_type = ? AND cible_id = ?', [$type, $id]);
+    }
+
+    /**
+     * Les commentaires d'un document, du plus ancien au plus récent : une
+     * discussion au fil du texte, que le propriétaire lit aussi.
+     */
+    public static function commentaires(string $type, int $id): array
+    {
+        return Database::all(
+            "SELECT c.id, c.user_id, c.texte, c.created_at, COALESCE(u.pseudo, '') AS pseudo
+               FROM commentaires_partage c JOIN users u ON u.id = c.user_id
+              WHERE c.cible_type = ? AND c.cible_id = ? ORDER BY c.created_at, c.id",
+            [$type, $id]
+        );
+    }
+
+    /** Combien de commentaires : de quoi l'annoncer sans tous les charger. */
+    public static function nbCommentaires(string $type, int $id): int
+    {
+        return (int) Database::valeur(
+            'SELECT COUNT(*) FROM commentaires_partage WHERE cible_type = ? AND cible_id = ?',
+            [$type, $id]
+        );
+    }
+
+    /** Écrit un commentaire, si on en a le droit. Rend la raison d'un refus. */
+    public static function commenter(int $moi, string $type, int $id, string $texte): ?string
+    {
+        if (!self::permet(self::droit($type, $id, $moi), 'commentaire')) {
+            return 'Vous ne pouvez pas commenter ce document.';
+        }
+        $texte = trim(str_replace(["\r\n", "\r"], "\n", $texte));
+        if ($texte === '') {
+            return 'Écrivez d’abord votre commentaire.';
+        }
+        if (mb_strlen($texte) > Amis::MESSAGE_MAX) {
+            return 'Le commentaire ne peut pas dépasser ' . Amis::MESSAGE_MAX . ' caractères.';
+        }
+        Database::run(
+            'INSERT INTO commentaires_partage (cible_type, cible_id, user_id, texte, created_at) VALUES (?, ?, ?, ?, UTC_TIMESTAMP())',
+            [$type, $id, $moi, $texte]
+        );
+
+        // Le propriétaire est prévenu ; les autres liront en rouvrant le document.
+        $cible = self::cible($type, $id);
+        $proprietaire = $cible === null ? $moi : (int) $cible['user_id'];
+        if ($proprietaire !== $moi) {
+            $pseudo = (string) (Amis::compte($moi)['pseudo'] ?? 'Un ami');
+            $n = Amis::notifier($moi, $proprietaire, '💬 ' . $pseudo . ' a commenté « '
+                . mb_strimwidth((string) $cible['titre'], 0, 60, '…') . ' » · ' . mb_strimwidth($texte, 0, 80, '…'));
+            if ($n !== null) {
+                FileNotifications::envoyer($n);
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Retire un commentaire : le sien, ou n'importe lequel sur son propre
+     * document. Rend le document d'où il vient, pour y revenir.
+     *
+     * @return ?array{0: string, 1: int}
+     */
+    public static function retirerCommentaire(int $moi, int $commentaireId): ?array
+    {
+        $commentaire = Database::one('SELECT * FROM commentaires_partage WHERE id = ?', [$commentaireId]);
+        if ($commentaire === null) {
+            return null;
+        }
+        $type = (string) $commentaire['cible_type'];
+        $id = (int) $commentaire['cible_id'];
+        $cible = self::cible($type, $id);
+        $sien = (int) $commentaire['user_id'] === $moi;
+        $chezMoi = $cible !== null && (int) $cible['user_id'] === $moi;
+        if (!$sien && !$chezMoi) {
+            return null;
+        }
+        Database::run('DELETE FROM commentaires_partage WHERE id = ?', [$commentaireId]);
+
+        return [$type, $id];
+    }
+
+    /**
+     * Écrit dans un document partagé : le texte d'un cours, ou celui d'une
+     * fiche. Rend la raison d'un refus.
+     */
+    public static function ecrire(int $moi, string $type, int $id, string $texte): ?string
+    {
+        if (!in_array($type, ['cours', 'fiche'], true)) {
+            return 'Ce document ne s’écrit pas.';
+        }
+        if (!self::permet(self::droit($type, $id, $moi), 'modification')) {
+            return 'Vous ne pouvez pas modifier ce document.';
+        }
+        $texte = TexteRiche::depuisFormulaire($texte);
+        Database::run(
+            'UPDATE cours SET ' . ($type === 'cours' ? 'contenu' : 'fiche_revision') . ' = ? WHERE id = ?',
+            [$texte === '' ? null : $texte, $id]
+        );
+
+        return null;
+    }
+
+    /**
+     * Joint des fichiers à un document partagé. Ils appartiennent au cours,
+     * donc à son propriétaire : le partage retiré, rien ne se perd pour lui.
+     *
+     * @return array{0: int, 1: list<string>} les fichiers joints, et les refus
+     */
+    public static function joindre(int $moi, string $type, int $id, array $envoi): array
+    {
+        if (!in_array($type, ['cours', 'fiche'], true)
+            || !self::permet(self::droit($type, $id, $moi), 'modification')) {
+            return [0, ['Vous ne pouvez pas modifier ce document.']];
+        }
+        $cible = self::cible($type, $id);
+        if ($cible === null) {
+            return [0, ['Ce document est introuvable.']];
+        }
+        $avant = (int) Database::valeur('SELECT COUNT(*) FROM fichiers WHERE cours_id = ?', [$id]);
+        $erreurs = Fichiers::enregistrer($envoi, $id, (int) $cible['user_id'], $type === 'fiche');
+        $apres = (int) Database::valeur('SELECT COUNT(*) FROM fichiers WHERE cours_id = ?', [$id]);
+
+        return [$apres - $avant, $erreurs];
+    }
+
+    /**
+     * Retire un fichier d'un document partagé, quand on a le droit d'y écrire.
+     *
+     * @return ?array{0: string, 1: int} le document d'où il vient
+     */
+    public static function retirerFichier(int $moi, int $fichierId): ?array
+    {
+        $fichier = self::cible('fichier', $fichierId);
+        if ($fichier === null || !self::permet(self::droit('fichier', $fichierId, $moi), 'modification')) {
+            return null;
+        }
+        if (!Fichiers::supprimer($fichierId, (int) $fichier['user_id'])) {
+            return null;
+        }
+        self::oublier('fichier', $fichierId);
+
+        return [(int) $fichier['pour_fiche'] === 1 ? 'fiche' : 'cours', (int) $fichier['cours_id']];
     }
 
     /**

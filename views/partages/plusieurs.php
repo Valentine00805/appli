@@ -219,6 +219,18 @@ $csrf = Session::jetonCsrf();
       </ul>
       <p class="discret" data-filtre-vide hidden style="margin:.4rem 0 0">Personne ne correspond.</p>
 
+      <fieldset class="champ partage-droits" style="margin-top:.75rem">
+        <legend class="legende">Ce qu’ils pourront faire</legend>
+        <?php foreach (Partages::DROITS as $rang => $unDroit): ?>
+          <label class="partage-droits__choix">
+            <input type="radio" name="droit" value="<?= e($unDroit) ?>"<?= $rang === 0 ? ' checked' : '' ?>>
+            <span>
+              <strong><?= e(Partages::libelleDroit($unDroit)) ?></strong>
+              <span class="discret"><?= e(Partages::expliqueDroit($unDroit)) ?></span>
+            </span>
+          </label>
+        <?php endforeach; ?>
+      </fieldset>
       <div class="champ" style="margin-top:.75rem">
         <label for="lot-texte">Message (facultatif)</label>
         <textarea id="lot-texte" name="texte" rows="2" maxlength="<?= Amis::MESSAGE_MAX ?>"

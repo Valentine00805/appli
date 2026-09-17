@@ -64,7 +64,8 @@ $lesRecus = $vue === 'recus';
               <span class="partage-ligne__texte">
                 <span class="partage-ligne__titre"><?= e($p['titre']) ?></span>
                 <span class="partage-ligne__detail">
-                  <?= e(Partages::libelle($p['type'])) ?><?= $p['detail'] === '' ? '' : ' · ' . e($p['detail']) ?>
+                  <?= e(Partages::libelle($p['type'])) ?>
+                  · <?= e(mb_strtolower(Partages::libelleDroit($p['droit']))) ?><?= $p['detail'] === '' ? '' : ' · ' . e($p['detail']) ?>
                 </span>
                 <span class="partage-ligne__qui">
                   <?= Amis::avatar($p['proprietaire_id'], $p['proprietaire'], 'avatar--mini') ?>

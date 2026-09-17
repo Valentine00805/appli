@@ -8,7 +8,8 @@
  * @var array $cible
  * @var list<array> $amis
  * @var list<array> $groupes
- * @var list<array{id: int, pseudo: string}> $destinataires
+ * @var list<array{id: int, pseudo: string, droit: string}> $destinataires
+ * @var list<array> $commentaires  ce qu'on a écrit sous ce document
  * @var ?string $lien
  * @var int $vues
  * @var bool $dansUneFenetre
@@ -68,13 +69,27 @@ $icone = match ($type) {
         <?php endforeach; ?>
       </ul>
       <p class="discret" data-filtre-vide hidden style="margin:.4rem 0 0">Personne ne correspond.</p>
+      <?php // Ce qu'ils pourront en faire : le partage le dit dès l'envoi. ?>
+      <fieldset class="champ partage-droits" style="margin-top:.75rem">
+        <legend class="legende">Ce qu’ils pourront faire</legend>
+        <?php foreach (Partages::DROITS as $rang => $unDroit): ?>
+          <?php if ($type === 'fichier' && $unDroit === 'modification') { continue; } ?>
+          <label class="partage-droits__choix">
+            <input type="radio" name="droit" value="<?= e($unDroit) ?>"<?= $rang === 0 ? ' checked' : '' ?>>
+            <span>
+              <strong><?= e(Partages::libelleDroit($unDroit)) ?></strong>
+              <span class="discret"><?= e(Partages::expliqueDroit($unDroit)) ?></span>
+            </span>
+          </label>
+        <?php endforeach; ?>
+      </fieldset>
       <div class="champ" style="margin-top:.75rem">
         <label for="partage-texte">Message (facultatif)</label>
         <textarea id="partage-texte" name="texte" rows="2" maxlength="<?= Amis::MESSAGE_MAX ?>" placeholder="<?= match ($type) { 'cours' => 'Regarde ce cours…', 'fiche' => 'Regarde ma fiche…', 'dossier' => 'Regarde ce dossier…', default => 'Regarde ce fichier…' } ?>"></textarea>
       </div>
       <button class="bouton" type="submit">Envoyer</button>
       <p class="champ__aide" style="margin-bottom:0">
-        Ils le reçoivent dans votre discussion et dans « Partagés avec moi », en lecture seule — toujours à jour,
+        Ils le reçoivent dans votre discussion et dans « Partagés avec moi », avec le droit choisi ci-dessus — toujours à jour,
         et ils peuvent en faire une copie.<?= match ($type) {
             'cours' => ' Les fichiers joints du cours sont compris ; pas la fiche de révision.',
             'fiche' => ' Les fichiers et les liens de la fiche sont compris ; pas le contenu du cours.',
@@ -92,6 +107,18 @@ $icone = match ($type) {
         <li class="groupe-membres__ligne">
           <?= Amis::avatar($d['id'], $d['pseudo']) ?>
           <span class="groupe-membres__nom"><?= e($d['pseudo']) ?></span>
+          <?php // Le droit se change sur place : la liste l'envoie d'elle-même. ?>
+          <form method="post" action="<?= url($base . '/acces/' . $d['id'] . '/droit') ?>"<?= $surPlace ?> class="en-ligne">
+            <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+            <label class="sr-only" for="droit-<?= (int) $d['id'] ?>">Ce que <?= e($d['pseudo']) ?> peut faire</label>
+            <select id="droit-<?= (int) $d['id'] ?>" name="droit">
+              <?php foreach (Partages::DROITS as $unDroit): ?>
+                <?php if ($type === 'fichier' && $unDroit === 'modification') { continue; } ?>
+                <option value="<?= e($unDroit) ?>"<?= $d['droit'] === $unDroit ? ' selected' : '' ?>><?= e(Partages::libelleDroit($unDroit)) ?></option>
+              <?php endforeach; ?>
+            </select>
+            <button class="bouton bouton--discret bouton--petit" type="submit">Changer</button>
+          </form>
           <form method="post" action="<?= url($base . '/acces/' . $d['id'] . '/retirer') ?>"<?= $surPlace ?>>
             <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
             <button class="bouton bouton--discret bouton--petit" type="submit">Retirer l’accès</button>
@@ -101,6 +128,39 @@ $icone = match ($type) {
     </ul>
   <?php endif; ?>
 </section>
+
+<?php if ($commentaires !== []): ?>
+  <?php // Ce qu'on a écrit sous ce document : ici, faute d'y être chez soi. ?>
+  <section class="carte partage-section">
+    <h2 style="margin-top:0">💬 Commentaires <span class="discret">(<?= count($commentaires) ?>)</span></h2>
+    <ul class="partage-commentaires">
+      <?php foreach ($commentaires as $c): ?>
+        <li>
+          <div class="partage-commentaires__qui">
+            <?= Amis::avatar((int) $c['user_id'], (string) $c['pseudo'], 'avatar--mini') ?>
+            <strong><?= e((string) $c['pseudo']) ?></strong>
+            <span class="discret"><?= e(date_fr(Amis::local((string) $c['created_at'])->format('Y-m-d H:i:s'))) ?></span>
+            <form method="post" action="<?= url('partages/commentaires/' . (int) $c['id'] . '/retirer') ?>"<?= $surPlace ?>
+                  data-confirmation="Retirer ce commentaire ?">
+              <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+              <button class="bouton bouton--discret bouton--petit" type="submit">Retirer</button>
+            </form>
+          </div>
+          <p class="partage-commentaires__texte"><?= nl2br(e((string) $c['texte'])) ?></p>
+        </li>
+      <?php endforeach; ?>
+    </ul>
+    <form method="post" action="<?= url($base . '/commentaires') ?>"<?= $surPlace ?>>
+      <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+      <div class="champ">
+        <label class="sr-only" for="partage-reponse">Votre commentaire</label>
+        <textarea id="partage-reponse" name="texte" rows="2" maxlength="<?= Amis::MESSAGE_MAX ?>"
+                  placeholder="Répondre…"></textarea>
+      </div>
+      <button class="bouton bouton--petit" type="submit">Commenter</button>
+    </form>
+  </section>
+<?php endif; ?>
 
 <section class="carte partage-section">
   <h2 style="margin-top:0">🔗 Avec un lien</h2>

@@ -926,6 +926,8 @@ CREATE TABLE IF NOT EXISTS `partages_amis` (
   `destinataire_id` INT UNSIGNED NOT NULL,
   `cible_type`      VARCHAR(8)   NOT NULL,
   `cible_id`        INT UNSIGNED NOT NULL,
+  -- Ce que le partage permet : lecture, commentaire ou modification.
+  `droit`           VARCHAR(12)  NOT NULL DEFAULT 'lecture',
   `proprietaire_id` INT UNSIGNED NOT NULL,
   `created_at`      DATETIME     NOT NULL,
   PRIMARY KEY (`destinataire_id`, `cible_type`, `cible_id`),
@@ -967,4 +969,17 @@ CREATE TABLE IF NOT EXISTS `lots_partage_documents` (
   `position`   INT UNSIGNED NOT NULL DEFAULT 0,
   PRIMARY KEY (`lot_id`, `cible_type`, `cible_id`),
   CONSTRAINT `fk_lot_document_lot` FOREIGN KEY (`lot_id`) REFERENCES `lots_partage`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `commentaires_partage` (
+  `id`         INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `cible_type` VARCHAR(8)   NOT NULL,
+  `cible_id`   INT UNSIGNED NOT NULL,
+  `user_id`    INT UNSIGNED NOT NULL,
+  `texte`      TEXT         NOT NULL,
+  `created_at` DATETIME     NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_commentaire_cible` (`cible_type`, `cible_id`, `created_at`),
+  KEY `idx_commentaire_user` (`user_id`),
+  CONSTRAINT `fk_commentaire_partage_user` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

@@ -107,7 +107,8 @@ final class PartagesController
             Auth::id(), $choisis,
             is_array($_POST['amis'] ?? null) ? $_POST['amis'] : [],
             is_array($_POST['groupes'] ?? null) ? $_POST['groupes'] : [],
-            (string) ($_POST['texte'] ?? '')
+            (string) ($_POST['texte'] ?? ''),
+            Partages::droitValide($_POST['droit'] ?? null)
         );
         if ($refus !== null) {
             Session::flash('erreur', $refus);
@@ -172,6 +173,7 @@ final class PartagesController
             'amis' => Amis::liste($moi),
             'groupes' => Conversations::liste($moi),
             'destinataires' => Partages::destinataires($moi, $type, $id),
+            'commentaires' => Partages::commentaires($type, $id),
             'lien' => $lien === null ? null : Partages::adresseLien((string) $lien['jeton']),
             'vues' => $lien === null ? 0 : (int) $lien['vues'],
         ];
@@ -191,7 +193,8 @@ final class PartagesController
             Auth::id(), $type, $id,
             is_array($_POST['amis'] ?? null) ? $_POST['amis'] : [],
             is_array($_POST['groupes'] ?? null) ? $_POST['groupes'] : [],
-            (string) ($_POST['texte'] ?? '')
+            (string) ($_POST['texte'] ?? ''),
+            Partages::droitValide($_POST['droit'] ?? null)
         );
         if ($refus !== null) {
             Session::flash('erreur', $refus);
@@ -208,6 +211,21 @@ final class PartagesController
         $pseudo = (string) (Amis::compte($destinataire)['pseudo'] ?? '');
         if (Partages::retirerAcces(Auth::id(), self::type($mot), $id, $destinataire)) {
             Session::flash('succes', $pseudo . ' n’y a plus accès.');
+        } else {
+            Session::flash('erreur', 'Ce partage n’existe plus.');
+        }
+        redirect('partager/' . $mot . '/' . $id);
+    }
+
+    /** Change ce qu'un ami peut faire de ce document. */
+    public function changerDroit(string $mot, int $id, int $destinataire): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $droit = Partages::droitValide($_POST['droit'] ?? null);
+        $pseudo = (string) (Amis::compte($destinataire)['pseudo'] ?? '');
+        if (Partages::changerDroit(Auth::id(), self::type($mot), $id, $destinataire, $droit)) {
+            Session::flash('succes', $pseudo . ' : ' . mb_strtolower(Partages::libelleDroit($droit)) . '.');
         } else {
             Session::flash('erreur', 'Ce partage n’existe plus.');
         }
@@ -271,6 +289,8 @@ final class PartagesController
             'mesCours' => $type === 'fichier'
                 ? Database::all('SELECT id, titre FROM cours WHERE user_id = ? ORDER BY titre', [$moi]) : [],
             'recu' => Database::valeur('SELECT 1 FROM partages_amis WHERE destinataire_id = ? AND cible_type = ? AND cible_id = ?', [$moi, $type, $id]) !== null,
+            'droit' => Partages::droit($type, $id, $moi) ?? 'lecture',
+            'commentaires' => Partages::commentaires($type, $id),
             'mot' => $mot,
         ];
         // Un cours ouvert depuis un dossier partagé : de quoi y revenir.
@@ -286,6 +306,91 @@ final class PartagesController
             return;
         }
         Vue::afficher('partages/lire', $donnees, (string) $cible['titre']);
+    }
+
+    /** Un commentaire sous un document partagé. */
+    public function commenter(string $mot, int $id): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $type = self::type($mot);
+        $refus = Partages::commenter(Auth::id(), $type, $id, (string) ($_POST['texte'] ?? ''));
+        Session::flash($refus === null ? 'succes' : 'erreur', $refus ?? 'Commentaire ajouté.');
+        $this->retourDocument($type, $id);
+    }
+
+    /** Retire un commentaire : le sien, ou l'un de ceux qu'on a reçus. */
+    public function retirerCommentaire(int $id): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $ou = Partages::retirerCommentaire(Auth::id(), $id);
+        if ($ou === null) {
+            self::introuvable();
+        }
+        Session::flash('succes', 'Commentaire retiré.');
+        $this->retourDocument($ou[0], $ou[1]);
+    }
+
+    /** Écrire dans un document partagé : le texte du cours, ou de la fiche. */
+    public function ecrire(string $mot, int $id): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $type = self::type($mot);
+        $refus = Partages::ecrire(Auth::id(), $type, $id, (string) ($_POST['contenu'] ?? ''));
+        Session::flash($refus === null ? 'succes' : 'erreur', $refus ?? 'Enregistré.');
+        $this->retourDocument($type, $id);
+    }
+
+    /** Joindre des fichiers à un document partagé. */
+    public function joindre(string $mot, int $id): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $type = self::type($mot);
+        if (!isset($_FILES['fichiers']) || !is_array($_FILES['fichiers']['name'] ?? null)) {
+            Session::flash('erreur', 'Aucun fichier reçu.');
+            $this->retourDocument($type, $id);
+        }
+        [$ajoutes, $erreurs] = Partages::joindre(Auth::id(), $type, $id, $_FILES['fichiers']);
+        foreach ($erreurs as $erreur) {
+            Session::flash('erreur', $erreur);
+        }
+        if ($ajoutes > 0) {
+            Session::flash('succes', $ajoutes . ' fichier' . ($ajoutes > 1 ? 's joints' : ' joint') . '.');
+        } elseif ($erreurs === []) {
+            Session::flash('erreur', 'Aucun fichier reçu.');
+        }
+        $this->retourDocument($type, $id);
+    }
+
+    /** Retirer un fichier d'un document partagé. */
+    public function retirerFichier(int $id): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $ou = Partages::retirerFichier(Auth::id(), $id);
+        if ($ou === null) {
+            self::introuvable();
+        }
+        Session::flash('succes', 'Fichier retiré.');
+        $this->retourDocument($ou[0], $ou[1]);
+    }
+
+    /** Revient au document : le sien chez soi, la page de lecture sinon. */
+    private function retourDocument(string $type, int $id): never
+    {
+        $cible = Partages::cible($type, $id);
+        if ($cible !== null && (int) $cible['user_id'] === Auth::id()) {
+            redirect(match ($type) {
+                'cours' => 'cours/' . $id,
+                'fiche' => 'revision/' . $id,
+                'dossier' => 'cours',
+                default => 'fichiers/' . $id,
+            });
+        }
+        redirect('partages/' . Partages::mot($type) . '/' . $id);
     }
 
     /** Le contenu d'un fichier partagé, pour un ami. */
@@ -364,6 +469,7 @@ final class PartagesController
             'adresseFichier' => static fn (int $f, bool $telecharger = false): string => url('p/' . $jeton . '/fichiers/' . $f, $telecharger ? ['telecharger' => 1] : []),
             'mesCours' => [],
             'recu' => false,
+            'droit' => 'lecture',
             'mot' => Partages::mot($type),
         ], (string) $cible['titre']);
     }
@@ -394,6 +500,7 @@ final class PartagesController
             'adresseFichier' => static fn (int $f, bool $telecharger = false): string => url('p/' . $jeton . '/fichiers/' . $f, $telecharger ? ['telecharger' => 1] : []),
             'mesCours' => [],
             'recu' => false,
+            'droit' => 'lecture',
             'mot' => $mot,
             'retour' => ['url' => url('p/' . $jeton), 'texte' => '← ' . (string) ($trouve['cible']['titre'] ?? 'Partage')],
         ], (string) $cible['titre']);

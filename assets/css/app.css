@@ -304,6 +304,14 @@ textarea { min-height: 260px; resize: vertical; line-height: 1.65; }
 .partage-apercu__pdf { width: 100%; height: 75vh; border: 0; border-radius: var(--rayon-s); }
 .partage-invitation { margin-top: 1.5rem; text-align: center; }
 .partage-liens { margin: 0; padding-left: 1.2rem; display: grid; gap: .3rem; }
+.partage-droits { display: grid; gap: .4rem; border: 0; padding: 0; margin: 0; }
+.partage-commentaires { margin: 0 0 .8rem; padding: 0; list-style: none; display: grid; gap: .7rem; }
+.partage-commentaires__qui { display: flex; align-items: center; gap: .4rem; flex-wrap: wrap; }
+.partage-commentaires__texte { margin: .2rem 0 0; padding-left: 1.5rem; overflow-wrap: anywhere; }
+.partage-droits__choix { display: flex; gap: .5rem; align-items: flex-start; padding: .45rem .6rem;
+  border: 1px solid var(--bordure); border-radius: var(--rayon-s); cursor: pointer; }
+.partage-droits__choix:hover { border-color: var(--accent); }
+.partage-droits__choix .discret { display: block; font-size: .82rem; }
 
 /* L'onglet « Partagés » : une ligne par document, et le rappel dans Mes cours. */
 .partage-lignes { margin: .6rem 0 0; padding: 0; list-style: none; display: grid; }

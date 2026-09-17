@@ -12,10 +12,18 @@
  * @var callable $adresseFichier  (int $id, bool $telecharger): string
  * @var list<array> $mesCours  où ranger la copie d'un fichier
  * @var bool $recu     il figure dans « Partagés avec moi »
+ * @var string $droit  lecture, commentaire ou modification
+ * @var list<array> $commentaires
  * @var string $mot
  * @var bool $dansUneFenetre  rendu seul, pour être posé dans une fenêtre
  */
 $dansUneFenetre = $dansUneFenetre ?? false;
+$droit = $droit ?? 'lecture';
+$commentaires = $commentaires ?? [];
+// Le public ne fait que lire : ce qui suit ne vaut que dans l'application.
+$peutEcrire = !$public && Partages::permet($droit, 'modification');
+$peutCommenter = !$public && Partages::permet($droit, 'commentaire');
+$surPlace = $dansUneFenetre ? ' data-envoi-fenetre' : '';
 $proprietaire = (string) $cible['proprietaire'];
 $csrf = $public ? '' : Session::jetonCsrf();
 $base = 'partages/' . $mot . '/' . (int) $cible['id'];
@@ -49,7 +57,7 @@ $nom = $fichierSeul ? (string) $cible['nom_origine'] : '';
       <?php else: ?>
         · <?= e(taille_lisible((int) $cible['taille'])) ?>
       <?php endif; ?>
-      · lecture seule
+      · <?= e(mb_strtolower(Partages::libelleDroit($droit ?? 'lecture'))) ?>
     </p>
   </div>
   <div class="actions">
@@ -144,6 +152,26 @@ $nom = $fichierSeul ? (string) $cible['nom_origine'] : '';
       <?php else: ?>
         <div class="contenu-cours texte-riche-affiche"><?= TexteRiche::versHtml($texte) ?></div>
       <?php endif; ?>
+
+      <?php if ($peutEcrire): ?>
+        <?php // On m'a donné le droit d'écrire : le même éditeur que chez moi. ?>
+        <details class="edition-contenu"<?= trim($texte) === '' ? ' open' : '' ?>>
+          <summary class="edition-contenu__ouvrir">
+            ✏️ <?= trim($texte) === '' ? 'Écrire' : 'Modifier le texte' ?>
+          </summary>
+          <form method="post" action="<?= url($base . '/contenu') ?>"<?= $surPlace ?>>
+            <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+            <div class="champ">
+              <label class="legende" for="partage-contenu"><?= $estFiche ? 'La fiche de révision' : 'Le cours lui-même' ?></label>
+              <textarea id="partage-contenu" name="contenu" class="edition-contenu__texte" data-texte-riche="complet"
+                        data-tailles="<?= e(implode(',', TexteRiche::TAILLES)) ?>"><?= e(TexteRiche::pourEditeur($texte)) ?></textarea>
+            </div>
+            <p class="actions">
+              <button class="bouton bouton--petit" type="submit">Enregistrer</button>
+            </p>
+          </form>
+        </details>
+      <?php endif; ?>
     </article>
     <div class="pile">
     <?php if ($estFiche && $liens !== []): ?>
@@ -172,14 +200,72 @@ $nom = $fichierSeul ? (string) $cible['nom_origine'] : '';
               <span class="fichier__actions">
                 <a class="bouton bouton--discret bouton--petit" href="<?= e($adresseFichier((int) $f['id'], true)) ?>" title="Télécharger"
                    aria-label="Télécharger <?= e((string) $f['nom_origine']) ?>">⬇</a>
+                <?php if ($peutEcrire): ?>
+                  <form method="post" action="<?= url('partages/fichiers/' . (int) $f['id'] . '/retirer') ?>"<?= $surPlace ?>
+                        data-confirmation="Retirer « <?= e((string) $f['nom_origine']) ?> » de ce document ? Il sera supprimé pour tout le monde.">
+                    <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+                    <button class="bouton bouton--discret bouton--petit" type="submit" title="Retirer"
+                            aria-label="Retirer <?= e((string) $f['nom_origine']) ?>">✕</button>
+                  </form>
+                <?php endif; ?>
               </span>
             </li>
           <?php endforeach; ?>
         </ul>
       <?php endif; ?>
+
+      <?php if ($peutEcrire): ?>
+        <form method="post" action="<?= url($base . '/fichiers') ?>" enctype="multipart/form-data" style="margin-top:.6rem">
+          <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+          <div class="champ">
+            <label class="legende" for="partage-joindre">Joindre des fichiers</label>
+            <input type="file" id="partage-joindre" name="fichiers[]" multiple>
+          </div>
+          <button class="bouton bouton--petit" type="submit">Joindre</button>
+        </form>
+      <?php endif; ?>
     </section>
     </div>
   </div>
+<?php endif; ?>
+
+<?php if ($peutCommenter): ?>
+  <?php // Une conversation sous le document, que son propriétaire lit aussi. ?>
+  <section class="carte" id="commentaires">
+    <h2 style="margin-top:0">💬 Commentaires <span class="discret">(<?= count($commentaires) ?>)</span></h2>
+    <?php if ($commentaires === []): ?>
+      <p class="discret" style="margin:0 0 .6rem">Aucun commentaire pour l’instant.</p>
+    <?php else: ?>
+      <ul class="partage-commentaires">
+        <?php foreach ($commentaires as $c): ?>
+          <li>
+            <div class="partage-commentaires__qui">
+              <?= Amis::avatar((int) $c['user_id'], (string) $c['pseudo'], 'avatar--mini') ?>
+              <strong><?= e((string) $c['pseudo']) ?></strong>
+              <span class="discret"><?= e(date_fr(Amis::local((string) $c['created_at'])->format('Y-m-d H:i:s'))) ?></span>
+              <?php if ((int) $c['user_id'] === Auth::id() || (int) $cible['user_id'] === Auth::id()): ?>
+                <form method="post" action="<?= url('partages/commentaires/' . (int) $c['id'] . '/retirer') ?>"<?= $surPlace ?>
+                      data-confirmation="Retirer ce commentaire ?">
+                  <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+                  <button class="bouton bouton--discret bouton--petit" type="submit">Retirer</button>
+                </form>
+              <?php endif; ?>
+            </div>
+            <p class="partage-commentaires__texte"><?= nl2br(e((string) $c['texte'])) ?></p>
+          </li>
+        <?php endforeach; ?>
+      </ul>
+    <?php endif; ?>
+    <form method="post" action="<?= url($base . '/commentaires') ?>"<?= $surPlace ?>>
+      <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+      <div class="champ">
+        <label class="sr-only" for="partage-commentaire">Votre commentaire</label>
+        <textarea id="partage-commentaire" name="texte" rows="2" maxlength="<?= Amis::MESSAGE_MAX ?>"
+                  placeholder="Une remarque, une question…"></textarea>
+      </div>
+      <button class="bouton bouton--petit" type="submit">Commenter</button>
+    </form>
+  </section>
 <?php endif; ?>
 
 <?php if ($public): ?>

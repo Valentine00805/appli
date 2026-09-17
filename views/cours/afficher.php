@@ -93,6 +93,14 @@ $nbElements = count($elements) + count($fichiersFiche);
        * faute de frappe. « details » suffit à déplier, sans une ligne de script.
        */
       ?>
+      <?php // Ce qu'on a écrit sous ce cours, quand on l'a partagé. ?>
+      <?php $nbCommentaires = Partages::nbCommentaires('cours', (int) $cours['id']); ?>
+      <?php if ($nbCommentaires > 0): ?>
+        <p class="discret" style="margin:.4rem 0 0">
+          💬 <a href="<?= url('partager/cours/' . (int) $cours['id']) ?>" <?= $dansUneFenetre ? 'data-fenetre-dessus' : 'data-fenetre' ?>><?= $nbCommentaires ?> commentaire<?= $nbCommentaires > 1 ? 's' : '' ?></a>
+          de vos amis sur ce cours.
+        </p>
+      <?php endif; ?>
       <details class="edition-contenu"<?= $sansContenu ? ' open' : '' ?>>
         <summary class="edition-contenu__ouvrir">
           ✏️ <?= $sansContenu ? 'Écrire le contenu' : 'Modifier le contenu' ?>
