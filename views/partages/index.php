@@ -31,7 +31,7 @@ $lesRecus = $vue === 'recus';
     <?php else: ?>
       <a class="bouton bouton--secondaire" href="<?= url('cours') ?>">Mes cours</a>
       <a class="bouton bouton-partage" href="<?= url('partager/plusieurs') ?>"
-         data-fenetre><?= Partages::icone() ?> Partager des cours</a>
+         data-fenetre title="Partager plusieurs cours ou fichiers en un envoi"><?= Partages::icone() ?> Partager plusieurs</a>
     <?php endif; ?>
   </div>
 </div>

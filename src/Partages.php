@@ -61,7 +61,7 @@ final class Partages
     /** Destinataires au plus en un envoi. */
     private const ENVOI_MAX = 50;
 
-    /** Cours au plus dans un partage groupé : au-delà, autant partager le dossier. */
+    /** Documents au plus dans un partage groupé : au-delà, autant partager le dossier. */
     public const LOT_MAX = 25;
 
     /**
@@ -372,32 +372,40 @@ final class Partages
     }
 
     /**
-     * Partage plusieurs cours d'un coup : un accès et une carte par cours,
-     * mais une seule notification, qui dit combien.
+     * Partage plusieurs documents d'un coup — des cours, des fichiers, ou les
+     * deux : un accès et une carte par document, mais une seule notification,
+     * qui dit combien.
      *
-     * @return array{0: int, 1: int, 2: ?string, 3: list<int>} les cours partagés, les personnes atteintes, un refus, les notifications
+     * @return array{0: int, 1: int, 2: ?string, 3: list<int>} les documents partagés, les personnes atteintes, un refus, les notifications
      */
-    public static function partagerPlusieurs(int $moi, array $coursIds, array $amis, array $groupes, string $texte): array
+    public static function partagerPlusieurs(int $moi, array $coursIds, array $fichierIds, array $amis, array $groupes, string $texte): array
     {
         $texte = trim(str_replace(["\r\n", "\r"], "\n", $texte));
         if (mb_strlen($texte) > Amis::MESSAGE_MAX) {
             return [0, 0, 'Le message ne peut pas dépasser ' . Amis::MESSAGE_MAX . ' caractères.', []];
         }
-        $coursIds = array_values(array_unique(array_filter(array_map('intval', $coursIds), static fn (int $c): bool => $c > 0)));
-        if ($coursIds === []) {
-            return [0, 0, 'Choisissez au moins un cours.', []];
+        $propres = static fn (array $ids): array => array_values(array_unique(
+            array_filter(array_map('intval', $ids), static fn (int $i): bool => $i > 0)
+        ));
+        $coursIds = $propres($coursIds);
+        $fichierIds = $propres($fichierIds);
+        $total = count($coursIds) + count($fichierIds);
+        if ($total === 0) {
+            return [0, 0, 'Choisissez au moins un cours ou un fichier.', []];
         }
-        if (count($coursIds) > self::LOT_MAX) {
-            return [0, 0, 'Pas plus de ' . self::LOT_MAX . ' cours à la fois.', []];
+        if ($total > self::LOT_MAX) {
+            return [0, 0, 'Pas plus de ' . self::LOT_MAX . ' documents à la fois.', []];
         }
-        // Les cours, dans l'ordre où ils paraissent, et tous à moi.
-        $cours = [];
-        foreach ($coursIds as $c) {
-            $cible = self::mienne('cours', $c, $moi);
-            if ($cible === null) {
-                return [0, 0, 'Un des cours choisis est introuvable.', []];
+        // Les documents, dans l'ordre où ils paraissent, et tous à moi.
+        $documents = [];
+        foreach ([['cours', $coursIds], ['fichier', $fichierIds]] as [$type, $ids]) {
+            foreach ($ids as $i) {
+                $cible = self::mienne($type, $i, $moi);
+                if ($cible === null) {
+                    return [0, 0, 'Un des documents choisis est introuvable.', []];
+                }
+                $documents[] = ['type' => $type, 'id' => (int) $cible['id'], 'titre' => (string) $cible['titre']];
             }
-            $cours[] = $cible;
         }
         [$amis, $groupes, $refus] = self::destinatairesChoisis($moi, $amis, $groupes);
         if ($refus !== null) {
@@ -407,19 +415,19 @@ final class Partages
         $atteints = [];
         $notifications = [];
         $pseudo = (string) (Amis::compte($moi)['pseudo'] ?? 'Un ami');
-        $combien = count($cours) . ' cours';
-        $premier = ' (dont « ' . mb_strimwidth((string) $cours[0]['titre'], 0, 60, '…') . ' »)';
+        $combien = self::combien(count($coursIds), count($fichierIds))
+            . ' (dont « ' . mb_strimwidth($documents[0]['titre'], 0, 60, '…') . ' »)';
 
         foreach ($amis as $a) {
-            foreach ($cours as $rang => $cible) {
-                self::donnerAcces($moi, $a, 'cours', (int) $cible['id']);
+            foreach ($documents as $rang => $doc) {
+                self::donnerAcces($moi, $a, $doc['type'], $doc['id']);
                 Database::run(
                     'INSERT INTO messages (expediteur_id, destinataire_id, texte, partage_type, partage_id, created_at) VALUES (?, ?, ?, ?, ?, UTC_TIMESTAMP())',
-                    [$moi, $a, $rang === 0 ? $texte : '', 'cours', (int) $cible['id']]
+                    [$moi, $a, $rang === 0 ? $texte : '', $doc['type'], $doc['id']]
                 );
             }
             $atteints[$a] = true;
-            $n = Amis::notifier($moi, $a, '🔗 ' . $pseudo . ' a partagé ' . $combien . $premier . ($texte === '' ? '' : ' · ' . $texte));
+            $n = Amis::notifier($moi, $a, '🔗 ' . $pseudo . ' a partagé ' . $combien . ($texte === '' ? '' : ' · ' . $texte));
             if ($n !== null) {
                 $notifications[] = $n;
             }
@@ -427,16 +435,16 @@ final class Partages
         foreach ($groupes as $g) {
             foreach (Conversations::membres($g) as $membre) {
                 if ($membre['id'] !== $moi) {
-                    foreach ($cours as $cible) {
-                        self::donnerAcces($moi, $membre['id'], 'cours', (int) $cible['id']);
+                    foreach ($documents as $doc) {
+                        self::donnerAcces($moi, $membre['id'], $doc['type'], $doc['id']);
                     }
                     $atteints[$membre['id']] = true;
                 }
             }
-            foreach ($cours as $rang => $cible) {
+            foreach ($documents as $rang => $doc) {
                 Database::run(
                     'INSERT INTO conversation_messages (conversation_id, expediteur_id, texte, partage_type, partage_id, created_at) VALUES (?, ?, ?, ?, ?, UTC_TIMESTAMP())',
-                    [$g, $moi, $rang === 0 ? $texte : '', 'cours', (int) $cible['id']]
+                    [$g, $moi, $rang === 0 ? $texte : '', $doc['type'], $doc['id']]
                 );
                 $dernier = Database::dernierId();
                 Database::run(
@@ -444,10 +452,23 @@ final class Partages
                     [$dernier, $g, $moi]
                 );
             }
-            array_push($notifications, ...Conversations::notifier($moi, $g, '🔗 a partagé ' . $combien . $premier . ($texte === '' ? '' : ' · ' . $texte)));
+            array_push($notifications, ...Conversations::notifier($moi, $g, '🔗 a partagé ' . $combien . ($texte === '' ? '' : ' · ' . $texte)));
         }
 
-        return [count($cours), count($atteints), null, $notifications];
+        return [count($documents), count($atteints), null, $notifications];
+    }
+
+    /** « 3 cours », « 2 fichiers », « 5 documents » : ce qu'un lot contient. */
+    public static function combien(int $nbCours, int $nbFichiers): string
+    {
+        if ($nbFichiers === 0) {
+            return $nbCours . ' cours';
+        }
+        if ($nbCours === 0) {
+            return $nbFichiers . ' fichier' . ($nbFichiers > 1 ? 's' : '');
+        }
+
+        return ($nbCours + $nbFichiers) . ' documents';
     }
 
     private static function donnerAcces(int $moi, int $destinataire, string $type, int $id): void

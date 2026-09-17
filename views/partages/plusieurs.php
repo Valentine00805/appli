@@ -1,13 +1,15 @@
 <?php
 /**
- * Partager plusieurs cours d'un coup : on coche des cours, puis des amis.
+ * Partager plusieurs documents d'un coup : on coche des cours et des
+ * fichiers, puis des amis.
  *
- * Un envoi, une carte par cours dans la discussion, et un seul accès par
- * cours : c'est le même partage qu'un par un, fait en une fois. Le lien
+ * Un envoi, une carte par document dans la discussion, et un seul accès par
+ * document : c'est le même partage qu'un par un, fait en une fois. Le lien
  * public, lui, reste propre à un document — il se crée sur sa page.
  *
- * @var list<array> $mesCours   mes cours, du plus récemment modifié au plus ancien
- * @var array<int, int> $choisis  les cours cochés d'avance
+ * @var list<array> $mesCours     mes cours, du plus récemment modifié au plus ancien
+ * @var list<array> $mesFichiers  mes fichiers joints, du plus récent au plus ancien
+ * @var array<int, int> $choisis, $choisisFichiers  ce qui est coché d'avance
  * @var list<array> $amis
  * @var list<array> $groupes
  * @var bool $dansUneFenetre
@@ -17,14 +19,14 @@ $csrf = Session::jetonCsrf();
 ?>
 <div class="entete-page"<?= $dansUneFenetre ? ' data-large' : '' ?>>
   <div>
-    <h1 style="margin:0"><?= Partages::icone() ?> Partager des cours</h1>
-    <p class="discret" style="margin:.15rem 0 0">Plusieurs cours en un seul envoi, jusqu’à <?= Partages::LOT_MAX ?> à la fois.</p>
+    <h1 style="margin:0"><?= Partages::icone() ?> Partager plusieurs</h1>
+    <p class="discret" style="margin:.15rem 0 0">Des cours et des fichiers en un seul envoi, jusqu’à <?= Partages::LOT_MAX ?> à la fois.</p>
   </div>
 </div>
 
-<?php if ($mesCours === []): ?>
+<?php if ($mesCours === [] && $mesFichiers === []): ?>
   <section class="carte">
-    <p class="discret" style="margin:0">Vous n’avez pas encore de cours à partager.</p>
+    <p class="discret" style="margin:0">Vous n’avez pas encore de cours ni de fichier à partager.</p>
   </section>
 <?php elseif ($amis === [] && $groupes === []): ?>
   <section class="carte">
@@ -34,6 +36,7 @@ $csrf = Session::jetonCsrf();
   <form method="post" action="<?= url('partager/plusieurs/amis') ?>"<?= $dansUneFenetre ? ' data-envoi-fenetre' : '' ?>>
     <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
 
+    <?php if ($mesCours !== []): ?>
     <section class="carte partage-section">
       <h2 style="margin-top:0">📘 Les cours à partager</h2>
       <label class="discussions-recherche">
@@ -66,6 +69,43 @@ $csrf = Session::jetonCsrf();
       </ul>
       <p class="discret" data-filtre-vide hidden style="margin:.4rem 0 0">Aucun cours ne porte ce nom.</p>
     </section>
+    <?php endif; ?>
+
+    <?php if ($mesFichiers !== []): ?>
+    <?php // Les fichiers joints de mes cours : chacun se partage seul, tel quel. ?>
+    <section class="carte partage-section">
+      <h2 style="margin-top:0">📎 Les fichiers à partager</h2>
+      <label class="discussions-recherche">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false">
+          <circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>
+        </svg>
+        <span class="sr-only">Rechercher un de mes fichiers</span>
+        <input type="search" placeholder="Rechercher un fichier" autocomplete="off" data-filtre-liste="[data-liste-mes-fichiers]">
+      </label>
+      <p style="margin:.5rem 0 0">
+        <button class="bouton bouton--discret bouton--petit" type="button"
+                data-cocher-tout="[data-liste-mes-fichiers]">Tout cocher, ou décocher</button>
+      </p>
+      <ul class="groupe-choix__liste partage-liste" data-liste-mes-fichiers>
+        <?php foreach ($mesFichiers as $f): ?>
+          <li data-nom="<?= e(mb_strtolower((string) $f['nom_origine'] . ' ' . (string) $f['cours_titre'])) ?>">
+            <label class="groupe-choix__ami">
+              <input type="checkbox" name="fichiers[]" value="<?= (int) $f['id'] ?>"<?= isset($choisisFichiers[(int) $f['id']]) ? ' checked' : '' ?>>
+              <span aria-hidden="true"><?= e(Fichiers::icone((string) $f['mime'], (string) $f['nom_origine'])) ?></span>
+              <span class="partage-liste__nom">
+                <?= e((string) $f['nom_origine']) ?>
+                <span class="discret">
+                  · <?= e(taille_lisible((int) $f['taille'])) ?>
+                  · <?= e((string) $f['cours_titre']) ?><?= (int) $f['pour_fiche'] === 1 ? ' (fiche)' : '' ?>
+                </span>
+              </span>
+            </label>
+          </li>
+        <?php endforeach; ?>
+      </ul>
+      <p class="discret" data-filtre-vide hidden style="margin:.4rem 0 0">Aucun fichier ne porte ce nom.</p>
+    </section>
+    <?php endif; ?>
 
     <section class="carte partage-section">
       <h2 style="margin-top:0">👥 Avec mes amis</h2>
@@ -101,12 +141,12 @@ $csrf = Session::jetonCsrf();
       <div class="champ" style="margin-top:.75rem">
         <label for="lot-texte">Message (facultatif)</label>
         <textarea id="lot-texte" name="texte" rows="2" maxlength="<?= Amis::MESSAGE_MAX ?>"
-                  placeholder="Voilà mes cours…"></textarea>
+                  placeholder="Voilà mes documents…"></textarea>
       </div>
       <button class="bouton" type="submit">Envoyer</button>
       <p class="champ__aide" style="margin-bottom:0">
-        Chaque cours part dans votre discussion sous sa propre carte, et paraît dans « Partagés avec moi »,
-        en lecture seule — les fichiers joints sont compris, pas les fiches de révision. Pour ouvrir aussi
+        Chaque document part dans votre discussion sous sa propre carte, et paraît dans « Partagés avec moi »,
+        en lecture seule. Un cours emporte ses fichiers joints, pas sa fiche de révision. Pour ouvrir aussi
         ce que vous rangerez plus tard, partagez plutôt le dossier.
       </p>
     </section>

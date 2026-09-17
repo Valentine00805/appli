@@ -54,7 +54,7 @@
       ]) ?>
     <?php endif; ?>
     <a class="bouton bouton--secondaire bouton-partage" href="<?= url('partager/plusieurs') ?>"
-       data-fenetre><?= Partages::icone() ?> Partager des cours</a>
+       data-fenetre title="Partager plusieurs cours ou fichiers en un envoi"><?= Partages::icone() ?> Partager plusieurs</a>
     <?php // Un dossier ouvert : de quoi le partager tel quel, avec ses cours. ?>
     <?php if ($dossierId !== null): ?>
       <a class="bouton bouton--secondaire bouton-partage" href="<?= url('partager/dossiers/' . $dossierId) ?>"

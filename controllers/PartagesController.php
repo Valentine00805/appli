@@ -44,7 +44,7 @@ final class PartagesController
         ], $vue === 'recus' ? 'Partagés avec moi' : 'Ce que je partage');
     }
 
-    /** La fenêtre « Partager plusieurs cours » : on coche des cours, puis des amis. */
+    /** La fenêtre « Partager plusieurs documents » : on coche des cours et des fichiers, puis des amis. */
     public function plusieurs(): void
     {
         Auth::exiger();
@@ -56,7 +56,14 @@ final class PartagesController
                   WHERE c.user_id = ? ORDER BY c.updated_at DESC",
                 [$moi]
             ),
+            'mesFichiers' => Database::all(
+                'SELECT f.id, f.nom_origine, f.mime, f.taille, f.pour_fiche, c.titre AS cours_titre
+                   FROM fichiers f JOIN cours c ON c.id = f.cours_id
+                  WHERE f.user_id = ? ORDER BY f.created_at DESC',
+                [$moi]
+            ),
             'choisis' => array_flip(array_map('intval', is_array($_GET['cours'] ?? null) ? $_GET['cours'] : [])),
+            'choisisFichiers' => array_flip(array_map('intval', is_array($_GET['fichiers'] ?? null) ? $_GET['fichiers'] : [])),
             'amis' => Amis::liste($moi),
             'groupes' => Conversations::liste($moi),
         ];
@@ -64,17 +71,18 @@ final class PartagesController
             Vue::fragment('partages/plusieurs', $donnees + ['dansUneFenetre' => true]);
             return;
         }
-        Vue::afficher('partages/plusieurs', $donnees, 'Partager plusieurs cours');
+        Vue::afficher('partages/plusieurs', $donnees, 'Partager plusieurs documents');
     }
 
-    /** L'envoi du lot : un accès et une carte par cours. */
+    /** L'envoi du lot : un accès et une carte par document. */
     public function envoyerPlusieurs(): void
     {
         Auth::exiger();
         Session::verifierCsrf();
-        [$nbCours, $nombre, $refus, $notifications] = Partages::partagerPlusieurs(
-            Auth::id(),
-            is_array($_POST['cours'] ?? null) ? $_POST['cours'] : [],
+        $cours = is_array($_POST['cours'] ?? null) ? $_POST['cours'] : [];
+        $fichiers = is_array($_POST['fichiers'] ?? null) ? $_POST['fichiers'] : [];
+        [, $nombre, $refus, $notifications] = Partages::partagerPlusieurs(
+            Auth::id(), $cours, $fichiers,
             is_array($_POST['amis'] ?? null) ? $_POST['amis'] : [],
             is_array($_POST['groupes'] ?? null) ? $_POST['groupes'] : [],
             (string) ($_POST['texte'] ?? '')
@@ -82,7 +90,7 @@ final class PartagesController
         if ($refus !== null) {
             Session::flash('erreur', $refus);
         } else {
-            Session::flash('succes', $nbCours . ' cours partagé' . ($nbCours > 1 ? 's' : '')
+            Session::flash('succes', Partages::combien(count($cours), count($fichiers)) . ' partagé' . (count($cours) + count($fichiers) > 1 ? 's' : '')
                 . ' avec ' . $nombre . ' personne' . ($nombre > 1 ? 's' : '') . ' : les cartes sont parties dans vos discussions.');
         }
         $this->retourPuisEnvoyer('partager/plusieurs', $notifications);
