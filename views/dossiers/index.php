@@ -90,6 +90,8 @@ $dernier = count($dossiers) - 1;
               <?php endif; ?>
               <a class="bouton bouton--discret bouton--petit"
                  href="<?= url('cours', ['dossier' => $d['id']]) ?>">Voir les cours</a>
+              <a class="bouton bouton--secondaire bouton--petit bouton-partage"
+                 href="<?= url('partager/dossiers/' . $d['id']) ?>" data-fenetre><?= Partages::icone(15) ?> Partager</a>
               <button class="bouton bouton--secondaire bouton--petit" type="button"
                       data-bascule="edition-<?= (int) $d['id'] ?>">Modifier</button>
             </div>

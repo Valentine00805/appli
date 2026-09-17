@@ -246,6 +246,7 @@ final class DossiersController
         // Rien n'est emporté : les contraintes remettent les cours sans dossier
         // et font remonter les sous-dossiers à la racine.
         Database::run('DELETE FROM dossiers WHERE id = ? AND user_id = ?', [$id, $userId]);
+        Partages::oublier('dossier', $id);
 
         $details = [];
         if ($nb > 0) {

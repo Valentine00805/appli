@@ -16,10 +16,17 @@ declare(strict_types=1);
  * Partager un cours ouvre aussi ses fichiers joints (pas ceux de sa fiche de
  * révision, qui restent à soi). Une fiche de révision se partage à part, avec
  * ses fichiers et ses liens : on la désigne par son cours.
+ *
+ * Partager un dossier ouvre tous les cours qu'il contient, y compris ceux de
+ * ses sous-dossiers : ce qu'on y range ensuite est partagé aussi, ce qu'on en
+ * sort ne l'est plus. Les fiches de révision de ces cours restent à soi.
  */
 final class Partages
 {
-    public const TYPES = ['cours', 'fichier', 'fiche'];
+    public const TYPES = ['cours', 'fichier', 'fiche', 'dossier'];
+
+    /** Cours au plus dans la copie d'un dossier : au-delà, on préfère refuser. */
+    public const COPIE_MAX = 100;
 
     /** Ce que c'est, en quelques mots : « Cours partagé »… */
     public static function libelle(string $type): string
@@ -27,16 +34,18 @@ final class Partages
         return match ($type) {
             'cours' => 'Cours partagé',
             'fiche' => 'Fiche partagée',
+            'dossier' => 'Dossier partagé',
             default => 'Fichier partagé',
         };
     }
 
-    /** L'adresse d'un type : « cours », « fiches » ou « fichiers ». */
+    /** L'adresse d'un type : « cours », « fiches », « dossiers » ou « fichiers ». */
     public static function mot(string $type): string
     {
         return match ($type) {
             'cours' => 'cours',
             'fiche' => 'fiches',
+            'dossier' => 'dossiers',
             default => 'fichiers',
         };
     }
@@ -78,6 +87,24 @@ final class Partages
 
             return $fiche === null ? null : ['titre' => 'Fiche — ' . $fiche['titre_cours']] + $fiche;
         }
+        if ($type === 'dossier') {
+            $dossier = Database::one(
+                "SELECT d.id, d.user_id, d.nom AS titre, d.icone, d.couleur, d.created_at, COALESCE(u.pseudo, '') AS proprietaire
+                   FROM dossiers d JOIN users u ON u.id = d.user_id
+                  WHERE d.id = ?",
+                [$id]
+            );
+            if ($dossier === null) {
+                return null;
+            }
+            $dossier['nb_cours'] = (int) Database::valeur(
+                'SELECT COUNT(*) FROM cours WHERE user_id = ? AND dossier_id IN ('
+                . implode(',', array_fill(0, count($sous = DossiersController::avecDescendants((int) $dossier['user_id'], $id)), '?')) . ')',
+                array_merge([(int) $dossier['user_id']], $sous)
+            );
+
+            return $dossier;
+        }
         if ($type === 'fichier') {
             return Database::one(
                 "SELECT f.id, f.user_id, f.cours_id, f.pour_fiche, f.nom_origine AS titre, f.nom_origine, f.nom_stocke, f.mime, f.taille,
@@ -113,8 +140,107 @@ final class Partages
             return true;
         }
 
-        return $type === 'fichier'
-            && self::accesDirect((int) $cible['pour_fiche'] === 1 ? 'fiche' : 'cours', (int) $cible['cours_id'], $moi);
+        // Un cours se voit aussi quand un dossier qui le contient est partagé.
+        if ($type === 'cours') {
+            return self::dossierPartage($id, $moi) !== null;
+        }
+        // Un fichier joint suit son cours ; celui d'une fiche suit la fiche.
+        if ($type === 'fichier') {
+            return (int) $cible['pour_fiche'] === 1
+                ? self::accesDirect('fiche', (int) $cible['cours_id'], $moi)
+                : self::peutVoir('cours', (int) $cible['cours_id'], $moi);
+        }
+
+        return false;
+    }
+
+    /**
+     * Les dossiers qui contiennent un cours, du plus proche à la racine :
+     * partager un dossier partage aussi ce que contiennent ses sous-dossiers.
+     *
+     * @return list<int>
+     */
+    public static function chaineDossiers(int $coursId): array
+    {
+        $cours = Database::one('SELECT user_id, dossier_id FROM cours WHERE id = ?', [$coursId]);
+        if ($cours === null || $cours['dossier_id'] === null) {
+            return [];
+        }
+        $parents = [];
+        foreach (Database::all('SELECT id, parent_id FROM dossiers WHERE user_id = ?', [(int) $cours['user_id']]) as $d) {
+            $parents[(int) $d['id']] = $d['parent_id'] === null ? null : (int) $d['parent_id'];
+        }
+        $chaine = [];
+        $courant = (int) $cours['dossier_id'];
+        // Bornée par le nombre de dossiers, et à l'épreuve d'une boucle.
+        while (array_key_exists($courant, $parents) && !in_array($courant, $chaine, true)) {
+            $chaine[] = $courant;
+            if ($parents[$courant] === null) {
+                break;
+            }
+            $courant = $parents[$courant];
+        }
+
+        return $chaine;
+    }
+
+    /** Le dossier partagé qui donne accès à ce cours, s'il y en a un. */
+    public static function dossierPartage(int $coursId, int $moi): ?int
+    {
+        foreach (self::chaineDossiers($coursId) as $dossierId) {
+            if (self::accesDirect('dossier', $dossierId, $moi)) {
+                return $dossierId;
+            }
+        }
+
+        return null;
+    }
+
+    /** Ce cours est-il dans ce dossier, ou dans un de ses sous-dossiers ? */
+    public static function dansLeDossier(int $coursId, int $dossierId): bool
+    {
+        return in_array($dossierId, self::chaineDossiers($coursId), true);
+    }
+
+    /**
+     * Ce qu'un dossier partagé montre : ses cours, puis ceux de chaque
+     * sous-dossier qui en contient, dans l'ordre de l'arborescence.
+     *
+     * @return list<array{id: int, nom: string, icone: string, profondeur: int, cours: list<array<string, mixed>>}>
+     */
+    public static function contenuDuDossier(int $dossierId, int $proprietaire): array
+    {
+        $ids = DossiersController::avecDescendants($proprietaire, $dossierId);
+        $arbre = DossiersController::pourUtilisateur($proprietaire);
+        $racine = null;
+        $groupes = [];
+        foreach ($arbre as $d) {
+            if (!in_array((int) $d['id'], $ids, true)) {
+                continue;
+            }
+            if ((int) $d['id'] === $dossierId) {
+                $racine = (int) $d['profondeur'];
+            }
+            $cours = Database::all(
+                "SELECT c.id, c.titre, c.contenu, c.updated_at, m.nom AS matiere_nom,
+                        (SELECT COUNT(*) FROM fichiers f WHERE f.cours_id = c.id AND f.pour_fiche = 0) AS nb_fichiers
+                   FROM cours c LEFT JOIN matieres m ON m.id = c.matiere_id
+                  WHERE c.user_id = ? AND c.dossier_id = ? ORDER BY c.titre",
+                [$proprietaire, (int) $d['id']]
+            );
+            if ($cours === [] && (int) $d['id'] !== $dossierId) {
+                continue;
+            }
+            $groupes[] = [
+                'id' => (int) $d['id'],
+                'nom' => (string) $d['nom'],
+                'icone' => (string) $d['icone'],
+                'profondeur' => (int) $d['profondeur'] - ($racine ?? 0),
+                'cours' => $cours,
+            ];
+        }
+
+        return $groupes;
     }
 
     /** Les fichiers d'une fiche de révision partagée. */
@@ -190,7 +316,7 @@ final class Partages
         $atteints = [];
         $notifications = [];
         $pseudo = (string) (Amis::compte($moi)['pseudo'] ?? 'Un ami');
-        $quoi = match ($type) { 'cours' => 'le cours', 'fiche' => 'la fiche de révision', default => 'le fichier' }
+        $quoi = match ($type) { 'cours' => 'le cours', 'fiche' => 'la fiche de révision', 'dossier' => 'le dossier', default => 'le fichier' }
             . ' « ' . mb_strimwidth((string) ($cible['titre_cours'] ?? $cible['titre']), 0, 80, '…') . ' »';
 
         foreach ($amis as $a) {
@@ -263,13 +389,14 @@ final class Partages
         $lignes = Database::all(
             "SELECT p.cible_type, p.cible_id, p.proprietaire_id, p.created_at, COALESCE(u.pseudo, '') AS proprietaire,
                     c.titre AS titre_cours, c.contenu, f.nom_origine, f.mime, f.taille,
-                    cf.titre AS titre_fiche, cf.fiche_revision
+                    cf.titre AS titre_fiche, cf.fiche_revision, d.nom AS nom_dossier, d.icone AS icone_dossier, d.user_id AS dossier_a
                FROM partages_amis p
                JOIN users u ON u.id = p.proprietaire_id
                LEFT JOIN cours c ON p.cible_type = 'cours' AND c.id = p.cible_id AND c.user_id = p.proprietaire_id
                LEFT JOIN fichiers f ON p.cible_type = 'fichier' AND f.id = p.cible_id AND f.user_id = p.proprietaire_id
                LEFT JOIN cours cf ON p.cible_type = 'fiche' AND cf.id = p.cible_id AND cf.user_id = p.proprietaire_id
-              WHERE p.destinataire_id = ? AND (c.id IS NOT NULL OR f.id IS NOT NULL OR cf.id IS NOT NULL)
+               LEFT JOIN dossiers d ON p.cible_type = 'dossier' AND d.id = p.cible_id AND d.user_id = p.proprietaire_id
+              WHERE p.destinataire_id = ? AND (c.id IS NOT NULL OR f.id IS NOT NULL OR cf.id IS NOT NULL OR d.id IS NOT NULL)
               ORDER BY p.created_at DESC",
             [$moi]
         );
@@ -283,11 +410,22 @@ final class Partages
             $recus[] = [
                 'type' => $type,
                 'id' => (int) $l['cible_id'],
-                'titre' => match ($type) { 'cours' => (string) $l['titre_cours'], 'fiche' => 'Fiche — ' . $l['titre_fiche'], default => (string) $l['nom_origine'] },
-                'icone' => match ($type) { 'cours' => '📘', 'fiche' => '📝', default => Fichiers::icone((string) $l['mime'], (string) $l['nom_origine']) },
+                'titre' => match ($type) {
+                    'cours' => (string) $l['titre_cours'],
+                    'fiche' => 'Fiche — ' . $l['titre_fiche'],
+                    'dossier' => (string) $l['nom_dossier'],
+                    default => (string) $l['nom_origine'],
+                },
+                'icone' => match ($type) {
+                    'cours' => '📘',
+                    'fiche' => '📝',
+                    'dossier' => (string) $l['icone_dossier'],
+                    default => Fichiers::icone((string) $l['mime'], (string) $l['nom_origine']),
+                },
                 'detail' => match ($type) {
                     'cours' => extrait((string) $l['contenu']),
                     'fiche' => extrait((string) $l['fiche_revision']),
+                    'dossier' => self::compteCours(self::nbCours((int) $l['cible_id'], (int) $l['dossier_a'])),
                     default => taille_lisible((int) $l['taille']),
                 },
                 'proprietaire' => (string) $l['proprietaire'],
@@ -298,6 +436,24 @@ final class Partages
         }
 
         return $recus;
+    }
+
+    /** Combien de cours un dossier contient, sous-dossiers compris. */
+    public static function nbCours(int $dossierId, int $proprietaire): int
+    {
+        $sous = DossiersController::avecDescendants($proprietaire, $dossierId);
+
+        return (int) Database::valeur(
+            'SELECT COUNT(*) FROM cours WHERE user_id = ? AND dossier_id IN ('
+            . implode(',', array_fill(0, count($sous), '?')) . ')',
+            array_merge([$proprietaire], $sous)
+        );
+    }
+
+    /** « 3 cours », « aucun cours ». */
+    public static function compteCours(int $nb): string
+    {
+        return $nb === 0 ? 'aucun cours' : $nb . ' cours';
     }
 
     private static function partagentUnGroupe(int $a, int $b): bool
@@ -423,6 +579,35 @@ final class Partages
             return [$nouveau, null];
         }
 
+        // Un dossier se recopie en entier : ses sous-dossiers, puis ses cours.
+        if ($type === 'dossier') {
+            $groupes = self::contenuDuDossier($id, (int) $cible['user_id']);
+            $total = 0;
+            foreach ($groupes as $groupe) {
+                $total += count($groupe['cours']);
+            }
+            if ($total > self::COPIE_MAX) {
+                return [null, 'Ce dossier contient plus de ' . self::COPIE_MAX . ' cours : copiez-les un par un.'];
+            }
+            $nouveaux = [];
+            foreach ($groupes as $groupe) {
+                $parent = $nouveaux[self::parentDe($groupe['id'], (int) $cible['user_id'])] ?? null;
+                $nouveaux[$groupe['id']] = self::creerDossier($moi, (string) $groupe['nom'], (string) $groupe['icone'], $parent);
+                foreach ($groupe['cours'] as $c) {
+                    Database::run(
+                        'INSERT INTO cours (user_id, dossier_id, titre, contenu) VALUES (?, ?, ?, ?)',
+                        [$moi, $nouveaux[$groupe['id']], mb_substr((string) $c['titre'], 0, 200), (string) $c['contenu']]
+                    );
+                    $nouveauCours = Database::dernierId();
+                    foreach (self::fichiersDuCours((int) $c['id']) as $f) {
+                        self::copierFichier($f, $moi, $nouveauCours, $dossier);
+                    }
+                }
+            }
+
+            return [$nouveaux[$id] ?? null, null];
+        }
+
         // Une fiche devient un cours à soi, dont c'est la fiche de révision.
         if ($type === 'fiche') {
             Database::run(
@@ -451,6 +636,37 @@ final class Partages
         }
 
         return [$coursCible, null];
+    }
+
+    /** Le dossier parent, chez son propriétaire. */
+    private static function parentDe(int $dossierId, int $proprietaire): int
+    {
+        $parent = Database::valeur('SELECT parent_id FROM dossiers WHERE id = ? AND user_id = ?', [$dossierId, $proprietaire]);
+
+        return $parent === null || $parent === false ? 0 : (int) $parent;
+    }
+
+    /**
+     * Crée un dossier à soi. Un compte ne peut avoir deux dossiers du même
+     * nom : la copie d'un dossier déjà nommé ainsi prend « (2) », « (3) »…
+     */
+    private static function creerDossier(int $moi, string $nom, string $icone, ?int $parent): int
+    {
+        $nom = mb_substr(trim($nom) === '' ? 'Dossier partagé' : trim($nom), 0, 110);
+        $essai = $nom;
+        for ($i = 2; Database::valeur('SELECT 1 FROM dossiers WHERE user_id = ? AND nom = ?', [$moi, $essai]) !== null; $i++) {
+            $essai = $nom . ' (' . $i . ')';
+        }
+        $position = (int) Database::valeur(
+            'SELECT COALESCE(MAX(position), 0) + 1 FROM dossiers WHERE user_id = ? AND parent_id ' . ($parent === null ? 'IS NULL' : '= ?'),
+            $parent === null ? [$moi] : [$moi, $parent]
+        );
+        Database::run(
+            'INSERT INTO dossiers (user_id, parent_id, nom, icone, position) VALUES (?, ?, ?, ?, ?)',
+            [$moi, $parent, $essai, $icone === '' ? '📁' : $icone, $position]
+        );
+
+        return Database::dernierId();
     }
 
     private static function copierFichier(array $f, int $moi, int $coursId, string $dossier, bool $pourFiche = false): bool
@@ -490,12 +706,19 @@ final class Partages
         return [
             'type' => $type,
             'titre' => (string) $cible['titre'],
-            'icone' => match ($type) { 'cours' => '📘', 'fiche' => '📝', default => Fichiers::icone((string) $cible['mime'], (string) $cible['nom_origine']) },
+            'icone' => match ($type) {
+                'cours' => '📘',
+                'fiche' => '📝',
+                'dossier' => (string) $cible['icone'],
+                default => Fichiers::icone((string) $cible['mime'], (string) $cible['nom_origine']),
+            },
             'detail' => !$visible ? 'Le partage a été retiré.'
-                : ($type === 'fichier'
-                    ? 'Fichier · ' . taille_lisible((int) $cible['taille'])
-                    : ($type === 'cours' ? 'Cours' : 'Fiche de révision')
-                        . ((int) $cible['nb_fichiers'] > 0 ? ' · ' . (int) $cible['nb_fichiers'] . ' fichier' . ((int) $cible['nb_fichiers'] > 1 ? 's' : '') : '')),
+                : match ($type) {
+                    'fichier' => 'Fichier · ' . taille_lisible((int) $cible['taille']),
+                    'dossier' => 'Dossier · ' . self::compteCours((int) $cible['nb_cours']),
+                    default => ($type === 'cours' ? 'Cours' : 'Fiche de révision')
+                        . ((int) $cible['nb_fichiers'] > 0 ? ' · ' . (int) $cible['nb_fichiers'] . ' fichier' . ((int) $cible['nb_fichiers'] > 1 ? 's' : '') : ''),
+                },
             'url' => $visible ? self::adresse($type, $id) : null,
         ];
     }

@@ -53,6 +53,11 @@
           'dansEntete' => true,
       ]) ?>
     <?php endif; ?>
+    <?php // Un dossier ouvert : de quoi le partager tel quel, avec ses cours. ?>
+    <?php if ($dossierId !== null): ?>
+      <a class="bouton bouton--secondaire bouton-partage" href="<?= url('partager/dossiers/' . $dossierId) ?>"
+         data-fenetre><?= Partages::icone() ?> Partager le dossier</a>
+    <?php endif; ?>
     <a class="bouton" href="<?= url('cours/nouveau') ?>" data-fenetre>+ Nouveau cours</a>
   </div>
 </div>

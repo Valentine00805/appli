@@ -8,6 +8,7 @@
  * @var bool $public   ouvert par le lien public
  * @var list<array> $fichiers  les fichiers joints d'un cours, ou ceux d'une fiche
  * @var list<array> $liens     les liens d'une fiche
+ * @var list<array> $groupes   le contenu d'un dossier : ses cours, par sous-dossier
  * @var callable $adresseFichier  (int $id, bool $telecharger): string
  * @var list<array> $mesCours  où ranger la copie d'un fichier
  * @var bool $recu     il figure dans « Partagés avec moi »
@@ -18,20 +19,28 @@ $csrf = $public ? '' : Session::jetonCsrf();
 $base = 'partages/' . $mot . '/' . (int) $cible['id'];
 $fichierSeul = $type === 'fichier';
 $estFiche = $type === 'fiche';
+$estDossier = $type === 'dossier';
 $liens = $liens ?? [];
+$groupes = $groupes ?? [];
+$retour = $retour ?? null;
 $mime = $fichierSeul ? (string) $cible['mime'] : '';
 $nom = $fichierSeul ? (string) $cible['nom_origine'] : '';
 ?>
 <div class="entete-page">
   <div>
-    <?php if (!$public): ?>
+    <?php if ($retour !== null): ?>
+      <p class="discret" style="margin-bottom:.35rem"><a href="<?= e((string) $retour['url']) ?>"><?= e((string) $retour['texte']) ?></a></p>
+    <?php elseif (!$public): ?>
       <p class="discret" style="margin-bottom:.35rem"><a href="<?= url('cours') ?>#partages-recus">← Partagés avec moi</a></p>
     <?php endif; ?>
-    <h1><?= $fichierSeul ? e(Fichiers::icone($mime, $nom)) . ' ' : ($estFiche ? '📝 ' : '📘 ') ?><?= e((string) ($estFiche ? $cible['titre_cours'] : $cible['titre'])) ?></h1>
+    <h1><?= $fichierSeul ? e(Fichiers::icone($mime, $nom)) . ' ' : ($estFiche ? '📝 ' : ($estDossier ? e((string) $cible['icone']) . ' ' : '📘 ')) ?><?= e((string) ($estFiche ? $cible['titre_cours'] : $cible['titre'])) ?></h1>
     <?php if ($estFiche): ?><p style="margin:0 0 .2rem"><span class="pastille">Fiche de révision</span></p><?php endif; ?>
+    <?php if ($estDossier): ?><p style="margin:0 0 .2rem"><span class="pastille">Dossier · <?= e(Partages::compteCours((int) $cible['nb_cours'])) ?></span></p><?php endif; ?>
     <p class="discret">
       <?= Partages::icone(15) ?> Partagé par <strong><?= e($proprietaire !== '' ? $proprietaire : 'un compte Mes Cours') ?></strong>
-      <?php if (!$fichierSeul): ?>
+      <?php if ($estDossier): ?>
+        · ses sous-dossiers compris
+      <?php elseif (!$fichierSeul): ?>
         <?php if (($cible['matiere_nom'] ?? null) !== null): ?> · <?= e((string) $cible['matiere_nom']) ?><?php endif; ?>
         · mis à jour le <?= e(date_fr((string) $cible['updated_at'], false)) ?>
       <?php else: ?>
@@ -48,7 +57,7 @@ $nom = $fichierSeul ? (string) $cible['nom_origine'] : '';
       <?php if (!$fichierSeul): ?>
         <form method="post" action="<?= url($base . '/copier') ?>" class="en-ligne">
           <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
-          <button class="bouton bouton--secondaire" type="submit">📥 Copier dans mes cours</button>
+          <button class="bouton bouton--secondaire" type="submit">📥 Copier <?= $estDossier ? 'le dossier chez moi' : 'dans mes cours' ?></button>
         </form>
       <?php endif; ?>
       <?php if ($recu): ?>
@@ -97,6 +106,32 @@ $nom = $fichierSeul ? (string) $cible['nom_origine'] : '';
       <?php endif; ?>
     </section>
   <?php endif; ?>
+<?php elseif ($estDossier): ?>
+  <?php // Les cours du dossier, puis ceux de chaque sous-dossier qui en contient. ?>
+  <?php foreach ($groupes as $i => $groupe): ?>
+    <section class="carte" style="margin-left:<?= min((int) $groupe['profondeur'], 4) * 1.1 ?>rem">
+      <h2 style="margin-top:0">
+        <?= e((string) $groupe['icone']) ?> <?= $i === 0 ? 'Dans ce dossier' : e((string) $groupe['nom']) ?>
+        <span class="discret">(<?= count($groupe['cours']) ?>)</span>
+      </h2>
+      <?php if ($groupe['cours'] === []): ?>
+        <p class="discret" style="margin:0">Ce dossier ne contient aucun cours pour l’instant.</p>
+      <?php else: ?>
+        <ul class="partage-cours">
+          <?php foreach ($groupe['cours'] as $c): ?>
+            <li>
+              <a href="<?= e($adresseCours((int) $c['id'])) ?>">📘 <?= e((string) $c['titre']) ?></a>
+              <span class="discret">
+                <?php if (($c['matiere_nom'] ?? null) !== null): ?><?= e((string) $c['matiere_nom']) ?> · <?php endif; ?>
+                <?php if ((int) $c['nb_fichiers'] > 0): ?><?= (int) $c['nb_fichiers'] ?> fichier<?= (int) $c['nb_fichiers'] > 1 ? 's' : '' ?> · <?php endif; ?>
+                <?= e(date_fr((string) $c['updated_at'], false)) ?>
+              </span>
+            </li>
+          <?php endforeach; ?>
+        </ul>
+      <?php endif; ?>
+    </section>
+  <?php endforeach; ?>
 <?php else: ?>
   <?php $texte = (string) ($estFiche ? $cible['fiche_revision'] : $cible['contenu']); ?>
   <div class="colonnes">

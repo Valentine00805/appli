@@ -18,7 +18,12 @@ $surPlace = $dansUneFenetre ? ' data-envoi-fenetre' : '';
 $csrf = Session::jetonCsrf();
 $base = 'partager/' . $mot . '/' . (int) $cible['id'];
 $ontAcces = array_flip(array_column($destinataires, 'id'));
-$icone = match ($type) { 'cours' => '📘', 'fiche' => '📝', default => Fichiers::icone((string) $cible['mime'], (string) $cible['nom_origine']) };
+$icone = match ($type) {
+    'cours' => '📘',
+    'fiche' => '📝',
+    'dossier' => (string) $cible['icone'],
+    default => Fichiers::icone((string) $cible['mime'], (string) $cible['nom_origine']),
+};
 ?>
 <div class="entete-page"<?= $dansUneFenetre ? ' data-large' : '' ?>>
   <div>
@@ -65,7 +70,7 @@ $icone = match ($type) { 'cours' => '📘', 'fiche' => '📝', default => Fichie
       <p class="discret" data-filtre-vide hidden style="margin:.4rem 0 0">Personne ne correspond.</p>
       <div class="champ" style="margin-top:.75rem">
         <label for="partage-texte">Message (facultatif)</label>
-        <textarea id="partage-texte" name="texte" rows="2" maxlength="<?= Amis::MESSAGE_MAX ?>" placeholder="<?= match ($type) { 'cours' => 'Regarde ce cours…', 'fiche' => 'Regarde ma fiche…', default => 'Regarde ce fichier…' } ?>"></textarea>
+        <textarea id="partage-texte" name="texte" rows="2" maxlength="<?= Amis::MESSAGE_MAX ?>" placeholder="<?= match ($type) { 'cours' => 'Regarde ce cours…', 'fiche' => 'Regarde ma fiche…', 'dossier' => 'Regarde ce dossier…', default => 'Regarde ce fichier…' } ?>"></textarea>
       </div>
       <button class="bouton" type="submit">Envoyer</button>
       <p class="champ__aide" style="margin-bottom:0">
@@ -73,6 +78,7 @@ $icone = match ($type) { 'cours' => '📘', 'fiche' => '📝', default => Fichie
         et ils peuvent en faire une copie.<?= match ($type) {
             'cours' => ' Les fichiers joints du cours sont compris ; pas la fiche de révision.',
             'fiche' => ' Les fichiers et les liens de la fiche sont compris ; pas le contenu du cours.',
+            'dossier' => ' Tous les cours du dossier et de ses sous-dossiers sont compris, avec leurs fichiers joints ; pas leurs fiches de révision. Ce que vous y rangerez ensuite sera partagé aussi.',
             default => '',
         } ?>
       </p>

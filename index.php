@@ -495,6 +495,7 @@ $routes = [
     ['POST', 'partages/{mot}/{id}/copier',          [PartagesController::class, 'copier']],
     ['POST', 'partages/{mot}/{id}/oublier',         [PartagesController::class, 'oublier']],
     ['GET',  'p/{jeton}',                           [PartagesController::class, 'public']],
+    ['GET',  'p/{jeton}/cours/{id}',                [PartagesController::class, 'coursPublic']],
     ['GET',  'p/{jeton}/fichiers/{id}',             [PartagesController::class, 'fichierPublic']],
 ];
 

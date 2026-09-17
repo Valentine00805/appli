@@ -16,6 +16,7 @@ final class PartagesController
             'cours' => 'cours',
             'fichiers' => 'fichier',
             'fiches' => 'fiche',
+            'dossiers' => 'dossier',
             default => self::introuvable(),
         };
     }
@@ -112,6 +113,9 @@ final class PartagesController
         $cible = Partages::cible($type, $id);
         if ($cible !== null && (int) $cible['user_id'] === $moi) {
             // Le sien : sa vraie page.
+            if ($type === 'dossier') {
+                redirect('cours', ['dossier' => $id]);
+            }
             redirect(match ($type) {
                 'cours' => 'cours/' . $id,
                 'fiche' => 'revision/' . $id,
@@ -128,12 +132,22 @@ final class PartagesController
             'public' => false,
             'fichiers' => match ($type) { 'cours' => Partages::fichiersDuCours($id), 'fiche' => Partages::fichiersDeLaFiche($id), default => [] },
             'liens' => $type === 'fiche' ? Partages::liensDeLaFiche($id) : [],
+            'groupes' => $type === 'dossier' ? Partages::contenuDuDossier($id, (int) $cible['user_id']) : [],
+            'adresseCours' => static fn (int $c): string => url('partages/cours/' . $c),
             'adresseFichier' => static fn (int $f, bool $telecharger = false): string => url('partages/fichiers/' . $f . '/contenu', $telecharger ? ['telecharger' => 1] : []),
             'mesCours' => $type === 'fichier'
                 ? Database::all('SELECT id, titre FROM cours WHERE user_id = ? ORDER BY titre', [$moi]) : [],
             'recu' => Database::valeur('SELECT 1 FROM partages_amis WHERE destinataire_id = ? AND cible_type = ? AND cible_id = ?', [$moi, $type, $id]) !== null,
             'mot' => $mot,
         ];
+        // Un cours ouvert depuis un dossier partagé : de quoi y revenir.
+        if ($type === 'cours') {
+            $dossierId = Partages::dossierPartage($id, $moi);
+            if ($dossierId !== null) {
+                $dossier = Partages::cible('dossier', $dossierId);
+                $donnees['retour'] = ['url' => url('partages/dossiers/' . $dossierId), 'texte' => '← ' . (string) ($dossier['titre'] ?? 'Dossier partagé')];
+            }
+        }
         Vue::afficher('partages/lire', $donnees, (string) $cible['titre']);
     }
 
@@ -163,8 +177,12 @@ final class PartagesController
         Session::flash('succes', match ($type) {
             'cours' => 'Cours copié dans vos cours : cette copie est à vous, modifiable.',
             'fiche' => 'Fiche copiée : un nouveau cours à vous, dont c’est la fiche de révision.',
+            'dossier' => 'Dossier copié dans vos dossiers : ces copies sont à vous, modifiables.',
             default => 'Fichier copié dans votre cours.',
         });
+        if ($type === 'dossier') {
+            redirect('cours', ['dossier' => $cours]);
+        }
         redirect(($type === 'fiche' ? 'revision/' : 'cours/') . $cours);
     }
 
@@ -196,11 +214,43 @@ final class PartagesController
             'public' => true,
             'fichiers' => match ($type) { 'cours' => Partages::fichiersDuCours((int) $cible['id']), 'fiche' => Partages::fichiersDeLaFiche((int) $cible['id']), default => [] },
             'liens' => $type === 'fiche' ? Partages::liensDeLaFiche((int) $cible['id']) : [],
+            'groupes' => $type === 'dossier' ? Partages::contenuDuDossier((int) $cible['id'], (int) $cible['user_id']) : [],
+            'adresseCours' => static fn (int $c): string => url('p/' . $jeton . '/cours/' . $c),
             'adresseFichier' => static fn (int $f, bool $telecharger = false): string => url('p/' . $jeton . '/fichiers/' . $f, $telecharger ? ['telecharger' => 1] : []),
             'mesCours' => [],
             'recu' => false,
             'mot' => Partages::mot($type),
         ], (string) $cible['titre']);
+    }
+
+    /** Un cours d'un dossier partagé par lien public. */
+    public function coursPublic(string $jeton, int $id): void
+    {
+        header('X-Robots-Tag: noindex, nofollow');
+        $trouve = Partages::parJeton($jeton);
+        $cours = Partages::cible('cours', $id);
+        if ($trouve === null || $cours === null
+            || $trouve['lien']['cible_type'] !== 'dossier'
+            || (int) $cours['user_id'] !== (int) $trouve['lien']['user_id']
+            || !Partages::dansLeDossier($id, (int) $trouve['lien']['cible_id'])) {
+            http_response_code(404);
+            Vue::afficherPublic('partages/lien_mort', [], 'Lien introuvable');
+            return;
+        }
+        Vue::afficherPublic('partages/lire', [
+            'type' => 'cours',
+            'cible' => $cours,
+            'public' => true,
+            'fichiers' => Partages::fichiersDuCours($id),
+            'liens' => [],
+            'groupes' => [],
+            'adresseCours' => static fn (int $c): string => url('p/' . $jeton . '/cours/' . $c),
+            'adresseFichier' => static fn (int $f, bool $telecharger = false): string => url('p/' . $jeton . '/fichiers/' . $f, $telecharger ? ['telecharger' => 1] : []),
+            'mesCours' => [],
+            'recu' => false,
+            'mot' => 'cours',
+            'retour' => ['url' => url('p/' . $jeton), 'texte' => '← ' . (string) ($trouve['cible']['titre'] ?? 'Dossier partagé')],
+        ], (string) $cours['titre']);
     }
 
     /** Un fichier par le lien public : le fichier partagé, ou un fichier joint du cours partagé. */
@@ -216,6 +266,9 @@ final class PartagesController
                 && (int) $fichier['pour_fiche'] === 0)
             || ($trouve['lien']['cible_type'] === 'fiche' && (int) $fichier['cours_id'] === (int) $trouve['lien']['cible_id']
                 && (int) $fichier['pour_fiche'] === 1)
+            || ($trouve['lien']['cible_type'] === 'dossier' && (int) $fichier['pour_fiche'] === 0
+                && (int) $fichier['user_id'] === (int) $trouve['lien']['user_id']
+                && Partages::dansLeDossier((int) $fichier['cours_id'], (int) $trouve['lien']['cible_id']))
         );
         if (!$permis) {
             http_response_code(404);

@@ -304,6 +304,12 @@ textarea { min-height: 260px; resize: vertical; line-height: 1.65; }
 .partage-apercu__pdf { width: 100%; height: 75vh; border: 0; border-radius: var(--rayon-s); }
 .partage-invitation { margin-top: 1.5rem; text-align: center; }
 .partage-liens { margin: 0; padding-left: 1.2rem; display: grid; gap: .3rem; }
+.partage-cours { margin: 0; padding: 0; list-style: none; display: grid; gap: .5rem; }
+.partage-cours li { display: flex; flex-wrap: wrap; gap: .2rem .6rem; align-items: baseline;
+  border-bottom: 1px solid var(--bordure); padding-bottom: .45rem; }
+.partage-cours li:last-child { border-bottom: 0; padding-bottom: 0; }
+.partage-cours a { font-weight: 600; overflow-wrap: anywhere; }
+.partage-cours .discret { font-size: .85rem; }
 .partage-liens a { overflow-wrap: anywhere; }
 .partage-mort { max-width: 32rem; margin: 3rem auto; text-align: center; }
 .partage-mort__icone { font-size: 2.5rem; margin: 0; }
