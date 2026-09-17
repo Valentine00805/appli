@@ -29,7 +29,7 @@ $moi = Auth::id();
 
 <div class="entete-page profil-ami"<?= $dansUneFenetre ? ' data-large' : '' ?>>
   <div class="profil-ami__identite">
-    <span class="avatar avatar--grand avatar--groupe" aria-hidden="true">👥</span>
+    <?= Conversations::avatar($id, $groupe['photo_nom'], 'avatar--grand') ?>
     <div>
       <?php if (!$dansUneFenetre): ?>
         <p class="discret" style="margin:0 0 .2rem"><a href="<?= url('groupes/' . $id) ?>">← Retour à la discussion</a></p>
@@ -39,6 +39,35 @@ $moi = Auth::id();
     </div>
   </div>
 </div>
+
+<?php // La photo du groupe : chacun peut la changer ; tout le groupe la voit. ?>
+<section class="carte profil-ami__section" id="photo-groupe">
+  <h2 style="margin-top:0">📷 Photo du groupe</h2>
+  <div class="photo-groupe">
+    <span class="photo-groupe__apercu" data-photo-apercu>
+      <?= Conversations::avatar($id, $groupe['photo_nom'], 'avatar--apercu') ?>
+    </span>
+    <div class="fond-reglage__infos">
+      <form method="post" action="<?= url('groupes/' . $id . '/photo') ?>" enctype="multipart/form-data" class="fond-reglage__choix" data-photo-formulaire>
+        <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+        <input type="file" name="photo" id="photo-groupe-fichier" class="sr-only" required
+               accept="image/jpeg,image/png,image/gif,image/webp" data-photo-fichier>
+        <label class="bouton bouton--secondaire" for="photo-groupe-fichier">📷 <?= $groupe['photo_nom'] === null ? 'Choisir une photo' : 'Changer de photo' ?></label>
+        <span class="fond-reglage__nouveau" data-photo-nouveau hidden>
+          <button class="bouton" type="submit">Enregistrer</button>
+          <button class="bouton bouton--discret" type="button" data-photo-annuler>Annuler</button>
+        </span>
+      </form>
+      <?php if ($groupe['photo_nom'] !== null): ?>
+        <form method="post" action="<?= url('groupes/' . $id . '/photo/retirer') ?>" style="margin-top:.5rem">
+          <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+          <button class="bouton bouton--discret" type="submit">Retirer la photo</button>
+        </form>
+      <?php endif; ?>
+      <p class="champ__aide" style="margin-bottom:0">Tous les membres la voient. JPEG, PNG, GIF ou WebP, <?= intdiv(Amis::IMAGE_MAX_OCTETS, 1024 * 1024) ?> Mo au plus.</p>
+    </div>
+  </div>
+</section>
 
 <?php // Le nom : il se lit, et ne se change qu'en passant par « Modifier ». ?>
 <section class="carte profil-ami__section" data-reglage>

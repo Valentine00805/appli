@@ -82,7 +82,11 @@ foreach ($messages as $m) {
       <a class="chat__retour" href="<?= url('amis') ?>" aria-label="Retour aux amis">←</a>
       <?php // Le profil de l'ami, ou les réglages du groupe, en fenêtre. ?>
       <a class="chat__profil" href="<?= e($lienInfo) ?>" data-fenetre title="<?= $enGroupe ? 'Réglages du groupe' : 'Voir le profil' ?>">
-        <span class="avatar<?= $enGroupe ? ' avatar--groupe' : '' ?>" aria-hidden="true"><?= e($initiale) ?></span>
+        <?php if ($enGroupe): ?>
+          <?= Conversations::avatar($groupeActif, $groupe['photo_nom']) ?>
+        <?php else: ?>
+          <span class="avatar" aria-hidden="true"><?= e($initiale) ?></span>
+        <?php endif; ?>
         <span class="chat__profil-texte">
           <h1 class="chat__titre" data-chat-titre><?= e($titre) ?></h1>
           <span class="chat__profil-aide"><?= e($aide) ?></span>

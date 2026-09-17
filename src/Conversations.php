@@ -340,7 +340,7 @@ final class Conversations
     public static function mesInvitations(int $moi): array
     {
         return Database::all(
-            "SELECT c.id, c.nom, COALESCE(p.pseudo, '') AS par, i.created_at,
+            "SELECT c.id, c.nom, c.photo_nom, COALESCE(p.pseudo, '') AS par, i.created_at,
                     (SELECT COUNT(*) FROM conversation_membres mb WHERE mb.conversation_id = c.id) AS membres
                FROM conversation_invitations i JOIN conversations c ON c.id = i.conversation_id LEFT JOIN users p ON p.id = i.invite_par
               WHERE i.user_id = ? ORDER BY i.created_at DESC",
@@ -459,8 +459,9 @@ final class Conversations
             'SELECT image_nom AS nom FROM conversation_messages WHERE conversation_id = ? AND image_nom IS NOT NULL
              UNION ALL SELECT fichier_nom FROM conversation_messages WHERE conversation_id = ? AND fichier_nom IS NOT NULL
              UNION ALL SELECT audio_nom FROM conversation_messages WHERE conversation_id = ? AND audio_nom IS NOT NULL
-             UNION ALL SELECT fond_nom FROM conversations WHERE id = ? AND fond_nom IS NOT NULL',
-            [$conversation, $conversation, $conversation, $conversation]
+             UNION ALL SELECT fond_nom FROM conversations WHERE id = ? AND fond_nom IS NOT NULL
+             UNION ALL SELECT photo_nom FROM conversations WHERE id = ? AND photo_nom IS NOT NULL',
+            [$conversation, $conversation, $conversation, $conversation, $conversation]
         );
         Database::run('DELETE FROM conversations WHERE id = ?', [$conversation]);
         foreach ($noms as $l) {
@@ -493,6 +494,70 @@ final class Conversations
         self::noter($conversation, $moi, 'nom', null, $nom);
 
         return null;
+    }
+
+    /** L'adresse de la photo du groupe, qui change avec l'image. */
+    public static function adressePhoto(int $conversation, ?string $nomPhoto): ?string
+    {
+        return $nomPhoto === null ? null : url('groupes/' . $conversation . '/photo', ['v' => substr($nomPhoto, 0, 12)]);
+    }
+
+    /** L'avatar du groupe : sa photo, ou 👥. */
+    public static function avatar(int $conversation, ?string $nomPhoto, string $classes = ''): string
+    {
+        $adresse = self::adressePhoto($conversation, $nomPhoto);
+        $classe = trim('avatar avatar--groupe ' . $classes);
+
+        return $adresse === null
+            ? '<span class="' . e($classe) . '" aria-hidden="true" data-groupe-avatar>👥</span>'
+            : '<span class="' . e($classe) . ' avatar--photo" aria-hidden="true" data-groupe-avatar><img src="' . e($adresse) . '" alt=""></span>';
+    }
+
+    /** La photo du groupe, pour ses membres et ceux qui y sont invités. */
+    public static function photo(int $conversation, int $moi): ?array
+    {
+        return Database::one(
+            'SELECT c.photo_nom, c.photo_mime FROM conversations c
+              WHERE c.id = ? AND c.photo_nom IS NOT NULL
+                AND (EXISTS (SELECT 1 FROM conversation_membres mb WHERE mb.conversation_id = c.id AND mb.user_id = ?)
+                  OR EXISTS (SELECT 1 FROM conversation_invitations i WHERE i.conversation_id = c.id AND i.user_id = ?))',
+            [$conversation, $moi, $moi]
+        );
+    }
+
+    /** Pose une photo de profil sur le groupe (chaque membre le peut). */
+    public static function changerPhoto(int $moi, int $conversation, ?array $image): ?string
+    {
+        $groupe = self::conversation($conversation, $moi);
+        if ($groupe === null) {
+            return 'Ce groupe est introuvable.';
+        }
+        if ($image === null || ($image['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) {
+            return 'Choisissez une image.';
+        }
+        $rangee = Amis::rangerImage($image);
+        if (is_string($rangee)) {
+            return $rangee;
+        }
+        Database::run('UPDATE conversations SET photo_nom = ?, photo_mime = ? WHERE id = ?', [$rangee['nom'], $rangee['mime'], $conversation]);
+        self::effacerFichier($groupe['photo_nom']);
+        self::noter($conversation, $moi, 'photo');
+
+        return null;
+    }
+
+    /** Retire la photo du groupe. Vrai s'il y en avait une. */
+    public static function retirerPhoto(int $moi, int $conversation): bool
+    {
+        $groupe = self::conversation($conversation, $moi);
+        if ($groupe === null || $groupe['photo_nom'] === null) {
+            return false;
+        }
+        Database::run('UPDATE conversations SET photo_nom = NULL, photo_mime = NULL WHERE id = ? AND photo_nom = ?', [$conversation, $groupe['photo_nom']]);
+        self::effacerFichier($groupe['photo_nom']);
+        self::noter($conversation, $moi, 'photo_retiree');
+
+        return true;
     }
 
     /** L'adresse du fond, qui change avec l'image. */
@@ -584,6 +649,8 @@ final class Conversations
             'rejoint' => '➕ ' . ($auteur === $moi ? 'Vous avez' : $pseudo($auteur) . ' a') . ' rejoint le groupe',
             'fond' => '🖼️ ' . $qui . ' changé le fond d’écran',
             'fond_retire' => '🖼️ ' . $qui . ' retiré le fond d’écran',
+            'photo' => '📷 ' . $qui . ' changé la photo du groupe',
+            'photo_retiree' => '📷 ' . $qui . ' retiré la photo du groupe',
             default => $qui . ' modifié le groupe',
         };
     }
@@ -595,7 +662,7 @@ final class Conversations
     public static function liste(int $moi): array
     {
         return Database::all(
-            "SELECT c.id, c.nom, c.created_at,
+            "SELECT c.id, c.nom, c.created_at, c.photo_nom,
                     (SELECT COUNT(*) FROM conversation_messages m
                       WHERE m.conversation_id = c.id AND m.id > GREATEST(mb.lu_jusqua, mb.depuis_message)
                         AND (m.expediteur_id IS NULL OR m.expediteur_id <> ?)

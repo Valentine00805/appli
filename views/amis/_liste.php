@@ -47,6 +47,7 @@ foreach ($groupes as $g) {
         'actif' => $groupeActif === (int) $g['id'],
         'nom' => (string) $g['nom'],
         'avatar' => '👥',
+        'avatar_html' => Conversations::avatar((int) $g['id'], $g['photo_nom'] ?? null),
         'groupe' => true,
         'apercu' => Conversations::apercu($dernier, $moi),
         'quand' => $dernier === null ? null : (string) $dernier['created_at'],
@@ -65,7 +66,11 @@ usort($discussions, static fn (array $x, array $y): int => [$y['tri'], $x['nom']
       <li>
         <a class="ami<?= $d['actif'] ? ' ami--actif' : '' ?><?= $d['non_lus'] > 0 ? ' ami--non-lu' : '' ?>"
            href="<?= e($d['url']) ?>"<?= $d['actif'] ? ' aria-current="page"' : '' ?>>
-          <span class="avatar<?= $d['groupe'] ? ' avatar--groupe' : '' ?>" aria-hidden="true"><?= e($d['avatar']) ?></span>
+          <?php if (isset($d['avatar_html'])): ?>
+            <?= $d['avatar_html'] ?>
+          <?php else: ?>
+            <span class="avatar" aria-hidden="true"><?= e($d['avatar']) ?></span>
+          <?php endif; ?>
           <span class="ami__texte">
             <span class="ami__ligne">
               <span class="ami__pseudo"><?= e($d['nom']) ?></span>

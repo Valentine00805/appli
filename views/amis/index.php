@@ -120,7 +120,7 @@ $geste = static function (string $action, int $compte, string $libelle, string $
         <ul class="amis-resultats">
           <?php foreach ($invitationsGroupes as $inv): ?>
             <li class="amis-resultat">
-              <span class="avatar avatar--groupe" aria-hidden="true">👥</span>
+              <?= Conversations::avatar((int) $inv['id'], $inv['photo_nom']) ?>
               <span class="amis-resultat__pseudo"><?= e((string) $inv['nom']) ?>
                 <span class="discret" style="font-size:.8rem;font-weight:400">· <?= (int) $inv['membres'] ?> membres<?= $inv['par'] !== '' ? ' · invité par ' . e((string) $inv['par']) : '' ?></span></span>
               <span class="actions">

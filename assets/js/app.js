@@ -135,6 +135,43 @@
    * choisie s'essaie dans l'aperçu, et ne part qu'avec « Enregistrer ».
    * « Annuler » remet l'aperçu tel qu'il était.
    */
+  /*
+   * La photo d'un groupe, dans ses réglages : essayée dans l'aperçu, envoyée
+   * seulement avec « Enregistrer ».
+   */
+  var apercuPhoto = null;
+  document.addEventListener('change', function (evenement) {
+    var champ = evenement.target;
+    if (!champ.matches || !champ.matches('[data-photo-fichier]')) { return; }
+    var carte = champ.closest('#photo-groupe');
+    var avatar = carte.querySelector('[data-photo-apercu] [data-groupe-avatar]');
+    if (!carte.hasAttribute('data-avant')) { carte.setAttribute('data-avant', avatar.innerHTML); }
+    if (apercuPhoto) { URL.revokeObjectURL(apercuPhoto); apercuPhoto = null; }
+    var fichier = champ.files && champ.files[0];
+    carte.querySelector('[data-photo-nouveau]').hidden = !fichier;
+    if (!fichier) { return; }
+    apercuPhoto = URL.createObjectURL(fichier);
+    var image = document.createElement('img');
+    image.src = apercuPhoto;
+    image.alt = '';
+    avatar.textContent = '';
+    avatar.appendChild(image);
+    avatar.classList.add('avatar--photo');
+  });
+  document.addEventListener('click', function (evenement) {
+    var annuler = evenement.target.closest && evenement.target.closest('[data-photo-annuler]');
+    if (!annuler) { return; }
+    var carte = annuler.closest('#photo-groupe');
+    var avatar = carte.querySelector('[data-photo-apercu] [data-groupe-avatar]');
+    carte.querySelector('[data-photo-formulaire]').reset();
+    carte.querySelector('[data-photo-nouveau]').hidden = true;
+    if (carte.hasAttribute('data-avant')) {
+      avatar.innerHTML = carte.getAttribute('data-avant');
+      avatar.classList.toggle('avatar--photo', !!avatar.querySelector('img'));
+    }
+    if (apercuPhoto) { URL.revokeObjectURL(apercuPhoto); apercuPhoto = null; }
+  });
+
   var apercuFond = null;
   document.addEventListener('change', function (evenement) {
     var champ = evenement.target;
@@ -2076,6 +2113,24 @@
           if (reponse.titre) {
             var titre = chat.querySelector('[data-chat-titre]');
             if (titre && titre.textContent !== reponse.titre) { titre.textContent = reponse.titre; }
+          }
+          // La photo du groupe changée par un autre membre.
+          if ('photo' in reponse) {
+            var avatar = chat.querySelector('.chat__entete [data-groupe-avatar]');
+            var image = avatar && avatar.querySelector('img');
+            var actuelle = image ? image.getAttribute('src') : null;
+            if (avatar && actuelle !== reponse.photo) {
+              avatar.textContent = '';
+              avatar.classList.toggle('avatar--photo', !!reponse.photo);
+              if (reponse.photo) {
+                var nouvelle = document.createElement('img');
+                nouvelle.src = reponse.photo;
+                nouvelle.alt = '';
+                avatar.appendChild(nouvelle);
+              } else {
+                avatar.textContent = '👥';
+              }
+            }
           }
           vuJusqua = reponse.vu_jusqua || vuJusqua;
           majVu();

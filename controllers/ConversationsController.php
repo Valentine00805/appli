@@ -145,6 +145,7 @@ final class ConversationsController
             'maintenant' => $maintenant,
             'fond' => Conversations::adresseFond($id, $groupe['fond_nom']),
             'titre' => (string) $groupe['nom'],
+            'photo' => Conversations::adressePhoto($id, $groupe['photo_nom']),
         ] + Conversations::changements($moi, $id, $apres));
     }
 
@@ -334,6 +335,38 @@ final class ConversationsController
             Session::flash('erreur', 'Vous ne faites pas partie de ce groupe.');
         }
         redirect('amis');
+    }
+
+    public function photo(int $id): void
+    {
+        Auth::exiger();
+        session_write_close();
+        $photo = Conversations::photo($id, Auth::id());
+        $chemin = $photo === null ? null : Amis::dossierImages() . DIRECTORY_SEPARATOR . basename((string) $photo['photo_nom']);
+        if ($chemin === null || !is_file($chemin) || !in_array($photo['photo_mime'], array_column(Amis::IMAGE_TYPES, 0), true)) {
+            http_response_code(404);
+            exit('Photo introuvable.');
+        }
+        $this->image($chemin, (string) $photo['photo_mime'], 'photo-groupe');
+    }
+
+    public function changerPhoto(int $id): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $image = isset($_FILES['photo']) && is_array($_FILES['photo']) && !is_array($_FILES['photo']['name'] ?? null) ? $_FILES['photo'] : null;
+        $refus = Conversations::changerPhoto(Auth::id(), $id, $image);
+        Session::flash($refus === null ? 'succes' : 'erreur', $refus ?? 'Photo du groupe changée.');
+        $this->retour($id);
+    }
+
+    public function retirerPhoto(int $id): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $retiree = Conversations::retirerPhoto(Auth::id(), $id);
+        Session::flash($retiree ? 'succes' : 'info', $retiree ? 'Photo du groupe retirée.' : 'Ce groupe n’avait pas de photo.');
+        $this->retour($id);
     }
 
     public function fond(int $id): void
