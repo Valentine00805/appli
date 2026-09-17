@@ -161,6 +161,59 @@ final class AuthController
         redirect('');
     }
 
+    /** « Mot de passe oublié » : on donne son adresse ou son pseudo. */
+    public function formulaireOubli(): void
+    {
+        if (Auth::connecte()) {
+            redirect('compte');
+        }
+        Vue::afficherNu('auth/oubli', ['envoye' => false], 'Mot de passe oublié');
+    }
+
+    public function demanderReinitialisation(): void
+    {
+        Session::verifierCsrf();
+        Reinitialisation::demander(post('identifiant'));
+        // La même réponse, que le compte existe ou non.
+        Vue::afficherNu('auth/oubli', ['envoye' => true], 'Mot de passe oublié');
+    }
+
+    /** Le lien reçu par e-mail : choisir un nouveau mot de passe. */
+    public function formulaireNouveau(): void
+    {
+        $jeton = (string) ($_GET['jeton'] ?? '');
+        $demande = Reinitialisation::trouver($jeton);
+        // Le jeton ne fuit pas par l'en-tête Referer : le site entier est en « same-origin » (.htaccess).
+        Vue::afficherNu('auth/nouveau_mdp', [
+            'jeton' => $demande === null ? '' : $jeton,
+            'compte' => $demande,
+            'erreur' => null,
+        ], 'Nouveau mot de passe');
+    }
+
+    public function reinitialiser(): void
+    {
+        Session::verifierCsrf();
+        $jeton = (string) ($_POST['jeton'] ?? '');
+        $refus = Reinitialisation::appliquer($jeton, (string) ($_POST['mot_de_passe'] ?? ''), (string) ($_POST['mot_de_passe_confirmation'] ?? ''));
+        if ($refus !== null) {
+            $demande = Reinitialisation::trouver($jeton);
+            Vue::afficherNu('auth/nouveau_mdp', [
+                'jeton' => $demande === null ? '' : $jeton,
+                'compte' => $demande,
+                'erreur' => $refus,
+            ], 'Nouveau mot de passe');
+            return;
+        }
+        // Qui était connecté (sur ce navigateur) doit se reconnecter, comme les autres appareils.
+        if (Auth::connecte()) {
+            Auth::deconnecter();
+            Session::demarrer();
+        }
+        Session::flash('succes', 'Mot de passe changé. Connectez-vous avec le nouveau.');
+        redirect('connexion');
+    }
+
     public function deconnecter(): void
     {
         Session::verifierCsrf();
@@ -365,6 +418,8 @@ final class AuthController
         Database::run('UPDATE users SET password_hash = ? WHERE id = ?', [
             password_hash($nouveau, PASSWORD_DEFAULT), $userId,
         ]);
+        // Cette session reste ouverte ; celles des autres appareils se ferment.
+        Auth::retenirMotDePasse($userId);
         Session::flash('succes', 'Mot de passe mis à jour.');
         redirect('compte');
     }

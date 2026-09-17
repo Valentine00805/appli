@@ -22,6 +22,10 @@
   <button class="bouton bouton--bloc" type="submit">Se connecter</button>
 </form>
 
+<p class="auth__bas" style="margin-top:.75rem">
+  <a href="<?= url('mot-de-passe/oublie') ?>">Mot de passe oublié ?</a>
+</p>
+
 <?php if (Config::get('app', 'inscription_ouverte')): ?>
   <p class="auth__bas">
     Pas encore de compte ? <a href="<?= url('inscription') ?>">Créer un compte</a>

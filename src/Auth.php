@@ -10,7 +10,19 @@ final class Auth
     {
         session_regenerate_id(true);
         $_SESSION['user_id'] = $userId;
+        self::retenirMotDePasse($userId);
         self::$utilisateur = null;
+    }
+
+    /**
+     * Note dans la session l'empreinte du mot de passe actuel : s'il change —
+     * réinitialisé, ou modifié depuis un autre appareil —, les sessions qui en
+     * gardent une autre sont fermées.
+     */
+    public static function retenirMotDePasse(int $userId): void
+    {
+        $hash = (string) Database::valeur('SELECT password_hash FROM users WHERE id = ?', [$userId]);
+        $_SESSION['empreinte_mdp'] = substr(hash('sha256', $hash), 0, 32);
     }
 
     public static function deconnecter(): void
@@ -33,11 +45,15 @@ final class Auth
         if (!$id) {
             return null;
         }
-        $u = Database::one('SELECT id, nom, pseudo, photo_nom, email, fuseau, transcription_vocale, created_at FROM users WHERE id = ?', [$id]);
-        if ($u === null) {
+        $u = Database::one('SELECT id, nom, pseudo, photo_nom, email, fuseau, transcription_vocale, created_at, password_hash FROM users WHERE id = ?', [$id]);
+        $empreinte = $u === null ? null : substr(hash('sha256', (string) $u['password_hash']), 0, 32);
+        if ($u === null || (isset($_SESSION['empreinte_mdp']) && !hash_equals((string) $_SESSION['empreinte_mdp'], $empreinte))) {
             self::deconnecter();
             return null;
         }
+        // Une session ouverte avant cette vérification l'adopte.
+        $_SESSION['empreinte_mdp'] ??= $empreinte;
+        unset($u['password_hash']);
         return self::$utilisateur = $u;
     }
 

@@ -3427,6 +3427,7 @@ summary.cal-volet__groupe:focus-visible {
 
 /* L'œil qui montre le mot de passe tapé. */
 .mot-de-passe { position: relative; display: block; }
+.auth__titre { margin: 0 0 .75rem; font-size: 1.15rem; text-align: center; }
 .mot-de-passe > input { width: 100%; padding-right: 2.75rem; }
 .mot-de-passe__oeil {
   position: absolute; top: 50%; right: .35rem; transform: translateY(-50%);

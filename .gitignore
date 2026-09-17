@@ -4,4 +4,6 @@
 /storage/versions/*
 !/storage/versions/.gitignore
 /storage/messages/*
+/storage/courriels/*
+!/storage/courriels/.gitignore
 !/storage/messages/.gitignore

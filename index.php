@@ -24,6 +24,8 @@ require __DIR__ . '/src/Depot.php';
 require __DIR__ . '/src/Session.php';
 require __DIR__ . '/src/Auth.php';
 require __DIR__ . '/src/LimiteurConnexion.php';
+require __DIR__ . '/src/Courriel.php';
+require __DIR__ . '/src/Reinitialisation.php';
 require __DIR__ . '/src/Sauvegarde.php';
 require __DIR__ . '/src/Fichiers.php';
 require __DIR__ . '/src/ApercuDocument.php';
@@ -104,6 +106,9 @@ Config::charger([
         // ce qui ne convient qu'en local : depuis le réseau, l'application la
         // refuse et le dit.
         'code_inscription'    => '',
+        // L'adresse du site en ligne (« https://exemple.fr », sans chemin) : celle
+        // des liens envoyés par e-mail. Vide, elle n'est déduite qu'en local.
+        'adresse_publique'    => '',
         'dossier_uploads'     => __DIR__ . '/storage/uploads',
         'taille_max_fichier'  => 200 * 1024 * 1024,
         'extensions_autorisees' => [
@@ -152,6 +157,22 @@ Config::charger([
      *
      * L'adresse à déclarer chez Google est « agenda/google/retour ».
      */
+    /*
+     * L'envoi d'e-mails (le lien d'un mot de passe oublié).
+     *
+     * Pour Gmail : l'adresse, et un « mot de passe d'application » créé sur
+     * myaccount.google.com/apppasswords (validation en deux étapes requise) —
+     * jamais le mot de passe du compte. À écrire dans config/parametres.php.
+     * Tant que c'est vide, en local, les e-mails sont rangés dans
+     * storage/courriels pour qu'on puisse les ouvrir.
+     */
+    'courriel' => [
+        'serveur'      => 'smtp://smtp.gmail.com:587',
+        'utilisateur'  => '',
+        'mot_de_passe' => '',
+        'expediteur'   => '',
+        'nom'          => '',
+    ],
     'google' => [
         'client_id'      => '',
         'secret'         => '',
@@ -194,6 +215,10 @@ $routes = [
     ['POST', 'inscription',               [AuthController::class, 'inscrire']],
     ['GET',  'connexion',                 [AuthController::class, 'formulaireConnexion']],
     ['POST', 'connexion',                 [AuthController::class, 'connecter']],
+    ['GET',  'mot-de-passe/oublie',       [AuthController::class, 'formulaireOubli']],
+    ['POST', 'mot-de-passe/oublie',       [AuthController::class, 'demanderReinitialisation']],
+    ['GET',  'mot-de-passe/nouveau',      [AuthController::class, 'formulaireNouveau']],
+    ['POST', 'mot-de-passe/nouveau',      [AuthController::class, 'reinitialiser']],
     ['POST', 'deconnexion',               [AuthController::class, 'deconnecter']],
     ['GET',  'compte',                    [AuthController::class, 'compte']],
     ['GET',  'notifications',             [NotificationsController::class, 'index']],
