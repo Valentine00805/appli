@@ -143,8 +143,8 @@
   document.addEventListener('change', function (evenement) {
     var champ = evenement.target;
     if (!champ.matches || !champ.matches('[data-photo-fichier]')) { return; }
-    var carte = champ.closest('#photo-groupe');
-    var avatar = carte.querySelector('[data-photo-apercu] [data-groupe-avatar]');
+    var carte = champ.closest('[data-photo-carte]');
+    var avatar = carte.querySelector('[data-photo-apercu] .avatar');
     if (!carte.hasAttribute('data-avant')) { carte.setAttribute('data-avant', avatar.innerHTML); }
     if (apercuPhoto) { URL.revokeObjectURL(apercuPhoto); apercuPhoto = null; }
     var fichier = champ.files && champ.files[0];
@@ -161,8 +161,8 @@
   document.addEventListener('click', function (evenement) {
     var annuler = evenement.target.closest && evenement.target.closest('[data-photo-annuler]');
     if (!annuler) { return; }
-    var carte = annuler.closest('#photo-groupe');
-    var avatar = carte.querySelector('[data-photo-apercu] [data-groupe-avatar]');
+    var carte = annuler.closest('[data-photo-carte]');
+    var avatar = carte.querySelector('[data-photo-apercu] .avatar');
     carte.querySelector('[data-photo-formulaire]').reset();
     carte.querySelector('[data-photo-nouveau]').hidden = true;
     if (carte.hasAttribute('data-avant')) {
@@ -2815,9 +2815,16 @@
             var li = document.createElement('li');
             li.className = 'amis-resultat';
             var avatar = document.createElement('span');
-            avatar.className = 'avatar';
+            avatar.className = 'avatar' + (r.photo ? ' avatar--photo' : '');
             avatar.setAttribute('aria-hidden', 'true');
-            avatar.textContent = r.pseudo.charAt(0).toUpperCase();
+            if (r.photo) {
+              var portrait = document.createElement('img');
+              portrait.src = r.photo;
+              portrait.alt = '';
+              avatar.appendChild(portrait);
+            } else {
+              avatar.textContent = r.pseudo.charAt(0).toUpperCase();
+            }
             var nom = document.createElement('span');
             nom.className = 'amis-resultat__pseudo';
             nom.textContent = r.pseudo;

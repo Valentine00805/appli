@@ -33,6 +33,7 @@ foreach ($amis as $a) {
         'actif' => $actif === (int) $a['id'],
         'nom' => (string) $a['pseudo'],
         'avatar' => mb_strtoupper(mb_substr((string) $a['pseudo'], 0, 1)),
+        'avatar_html' => Amis::avatar((int) $a['id'], (string) $a['pseudo']),
         'groupe' => false,
         'apercu' => $apercu,
         'quand' => $dernier === null ? null : (string) $dernier['created_at'],

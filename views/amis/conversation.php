@@ -85,7 +85,7 @@ foreach ($messages as $m) {
         <?php if ($enGroupe): ?>
           <?= Conversations::avatar($groupeActif, $groupe['photo_nom']) ?>
         <?php else: ?>
-          <span class="avatar" aria-hidden="true"><?= e($initiale) ?></span>
+          <?= Amis::avatar($actif, $titre) ?>
         <?php endif; ?>
         <span class="chat__profil-texte">
           <h1 class="chat__titre" data-chat-titre><?= e($titre) ?></h1>

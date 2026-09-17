@@ -208,6 +208,9 @@ $routes = [
     ['POST', 'compte/fuseau',            [AuthController::class, 'changerFuseau']],
     ['POST', 'compte/pseudo',            [AuthController::class, 'changerPseudo']],
     ['POST', 'compte/transcription',     [AuthController::class, 'changerTranscription']],
+    ['POST', 'compte/photo',             [AuthController::class, 'changerPhoto']],
+    ['POST', 'compte/photo/retirer',     [AuthController::class, 'retirerPhoto']],
+    ['GET',  'comptes/{id}/photo',       [AuthController::class, 'photo']],
 
     // Les amis : chercher un pseudo, les demandes, et les conversations.
     ['GET',  'amis',                      [AmisController::class, 'index']],

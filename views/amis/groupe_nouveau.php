@@ -37,7 +37,7 @@ $dansUneFenetre = $dansUneFenetre ?? false;
           <li>
             <label class="groupe-choix__ami">
               <input type="checkbox" name="membres[]" value="<?= (int) $a['id'] ?>">
-              <span class="avatar" aria-hidden="true"><?= e(mb_strtoupper(mb_substr((string) $a['pseudo'], 0, 1))) ?></span>
+              <?= Amis::avatar((int) $a['id'], (string) $a['pseudo']) ?>
               <span><?= e((string) $a['pseudo']) ?></span>
             </label>
           </li>

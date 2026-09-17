@@ -23,7 +23,7 @@ $pseudo = (string) $ami['pseudo'];
 
 <div class="entete-page profil-ami"<?= $dansUneFenetre ? ' data-large' : '' ?>>
   <div class="profil-ami__identite">
-    <span class="avatar avatar--grand" aria-hidden="true"><?= e(mb_strtoupper(mb_substr($pseudo, 0, 1))) ?></span>
+    <?= Amis::avatar((int) $ami['id'], $pseudo, 'avatar--grand') ?>
     <div>
       <?php if (!$dansUneFenetre): ?>
         <p class="discret" style="margin:0 0 .2rem"><a href="<?= url('amis/' . (int) $ami['id']) ?>">← Retour à la discussion</a></p>

@@ -60,7 +60,7 @@ $actif = static function (string $prefixe) use ($route): string {
       <div class="nav__compte">
         <?php if ($utilisateur !== null): ?>
           <a class="nav__utilisateur" href="<?= url('compte') ?>" title="Mon compte">
-            <span class="avatar" aria-hidden="true"><?= e(mb_strtoupper(mb_substr(Auth::nomAffiche($utilisateur), 0, 1))) ?></span>
+            <?= Amis::avatar((int) $utilisateur['id'], Auth::nomAffiche($utilisateur)) ?>
             <span class="nav__utilisateur-nom"><?= e(Auth::nomAffiche($utilisateur)) ?></span>
           </a>
           <form action="<?= url('deconnexion') ?>" method="post">

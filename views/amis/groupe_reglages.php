@@ -41,7 +41,7 @@ $moi = Auth::id();
 </div>
 
 <?php // La photo du groupe : chacun peut la changer ; tout le groupe la voit. ?>
-<section class="carte profil-ami__section" id="photo-groupe">
+<section class="carte profil-ami__section" id="photo-groupe" data-photo-carte>
   <h2 style="margin-top:0">📷 Photo du groupe</h2>
   <div class="photo-groupe">
     <span class="photo-groupe__apercu" data-photo-apercu>
@@ -133,7 +133,7 @@ $moi = Auth::id();
   <ul class="groupe-membres">
     <?php foreach ($membres as $m): ?>
       <li class="groupe-membres__ligne">
-        <span class="avatar" aria-hidden="true"><?= e(mb_strtoupper(mb_substr($m['pseudo'], 0, 1))) ?></span>
+        <?= Amis::avatar($m['id'], $m['pseudo']) ?>
         <span class="groupe-membres__nom">
           <?= e($m['pseudo']) ?><?= $m['id'] === $moi ? ' <span class="discret">(vous)</span>' : '' ?>
           <?php if ($m['role'] === 'admin'): ?><span class="pastille">Administrateur</span><?php endif; ?>
@@ -182,7 +182,7 @@ $moi = Auth::id();
     <ul class="groupe-membres">
       <?php foreach ($invitations as $inv): ?>
         <li class="groupe-membres__ligne">
-          <span class="avatar" aria-hidden="true"><?= e(mb_strtoupper(mb_substr((string) $inv['pseudo'], 0, 1))) ?></span>
+          <?= Amis::avatar((int) $inv['id'], (string) $inv['pseudo']) ?>
           <span class="groupe-membres__nom">
             <?= e((string) $inv['pseudo']) ?>
             <span class="discret" style="font-size:.8rem">· invité<?= $inv['par'] !== '' ? ' par ' . e((string) $inv['par']) : '' ?></span>
@@ -225,7 +225,7 @@ $moi = Auth::id();
               <li>
                 <label class="groupe-choix__ami">
                   <input type="checkbox" name="membres[]" value="<?= (int) $a['id'] ?>">
-                  <span class="avatar" aria-hidden="true"><?= e(mb_strtoupper(mb_substr((string) $a['pseudo'], 0, 1))) ?></span>
+                  <?= Amis::avatar((int) $a['id'], (string) $a['pseudo']) ?>
                   <span><?= e((string) $a['pseudo']) ?></span>
                 </label>
               </li>

@@ -72,6 +72,38 @@ $enEdition = is_string($pseudoSaisi);
   </p>
 </section>
 
+<?php // La photo de profil : essayée dans l'aperçu, envoyée avec « Enregistrer ». ?>
+<section class="carte" style="margin-bottom:1rem" id="photo-profil" data-photo-carte>
+  <h2 style="margin-top:0">📷 Photo de profil</h2>
+  <div class="photo-groupe">
+    <span class="photo-groupe__apercu" data-photo-apercu>
+      <?= Amis::avatar((int) $moi['id'], Auth::nomAffiche($moi), 'avatar--apercu') ?>
+    </span>
+    <div class="fond-reglage__infos">
+      <form method="post" action="<?= url('compte/photo') ?>" enctype="multipart/form-data" class="fond-reglage__choix" data-photo-formulaire>
+        <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
+        <input type="file" name="photo" id="photo-profil-fichier" class="sr-only" required
+               accept="image/jpeg,image/png,image/gif,image/webp" data-photo-fichier>
+        <label class="bouton bouton--secondaire" for="photo-profil-fichier">📷 <?= ($moi['photo_nom'] ?? null) === null ? 'Choisir une photo' : 'Changer de photo' ?></label>
+        <span class="fond-reglage__nouveau" data-photo-nouveau hidden>
+          <button class="bouton" type="submit">Enregistrer</button>
+          <button class="bouton bouton--discret" type="button" data-photo-annuler>Annuler</button>
+        </span>
+      </form>
+      <?php if (($moi['photo_nom'] ?? null) !== null): ?>
+        <form method="post" action="<?= url('compte/photo/retirer') ?>" style="margin-top:.5rem">
+          <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
+          <button class="bouton bouton--discret" type="submit">Retirer la photo</button>
+        </form>
+      <?php endif; ?>
+      <p class="champ__aide" style="margin-bottom:0">
+        Elle remplace votre initiale : en haut de l’application, et là où les autres comptes voient votre pseudo.
+        JPEG, PNG, GIF ou WebP, <?= intdiv(Amis::IMAGE_MAX_OCTETS, 1024 * 1024) ?> Mo au plus.
+      </p>
+    </div>
+  </div>
+</section>
+
 <?php
 /*
  * Le fuseau horaire.

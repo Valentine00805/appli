@@ -191,6 +191,77 @@ final class Amis
         return dirname((string) Config::get('app', 'dossier_uploads')) . DIRECTORY_SEPARATOR . 'messages';
     }
 
+    /** Les photos de profil déjà lues pendant cette requête, par compte. */
+    private static array $photos = [];
+
+    /** Le nom de fichier de la photo de profil d'un compte, ou null. */
+    public static function photoDe(int $id): ?string
+    {
+        if (!array_key_exists($id, self::$photos)) {
+            $nom = Database::valeur('SELECT photo_nom FROM users WHERE id = ?', [$id]);
+            self::$photos[$id] = is_string($nom) ? $nom : null;
+        }
+
+        return self::$photos[$id];
+    }
+
+    /** L'adresse de la photo de profil, qui change avec l'image. */
+    public static function adressePhoto(int $id): ?string
+    {
+        $nom = self::photoDe($id);
+
+        return $nom === null ? null : url('comptes/' . $id . '/photo', ['v' => substr($nom, 0, 12)]);
+    }
+
+    /** L'avatar d'un compte : sa photo, ou l'initiale de son pseudo. */
+    public static function avatar(int $id, string $pseudo, string $classes = ''): string
+    {
+        $adresse = self::adressePhoto($id);
+        $classe = trim('avatar ' . $classes);
+        if ($adresse === null) {
+            return '<span class="' . e($classe) . '" aria-hidden="true" data-compte-avatar>'
+                . e(mb_strtoupper(mb_substr($pseudo, 0, 1))) . '</span>';
+        }
+
+        return '<span class="' . e($classe) . ' avatar--photo" aria-hidden="true" data-compte-avatar><img src="' . e($adresse) . '" alt=""></span>';
+    }
+
+    /**
+     * Pose une photo de profil sur son compte.
+     *
+     * @return ?string la raison du refus, ou null
+     */
+    public static function changerPhoto(int $moi, ?array $image): ?string
+    {
+        if ($image === null || ($image['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) {
+            return 'Choisissez une image.';
+        }
+        $rangee = self::rangerImage($image);
+        if (is_string($rangee)) {
+            return $rangee;
+        }
+        $ancienne = self::photoDe($moi);
+        Database::run('UPDATE users SET photo_nom = ?, photo_mime = ? WHERE id = ?', [$rangee['nom'], $rangee['mime'], $moi]);
+        self::$photos[$moi] = $rangee['nom'];
+        self::effacerImageFond((string) $ancienne);
+
+        return null;
+    }
+
+    /** Retire sa photo de profil. Vrai s'il y en avait une. */
+    public static function retirerPhoto(int $moi): bool
+    {
+        $ancienne = self::photoDe($moi);
+        if ($ancienne === null) {
+            return false;
+        }
+        Database::run('UPDATE users SET photo_nom = NULL, photo_mime = NULL WHERE id = ?', [$moi]);
+        self::$photos[$moi] = null;
+        self::effacerImageFond($ancienne);
+
+        return true;
+    }
+
     /** Le compte d'un autre, tel qu'on peut le voir : son identifiant et son pseudo. */
     public static function compte(int $id): ?array
     {

@@ -11,6 +11,9 @@ CREATE TABLE IF NOT EXISTS `users` (
   `nom`           VARCHAR(80)  NOT NULL,
   -- Le nom sous lequel l'application vous appelle ; unique, NULL pour un compte d'avant.
   `pseudo`        VARCHAR(30)  NULL,
+  -- La photo de profil, rangée avec les images des discussions.
+  `photo_nom`     VARCHAR(64)  NULL,
+  `photo_mime`    VARCHAR(40)  NULL,
   `fuseau`        VARCHAR(64)  NOT NULL DEFAULT 'Europe/Paris',
   -- Transcrire ses messages vocaux pendant l'enregistrement.
   `transcription_vocale` TINYINT(1) NOT NULL DEFAULT 1,

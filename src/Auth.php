@@ -33,7 +33,7 @@ final class Auth
         if (!$id) {
             return null;
         }
-        $u = Database::one('SELECT id, nom, pseudo, email, fuseau, transcription_vocale, created_at FROM users WHERE id = ?', [$id]);
+        $u = Database::one('SELECT id, nom, pseudo, photo_nom, email, fuseau, transcription_vocale, created_at FROM users WHERE id = ?', [$id]);
         if ($u === null) {
             self::deconnecter();
             return null;

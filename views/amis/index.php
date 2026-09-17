@@ -71,7 +71,7 @@ $geste = static function (string $action, int $compte, string $libelle, string $
           <ul class="amis-resultats">
             <?php foreach ($resultats as $r): ?>
               <li class="amis-resultat">
-                <span class="avatar" aria-hidden="true"><?= e(mb_strtoupper(mb_substr($r['pseudo'], 0, 1))) ?></span>
+                <?= Amis::avatar($r['id'], $r['pseudo']) ?>
                 <span class="amis-resultat__pseudo"><?= e($r['pseudo']) ?></span>
                 <span class="actions">
                   <?php if ($r['etat'] === 'bloque'): ?>
@@ -101,7 +101,7 @@ $geste = static function (string $action, int $compte, string $libelle, string $
         <ul class="amis-resultats">
           <?php foreach ($bloques as $b): ?>
             <li class="amis-resultat">
-              <span class="avatar" aria-hidden="true"><?= e(mb_strtoupper(mb_substr((string) $b['pseudo'], 0, 1))) ?></span>
+              <?= Amis::avatar((int) $b['id'], (string) $b['pseudo']) ?>
               <span class="amis-resultat__pseudo"><?= e((string) $b['pseudo']) ?></span>
               <span class="actions">
                 <?= $geste('debloquer', (int) $b['id'], 'Débloquer', 'bouton--secondaire',
@@ -145,7 +145,7 @@ $geste = static function (string $action, int $compte, string $libelle, string $
         <ul class="amis-resultats">
           <?php foreach ($recues as $d): ?>
             <li class="amis-resultat">
-              <span class="avatar" aria-hidden="true"><?= e(mb_strtoupper(mb_substr((string) $d['pseudo'], 0, 1))) ?></span>
+              <?= Amis::avatar((int) $d['id'], (string) $d['pseudo']) ?>
               <span class="amis-resultat__pseudo"><?= e((string) $d['pseudo']) ?></span>
               <span class="actions">
                 <?= $geste('accepter', (int) $d['id'], 'Accepter', '') ?>
@@ -163,7 +163,7 @@ $geste = static function (string $action, int $compte, string $libelle, string $
         <ul class="amis-resultats">
           <?php foreach ($envoyees as $d): ?>
             <li class="amis-resultat">
-              <span class="avatar" aria-hidden="true"><?= e(mb_strtoupper(mb_substr((string) $d['pseudo'], 0, 1))) ?></span>
+              <?= Amis::avatar((int) $d['id'], (string) $d['pseudo']) ?>
               <span class="amis-resultat__pseudo"><?= e((string) $d['pseudo']) ?>
                 <span class="discret" style="font-size:.8rem;font-weight:400">· en attente</span></span>
               <span class="actions">

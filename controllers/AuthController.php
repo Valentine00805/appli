@@ -249,6 +249,51 @@ final class AuthController
         redirect('compte');
     }
 
+    /**
+     * La photo de profil d'un compte. Comme son pseudo, elle se montre à tout
+     * compte connecté — sauf à ceux qu'il a bloqués.
+     */
+    public function photo(int $id): void
+    {
+        Auth::exiger();
+        session_write_close();
+        $compte = Database::one('SELECT photo_nom, photo_mime FROM users WHERE id = ? AND photo_nom IS NOT NULL', [$id]);
+        $chemin = $compte === null || ($id !== Auth::id() && Amis::aBloque($id, Auth::id())) ? null
+            : Amis::dossierImages() . DIRECTORY_SEPARATOR . basename((string) $compte['photo_nom']);
+        if ($chemin === null || !is_file($chemin) || !in_array($compte['photo_mime'], array_column(Amis::IMAGE_TYPES, 0), true)) {
+            http_response_code(404);
+            exit('Photo introuvable.');
+        }
+        header('Content-Type: ' . $compte['photo_mime']);
+        header('Content-Length: ' . (string) filesize($chemin));
+        header('X-Content-Type-Options: nosniff');
+        header("Content-Security-Policy: default-src 'none'; img-src 'self'; style-src 'unsafe-inline'");
+        header('Content-Disposition: inline; filename="photo-profil.' . pathinfo($chemin, PATHINFO_EXTENSION) . '"');
+        header('Cache-Control: private, max-age=604800, immutable');
+        readfile($chemin);
+        exit;
+    }
+
+    /** Choisit ou change sa photo de profil. */
+    public function changerPhoto(): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $image = isset($_FILES['photo']) && is_array($_FILES['photo']) && !is_array($_FILES['photo']['name'] ?? null) ? $_FILES['photo'] : null;
+        $refus = Amis::changerPhoto(Auth::id(), $image);
+        Session::flash($refus === null ? 'succes' : 'erreur', $refus ?? 'Photo de profil enregistrée.');
+        redirect('compte');
+    }
+
+    public function retirerPhoto(): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $retiree = Amis::retirerPhoto(Auth::id());
+        Session::flash($retiree ? 'succes' : 'info', $retiree ? 'Photo de profil retirée.' : 'Vous n’aviez pas de photo de profil.');
+        redirect('compte');
+    }
+
     /** Active ou coupe la transcription de ses messages vocaux. */
     public function changerTranscription(): void
     {

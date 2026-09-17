@@ -271,6 +271,7 @@ final class Conversations
         return array_map(static fn (array $r): array => [
             'id' => $r['id'],
             'pseudo' => $r['pseudo'],
+            'photo' => Amis::adressePhoto($r['id']),
             'etat' => match (true) {
                 isset($membres[$r['id']]) => 'membre',
                 isset($invites[$r['id']]) => 'invite',
