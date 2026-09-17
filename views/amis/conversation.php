@@ -170,7 +170,7 @@ foreach ($messages as $m) {
           <?php if ($m['partage'] !== null): ?>
             <?php // Un cours ou un fichier partagé : une carte qui l'ouvre, en lecture. ?>
             <?php $p = $m['partage']; ?>
-            <<?= $p['url'] !== null ? 'a href="' . e($p['url']) . '"' : 'div' ?> class="bulle__partage<?= $p['url'] === null ? ' bulle__partage--mort' : '' ?>">
+            <<?= $p['url'] !== null ? 'a href="' . e($p['url']) . '" data-fenetre' : 'div' ?> class="bulle__partage<?= $p['url'] === null ? ' bulle__partage--mort' : '' ?>">
               <span class="bulle__partage-icone" aria-hidden="true"><?= e($p['icone']) ?></span>
               <span class="bulle__partage-texte">
                 <span class="bulle__partage-titre"><?= e($p['titre']) ?></span>

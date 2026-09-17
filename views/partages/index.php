@@ -56,7 +56,7 @@ $lesRecus = $vue === 'recus';
       <ul class="partage-lignes" data-liste-partages>
         <?php foreach ($recus as $p): ?>
           <li class="partage-ligne" data-nom="<?= e($p['titre'] . ' ' . $p['proprietaire']) ?>">
-            <a class="partage-ligne__lien" href="<?= e($p['url']) ?>">
+            <a class="partage-ligne__lien" href="<?= e($p['url']) ?>" data-fenetre>
               <span class="partage-ligne__icone" aria-hidden="true"><?= e($p['icone']) ?></span>
               <span class="partage-ligne__texte">
                 <span class="partage-ligne__titre"><?= e($p['titre']) ?></span>

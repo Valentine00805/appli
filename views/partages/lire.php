@@ -13,7 +13,9 @@
  * @var list<array> $mesCours  où ranger la copie d'un fichier
  * @var bool $recu     il figure dans « Partagés avec moi »
  * @var string $mot
+ * @var bool $dansUneFenetre  rendu seul, pour être posé dans une fenêtre
  */
+$dansUneFenetre = $dansUneFenetre ?? false;
 $proprietaire = (string) $cible['proprietaire'];
 $csrf = $public ? '' : Session::jetonCsrf();
 $base = 'partages/' . $mot . '/' . (int) $cible['id'];
@@ -26,9 +28,10 @@ $retour = $retour ?? null;
 $mime = $fichierSeul ? (string) $cible['mime'] : '';
 $nom = $fichierSeul ? (string) $cible['nom_origine'] : '';
 ?>
-<div class="entete-page">
+<div class="entete-page"<?= $dansUneFenetre ? ' data-large data-document' : '' ?>>
   <div>
-    <?php if ($retour !== null): ?>
+    <?php if ($dansUneFenetre): ?>
+    <?php elseif ($retour !== null): ?>
       <p class="discret" style="margin-bottom:.35rem"><a href="<?= e((string) $retour['url']) ?>"><?= e((string) $retour['texte']) ?></a></p>
     <?php elseif (!$public): ?>
       <p class="discret" style="margin-bottom:.35rem"><a href="<?= url('partages') ?>">← Partagés avec moi</a></p>
@@ -55,13 +58,13 @@ $nom = $fichierSeul ? (string) $cible['nom_origine'] : '';
     <?php endif; ?>
     <?php if (!$public): ?>
       <?php if (!$fichierSeul): ?>
-        <form method="post" action="<?= url($base . '/copier') ?>" class="en-ligne">
+        <form method="post" action="<?= url($base . '/copier') ?>" class="en-ligne"<?= $dansUneFenetre ? ' data-envoi-fenetre' : '' ?>>
           <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
           <button class="bouton bouton--secondaire" type="submit">📥 Copier <?= $estDossier ? 'le dossier chez moi' : 'dans mes cours' ?></button>
         </form>
       <?php endif; ?>
       <?php if ($recu): ?>
-        <form method="post" action="<?= url($base . '/oublier') ?>" class="en-ligne"
+        <form method="post" action="<?= url($base . '/oublier') ?>" class="en-ligne"<?= $dansUneFenetre ? ' data-envoi-fenetre' : '' ?>
               data-confirmation="Retirer ce document de vos partages ? Il faudra qu’on vous le partage de nouveau pour le revoir.">
           <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
           <button class="bouton bouton--discret" type="submit">Retirer de ma liste</button>
@@ -93,7 +96,7 @@ $nom = $fichierSeul ? (string) $cible['nom_origine'] : '';
       <?php if ($mesCours === []): ?>
         <p class="discret" style="margin:0">Créez d’abord un cours pour y ranger ce fichier.</p>
       <?php else: ?>
-        <form method="post" action="<?= url($base . '/copier') ?>" class="fuseau-choix">
+        <form method="post" action="<?= url($base . '/copier') ?>" class="fuseau-choix"<?= $dansUneFenetre ? ' data-envoi-fenetre' : '' ?>>
           <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
           <label class="sr-only" for="copie-cours">Cours</label>
           <select id="copie-cours" name="cours" required>
@@ -120,7 +123,7 @@ $nom = $fichierSeul ? (string) $cible['nom_origine'] : '';
         <ul class="partage-cours">
           <?php foreach ($groupe['cours'] as $c): ?>
             <li>
-              <a href="<?= e($adresseCours((int) $c['id'])) ?>">📘 <?= e((string) $c['titre']) ?></a>
+              <a href="<?= e($adresseCours((int) $c['id'])) ?>"<?= $dansUneFenetre ? ' data-fenetre' : '' ?>>📘 <?= e((string) $c['titre']) ?></a>
               <span class="discret">
                 <?php if (($c['matiere_nom'] ?? null) !== null): ?><?= e((string) $c['matiere_nom']) ?> · <?php endif; ?>
                 <?php if ((int) $c['nb_fichiers'] > 0): ?><?= (int) $c['nb_fichiers'] ?> fichier<?= (int) $c['nb_fichiers'] > 1 ? 's' : '' ?> · <?php endif; ?>

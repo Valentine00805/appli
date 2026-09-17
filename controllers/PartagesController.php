@@ -171,6 +171,10 @@ final class PartagesController
                 $donnees['retour'] = ['url' => url('partages/dossiers/' . $dossierId), 'texte' => '← ' . (string) ($dossier['titre'] ?? 'Dossier partagé')];
             }
         }
+        if (Vue::enFenetre()) {
+            Vue::fragment('partages/lire', $donnees + ['dansUneFenetre' => true]);
+            return;
+        }
         Vue::afficher('partages/lire', $donnees, (string) $cible['titre']);
     }
 

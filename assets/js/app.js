@@ -1978,7 +1978,7 @@
         if (message.partage) {
           var carte = document.createElement(message.partage.url ? 'a' : 'div');
           carte.className = 'bulle__partage' + (message.partage.url ? '' : ' bulle__partage--mort');
-          if (message.partage.url) { carte.href = message.partage.url; }
+          if (message.partage.url) { carte.href = message.partage.url; carte.setAttribute('data-fenetre', ''); }
           var carteIcone = document.createElement('span');
           carteIcone.className = 'bulle__partage-icone';
           carteIcone.setAttribute('aria-hidden', 'true');
