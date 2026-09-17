@@ -24,12 +24,24 @@ final class PartagesController
     /** L'onglet « Partagés » : ce qu'on m'a partagé, et ce que je partage. */
     public function index(): void
     {
+        $this->onglet('recus');
+    }
+
+    /** Le second volet du même onglet : ce que je partage. */
+    public function envoyes(): void
+    {
+        $this->onglet('envoyes');
+    }
+
+    private function onglet(string $vue): void
+    {
         Auth::exiger();
         $moi = Auth::id();
         Vue::afficher('partages/index', [
+            'vue' => $vue,
             'recus' => Partages::recus($moi),
             'envoyes' => Partages::envoyes($moi),
-        ], 'Partagés avec moi');
+        ], $vue === 'recus' ? 'Partagés avec moi' : 'Ce que je partage');
     }
 
     /** La fenêtre « Partager » : les amis d'abord, puis le lien public. */
