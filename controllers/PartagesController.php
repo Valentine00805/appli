@@ -21,6 +21,17 @@ final class PartagesController
         };
     }
 
+    /** L'onglet « Partagés » : ce qu'on m'a partagé, et ce que je partage. */
+    public function index(): void
+    {
+        Auth::exiger();
+        $moi = Auth::id();
+        Vue::afficher('partages/index', [
+            'recus' => Partages::recus($moi),
+            'envoyes' => Partages::envoyes($moi),
+        ], 'Partagés avec moi');
+    }
+
     /** La fenêtre « Partager » : les amis d'abord, puis le lien public. */
     public function fenetre(string $mot, int $id): void
     {
@@ -124,7 +135,7 @@ final class PartagesController
         }
         if ($cible === null || !Partages::peutVoir($type, $id, $moi)) {
             Session::flash('erreur', 'Ce document n’est pas, ou plus, partagé avec vous.');
-            redirect('cours');
+            redirect('partages');
         }
         $donnees = [
             'type' => $type,
@@ -192,7 +203,7 @@ final class PartagesController
         Session::verifierCsrf();
         Partages::oublierRecu(Auth::id(), self::type($mot), $id);
         Session::flash('succes', 'Retiré de vos documents partagés.');
-        redirect('cours');
+        redirect('partages');
     }
 
     /** Le lien public : la page du document, pour tout le monde. */

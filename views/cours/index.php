@@ -62,22 +62,23 @@
   </div>
 </div>
 
-<?php // Ce que mes amis m'ont partagé : en lecture, toujours à jour. ?>
+<?php
+/*
+ * Ce que mes amis m'ont partagé a son propre onglet : ici, seulement de quoi
+ * y aller, avec les derniers titres reçus pour savoir ce qui s'y trouve.
+ */
+?>
 <?php if ($partagesRecus !== []): ?>
-  <section class="carte partages-recus" id="partages-recus">
-    <h2 style="margin-top:0"><?= Partages::icone(20) ?> Partagés avec moi <span class="discret">(<?= count($partagesRecus) ?>)</span></h2>
-    <div class="partages-recus__liste">
-      <?php foreach ($partagesRecus as $p): ?>
-        <a class="partage-recu" href="<?= e($p['url']) ?>">
-          <span class="partage-recu__icone" aria-hidden="true"><?= e($p['icone']) ?></span>
-          <span class="partage-recu__texte">
-            <span class="partage-recu__titre"><?= e($p['titre']) ?></span>
-            <span class="partage-recu__detail"><?= Amis::avatar($p['proprietaire_id'], $p['proprietaire'], 'avatar--mini') ?> <?= e($p['proprietaire']) ?> · <?= e(date_fr(Amis::local($p['quand'])->format('Y-m-d H:i:s'), false)) ?></span>
-          </span>
-        </a>
-      <?php endforeach; ?>
-    </div>
-  </section>
+  <a class="carte partages-rappel" id="partages-recus" href="<?= url('partages') ?>">
+    <span class="partages-rappel__icone" aria-hidden="true"><?= Partages::icone(20) ?></span>
+    <span>
+      <strong>Partagés avec moi</strong> <span class="discret">(<?= count($partagesRecus) ?>)</span>
+      <span class="discret partages-rappel__apercu">
+        <?= e(implode(' · ', array_map(static fn (array $p): string => $p['icone'] . ' ' . $p['titre'], array_slice($partagesRecus, 0, 3)))) ?><?= count($partagesRecus) > 3 ? '…' : '' ?>
+      </span>
+    </span>
+    <span class="partages-rappel__fleche" aria-hidden="true">›</span>
+  </a>
 <?php endif; ?>
 
 <form class="filtres" method="get" action="<?= url('cours') ?>" data-auto-envoi>

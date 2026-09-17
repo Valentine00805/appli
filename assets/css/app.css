@@ -304,6 +304,23 @@ textarea { min-height: 260px; resize: vertical; line-height: 1.65; }
 .partage-apercu__pdf { width: 100%; height: 75vh; border: 0; border-radius: var(--rayon-s); }
 .partage-invitation { margin-top: 1.5rem; text-align: center; }
 .partage-liens { margin: 0; padding-left: 1.2rem; display: grid; gap: .3rem; }
+
+/* L'onglet « Partagés » : une ligne par document, et le rappel dans Mes cours. */
+.partage-lignes { margin: .6rem 0 0; padding: 0; list-style: none; display: grid; }
+.partage-ligne { display: flex; align-items: center; gap: .6rem; padding: .5rem 0; border-top: 1px solid var(--bordure); }
+.partage-ligne:first-child { border-top: 0; }
+.partage-ligne__lien { display: flex; align-items: center; gap: .7rem; flex: 1; min-width: 0; color: inherit; text-decoration: none; }
+.partage-ligne__lien:hover .partage-ligne__titre { text-decoration: underline; }
+.partage-ligne__icone { font-size: 1.5rem; line-height: 1; flex: none; }
+.partage-ligne__texte { display: grid; gap: .1rem; min-width: 0; }
+.partage-ligne__titre { font-weight: 600; overflow-wrap: anywhere; }
+.partage-ligne__detail, .partage-ligne__qui { font-size: .85rem; color: var(--texte-doux); }
+.partage-ligne__qui { display: flex; align-items: center; gap: .35rem; }
+.partages-rappel { display: flex; align-items: center; gap: .7rem; margin-bottom: 1rem; color: inherit; text-decoration: none; }
+.partages-rappel:hover { border-color: var(--bordure-forte); }
+.partages-rappel__icone { display: grid; place-items: center; flex: none; }
+.partages-rappel__apercu { display: block; font-size: .85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.partages-rappel__fleche { margin-left: auto; font-size: 1.4rem; color: var(--texte-doux); }
 .partage-cours { margin: 0; padding: 0; list-style: none; display: grid; gap: .5rem; }
 .partage-cours li { display: flex; flex-wrap: wrap; gap: .2rem .6rem; align-items: baseline;
   border-bottom: 1px solid var(--bordure); padding-bottom: .45rem; }
@@ -313,17 +330,6 @@ textarea { min-height: 260px; resize: vertical; line-height: 1.65; }
 .partage-liens a { overflow-wrap: anywhere; }
 .partage-mort { max-width: 32rem; margin: 3rem auto; text-align: center; }
 .partage-mort__icone { font-size: 2.5rem; margin: 0; }
-.partages-recus { margin-bottom: 1rem; }
-.partages-recus__liste { display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: .5rem; }
-.partage-recu {
-  display: flex; align-items: center; gap: .65rem; padding: .6rem .7rem; min-width: 0;
-  border: 1px solid var(--bordure); border-radius: var(--rayon-s); color: inherit; text-decoration: none;
-}
-.partage-recu:hover, .partage-recu:focus-visible { border-color: var(--accent); background: var(--accent-doux); outline: none; }
-.partage-recu__icone { font-size: 1.5rem; flex: none; }
-.partage-recu__texte { display: grid; min-width: 0; }
-.partage-recu__titre { font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.partage-recu__detail { display: flex; align-items: center; gap: .3rem; font-size: .8rem; color: var(--texte-doux); min-width: 0; }
 .avatar--mini { width: 18px; height: 18px; font-size: .6rem; flex: none; }
 .bulle__partage {
   display: flex; align-items: center; gap: .6rem; margin: .1rem 0 .3rem; padding: .55rem .7rem; min-width: 12rem; max-width: 100%;

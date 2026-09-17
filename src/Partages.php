@@ -456,6 +456,54 @@ final class Partages
         return $nb === 0 ? 'aucun cours' : $nb . ' cours';
     }
 
+    /**
+     * Ce que je partage, du plus récent au plus ancien : avec combien d'amis,
+     * et si un lien public court. Ce qui n'existe plus est écarté.
+     */
+    public static function envoyes(int $moi): array
+    {
+        $lignes = [];
+        foreach (Database::all(
+            'SELECT cible_type, cible_id, COUNT(*) AS nb, MAX(created_at) AS quand
+               FROM partages_amis WHERE proprietaire_id = ? GROUP BY cible_type, cible_id',
+            [$moi]
+        ) as $l) {
+            $lignes[$l['cible_type'] . '-' . $l['cible_id']] = [
+                'type' => (string) $l['cible_type'], 'id' => (int) $l['cible_id'],
+                'destinataires' => (int) $l['nb'], 'lien' => false, 'vues' => 0, 'quand' => (string) $l['quand'],
+            ];
+        }
+        foreach (Database::all('SELECT cible_type, cible_id, vues, created_at FROM liens_partage WHERE user_id = ?', [$moi]) as $l) {
+            $cle = $l['cible_type'] . '-' . $l['cible_id'];
+            $lignes[$cle] = [
+                'type' => (string) $l['cible_type'], 'id' => (int) $l['cible_id'],
+                'destinataires' => $lignes[$cle]['destinataires'] ?? 0, 'lien' => true, 'vues' => (int) $l['vues'],
+                'quand' => max($lignes[$cle]['quand'] ?? '', (string) $l['created_at']),
+            ];
+        }
+        usort($lignes, static fn (array $a, array $b): int => strcmp($b['quand'], $a['quand']));
+
+        $envoyes = [];
+        foreach ($lignes as $l) {
+            $cible = self::mienne($l['type'], $l['id'], $moi);
+            if ($cible === null) {
+                continue;
+            }
+            $envoyes[] = $l + [
+                'titre' => (string) $cible['titre'],
+                'icone' => match ($l['type']) {
+                    'cours' => '📘',
+                    'fiche' => '📝',
+                    'dossier' => (string) $cible['icone'],
+                    default => Fichiers::icone((string) $cible['mime'], (string) $cible['nom_origine']),
+                },
+                'gerer' => url('partager/' . self::mot($l['type']) . '/' . $l['id']),
+            ];
+        }
+
+        return $envoyes;
+    }
+
     private static function partagentUnGroupe(int $a, int $b): bool
     {
         return Database::valeur(

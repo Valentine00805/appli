@@ -31,7 +31,7 @@ $nom = $fichierSeul ? (string) $cible['nom_origine'] : '';
     <?php if ($retour !== null): ?>
       <p class="discret" style="margin-bottom:.35rem"><a href="<?= e((string) $retour['url']) ?>"><?= e((string) $retour['texte']) ?></a></p>
     <?php elseif (!$public): ?>
-      <p class="discret" style="margin-bottom:.35rem"><a href="<?= url('cours') ?>#partages-recus">← Partagés avec moi</a></p>
+      <p class="discret" style="margin-bottom:.35rem"><a href="<?= url('partages') ?>">← Partagés avec moi</a></p>
     <?php endif; ?>
     <h1><?= $fichierSeul ? e(Fichiers::icone($mime, $nom)) . ' ' : ($estFiche ? '📝 ' : ($estDossier ? e((string) $cible['icone']) . ' ' : '📘 ')) ?><?= e((string) ($estFiche ? $cible['titre_cours'] : $cible['titre'])) ?></h1>
     <?php if ($estFiche): ?><p style="margin:0 0 .2rem"><span class="pastille">Fiche de révision</span></p><?php endif; ?>
