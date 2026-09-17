@@ -44,14 +44,11 @@ $geste = static function (string $action, int $compte, string $libelle, string $
 
 <div class="colonnes">
   <section class="carte">
-    <div class="discussions-titre">
-      <h2>Mes discussions</h2>
-      <a class="bouton bouton--secondaire bouton--petit" href="<?= url('groupes/nouveau') ?>" data-fenetre>👥 Nouveau groupe</a>
-    </div>
+    <?php $lienDemandes = '#demandes'; require __DIR__ . '/_entete_discussions.php'; ?>
     <?php require __DIR__ . '/_liste.php'; ?>
   </section>
 
-  <div class="pile">
+  <div class="pile" id="demandes">
     <section class="carte">
       <h2 style="margin-top:0">🔎 Chercher un pseudo</h2>
       <form method="get" action="<?= url('amis') ?>" class="fuseau-choix" role="search">

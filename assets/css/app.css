@@ -259,6 +259,34 @@ textarea { min-height: 260px; resize: vertical; line-height: 1.65; }
 
 .chat { display: grid; grid-template-columns: minmax(14rem, 18rem) 1fr; gap: 1rem; align-items: stretch; }
 .chat__amis { align-self: start; max-height: calc(100vh - 8rem); overflow-y: auto; }
+
+/* L'en-tête des discussions, façon messagerie : le compte, le crayon, la recherche, « Messages ». */
+.discussions-entete { margin-bottom: .35rem; }
+.discussions-entete__haut { display: flex; align-items: center; justify-content: space-between; gap: .5rem; padding: .1rem .35rem .6rem; }
+.discussions-entete__compte {
+  min-width: 0; font-size: 1.2rem; font-weight: 750; color: var(--texte); text-decoration: none;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.discussions-entete__compte:hover { text-decoration: underline; }
+.discussions-entete__nouveau {
+  flex: none; display: inline-flex; align-items: center; justify-content: center; width: 2.4rem; height: 2.4rem;
+  border-radius: 50%; color: var(--texte);
+}
+.discussions-entete__nouveau:hover, .discussions-entete__nouveau:focus-visible { background: var(--fond-doux); outline: none; }
+.discussions-recherche {
+  display: flex; align-items: center; gap: .5rem; padding: 0 .85rem; border-radius: 999px;
+  background: var(--fond-doux); color: var(--texte-doux); cursor: text;
+}
+.discussions-recherche:focus-within { box-shadow: 0 0 0 2px var(--accent); }
+.discussions-recherche input[type="search"] {
+  flex: 1; min-width: 0; border: 0; background: transparent; padding: .6rem 0; font: inherit; color: var(--texte); box-shadow: none; outline: none;
+}
+.discussions-entete__titres { display: flex; align-items: baseline; justify-content: space-between; gap: .5rem; padding: .9rem .35rem .3rem; }
+.discussions-entete__titres h2 { margin: 0; font-size: 1.05rem; }
+.discussions-entete__titres a { font-size: .9rem; font-weight: 600; color: var(--texte-doux); text-decoration: none; }
+.discussions-entete__titres a:hover { color: var(--texte); }
+.nouvelle-discussion__groupe { margin: -.25rem -.35rem 0; }
+[data-liste-discussions] > li[hidden], [data-liste-nouveau] > li[hidden] { display: none; }
 .chat__fil { display: flex; flex-direction: column; height: calc(100vh - 8rem); min-height: 24rem; padding: 0; overflow: hidden; }
 .chat__entete { display: flex; align-items: center; gap: .6rem; padding: .75rem 1rem; border-bottom: 1px solid var(--bordure); }
 .chat__titre { flex: 1; min-width: 0; margin: 0; font-size: 1.1rem; overflow-wrap: anywhere; }

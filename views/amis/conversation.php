@@ -52,10 +52,7 @@ foreach ($messages as $m) {
 
 <div class="chat">
   <aside class="carte chat__amis" aria-label="Mes discussions">
-    <p class="discussions-titre" style="margin:0 0 .6rem">
-      <a href="<?= url('amis') ?>">← Amis et demandes</a>
-      <a class="bouton bouton--secondaire bouton--petit" href="<?= url('groupes/nouveau') ?>" data-fenetre>👥 Nouveau groupe</a>
-    </p>
+    <?php require __DIR__ . '/_entete_discussions.php'; ?>
     <?php require __DIR__ . '/_liste.php'; ?>
   </aside>
 

@@ -261,6 +261,7 @@ $routes = [
     ['POST', 'amis/{id}/messages',        [AmisController::class, 'envoyer']],
 
     // Les discussions de groupe (à ne pas confondre avec les groupes de personnes du budget).
+    ['GET',  'discussions/nouvelle',        [ConversationsController::class, 'nouvelleDiscussion']],
     ['GET',  'groupes/nouveau',             [ConversationsController::class, 'nouveau']],
     ['POST', 'groupes',                     [ConversationsController::class, 'creer']],
     ['GET',  'groupes/{id}',                [ConversationsController::class, 'conversation']],

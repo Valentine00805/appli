@@ -10,6 +10,19 @@ declare(strict_types=1);
  */
 final class ConversationsController
 {
+    /** « Nouveau message », en fenêtre : un ami à qui écrire, ou un groupe à créer. */
+    public function nouvelleDiscussion(): void
+    {
+        Auth::exiger();
+        $amis = Amis::liste(Auth::id());
+        usort($amis, static fn (array $x, array $y): int => strcasecmp((string) $x['pseudo'], (string) $y['pseudo']));
+        if (Vue::enFenetre()) {
+            Vue::fragment('amis/nouvelle_discussion', ['amis' => $amis]);
+            return;
+        }
+        Vue::afficher('amis/nouvelle_discussion', ['amis' => $amis], 'Nouveau message');
+    }
+
     /** Le formulaire de création, en fenêtre : un nom, et des amis à cocher. */
     public function nouveau(): void
     {

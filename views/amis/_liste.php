@@ -62,9 +62,9 @@ usort($discussions, static fn (array $x, array $y): int => [$y['tri'], $x['nom']
 <?php if ($discussions === []): ?>
   <p class="discret" style="margin:0">Pas encore d’amis. Cherchez un pseudo pour envoyer une demande.</p>
 <?php else: ?>
-  <ul class="amis-liste">
+  <ul class="amis-liste" data-liste-discussions>
     <?php foreach ($discussions as $d): ?>
-      <li>
+      <li data-nom="<?= e(mb_strtolower($d['nom'])) ?>">
         <a class="ami<?= $d['actif'] ? ' ami--actif' : '' ?><?= $d['non_lus'] > 0 ? ' ami--non-lu' : '' ?>"
            href="<?= e($d['url']) ?>"<?= $d['actif'] ? ' aria-current="page"' : '' ?>>
           <?php if (isset($d['avatar_html'])): ?>
@@ -91,4 +91,5 @@ usort($discussions, static fn (array $x, array $y): int => [$y['tri'], $x['nom']
       </li>
     <?php endforeach; ?>
   </ul>
+  <p class="discret" data-filtre-vide hidden style="margin:.5rem .6rem 0">Aucune discussion ne correspond.</p>
 <?php endif; ?>

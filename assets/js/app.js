@@ -2781,6 +2781,31 @@
   }
 
   /*
+   * Filtrer une liste en tapant : les discussions de la colonne de gauche,
+   * les amis de « Nouveau message ». Sans tenir compte des majuscules ni des
+   * accents.
+   */
+  var sansAccents = function (texte) {
+    return texte.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  };
+  document.addEventListener('input', function (evenement) {
+    var champ = evenement.target;
+    if (!champ.matches || !champ.matches('[data-filtre-liste]')) { return; }
+    var portee = champ.closest('.fenetre__corps, .carte') || document;
+    var liste = portee.querySelector(champ.getAttribute('data-filtre-liste'));
+    if (!liste) { return; }
+    var cherche = sansAccents(champ.value.trim());
+    var visibles = 0;
+    Array.prototype.forEach.call(liste.children, function (ligne) {
+      var garde = cherche === '' || sansAccents(ligne.getAttribute('data-nom') || '').indexOf(cherche) !== -1;
+      ligne.hidden = !garde;
+      if (garde) { visibles++; }
+    });
+    var vide = portee.querySelector('[data-filtre-vide]');
+    if (vide) { vide.hidden = visibles > 0; }
+  });
+
+  /*
    * Ajouter quelqu'un à un groupe par son pseudo, dans les réglages du
    * groupe : dès deux caractères, les comptes trouvés s'affichent avec ce
    * qu'on peut en faire — « Ajouter » un ami, « Inviter » un autre compte.
