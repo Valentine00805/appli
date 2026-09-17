@@ -3419,3 +3419,14 @@ summary.cal-volet__groupe:focus-visible {
 @media (max-width: 520px) {
   .haut-de-page { right: .75rem; bottom: .75rem; width: 2.5rem; height: 2.5rem; }
 }
+
+/* L'œil qui montre le mot de passe tapé. */
+.mot-de-passe { position: relative; display: block; }
+.mot-de-passe > input { width: 100%; padding-right: 2.75rem; }
+.mot-de-passe__oeil {
+  position: absolute; top: 50%; right: .35rem; transform: translateY(-50%);
+  display: inline-flex; align-items: center; justify-content: center; width: 2.2rem; height: 2.2rem;
+  border: 0; border-radius: var(--rayon-s); background: transparent; color: var(--texte-doux); cursor: pointer;
+}
+.mot-de-passe__oeil:hover, .mot-de-passe__oeil:focus-visible { color: var(--accent); background: var(--accent-doux); outline: none; }
+.mot-de-passe input::-ms-reveal { display: none; }

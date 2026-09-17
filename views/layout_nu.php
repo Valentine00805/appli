@@ -33,5 +33,6 @@
   </div>
 </main>
 
+<script src="<?= asset('assets/js/mot-de-passe.js') ?>" defer></script>
 </body>
 </html>

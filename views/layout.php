@@ -136,5 +136,6 @@ if ($utilisateur !== null
 <?php endif; ?>
 
 <script src="<?= asset('assets/js/app.js') ?>" defer></script>
+<script src="<?= asset('assets/js/mot-de-passe.js') ?>" defer></script>
 </body>
 </html>
