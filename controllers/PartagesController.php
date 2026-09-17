@@ -80,6 +80,7 @@ final class PartagesController
             'choisisFichiers' => array_flip(array_map('intval', is_array($_GET['fichiers'] ?? null) ? $_GET['fichiers'] : [])),
             'choisisDossiers' => array_flip(array_map('intval', is_array($_GET['dossiers'] ?? null) ? $_GET['dossiers'] : [])),
             'choisisFiches' => array_flip(array_map('intval', is_array($_GET['fiches'] ?? null) ? $_GET['fiches'] : [])),
+            'mesLots' => Partages::mesLots($moi),
             'amis' => Amis::liste($moi),
             'groupes' => Conversations::liste($moi),
         ];
@@ -117,6 +118,40 @@ final class PartagesController
                 . ' avec ' . $nombre . ' personne' . ($nombre > 1 ? 's' : '') . ' : les cartes sont parties dans vos discussions.');
         }
         $this->retourPuisEnvoyer('partager/plusieurs', $notifications);
+    }
+
+    /** Un lien public pour tout ce qui est coché : le lot, et son adresse. */
+    public function creerLienLot(): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $choisis = [];
+        foreach (Partages::TYPES as $type) {
+            $champ = Partages::mot($type);
+            $choisis[$type] = is_array($_POST[$champ] ?? null) ? $_POST[$champ] : [];
+        }
+        [$lot, $refus] = Partages::creerLot(Auth::id(), $choisis, (string) ($_POST['nom'] ?? ''));
+        if ($refus !== null) {
+            Session::flash('erreur', $refus);
+        } else {
+            Session::flash('succes', 'Lien créé pour ' . count($lot['documents']) . ' document'
+                . (count($lot['documents']) > 1 ? 's' : '') . ' : copiez-le et donnez-le à qui vous voulez.');
+        }
+        redirect('partager/plusieurs');
+    }
+
+    /** Défait un lot : son adresse ne mène plus à rien, ses documents restent. */
+    public function desactiverLot(int $id): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $defait = Partages::supprimerLot(Auth::id(), $id);
+        Session::flash(
+            $defait ? 'succes' : 'erreur',
+            $defait ? 'Lien désactivé : l’adresse ne mène plus à rien, même si elle a circulé. Vos documents, eux, sont intacts.'
+                : 'Ce lien n’existe plus.'
+        );
+        redirect('partager/plusieurs');
     }
 
     /** La fenêtre « Partager » : les amis d'abord, puis le lien public. */
@@ -310,6 +345,14 @@ final class PartagesController
         Partages::compterVue((int) $trouve['lien']['id']);
         $type = (string) $trouve['lien']['cible_type'];
         $cible = $trouve['cible'];
+        if ($type === 'lot') {
+            Vue::afficherPublic('partages/lot', [
+                'lot' => $cible,
+                'documents' => Partages::documentsDuLot((int) $cible['id']),
+                'adresse' => static fn (string $t, int $i): string => url('p/' . $jeton . '/' . Partages::mot($t) . '/' . $i),
+            ], (string) $cible['titre']);
+            return;
+        }
         Vue::afficherPublic('partages/lire', [
             'type' => $type,
             'cible' => $cible,
@@ -325,34 +368,35 @@ final class PartagesController
         ], (string) $cible['titre']);
     }
 
-    /** Un cours d'un dossier partagé par lien public. */
-    public function coursPublic(string $jeton, int $id): void
+    /**
+     * Un document ouvert par un lien public : le cours d'un dossier partagé,
+     * ou l'un de ceux qu'un lot rassemble.
+     */
+    public function documentPublic(string $jeton, string $mot, int $id): void
     {
         header('X-Robots-Tag: noindex, nofollow');
+        $type = self::type($mot);
         $trouve = Partages::parJeton($jeton);
-        $cours = Partages::cible('cours', $id);
-        if ($trouve === null || $cours === null
-            || $trouve['lien']['cible_type'] !== 'dossier'
-            || (int) $cours['user_id'] !== (int) $trouve['lien']['user_id']
-            || !Partages::dansLeDossier($id, (int) $trouve['lien']['cible_id'])) {
+        $cible = Partages::cible($type, $id);
+        if ($trouve === null || $cible === null || !Partages::visiblePar($trouve['lien'], $type, $id)) {
             http_response_code(404);
             Vue::afficherPublic('partages/lien_mort', [], 'Lien introuvable');
             return;
         }
         Vue::afficherPublic('partages/lire', [
-            'type' => 'cours',
-            'cible' => $cours,
+            'type' => $type,
+            'cible' => $cible,
             'public' => true,
-            'fichiers' => Partages::fichiersDuCours($id),
-            'liens' => [],
-            'groupes' => [],
+            'fichiers' => match ($type) { 'cours' => Partages::fichiersDuCours($id), 'fiche' => Partages::fichiersDeLaFiche($id), default => [] },
+            'liens' => $type === 'fiche' ? Partages::liensDeLaFiche($id) : [],
+            'groupes' => $type === 'dossier' ? Partages::contenuDuDossier($id, (int) $cible['user_id']) : [],
             'adresseCours' => static fn (int $c): string => url('p/' . $jeton . '/cours/' . $c),
             'adresseFichier' => static fn (int $f, bool $telecharger = false): string => url('p/' . $jeton . '/fichiers/' . $f, $telecharger ? ['telecharger' => 1] : []),
             'mesCours' => [],
             'recu' => false,
-            'mot' => 'cours',
-            'retour' => ['url' => url('p/' . $jeton), 'texte' => '← ' . (string) ($trouve['cible']['titre'] ?? 'Dossier partagé')],
-        ], (string) $cours['titre']);
+            'mot' => $mot,
+            'retour' => ['url' => url('p/' . $jeton), 'texte' => '← ' . (string) ($trouve['cible']['titre'] ?? 'Partage')],
+        ], (string) $cible['titre']);
     }
 
     /** Un fichier par le lien public : le fichier partagé, ou un fichier joint du cours partagé. */
@@ -362,17 +406,7 @@ final class PartagesController
         header('X-Robots-Tag: noindex, nofollow');
         $trouve = Partages::parJeton($jeton);
         $fichier = Partages::cible('fichier', $id);
-        $permis = $trouve !== null && $fichier !== null && (
-            ($trouve['lien']['cible_type'] === 'fichier' && (int) $trouve['lien']['cible_id'] === $id)
-            || ($trouve['lien']['cible_type'] === 'cours' && (int) $fichier['cours_id'] === (int) $trouve['lien']['cible_id']
-                && (int) $fichier['pour_fiche'] === 0)
-            || ($trouve['lien']['cible_type'] === 'fiche' && (int) $fichier['cours_id'] === (int) $trouve['lien']['cible_id']
-                && (int) $fichier['pour_fiche'] === 1)
-            || ($trouve['lien']['cible_type'] === 'dossier' && (int) $fichier['pour_fiche'] === 0
-                && (int) $fichier['user_id'] === (int) $trouve['lien']['user_id']
-                && Partages::dansLeDossier((int) $fichier['cours_id'], (int) $trouve['lien']['cible_id']))
-        );
-        if (!$permis) {
+        if ($trouve === null || $fichier === null || !Partages::visiblePar($trouve['lien'], 'fichier', $id)) {
             http_response_code(404);
             exit('Fichier introuvable.');
         }

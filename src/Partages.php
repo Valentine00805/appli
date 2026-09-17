@@ -35,6 +35,7 @@ final class Partages
             'cours' => 'Cours partagé',
             'fiche' => 'Fiche partagée',
             'dossier' => 'Dossier partagé',
+            'lot' => 'Lien de plusieurs documents',
             default => 'Fichier partagé',
         };
     }
@@ -114,6 +115,15 @@ final class Partages
                         f.created_at, COALESCE(u.pseudo, '') AS proprietaire
                    FROM fichiers f JOIN users u ON u.id = f.user_id
                   WHERE f.id = ?",
+                [$id]
+            );
+        }
+        // Un lot ne se partage pas à ses amis : il n'existe que pour son lien.
+        if ($type === 'lot') {
+            return Database::one(
+                "SELECT l.id, l.user_id, l.nom AS titre, l.created_at, COALESCE(u.pseudo, '') AS proprietaire
+                   FROM lots_partage l JOIN users u ON u.id = l.user_id
+                  WHERE l.id = ?",
                 [$id]
             );
         }
@@ -627,9 +637,13 @@ final class Partages
                     'cours' => '📘',
                     'fiche' => '📝',
                     'dossier' => (string) $cible['icone'],
+                    'lot' => '🔗',
                     default => Fichiers::icone((string) $cible['mime'], (string) $cible['nom_origine']),
                 },
-                'gerer' => url('partager/' . self::mot($l['type']) . '/' . $l['id']),
+                // Un lot se reprend en main depuis la fenêtre du partage groupé.
+                'gerer' => $l['type'] === 'lot'
+                    ? url('partager/plusieurs')
+                    : url('partager/' . self::mot($l['type']) . '/' . $l['id']),
             ];
         }
 
@@ -705,6 +719,181 @@ final class Partages
         }
 
         return ['lien' => $lien, 'cible' => $cible];
+    }
+
+    /**
+     * Ce lien donne-t-il à voir ce document ?
+     *
+     * Un lien désigne une cible ; ce qu'elle contient suit. Un dossier ouvre
+     * ses cours, un cours ses fichiers joints, une fiche les siens, un lot
+     * tout ce qu'on y a mis — et ce que ces documents contiennent à leur tour.
+     */
+    public static function visiblePar(array $lien, string $type, int $id): bool
+    {
+        $cible = self::cible($type, $id);
+        if ($cible === null || (int) $cible['user_id'] !== (int) $lien['user_id']) {
+            return false;
+        }
+        $vise = static fn (string $t, int $i): bool =>
+            (string) $lien['cible_type'] === $t && (int) $lien['cible_id'] === $i;
+
+        // Le document lui-même, ou un de ceux du lot.
+        if ($vise($type, $id) || self::dansLeLot($lien, $type, $id)) {
+            return true;
+        }
+        // Un cours, quand un dossier qui le contient est visé.
+        if ($type === 'cours') {
+            foreach (self::chaineDossiers($id) as $dossierId) {
+                if ($vise('dossier', $dossierId) || self::dansLeLot($lien, 'dossier', $dossierId)) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+        // Un fichier joint suit son cours ; celui d'une fiche suit la fiche.
+        if ($type === 'fichier') {
+            return (int) $cible['pour_fiche'] === 1
+                ? self::visiblePar($lien, 'fiche', (int) $cible['cours_id'])
+                : self::visiblePar($lien, 'cours', (int) $cible['cours_id']);
+        }
+
+        return false;
+    }
+
+    private static function dansLeLot(array $lien, string $type, int $id): bool
+    {
+        return (string) $lien['cible_type'] === 'lot' && Database::valeur(
+            'SELECT 1 FROM lots_partage_documents WHERE lot_id = ? AND cible_type = ? AND cible_id = ?',
+            [(int) $lien['cible_id'], $type, $id]
+        ) !== null;
+    }
+
+    /**
+     * Rassemble des documents sous un lien : un lot, et le lien qui le montre.
+     *
+     * @param array<string, list<int|string>> $parType
+     * @return array{0: ?array, 1: ?string} le lot et son lien, ou la raison du refus
+     */
+    public static function creerLot(int $moi, array $parType, string $nom = ''): array
+    {
+        $documents = [];
+        foreach (self::TYPES as $type) {
+            $ids = is_array($parType[$type] ?? null) ? $parType[$type] : [];
+            foreach (array_unique(array_map('intval', $ids)) as $i) {
+                if ($i > 0 && self::mienne($type, $i, $moi) !== null) {
+                    $documents[] = [$type, $i];
+                } elseif ($i > 0) {
+                    return [null, 'Un des documents choisis est introuvable.'];
+                }
+            }
+        }
+        if ($documents === []) {
+            return [null, 'Choisissez au moins un document à partager.'];
+        }
+        if (count($documents) > self::LOT_MAX) {
+            return [null, 'Pas plus de ' . self::LOT_MAX . ' documents à la fois.'];
+        }
+        $nom = trim($nom);
+        if ($nom === '') {
+            $nom = 'Ma sélection du ' . date_fr(date('Y-m-d H:i:s'), false);
+        }
+        Database::run(
+            'INSERT INTO lots_partage (user_id, nom, created_at) VALUES (?, ?, UTC_TIMESTAMP())',
+            [$moi, mb_substr($nom, 0, 120)]
+        );
+        $lotId = Database::dernierId();
+        foreach ($documents as $position => [$type, $i]) {
+            Database::run(
+                'INSERT INTO lots_partage_documents (lot_id, cible_type, cible_id, position) VALUES (?, ?, ?, ?)',
+                [$lotId, $type, $i, $position]
+            );
+        }
+        Database::run(
+            'INSERT INTO liens_partage (user_id, cible_type, cible_id, jeton, created_at) VALUES (?, ?, ?, ?, UTC_TIMESTAMP())',
+            [$moi, 'lot', $lotId, bin2hex(random_bytes(16))]
+        );
+
+        return [self::lot($lotId), null];
+    }
+
+    /** Un lot, avec son lien et ce qu'il contient. */
+    public static function lot(int $id): ?array
+    {
+        $lot = Database::one('SELECT * FROM lots_partage WHERE id = ?', [$id]);
+        if ($lot === null) {
+            return null;
+        }
+        $lien = self::lien('lot', $id);
+        $lot['jeton'] = $lien === null ? null : (string) $lien['jeton'];
+        $lot['vues'] = $lien === null ? 0 : (int) $lien['vues'];
+        $lot['documents'] = self::documentsDuLot($id);
+
+        return $lot;
+    }
+
+    /**
+     * Ce qu'un lot montre, dans l'ordre où on l'a choisi : ce qui existe
+     * encore, avec de quoi l'annoncer.
+     */
+    public static function documentsDuLot(int $lotId): array
+    {
+        $documents = [];
+        foreach (Database::all(
+            'SELECT cible_type, cible_id FROM lots_partage_documents WHERE lot_id = ? ORDER BY position, cible_id',
+            [$lotId]
+        ) as $ligne) {
+            $type = (string) $ligne['cible_type'];
+            $cible = self::cible($type, (int) $ligne['cible_id']);
+            if ($cible === null) {
+                continue;
+            }
+            $documents[] = [
+                'type' => $type,
+                'id' => (int) $cible['id'],
+                'titre' => (string) $cible['titre'],
+                'icone' => match ($type) {
+                    'cours' => '📘',
+                    'fiche' => '📝',
+                    'dossier' => (string) $cible['icone'],
+                    default => Fichiers::icone((string) $cible['mime'], (string) $cible['nom_origine']),
+                },
+                'detail' => match ($type) {
+                    'cours' => 'Cours' . ((int) $cible['nb_fichiers'] > 0 ? ' · ' . (int) $cible['nb_fichiers'] . ' fichier' . ((int) $cible['nb_fichiers'] > 1 ? 's' : '') : ''),
+                    'fiche' => 'Fiche de révision',
+                    'dossier' => 'Dossier · ' . self::compteCours((int) $cible['nb_cours']),
+                    default => 'Fichier · ' . taille_lisible((int) $cible['taille']),
+                },
+            ];
+        }
+
+        return $documents;
+    }
+
+    /** Mes lots, du plus récent au plus ancien. */
+    public static function mesLots(int $moi): array
+    {
+        $lots = [];
+        foreach (Database::all('SELECT id FROM lots_partage WHERE user_id = ? ORDER BY created_at DESC, id DESC', [$moi]) as $l) {
+            $lot = self::lot((int) $l['id']);
+            if ($lot !== null) {
+                $lots[] = $lot;
+            }
+        }
+
+        return $lots;
+    }
+
+    /** Supprime un lot et son lien : l'adresse ne mène plus à rien. */
+    public static function supprimerLot(int $moi, int $id): bool
+    {
+        if (Database::valeur('SELECT 1 FROM lots_partage WHERE id = ? AND user_id = ?', [$id, $moi]) === null) {
+            return false;
+        }
+        Database::run("DELETE FROM liens_partage WHERE cible_type = 'lot' AND cible_id = ?", [$id]);
+        Database::run('DELETE FROM lots_partage WHERE id = ? AND user_id = ?', [$id, $moi]);
+
+        return true;
     }
 
     /** Compte une ouverture du lien public (pas ses téléchargements). */

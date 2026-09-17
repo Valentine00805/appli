@@ -489,6 +489,8 @@ $routes = [
     ['GET',  'partages/envoyes',                    [PartagesController::class, 'envoyes']],
     ['GET',  'partager/plusieurs',                  [PartagesController::class, 'plusieurs']],
     ['POST', 'partager/plusieurs/amis',             [PartagesController::class, 'envoyerPlusieurs']],
+    ['POST', 'partager/plusieurs/lien',            [PartagesController::class, 'creerLienLot']],
+    ['POST', 'partager/lots/{id}/desactiver',      [PartagesController::class, 'desactiverLot']],
     ['GET',  'partager/{mot}/{id}',                 [PartagesController::class, 'fenetre']],
     ['POST', 'partager/{mot}/{id}/amis',            [PartagesController::class, 'envoyer']],
     ['POST', 'partager/{mot}/{id}/acces/{id}/retirer', [PartagesController::class, 'retirerAcces']],
@@ -499,8 +501,8 @@ $routes = [
     ['POST', 'partages/{mot}/{id}/copier',          [PartagesController::class, 'copier']],
     ['POST', 'partages/{mot}/{id}/oublier',         [PartagesController::class, 'oublier']],
     ['GET',  'p/{jeton}',                           [PartagesController::class, 'public']],
-    ['GET',  'p/{jeton}/cours/{id}',                [PartagesController::class, 'coursPublic']],
     ['GET',  'p/{jeton}/fichiers/{id}',             [PartagesController::class, 'fichierPublic']],
+    ['GET',  'p/{jeton}/{mot}/{id}',                [PartagesController::class, 'documentPublic']],
 ];
 
 foreach ($routes as [$methode, $motif, $action]) {

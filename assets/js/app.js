@@ -488,10 +488,13 @@
 
       var donnees = new FormData(formulaire);
       donnees.append('fenetre', '1');
-      var bouton = formulaire.querySelector('button[type="submit"]');
+      var bouton = evenement.submitter || formulaire.querySelector('button[type="submit"]');
+      // Un bouton peut viser une autre adresse que son formulaire (« formaction ») :
+      // c'est là qu'il faut envoyer.
+      var adresseEnvoi = (evenement.submitter && evenement.submitter.getAttribute('formaction')) || formulaire.action;
       if (bouton) { bouton.disabled = true; bouton.textContent = 'Enregistrement…'; }
 
-      fetch(formulaire.action, { method: 'POST', body: donnees, credentials: 'same-origin' })
+      fetch(adresseEnvoi, { method: 'POST', body: donnees, credentials: 'same-origin' })
         .then(function (reponse) {
           if (!reponse.ok) { throw new Error('refus'); }
           return reponse.text().then(function (html) { return { html: html, adresse: reponse.url }; });

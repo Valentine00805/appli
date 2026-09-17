@@ -11,6 +11,7 @@
  * @var list<array> $mesFichiers  mes fichiers joints, du plus récent au plus ancien
  * @var list<array> $mesDossiers  mes dossiers, dans l'ordre de l'arborescence
  * @var list<array> $mesFiches    mes cours qui ont une fiche de révision
+ * @var list<array> $mesLots      mes liens de plusieurs documents, le dernier d'abord
  * @var array<int, int> $choisis, $choisisFichiers, $choisisDossiers, $choisisFiches  ce qui est coché d'avance
  * @var list<array> $amis
  * @var list<array> $groupes
@@ -29,10 +30,6 @@ $csrf = Session::jetonCsrf();
 <?php if ($mesCours === [] && $mesFichiers === [] && $mesDossiers === [] && $mesFiches === []): ?>
   <section class="carte">
     <p class="discret" style="margin:0">Vous n’avez pas encore de cours, de fichier ni de dossier à partager.</p>
-  </section>
-<?php elseif ($amis === [] && $groupes === []): ?>
-  <section class="carte">
-    <p class="discret" style="margin:0">Pas encore d’amis à qui les envoyer. <a href="<?= url('amis') ?>">Chercher un pseudo</a></p>
   </section>
 <?php else: ?>
   <form method="post" action="<?= url('partager/plusieurs/amis') ?>"<?= $dansUneFenetre ? ' data-envoi-fenetre' : '' ?>>
@@ -187,6 +184,12 @@ $csrf = Session::jetonCsrf();
 
     <section class="carte partage-section">
       <h2 style="margin-top:0">👥 Avec mes amis</h2>
+      <?php if ($amis === [] && $groupes === []): ?>
+        <p class="discret" style="margin:0">
+          Pas encore d’amis à qui les envoyer — le lien ci-dessous, lui, marche déjà.
+          <a href="<?= url('amis') ?>">Chercher un pseudo</a>
+        </p>
+      <?php else: ?>
       <label class="discussions-recherche">
         <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false">
           <circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>
@@ -222,11 +225,68 @@ $csrf = Session::jetonCsrf();
                   placeholder="Voilà mes documents…"></textarea>
       </div>
       <button class="bouton" type="submit">Envoyer</button>
+      <?php endif; ?>
       <p class="champ__aide" style="margin-bottom:0">
         Chaque document part dans votre discussion sous sa propre carte, et paraît dans « Partagés avec moi »,
         en lecture seule. Un cours emporte ses fichiers joints, pas sa fiche de révision. Pour ouvrir aussi
         ce que vous rangerez plus tard, partagez plutôt le dossier.
       </p>
     </section>
+
+    <?php
+    /*
+     * Le même choix, mais pour ceux qui n'ont pas de compte : un lien unique
+     * qui montre tous les documents cochés. Le bouton envoie le formulaire
+     * ailleurs — les cases cochées partent donc telles quelles.
+     */
+    ?>
+    <section class="carte partage-section">
+      <h2 style="margin-top:0">🔗 Avec un lien</h2>
+      <p class="discret" style="margin-top:0">
+        Un seul lien pour tout ce que vous avez coché : qui l’a voit ces documents et les télécharge,
+        sans compte. Vous pourrez le désactiver quand vous voudrez.
+      </p>
+      <div class="champ">
+        <label for="lot-nom">Nom du lien (facultatif)</label>
+        <input type="text" id="lot-nom" name="nom" maxlength="120" placeholder="Révisions du partiel">
+      </div>
+      <button class="bouton bouton--secondaire" type="submit"
+              formaction="<?= url('partager/plusieurs/lien') ?>">Créer un lien pour ce que j’ai coché</button>
+    </section>
   </form>
+
+  <?php if ($mesLots !== []): ?>
+    <?php // Les liens déjà créés : à copier, à suivre, à défaire. ?>
+    <section class="carte partage-section">
+      <h2 style="margin-top:0">Mes liens de plusieurs documents <span class="discret">(<?= count($mesLots) ?>)</span></h2>
+      <?php foreach ($mesLots as $unLot): ?>
+        <?php if ($unLot['jeton'] === null) { continue; } ?>
+        <div style="margin-bottom:1rem">
+          <p style="margin:0 0 .3rem">
+            <strong><?= e((string) $unLot['nom']) ?></strong>
+            <span class="discret">· <?= count($unLot['documents']) ?> document<?= count($unLot['documents']) > 1 ? 's' : '' ?></span>
+          </p>
+          <div class="partage-lien" data-partage-lien>
+            <label class="sr-only" for="lot-lien-<?= (int) $unLot['id'] ?>">Lien de partage</label>
+            <input type="text" id="lot-lien-<?= (int) $unLot['id'] ?>" readonly
+                   value="<?= e(Partages::adresseLien((string) $unLot['jeton'])) ?>" data-partage-adresse>
+            <button class="bouton" type="button" data-partage-copier>Copier</button>
+            <button class="bouton bouton--secondaire" type="button" data-partage-natif hidden
+                    data-titre="<?= e((string) $unLot['nom']) ?>"><?= Partages::icone() ?> Envoyer…</button>
+          </div>
+          <p class="champ__aide" data-partage-etat aria-live="polite" style="margin-bottom:.3rem">
+            Ouvert <?= (int) $unLot['vues'] ?> fois · <?= e(implode(', ', array_map(
+                static fn (array $d): string => $d['icone'] . ' ' . mb_strimwidth((string) $d['titre'], 0, 40, '…'),
+                array_slice($unLot['documents'], 0, 4)
+            ))) ?><?= count($unLot['documents']) > 4 ? '…' : '' ?>
+          </p>
+          <form method="post" action="<?= url('partager/lots/' . (int) $unLot['id'] . '/desactiver') ?>"<?= $dansUneFenetre ? ' data-envoi-fenetre' : '' ?>
+                data-confirmation="Désactiver ce lien ? L’adresse ne mènera plus à rien, même si elle a circulé. Vos documents, eux, restent.">
+            <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+            <button class="bouton bouton--discret bouton--petit" type="submit">Désactiver ce lien</button>
+          </form>
+        </div>
+      <?php endforeach; ?>
+    </section>
+  <?php endif; ?>
 <?php endif; ?>
