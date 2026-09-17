@@ -63,9 +63,23 @@ final class PartagesController
                 [$moi]
             ),
             'mesDossiers' => DossiersController::pourUtilisateur($moi, true),
+            // Une fiche existe dès qu'il y a de quoi la lire : du texte, des
+            // fichiers à elle, ou des liens.
+            'mesFiches' => Database::all(
+                "SELECT c.id, c.titre, c.fiche_revision, m.nom AS matiere_nom,
+                        (SELECT COUNT(*) FROM fichiers f WHERE f.cours_id = c.id AND f.pour_fiche = 1) AS nb_fichiers
+                   FROM cours c LEFT JOIN matieres m ON m.id = c.matiere_id
+                  WHERE c.user_id = ?
+                    AND (TRIM(COALESCE(c.fiche_revision, '')) <> ''
+                         OR EXISTS (SELECT 1 FROM fichiers f WHERE f.cours_id = c.id AND f.pour_fiche = 1)
+                         OR EXISTS (SELECT 1 FROM fiche_elements e WHERE e.cours_id = c.id))
+                  ORDER BY c.updated_at DESC",
+                [$moi]
+            ),
             'choisis' => array_flip(array_map('intval', is_array($_GET['cours'] ?? null) ? $_GET['cours'] : [])),
             'choisisFichiers' => array_flip(array_map('intval', is_array($_GET['fichiers'] ?? null) ? $_GET['fichiers'] : [])),
             'choisisDossiers' => array_flip(array_map('intval', is_array($_GET['dossiers'] ?? null) ? $_GET['dossiers'] : [])),
+            'choisisFiches' => array_flip(array_map('intval', is_array($_GET['fiches'] ?? null) ? $_GET['fiches'] : [])),
             'amis' => Amis::liste($moi),
             'groupes' => Conversations::liste($moi),
         ];
@@ -81,11 +95,15 @@ final class PartagesController
     {
         Auth::exiger();
         Session::verifierCsrf();
-        $cours = is_array($_POST['cours'] ?? null) ? $_POST['cours'] : [];
-        $fichiers = is_array($_POST['fichiers'] ?? null) ? $_POST['fichiers'] : [];
-        $dossiers = is_array($_POST['dossiers'] ?? null) ? $_POST['dossiers'] : [];
-        [, $nombre, $refus, $notifications] = Partages::partagerPlusieurs(
-            Auth::id(), $cours, $fichiers, $dossiers,
+        // Le formulaire nomme ses listes comme les adresses : cours, fiches,
+        // dossiers, fichiers.
+        $choisis = [];
+        foreach (Partages::TYPES as $type) {
+            $champ = Partages::mot($type);
+            $choisis[$type] = is_array($_POST[$champ] ?? null) ? $_POST[$champ] : [];
+        }
+        [$partis, $nombre, $refus, $notifications] = Partages::partagerPlusieurs(
+            Auth::id(), $choisis,
             is_array($_POST['amis'] ?? null) ? $_POST['amis'] : [],
             is_array($_POST['groupes'] ?? null) ? $_POST['groupes'] : [],
             (string) ($_POST['texte'] ?? '')
@@ -93,8 +111,9 @@ final class PartagesController
         if ($refus !== null) {
             Session::flash('erreur', $refus);
         } else {
-            Session::flash('succes', Partages::combien(count($cours), count($fichiers), count($dossiers))
-                . ' partagé' . (count($cours) + count($fichiers) + count($dossiers) > 1 ? 's' : '')
+            // « 1 cours partagé », « 2 fiches de révision partagées ».
+            $accord = 'partagé' . (str_contains($partis, 'fiche') ? 'e' : '') . (str_starts_with($partis, '1 ') ? '' : 's');
+            Session::flash('succes', $partis . ' ' . $accord
                 . ' avec ' . $nombre . ' personne' . ($nombre > 1 ? 's' : '') . ' : les cartes sont parties dans vos discussions.');
         }
         $this->retourPuisEnvoyer('partager/plusieurs', $notifications);

@@ -1,7 +1,7 @@
 <?php
 /**
- * Partager plusieurs documents d'un coup : on coche des cours, des fichiers
- * et des dossiers, puis des amis.
+ * Partager plusieurs documents d'un coup : on coche des cours, des fiches de
+ * révision, des dossiers et des fichiers, puis des amis.
  *
  * Un envoi, une carte par document dans la discussion, et un seul accès par
  * document : c'est le même partage qu'un par un, fait en une fois. Le lien
@@ -10,7 +10,8 @@
  * @var list<array> $mesCours     mes cours, du plus récemment modifié au plus ancien
  * @var list<array> $mesFichiers  mes fichiers joints, du plus récent au plus ancien
  * @var list<array> $mesDossiers  mes dossiers, dans l'ordre de l'arborescence
- * @var array<int, int> $choisis, $choisisFichiers, $choisisDossiers  ce qui est coché d'avance
+ * @var list<array> $mesFiches    mes cours qui ont une fiche de révision
+ * @var array<int, int> $choisis, $choisisFichiers, $choisisDossiers, $choisisFiches  ce qui est coché d'avance
  * @var list<array> $amis
  * @var list<array> $groupes
  * @var bool $dansUneFenetre
@@ -21,11 +22,11 @@ $csrf = Session::jetonCsrf();
 <div class="entete-page"<?= $dansUneFenetre ? ' data-large' : '' ?>>
   <div>
     <h1 style="margin:0"><?= Partages::icone() ?> Partager plusieurs</h1>
-    <p class="discret" style="margin:.15rem 0 0">Des cours, des fichiers et des dossiers en un seul envoi, jusqu’à <?= Partages::LOT_MAX ?> à la fois.</p>
+    <p class="discret" style="margin:.15rem 0 0">Des cours, des fiches, des dossiers et des fichiers en un seul envoi, jusqu’à <?= Partages::LOT_MAX ?> à la fois.</p>
   </div>
 </div>
 
-<?php if ($mesCours === [] && $mesFichiers === [] && $mesDossiers === []): ?>
+<?php if ($mesCours === [] && $mesFichiers === [] && $mesDossiers === [] && $mesFiches === []): ?>
   <section class="carte">
     <p class="discret" style="margin:0">Vous n’avez pas encore de cours, de fichier ni de dossier à partager.</p>
   </section>
@@ -69,6 +70,45 @@ $csrf = Session::jetonCsrf();
         <?php endforeach; ?>
       </ul>
       <p class="discret" data-filtre-vide hidden style="margin:.4rem 0 0">Aucun cours ne porte ce nom.</p>
+    </section>
+    <?php endif; ?>
+
+    <?php if ($mesFiches !== []): ?>
+    <?php // Une fiche se partage sans son cours : son texte, ses liens, ses fichiers. ?>
+    <section class="carte partage-section">
+      <h2 style="margin-top:0">📝 Les fiches de révision à partager</h2>
+      <label class="discussions-recherche">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false">
+          <circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>
+        </svg>
+        <span class="sr-only">Rechercher une de mes fiches</span>
+        <input type="search" placeholder="Rechercher une fiche" autocomplete="off" data-filtre-liste="[data-liste-mes-fiches]">
+      </label>
+      <p style="margin:.5rem 0 0">
+        <button class="bouton bouton--discret bouton--petit" type="button"
+                data-cocher-tout="[data-liste-mes-fiches]">Tout cocher, ou décocher</button>
+      </p>
+      <ul class="groupe-choix__liste partage-liste" data-liste-mes-fiches>
+        <?php foreach ($mesFiches as $f): ?>
+          <li data-nom="<?= e(mb_strtolower((string) $f['titre'] . ' ' . (string) ($f['matiere_nom'] ?? ''))) ?>">
+            <label class="groupe-choix__ami">
+              <input type="checkbox" name="fiches[]" value="<?= (int) $f['id'] ?>"<?= isset($choisisFiches[(int) $f['id']]) ? ' checked' : '' ?>>
+              <span aria-hidden="true">📝</span>
+              <span class="partage-liste__nom">
+                <?= e((string) $f['titre']) ?>
+                <span class="discret">
+                  <?php if (($f['matiere_nom'] ?? null) !== null): ?>· <?= e((string) $f['matiere_nom']) ?><?php endif; ?>
+                  <?php if ((int) $f['nb_fichiers'] > 0): ?>· <?= (int) $f['nb_fichiers'] ?> fichier<?= (int) $f['nb_fichiers'] > 1 ? 's' : '' ?><?php endif; ?>
+                </span>
+              </span>
+            </label>
+          </li>
+        <?php endforeach; ?>
+      </ul>
+      <p class="discret" data-filtre-vide hidden style="margin:.4rem 0 0">Aucune fiche ne porte ce nom.</p>
+      <p class="champ__aide" style="margin-bottom:0">
+        Une fiche part seule : son texte, ses liens et ses fichiers, sans le contenu du cours.
+      </p>
     </section>
     <?php endif; ?>
 
