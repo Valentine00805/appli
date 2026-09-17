@@ -6,7 +6,8 @@
  * @var string $type   « cours » ou « fichier »
  * @var array $cible
  * @var bool $public   ouvert par le lien public
- * @var list<array> $fichiers  les fichiers joints d'un cours
+ * @var list<array> $fichiers  les fichiers joints d'un cours, ou ceux d'une fiche
+ * @var list<array> $liens     les liens d'une fiche
  * @var callable $adresseFichier  (int $id, bool $telecharger): string
  * @var list<array> $mesCours  où ranger la copie d'un fichier
  * @var bool $recu     il figure dans « Partagés avec moi »
@@ -16,6 +17,8 @@ $proprietaire = (string) $cible['proprietaire'];
 $csrf = $public ? '' : Session::jetonCsrf();
 $base = 'partages/' . $mot . '/' . (int) $cible['id'];
 $fichierSeul = $type === 'fichier';
+$estFiche = $type === 'fiche';
+$liens = $liens ?? [];
 $mime = $fichierSeul ? (string) $cible['mime'] : '';
 $nom = $fichierSeul ? (string) $cible['nom_origine'] : '';
 ?>
@@ -24,7 +27,8 @@ $nom = $fichierSeul ? (string) $cible['nom_origine'] : '';
     <?php if (!$public): ?>
       <p class="discret" style="margin-bottom:.35rem"><a href="<?= url('cours') ?>#partages-recus">← Partagés avec moi</a></p>
     <?php endif; ?>
-    <h1><?= $fichierSeul ? e(Fichiers::icone($mime, $nom)) . ' ' : '📘 ' ?><?= e((string) $cible['titre']) ?></h1>
+    <h1><?= $fichierSeul ? e(Fichiers::icone($mime, $nom)) . ' ' : ($estFiche ? '📝 ' : '📘 ') ?><?= e((string) ($estFiche ? $cible['titre_cours'] : $cible['titre'])) ?></h1>
+    <?php if ($estFiche): ?><p style="margin:0 0 .2rem"><span class="pastille">Fiche de révision</span></p><?php endif; ?>
     <p class="discret">
       <?= Partages::icone(15) ?> Partagé par <strong><?= e($proprietaire !== '' ? $proprietaire : 'un compte Mes Cours') ?></strong>
       <?php if (!$fichierSeul): ?>
@@ -94,16 +98,28 @@ $nom = $fichierSeul ? (string) $cible['nom_origine'] : '';
     </section>
   <?php endif; ?>
 <?php else: ?>
+  <?php $texte = (string) ($estFiche ? $cible['fiche_revision'] : $cible['contenu']); ?>
   <div class="colonnes">
     <article class="carte">
-      <?php if (trim((string) $cible['contenu']) === ''): ?>
-        <p class="discret" style="margin:0">Ce cours n’a pas de contenu écrit.</p>
+      <?php if (trim($texte) === ''): ?>
+        <p class="discret" style="margin:0"><?= $estFiche ? 'Cette fiche n’a pas de texte.' : 'Ce cours n’a pas de contenu écrit.' ?></p>
       <?php else: ?>
-        <div class="contenu-cours texte-riche-affiche"><?= TexteRiche::versHtml((string) $cible['contenu']) ?></div>
+        <div class="contenu-cours texte-riche-affiche"><?= TexteRiche::versHtml($texte) ?></div>
       <?php endif; ?>
     </article>
+    <div class="pile">
+    <?php if ($estFiche && $liens !== []): ?>
+      <section class="carte">
+        <h2 style="margin-top:0">🔗 Liens</h2>
+        <ul class="partage-liens">
+          <?php foreach ($liens as $l): ?>
+            <li><a href="<?= e((string) $l['url']) ?>" target="_blank" rel="noopener noreferrer nofollow"><?= e((string) ($l['libelle'] ?: $l['url'])) ?></a></li>
+          <?php endforeach; ?>
+        </ul>
+      </section>
+    <?php endif; ?>
     <section class="carte">
-      <h2 style="margin-top:0">Fichiers joints <span class="discret">(<?= count($fichiers) ?>)</span></h2>
+      <h2 style="margin-top:0"><?= $estFiche ? 'Fichiers de la fiche' : 'Fichiers joints' ?> <span class="discret">(<?= count($fichiers) ?>)</span></h2>
       <?php if ($fichiers === []): ?>
         <p class="discret" style="margin:0">Aucun fichier joint.</p>
       <?php else: ?>
@@ -124,6 +140,7 @@ $nom = $fichierSeul ? (string) $cible['nom_origine'] : '';
         </ul>
       <?php endif; ?>
     </section>
+    </div>
   </div>
 <?php endif; ?>
 

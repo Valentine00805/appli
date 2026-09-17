@@ -27,7 +27,7 @@ foreach ($amis as $a) {
           . (($dernier['image_nom'] ?? null) !== null ? '📷 Photo' . ((string) $dernier['texte'] !== '' ? ' · ' : '') : '')
           . (($dernier['fichier_origine'] ?? null) !== null ? '📎 ' . $dernier['fichier_origine'] . ((string) $dernier['texte'] !== '' ? ' · ' : '') : '')
           . (($dernier['audio_nom'] ?? null) !== null ? '🎤 Message vocal' . ((string) $dernier['texte'] !== '' ? ' · ' : '') : '')
-          . (($dernier['partage_type'] ?? null) !== null ? '🔗 ' . ($dernier['partage_type'] === 'cours' ? 'Cours partagé' : 'Fichier partagé') . ((string) $dernier['texte'] !== '' ? ' · ' : '') : '')
+          . (($dernier['partage_type'] ?? null) !== null ? '🔗 ' . Partages::libelle((string) $dernier['partage_type']) . ((string) $dernier['texte'] !== '' ? ' · ' : '') : '')
           . preg_replace('/\s+/u', ' ', (string) $dernier['texte'])));
     $discussions[] = [
         'url' => url('amis/' . (int) $a['id']),

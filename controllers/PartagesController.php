@@ -15,6 +15,7 @@ final class PartagesController
         return match ($mot) {
             'cours' => 'cours',
             'fichiers' => 'fichier',
+            'fiches' => 'fiche',
             default => self::introuvable(),
         };
     }
@@ -111,7 +112,11 @@ final class PartagesController
         $cible = Partages::cible($type, $id);
         if ($cible !== null && (int) $cible['user_id'] === $moi) {
             // Le sien : sa vraie page.
-            redirect($type === 'cours' ? 'cours/' . $id : 'fichiers/' . $id . (ApercuDocument::possible((string) $cible['nom_origine']) ? '/apercu' : ''));
+            redirect(match ($type) {
+                'cours' => 'cours/' . $id,
+                'fiche' => 'revision/' . $id,
+                default => 'fichiers/' . $id . (ApercuDocument::possible((string) $cible['nom_origine']) ? '/apercu' : ''),
+            });
         }
         if ($cible === null || !Partages::peutVoir($type, $id, $moi)) {
             Session::flash('erreur', 'Ce document n’est pas, ou plus, partagé avec vous.');
@@ -121,7 +126,8 @@ final class PartagesController
             'type' => $type,
             'cible' => $cible,
             'public' => false,
-            'fichiers' => $type === 'cours' ? Partages::fichiersDuCours($id) : [],
+            'fichiers' => match ($type) { 'cours' => Partages::fichiersDuCours($id), 'fiche' => Partages::fichiersDeLaFiche($id), default => [] },
+            'liens' => $type === 'fiche' ? Partages::liensDeLaFiche($id) : [],
             'adresseFichier' => static fn (int $f, bool $telecharger = false): string => url('partages/fichiers/' . $f . '/contenu', $telecharger ? ['telecharger' => 1] : []),
             'mesCours' => $type === 'fichier'
                 ? Database::all('SELECT id, titre FROM cours WHERE user_id = ? ORDER BY titre', [$moi]) : [],
@@ -154,10 +160,12 @@ final class PartagesController
             Session::flash('erreur', $refus);
             redirect('partages/' . $mot . '/' . $id);
         }
-        Session::flash('succes', $type === 'cours'
-            ? 'Cours copié dans vos cours : cette copie est à vous, modifiable.'
-            : 'Fichier copié dans votre cours.');
-        redirect('cours/' . $cours);
+        Session::flash('succes', match ($type) {
+            'cours' => 'Cours copié dans vos cours : cette copie est à vous, modifiable.',
+            'fiche' => 'Fiche copiée : un nouveau cours à vous, dont c’est la fiche de révision.',
+            default => 'Fichier copié dans votre cours.',
+        });
+        redirect(($type === 'fiche' ? 'revision/' : 'cours/') . $cours);
     }
 
     public function oublier(string $mot, int $id): void
@@ -186,11 +194,12 @@ final class PartagesController
             'type' => $type,
             'cible' => $cible,
             'public' => true,
-            'fichiers' => $type === 'cours' ? Partages::fichiersDuCours((int) $cible['id']) : [],
+            'fichiers' => match ($type) { 'cours' => Partages::fichiersDuCours((int) $cible['id']), 'fiche' => Partages::fichiersDeLaFiche((int) $cible['id']), default => [] },
+            'liens' => $type === 'fiche' ? Partages::liensDeLaFiche((int) $cible['id']) : [],
             'adresseFichier' => static fn (int $f, bool $telecharger = false): string => url('p/' . $jeton . '/fichiers/' . $f, $telecharger ? ['telecharger' => 1] : []),
             'mesCours' => [],
             'recu' => false,
-            'mot' => $type === 'cours' ? 'cours' : 'fichiers',
+            'mot' => Partages::mot($type),
         ], (string) $cible['titre']);
     }
 
@@ -205,6 +214,8 @@ final class PartagesController
             ($trouve['lien']['cible_type'] === 'fichier' && (int) $trouve['lien']['cible_id'] === $id)
             || ($trouve['lien']['cible_type'] === 'cours' && (int) $fichier['cours_id'] === (int) $trouve['lien']['cible_id']
                 && (int) $fichier['pour_fiche'] === 0)
+            || ($trouve['lien']['cible_type'] === 'fiche' && (int) $fichier['cours_id'] === (int) $trouve['lien']['cible_id']
+                && (int) $fichier['pour_fiche'] === 1)
         );
         if (!$permis) {
             http_response_code(404);

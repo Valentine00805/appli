@@ -1159,6 +1159,7 @@ final class CoursController
         }
         Database::run('DELETE FROM cours WHERE id = ? AND user_id = ?', [$id, $userId]);
         Partages::oublier('cours', $id);
+        Partages::oublier('fiche', $id);
 
         Session::flash('succes', 'Cours supprimé.');
         redirect('cours');

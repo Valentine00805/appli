@@ -18,7 +18,7 @@ $surPlace = $dansUneFenetre ? ' data-envoi-fenetre' : '';
 $csrf = Session::jetonCsrf();
 $base = 'partager/' . $mot . '/' . (int) $cible['id'];
 $ontAcces = array_flip(array_column($destinataires, 'id'));
-$icone = $type === 'cours' ? '📘' : Fichiers::icone((string) $cible['mime'], (string) $cible['nom_origine']);
+$icone = match ($type) { 'cours' => '📘', 'fiche' => '📝', default => Fichiers::icone((string) $cible['mime'], (string) $cible['nom_origine']) };
 ?>
 <div class="entete-page"<?= $dansUneFenetre ? ' data-large' : '' ?>>
   <div>
@@ -65,12 +65,16 @@ $icone = $type === 'cours' ? '📘' : Fichiers::icone((string) $cible['mime'], (
       <p class="discret" data-filtre-vide hidden style="margin:.4rem 0 0">Personne ne correspond.</p>
       <div class="champ" style="margin-top:.75rem">
         <label for="partage-texte">Message (facultatif)</label>
-        <textarea id="partage-texte" name="texte" rows="2" maxlength="<?= Amis::MESSAGE_MAX ?>" placeholder="Regarde ce cours…"></textarea>
+        <textarea id="partage-texte" name="texte" rows="2" maxlength="<?= Amis::MESSAGE_MAX ?>" placeholder="<?= match ($type) { 'cours' => 'Regarde ce cours…', 'fiche' => 'Regarde ma fiche…', default => 'Regarde ce fichier…' } ?>"></textarea>
       </div>
       <button class="bouton" type="submit">Envoyer</button>
       <p class="champ__aide" style="margin-bottom:0">
         Ils le reçoivent dans votre discussion et dans « Partagés avec moi », en lecture seule — toujours à jour,
-        et ils peuvent en faire une copie.<?= $type === 'cours' ? ' Les fichiers joints du cours sont compris ; pas la fiche de révision.' : '' ?>
+        et ils peuvent en faire une copie.<?= match ($type) {
+            'cours' => ' Les fichiers joints du cours sont compris ; pas la fiche de révision.',
+            'fiche' => ' Les fichiers et les liens de la fiche sont compris ; pas le contenu du cours.',
+            default => '',
+        } ?>
       </p>
     </form>
   <?php endif; ?>

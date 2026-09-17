@@ -1332,7 +1332,7 @@ final class Conversations
         $piece = $dernier['image_nom'] !== null ? '📷 Photo'
             : ($dernier['fichier_origine'] !== null ? '📎 ' . $dernier['fichier_origine']
             : ($dernier['audio_nom'] !== null ? '🎤 Message vocal'
-            : ($dernier['partage_type'] !== null ? '🔗 ' . ($dernier['partage_type'] === 'cours' ? 'Cours partagé' : 'Fichier partagé') : '')));
+            : ($dernier['partage_type'] !== null ? '🔗 ' . Partages::libelle((string) $dernier['partage_type']) : '')));
 
         return $qui . ' : ' . ($texte === '' ? $piece : ($piece === '' ? $texte : $piece . ' · ' . $texte));
     }

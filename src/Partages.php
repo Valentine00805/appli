@@ -14,11 +14,32 @@ declare(strict_types=1);
  * disparaît avec lui. Un ami peut en faire sa propre copie.
  *
  * Partager un cours ouvre aussi ses fichiers joints (pas ceux de sa fiche de
- * révision, qui restent à soi).
+ * révision, qui restent à soi). Une fiche de révision se partage à part, avec
+ * ses fichiers et ses liens : on la désigne par son cours.
  */
 final class Partages
 {
-    public const TYPES = ['cours', 'fichier'];
+    public const TYPES = ['cours', 'fichier', 'fiche'];
+
+    /** Ce que c'est, en quelques mots : « Cours partagé »… */
+    public static function libelle(string $type): string
+    {
+        return match ($type) {
+            'cours' => 'Cours partagé',
+            'fiche' => 'Fiche partagée',
+            default => 'Fichier partagé',
+        };
+    }
+
+    /** L'adresse d'un type : « cours », « fiches » ou « fichiers ». */
+    public static function mot(string $type): string
+    {
+        return match ($type) {
+            'cours' => 'cours',
+            'fiche' => 'fiches',
+            default => 'fichiers',
+        };
+    }
 
     /** L'icône de partage : trois points reliés, du trait des autres icônes. */
     public static function icone(int $taille = 18): string
@@ -45,6 +66,17 @@ final class Partages
                   WHERE c.id = ?",
                 [$id]
             );
+        }
+        if ($type === 'fiche') {
+            $fiche = Database::one(
+                "SELECT c.id, c.user_id, c.titre AS titre_cours, c.fiche_revision, c.updated_at, m.nom AS matiere_nom, COALESCE(u.pseudo, '') AS proprietaire,
+                        (SELECT COUNT(*) FROM fichiers f WHERE f.cours_id = c.id AND f.pour_fiche = 1) AS nb_fichiers
+                   FROM cours c JOIN users u ON u.id = c.user_id LEFT JOIN matieres m ON m.id = c.matiere_id
+                  WHERE c.id = ?",
+                [$id]
+            );
+
+            return $fiche === null ? null : ['titre' => 'Fiche — ' . $fiche['titre_cours']] + $fiche;
         }
         if ($type === 'fichier') {
             return Database::one(
@@ -81,7 +113,26 @@ final class Partages
             return true;
         }
 
-        return $type === 'fichier' && (int) $cible['pour_fiche'] === 0 && self::accesDirect('cours', (int) $cible['cours_id'], $moi);
+        return $type === 'fichier'
+            && self::accesDirect((int) $cible['pour_fiche'] === 1 ? 'fiche' : 'cours', (int) $cible['cours_id'], $moi);
+    }
+
+    /** Les fichiers d'une fiche de révision partagée. */
+    public static function fichiersDeLaFiche(int $coursId): array
+    {
+        return Database::all(
+            'SELECT id, nom_origine, nom_stocke, mime, taille FROM fichiers WHERE cours_id = ? AND pour_fiche = 1 ORDER BY nom_origine',
+            [$coursId]
+        );
+    }
+
+    /** Les liens d'une fiche de révision (ses renvois vers d'autres cours et évènements restent privés). */
+    public static function liensDeLaFiche(int $coursId): array
+    {
+        return Database::all(
+            "SELECT libelle, url FROM fiche_elements WHERE cours_id = ? AND type = 'lien' AND (url LIKE 'http://%' OR url LIKE 'https://%') ORDER BY position, id",
+            [$coursId]
+        );
     }
 
     private static function accesDirect(string $type, int $id, int $moi): bool
@@ -139,7 +190,8 @@ final class Partages
         $atteints = [];
         $notifications = [];
         $pseudo = (string) (Amis::compte($moi)['pseudo'] ?? 'Un ami');
-        $quoi = ($type === 'cours' ? 'le cours' : 'le fichier') . ' « ' . mb_strimwidth((string) $cible['titre'], 0, 80, '…') . ' »';
+        $quoi = match ($type) { 'cours' => 'le cours', 'fiche' => 'la fiche de révision', default => 'le fichier' }
+            . ' « ' . mb_strimwidth((string) ($cible['titre_cours'] ?? $cible['titre']), 0, 80, '…') . ' »';
 
         foreach ($amis as $a) {
             self::donnerAcces($moi, $a, $type, $id);
@@ -210,12 +262,14 @@ final class Partages
     {
         $lignes = Database::all(
             "SELECT p.cible_type, p.cible_id, p.proprietaire_id, p.created_at, COALESCE(u.pseudo, '') AS proprietaire,
-                    c.titre AS titre_cours, c.contenu, f.nom_origine, f.mime, f.taille
+                    c.titre AS titre_cours, c.contenu, f.nom_origine, f.mime, f.taille,
+                    cf.titre AS titre_fiche, cf.fiche_revision
                FROM partages_amis p
                JOIN users u ON u.id = p.proprietaire_id
                LEFT JOIN cours c ON p.cible_type = 'cours' AND c.id = p.cible_id AND c.user_id = p.proprietaire_id
                LEFT JOIN fichiers f ON p.cible_type = 'fichier' AND f.id = p.cible_id AND f.user_id = p.proprietaire_id
-              WHERE p.destinataire_id = ? AND (c.id IS NOT NULL OR f.id IS NOT NULL)
+               LEFT JOIN cours cf ON p.cible_type = 'fiche' AND cf.id = p.cible_id AND cf.user_id = p.proprietaire_id
+              WHERE p.destinataire_id = ? AND (c.id IS NOT NULL OR f.id IS NOT NULL OR cf.id IS NOT NULL)
               ORDER BY p.created_at DESC",
             [$moi]
         );
@@ -225,13 +279,17 @@ final class Partages
                 && !self::partagentUnGroupe($moi, (int) $l['proprietaire_id'])) {
                 continue;
             }
-            $cours = $l['cible_type'] === 'cours';
+            $type = (string) $l['cible_type'];
             $recus[] = [
-                'type' => (string) $l['cible_type'],
+                'type' => $type,
                 'id' => (int) $l['cible_id'],
-                'titre' => $cours ? (string) $l['titre_cours'] : (string) $l['nom_origine'],
-                'icone' => $cours ? '📘' : Fichiers::icone((string) $l['mime'], (string) $l['nom_origine']),
-                'detail' => $cours ? extrait((string) $l['contenu']) : taille_lisible((int) $l['taille']),
+                'titre' => match ($type) { 'cours' => (string) $l['titre_cours'], 'fiche' => 'Fiche — ' . $l['titre_fiche'], default => (string) $l['nom_origine'] },
+                'icone' => match ($type) { 'cours' => '📘', 'fiche' => '📝', default => Fichiers::icone((string) $l['mime'], (string) $l['nom_origine']) },
+                'detail' => match ($type) {
+                    'cours' => extrait((string) $l['contenu']),
+                    'fiche' => extrait((string) $l['fiche_revision']),
+                    default => taille_lisible((int) $l['taille']),
+                },
                 'proprietaire' => (string) $l['proprietaire'],
                 'proprietaire_id' => (int) $l['proprietaire_id'],
                 'quand' => (string) $l['created_at'],
@@ -263,7 +321,7 @@ final class Partages
     /** L'adresse de lecture d'un partage, pour un compte. */
     public static function adresse(string $type, int $id): string
     {
-        return url('partages/' . ($type === 'cours' ? 'cours' : 'fichiers') . '/' . $id);
+        return url('partages/' . self::mot($type) . '/' . $id);
     }
 
     /** Le lien public d'un document, s'il en a un. */
@@ -365,6 +423,26 @@ final class Partages
             return [$nouveau, null];
         }
 
+        // Une fiche devient un cours à soi, dont c'est la fiche de révision.
+        if ($type === 'fiche') {
+            Database::run(
+                "INSERT INTO cours (user_id, titre, contenu, fiche_revision) VALUES (?, ?, '', ?)",
+                [$moi, mb_substr((string) $cible['titre_cours'], 0, 200), (string) $cible['fiche_revision']]
+            );
+            $nouveau = Database::dernierId();
+            foreach (self::fichiersDeLaFiche($id) as $f) {
+                self::copierFichier($f, $moi, $nouveau, $dossier, true);
+            }
+            foreach (self::liensDeLaFiche($id) as $position => $lien) {
+                Database::run(
+                    "INSERT INTO fiche_elements (user_id, cours_id, type, libelle, url, position) VALUES (?, ?, 'lien', ?, ?, ?)",
+                    [$moi, $nouveau, $lien['libelle'], $lien['url'], $position]
+                );
+            }
+
+            return [$nouveau, null];
+        }
+
         if ($coursCible === null || Database::valeur('SELECT 1 FROM cours WHERE id = ? AND user_id = ?', [$coursCible, $moi]) === null) {
             return [null, 'Choisissez un de vos cours pour y ranger le fichier.'];
         }
@@ -375,7 +453,7 @@ final class Partages
         return [$coursCible, null];
     }
 
-    private static function copierFichier(array $f, int $moi, int $coursId, string $dossier): bool
+    private static function copierFichier(array $f, int $moi, int $coursId, string $dossier, bool $pourFiche = false): bool
     {
         $source = $dossier . DIRECTORY_SEPARATOR . basename((string) $f['nom_stocke']);
         if (!is_file($source)) {
@@ -387,8 +465,8 @@ final class Partages
             return false;
         }
         Database::run(
-            'INSERT INTO fichiers (user_id, cours_id, pour_fiche, nom_origine, nom_stocke, mime, taille) VALUES (?, ?, 0, ?, ?, ?, ?)',
-            [$moi, $coursId, (string) $f['nom_origine'], $nom, (string) $f['mime'], (int) $f['taille']]
+            'INSERT INTO fichiers (user_id, cours_id, pour_fiche, nom_origine, nom_stocke, mime, taille) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [$moi, $coursId, $pourFiche ? 1 : 0, (string) $f['nom_origine'], $nom, (string) $f['mime'], (int) $f['taille']]
         );
 
         return true;
@@ -412,11 +490,12 @@ final class Partages
         return [
             'type' => $type,
             'titre' => (string) $cible['titre'],
-            'icone' => $type === 'cours' ? '📘' : Fichiers::icone((string) $cible['mime'], (string) $cible['nom_origine']),
+            'icone' => match ($type) { 'cours' => '📘', 'fiche' => '📝', default => Fichiers::icone((string) $cible['mime'], (string) $cible['nom_origine']) },
             'detail' => !$visible ? 'Le partage a été retiré.'
-                : ($type === 'cours'
-                    ? 'Cours' . ((int) $cible['nb_fichiers'] > 0 ? ' · ' . (int) $cible['nb_fichiers'] . ' fichier' . ((int) $cible['nb_fichiers'] > 1 ? 's' : '') : '')
-                    : 'Fichier · ' . taille_lisible((int) $cible['taille'])),
+                : ($type === 'fichier'
+                    ? 'Fichier · ' . taille_lisible((int) $cible['taille'])
+                    : ($type === 'cours' ? 'Cours' : 'Fiche de révision')
+                        . ((int) $cible['nb_fichiers'] > 0 ? ' · ' . (int) $cible['nb_fichiers'] . ' fichier' . ((int) $cible['nb_fichiers'] > 1 ? 's' : '') : '')),
             'url' => $visible ? self::adresse($type, $id) : null,
         ];
     }
