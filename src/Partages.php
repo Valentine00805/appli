@@ -372,13 +372,13 @@ final class Partages
     }
 
     /**
-     * Partage plusieurs documents d'un coup — des cours, des fichiers, ou les
-     * deux : un accès et une carte par document, mais une seule notification,
-     * qui dit combien.
+     * Partage plusieurs documents d'un coup — des cours, des fichiers, des
+     * dossiers, ou de chaque sorte : un accès et une carte par document, mais
+     * une seule notification, qui dit combien.
      *
      * @return array{0: int, 1: int, 2: ?string, 3: list<int>} les documents partagés, les personnes atteintes, un refus, les notifications
      */
-    public static function partagerPlusieurs(int $moi, array $coursIds, array $fichierIds, array $amis, array $groupes, string $texte): array
+    public static function partagerPlusieurs(int $moi, array $coursIds, array $fichierIds, array $dossierIds, array $amis, array $groupes, string $texte): array
     {
         $texte = trim(str_replace(["\r\n", "\r"], "\n", $texte));
         if (mb_strlen($texte) > Amis::MESSAGE_MAX) {
@@ -389,16 +389,17 @@ final class Partages
         ));
         $coursIds = $propres($coursIds);
         $fichierIds = $propres($fichierIds);
-        $total = count($coursIds) + count($fichierIds);
+        $dossierIds = $propres($dossierIds);
+        $total = count($coursIds) + count($fichierIds) + count($dossierIds);
         if ($total === 0) {
-            return [0, 0, 'Choisissez au moins un cours ou un fichier.', []];
+            return [0, 0, 'Choisissez au moins un cours, un fichier ou un dossier.', []];
         }
         if ($total > self::LOT_MAX) {
             return [0, 0, 'Pas plus de ' . self::LOT_MAX . ' documents à la fois.', []];
         }
         // Les documents, dans l'ordre où ils paraissent, et tous à moi.
         $documents = [];
-        foreach ([['cours', $coursIds], ['fichier', $fichierIds]] as [$type, $ids]) {
+        foreach ([['cours', $coursIds], ['fichier', $fichierIds], ['dossier', $dossierIds]] as [$type, $ids]) {
             foreach ($ids as $i) {
                 $cible = self::mienne($type, $i, $moi);
                 if ($cible === null) {
@@ -415,7 +416,7 @@ final class Partages
         $atteints = [];
         $notifications = [];
         $pseudo = (string) (Amis::compte($moi)['pseudo'] ?? 'Un ami');
-        $combien = self::combien(count($coursIds), count($fichierIds))
+        $combien = self::combien(count($coursIds), count($fichierIds), count($dossierIds))
             . ' (dont « ' . mb_strimwidth($documents[0]['titre'], 0, 60, '…') . ' »)';
 
         foreach ($amis as $a) {
@@ -458,17 +459,22 @@ final class Partages
         return [count($documents), count($atteints), null, $notifications];
     }
 
-    /** « 3 cours », « 2 fichiers », « 5 documents » : ce qu'un lot contient. */
-    public static function combien(int $nbCours, int $nbFichiers): string
+    /** « 3 cours », « 2 fichiers », « 1 dossier », « 5 documents » : ce qu'un lot contient. */
+    public static function combien(int $nbCours, int $nbFichiers, int $nbDossiers = 0): string
     {
-        if ($nbFichiers === 0) {
-            return $nbCours . ' cours';
+        $total = $nbCours + $nbFichiers + $nbDossiers;
+        // Une seule sorte : on la nomme. Plusieurs : ce sont des documents.
+        if ($nbCours === $total) {
+            return $total . ' cours';
         }
-        if ($nbCours === 0) {
-            return $nbFichiers . ' fichier' . ($nbFichiers > 1 ? 's' : '');
+        if ($nbFichiers === $total) {
+            return $total . ' fichier' . ($total > 1 ? 's' : '');
+        }
+        if ($nbDossiers === $total) {
+            return $total . ' dossier' . ($total > 1 ? 's' : '');
         }
 
-        return ($nbCours + $nbFichiers) . ' documents';
+        return $total . ' documents';
     }
 
     private static function donnerAcces(int $moi, int $destinataire, string $type, int $id): void

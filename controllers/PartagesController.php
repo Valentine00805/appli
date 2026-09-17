@@ -44,7 +44,7 @@ final class PartagesController
         ], $vue === 'recus' ? 'Partagés avec moi' : 'Ce que je partage');
     }
 
-    /** La fenêtre « Partager plusieurs documents » : on coche des cours et des fichiers, puis des amis. */
+    /** La fenêtre « Partager plusieurs documents » : on coche des cours, des fichiers et des dossiers, puis des amis. */
     public function plusieurs(): void
     {
         Auth::exiger();
@@ -62,8 +62,10 @@ final class PartagesController
                   WHERE f.user_id = ? ORDER BY f.created_at DESC',
                 [$moi]
             ),
+            'mesDossiers' => DossiersController::pourUtilisateur($moi, true),
             'choisis' => array_flip(array_map('intval', is_array($_GET['cours'] ?? null) ? $_GET['cours'] : [])),
             'choisisFichiers' => array_flip(array_map('intval', is_array($_GET['fichiers'] ?? null) ? $_GET['fichiers'] : [])),
+            'choisisDossiers' => array_flip(array_map('intval', is_array($_GET['dossiers'] ?? null) ? $_GET['dossiers'] : [])),
             'amis' => Amis::liste($moi),
             'groupes' => Conversations::liste($moi),
         ];
@@ -81,8 +83,9 @@ final class PartagesController
         Session::verifierCsrf();
         $cours = is_array($_POST['cours'] ?? null) ? $_POST['cours'] : [];
         $fichiers = is_array($_POST['fichiers'] ?? null) ? $_POST['fichiers'] : [];
+        $dossiers = is_array($_POST['dossiers'] ?? null) ? $_POST['dossiers'] : [];
         [, $nombre, $refus, $notifications] = Partages::partagerPlusieurs(
-            Auth::id(), $cours, $fichiers,
+            Auth::id(), $cours, $fichiers, $dossiers,
             is_array($_POST['amis'] ?? null) ? $_POST['amis'] : [],
             is_array($_POST['groupes'] ?? null) ? $_POST['groupes'] : [],
             (string) ($_POST['texte'] ?? '')
@@ -90,7 +93,8 @@ final class PartagesController
         if ($refus !== null) {
             Session::flash('erreur', $refus);
         } else {
-            Session::flash('succes', Partages::combien(count($cours), count($fichiers)) . ' partagé' . (count($cours) + count($fichiers) > 1 ? 's' : '')
+            Session::flash('succes', Partages::combien(count($cours), count($fichiers), count($dossiers))
+                . ' partagé' . (count($cours) + count($fichiers) + count($dossiers) > 1 ? 's' : '')
                 . ' avec ' . $nombre . ' personne' . ($nombre > 1 ? 's' : '') . ' : les cartes sont parties dans vos discussions.');
         }
         $this->retourPuisEnvoyer('partager/plusieurs', $notifications);
