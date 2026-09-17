@@ -462,7 +462,7 @@ final class Amis
             return [];
         }
         $lignes = Database::all(
-            'SELECT id, expediteur_id, texte, evenement, image_nom, fichier_origine, audio_nom, supprime_le, created_at FROM messages WHERE id IN (' . implode(',', array_fill(0, count($ids), '?')) . ')',
+            'SELECT id, expediteur_id, texte, evenement, image_nom, fichier_origine, audio_nom, partage_type, supprime_le, created_at FROM messages WHERE id IN (' . implode(',', array_fill(0, count($ids), '?')) . ')',
             $ids
         );
 
@@ -948,10 +948,10 @@ final class Amis
     {
         return Database::all(
             'SELECT m.id, m.expediteur_id, m.texte, m.image_nom, m.image_largeur, m.image_hauteur,
-                    m.fichier_nom, m.fichier_origine, m.fichier_mime, m.fichier_taille, m.audio_nom, m.audio_duree, m.audio_transcription, m.evenement,
+                    m.fichier_nom, m.fichier_origine, m.fichier_mime, m.fichier_taille, m.audio_nom, m.audio_duree, m.audio_transcription, m.evenement, m.partage_type, m.partage_id,
                     m.created_at, m.modifie_le, m.lu_le, m.supprime_le, m.reponse_a,
                     r.expediteur_id AS r_expediteur, r.texte AS r_texte, r.image_nom AS r_image,
-                    r.fichier_origine AS r_fichier, r.audio_nom AS r_audio, r.supprime_le AS r_supprime,
+                    r.fichier_origine AS r_fichier, r.audio_nom AS r_audio, r.partage_type AS r_partage, r.supprime_le AS r_supprime,
                     ((r.expediteur_id = ? AND r.masque_expediteur = 1) OR (r.destinataire_id = ? AND r.masque_destinataire = 1)) AS r_masque
                FROM messages m
                LEFT JOIN messages r ON r.id = m.reponse_a
@@ -1019,7 +1019,8 @@ final class Amis
         if (mb_strlen($texte) > self::MESSAGE_MAX) {
             return [false, 'Un message ne peut pas dépasser ' . self::MESSAGE_MAX . ' caractères.'];
         }
-        if ($texte === '' && $message['image_nom'] === null && $message['fichier_nom'] === null && $message['audio_nom'] === null) {
+        if ($texte === '' && $message['image_nom'] === null && $message['fichier_nom'] === null && $message['audio_nom'] === null
+            && $message['partage_type'] === null) {
             return [false, 'Le message ne peut pas être vide : pour l’enlever, supprimez-le.'];
         }
         if ($texte !== (string) $message['texte']) {
@@ -1041,7 +1042,8 @@ final class Amis
         $texte = trim((string) preg_replace('/\s+/u', ' ', (string) ($cite['r_texte'] ?? '')));
         $piece = ($cite['r_image'] ?? null) !== null ? '📷 Photo'
             : (($cite['r_fichier'] ?? null) !== null ? '📎 ' . $cite['r_fichier']
-            : (($cite['r_audio'] ?? null) !== null ? '🎤 Message vocal' : ''));
+            : (($cite['r_audio'] ?? null) !== null ? '🎤 Message vocal'
+            : (($cite['r_partage'] ?? null) !== null ? '🔗 Document partagé' : '')));
 
         return mb_strimwidth($texte === '' ? $piece : ($piece === '' ? $texte : $piece . ' · ' . $texte), 0, 120, '…');
     }
@@ -1132,7 +1134,7 @@ final class Amis
         }
         Database::run(
             "UPDATE messages SET texte = '', image_nom = NULL, image_mime = NULL, image_largeur = NULL, image_hauteur = NULL,
-                    fichier_nom = NULL, fichier_origine = NULL, fichier_mime = NULL, fichier_taille = NULL, audio_nom = NULL, audio_duree = NULL, audio_transcription = NULL, reponse_a = NULL
+                    fichier_nom = NULL, fichier_origine = NULL, fichier_mime = NULL, fichier_taille = NULL, audio_nom = NULL, audio_duree = NULL, audio_transcription = NULL, partage_type = NULL, partage_id = NULL, reponse_a = NULL
               WHERE id = ?",
             [(int) $message['id']]
         );
@@ -1608,6 +1610,7 @@ final class Amis
             'modifie' => ($message['modifie_le'] ?? null) !== null && ($message['supprime_le'] ?? null) === null,
             'reactions' => [],
             'epingle' => false,
+            'partage' => Partages::carte($message['partage_type'] ?? null, isset($message['partage_id']) ? (int) $message['partage_id'] : null, $moi),
             'reponse' => ($message['r_expediteur'] ?? null) === null ? null : [
                 'id' => (int) $message['reponse_a'],
                 'auteur' => (int) $message['r_expediteur'] === $moi ? 'Vous'

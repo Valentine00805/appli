@@ -140,6 +140,7 @@ final class Fichiers
             @unlink($origine);
         }
         Database::run('DELETE FROM fichiers WHERE id = ?', [$fichierId]);
+        Partages::oublier('fichier', $fichierId);
         return true;
     }
 

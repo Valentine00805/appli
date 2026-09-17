@@ -152,7 +152,7 @@ foreach ($messages as $m) {
         <div class="bulle<?= $m['moi'] ? ' bulle--moi' : '' ?><?= $m['image'] !== null ? ' bulle--image' : '' ?><?= $m['supprime'] ? ' bulle--supprime' : '' ?><?= $m['epingle'] ? ' bulle--epingle' : '' ?>"
              data-message="<?= (int) $m['id'] ?>" id="message-<?= (int) $m['id'] ?>" tabindex="0" aria-haspopup="menu"
              <?= $enGroupe ? 'data-auteur="' . e($m['auteur']) . '" data-auteur-id="' . (int) $m['auteur_id'] . '"' : '' ?>
-             <?= $m['image'] !== null || $m['fichier'] !== null || $m['vocal'] !== null ? 'data-piece' : '' ?>>
+             <?= $m['image'] !== null || $m['fichier'] !== null || $m['vocal'] !== null || $m['partage'] !== null ? 'data-piece' : '' ?>>
           <?php // Dans un groupe, le nom de qui écrit, en tête d'une suite de ses messages. ?>
           <?php if ($enGroupe && !$m['moi'] && $auteurPrecedent !== $m['auteur_id']): ?>
             <span class="bulle__auteur"><?= e($m['auteur']) ?></span>
@@ -166,6 +166,17 @@ foreach ($messages as $m) {
           <?php endif; ?>
           <?php if ($m['supprime']): ?>
             <p class="bulle__texte">🚫 Message supprimé</p>
+          <?php endif; ?>
+          <?php if ($m['partage'] !== null): ?>
+            <?php // Un cours ou un fichier partagé : une carte qui l'ouvre, en lecture. ?>
+            <?php $p = $m['partage']; ?>
+            <<?= $p['url'] !== null ? 'a href="' . e($p['url']) . '"' : 'div' ?> class="bulle__partage<?= $p['url'] === null ? ' bulle__partage--mort' : '' ?>">
+              <span class="bulle__partage-icone" aria-hidden="true"><?= e($p['icone']) ?></span>
+              <span class="bulle__partage-texte">
+                <span class="bulle__partage-titre"><?= e($p['titre']) ?></span>
+                <span class="bulle__partage-detail"><?= Partages::icone(12) ?> <?= e($p['detail']) ?></span>
+              </span>
+            </<?= $p['url'] !== null ? 'a' : 'div' ?>>
           <?php endif; ?>
           <?php if ($m['image'] !== null): ?>
             <a class="bulle__image" href="<?= e($m['image']) ?>" target="_blank" rel="noopener" data-visionneuse>

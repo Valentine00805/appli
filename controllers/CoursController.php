@@ -34,6 +34,7 @@ final class CoursController
             'dossierId' => $dossierId,
             'favoris'   => $favoris,
             'tri'       => $tri,
+            'partagesRecus' => Partages::recus($userId),
         ], 'Mes cours');
     }
 
@@ -1157,6 +1158,7 @@ final class CoursController
             Fichiers::supprimer((int) $fichier['id'], $userId);
         }
         Database::run('DELETE FROM cours WHERE id = ? AND user_id = ?', [$id, $userId]);
+        Partages::oublier('cours', $id);
 
         Session::flash('succes', 'Cours supprimé.');
         redirect('cours');

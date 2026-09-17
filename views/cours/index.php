@@ -57,6 +57,24 @@
   </div>
 </div>
 
+<?php // Ce que mes amis m'ont partagé : en lecture, toujours à jour. ?>
+<?php if ($partagesRecus !== []): ?>
+  <section class="carte partages-recus" id="partages-recus">
+    <h2 style="margin-top:0"><?= Partages::icone(20) ?> Partagés avec moi <span class="discret">(<?= count($partagesRecus) ?>)</span></h2>
+    <div class="partages-recus__liste">
+      <?php foreach ($partagesRecus as $p): ?>
+        <a class="partage-recu" href="<?= e($p['url']) ?>">
+          <span class="partage-recu__icone" aria-hidden="true"><?= e($p['icone']) ?></span>
+          <span class="partage-recu__texte">
+            <span class="partage-recu__titre"><?= e($p['titre']) ?></span>
+            <span class="partage-recu__detail"><?= Amis::avatar($p['proprietaire_id'], $p['proprietaire'], 'avatar--mini') ?> <?= e($p['proprietaire']) ?> · <?= e(date_fr(Amis::local($p['quand'])->format('Y-m-d H:i:s'), false)) ?></span>
+          </span>
+        </a>
+      <?php endforeach; ?>
+    </div>
+  </section>
+<?php endif; ?>
+
 <form class="filtres" method="get" action="<?= url('cours') ?>" data-auto-envoi>
   <div class="champ">
     <label for="f-q">Rechercher</label>

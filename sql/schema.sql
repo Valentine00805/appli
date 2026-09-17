@@ -632,6 +632,9 @@ CREATE TABLE IF NOT EXISTS `messages` (
   `audio_duree`     SMALLINT UNSIGNED NULL,
   -- Ce que le navigateur a entendu pendant l'enregistrement.
   `audio_transcription` TEXT NULL,
+  -- Un cours ou un fichier partagé : la carte du message.
+  `partage_type`    VARCHAR(8)   NULL,
+  `partage_id`      INT UNSIGNED NULL,
   -- Une note de la discussion (« fond », « fond_retire ») plutôt qu'un message.
   `evenement`       VARCHAR(20)  NULL,
   `created_at`      DATETIME     NOT NULL,
@@ -828,6 +831,8 @@ CREATE TABLE IF NOT EXISTS `conversation_messages` (
   `audio_nom`       VARCHAR(64)  NULL,
   `audio_duree`     SMALLINT UNSIGNED NULL,
   `audio_transcription` TEXT     NULL,
+  `partage_type`    VARCHAR(8)   NULL,
+  `partage_id`      INT UNSIGNED NULL,
   `created_at`      DATETIME     NOT NULL,
   `modifie_le`      DATETIME     NULL,
   `reactions_le`    DATETIME     NULL,
@@ -914,4 +919,33 @@ CREATE TABLE IF NOT EXISTS `reinitialisations_mdp` (
   KEY `idx_reinitialisation_user` (`user_id`, `cree_le`),
   KEY `idx_reinitialisation_ip` (`ip`, `cree_le`),
   CONSTRAINT `fk_reinitialisation_user` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Partager un cours ou un fichier, avec ses amis ou par un lien public.
+CREATE TABLE IF NOT EXISTS `partages_amis` (
+  `destinataire_id` INT UNSIGNED NOT NULL,
+  `cible_type`      VARCHAR(8)   NOT NULL,
+  `cible_id`        INT UNSIGNED NOT NULL,
+  `proprietaire_id` INT UNSIGNED NOT NULL,
+  `created_at`      DATETIME     NOT NULL,
+  PRIMARY KEY (`destinataire_id`, `cible_type`, `cible_id`),
+  KEY `idx_partages_amis_cible` (`cible_type`, `cible_id`),
+  KEY `idx_partages_amis_proprietaire` (`proprietaire_id`),
+  CONSTRAINT `fk_partages_amis_destinataire` FOREIGN KEY (`destinataire_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_partages_amis_proprietaire` FOREIGN KEY (`proprietaire_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `liens_partage` (
+  `id`         INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `user_id`    INT UNSIGNED NOT NULL,
+  `cible_type` VARCHAR(8)   NOT NULL,
+  `cible_id`   INT UNSIGNED NOT NULL,
+  `jeton`      CHAR(32)     NOT NULL,
+  `created_at` DATETIME     NOT NULL,
+  `vues`       INT UNSIGNED NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_lien_jeton` (`jeton`),
+  UNIQUE KEY `uniq_lien_cible` (`cible_type`, `cible_id`),
+  KEY `idx_lien_user` (`user_id`),
+  CONSTRAINT `fk_lien_partage_user` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

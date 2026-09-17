@@ -38,6 +38,9 @@ $dansUneFenetre = $dansUneFenetre ?? false;
         ✎ Modifier le texte
       </a>
     <?php endif; ?>
+    <a class="bouton bouton--secondaire bouton-partage" href="<?= url('partager/fichiers/' . $fichier['id']) ?>" <?= $dansUneFenetre ? 'data-fenetre-dessus' : 'data-fenetre' ?>>
+      <?= Partages::icone() ?> Partager
+    </a>
     <?php // Télécharger : le fichier d'origine, ou le PDF. ?>
     <?= Vue::rendre('cours/_telecharger', ['fichier' => $fichier]) ?>
   </div>

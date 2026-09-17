@@ -689,7 +689,7 @@ final class Conversations
         }
 
         return array_column(Database::all(
-            'SELECT id, expediteur_id, texte, evenement, evenement_cible, evenement_texte, image_nom, fichier_origine, audio_nom, supprime_le, created_at
+            'SELECT id, expediteur_id, texte, evenement, evenement_cible, evenement_texte, image_nom, fichier_origine, audio_nom, partage_type, supprime_le, created_at
                FROM conversation_messages WHERE id IN (' . implode(',', array_fill(0, count($ids), '?')) . ')',
             $ids
         ), null, 'id');
@@ -813,10 +813,10 @@ final class Conversations
         return Database::all(
             'SELECT m.id, m.expediteur_id, m.texte, m.image_nom, m.image_largeur, m.image_hauteur,
                     m.fichier_nom, m.fichier_origine, m.fichier_mime, m.fichier_taille, m.audio_nom, m.audio_duree, m.audio_transcription,
-                    m.evenement, m.evenement_cible, m.evenement_texte,
+                    m.evenement, m.evenement_cible, m.evenement_texte, m.partage_type, m.partage_id,
                     m.created_at, m.modifie_le, m.supprime_le, m.reponse_a,
                     r.expediteur_id AS r_expediteur, r.texte AS r_texte, r.image_nom AS r_image,
-                    r.fichier_origine AS r_fichier, r.audio_nom AS r_audio, r.supprime_le AS r_supprime,
+                    r.fichier_origine AS r_fichier, r.audio_nom AS r_audio, r.partage_type AS r_partage, r.supprime_le AS r_supprime,
                     (r.id <= ? OR EXISTS (SELECT 1 FROM conversation_masques rx WHERE rx.message_id = r.id AND rx.user_id = ?)) AS r_masque
                FROM conversation_messages m
                LEFT JOIN conversation_messages r ON r.id = m.reponse_a
@@ -919,7 +919,8 @@ final class Conversations
         if (mb_strlen($texte) > Amis::MESSAGE_MAX) {
             return [false, 'Un message ne peut pas dépasser ' . Amis::MESSAGE_MAX . ' caractères.'];
         }
-        if ($texte === '' && $message['image_nom'] === null && $message['fichier_nom'] === null && $message['audio_nom'] === null) {
+        if ($texte === '' && $message['image_nom'] === null && $message['fichier_nom'] === null && $message['audio_nom'] === null
+            && $message['partage_type'] === null) {
             return [false, 'Le message ne peut pas être vide : pour l’enlever, supprimez-le.'];
         }
         if ($texte !== (string) $message['texte']) {
@@ -949,7 +950,7 @@ final class Conversations
             Database::run(
                 "UPDATE conversation_messages SET texte = '', image_nom = NULL, image_mime = NULL, image_largeur = NULL, image_hauteur = NULL,
                         fichier_nom = NULL, fichier_origine = NULL, fichier_mime = NULL, fichier_taille = NULL,
-                        audio_nom = NULL, audio_duree = NULL, audio_transcription = NULL, reponse_a = NULL,
+                        audio_nom = NULL, audio_duree = NULL, audio_transcription = NULL, partage_type = NULL, partage_id = NULL, reponse_a = NULL,
                         supprime_le = COALESCE(supprime_le, UTC_TIMESTAMP())
                   WHERE id = ?",
                 [$messageId]
@@ -1330,7 +1331,8 @@ final class Conversations
         $texte = trim((string) preg_replace('/\s+/u', ' ', (string) $dernier['texte']));
         $piece = $dernier['image_nom'] !== null ? '📷 Photo'
             : ($dernier['fichier_origine'] !== null ? '📎 ' . $dernier['fichier_origine']
-            : ($dernier['audio_nom'] !== null ? '🎤 Message vocal' : ''));
+            : ($dernier['audio_nom'] !== null ? '🎤 Message vocal'
+            : ($dernier['partage_type'] !== null ? '🔗 ' . ($dernier['partage_type'] === 'cours' ? 'Cours partagé' : 'Fichier partagé') : '')));
 
         return $qui . ' : ' . ($texte === '' ? $piece : ($piece === '' ? $texte : $piece . ' · ' . $texte));
     }

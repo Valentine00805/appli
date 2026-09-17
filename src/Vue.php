@@ -24,6 +24,14 @@ final class Vue
         require dirname(__DIR__) . '/views/layout_nu.php';
     }
 
+    /** Affiche une vue ouverte par un lien public : sans menu, pour qui n'a pas de compte. */
+    public static function afficherPublic(string $vue, array $donnees = [], string $titre = ''): void
+    {
+        $contenu = self::rendre($vue, $donnees);
+        $titrePage = $titre !== '' ? $titre . ' · ' . Config::get('app', 'nom') : (string) Config::get('app', 'nom');
+        require dirname(__DIR__) . '/views/layout_public.php';
+    }
+
     /**
      * La page demandée en fenêtre ?
      *

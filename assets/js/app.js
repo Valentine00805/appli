@@ -1233,7 +1233,7 @@
         bulle.classList.remove('bulle--image');
         bulle.removeAttribute('data-piece');
         bulle.querySelectorAll('.bulle__vocal audio').forEach(function (a) { a.pause(); });
-        bulle.querySelectorAll('.bulle__image, .bulle__fichier, .bulle__vocal, .bulle__transcription, .bulle__texte, .bulle__citation, .bulle__modifie, .bulle__reactions').forEach(function (e) { e.remove(); });
+        bulle.querySelectorAll('.bulle__image, .bulle__fichier, .bulle__partage, .bulle__vocal, .bulle__transcription, .bulle__texte, .bulle__citation, .bulle__modifie, .bulle__reactions').forEach(function (e) { e.remove(); });
         var efface = document.createElement('p');
         efface.className = 'bulle__texte';
         efface.textContent = '🚫 Message supprimé';
@@ -1467,7 +1467,8 @@
         var texte = texteDe(bulle).replace(/\s+/g, ' ').trim();
         var nomFichier = bulle.querySelector('.bulle__fichier-nom');
         var piece = bulle.querySelector('.bulle__image') ? '📷 Photo' : (nomFichier ? '📎 ' + nomFichier.textContent
-          : (bulle.querySelector('.bulle__vocal') ? '🎤 Message vocal' : ''));
+          : (bulle.querySelector('.bulle__vocal') ? '🎤 Message vocal'
+          : (bulle.querySelector('.bulle__partage') ? '🔗 Document partagé' : '')));
         var extrait = texte === '' ? piece : (piece === '' ? texte : piece + ' · ' + texte);
         return extrait.length > 120 ? extrait.slice(0, 119) + '…' : extrait;
       };
@@ -1920,7 +1921,7 @@
         bulle.id = 'message-' + message.id;
         bulle.tabIndex = 0;
         bulle.setAttribute('aria-haspopup', 'menu');
-        if (message.image || message.fichier || message.vocal) { bulle.setAttribute('data-piece', ''); }
+        if (message.image || message.fichier || message.vocal || message.partage) { bulle.setAttribute('data-piece', ''); }
         // Dans un groupe, le nom de qui écrit, en tête d'une suite de ses messages.
         if (enGroupe) {
           var auteurId = String(message.auteur_id || '');
@@ -1972,6 +1973,29 @@
           suivreImage(img);
           lienImage.appendChild(img);
           bulle.appendChild(lienImage);
+        }
+        // Un cours ou un fichier partagé : une carte qui l'ouvre.
+        if (message.partage) {
+          var carte = document.createElement(message.partage.url ? 'a' : 'div');
+          carte.className = 'bulle__partage' + (message.partage.url ? '' : ' bulle__partage--mort');
+          if (message.partage.url) { carte.href = message.partage.url; }
+          var carteIcone = document.createElement('span');
+          carteIcone.className = 'bulle__partage-icone';
+          carteIcone.setAttribute('aria-hidden', 'true');
+          carteIcone.textContent = message.partage.icone;
+          var carteTexte = document.createElement('span');
+          carteTexte.className = 'bulle__partage-texte';
+          var carteTitre = document.createElement('span');
+          carteTitre.className = 'bulle__partage-titre';
+          carteTitre.textContent = message.partage.titre;
+          var carteDetail = document.createElement('span');
+          carteDetail.className = 'bulle__partage-detail';
+          carteDetail.textContent = '🔗 ' + message.partage.detail;
+          carteTexte.appendChild(carteTitre);
+          carteTexte.appendChild(carteDetail);
+          carte.appendChild(carteIcone);
+          carte.appendChild(carteTexte);
+          bulle.appendChild(carte);
         }
         if (message.vocal) {
           var lecteur = document.createElement('div');
@@ -2779,6 +2803,42 @@
       planifier();
     })();
   }
+
+  /*
+   * Le lien de partage : « Copier » le met dans le presse-papiers ;
+   * « Envoyer… » ouvre le partage du téléphone (messages, e-mail…), là où
+   * le navigateur le propose.
+   */
+  document.addEventListener('click', function (evenement) {
+    var bouton = evenement.target.closest && evenement.target.closest('[data-partage-copier], [data-partage-natif]');
+    if (!bouton) { return; }
+    var bloc = bouton.closest('[data-partage-lien]');
+    var champ = bloc.querySelector('[data-partage-adresse]');
+    var etat = bloc.parentNode.querySelector('[data-partage-etat]');
+    if (bouton.hasAttribute('data-partage-natif')) {
+      navigator.share({ title: bouton.getAttribute('data-titre') || '', url: champ.value }).catch(function () {});
+      return;
+    }
+    var dire = function (texte) { if (etat) { etat.textContent = texte; } };
+    var secours = function () {
+      champ.focus();
+      champ.select();
+      try { document.execCommand('copy'); dire('Lien copié.'); } catch (e) { dire('Sélectionné : copiez-le avec Ctrl+C.'); }
+    };
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(champ.value).then(function () { dire('Lien copié.'); }, secours);
+    } else {
+      secours();
+    }
+    bouton.textContent = 'Copié ✓';
+    setTimeout(function () { bouton.textContent = 'Copier'; }, 2000);
+  });
+  var montrerPartageNatif = function (racine) {
+    if (!navigator.share) { return; }
+    racine.querySelectorAll('[data-partage-natif]').forEach(function (b) { b.hidden = false; });
+  };
+  montrerPartageNatif(document);
+  new MutationObserver(function () { montrerPartageNatif(document); }).observe(document.body, { childList: true, subtree: true });
 
   /*
    * Filtrer une liste en tapant : les discussions de la colonne de gauche,

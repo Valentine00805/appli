@@ -58,6 +58,10 @@ $nbElements = count($elements) + count($fichiersFiche);
        href="<?= url('revision/' . $cours['id']) ?>" data-fenetre>
       📝 Révision<?= $fiche !== '' || $nbElements > 0 ? ' •' : '' ?>
     </a>
+    <?php // Partager le cours : à ses amis, ou par un lien. ?>
+    <a class="bouton bouton--secondaire bouton-partage" href="<?= url('partager/cours/' . $cours['id']) ?>" <?= $dansUneFenetre ? 'data-fenetre-dessus' : 'data-fenetre' ?>>
+      <?= Partages::icone() ?> Partager
+    </a>
     <?php // Le nouvel évènement, déjà lié au cours, s'ouvre dans une fenêtre. ?>
     <a class="bouton bouton--secondaire" href="<?= url('evenements/nouveau', ['cours' => $cours['id']]) ?>" data-fenetre>Planifier</a>
     <?php // Le formulaire s'ouvre dans une fenêtre, par-dessus le cours. ?>
@@ -140,6 +144,8 @@ $nbElements = count($elements) + count($fichiersFiche);
                 <span class="fichier__actions">
                   <?php // Le fichier d'origine, ou le PDF pour un document. ?>
                   <?= Vue::rendre('cours/_telecharger', ['fichier' => $f, 'compact' => true]) ?>
+                  <a class="bouton bouton--discret bouton--petit bouton-partage" href="<?= url('partager/fichiers/' . $f['id']) ?>"
+                     <?= $dansUneFenetre ? 'data-fenetre-dessus' : 'data-fenetre' ?> title="Partager ce fichier" aria-label="Partager <?= e($f['nom_origine']) ?>"><?= Partages::icone(15) ?></a>
                   <form method="post" action="<?= url('fichiers/' . $f['id'] . '/supprimer') ?>" class="en-ligne"<?= $surPlace ?>
                         data-confirmation="Supprimer définitivement ce fichier ?">
                     <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">

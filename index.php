@@ -46,6 +46,7 @@ require __DIR__ . '/src/Rappels.php';
 require __DIR__ . '/src/FileNotifications.php';
 require __DIR__ . '/src/Amis.php';
 require __DIR__ . '/src/Conversations.php';
+require __DIR__ . '/src/Partages.php';
 require __DIR__ . '/src/PlanningJour.php';
 require __DIR__ . '/src/Fournisseur.php';
 require __DIR__ . '/src/FournisseurMicrosoft.php';
@@ -61,6 +62,7 @@ require __DIR__ . '/src/Vue.php';
 require __DIR__ . '/controllers/AuthController.php';
 require __DIR__ . '/controllers/AmisController.php';
 require __DIR__ . '/controllers/ConversationsController.php';
+require __DIR__ . '/controllers/PartagesController.php';
 require __DIR__ . '/controllers/CoursController.php';
 require __DIR__ . '/controllers/CalendrierController.php';
 require __DIR__ . '/controllers/MatieresController.php';
@@ -481,6 +483,19 @@ $routes = [
     ['POST', 'tableau/note',                 [KanbanController::class, 'noter']],
 
     ['GET',  'recherche',                 [CoursController::class, 'recherche']],
+
+    // Partager un cours ou un fichier : avec ses amis, ou par un lien public.
+    ['GET',  'partager/{mot}/{id}',                 [PartagesController::class, 'fenetre']],
+    ['POST', 'partager/{mot}/{id}/amis',            [PartagesController::class, 'envoyer']],
+    ['POST', 'partager/{mot}/{id}/acces/{id}/retirer', [PartagesController::class, 'retirerAcces']],
+    ['POST', 'partager/{mot}/{id}/lien',            [PartagesController::class, 'creerLien']],
+    ['POST', 'partager/{mot}/{id}/lien/desactiver', [PartagesController::class, 'desactiverLien']],
+    ['GET',  'partages/fichiers/{id}/contenu',      [PartagesController::class, 'contenu']],
+    ['GET',  'partages/{mot}/{id}',                 [PartagesController::class, 'lire']],
+    ['POST', 'partages/{mot}/{id}/copier',          [PartagesController::class, 'copier']],
+    ['POST', 'partages/{mot}/{id}/oublier',         [PartagesController::class, 'oublier']],
+    ['GET',  'p/{jeton}',                           [PartagesController::class, 'public']],
+    ['GET',  'p/{jeton}/fichiers/{id}',             [PartagesController::class, 'fichierPublic']],
 ];
 
 foreach ($routes as [$methode, $motif, $action]) {
@@ -489,15 +504,17 @@ foreach ($routes as [$methode, $motif, $action]) {
     }
     /*
      * Deux sortes de trous dans un motif : « {id} » pour un entier,
-     * « {mot} » pour un nom sans accent — le fournisseur d'un agenda.
+     * « {mot} » pour un nom sans accent — le fournisseur d'un agenda —,
+     * « {jeton} » pour le code d'un lien de partage.
      * Chacun garde sa nature jusqu'à l'action : un identifiant reste un
      * entier, un mot reste une chaîne.
      */
     $sortes = [];
     $regex = '#^';
-    foreach (preg_split('#(\{id\}|\{mot\})#', $motif, -1, PREG_SPLIT_DELIM_CAPTURE) as $bout) {
+    foreach (preg_split('#(\{id\}|\{mot\}|\{jeton\})#', $motif, -1, PREG_SPLIT_DELIM_CAPTURE) as $bout) {
         if ($bout === '{id}')  { $regex .= '(\d+)';   $sortes[] = 'id';  continue; }
         if ($bout === '{mot}') { $regex .= '([a-z]+)'; $sortes[] = 'mot'; continue; }
+        if ($bout === '{jeton}') { $regex .= '([0-9a-f]{32})'; $sortes[] = 'jeton'; continue; }
         $regex .= preg_quote($bout, '#');
     }
     $regex .= '$#';

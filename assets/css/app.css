@@ -286,6 +286,47 @@ textarea { min-height: 260px; resize: vertical; line-height: 1.65; }
 .discussions-entete__titres a { font-size: .9rem; font-weight: 600; color: var(--texte-doux); text-decoration: none; }
 .discussions-entete__titres a:hover { color: var(--texte); }
 .nouvelle-discussion__groupe { margin: -.25rem -.35rem 0; }
+
+/* Partager un cours ou un fichier. */
+.icone-partage { vertical-align: -3px; flex: none; }
+.bouton-partage { display: inline-flex; align-items: center; gap: .35rem; }
+.partage-section { margin-bottom: 1rem; }
+.partage-section textarea { min-height: 4.5rem; height: 4.5rem; resize: vertical; }
+/* Le champ caché de « Importer un dossier » reste dans son bloc : sinon la page déborde sur le côté. */
+.import-dossier { position: relative; }
+.partage-liste { margin-top: .6rem; }
+.partage-liste__nom { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+[data-liste-partage] > li[hidden] { display: none; }
+.partage-lien { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+.partage-lien input { flex: 1 1 16rem; min-width: 0; font-family: Consolas, monospace; font-size: .85rem; }
+.partage-apercu { margin-bottom: 1rem; text-align: center; }
+.partage-apercu__image { max-width: 100%; max-height: 75vh; border-radius: var(--rayon-s); }
+.partage-apercu__pdf { width: 100%; height: 75vh; border: 0; border-radius: var(--rayon-s); }
+.partage-invitation { margin-top: 1.5rem; text-align: center; }
+.partage-mort { max-width: 32rem; margin: 3rem auto; text-align: center; }
+.partage-mort__icone { font-size: 2.5rem; margin: 0; }
+.partages-recus { margin-bottom: 1rem; }
+.partages-recus__liste { display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: .5rem; }
+.partage-recu {
+  display: flex; align-items: center; gap: .65rem; padding: .6rem .7rem; min-width: 0;
+  border: 1px solid var(--bordure); border-radius: var(--rayon-s); color: inherit; text-decoration: none;
+}
+.partage-recu:hover, .partage-recu:focus-visible { border-color: var(--accent); background: var(--accent-doux); outline: none; }
+.partage-recu__icone { font-size: 1.5rem; flex: none; }
+.partage-recu__texte { display: grid; min-width: 0; }
+.partage-recu__titre { font-weight: 650; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.partage-recu__detail { display: flex; align-items: center; gap: .3rem; font-size: .8rem; color: var(--texte-doux); min-width: 0; }
+.avatar--mini { width: 18px; height: 18px; font-size: .6rem; flex: none; }
+.bulle__partage {
+  display: flex; align-items: center; gap: .6rem; margin: .1rem 0 .3rem; padding: .55rem .7rem; min-width: 12rem; max-width: 100%;
+  border-radius: 10px; background: var(--fond-carte); color: var(--texte); text-decoration: none; border: 1px solid var(--bordure);
+}
+a.bulle__partage:hover, a.bulle__partage:focus-visible { border-color: var(--accent); outline: none; }
+.bulle__partage--mort { opacity: .7; }
+.bulle__partage-icone { font-size: 1.6rem; flex: none; }
+.bulle__partage-texte { display: grid; min-width: 0; }
+.bulle__partage-titre { font-weight: 650; overflow-wrap: anywhere; }
+.bulle__partage-detail { font-size: .75rem; color: var(--texte-doux); }
 [data-liste-discussions] > li[hidden], [data-liste-nouveau] > li[hidden] { display: none; }
 .chat__fil { display: flex; flex-direction: column; height: calc(100vh - 8rem); min-height: 24rem; padding: 0; overflow: hidden; }
 .chat__entete { display: flex; align-items: center; gap: .6rem; padding: .75rem 1rem; border-bottom: 1px solid var(--bordure); }
