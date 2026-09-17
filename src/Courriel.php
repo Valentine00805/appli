@@ -73,7 +73,8 @@ final class Courriel
             CURLOPT_SSL_VERIFYHOST => 2,
             CURLOPT_SSL_OPTIONS    => defined('CURLSSLOPT_NATIVE_CA') ? CURLSSLOPT_NATIVE_CA : 0,
             CURLOPT_USERNAME       => (string) Config::get('courriel', 'utilisateur'),
-            CURLOPT_PASSWORD       => (string) Config::get('courriel', 'mot_de_passe'),
+            // Google affiche le code par groupes de quatre : les espaces n'en font pas partie.
+            CURLOPT_PASSWORD       => str_replace(' ', '', (string) Config::get('courriel', 'mot_de_passe')),
             CURLOPT_MAIL_FROM      => '<' . $expediteur . '>',
             CURLOPT_MAIL_RCPT      => ['<' . $destinataire . '>'],
             CURLOPT_UPLOAD         => true,
