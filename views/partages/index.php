@@ -25,8 +25,14 @@ $lesRecus = $vue === 'recus';
     </p>
   </div>
   <div class="actions">
-    <a class="bouton bouton--secondaire" href="<?= url('cours') ?>">Mes cours</a>
-    <a class="bouton" href="<?= url('amis') ?>">Mes amis</a>
+    <?php if ($lesRecus): ?>
+      <a class="bouton bouton--secondaire" href="<?= url('cours') ?>">Mes cours</a>
+      <a class="bouton" href="<?= url('amis') ?>">Mes amis</a>
+    <?php else: ?>
+      <a class="bouton bouton--secondaire" href="<?= url('cours') ?>">Mes cours</a>
+      <a class="bouton bouton-partage" href="<?= url('partager/plusieurs') ?>"
+         data-fenetre><?= Partages::icone() ?> Partager des cours</a>
+    <?php endif; ?>
   </div>
 </div>
 

@@ -2866,6 +2866,30 @@
   });
 
   /*
+   * Cocher, ou décocher, tout ce qu'une liste montre.
+   *
+   * Le bouton porte le sélecteur de sa liste. Ce que le filtre vient de
+   * cacher n'est pas touché : on coche ce qu'on voit, pas ce qu'on ignore.
+   */
+  document.addEventListener('click', function (evenement) {
+    var bouton = evenement.target.closest('[data-cocher-tout]');
+    if (!bouton) { return; }
+    evenement.preventDefault();
+    var portee = bouton.closest('form, .carte, .fenetre__corps') || document;
+    var liste = portee.querySelector(bouton.getAttribute('data-cocher-tout'));
+    if (!liste) { return; }
+    var cases = [];
+    Array.prototype.forEach.call(liste.children, function (ligne) {
+      if (ligne.hidden) { return; }
+      var boite = ligne.querySelector('input[type="checkbox"]');
+      if (boite) { cases.push(boite); }
+    });
+    if (cases.length === 0) { return; }
+    var tout = cases.every(function (boite) { return boite.checked; });
+    cases.forEach(function (boite) { boite.checked = !tout; });
+  });
+
+  /*
    * Ajouter quelqu'un à un groupe par son pseudo, dans les réglages du
    * groupe : dès deux caractères, les comptes trouvés s'affichent avec ce
    * qu'on peut en faire — « Ajouter » un ami, « Inviter » un autre compte.

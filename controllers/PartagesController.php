@@ -44,6 +44,50 @@ final class PartagesController
         ], $vue === 'recus' ? 'Partagés avec moi' : 'Ce que je partage');
     }
 
+    /** La fenêtre « Partager plusieurs cours » : on coche des cours, puis des amis. */
+    public function plusieurs(): void
+    {
+        Auth::exiger();
+        $moi = Auth::id();
+        $donnees = [
+            'mesCours' => Database::all(
+                "SELECT c.id, c.titre, m.nom AS matiere_nom, d.nom AS dossier_nom, c.updated_at
+                   FROM cours c LEFT JOIN matieres m ON m.id = c.matiere_id LEFT JOIN dossiers d ON d.id = c.dossier_id
+                  WHERE c.user_id = ? ORDER BY c.updated_at DESC",
+                [$moi]
+            ),
+            'choisis' => array_flip(array_map('intval', is_array($_GET['cours'] ?? null) ? $_GET['cours'] : [])),
+            'amis' => Amis::liste($moi),
+            'groupes' => Conversations::liste($moi),
+        ];
+        if (Vue::enFenetre()) {
+            Vue::fragment('partages/plusieurs', $donnees + ['dansUneFenetre' => true]);
+            return;
+        }
+        Vue::afficher('partages/plusieurs', $donnees, 'Partager plusieurs cours');
+    }
+
+    /** L'envoi du lot : un accès et une carte par cours. */
+    public function envoyerPlusieurs(): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        [$nbCours, $nombre, $refus, $notifications] = Partages::partagerPlusieurs(
+            Auth::id(),
+            is_array($_POST['cours'] ?? null) ? $_POST['cours'] : [],
+            is_array($_POST['amis'] ?? null) ? $_POST['amis'] : [],
+            is_array($_POST['groupes'] ?? null) ? $_POST['groupes'] : [],
+            (string) ($_POST['texte'] ?? '')
+        );
+        if ($refus !== null) {
+            Session::flash('erreur', $refus);
+        } else {
+            Session::flash('succes', $nbCours . ' cours partagé' . ($nbCours > 1 ? 's' : '')
+                . ' avec ' . $nombre . ' personne' . ($nombre > 1 ? 's' : '') . ' : les cartes sont parties dans vos discussions.');
+        }
+        $this->retourPuisEnvoyer('partager/plusieurs', $notifications);
+    }
+
     /** La fenêtre « Partager » : les amis d'abord, puis le lien public. */
     public function fenetre(string $mot, int $id): void
     {

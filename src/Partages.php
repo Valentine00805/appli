@@ -61,6 +61,9 @@ final class Partages
     /** Destinataires au plus en un envoi. */
     private const ENVOI_MAX = 50;
 
+    /** Cours au plus dans un partage groupé : au-delà, autant partager le dossier. */
+    public const LOT_MAX = 25;
+
     /**
      * Ce qu'on partage, s'il existe : son propriétaire, son titre et, pour un
      * fichier, de quoi le servir.
@@ -294,23 +297,9 @@ final class Partages
         if (mb_strlen($texte) > Amis::MESSAGE_MAX) {
             return [0, 'Le message ne peut pas dépasser ' . Amis::MESSAGE_MAX . ' caractères.', []];
         }
-        $amis = array_values(array_unique(array_filter(array_map('intval', $amis), static fn (int $a): bool => $a > 0 && $a !== $moi)));
-        $groupes = array_values(array_unique(array_filter(array_map('intval', $groupes), static fn (int $g): bool => $g > 0)));
-        if ($amis === [] && $groupes === []) {
-            return [0, 'Choisissez au moins un ami ou un groupe.', []];
-        }
-        if (count($amis) + count($groupes) > self::ENVOI_MAX) {
-            return [0, 'Pas plus de ' . self::ENVOI_MAX . ' destinataires à la fois.', []];
-        }
-        foreach ($amis as $a) {
-            if (!Amis::sontAmis($moi, $a)) {
-                return [0, 'Vous ne pouvez partager qu’avec vos amis.', []];
-            }
-        }
-        foreach ($groupes as $g) {
-            if (Conversations::membre($g, $moi) === null) {
-                return [0, 'Vous ne faites pas partie de ce groupe.', []];
-            }
+        [$amis, $groupes, $refus] = self::destinatairesChoisis($moi, $amis, $groupes);
+        if ($refus !== null) {
+            return [0, $refus, []];
         }
 
         $atteints = [];
@@ -351,6 +340,114 @@ final class Partages
         }
 
         return [count($atteints), null, $notifications];
+    }
+
+    /**
+     * Les amis et les groupes retenus d'un envoi : nettoyés, et vérifiés.
+     *
+     * @return array{0: list<int>, 1: list<int>, 2: ?string}
+     */
+    private static function destinatairesChoisis(int $moi, array $amis, array $groupes): array
+    {
+        $amis = array_values(array_unique(array_filter(array_map('intval', $amis), static fn (int $a): bool => $a > 0 && $a !== $moi)));
+        $groupes = array_values(array_unique(array_filter(array_map('intval', $groupes), static fn (int $g): bool => $g > 0)));
+        if ($amis === [] && $groupes === []) {
+            return [[], [], 'Choisissez au moins un ami ou un groupe.'];
+        }
+        if (count($amis) + count($groupes) > self::ENVOI_MAX) {
+            return [[], [], 'Pas plus de ' . self::ENVOI_MAX . ' destinataires à la fois.'];
+        }
+        foreach ($amis as $a) {
+            if (!Amis::sontAmis($moi, $a)) {
+                return [[], [], 'Vous ne pouvez partager qu’avec vos amis.'];
+            }
+        }
+        foreach ($groupes as $g) {
+            if (Conversations::membre($g, $moi) === null) {
+                return [[], [], 'Vous ne faites pas partie de ce groupe.'];
+            }
+        }
+
+        return [$amis, $groupes, null];
+    }
+
+    /**
+     * Partage plusieurs cours d'un coup : un accès et une carte par cours,
+     * mais une seule notification, qui dit combien.
+     *
+     * @return array{0: int, 1: int, 2: ?string, 3: list<int>} les cours partagés, les personnes atteintes, un refus, les notifications
+     */
+    public static function partagerPlusieurs(int $moi, array $coursIds, array $amis, array $groupes, string $texte): array
+    {
+        $texte = trim(str_replace(["\r\n", "\r"], "\n", $texte));
+        if (mb_strlen($texte) > Amis::MESSAGE_MAX) {
+            return [0, 0, 'Le message ne peut pas dépasser ' . Amis::MESSAGE_MAX . ' caractères.', []];
+        }
+        $coursIds = array_values(array_unique(array_filter(array_map('intval', $coursIds), static fn (int $c): bool => $c > 0)));
+        if ($coursIds === []) {
+            return [0, 0, 'Choisissez au moins un cours.', []];
+        }
+        if (count($coursIds) > self::LOT_MAX) {
+            return [0, 0, 'Pas plus de ' . self::LOT_MAX . ' cours à la fois.', []];
+        }
+        // Les cours, dans l'ordre où ils paraissent, et tous à moi.
+        $cours = [];
+        foreach ($coursIds as $c) {
+            $cible = self::mienne('cours', $c, $moi);
+            if ($cible === null) {
+                return [0, 0, 'Un des cours choisis est introuvable.', []];
+            }
+            $cours[] = $cible;
+        }
+        [$amis, $groupes, $refus] = self::destinatairesChoisis($moi, $amis, $groupes);
+        if ($refus !== null) {
+            return [0, 0, $refus, []];
+        }
+
+        $atteints = [];
+        $notifications = [];
+        $pseudo = (string) (Amis::compte($moi)['pseudo'] ?? 'Un ami');
+        $combien = count($cours) . ' cours';
+        $premier = ' (dont « ' . mb_strimwidth((string) $cours[0]['titre'], 0, 60, '…') . ' »)';
+
+        foreach ($amis as $a) {
+            foreach ($cours as $rang => $cible) {
+                self::donnerAcces($moi, $a, 'cours', (int) $cible['id']);
+                Database::run(
+                    'INSERT INTO messages (expediteur_id, destinataire_id, texte, partage_type, partage_id, created_at) VALUES (?, ?, ?, ?, ?, UTC_TIMESTAMP())',
+                    [$moi, $a, $rang === 0 ? $texte : '', 'cours', (int) $cible['id']]
+                );
+            }
+            $atteints[$a] = true;
+            $n = Amis::notifier($moi, $a, '🔗 ' . $pseudo . ' a partagé ' . $combien . $premier . ($texte === '' ? '' : ' · ' . $texte));
+            if ($n !== null) {
+                $notifications[] = $n;
+            }
+        }
+        foreach ($groupes as $g) {
+            foreach (Conversations::membres($g) as $membre) {
+                if ($membre['id'] !== $moi) {
+                    foreach ($cours as $cible) {
+                        self::donnerAcces($moi, $membre['id'], 'cours', (int) $cible['id']);
+                    }
+                    $atteints[$membre['id']] = true;
+                }
+            }
+            foreach ($cours as $rang => $cible) {
+                Database::run(
+                    'INSERT INTO conversation_messages (conversation_id, expediteur_id, texte, partage_type, partage_id, created_at) VALUES (?, ?, ?, ?, ?, UTC_TIMESTAMP())',
+                    [$g, $moi, $rang === 0 ? $texte : '', 'cours', (int) $cible['id']]
+                );
+                $dernier = Database::dernierId();
+                Database::run(
+                    'UPDATE conversation_membres SET lu_jusqua = GREATEST(lu_jusqua, ?) WHERE conversation_id = ? AND user_id = ?',
+                    [$dernier, $g, $moi]
+                );
+            }
+            array_push($notifications, ...Conversations::notifier($moi, $g, '🔗 a partagé ' . $combien . $premier . ($texte === '' ? '' : ' · ' . $texte)));
+        }
+
+        return [count($cours), count($atteints), null, $notifications];
     }
 
     private static function donnerAcces(int $moi, int $destinataire, string $type, int $id): void

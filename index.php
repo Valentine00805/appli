@@ -487,6 +487,8 @@ $routes = [
     // Partager un cours ou un fichier : avec ses amis, ou par un lien public.
     ['GET',  'partages',                            [PartagesController::class, 'index']],
     ['GET',  'partages/envoyes',                    [PartagesController::class, 'envoyes']],
+    ['GET',  'partager/plusieurs',                  [PartagesController::class, 'plusieurs']],
+    ['POST', 'partager/plusieurs/amis',             [PartagesController::class, 'envoyerPlusieurs']],
     ['GET',  'partager/{mot}/{id}',                 [PartagesController::class, 'fenetre']],
     ['POST', 'partager/{mot}/{id}/amis',            [PartagesController::class, 'envoyer']],
     ['POST', 'partager/{mot}/{id}/acces/{id}/retirer', [PartagesController::class, 'retirerAcces']],
