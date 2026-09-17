@@ -64,25 +64,7 @@
   </div>
 </div>
 
-<?php
-/*
- * Ce que mes amis m'ont partagé a son propre onglet : ici, seulement de quoi
- * y aller, avec les derniers titres reçus pour savoir ce qui s'y trouve.
- */
-?>
-<?php if ($partagesRecus !== []): ?>
-  <a class="carte partages-rappel" id="partages-recus" href="<?= url('partages') ?>">
-    <span class="partages-rappel__icone" aria-hidden="true"><?= Partages::icone(20) ?></span>
-    <span>
-      <strong>Partagés avec moi</strong> <span class="discret">(<?= count($partagesRecus) ?>)</span>
-      <span class="discret partages-rappel__apercu">
-        <?= e(implode(' · ', array_map(static fn (array $p): string => $p['icone'] . ' ' . $p['titre'], array_slice($partagesRecus, 0, 3)))) ?><?= count($partagesRecus) > 3 ? '…' : '' ?>
-      </span>
-    </span>
-    <span class="partages-rappel__fleche" aria-hidden="true">›</span>
-  </a>
-<?php endif; ?>
-
+<?php // Ce que mes amis m'ont partagé a son propre onglet : rien ici. ?>
 <form class="filtres" method="get" action="<?= url('cours') ?>" data-auto-envoi>
   <div class="champ">
     <label for="f-q">Rechercher</label>

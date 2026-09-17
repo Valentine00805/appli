@@ -34,7 +34,6 @@ final class CoursController
             'dossierId' => $dossierId,
             'favoris'   => $favoris,
             'tri'       => $tri,
-            'partagesRecus' => Partages::recus($userId),
         ], 'Mes cours');
     }
 
