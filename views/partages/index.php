@@ -24,16 +24,13 @@ $lesRecus = $vue === 'recus';
       <?php endif; ?>
     </p>
   </div>
-  <div class="actions">
-    <?php if ($lesRecus): ?>
-      <a class="bouton bouton--secondaire" href="<?= url('cours') ?>">Mes cours</a>
-      <a class="bouton" href="<?= url('amis') ?>">Mes amis</a>
-    <?php else: ?>
-      <a class="bouton bouton--secondaire" href="<?= url('cours') ?>">Mes cours</a>
+  <?php // Ce volet ne se lit que : rien à faire en tête de page. ?>
+  <?php if (!$lesRecus): ?>
+    <div class="actions">
       <a class="bouton bouton-partage" href="<?= url('partager/plusieurs') ?>"
          data-fenetre title="Partager plusieurs cours ou fichiers en un envoi"><?= Partages::icone() ?> Partager plusieurs</a>
-    <?php endif; ?>
-  </div>
+    </div>
+  <?php endif; ?>
 </div>
 
 <?= Vue::rendre('partages/_onglets', ['vue' => $vue, 'nbRecus' => count($recus), 'nbEnvoyes' => count($envoyes)]) ?>
