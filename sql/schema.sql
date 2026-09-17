@@ -181,11 +181,13 @@ CREATE TABLE IF NOT EXISTS `evenements` (
   KEY `idx_evt_user_debut` (`user_id`, `debut`),
   KEY `idx_evt_type` (`type_id`),
   KEY `idx_evt_serie` (`serie_id`),
+  KEY `idx_copie_de` (`copie_de`),
   CONSTRAINT `fk_evt_user`    FOREIGN KEY (`user_id`)    REFERENCES `users`(`id`)    ON DELETE CASCADE,
   CONSTRAINT `fk_evt_matiere` FOREIGN KEY (`matiere_id`) REFERENCES `matieres`(`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_evt_type`    FOREIGN KEY (`type_id`)    REFERENCES `types_evenement`(`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_evt_cours`   FOREIGN KEY (`cours_id`)   REFERENCES `cours`(`id`)    ON DELETE SET NULL,
-  CONSTRAINT `fk_evt_serie`   FOREIGN KEY (`serie_id`)   REFERENCES `series_evenements`(`id`) ON DELETE SET NULL
+  CONSTRAINT `fk_evt_serie`   FOREIGN KEY (`serie_id`)   REFERENCES `series_evenements`(`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_copie_de`    FOREIGN KEY (`copie_de`)   REFERENCES `evenements`(`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Budget : categories et operations, propres a chaque utilisateur.
@@ -287,6 +289,7 @@ CREATE TABLE IF NOT EXISTS `operations` (
   KEY `idx_op_categorie` (`categorie_id`),
   KEY `idx_op_empreinte` (`user_id`, `empreinte`),
   KEY `idx_op_remboursement` (`user_id`, `a_rembourser`, `statut_remb`),
+  KEY `idx_op_recurrence_date` (`recurrence_id`, `date_operation`),
   CONSTRAINT `fk_op_user`      FOREIGN KEY (`user_id`)      REFERENCES `users`(`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_op_categorie`  FOREIGN KEY (`categorie_id`)  REFERENCES `categories_budget`(`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_op_recurrence` FOREIGN KEY (`recurrence_id`) REFERENCES `recurrences`(`id`) ON DELETE SET NULL
