@@ -14,6 +14,7 @@ $icone = match ($type) {
     'cours' => '📘',
     'fiche' => '📝',
     'dossier' => (string) $cible['icone'],
+    'evenement' => '📅',
     default => Fichiers::icone((string) $cible['mime'], (string) $cible['nom_origine']),
 };
 $nb = 0;

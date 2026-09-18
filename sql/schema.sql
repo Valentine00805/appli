@@ -633,7 +633,7 @@ CREATE TABLE IF NOT EXISTS `messages` (
   -- Ce que le navigateur a entendu pendant l'enregistrement.
   `audio_transcription` TEXT NULL,
   -- Un cours ou un fichier partagé : la carte du message.
-  `partage_type`    VARCHAR(8)   NULL,
+  `partage_type`    VARCHAR(12)  NULL,
   `partage_id`      INT UNSIGNED NULL,
   -- Une note de la discussion (« fond », « fond_retire ») plutôt qu'un message.
   `evenement`       VARCHAR(20)  NULL,
@@ -831,7 +831,7 @@ CREATE TABLE IF NOT EXISTS `conversation_messages` (
   `audio_nom`       VARCHAR(64)  NULL,
   `audio_duree`     SMALLINT UNSIGNED NULL,
   `audio_transcription` TEXT     NULL,
-  `partage_type`    VARCHAR(8)   NULL,
+  `partage_type`    VARCHAR(12)  NULL,
   `partage_id`      INT UNSIGNED NULL,
   `created_at`      DATETIME     NOT NULL,
   `modifie_le`      DATETIME     NULL,
@@ -924,7 +924,7 @@ CREATE TABLE IF NOT EXISTS `reinitialisations_mdp` (
 -- Partager un cours ou un fichier, avec ses amis ou par un lien public.
 CREATE TABLE IF NOT EXISTS `partages_amis` (
   `destinataire_id` INT UNSIGNED NOT NULL,
-  `cible_type`      VARCHAR(8)   NOT NULL,
+  `cible_type`      VARCHAR(12)  NOT NULL,
   `cible_id`        INT UNSIGNED NOT NULL,
   -- Ce que le partage permet : lecture, commentaire ou modification.
   `droit`           VARCHAR(12)  NOT NULL DEFAULT 'lecture',
@@ -940,7 +940,7 @@ CREATE TABLE IF NOT EXISTS `partages_amis` (
 CREATE TABLE IF NOT EXISTS `liens_partage` (
   `id`         INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `user_id`    INT UNSIGNED NOT NULL,
-  `cible_type` VARCHAR(8)   NOT NULL,
+  `cible_type` VARCHAR(12)  NOT NULL,
   `cible_id`   INT UNSIGNED NOT NULL,
   `jeton`      CHAR(32)     NOT NULL,
   `created_at` DATETIME     NOT NULL,
@@ -964,7 +964,7 @@ CREATE TABLE IF NOT EXISTS `lots_partage` (
 
 CREATE TABLE IF NOT EXISTS `lots_partage_documents` (
   `lot_id`     INT UNSIGNED NOT NULL,
-  `cible_type` VARCHAR(8)   NOT NULL,
+  `cible_type` VARCHAR(12)  NOT NULL,
   `cible_id`   INT UNSIGNED NOT NULL,
   `position`   INT UNSIGNED NOT NULL DEFAULT 0,
   PRIMARY KEY (`lot_id`, `cible_type`, `cible_id`),
@@ -973,7 +973,7 @@ CREATE TABLE IF NOT EXISTS `lots_partage_documents` (
 
 CREATE TABLE IF NOT EXISTS `commentaires_partage` (
   `id`         INT UNSIGNED NOT NULL AUTO_INCREMENT,
-  `cible_type` VARCHAR(8)   NOT NULL,
+  `cible_type` VARCHAR(12)  NOT NULL,
   `cible_id`   INT UNSIGNED NOT NULL,
   `user_id`    INT UNSIGNED NOT NULL,
   -- La réponse à un commentaire, sur un seul niveau.
@@ -1001,7 +1001,7 @@ CREATE TABLE IF NOT EXISTS `commentaires_jaime` (
 -- L'historique des modifications faites par d'autres dans un document partagé.
 CREATE TABLE IF NOT EXISTS `modifications_partage` (
   `id`          INT UNSIGNED NOT NULL AUTO_INCREMENT,
-  `cible_type`  VARCHAR(8)   NOT NULL,
+  `cible_type`  VARCHAR(12)  NOT NULL,
   `cible_id`    INT UNSIGNED NOT NULL,
   `user_id`     INT UNSIGNED NOT NULL,
   `nature`      VARCHAR(8)   NOT NULL,

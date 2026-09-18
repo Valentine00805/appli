@@ -1028,12 +1028,16 @@ final class CalendrierController
 
         if ($serieId === null) {
             Database::run('DELETE FROM evenements WHERE id = ? AND user_id = ?', [$id, $userId]);
+            Partages::oublier('evenement', $id);
             Session::flash('succes', 'Événement supprimé.');
             redirect('calendrier');
         }
 
         $combien = (int) Database::valeur(
             'SELECT COUNT(*) FROM evenements WHERE serie_id = ? AND user_id = ?', [$serieId, $userId]);
+        foreach (Database::all('SELECT id FROM evenements WHERE serie_id = ? AND user_id = ?', [$serieId, $userId]) as $occurrence) {
+            Partages::oublier('evenement', (int) $occurrence['id']);
+        }
         Database::run('DELETE FROM evenements WHERE serie_id = ? AND user_id = ?', [$serieId, $userId]);
         Database::run('DELETE FROM series_evenements WHERE id = ? AND user_id = ?', [$serieId, $userId]);
 

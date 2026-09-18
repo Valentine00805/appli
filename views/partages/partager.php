@@ -23,6 +23,7 @@ $icone = match ($type) {
     'cours' => '📘',
     'fiche' => '📝',
     'dossier' => (string) $cible['icone'],
+    'evenement' => '📅',
     default => Fichiers::icone((string) $cible['mime'], (string) $cible['nom_origine']),
 };
 ?>
@@ -73,7 +74,7 @@ $icone = match ($type) {
       <fieldset class="champ partage-droits" style="margin-top:.75rem">
         <legend class="legende">Ce qu’ils pourront faire</legend>
         <?php foreach (Partages::DROITS as $rang => $unDroit): ?>
-          <?php if ($type === 'fichier' && $unDroit === 'modification') { continue; } ?>
+          <?php if (in_array($type, ['fichier', 'evenement'], true) && $unDroit === 'modification') { continue; } ?>
           <label class="partage-droits__choix">
             <input type="radio" name="droit" value="<?= e($unDroit) ?>"<?= $rang === 0 ? ' checked' : '' ?>>
             <span>
@@ -85,7 +86,7 @@ $icone = match ($type) {
       </fieldset>
       <div class="champ" style="margin-top:.75rem">
         <label for="partage-texte">Message (facultatif)</label>
-        <textarea id="partage-texte" name="texte" rows="2" maxlength="<?= Amis::MESSAGE_MAX ?>" placeholder="<?= match ($type) { 'cours' => 'Regarde ce cours…', 'fiche' => 'Regarde ma fiche…', 'dossier' => 'Regarde ce dossier…', default => 'Regarde ce fichier…' } ?>"></textarea>
+        <textarea id="partage-texte" name="texte" rows="2" maxlength="<?= Amis::MESSAGE_MAX ?>" placeholder="<?= match ($type) { 'cours' => 'Regarde ce cours…', 'fiche' => 'Regarde ma fiche…', 'dossier' => 'Regarde ce dossier…', 'evenement' => 'Tu viens ?', default => 'Regarde ce fichier…' } ?>"></textarea>
       </div>
       <button class="bouton" type="submit">Envoyer</button>
       <p class="champ__aide" style="margin-bottom:0">
@@ -94,6 +95,7 @@ $icone = match ($type) {
             'cours' => ' Les fichiers joints du cours sont compris ; pas la fiche de révision.',
             'fiche' => ' Les fichiers et les liens de la fiche sont compris ; pas le contenu du cours.',
             'dossier' => ' Tous les cours du dossier et de ses sous-dossiers sont compris, avec leurs fichiers joints ; pas leurs fiches de révision. Ce que vous y rangerez ensuite sera partagé aussi.',
+            'evenement' => ' Ils peuvent l’ajouter à leur calendrier, ou à leur agenda (Google, Outlook…) ; un changement de votre part ne suit pas dans leur copie.',
             default => '',
         } ?>
       </p>
@@ -113,7 +115,7 @@ $icone = match ($type) {
             <label class="sr-only" for="droit-<?= (int) $d['id'] ?>">Ce que <?= e($d['pseudo']) ?> peut faire</label>
             <select id="droit-<?= (int) $d['id'] ?>" name="droit">
               <?php foreach (Partages::DROITS as $unDroit): ?>
-                <?php if ($type === 'fichier' && $unDroit === 'modification') { continue; } ?>
+                <?php if (in_array($type, ['fichier', 'evenement'], true) && $unDroit === 'modification') { continue; } ?>
                 <option value="<?= e($unDroit) ?>"<?= $d['droit'] === $unDroit ? ' selected' : '' ?>><?= e(Partages::libelleDroit($unDroit)) ?></option>
               <?php endforeach; ?>
             </select>

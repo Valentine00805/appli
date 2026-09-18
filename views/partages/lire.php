@@ -30,6 +30,7 @@ $base = 'partages/' . $mot . '/' . (int) $cible['id'];
 $fichierSeul = $type === 'fichier';
 $estFiche = $type === 'fiche';
 $estDossier = $type === 'dossier';
+$estEvenement = $type === 'evenement';
 $liens = $liens ?? [];
 $groupes = $groupes ?? [];
 $retour = $retour ?? null;
@@ -44,13 +45,16 @@ $nom = $fichierSeul ? (string) $cible['nom_origine'] : '';
     <?php elseif (!$public): ?>
       <p class="discret" style="margin-bottom:.35rem"><a href="<?= url('partages') ?>">← Partagés avec moi</a></p>
     <?php endif; ?>
-    <h1><?= $fichierSeul ? e(Fichiers::icone($mime, $nom)) . ' ' : ($estFiche ? '📝 ' : ($estDossier ? e((string) $cible['icone']) . ' ' : '📘 ')) ?><?= e((string) ($estFiche ? $cible['titre_cours'] : $cible['titre'])) ?></h1>
+    <h1><?= $fichierSeul ? e(Fichiers::icone($mime, $nom)) . ' ' : ($estFiche ? '📝 ' : ($estDossier ? e((string) $cible['icone']) . ' ' : ($estEvenement ? e((string) ($cible['type_icone'] ?: '📅')) . ' ' : '📘 '))) ?><?= e((string) ($estFiche ? $cible['titre_cours'] : $cible['titre'])) ?></h1>
     <?php if ($estFiche): ?><p style="margin:0 0 .2rem"><span class="pastille">Fiche de révision</span></p><?php endif; ?>
     <?php if ($estDossier): ?><p style="margin:0 0 .2rem"><span class="pastille">Dossier · <?= e(Partages::compteCours((int) $cible['nb_cours'])) ?></span></p><?php endif; ?>
     <p class="discret">
       <?= Partages::icone(15) ?> Partagé par <strong><?= e($proprietaire !== '' ? $proprietaire : 'un compte Mes Cours') ?></strong>
       <?php if ($estDossier): ?>
         · ses sous-dossiers compris
+      <?php elseif ($estEvenement): ?>
+        <?php if (($cible['type_nom'] ?? null) !== null): ?> · <?= e((string) $cible['type_nom']) ?><?php endif; ?>
+        <?php if (($cible['matiere_nom'] ?? null) !== null): ?> · <?= e((string) $cible['matiere_nom']) ?><?php endif; ?>
       <?php elseif (!$fichierSeul): ?>
         <?php if (($cible['matiere_nom'] ?? null) !== null): ?> · <?= e((string) $cible['matiere_nom']) ?><?php endif; ?>
         · mis à jour le <?= e(date_fr((string) $cible['updated_at'], false)) ?>
@@ -64,11 +68,16 @@ $nom = $fichierSeul ? (string) $cible['nom_origine'] : '';
     <?php if ($fichierSeul): ?>
       <a class="bouton" href="<?= e($adresseFichier((int) $cible['id'], true)) ?>">⬇ Télécharger</a>
     <?php endif; ?>
+    <?php if ($estEvenement): ?>
+      <?php // Pour tout agenda : Google, Outlook, Apple — même sans compte ici. ?>
+      <a class="bouton bouton--secondaire" href="<?= e((string) ($adresseIcs ?? '')) ?>"
+         title="Un fichier .ics, que votre agenda sait ouvrir">📆 Ajouter à mon agenda</a>
+    <?php endif; ?>
     <?php if (!$public): ?>
       <?php if (!$fichierSeul): ?>
         <form method="post" action="<?= url($base . '/copier') ?>" class="en-ligne"<?= $dansUneFenetre ? ' data-envoi-fenetre' : '' ?>>
           <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
-          <button class="bouton bouton--secondaire" type="submit">📥 Copier <?= $estDossier ? 'le dossier chez moi' : 'dans mes cours' ?></button>
+          <button class="bouton bouton--secondaire" type="submit"><?= $estEvenement ? '📅 Ajouter à mon calendrier' : '📥 Copier ' . ($estDossier ? 'le dossier chez moi' : 'dans mes cours') ?></button>
         </form>
       <?php endif; ?>
       <?php if ($recu): ?>
@@ -117,6 +126,32 @@ $nom = $fichierSeul ? (string) $cible['nom_origine'] : '';
       <?php endif; ?>
     </section>
   <?php endif; ?>
+<?php elseif ($estEvenement): ?>
+  <?php
+  // Quand, où, quoi : ce qu'on vient chercher dans un évènement.
+  $debutEvt = new DateTimeImmutable((string) $cible['debut']);
+  $finEvt = new DateTimeImmutable((string) $cible['fin']);
+  $memeJour = $debutEvt->format('Y-m-d') === $finEvt->format('Y-m-d');
+  if ((int) $cible['journee_entiere'] === 1) {
+      $quand = $memeJour
+          ? ucfirst(date_fr((string) $cible['debut'], false)) . ' — toute la journée'
+          : 'Du ' . date_fr((string) $cible['debut'], false) . ' au ' . date_fr((string) $cible['fin'], false);
+  } elseif ($memeJour) {
+      $quand = ucfirst(date_fr((string) $cible['debut'], false)) . ', de ' . $debutEvt->format('H:i') . ' à ' . $finEvt->format('H:i');
+  } else {
+      $quand = 'Du ' . date_fr((string) $cible['debut']) . ' au ' . date_fr((string) $cible['fin']);
+  }
+  ?>
+  <section class="carte fiche" style="max-width:44rem">
+    <div class="fiche__ligne"><span class="fiche__etiquette">Quand</span><span class="fiche__valeur"><?= e($quand) ?></span></div>
+    <?php if (trim((string) ($cible['lieu'] ?? '')) !== ''): ?>
+      <div class="fiche__ligne"><span class="fiche__etiquette">Où</span><span class="fiche__valeur"><?= e((string) $cible['lieu']) ?></span></div>
+    <?php endif; ?>
+    <?php if (trim((string) ($cible['description'] ?? '')) !== ''): ?>
+      <div class="fiche__ligne"><span class="fiche__etiquette">Détails</span>
+        <span class="fiche__valeur texte-riche-affiche"><?= TexteRiche::versHtml((string) $cible['description']) ?></span></div>
+    <?php endif; ?>
+  </section>
 <?php elseif ($estDossier): ?>
   <?php // Les cours du dossier, puis ceux de chaque sous-dossier qui en contient. ?>
   <?php foreach ($groupes as $i => $groupe): ?>

@@ -47,6 +47,9 @@ $ligne = static function (string $etiquette, string $valeur): string {
   </div>
 
   <div class="actions">
+    <?php // Partager l'évènement : à ses amis, ou par un lien. ?>
+    <a class="bouton bouton--secondaire bouton-partage" href="<?= url('partager/evenements/' . (int) $evenement['id']) ?>"
+       <?= $dansUneFenetre ? 'data-fenetre-dessus' : 'data-fenetre' ?>><?= Partages::icone() ?> Partager</a>
     <a class="bouton" href="<?= url('evenements/' . (int) $evenement['id'] . '/modifier') ?>"
        <?php // Ouverte en fenêtre, la fiche y laisse la place au formulaire
           // plutôt que de renvoyer sur une page : on modifie ce qu'on vient

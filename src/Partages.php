@@ -29,7 +29,7 @@ declare(strict_types=1);
  */
 final class Partages
 {
-    public const TYPES = ['cours', 'fichier', 'fiche', 'dossier'];
+    public const TYPES = ['cours', 'fichier', 'fiche', 'dossier', 'evenement'];
 
     /** Du plus restreint au plus large : l'ordre compte pour les comparer. */
     public const DROITS = ['lecture', 'commentaire', 'modification'];
@@ -77,6 +77,7 @@ final class Partages
             'cours' => 'Cours partagé',
             'fiche' => 'Fiche partagée',
             'dossier' => 'Dossier partagé',
+            'evenement' => 'Évènement partagé',
             'lot' => 'Lien de plusieurs documents',
             default => 'Fichier partagé',
         };
@@ -89,6 +90,7 @@ final class Partages
             'cours' => 'cours',
             'fiche' => 'fiches',
             'dossier' => 'dossiers',
+            'evenement' => 'evenements',
             default => 'fichiers',
         };
     }
@@ -157,6 +159,18 @@ final class Partages
                         f.created_at, COALESCE(u.pseudo, '') AS proprietaire
                    FROM fichiers f JOIN users u ON u.id = f.user_id
                   WHERE f.id = ?",
+                [$id]
+            );
+        }
+        if ($type === 'evenement') {
+            return Database::one(
+                "SELECT e.id, e.user_id, e.titre, e.description, e.lieu, e.debut, e.fin, e.journee_entiere,
+                        t.nom AS type_nom, t.icone AS type_icone, m.nom AS matiere_nom,
+                        COALESCE(u.pseudo, '') AS proprietaire, u.fuseau
+                   FROM evenements e JOIN users u ON u.id = e.user_id
+                   LEFT JOIN types_evenement t ON t.id = e.type_id
+                   LEFT JOIN matieres m ON m.id = e.matiere_id
+                  WHERE e.id = ?",
                 [$id]
             );
         }
@@ -639,14 +653,16 @@ final class Partages
         $lignes = Database::all(
             "SELECT p.cible_type, p.cible_id, p.droit, p.proprietaire_id, p.created_at, COALESCE(u.pseudo, '') AS proprietaire,
                     c.titre AS titre_cours, c.contenu, f.nom_origine, f.mime, f.taille,
-                    cf.titre AS titre_fiche, cf.fiche_revision, d.nom AS nom_dossier, d.icone AS icone_dossier, d.user_id AS dossier_a
+                    cf.titre AS titre_fiche, cf.fiche_revision, d.nom AS nom_dossier, d.icone AS icone_dossier, d.user_id AS dossier_a,
+                    ev.titre AS titre_evenement, ev.debut AS debut_evenement, ev.journee_entiere AS journee_evenement
                FROM partages_amis p
                JOIN users u ON u.id = p.proprietaire_id
                LEFT JOIN cours c ON p.cible_type = 'cours' AND c.id = p.cible_id AND c.user_id = p.proprietaire_id
                LEFT JOIN fichiers f ON p.cible_type = 'fichier' AND f.id = p.cible_id AND f.user_id = p.proprietaire_id
                LEFT JOIN cours cf ON p.cible_type = 'fiche' AND cf.id = p.cible_id AND cf.user_id = p.proprietaire_id
                LEFT JOIN dossiers d ON p.cible_type = 'dossier' AND d.id = p.cible_id AND d.user_id = p.proprietaire_id
-              WHERE p.destinataire_id = ? AND (c.id IS NOT NULL OR f.id IS NOT NULL OR cf.id IS NOT NULL OR d.id IS NOT NULL)
+               LEFT JOIN evenements ev ON p.cible_type = 'evenement' AND ev.id = p.cible_id AND ev.user_id = p.proprietaire_id
+              WHERE p.destinataire_id = ? AND (c.id IS NOT NULL OR f.id IS NOT NULL OR cf.id IS NOT NULL OR d.id IS NOT NULL OR ev.id IS NOT NULL)
               ORDER BY p.created_at DESC",
             [$moi]
         );
@@ -664,18 +680,21 @@ final class Partages
                     'cours' => (string) $l['titre_cours'],
                     'fiche' => 'Fiche — ' . $l['titre_fiche'],
                     'dossier' => (string) $l['nom_dossier'],
+                    'evenement' => (string) $l['titre_evenement'],
                     default => (string) $l['nom_origine'],
                 },
                 'icone' => match ($type) {
                     'cours' => '📘',
                     'fiche' => '📝',
                     'dossier' => (string) $l['icone_dossier'],
+                    'evenement' => '📅',
                     default => Fichiers::icone((string) $l['mime'], (string) $l['nom_origine']),
                 },
                 'detail' => match ($type) {
                     'cours' => extrait((string) $l['contenu']),
                     'fiche' => extrait((string) $l['fiche_revision']),
                     'dossier' => self::compteCours(self::nbCours((int) $l['cible_id'], (int) $l['dossier_a'])),
+                    'evenement' => ucfirst(date_fr((string) $l['debut_evenement'], (int) $l['journee_evenement'] !== 1)),
                     default => taille_lisible((int) $l['taille']),
                 },
                 'droit' => self::droitValide($l['droit']),
@@ -747,6 +766,7 @@ final class Partages
                     'fiche' => '📝',
                     'dossier' => (string) $cible['icone'],
                     'lot' => '🔗',
+                    'evenement' => '📅',
                     default => Fichiers::icone((string) $cible['mime'], (string) $cible['nom_origine']),
                 },
                 // Un lot se reprend en main depuis la fenêtre du partage groupé.
@@ -965,12 +985,14 @@ final class Partages
                     'cours' => '📘',
                     'fiche' => '📝',
                     'dossier' => (string) $cible['icone'],
+                    'evenement' => '📅',
                     default => Fichiers::icone((string) $cible['mime'], (string) $cible['nom_origine']),
                 },
                 'detail' => match ($type) {
                     'cours' => 'Cours' . ((int) $cible['nb_fichiers'] > 0 ? ' · ' . (int) $cible['nb_fichiers'] . ' fichier' . ((int) $cible['nb_fichiers'] > 1 ? 's' : '') : ''),
                     'fiche' => 'Fiche de révision',
                     'dossier' => 'Dossier · ' . self::compteCours((int) $cible['nb_cours']),
+                    'evenement' => 'Évènement · ' . date_fr((string) $cible['debut'], (int) $cible['journee_entiere'] !== 1),
                     default => 'Fichier · ' . taille_lisible((int) $cible['taille']),
                 },
             ];
@@ -1259,6 +1281,7 @@ final class Partages
             'url' => $adresse ?? match ($type) {
                 'cours' => url('cours/' . $id),
                 'fiche' => url('revision/' . $id),
+                'evenement' => url('evenements/' . $id),
                 default => url('partages/envoyes'),
             },
             'tag' => 'partage-' . $type . '-' . $id,
@@ -1437,6 +1460,62 @@ final class Partages
         self::noter($moi, (int) $fichier['pour_fiche'] === 1 ? 'fiche' : 'cours', (int) $fichier['cours_id'], 'retrait', [
             'nom_origine' => (string) $fichier['nom_origine'], 'mime' => (string) $fichier['mime'], 'taille' => (int) $fichier['taille'],
         ]);
+    }
+
+    /**
+     * Un évènement au format iCalendar, que tout agenda sait importer :
+     * Google, Outlook, Apple. L'heure est celle du fuseau de son auteur.
+     */
+    public static function ics(array $evenement): string
+    {
+        $echapper = static fn (string $t): string => str_replace(
+            ['\\', ';', ',', "\r\n", "\n", "\r"], ['\\\\', '\\;', '\\,', '\\n', '\\n', '\\n'], $t
+        );
+        // Une ligne ne doit pas dépasser 75 octets : les suivantes commencent par une espace.
+        $plier = static function (string $ligne): string {
+            $morceaux = [];
+            while (strlen($ligne) > 74) {
+                $coupe = 74;
+                // Ne jamais couper un caractère UTF-8 en deux.
+                while ($coupe > 0 && (ord($ligne[$coupe]) & 0xC0) === 0x80) {
+                    $coupe--;
+                }
+                $morceaux[] = substr($ligne, 0, $coupe);
+                $ligne = ' ' . substr($ligne, $coupe);
+            }
+            $morceaux[] = $ligne;
+
+            return implode("\r\n", $morceaux);
+        };
+        $debut = new DateTimeImmutable((string) $evenement['debut']);
+        $fin = new DateTimeImmutable((string) $evenement['fin']);
+        $fuseau = (string) ($evenement['fuseau'] ?? '') !== '' ? (string) $evenement['fuseau'] : 'Europe/Paris';
+        $lignes = [
+            'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Mes Cours//Partage//FR', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH',
+            'BEGIN:VEVENT',
+            'UID:evenement-' . (int) $evenement['id'] . '@mes-cours',
+            'DTSTAMP:' . gmdate('Ymd\THis\Z'),
+        ];
+        if ((int) $evenement['journee_entiere'] === 1) {
+            // Une journée entière finit le lendemain, par convention.
+            $lignes[] = 'DTSTART;VALUE=DATE:' . $debut->format('Ymd');
+            $lignes[] = 'DTEND;VALUE=DATE:' . $fin->modify('+1 day')->format('Ymd');
+        } else {
+            $lignes[] = 'DTSTART;TZID=' . $fuseau . ':' . $debut->format('Ymd\THis');
+            $lignes[] = 'DTEND;TZID=' . $fuseau . ':' . $fin->format('Ymd\THis');
+        }
+        $lignes[] = 'SUMMARY:' . $echapper((string) $evenement['titre']);
+        if (trim((string) ($evenement['lieu'] ?? '')) !== '') {
+            $lignes[] = 'LOCATION:' . $echapper((string) $evenement['lieu']);
+        }
+        $description = trim(html_entity_decode(strip_tags(TexteRiche::versHtml((string) ($evenement['description'] ?? ''))), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+        if ($description !== '') {
+            $lignes[] = 'DESCRIPTION:' . $echapper($description);
+        }
+        $lignes[] = 'END:VEVENT';
+        $lignes[] = 'END:VCALENDAR';
+
+        return implode("\r\n", array_map($plier, $lignes)) . "\r\n";
     }
 
     /** Combien de modifications : de quoi l'annoncer. */
@@ -1652,9 +1731,11 @@ final class Partages
                 'cours' => 'a copié le cours ' . $titre . ' dans ses cours',
                 'fiche' => 'a copié la fiche ' . $titre . ' dans ses cours',
                 'dossier' => 'a copié le dossier ' . $titre . ' dans ses dossiers',
+                'evenement' => 'a ajouté l’évènement ' . $titre . ' à son calendrier',
                 default => 'a copié le fichier ' . $titre . ' dans un de ses cours',
             }, match ($type) {
                 'dossier' => url('cours', ['dossier' => $id]),
+                'evenement' => url('evenements/' . $id),
                 'fichier' => url('cours/' . (int) ($cible['cours_id'] ?? 0)),
                 default => null,
             });
@@ -1712,6 +1793,26 @@ final class Partages
             }
 
             return [$nouveaux[$id] ?? null, null];
+        }
+
+        // Un évènement entre dans mon calendrier, une seule fois.
+        if ($type === 'evenement') {
+            $deja = Database::valeur(
+                'SELECT id FROM evenements WHERE user_id = ? AND titre = ? AND debut = ? AND fin = ?',
+                [$moi, (string) $cible['titre'], (string) $cible['debut'], (string) $cible['fin']]
+            );
+            if ($deja !== null) {
+                return [null, 'Cet évènement est déjà dans votre calendrier.'];
+            }
+            Database::run(
+                'INSERT INTO evenements (user_id, titre, description, lieu, debut, fin, journee_entiere) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                [$moi, (string) $cible['titre'], $cible['description'], $cible['lieu'], (string) $cible['debut'], (string) $cible['fin'],
+                 (int) $cible['journee_entiere']]
+            );
+            $nouveau = Database::dernierId();
+            Agenda::viser($nouveau, [Agenda::DEFAUT]);
+
+            return [$nouveau, null];
         }
 
         // Une fiche devient un cours à soi, dont c'est la fiche de révision.
@@ -1816,12 +1917,14 @@ final class Partages
                 'cours' => '📘',
                 'fiche' => '📝',
                 'dossier' => (string) $cible['icone'],
+                'evenement' => '📅',
                 default => Fichiers::icone((string) $cible['mime'], (string) $cible['nom_origine']),
             },
             'detail' => !$visible ? 'Le partage a été retiré.'
                 : match ($type) {
                     'fichier' => 'Fichier · ' . taille_lisible((int) $cible['taille']),
                     'dossier' => 'Dossier · ' . self::compteCours((int) $cible['nb_cours']),
+                    'evenement' => 'Évènement · ' . date_fr((string) $cible['debut'], (int) $cible['journee_entiere'] !== 1),
                     default => ($type === 'cours' ? 'Cours' : 'Fiche de révision')
                         . ((int) $cible['nb_fichiers'] > 0 ? ' · ' . (int) $cible['nb_fichiers'] . ' fichier' . ((int) $cible['nb_fichiers'] > 1 ? 's' : '') : ''),
                 },

@@ -499,6 +499,7 @@ $routes = [
     ['POST', 'partager/{mot}/{id}/lien',            [PartagesController::class, 'creerLien']],
     ['POST', 'partager/{mot}/{id}/lien/desactiver', [PartagesController::class, 'desactiverLien']],
     ['GET',  'partages/fichiers/{id}/contenu',      [PartagesController::class, 'contenu']],
+    ['GET',  'partages/evenements/{id}/ics',        [PartagesController::class, 'ics']],
     ['GET',  'partages/{mot}/{id}',                 [PartagesController::class, 'lire']],
     ['POST', 'partages/{mot}/{id}/copier',          [PartagesController::class, 'copier']],
     ['POST', 'partages/{mot}/{id}/oublier',         [PartagesController::class, 'oublier']],
@@ -516,6 +517,7 @@ $routes = [
     ['GET',  'p/{jeton}',                           [PartagesController::class, 'public']],
     ['GET',  'p/{jeton}/fichiers/{id}',             [PartagesController::class, 'fichierPublic']],
     ['GET',  'p/{jeton}/{mot}/{id}',                [PartagesController::class, 'documentPublic']],
+    ['GET',  'p/{jeton}/{mot}/{id}/ics',            [PartagesController::class, 'icsPublic']],
 ];
 
 foreach ($routes as [$methode, $motif, $action]) {

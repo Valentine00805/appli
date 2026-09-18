@@ -17,6 +17,7 @@ final class PartagesController
             'fichiers' => 'fichier',
             'fiches' => 'fiche',
             'dossiers' => 'dossier',
+            'evenements' => 'evenement',
             default => self::introuvable(),
         };
     }
@@ -270,6 +271,7 @@ final class PartagesController
             redirect(match ($type) {
                 'cours' => 'cours/' . $id,
                 'fiche' => 'revision/' . $id,
+                'evenement' => 'evenements/' . $id,
                 default => 'fichiers/' . $id . (ApercuDocument::possible((string) $cible['nom_origine']) ? '/apercu' : ''),
             });
         }
@@ -291,6 +293,7 @@ final class PartagesController
             'recu' => Database::valeur('SELECT 1 FROM partages_amis WHERE destinataire_id = ? AND cible_type = ? AND cible_id = ?', [$moi, $type, $id]) !== null,
             'droit' => Partages::droit($type, $id, $moi) ?? 'lecture',
             'commentaires' => Partages::commentaires($type, $id, $moi),
+            'adresseIcs' => url('partages/evenements/' . $id . '/ics'),
             'mot' => $mot,
         ];
         // Un cours ouvert depuis un dossier partagé : de quoi y revenir.
@@ -503,6 +506,41 @@ final class PartagesController
         redirect('partages/' . Partages::mot($type) . '/' . $id);
     }
 
+    /** Un évènement partagé, au format de tous les agendas. */
+    public function ics(int $id): void
+    {
+        Auth::exiger();
+        $evenement = Partages::cible('evenement', $id);
+        if ($evenement === null || !Partages::peutVoir('evenement', $id, Auth::id())) {
+            self::introuvable();
+        }
+        $this->envoyerIcs($evenement);
+    }
+
+    /** Le même, par un lien public. */
+    public function icsPublic(string $jeton, string $mot, int $id): void
+    {
+        header('X-Robots-Tag: noindex, nofollow');
+        $trouve = Partages::parJeton($jeton);
+        $evenement = $mot === 'evenements' ? Partages::cible('evenement', $id) : null;
+        if ($trouve === null || $evenement === null || !Partages::visiblePar($trouve['lien'], 'evenement', $id)) {
+            http_response_code(404);
+            exit('Évènement introuvable.');
+        }
+        $this->envoyerIcs($evenement);
+    }
+
+    private function envoyerIcs(array $evenement): never
+    {
+        session_write_close();
+        $nom = trim((string) preg_replace('/[^\p{L}\p{N} _-]+/u', '', (string) $evenement['titre'])) ?: 'evenement';
+        header('Content-Type: text/calendar; charset=utf-8');
+        header('Content-Disposition: attachment; filename="evenement.ics"; filename*=UTF-8\'\'' . rawurlencode(mb_substr($nom, 0, 60) . '.ics'));
+        header('X-Content-Type-Options: nosniff');
+        echo Partages::ics($evenement);
+        exit;
+    }
+
     /** Le contenu d'un fichier partagé, pour un ami. */
     public function contenu(int $id): void
     {
@@ -530,10 +568,14 @@ final class PartagesController
             'cours' => 'Cours copié dans vos cours : cette copie est à vous, modifiable.',
             'fiche' => 'Fiche copiée : un nouveau cours à vous, dont c’est la fiche de révision.',
             'dossier' => 'Dossier copié dans vos dossiers : ces copies sont à vous, modifiables.',
+            'evenement' => 'Évènement ajouté à votre calendrier : il est à vous, modifiable.',
             default => 'Fichier copié dans votre cours.',
         });
         if ($type === 'dossier') {
             redirect('cours', ['dossier' => $cours]);
+        }
+        if ($type === 'evenement') {
+            redirect('calendrier', ['date' => substr((string) Database::valeur('SELECT debut FROM evenements WHERE id = ?', [$cours]), 0, 10)]);
         }
         redirect(($type === 'fiche' ? 'revision/' : 'cours/') . $cours);
     }
@@ -577,6 +619,7 @@ final class PartagesController
             'groupes' => $type === 'dossier' ? Partages::contenuDuDossier((int) $cible['id'], (int) $cible['user_id']) : [],
             'adresseCours' => static fn (int $c): string => url('p/' . $jeton . '/cours/' . $c),
             'adresseFichier' => static fn (int $f, bool $telecharger = false): string => url('p/' . $jeton . '/fichiers/' . $f, $telecharger ? ['telecharger' => 1] : []),
+            'adresseIcs' => url('p/' . $jeton . '/evenements/' . (int) $cible['id'] . '/ics'),
             'mesCours' => [],
             'recu' => false,
             'droit' => 'lecture',
@@ -608,6 +651,7 @@ final class PartagesController
             'groupes' => $type === 'dossier' ? Partages::contenuDuDossier($id, (int) $cible['user_id']) : [],
             'adresseCours' => static fn (int $c): string => url('p/' . $jeton . '/cours/' . $c),
             'adresseFichier' => static fn (int $f, bool $telecharger = false): string => url('p/' . $jeton . '/fichiers/' . $f, $telecharger ? ['telecharger' => 1] : []),
+            'adresseIcs' => url('p/' . $jeton . '/evenements/' . $id . '/ics'),
             'mesCours' => [],
             'recu' => false,
             'droit' => 'lecture',
