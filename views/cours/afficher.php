@@ -97,7 +97,7 @@ $nbElements = count($elements) + count($fichiersFiche);
       <?php $nbCommentaires = Partages::nbCommentaires('cours', (int) $cours['id']); ?>
       <?php if ($nbCommentaires > 0): ?>
         <p class="discret" style="margin:.4rem 0 0">
-          💬 <a href="<?= url('partager/cours/' . (int) $cours['id']) ?>" <?= $dansUneFenetre ? 'data-fenetre-dessus' : 'data-fenetre' ?>><?= $nbCommentaires ?> commentaire<?= $nbCommentaires > 1 ? 's' : '' ?></a>
+          💬 <a href="<?= url('partages/cours/' . (int) $cours['id'] . '/commentaires') ?>" <?= $dansUneFenetre ? 'data-fenetre-dessus' : 'data-fenetre' ?>><?= $nbCommentaires ?> commentaire<?= $nbCommentaires > 1 ? 's' : '' ?></a>
           de vos amis sur ce cours.
         </p>
       <?php endif; ?>

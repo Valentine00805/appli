@@ -503,6 +503,8 @@ $routes = [
     ['POST', 'partages/{mot}/{id}/oublier',         [PartagesController::class, 'oublier']],
     ['POST', 'partages/{mot}/{id}/commentaires',    [PartagesController::class, 'commenter']],
     ['POST', 'partages/commentaires/{id}/retirer',  [PartagesController::class, 'retirerCommentaire']],
+    ['POST', 'partages/commentaires/{id}/aimer',    [PartagesController::class, 'aimerCommentaire']],
+    ['GET',  'partages/{mot}/{id}/commentaires',    [PartagesController::class, 'fil']],
     ['POST', 'partages/{mot}/{id}/contenu',         [PartagesController::class, 'ecrire']],
     ['POST', 'partages/{mot}/{id}/fichiers',        [PartagesController::class, 'joindre']],
     ['POST', 'partages/fichiers/{id}/retirer',      [PartagesController::class, 'retirerFichier']],

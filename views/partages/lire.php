@@ -233,38 +233,13 @@ $nom = $fichierSeul ? (string) $cible['nom_origine'] : '';
   <?php // Une conversation sous le document, que son propriétaire lit aussi. ?>
   <section class="carte" id="commentaires">
     <h2 style="margin-top:0">💬 Commentaires <span class="discret">(<?= count($commentaires) ?>)</span></h2>
-    <?php if ($commentaires === []): ?>
-      <p class="discret" style="margin:0 0 .6rem">Aucun commentaire pour l’instant.</p>
-    <?php else: ?>
-      <ul class="partage-commentaires">
-        <?php foreach ($commentaires as $c): ?>
-          <li>
-            <div class="partage-commentaires__qui">
-              <?= Amis::avatar((int) $c['user_id'], (string) $c['pseudo'], 'avatar--mini') ?>
-              <strong><?= e((string) $c['pseudo']) ?></strong>
-              <span class="discret"><?= e(date_fr(Amis::local((string) $c['created_at'])->format('Y-m-d H:i:s'))) ?></span>
-              <?php if ((int) $c['user_id'] === Auth::id() || (int) $cible['user_id'] === Auth::id()): ?>
-                <form method="post" action="<?= url('partages/commentaires/' . (int) $c['id'] . '/retirer') ?>"<?= $surPlace ?>
-                      data-confirmation="Retirer ce commentaire ?">
-                  <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
-                  <button class="bouton bouton--discret bouton--petit" type="submit">Retirer</button>
-                </form>
-              <?php endif; ?>
-            </div>
-            <p class="partage-commentaires__texte"><?= nl2br(e((string) $c['texte'])) ?></p>
-          </li>
-        <?php endforeach; ?>
-      </ul>
-    <?php endif; ?>
-    <form method="post" action="<?= url($base . '/commentaires') ?>"<?= $surPlace ?>>
-      <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
-      <div class="champ">
-        <label class="sr-only" for="partage-commentaire">Votre commentaire</label>
-        <textarea id="partage-commentaire" name="texte" rows="2" maxlength="<?= Amis::MESSAGE_MAX ?>"
-                  placeholder="Une remarque, une question…"></textarea>
-      </div>
-      <button class="bouton bouton--petit" type="submit">Commenter</button>
-    </form>
+    <?= Vue::rendre('partages/_fil', [
+        'commentaires' => $commentaires,
+        'cible' => $cible,
+        'base' => $base,
+        'surPlace' => $surPlace,
+        'depuis' => '',
+    ]) ?>
   </section>
 <?php endif; ?>
 

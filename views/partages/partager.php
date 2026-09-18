@@ -130,36 +130,12 @@ $icone = match ($type) {
 </section>
 
 <?php if ($commentaires !== []): ?>
-  <?php // Ce qu'on a écrit sous ce document : ici, faute d'y être chez soi. ?>
-  <section class="carte partage-section">
-    <h2 style="margin-top:0">💬 Commentaires <span class="discret">(<?= count($commentaires) ?>)</span></h2>
-    <ul class="partage-commentaires">
-      <?php foreach ($commentaires as $c): ?>
-        <li>
-          <div class="partage-commentaires__qui">
-            <?= Amis::avatar((int) $c['user_id'], (string) $c['pseudo'], 'avatar--mini') ?>
-            <strong><?= e((string) $c['pseudo']) ?></strong>
-            <span class="discret"><?= e(date_fr(Amis::local((string) $c['created_at'])->format('Y-m-d H:i:s'))) ?></span>
-            <form method="post" action="<?= url('partages/commentaires/' . (int) $c['id'] . '/retirer') ?>"<?= $surPlace ?>
-                  data-confirmation="Retirer ce commentaire ?">
-              <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
-              <button class="bouton bouton--discret bouton--petit" type="submit">Retirer</button>
-            </form>
-          </div>
-          <p class="partage-commentaires__texte"><?= nl2br(e((string) $c['texte'])) ?></p>
-        </li>
-      <?php endforeach; ?>
-    </ul>
-    <form method="post" action="<?= url($base . '/commentaires') ?>"<?= $surPlace ?>>
-      <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
-      <div class="champ">
-        <label class="sr-only" for="partage-reponse">Votre commentaire</label>
-        <textarea id="partage-reponse" name="texte" rows="2" maxlength="<?= Amis::MESSAGE_MAX ?>"
-                  placeholder="Répondre…"></textarea>
-      </div>
-      <button class="bouton bouton--petit" type="submit">Commenter</button>
-    </form>
-  </section>
+  <?php // Les commentaires ont leur propre fenêtre, qui s'ouvre par-dessus. ?>
+  <p class="discret" style="margin:0 0 1rem">
+    💬 <a href="<?= url('partages/' . $mot . '/' . (int) $cible['id'] . '/commentaires') ?>"
+          <?= $dansUneFenetre ? 'data-fenetre-dessus' : '' ?>><?= count($commentaires) ?> commentaire<?= count($commentaires) > 1 ? 's' : '' ?></a>
+    sur ce document.
+  </p>
 <?php endif; ?>
 
 <section class="carte partage-section">

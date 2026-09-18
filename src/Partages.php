@@ -1036,14 +1036,65 @@ final class Partages
      * Les commentaires d'un document, du plus ancien au plus récent : une
      * discussion au fil du texte, que le propriétaire lit aussi.
      */
-    public static function commentaires(string $type, int $id): array
+    public static function commentaires(string $type, int $id, int $moi = 0): array
     {
-        return Database::all(
-            "SELECT c.id, c.user_id, c.texte, c.created_at, COALESCE(u.pseudo, '') AS pseudo
+        $lignes = Database::all(
+            "SELECT c.id, c.user_id, c.reponse_a, c.texte, c.created_at, COALESCE(u.pseudo, '') AS pseudo,
+                    (SELECT COUNT(*) FROM commentaires_jaime j WHERE j.commentaire_id = c.id) AS nb_jaime,
+                    (SELECT COUNT(*) FROM commentaires_jaime j WHERE j.commentaire_id = c.id AND j.user_id = ?) AS moi_jaime
                FROM commentaires_partage c JOIN users u ON u.id = c.user_id
               WHERE c.cible_type = ? AND c.cible_id = ? ORDER BY c.created_at, c.id",
-            [$type, $id]
+            [$moi, $type, $id]
         );
+        // Un fil : chaque commentaire, puis ses réponses sous lui.
+        $fils = [];
+        $reponses = [];
+        foreach ($lignes as $l) {
+            $l['nb_jaime'] = (int) $l['nb_jaime'];
+            $l['moi_jaime'] = (int) $l['moi_jaime'] > 0;
+            if ($l['reponse_a'] === null) {
+                $fils[(int) $l['id']] = $l + ['reponses' => []];
+            } else {
+                $reponses[] = $l;
+            }
+        }
+        foreach ($reponses as $r) {
+            if (isset($fils[(int) $r['reponse_a']])) {
+                $fils[(int) $r['reponse_a']]['reponses'][] = $r;
+            }
+        }
+
+        return array_values($fils);
+    }
+
+    /**
+     * Aime un commentaire, ou cesse de l'aimer. Il faut pouvoir le lire.
+     *
+     * @return ?array{0: string, 1: int} le document d'où il vient
+     */
+    public static function aimerCommentaire(int $moi, int $commentaireId): ?array
+    {
+        $commentaire = Database::one('SELECT cible_type, cible_id FROM commentaires_partage WHERE id = ?', [$commentaireId]);
+        if ($commentaire === null) {
+            return null;
+        }
+        $type = (string) $commentaire['cible_type'];
+        $id = (int) $commentaire['cible_id'];
+        if (!self::permet(self::droit($type, $id, $moi), 'commentaire')) {
+            return null;
+        }
+        $defait = Database::run(
+            'DELETE FROM commentaires_jaime WHERE commentaire_id = ? AND user_id = ?',
+            [$commentaireId, $moi]
+        )->rowCount() > 0;
+        if (!$defait) {
+            Database::run(
+                'INSERT INTO commentaires_jaime (commentaire_id, user_id, created_at) VALUES (?, ?, UTC_TIMESTAMP())',
+                [$commentaireId, $moi]
+            );
+        }
+
+        return [$type, $id];
     }
 
     /** Combien de commentaires : de quoi l'annoncer sans tous les charger. */
@@ -1056,7 +1107,7 @@ final class Partages
     }
 
     /** Écrit un commentaire, si on en a le droit. Rend la raison d'un refus. */
-    public static function commenter(int $moi, string $type, int $id, string $texte): ?string
+    public static function commenter(int $moi, string $type, int $id, string $texte, ?int $reponseA = null): ?string
     {
         if (!self::permet(self::droit($type, $id, $moi), 'commentaire')) {
             return 'Vous ne pouvez pas commenter ce document.';
@@ -1068,18 +1119,38 @@ final class Partages
         if (mb_strlen($texte) > Amis::MESSAGE_MAX) {
             return 'Le commentaire ne peut pas dépasser ' . Amis::MESSAGE_MAX . ' caractères.';
         }
+        // Une réponse vise un commentaire de ce document ; répondre à une
+        // réponse la range sous le même commentaire, sur un seul niveau.
+        $parent = null;
+        if ($reponseA !== null) {
+            $parent = Database::one(
+                'SELECT id, user_id, reponse_a FROM commentaires_partage WHERE id = ? AND cible_type = ? AND cible_id = ?',
+                [$reponseA, $type, $id]
+            );
+            if ($parent === null) {
+                return 'Ce commentaire n’existe plus.';
+            }
+        }
+        $racine = $parent === null ? null : (int) ($parent['reponse_a'] ?? $parent['id']);
         Database::run(
-            'INSERT INTO commentaires_partage (cible_type, cible_id, user_id, texte, created_at) VALUES (?, ?, ?, ?, UTC_TIMESTAMP())',
-            [$type, $id, $moi, $texte]
+            'INSERT INTO commentaires_partage (cible_type, cible_id, user_id, reponse_a, texte, created_at) VALUES (?, ?, ?, ?, ?, UTC_TIMESTAMP())',
+            [$type, $id, $moi, $racine, $texte]
         );
 
-        // Le propriétaire est prévenu ; les autres liront en rouvrant le document.
+        // Le propriétaire est prévenu, et celui à qui l'on répond ; les autres
+        // liront en rouvrant le document.
         $cible = self::cible($type, $id);
-        $proprietaire = $cible === null ? $moi : (int) $cible['user_id'];
-        if ($proprietaire !== $moi) {
-            $pseudo = (string) (Amis::compte($moi)['pseudo'] ?? 'Un ami');
-            $n = Amis::notifier($moi, $proprietaire, '💬 ' . $pseudo . ' a commenté « '
-                . mb_strimwidth((string) $cible['titre'], 0, 60, '…') . ' » · ' . mb_strimwidth($texte, 0, 80, '…'));
+        $pseudo = (string) (Amis::compte($moi)['pseudo'] ?? 'Un ami');
+        $titre = mb_strimwidth((string) ($cible['titre'] ?? ''), 0, 60, '…');
+        $prevenir = [];
+        if ($cible !== null && (int) $cible['user_id'] !== $moi) {
+            $prevenir[(int) $cible['user_id']] = '💬 ' . $pseudo . ' a commenté « ' . $titre . ' »';
+        }
+        if ($parent !== null && (int) $parent['user_id'] !== $moi) {
+            $prevenir[(int) $parent['user_id']] = '💬 ' . $pseudo . ' vous a répondu sur « ' . $titre . ' »';
+        }
+        foreach ($prevenir as $qui => $annonce) {
+            $n = Amis::notifier($moi, $qui, $annonce . ' · ' . mb_strimwidth($texte, 0, 80, '…'));
             if ($n !== null) {
                 FileNotifications::envoyer($n);
             }

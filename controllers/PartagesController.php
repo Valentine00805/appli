@@ -290,7 +290,7 @@ final class PartagesController
                 ? Database::all('SELECT id, titre FROM cours WHERE user_id = ? ORDER BY titre', [$moi]) : [],
             'recu' => Database::valeur('SELECT 1 FROM partages_amis WHERE destinataire_id = ? AND cible_type = ? AND cible_id = ?', [$moi, $type, $id]) !== null,
             'droit' => Partages::droit($type, $id, $moi) ?? 'lecture',
-            'commentaires' => Partages::commentaires($type, $id),
+            'commentaires' => Partages::commentaires($type, $id, $moi),
             'mot' => $mot,
         ];
         // Un cours ouvert depuis un dossier partagé : de quoi y revenir.
@@ -314,9 +314,48 @@ final class PartagesController
         Auth::exiger();
         Session::verifierCsrf();
         $type = self::type($mot);
-        $refus = Partages::commenter(Auth::id(), $type, $id, (string) ($_POST['texte'] ?? ''));
-        Session::flash($refus === null ? 'succes' : 'erreur', $refus ?? 'Commentaire ajouté.');
+        $reponseA = entier_ou_null($_POST['reponse_a'] ?? null);
+        $refus = Partages::commenter(Auth::id(), $type, $id, (string) ($_POST['texte'] ?? ''), $reponseA);
+        Session::flash($refus === null ? 'succes' : 'erreur', $refus ?? ($reponseA === null ? 'Commentaire ajouté.' : 'Réponse ajoutée.'));
         $this->retourDocument($type, $id);
+    }
+
+    /**
+     * Les commentaires d'un document, seuls : une petite fenêtre qui s'ouvre
+     * sans le reste, pour les lire, y répondre et les aimer.
+     */
+    public function fil(string $mot, int $id): void
+    {
+        Auth::exiger();
+        $moi = Auth::id();
+        $type = self::type($mot);
+        $cible = Partages::cible($type, $id);
+        if ($cible === null || !Partages::permet(Partages::droit($type, $id, $moi), 'commentaire')) {
+            self::introuvable();
+        }
+        $donnees = [
+            'type' => $type,
+            'mot' => $mot,
+            'cible' => $cible,
+            'commentaires' => Partages::commentaires($type, $id, $moi),
+        ];
+        if (Vue::enFenetre()) {
+            Vue::fragment('partages/commentaires', $donnees + ['dansUneFenetre' => true]);
+            return;
+        }
+        Vue::afficher('partages/commentaires', $donnees, 'Commentaires');
+    }
+
+    /** Aime un commentaire, ou cesse de l'aimer. */
+    public function aimerCommentaire(int $id): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $ou = Partages::aimerCommentaire(Auth::id(), $id);
+        if ($ou === null) {
+            self::introuvable();
+        }
+        $this->retourDocument($ou[0], $ou[1]);
     }
 
     /** Retire un commentaire : le sien, ou l'un de ceux qu'on a reçus. */
@@ -381,6 +420,9 @@ final class PartagesController
     /** Revient au document : le sien chez soi, la page de lecture sinon. */
     private function retourDocument(string $type, int $id): never
     {
+        if (($_POST['depuis'] ?? '') === 'fil') {
+            redirect('partages/' . Partages::mot($type) . '/' . $id . '/commentaires');
+        }
         $cible = Partages::cible($type, $id);
         if ($cible !== null && (int) $cible['user_id'] === Auth::id()) {
             redirect(match ($type) {
