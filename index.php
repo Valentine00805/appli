@@ -47,6 +47,7 @@ require __DIR__ . '/src/FileNotifications.php';
 require __DIR__ . '/src/Amis.php';
 require __DIR__ . '/src/Conversations.php';
 require __DIR__ . '/src/Partages.php';
+require __DIR__ . '/src/Difference.php';
 require __DIR__ . '/src/PlanningJour.php';
 require __DIR__ . '/src/Fournisseur.php';
 require __DIR__ . '/src/FournisseurMicrosoft.php';
@@ -505,6 +506,9 @@ $routes = [
     ['POST', 'partages/commentaires/{id}/retirer',  [PartagesController::class, 'retirerCommentaire']],
     ['POST', 'partages/commentaires/{id}/aimer',    [PartagesController::class, 'aimerCommentaire']],
     ['GET',  'partages/{mot}/{id}/commentaires',    [PartagesController::class, 'fil']],
+    ['GET',  'partages/{mot}/{id}/modifications',   [PartagesController::class, 'historique']],
+    ['GET',  'partages/modifications/{id}/fichier', [PartagesController::class, 'fichierMisDeCote']],
+    ['POST', 'partages/modifications/{id}/restaurer', [PartagesController::class, 'restaurerFichier']],
     ['POST', 'partages/{mot}/{id}/contenu',         [PartagesController::class, 'ecrire']],
     ['POST', 'partages/{mot}/{id}/fichiers',        [PartagesController::class, 'joindre']],
     ['POST', 'partages/fichiers/{id}/retirer',      [PartagesController::class, 'retirerFichier']],

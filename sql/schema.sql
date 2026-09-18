@@ -997,3 +997,27 @@ CREATE TABLE IF NOT EXISTS `commentaires_jaime` (
   CONSTRAINT `fk_jaime_commentaire` FOREIGN KEY (`commentaire_id`) REFERENCES `commentaires_partage`(`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_jaime_user`        FOREIGN KEY (`user_id`)        REFERENCES `users`(`id`)                ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- L'historique des modifications faites par d'autres dans un document partagé.
+CREATE TABLE IF NOT EXISTS `modifications_partage` (
+  `id`          INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `cible_type`  VARCHAR(8)   NOT NULL,
+  `cible_id`    INT UNSIGNED NOT NULL,
+  `user_id`     INT UNSIGNED NOT NULL,
+  `nature`      VARCHAR(8)   NOT NULL,
+  `avant`       MEDIUMTEXT   NULL,
+  `apres`       MEDIUMTEXT   NULL,
+  -- Le fichier joint, tant qu'il existe.
+  `fichier_id`  INT UNSIGNED NULL,
+  -- Le fichier retiré, mis de côté : de quoi l'ouvrir et le remettre.
+  `nom_origine` VARCHAR(255) NULL,
+  `nom_stocke`  VARCHAR(255) NULL,
+  `mime`        VARCHAR(120) NULL,
+  `taille`      INT UNSIGNED NULL,
+  `restaure`    TINYINT(1)   NOT NULL DEFAULT 0,
+  `created_at`  DATETIME     NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_modification_cible` (`cible_type`, `cible_id`, `created_at`),
+  KEY `idx_modification_user` (`user_id`),
+  CONSTRAINT `fk_modification_partage_user` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

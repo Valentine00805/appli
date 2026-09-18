@@ -94,6 +94,13 @@ $nbElements = count($elements) + count($fichiersFiche);
        */
       ?>
       <?php // Ce qu'on a écrit sous ce cours, quand on l'a partagé. ?>
+      <?php $nbModifications = Partages::nbModifications('cours', (int) $cours['id']); ?>
+      <?php if ($nbModifications > 0): ?>
+        <p class="discret" style="margin:.4rem 0 0">
+          🕘 <a href="<?= e(Partages::adresseHistorique('cours', (int) $cours['id'])) ?>" <?= $dansUneFenetre ? 'data-fenetre-dessus' : 'data-fenetre' ?>><?= $nbModifications ?> modification<?= $nbModifications > 1 ? 's' : '' ?></a>
+          de vos amis sur ce cours.
+        </p>
+      <?php endif; ?>
       <?php $nbCommentaires = Partages::nbCommentaires('cours', (int) $cours['id']); ?>
       <?php if ($nbCommentaires > 0): ?>
         <p class="discret" style="margin:.4rem 0 0">

@@ -316,6 +316,22 @@ textarea { min-height: 260px; resize: vertical; line-height: 1.65; }
 .partage-commentaires__repondre summary { cursor: pointer; font-size: .85rem; color: var(--texte-doux); }
 .partage-commentaires__repondre textarea { min-height: 2.6rem; }
 .champ-commentaire { min-height: 3.2rem; height: 3.2rem; resize: vertical; }
+
+/* L'historique d'un document : ce qui a été ajouté, ce qui a été retiré. */
+.historique { margin: 0; padding: 0; list-style: none; display: grid; gap: 1rem; }
+.historique__qui { display: flex; align-items: center; gap: .4rem; flex-wrap: wrap; margin-bottom: .35rem; }
+.difference { border: 1px solid var(--bordure); border-radius: var(--rayon-s); padding: .5rem .7rem; display: grid; gap: .35rem;
+  max-height: 22rem; overflow: auto; overflow-wrap: anywhere; }
+.difference p { margin: 0; }
+.difference__saut { color: var(--texte-doux); font-size: .85rem; }
+.difference ins, .difference__ajout { background: #dcfce7; color: #14532d; text-decoration: none; border-radius: 3px; }
+.difference del, .difference__retrait { background: #fee2e2; color: #7f1d1d; text-decoration: line-through; border-radius: 3px; }
+.difference__ajout, .difference__retrait { padding: .15rem .35rem; }
+.difference__legende { display: flex; gap: .8rem; font-size: .82rem; margin: 0 0 .4rem; }
+@media (prefers-color-scheme: dark) {
+  .difference ins, .difference__ajout { background: #14532d; color: #dcfce7; }
+  .difference del, .difference__retrait { background: #7f1d1d; color: #fee2e2; }
+}
 .bouton-jaime { font-variant-numeric: tabular-nums; }
 .bouton-jaime[aria-pressed="true"] { color: #e11d48; }
 .partage-droits__choix { display: flex; gap: .5rem; align-items: flex-start; padding: .45rem .6rem;

@@ -154,6 +154,11 @@ $nom = $fichierSeul ? (string) $cible['nom_origine'] : '';
       <?php endif; ?>
 
       <?php if ($peutEcrire): ?>
+        <?php if (Partages::nbModifications($type, (int) $cible['id']) > 0): ?>
+          <p class="discret" style="margin:.4rem 0 0">
+            🕘 <a href="<?= e(Partages::adresseHistorique($type, (int) $cible['id'])) ?>"<?= $dansUneFenetre ? ' data-fenetre-dessus' : '' ?>>Voir les modifications</a>
+          </p>
+        <?php endif; ?>
         <?php // On m'a donné le droit d'écrire : le même éditeur que chez moi. ?>
         <details class="edition-contenu"<?= trim($texte) === '' ? ' open' : '' ?>>
           <summary class="edition-contenu__ouvrir">

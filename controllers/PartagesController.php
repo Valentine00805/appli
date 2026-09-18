@@ -346,6 +346,59 @@ final class PartagesController
         Vue::afficher('partages/commentaires', $donnees, 'Commentaires');
     }
 
+    /**
+     * Ce que d'autres ont changé dans un document : pour son propriétaire, et
+     * pour qui a lui aussi le droit de le modifier.
+     */
+    public function historique(string $mot, int $id): void
+    {
+        Auth::exiger();
+        $moi = Auth::id();
+        $type = self::type($mot);
+        $cible = Partages::cible($type, $id);
+        if ($cible === null || !in_array($type, ['cours', 'fiche'], true)
+            || !Partages::permet(Partages::droit($type, $id, $moi), 'modification')) {
+            self::introuvable();
+        }
+        $donnees = [
+            'type' => $type,
+            'mot' => $mot,
+            'cible' => $cible,
+            'modifications' => Partages::historique($type, $id),
+            'chezMoi' => (int) $cible['user_id'] === $moi,
+        ];
+        if (Vue::enFenetre()) {
+            Vue::fragment('partages/modifications', $donnees + ['dansUneFenetre' => true]);
+            return;
+        }
+        Vue::afficher('partages/modifications', $donnees, 'Modifications');
+    }
+
+    /** Ouvre un fichier qu'un ami a retiré : son propriétaire seul le peut. */
+    public function fichierMisDeCote(int $id): void
+    {
+        Auth::exiger();
+        session_write_close();
+        $ligne = Partages::fichierMisDeCote(Auth::id(), $id);
+        if ($ligne === null) {
+            self::introuvable();
+        }
+        Fichiers::envoyer($ligne, isset($_GET['telecharger']));
+    }
+
+    /** Remet dans le document un fichier qu'un ami en avait retiré. */
+    public function restaurerFichier(int $id): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $ou = Partages::restaurerFichier(Auth::id(), $id);
+        if ($ou === null) {
+            self::introuvable();
+        }
+        Session::flash('succes', 'Fichier remis à sa place.');
+        redirect('partages/' . Partages::mot($ou[0]) . '/' . $ou[1] . '/modifications');
+    }
+
     /** Aime un commentaire, ou cesse de l'aimer. */
     public function aimerCommentaire(int $id): void
     {

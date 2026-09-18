@@ -1030,6 +1030,19 @@ final class Partages
         Database::run('DELETE FROM liens_partage WHERE cible_type = ? AND cible_id = ?', [$type, $id]);
         Database::run('DELETE FROM commentaires_partage WHERE cible_type = ? AND cible_id = ?', [$type, $id]);
         Database::run('DELETE FROM lots_partage_documents WHERE cible_type = ? AND cible_id = ?', [$type, $id]);
+        if (in_array($type, ['cours', 'fiche'], true)) {
+            $dossier = (string) Config::get('app', 'dossier_uploads');
+            foreach (Database::all(
+                "SELECT nom_stocke FROM modifications_partage WHERE cible_type = ? AND cible_id = ? AND nature = 'retrait' AND restaure = 0",
+                [$type, $id]
+            ) as $misDeCote) {
+                $chemin = $dossier . DIRECTORY_SEPARATOR . basename((string) $misDeCote['nom_stocke']);
+                if (is_file($chemin)) {
+                    @unlink($chemin);
+                }
+            }
+            Database::run('DELETE FROM modifications_partage WHERE cible_type = ? AND cible_id = ?', [$type, $id]);
+        }
     }
 
     /**
@@ -1215,12 +1228,14 @@ final class Partages
         // Un enregistrement qui ne change rien ne dérange personne.
         if ($texte !== $avant) {
             $cible = self::cible($type, $id);
+            self::noter($moi, $type, $id, 'texte', ['avant' => $avant, 'apres' => $texte]);
             self::prevenir($moi, $type, $id, '✏️', match (true) {
                 $texte === '' => 'a vidé le texte',
                 $avant === '' => 'a écrit le texte',
                 default => 'a modifié le texte',
             } . ($type === 'cours' ? ' du cours « ' : ' de la fiche « ')
-                . mb_strimwidth((string) ($cible['titre_cours'] ?? $cible['titre'] ?? ''), 0, 60, '…') . ' »');
+                . mb_strimwidth((string) ($cible['titre_cours'] ?? $cible['titre'] ?? ''), 0, 60, '…') . ' »',
+                self::adresseHistorique($type, $id));
         }
 
         return null;
@@ -1275,6 +1290,16 @@ final class Partages
         $ajoutes = $apres - $avant;
 
         if ($ajoutes > 0) {
+            // Chaque fichier joint entre dans l'historique, par son nom.
+            foreach (Database::all(
+                'SELECT id, nom_origine, mime, taille FROM fichiers WHERE cours_id = ? ORDER BY id DESC LIMIT ' . $ajoutes,
+                [$id]
+            ) as $nouveau) {
+                self::noter($moi, $type, $id, 'ajout', [
+                    'fichier_id' => (int) $nouveau['id'], 'nom_origine' => (string) $nouveau['nom_origine'],
+                    'mime' => (string) $nouveau['mime'], 'taille' => (int) $nouveau['taille'],
+                ]);
+            }
             $noms = array_column(Database::all(
                 'SELECT nom_origine FROM fichiers WHERE cours_id = ? ORDER BY id DESC LIMIT ' . min($ajoutes, 3),
                 [$id]
@@ -1283,7 +1308,8 @@ final class Partages
                 . ' ' . implode(', ', array_map(static fn (string $n): string => '« ' . $n . ' »', array_reverse($noms)))
                 . ($ajoutes > 3 ? '…' : '')
                 . ($type === 'cours' ? ' au cours « ' : ' à la fiche « ')
-                . mb_strimwidth((string) ($cible['titre_cours'] ?? $cible['titre']), 0, 60, '…') . ' »');
+                . mb_strimwidth((string) ($cible['titre_cours'] ?? $cible['titre']), 0, 60, '…') . ' »',
+                self::adresseHistorique($type, $id));
         }
 
         return [$ajoutes, $erreurs];
@@ -1300,17 +1326,128 @@ final class Partages
         if ($fichier === null || !self::permet(self::droit('fichier', $fichierId, $moi), 'modification')) {
             return null;
         }
-        if (!Fichiers::supprimer($fichierId, (int) $fichier['user_id'])) {
-            return null;
+        $type = (int) $fichier['pour_fiche'] === 1 ? 'fiche' : 'cours';
+        $coursId = (int) $fichier['cours_id'];
+        if ((int) $fichier['user_id'] === $moi) {
+            if (!Fichiers::supprimer($fichierId, $moi)) {
+                return null;
+            }
+        } else {
+            // Le fichier d'un autre n'est pas effacé : il sort du document,
+            // mais reste sur le disque, pour que son propriétaire le remette.
+            self::noter($moi, $type, $coursId, 'retrait', [
+                'nom_origine' => (string) $fichier['nom_origine'], 'nom_stocke' => (string) $fichier['nom_stocke'],
+                'mime' => (string) $fichier['mime'], 'taille' => (int) $fichier['taille'],
+            ]);
+            Database::run('DELETE FROM fichiers WHERE id = ?', [$fichierId]);
         }
         self::oublier('fichier', $fichierId);
-        $type = (int) $fichier['pour_fiche'] === 1 ? 'fiche' : 'cours';
-        $document = self::cible($type, (int) $fichier['cours_id']);
-        self::prevenir($moi, $type, (int) $fichier['cours_id'], '🗑️', 'a retiré le fichier « ' . $fichier['nom_origine'] . ' »'
+        $document = self::cible($type, $coursId);
+        self::prevenir($moi, $type, $coursId, '🗑️', 'a retiré le fichier « ' . $fichier['nom_origine'] . ' »'
             . ($type === 'cours' ? ' du cours « ' : ' de la fiche « ')
-            . mb_strimwidth((string) ($document['titre_cours'] ?? $document['titre'] ?? ''), 0, 60, '…') . ' »');
+            . mb_strimwidth((string) ($document['titre_cours'] ?? $document['titre'] ?? ''), 0, 60, '…') . ' »',
+            self::adresseHistorique($type, $coursId));
 
-        return [$type, (int) $fichier['cours_id']];
+        return [$type, $coursId];
+    }
+
+    /** Où voir ce qui a changé dans un document. */
+    public static function adresseHistorique(string $type, int $id): string
+    {
+        return url('partages/' . self::mot($type) . '/' . $id . '/modifications');
+    }
+
+    /**
+     * Garde une modification faite par un autre que le propriétaire. Ce
+     * qu'on fait chez soi n'a pas besoin de trace.
+     *
+     * @param array<string, mixed> $details
+     */
+    private static function noter(int $moi, string $type, int $id, string $nature, array $details): void
+    {
+        $cible = self::cible($type, $id);
+        if ($cible === null || (int) $cible['user_id'] === $moi) {
+            return;
+        }
+        Database::run(
+            'INSERT INTO modifications_partage (cible_type, cible_id, user_id, nature, avant, apres, fichier_id, nom_origine, nom_stocke, mime, taille, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, UTC_TIMESTAMP())',
+            [$type, $id, $moi, $nature, $details['avant'] ?? null, $details['apres'] ?? null, $details['fichier_id'] ?? null,
+             $details['nom_origine'] ?? null, $details['nom_stocke'] ?? null, $details['mime'] ?? null, $details['taille'] ?? null]
+        );
+    }
+
+    /** Combien de modifications d'autres personnes : de quoi l'annoncer. */
+    public static function nbModifications(string $type, int $id): int
+    {
+        return (int) Database::valeur(
+            'SELECT COUNT(*) FROM modifications_partage WHERE cible_type = ? AND cible_id = ?',
+            [$type, $id]
+        );
+    }
+
+    /**
+     * L'historique d'un document, de la plus récente à la plus ancienne :
+     * qui, quand, et quoi — la comparaison du texte, ou le fichier.
+     */
+    public static function historique(string $type, int $id): array
+    {
+        $lignes = Database::all(
+            "SELECT m.*, COALESCE(u.pseudo, '') AS pseudo,
+                    (SELECT 1 FROM fichiers f WHERE f.id = m.fichier_id) AS fichier_existe
+               FROM modifications_partage m JOIN users u ON u.id = m.user_id
+              WHERE m.cible_type = ? AND m.cible_id = ? ORDER BY m.created_at DESC, m.id DESC",
+            [$type, $id]
+        );
+        foreach ($lignes as &$l) {
+            $l['difference'] = $l['nature'] === 'texte'
+                ? Difference::comparer((string) $l['avant'], (string) $l['apres'])
+                : [];
+        }
+
+        return $lignes;
+    }
+
+    /**
+     * Un fichier mis de côté, pour son propriétaire seulement : de quoi
+     * l'ouvrir avant de décider de le remettre.
+     */
+    public static function fichierMisDeCote(int $moi, int $modificationId): ?array
+    {
+        $ligne = Database::one(
+            "SELECT * FROM modifications_partage WHERE id = ? AND nature = 'retrait' AND restaure = 0",
+            [$modificationId]
+        );
+        if ($ligne === null) {
+            return null;
+        }
+        $document = self::cible((string) $ligne['cible_type'], (int) $ligne['cible_id']);
+
+        return $document !== null && (int) $document['user_id'] === $moi ? $ligne : null;
+    }
+
+    /**
+     * Remet dans le document un fichier qu'un ami en avait retiré.
+     *
+     * @return ?array{0: string, 1: int} le document où il revient
+     */
+    public static function restaurerFichier(int $moi, int $modificationId): ?array
+    {
+        $ligne = self::fichierMisDeCote($moi, $modificationId);
+        if ($ligne === null) {
+            return null;
+        }
+        Database::run(
+            'INSERT INTO fichiers (user_id, cours_id, pour_fiche, nom_origine, nom_stocke, mime, taille) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [$moi, (int) $ligne['cible_id'], $ligne['cible_type'] === 'fiche' ? 1 : 0, (string) $ligne['nom_origine'],
+             (string) $ligne['nom_stocke'], (string) $ligne['mime'], (int) $ligne['taille']]
+        );
+        Database::run(
+            'UPDATE modifications_partage SET restaure = 1, fichier_id = ? WHERE id = ?',
+            [Database::dernierId(), $modificationId]
+        );
+
+        return [(string) $ligne['cible_type'], (int) $ligne['cible_id']];
     }
 
     /**
