@@ -1138,19 +1138,25 @@ final class Partages
         );
 
         // Le propriétaire est prévenu, et celui à qui l'on répond ; les autres
-        // liront en rouvrant le document.
+        // liront en rouvrant le document. Un clic ouvre le fil des commentaires.
         $cible = self::cible($type, $id);
         $pseudo = (string) (Amis::compte($moi)['pseudo'] ?? 'Un ami');
         $titre = mb_strimwidth((string) ($cible['titre'] ?? ''), 0, 60, '…');
+        $fil = url('partages/' . self::mot($type) . '/' . $id . '/commentaires');
         $prevenir = [];
         if ($cible !== null && (int) $cible['user_id'] !== $moi) {
-            $prevenir[(int) $cible['user_id']] = '💬 ' . $pseudo . ' a commenté « ' . $titre . ' »';
+            $prevenir[(int) $cible['user_id']] = 'a commenté « ' . $titre . ' »';
         }
         if ($parent !== null && (int) $parent['user_id'] !== $moi) {
-            $prevenir[(int) $parent['user_id']] = '💬 ' . $pseudo . ' vous a répondu sur « ' . $titre . ' »';
+            $prevenir[(int) $parent['user_id']] = 'vous a répondu sur « ' . $titre . ' »';
         }
         foreach ($prevenir as $qui => $annonce) {
-            $n = Amis::notifier($moi, $qui, $annonce . ' · ' . mb_strimwidth($texte, 0, 80, '…'));
+            $n = FileNotifications::ajouter($qui, 'commentaire', [
+                'title' => '💬 ' . $pseudo,
+                'body' => mb_strimwidth($pseudo . ' ' . $annonce . ' · ' . $texte, 0, 200, '…'),
+                'url' => $fil,
+                'tag' => 'commentaire-' . $type . '-' . $id,
+            ]);
             if ($n !== null) {
                 FileNotifications::envoyer($n);
             }
@@ -1197,12 +1203,54 @@ final class Partages
             return 'Vous ne pouvez pas modifier ce document.';
         }
         $texte = TexteRiche::depuisFormulaire($texte);
+        $avant = (string) Database::valeur(
+            'SELECT COALESCE(' . ($type === 'cours' ? 'contenu' : 'fiche_revision') . ", '') FROM cours WHERE id = ?",
+            [$id]
+        );
         Database::run(
             'UPDATE cours SET ' . ($type === 'cours' ? 'contenu' : 'fiche_revision') . ' = ? WHERE id = ?',
             [$texte === '' ? null : $texte, $id]
         );
 
+        // Un enregistrement qui ne change rien ne dérange personne.
+        if ($texte !== $avant) {
+            $cible = self::cible($type, $id);
+            self::prevenir($moi, $type, $id, '✏️', match (true) {
+                $texte === '' => 'a vidé le texte',
+                $avant === '' => 'a écrit le texte',
+                default => 'a modifié le texte',
+            } . ($type === 'cours' ? ' du cours « ' : ' de la fiche « ')
+                . mb_strimwidth((string) ($cible['titre_cours'] ?? $cible['titre'] ?? ''), 0, 60, '…') . ' »');
+        }
+
         return null;
+    }
+
+    /**
+     * Prévient le propriétaire d'un document de ce qu'un autre y a fait. Un
+     * clic sur la notification ouvre le document chez lui ; une notification
+     * sur le même document remplace la précédente plutôt que de s'empiler.
+     */
+    private static function prevenir(int $moi, string $type, int $id, string $icone, string $quoi, ?string $adresse = null): void
+    {
+        $cible = self::cible($type, $id);
+        if ($cible === null || (int) $cible['user_id'] === $moi) {
+            return;
+        }
+        $pseudo = (string) (Amis::compte($moi)['pseudo'] ?? 'Un ami');
+        $n = FileNotifications::ajouter((int) $cible['user_id'], 'partage', [
+            'title' => $icone . ' ' . $pseudo,
+            'body' => mb_strimwidth($pseudo . ' ' . $quoi, 0, 200, '…'),
+            'url' => $adresse ?? match ($type) {
+                'cours' => url('cours/' . $id),
+                'fiche' => url('revision/' . $id),
+                default => url('partages/envoyes'),
+            },
+            'tag' => 'partage-' . $type . '-' . $id,
+        ]);
+        if ($n !== null) {
+            FileNotifications::envoyer($n);
+        }
     }
 
     /**
@@ -1224,8 +1272,21 @@ final class Partages
         $avant = (int) Database::valeur('SELECT COUNT(*) FROM fichiers WHERE cours_id = ?', [$id]);
         $erreurs = Fichiers::enregistrer($envoi, $id, (int) $cible['user_id'], $type === 'fiche');
         $apres = (int) Database::valeur('SELECT COUNT(*) FROM fichiers WHERE cours_id = ?', [$id]);
+        $ajoutes = $apres - $avant;
 
-        return [$apres - $avant, $erreurs];
+        if ($ajoutes > 0) {
+            $noms = array_column(Database::all(
+                'SELECT nom_origine FROM fichiers WHERE cours_id = ? ORDER BY id DESC LIMIT ' . min($ajoutes, 3),
+                [$id]
+            ), 'nom_origine');
+            self::prevenir($moi, $type, $id, '📎', 'a ajouté ' . ($ajoutes === 1 ? 'le fichier' : $ajoutes . ' fichiers')
+                . ' ' . implode(', ', array_map(static fn (string $n): string => '« ' . $n . ' »', array_reverse($noms)))
+                . ($ajoutes > 3 ? '…' : '')
+                . ($type === 'cours' ? ' au cours « ' : ' à la fiche « ')
+                . mb_strimwidth((string) ($cible['titre_cours'] ?? $cible['titre']), 0, 60, '…') . ' »');
+        }
+
+        return [$ajoutes, $erreurs];
     }
 
     /**
@@ -1243,8 +1304,13 @@ final class Partages
             return null;
         }
         self::oublier('fichier', $fichierId);
+        $type = (int) $fichier['pour_fiche'] === 1 ? 'fiche' : 'cours';
+        $document = self::cible($type, (int) $fichier['cours_id']);
+        self::prevenir($moi, $type, (int) $fichier['cours_id'], '🗑️', 'a retiré le fichier « ' . $fichier['nom_origine'] . ' »'
+            . ($type === 'cours' ? ' du cours « ' : ' de la fiche « ')
+            . mb_strimwidth((string) ($document['titre_cours'] ?? $document['titre'] ?? ''), 0, 60, '…') . ' »');
 
-        return [(int) $fichier['pour_fiche'] === 1 ? 'fiche' : 'cours', (int) $fichier['cours_id']];
+        return [$type, (int) $fichier['cours_id']];
     }
 
     /**
