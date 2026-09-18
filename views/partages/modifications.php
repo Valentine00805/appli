@@ -77,7 +77,7 @@ $rendreDifference = static function (array $difference): void {
 <?php if ($modifications === []): ?>
   <section class="carte vide">
     <span class="vide__icone">🕘</span>
-    <p>Personne d’autre n’a encore modifié ce document.</p>
+    <p>Rien n’a encore changé dans ce document depuis qu’il est partagé.</p>
   </section>
 <?php else: ?>
   <section class="carte">
@@ -90,7 +90,7 @@ $rendreDifference = static function (array $difference): void {
         <li>
           <div class="historique__qui">
             <?= Amis::avatar((int) $m['user_id'], (string) $m['pseudo'], 'avatar--mini') ?>
-            <strong><?= e((string) $m['pseudo']) ?></strong>
+            <strong><?= e((string) $m['pseudo']) ?></strong><?= (int) $m['user_id'] === Auth::id() ? ' <span class="discret">(vous)</span>' : '' ?>
             <span class="discret">
               <?= match ((string) $m['nature']) {
                   'texte' => 'a modifié le texte',
@@ -152,6 +152,8 @@ $rendreDifference = static function (array $difference): void {
             </p>
             <?php if ((int) $m['restaure'] === 1): ?>
               <p class="discret" style="margin:.3rem 0 0">Remis à sa place.</p>
+            <?php elseif ($m['nom_stocke'] === null): ?>
+              <p class="discret" style="margin:.3rem 0 0">Supprimé par son propriétaire : il ne se remet pas.</p>
             <?php elseif ($peutAnnuler): ?>
               <?php // Il n'a pas été effacé : on l'ouvre, et on le remet si l'on veut. ?>
               <div class="actions" style="justify-content:flex-start;margin-top:.4rem">

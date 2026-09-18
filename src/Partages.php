@@ -1358,15 +1358,18 @@ final class Partages
     }
 
     /**
-     * Garde une modification faite par un autre que le propriétaire. Ce
-     * qu'on fait chez soi n'a pas besoin de trace.
+     * Garde une modification d'un document partagé. Celles des autres, et
+     * celles du propriétaire aussi : l'historique doit raconter tout ce qui
+     * s'est passé, sans quoi une ligne apparaît sans que personne ne l'ait
+     * écrite. Tant que le document n'est partagé avec personne, ce qu'on y
+     * fait chez soi ne laisse pas de trace.
      *
      * @param array<string, mixed> $details
      */
     private static function noter(int $moi, string $type, int $id, string $nature, array $details): void
     {
         $cible = self::cible($type, $id);
-        if ($cible === null || (int) $cible['user_id'] === $moi) {
+        if ($cible === null || ((int) $cible['user_id'] === $moi && !self::estPartage($type, $id))) {
             return;
         }
         Database::run(
@@ -1377,7 +1380,66 @@ final class Partages
         );
     }
 
-    /** Combien de modifications d'autres personnes : de quoi l'annoncer. */
+    /**
+     * Ce cours, ou cette fiche, est-il partagé avec au moins un ami ? Un
+     * cours l'est aussi par un dossier qui le contient.
+     */
+    public static function estPartage(string $type, int $id): bool
+    {
+        $partage = static fn (string $t, int $i): bool => Database::valeur(
+            'SELECT 1 FROM partages_amis WHERE cible_type = ? AND cible_id = ? LIMIT 1', [$t, $i]
+        ) !== null;
+        if ($partage($type, $id)) {
+            return true;
+        }
+        if ($type === 'cours') {
+            foreach (self::chaineDossiers($id) as $dossierId) {
+                if ($partage('dossier', $dossierId)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /** Le propriétaire a réécrit le texte chez lui : l'historique le garde. */
+    public static function suivreTexte(int $moi, string $type, int $id, string $avant, string $apres): void
+    {
+        if ($avant !== $apres) {
+            self::noter($moi, $type, $id, 'texte', ['avant' => $avant, 'apres' => $apres]);
+        }
+    }
+
+    /** Le propriétaire a joint des fichiers chez lui : chacun entre dans l'historique. */
+    public static function suivreAjouts(int $moi, string $type, int $id, int $ajoutes): void
+    {
+        if ($ajoutes <= 0) {
+            return;
+        }
+        foreach (Database::all(
+            'SELECT id, nom_origine, mime, taille FROM fichiers WHERE cours_id = ? AND pour_fiche = ? ORDER BY id DESC LIMIT ' . $ajoutes,
+            [$id, $type === 'fiche' ? 1 : 0]
+        ) as $nouveau) {
+            self::noter($moi, $type, $id, 'ajout', [
+                'fichier_id' => (int) $nouveau['id'], 'nom_origine' => (string) $nouveau['nom_origine'],
+                'mime' => (string) $nouveau['mime'], 'taille' => (int) $nouveau['taille'],
+            ]);
+        }
+    }
+
+    /**
+     * Le propriétaire a supprimé un de ses fichiers : l'historique le dit,
+     * sans pouvoir le remettre — chez soi, supprimer reste définitif.
+     */
+    public static function suivreRetrait(int $moi, array $fichier): void
+    {
+        self::noter($moi, (int) $fichier['pour_fiche'] === 1 ? 'fiche' : 'cours', (int) $fichier['cours_id'], 'retrait', [
+            'nom_origine' => (string) $fichier['nom_origine'], 'mime' => (string) $fichier['mime'], 'taille' => (int) $fichier['taille'],
+        ]);
+    }
+
+    /** Combien de modifications : de quoi l'annoncer. */
     public static function nbModifications(string $type, int $id): int
     {
         return (int) Database::valeur(
@@ -1440,6 +1502,10 @@ final class Partages
         $proprietaire = (int) $document['user_id'];
 
         if ($ligne['nature'] === 'retrait') {
+            // Effacé pour de bon par son propriétaire : rien à remettre.
+            if ($ligne['nom_stocke'] === null) {
+                return null;
+            }
             return self::restaurerFichier($moi, $modificationId) === null
                 ? null
                 : [$type, $id, 'Fichier remis à sa place.'];
@@ -1532,7 +1598,7 @@ final class Partages
     public static function fichierMisDeCote(int $moi, int $modificationId): ?array
     {
         $ligne = Database::one(
-            "SELECT * FROM modifications_partage WHERE id = ? AND nature = 'retrait' AND restaure = 0",
+            "SELECT * FROM modifications_partage WHERE id = ? AND nature = 'retrait' AND restaure = 0 AND nom_stocke IS NOT NULL",
             [$modificationId]
         );
         if ($ligne === null) {

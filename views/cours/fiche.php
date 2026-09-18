@@ -60,7 +60,7 @@ $dansUneFenetre = $dansUneFenetre ?? false;
 <?php if ($nbModifications > 0): ?>
   <p class="discret sans-impression" style="margin:0 0 .8rem">
     🕘 <a href="<?= e(Partages::adresseHistorique('fiche', (int) $cours['id'])) ?>" <?= $dansUneFenetre ? 'data-fenetre-dessus' : 'data-fenetre' ?>><?= $nbModifications ?> modification<?= $nbModifications > 1 ? 's' : '' ?></a>
-    de vos amis sur cette fiche.
+    depuis que cette fiche est partagée.
   </p>
 <?php endif; ?>
 <div class="fiche-seule">

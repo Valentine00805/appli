@@ -152,12 +152,15 @@ final class CoursController
 
         // Mis en forme par l'éditeur, le texte arrive en HTML : il est nettoyé ici.
         $contenu = TexteRiche::depuisFormulaire((string) ($_POST['contenu'] ?? ''));
+        $avant = (string) Database::valeur("SELECT COALESCE(contenu, '') FROM cours WHERE id = ?", [$id]);
 
         Database::run(
             'UPDATE cours SET contenu = ? WHERE id = ? AND user_id = ?',
             // Un texte effacé redevient absent, comme une fiche vidée.
             [$contenu === '' ? null : $contenu, $id, $userId]
         );
+        // Partagé, le cours garde la trace de ce qui change, même chez soi.
+        Partages::suivreTexte($userId, 'cours', $id, $avant, $contenu);
 
         Session::flash('succes', $contenu === '' ? 'Contenu du cours vidé.' : 'Contenu du cours enregistré.');
         redirect('cours/' . $id, ($_POST['revision'] ?? '') === '1' ? ['revision' => 1] : []);
@@ -176,12 +179,14 @@ final class CoursController
         }
 
         $fiche = TexteRiche::depuisFormulaire((string) ($_POST['fiche_revision'] ?? ''));
+        $avant = (string) Database::valeur("SELECT COALESCE(fiche_revision, '') FROM cours WHERE id = ?", [$id]);
 
         Database::run(
             'UPDATE cours SET fiche_revision = ? WHERE id = ? AND user_id = ?',
             // Une fiche vidée redevient absente : le cours n'affiche pas une fiche blanche.
             [$fiche === '' ? null : $fiche, $id, $userId]
         );
+        Partages::suivreTexte($userId, 'fiche', $id, $avant, $fiche);
 
         Session::flash('succes', $fiche === '' ? 'Fiche de révision vidée.' : 'Fiche de révision enregistrée.');
         $this->retourFiche($id);
@@ -575,6 +580,7 @@ final class CoursController
         $avant = $compte();
         $erreurs = Fichiers::enregistrer($_FILES['fichiers'], $id, $userId, true);
         $ajoutes = $compte() - $avant;
+        Partages::suivreAjouts($userId, 'fiche', $id, $ajoutes);
 
         foreach ($erreurs as $erreur) {
             Session::flash('erreur', $erreur);
@@ -1028,6 +1034,7 @@ final class CoursController
         $avant = (int) Database::valeur('SELECT COUNT(*) FROM fichiers WHERE cours_id = ?', [$id]);
         $erreurs = Fichiers::enregistrer($_FILES['fichiers'], $id, $userId);
         $ajoutes = (int) Database::valeur('SELECT COUNT(*) FROM fichiers WHERE cours_id = ?', [$id]) - $avant;
+        Partages::suivreAjouts($userId, 'cours', $id, $ajoutes);
 
         foreach ($erreurs as $erreur) {
             Session::flash('erreur', $erreur);
@@ -1127,17 +1134,20 @@ final class CoursController
             redirect('cours/' . $id . '/modifier');
         }
 
+        $contenu = TexteRiche::depuisFormulaire(post('contenu'));
+        $avant = (string) Database::valeur("SELECT COALESCE(contenu, '') FROM cours WHERE id = ?", [$id]);
         Database::run(
             'UPDATE cours SET matiere_id = ?, dossier_id = ?, titre = ?, contenu = ? WHERE id = ? AND user_id = ?',
             [
                 $this->matiereValide($userId, $_POST['matiere_id'] ?? null),
                 DossiersController::valide($userId, $_POST['dossier_id'] ?? null),
                 mb_substr($titre, 0, 200),
-                TexteRiche::depuisFormulaire(post('contenu')),
+                $contenu,
                 $id,
                 $userId,
             ]
         );
+        Partages::suivreTexte($userId, 'cours', $id, $avant, $contenu);
 
         $this->synchroniserTags($userId, $id, post('tags'));
         $this->traiterFichiers($id, $userId);
@@ -1474,7 +1484,11 @@ final class CoursController
         if ($coursId === null) {
             $this->introuvable();
         }
+        $fichier = Database::one('SELECT cours_id, pour_fiche, nom_origine, mime, taille FROM fichiers WHERE id = ?', [$id]);
         Fichiers::supprimer($id, $userId);
+        if ($fichier !== null) {
+            Partages::suivreRetrait($userId, $fichier);
+        }
         Session::flash('succes', 'Fichier supprimé.');
         // Retiré depuis une fiche affichée seule : c'est là qu'on revient.
         if (($_POST['page'] ?? '') === 'fiche') {
