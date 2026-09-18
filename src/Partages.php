@@ -1321,6 +1321,30 @@ final class Partages
      */
     public static function copier(int $moi, string $type, int $id, ?int $coursCible = null): array
     {
+        [$ou, $refus] = self::faireCopie($moi, $type, $id, $coursCible);
+
+        // Le propriétaire sait qu'on a fait sa propre copie de son document.
+        if ($refus === null && $ou !== null) {
+            $cible = self::cible($type, $id);
+            $titre = '« ' . mb_strimwidth((string) ($cible['titre_cours'] ?? $cible['titre'] ?? ''), 0, 60, '…') . ' »';
+            self::prevenir($moi, $type, $id, '📥', match ($type) {
+                'cours' => 'a copié le cours ' . $titre . ' dans ses cours',
+                'fiche' => 'a copié la fiche ' . $titre . ' dans ses cours',
+                'dossier' => 'a copié le dossier ' . $titre . ' dans ses dossiers',
+                default => 'a copié le fichier ' . $titre . ' dans un de ses cours',
+            }, match ($type) {
+                'dossier' => url('cours', ['dossier' => $id]),
+                'fichier' => url('cours/' . (int) ($cible['cours_id'] ?? 0)),
+                default => null,
+            });
+        }
+
+        return [$ou, $refus];
+    }
+
+    /** @return array{0: ?int, 1: ?string} */
+    private static function faireCopie(int $moi, string $type, int $id, ?int $coursCible): array
+    {
         if (!self::peutVoir($type, $id, $moi)) {
             return [null, 'Ce document n’est plus partagé avec vous.'];
         }
