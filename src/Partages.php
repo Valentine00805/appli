@@ -1460,8 +1460,43 @@ final class Partages
                 : (Fichiers::supprimer((int) $fichier['id'], $moi) ? 'Fichier retiré.' : 'Ce fichier n’y était déjà plus.');
         }
         Database::run('UPDATE modifications_partage SET annulee = 1 WHERE id = ?', [$modificationId]);
+        self::prevenirAnnulation($moi, $ligne);
 
         return [$type, $id, $fait];
+    }
+
+    /**
+     * Prévient l'ami dont la modification vient d'être annulée : il sait ce
+     * qui a été défait, et un clic l'emmène dans l'historique.
+     */
+    private static function prevenirAnnulation(int $moi, array $ligne): void
+    {
+        $auteur = (int) $ligne['user_id'];
+        if ($auteur === $moi) {
+            return;
+        }
+        $type = (string) $ligne['cible_type'];
+        $id = (int) $ligne['cible_id'];
+        $document = self::cible($type, $id);
+        $ou = ($type === 'cours' ? 'du cours « ' : 'de la fiche « ')
+            . mb_strimwidth((string) ($document['titre_cours'] ?? $document['titre'] ?? ''), 0, 60, '…') . ' »';
+        $fichier = '« ' . $ligne['nom_origine'] . ' »';
+        $pseudo = (string) (Amis::compte($moi)['pseudo'] ?? 'Le propriétaire');
+        $quoi = match ((string) $ligne['nature']) {
+            'texte' => 'a annulé votre modification du texte ' . $ou,
+            'ajout' => 'a retiré le fichier ' . $fichier . ' que vous aviez ajouté ' . ($type === 'cours' ? 'au cours « ' : 'à la fiche « ')
+                . mb_strimwidth((string) ($document['titre_cours'] ?? $document['titre'] ?? ''), 0, 60, '…') . ' »',
+            default => 'a remis le fichier ' . $fichier . ' que vous aviez retiré ' . $ou,
+        };
+        $n = FileNotifications::ajouter($auteur, 'partage', [
+            'title' => '↶ ' . $pseudo,
+            'body' => mb_strimwidth($pseudo . ' ' . $quoi, 0, 200, '…'),
+            'url' => self::adresseHistorique($type, $id),
+            'tag' => 'annulation-' . $type . '-' . $id,
+        ]);
+        if ($n !== null) {
+            FileNotifications::envoyer($n);
+        }
     }
 
     /**
@@ -1502,6 +1537,7 @@ final class Partages
             'UPDATE modifications_partage SET restaure = 1, fichier_id = ? WHERE id = ?',
             [Database::dernierId(), $modificationId]
         );
+        self::prevenirAnnulation($moi, $ligne);
 
         return [(string) $ligne['cible_type'], (int) $ligne['cible_id']];
     }
