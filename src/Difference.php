@@ -27,7 +27,7 @@ final class Difference
     {
         $html = TexteRiche::versHtml($texte);
         // Chaque bloc, chaque retour à la ligne, fait un paragraphe.
-        $html = (string) preg_replace('#<br\s*/?>|</(p|div|li|h[1-6]|blockquote|tr|pre)>#i', "\n", $html);
+        $html = (string) preg_replace('#<br\s*/?>|</?(p|div|li|ul|ol|h[1-6]|blockquote|tr|pre)\b[^>]*>#i', "\n", $html);
         $brut = html_entity_decode(strip_tags($html), ENT_QUOTES | ENT_HTML5, 'UTF-8');
         $lignes = preg_split('/\n+/u', $brut) ?: [];
 

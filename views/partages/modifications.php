@@ -12,9 +12,11 @@
  * @var array $cible
  * @var list<array> $modifications
  * @var bool $chezMoi       le document est à moi
+ * @var bool $peutAnnuler   je peux défaire ce qui a été fait
  * @var bool $dansUneFenetre
  */
 $dansUneFenetre = $dansUneFenetre ?? false;
+$peutAnnuler = $peutAnnuler ?? $chezMoi;
 $csrf = Session::jetonCsrf();
 $titre = (string) ($cible['titre_cours'] ?? $cible['titre']);
 
@@ -110,7 +112,7 @@ $rendreDifference = static function (array $difference): void {
                 <?php $rendreDifference($m['difference']); ?>
               <?php endif; ?>
             </div>
-            <?php if ($chezMoi && (int) $m['annulee'] === 0): ?>
+            <?php if ($peutAnnuler && (int) $m['annulee'] === 0): ?>
               <?php
               // Revenir en arrière efface aussi ce qui a changé depuis : on le dit.
               $garde = $m['change_depuis']
@@ -135,7 +137,7 @@ $rendreDifference = static function (array $difference): void {
                 <span class="discret">· retiré depuis</span>
               <?php endif; ?>
             </p>
-            <?php if ($chezMoi && (int) $m['annulee'] === 0 && $m['fichier_existe'] !== null): ?>
+            <?php if ($peutAnnuler && (int) $m['annulee'] === 0 && $m['fichier_existe'] !== null): ?>
               <form method="post" action="<?= url('partages/modifications/' . (int) $m['id'] . '/annuler') ?>"<?= $dansUneFenetre ? ' data-envoi-fenetre' : '' ?>
                     data-confirmation="Retirer « <?= e((string) $m['nom_origine']) ?> » de ce document ? Il sera supprimé." style="margin-top:.4rem">
                 <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
@@ -150,7 +152,7 @@ $rendreDifference = static function (array $difference): void {
             </p>
             <?php if ((int) $m['restaure'] === 1): ?>
               <p class="discret" style="margin:.3rem 0 0">Remis à sa place.</p>
-            <?php elseif ($chezMoi): ?>
+            <?php elseif ($peutAnnuler): ?>
               <?php // Il n'a pas été effacé : on l'ouvre, et on le remet si l'on veut. ?>
               <div class="actions" style="justify-content:flex-start;margin-top:.4rem">
                 <a class="bouton bouton--secondaire bouton--petit" href="<?= url('partages/modifications/' . (int) $m['id'] . '/fichier') ?>"

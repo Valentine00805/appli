@@ -1433,9 +1433,11 @@ final class Partages
         $type = (string) $ligne['cible_type'];
         $id = (int) $ligne['cible_id'];
         $document = self::cible($type, $id);
-        if ($document === null || (int) $document['user_id'] !== $moi) {
+        // Le propriétaire, ou quiconque a le droit de modifier ce document.
+        if ($document === null || !self::permet(self::droit($type, $id, $moi), 'modification')) {
             return null;
         }
+        $proprietaire = (int) $document['user_id'];
 
         if ($ligne['nature'] === 'retrait') {
             return self::restaurerFichier($moi, $modificationId) === null
@@ -1446,7 +1448,7 @@ final class Partages
             $avant = (string) $ligne['avant'];
             Database::run(
                 'UPDATE cours SET ' . ($type === 'cours' ? 'contenu' : 'fiche_revision') . ' = ? WHERE id = ? AND user_id = ?',
-                [$avant === '' ? null : $avant, $id, $moi]
+                [$avant === '' ? null : $avant, $id, $proprietaire]
             );
             $fait = 'Le texte est revenu à ce qu’il était avant cette modification.';
         } else {
@@ -1457,7 +1459,7 @@ final class Partages
             );
             $fait = $fichier === null
                 ? 'Ce fichier n’y était déjà plus.'
-                : (Fichiers::supprimer((int) $fichier['id'], $moi) ? 'Fichier retiré.' : 'Ce fichier n’y était déjà plus.');
+                : (Fichiers::supprimer((int) $fichier['id'], $proprietaire) ? 'Fichier retiré.' : 'Ce fichier n’y était déjà plus.');
         }
         Database::run('UPDATE modifications_partage SET annulee = 1 WHERE id = ?', [$modificationId]);
         self::prevenirAnnulation($moi, $ligne);
@@ -1466,36 +1468,60 @@ final class Partages
     }
 
     /**
-     * Prévient l'ami dont la modification vient d'être annulée : il sait ce
-     * qui a été défait, et un clic l'emmène dans l'historique.
+     * Prévient de l'annulation d'une modification : son auteur, s'il n'est
+     * pas celui qui annule, et le propriétaire du document, qui sait ainsi ce
+     * qui revient chez lui. Un clic mène à l'historique.
      */
     private static function prevenirAnnulation(int $moi, array $ligne): void
     {
         $auteur = (int) $ligne['user_id'];
-        if ($auteur === $moi) {
-            return;
-        }
         $type = (string) $ligne['cible_type'];
         $id = (int) $ligne['cible_id'];
         $document = self::cible($type, $id);
-        $ou = ($type === 'cours' ? 'du cours « ' : 'de la fiche « ')
-            . mb_strimwidth((string) ($document['titre_cours'] ?? $document['titre'] ?? ''), 0, 60, '…') . ' »';
+        if ($document === null) {
+            return;
+        }
+        $proprietaire = (int) $document['user_id'];
+        $titre = '« ' . mb_strimwidth((string) ($document['titre_cours'] ?? $document['titre'] ?? ''), 0, 60, '…') . ' »';
+        $du = ($type === 'cours' ? 'du cours ' : 'de la fiche ') . $titre;
+        $au = ($type === 'cours' ? 'au cours ' : 'à la fiche ') . $titre;
         $fichier = '« ' . $ligne['nom_origine'] . ' »';
-        $pseudo = (string) (Amis::compte($moi)['pseudo'] ?? 'Le propriétaire');
-        $quoi = match ((string) $ligne['nature']) {
-            'texte' => 'a annulé votre modification du texte ' . $ou,
-            'ajout' => 'a retiré le fichier ' . $fichier . ' que vous aviez ajouté ' . ($type === 'cours' ? 'au cours « ' : 'à la fiche « ')
-                . mb_strimwidth((string) ($document['titre_cours'] ?? $document['titre'] ?? ''), 0, 60, '…') . ' »',
-            default => 'a remis le fichier ' . $fichier . ' que vous aviez retiré ' . $ou,
-        };
-        $n = FileNotifications::ajouter($auteur, 'partage', [
-            'title' => '↶ ' . $pseudo,
-            'body' => mb_strimwidth($pseudo . ' ' . $quoi, 0, 200, '…'),
-            'url' => self::adresseHistorique($type, $id),
-            'tag' => 'annulation-' . $type . '-' . $id,
-        ]);
-        if ($n !== null) {
-            FileNotifications::envoyer($n);
+        $pseudo = (string) (Amis::compte($moi)['pseudo'] ?? 'Quelqu’un');
+        $pseudoAuteur = (string) (Amis::compte($auteur)['pseudo'] ?? 'un ami');
+
+        // Qui l'apprend, et comment on le lui dit : « votre » modification pour
+        // son auteur, « sa » ou « celle de … » pour le propriétaire.
+        $destinataires = [];
+        if ($auteur !== $moi) {
+            $destinataires[$auteur] = match ((string) $ligne['nature']) {
+                'texte' => 'a annulé votre modification du texte ' . $du,
+                'ajout' => 'a retiré le fichier ' . $fichier . ' que vous aviez ajouté ' . $au,
+                default => 'a remis le fichier ' . $fichier . ' que vous aviez retiré ' . $du,
+            };
+        }
+        if ($proprietaire !== $moi && $proprietaire !== $auteur) {
+            $de = $auteur === $moi ? 'sa' : 'la';
+            $qui = $auteur === $moi ? '' : ' de ' . $pseudoAuteur;
+            $destinataires[$proprietaire] = match ((string) $ligne['nature']) {
+                'texte' => 'a annulé ' . $de . ' modification' . $qui . ' du texte ' . $du,
+                'ajout' => $auteur === $moi
+                    ? 'a annulé son ajout du fichier ' . $fichier . ' ' . $au
+                    : 'a retiré le fichier ' . $fichier . ' ajouté par ' . $pseudoAuteur . ' ' . $au,
+                default => $auteur === $moi
+                    ? 'a annulé son retrait du fichier ' . $fichier . ' ' . $du
+                    : 'a remis le fichier ' . $fichier . ' retiré par ' . $pseudoAuteur . ' ' . $du,
+            };
+        }
+        foreach ($destinataires as $qui => $quoi) {
+            $n = FileNotifications::ajouter($qui, 'partage', [
+                'title' => '↶ ' . $pseudo,
+                'body' => mb_strimwidth($pseudo . ' ' . $quoi, 0, 200, '…'),
+                'url' => self::adresseHistorique($type, $id),
+                'tag' => 'annulation-' . $type . '-' . $id,
+            ]);
+            if ($n !== null) {
+                FileNotifications::envoyer($n);
+            }
         }
     }
 
@@ -1512,9 +1538,8 @@ final class Partages
         if ($ligne === null) {
             return null;
         }
-        $document = self::cible((string) $ligne['cible_type'], (int) $ligne['cible_id']);
-
-        return $document !== null && (int) $document['user_id'] === $moi ? $ligne : null;
+        return self::permet(self::droit((string) $ligne['cible_type'], (int) $ligne['cible_id'], $moi), 'modification')
+            ? $ligne : null;
     }
 
     /**
@@ -1525,12 +1550,13 @@ final class Partages
     public static function restaurerFichier(int $moi, int $modificationId): ?array
     {
         $ligne = self::fichierMisDeCote($moi, $modificationId);
-        if ($ligne === null) {
+        $document = $ligne === null ? null : self::cible((string) $ligne['cible_type'], (int) $ligne['cible_id']);
+        if ($ligne === null || $document === null) {
             return null;
         }
         Database::run(
             'INSERT INTO fichiers (user_id, cours_id, pour_fiche, nom_origine, nom_stocke, mime, taille) VALUES (?, ?, ?, ?, ?, ?, ?)',
-            [$moi, (int) $ligne['cible_id'], $ligne['cible_type'] === 'fiche' ? 1 : 0, (string) $ligne['nom_origine'],
+            [(int) $document['user_id'], (int) $ligne['cible_id'], $ligne['cible_type'] === 'fiche' ? 1 : 0, (string) $ligne['nom_origine'],
              (string) $ligne['nom_stocke'], (string) $ligne['mime'], (int) $ligne['taille']]
         );
         Database::run(

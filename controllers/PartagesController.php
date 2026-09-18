@@ -366,6 +366,8 @@ final class PartagesController
             'cible' => $cible,
             'modifications' => Partages::historique($type, $id),
             'chezMoi' => (int) $cible['user_id'] === $moi,
+            // Qui ouvre cette page peut modifier le document : il peut aussi annuler.
+            'peutAnnuler' => true,
         ];
         if (Vue::enFenetre()) {
             Vue::fragment('partages/modifications', $donnees + ['dansUneFenetre' => true]);
