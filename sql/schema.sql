@@ -1015,6 +1015,8 @@ CREATE TABLE IF NOT EXISTS `modifications_partage` (
   `mime`        VARCHAR(120) NULL,
   `taille`      INT UNSIGNED NULL,
   `restaure`    TINYINT(1)   NOT NULL DEFAULT 0,
+  -- Le propriétaire est revenu sur cette modification.
+  `annulee`     TINYINT(1)   NOT NULL DEFAULT 0,
   `created_at`  DATETIME     NOT NULL,
   PRIMARY KEY (`id`),
   KEY `idx_modification_cible` (`cible_type`, `cible_id`, `created_at`),

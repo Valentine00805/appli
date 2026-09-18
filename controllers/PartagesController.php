@@ -386,6 +386,19 @@ final class PartagesController
         Fichiers::envoyer($ligne, isset($_GET['telecharger']));
     }
 
+    /** Annule une modification d'un ami, depuis l'historique. */
+    public function annulerModification(int $id): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $fait = Partages::annulerModification(Auth::id(), $id);
+        if ($fait === null) {
+            self::introuvable();
+        }
+        Session::flash('succes', $fait[2]);
+        redirect('partages/' . Partages::mot($fait[0]) . '/' . $fait[1] . '/modifications');
+    }
+
     /** Remet dans le document un fichier qu'un ami en avait retiré. */
     public function restaurerFichier(int $id): void
     {

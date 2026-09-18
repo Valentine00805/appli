@@ -1399,13 +1399,69 @@ final class Partages
               WHERE m.cible_type = ? AND m.cible_id = ? ORDER BY m.created_at DESC, m.id DESC",
             [$type, $id]
         );
+        $actuel = (string) Database::valeur(
+            'SELECT COALESCE(' . ($type === 'cours' ? 'contenu' : 'fiche_revision') . ", '') FROM cours WHERE id = ?",
+            [$id]
+        );
         foreach ($lignes as &$l) {
             $l['difference'] = $l['nature'] === 'texte'
                 ? Difference::comparer((string) $l['avant'], (string) $l['apres'])
                 : [];
+            // Revenir au texte d'avant efface aussi ce qui a changé depuis.
+            $l['change_depuis'] = $l['nature'] === 'texte' && (string) $l['apres'] !== $actuel;
         }
 
         return $lignes;
+    }
+
+    /**
+     * Annule une modification d'un ami : le texte revient à ce qu'il était,
+     * le fichier ajouté est retiré, le fichier retiré est remis. Le
+     * propriétaire seul le peut ; la ligne reste dans l'historique, annulée.
+     *
+     * @return ?array{0: string, 1: int, 2: string} le document, et ce qui a été fait
+     */
+    public static function annulerModification(int $moi, int $modificationId): ?array
+    {
+        $ligne = Database::one(
+            'SELECT * FROM modifications_partage WHERE id = ? AND annulee = 0 AND restaure = 0',
+            [$modificationId]
+        );
+        if ($ligne === null) {
+            return null;
+        }
+        $type = (string) $ligne['cible_type'];
+        $id = (int) $ligne['cible_id'];
+        $document = self::cible($type, $id);
+        if ($document === null || (int) $document['user_id'] !== $moi) {
+            return null;
+        }
+
+        if ($ligne['nature'] === 'retrait') {
+            return self::restaurerFichier($moi, $modificationId) === null
+                ? null
+                : [$type, $id, 'Fichier remis à sa place.'];
+        }
+        if ($ligne['nature'] === 'texte') {
+            $avant = (string) $ligne['avant'];
+            Database::run(
+                'UPDATE cours SET ' . ($type === 'cours' ? 'contenu' : 'fiche_revision') . ' = ? WHERE id = ? AND user_id = ?',
+                [$avant === '' ? null : $avant, $id, $moi]
+            );
+            $fait = 'Le texte est revenu à ce qu’il était avant cette modification.';
+        } else {
+            // Le fichier ajouté, s'il est encore là, quitte le document.
+            $fichier = Database::one(
+                'SELECT id FROM fichiers WHERE id = ? AND cours_id = ?',
+                [(int) $ligne['fichier_id'], $id]
+            );
+            $fait = $fichier === null
+                ? 'Ce fichier n’y était déjà plus.'
+                : (Fichiers::supprimer((int) $fichier['id'], $moi) ? 'Fichier retiré.' : 'Ce fichier n’y était déjà plus.');
+        }
+        Database::run('UPDATE modifications_partage SET annulee = 1 WHERE id = ?', [$modificationId]);
+
+        return [$type, $id, $fait];
     }
 
     /**

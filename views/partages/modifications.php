@@ -97,6 +97,9 @@ $rendreDifference = static function (array $difference): void {
               } ?>
               · <?= e(date_fr(Amis::local((string) $m['created_at'])->format('Y-m-d H:i:s'))) ?>
             </span>
+            <?php if ((int) $m['annulee'] === 1 || (int) $m['restaure'] === 1): ?>
+              <span class="pastille">Annulée</span>
+            <?php endif; ?>
           </div>
 
           <?php if ($m['nature'] === 'texte'): ?>
@@ -107,6 +110,19 @@ $rendreDifference = static function (array $difference): void {
                 <?php $rendreDifference($m['difference']); ?>
               <?php endif; ?>
             </div>
+            <?php if ($chezMoi && (int) $m['annulee'] === 0): ?>
+              <?php
+              // Revenir en arrière efface aussi ce qui a changé depuis : on le dit.
+              $garde = $m['change_depuis']
+                  ? 'Le texte a changé depuis cette modification. Revenir au texte d’avant effacera aussi les changements suivants. Continuer ?'
+                  : 'Revenir au texte d’avant cette modification ?';
+              ?>
+              <form method="post" action="<?= url('partages/modifications/' . (int) $m['id'] . '/annuler') ?>"<?= $dansUneFenetre ? ' data-envoi-fenetre' : '' ?>
+                    data-confirmation="<?= e($garde) ?>" style="margin-top:.4rem">
+                <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+                <button class="bouton bouton--secondaire bouton--petit" type="submit">↶ Annuler cette modification</button>
+              </form>
+            <?php endif; ?>
 
           <?php elseif ($m['nature'] === 'ajout'): ?>
             <p class="difference__ajout" style="margin:0">
@@ -119,6 +135,13 @@ $rendreDifference = static function (array $difference): void {
                 <span class="discret">· retiré depuis</span>
               <?php endif; ?>
             </p>
+            <?php if ($chezMoi && (int) $m['annulee'] === 0 && $m['fichier_existe'] !== null): ?>
+              <form method="post" action="<?= url('partages/modifications/' . (int) $m['id'] . '/annuler') ?>"<?= $dansUneFenetre ? ' data-envoi-fenetre' : '' ?>
+                    data-confirmation="Retirer « <?= e((string) $m['nom_origine']) ?> » de ce document ? Il sera supprimé." style="margin-top:.4rem">
+                <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+                <button class="bouton bouton--secondaire bouton--petit" type="submit">↶ Annuler : retirer ce fichier</button>
+              </form>
+            <?php endif; ?>
 
           <?php else: ?>
             <p class="difference__retrait" style="margin:0">
@@ -132,9 +155,9 @@ $rendreDifference = static function (array $difference): void {
               <div class="actions" style="justify-content:flex-start;margin-top:.4rem">
                 <a class="bouton bouton--secondaire bouton--petit" href="<?= url('partages/modifications/' . (int) $m['id'] . '/fichier') ?>"
                    target="_blank" rel="noopener">Ouvrir</a>
-                <form method="post" action="<?= url('partages/modifications/' . (int) $m['id'] . '/restaurer') ?>"<?= $dansUneFenetre ? ' data-envoi-fenetre' : '' ?>>
+                <form method="post" action="<?= url('partages/modifications/' . (int) $m['id'] . '/annuler') ?>"<?= $dansUneFenetre ? ' data-envoi-fenetre' : '' ?>>
                   <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
-                  <button class="bouton bouton--petit" type="submit">Remettre le fichier</button>
+                  <button class="bouton bouton--petit" type="submit">↶ Annuler : remettre le fichier</button>
                 </form>
               </div>
             <?php endif; ?>

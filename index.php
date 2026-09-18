@@ -509,6 +509,7 @@ $routes = [
     ['GET',  'partages/{mot}/{id}/modifications',   [PartagesController::class, 'historique']],
     ['GET',  'partages/modifications/{id}/fichier', [PartagesController::class, 'fichierMisDeCote']],
     ['POST', 'partages/modifications/{id}/restaurer', [PartagesController::class, 'restaurerFichier']],
+    ['POST', 'partages/modifications/{id}/annuler', [PartagesController::class, 'annulerModification']],
     ['POST', 'partages/{mot}/{id}/contenu',         [PartagesController::class, 'ecrire']],
     ['POST', 'partages/{mot}/{id}/fichiers',        [PartagesController::class, 'joindre']],
     ['POST', 'partages/fichiers/{id}/retirer',      [PartagesController::class, 'retirerFichier']],
