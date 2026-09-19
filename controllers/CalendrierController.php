@@ -355,6 +355,11 @@ final class CalendrierController
             Session::flash('erreur', $donnees);
             redirect('evenements/nouveau');
         }
+        $passe = self::dejaPasse($donnees);
+        if ($passe !== null) {
+            Session::flash('erreur', $passe);
+            redirect('evenements/nouveau');
+        }
 
         $quand = $this->repetitionSoumise($donnees['debut'], $donnees['fin']);
         if (is_string($quand)) {
@@ -1384,6 +1389,23 @@ final class CalendrierController
     }
 
     /** Valide le formulaire ; renvoie un tableau de données ou un message d'erreur. */
+    /**
+     * Un nouvel évènement ne commence pas dans le passé. À la minute près :
+     * l'heure tapée n'a pas de secondes. Une journée entière vaut pour
+     * aujourd'hui tant qu'aujourd'hui dure. Le fuseau est celui de l'utilisateur.
+     */
+    private static function dejaPasse(array $donnees): ?string
+    {
+        if ((int) $donnees['journee_entiere'] === 1) {
+            return substr((string) $donnees['debut'], 0, 10) < date('Y-m-d')
+                ? 'Ce jour est déjà passé : un nouvel évènement commence aujourd’hui ou plus tard.'
+                : null;
+        }
+        return (string) $donnees['debut'] < date('Y-m-d H:i:00')
+            ? 'Cette heure est déjà passée : un nouvel évènement commence maintenant ou plus tard (il est ' . date('H:i') . ').'
+            : null;
+    }
+
     private function lireFormulaire(int $userId): array|string
     {
         $titre = post('titre');

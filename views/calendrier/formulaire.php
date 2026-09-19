@@ -71,10 +71,33 @@ $borneRepetition = static function (?string $date, ?int $nombre, string $prefixe
         . '</div>';
 };
 
-$dateDebut = $edition ? substr((string) $evenement['debut'], 0, 10) : ($dateDefaut ?: date('Y-m-d'));
+/*
+ * Un nouvel évènement ne commence pas dans le passé : pas avant aujourd'hui,
+ * et aujourd'hui pas avant l'heure qu'il est — arrondie aux cinq minutes
+ * suivantes, il dure une heure. Un autre jour, on garde 8 h – 9 h. Les heures
+ * sont celles du fuseau de l'utilisateur : c'est celui de PHP pendant la page.
+ * Modifier un évènement déjà passé reste permis.
+ */
+$aujourdhui = date('Y-m-d');
+$dateDebut = $edition ? substr((string) $evenement['debut'], 0, 10) : ($dateDefaut ?: $aujourdhui);
+if (!$edition && $dateDebut < $aujourdhui) {
+    $dateDebut = $aujourdhui;
+}
 $dateFin   = $edition ? substr((string) $evenement['fin'], 0, 10) : $dateDebut;
 $heureDebut = $edition ? substr((string) $evenement['debut'], 11, 5) : '08:00';
 $heureFin   = $edition ? substr((string) $evenement['fin'], 11, 5) : '09:00';
+if (!$edition && $dateDebut === $aujourdhui) {
+    $debutPropose = (int) (ceil(time() / 300) * 300);
+    if (date('Y-m-d', $debutPropose) === $aujourdhui) {
+        $heureDebut = date('H:i', $debutPropose);
+        $finProposee = $debutPropose + 3600;
+        $dateFin = date('Y-m-d', $finProposee);
+        $heureFin = date('H:i', $finProposee);
+    } else {
+        // 23 h 56 : il n'y a plus de créneau de cinq minutes aujourd'hui.
+        $heureDebut = $heureFin = '23:59';
+    }
+}
 $journee = $edition ? (int) $evenement['journee_entiere'] === 1 : false;
 /*
  * Le type coché d'avance.
@@ -155,7 +178,8 @@ $matiereActive = $edition ? entier_ou_null($evenement['matiere_id']) : null;
       <div class="ligne-champs">
         <div class="champ">
           <label for="date_debut">Date de début</label>
-          <input type="date" id="date_debut" name="date_debut" required value="<?= e($dateDebut) ?>">
+          <input type="date" id="date_debut" name="date_debut" required value="<?= e($dateDebut) ?>"
+                 <?php if (!$edition): ?>min="<?= e($aujourdhui) ?>" data-maintenant="<?= e(date('Y-m-d\TH:i')) ?>"<?php endif; ?>>
         </div>
         <div class="champ">
           <label for="date_fin">Date de fin</label>

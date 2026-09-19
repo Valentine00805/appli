@@ -239,29 +239,142 @@
     }
   });
 
-  // Formulaire d'évènement : masquer les heures si « journée entière »
-  var caseJournee = document.getElementById('journee_entiere');
-  var blocHeures = document.getElementById('bloc-heures');
-  if (caseJournee && blocHeures) {
-    var majHeures = function () {
-      blocHeures.hidden = caseJournee.checked;
-    };
-    caseJournee.addEventListener('change', majHeures);
-    majHeures();
-  }
+  /*
+   * Le formulaire d'évènement, sur sa page comme dans une fenêtre.
+   *
+   * « Journée entière » masque les heures ; la date de fin suit celle du début
+   * tant qu'elles sont identiques. À la création, l'évènement ne commence pas
+   * dans le passé : le serveur donne l'heure qu'il est dans le fuseau de
+   * l'utilisateur (data-maintenant), on la fait avancer avec la montre, et
+   * aujourd'hui l'heure de début ne descend pas en dessous. Quand le début
+   * bouge, la fin le suit : la durée reste la même.
+   */
+  var initialiserHoraire = function (racine) {
+    var caseJournee = racine.querySelector('#journee_entiere');
+    var blocHeures = racine.querySelector('#bloc-heures');
+    var dateDebut = racine.querySelector('#date_debut');
+    var dateFin = racine.querySelector('#date_fin');
+    var heureDebut = racine.querySelector('#heure_debut');
+    var heureFin = racine.querySelector('#heure_fin');
+    if (!dateDebut || dateDebut.hasAttribute('data-horaire-pret')) { return; }
+    dateDebut.setAttribute('data-horaire-pret', '');
 
-  // La date de fin suit la date de début tant qu'elles sont identiques
-  var dateDebut = document.getElementById('date_debut');
-  var dateFin = document.getElementById('date_fin');
-  if (dateDebut && dateFin) {
-    var ancienneValeur = dateDebut.value;
+    var deuxChiffres = function (n) { return (n < 10 ? '0' : '') + n; };
+    // Des dates « murales », sans fuseau : on les manie toutes en UTC.
+    var lire = function (jour, heure) {
+      var t = Date.parse(jour + 'T' + (heure || '00:00') + ':00Z');
+      return isNaN(t) ? null : t;
+    };
+    var jourDe = function (t) {
+      var d = new Date(t);
+      return d.getUTCFullYear() + '-' + deuxChiffres(d.getUTCMonth() + 1) + '-' + deuxChiffres(d.getUTCDate());
+    };
+    var heureDe = function (t) {
+      var d = new Date(t);
+      return deuxChiffres(d.getUTCHours()) + ':' + deuxChiffres(d.getUTCMinutes());
+    };
+
+    var maintenantServeur = dateDebut.getAttribute('data-maintenant');
+    var depart = maintenantServeur ? Date.parse(maintenantServeur + ':00Z') : NaN;
+    var chargeLe = Date.now();
+    var maintenant = function () { return isNaN(depart) ? null : depart + (Date.now() - chargeLe); };
+
+    var duree = function () {
+      if (!heureDebut || !heureFin || !dateFin) { return null; }
+      var d = lire(dateDebut.value, heureDebut.value);
+      var f = lire(dateFin.value || dateDebut.value, heureFin.value);
+      return d === null || f === null || f < d ? null : f - d;
+    };
+    var poserDebut = function (t, garder) {
+      dateDebut.value = jourDe(t);
+      heureDebut.value = heureDe(t);
+      if (garder !== null && dateFin && heureFin) {
+        dateFin.value = jourDe(t + garder);
+        heureFin.value = heureDe(t + garder);
+      }
+    };
+
+    var ecartDuree = duree();
+    var ancienJour = dateDebut.value;
+
+    // Aujourd'hui, pas avant maintenant ; un autre jour, pas de limite d'heure.
+    var garderAVenir = function () {
+      var t = maintenant();
+      if (t === null || !heureDebut) { return; }
+      var aujourdhui = jourDe(t);
+      dateDebut.min = aujourdhui;
+      var journee = caseJournee && caseJournee.checked;
+      if (dateDebut.value === aujourdhui && !journee) {
+        var minute = Math.floor(t / 60000) * 60000;
+        heureDebut.min = heureDe(minute);
+        var choisi = lire(dateDebut.value, heureDebut.value);
+        if (choisi === null || choisi < minute) {
+          // Arrondi aux cinq minutes suivantes, sans passer minuit.
+          var propose = Math.ceil(t / 300000) * 300000;
+          if (jourDe(propose) !== aujourdhui) { propose = minute; }
+          poserDebut(propose, ecartDuree === null ? 3600000 : ecartDuree);
+        }
+      } else {
+        // Masqué ou un autre jour : un « min » oublié bloquerait l'envoi.
+        heureDebut.removeAttribute('min');
+      }
+    };
+
+    if (caseJournee && blocHeures) {
+      var majHeures = function () {
+        blocHeures.hidden = caseJournee.checked;
+        garderAVenir();
+      };
+      caseJournee.addEventListener('change', majHeures);
+      majHeures();
+    }
+
     dateDebut.addEventListener('change', function () {
-      if (dateFin.value === ancienneValeur || dateFin.value === '') {
+      if (dateFin && (dateFin.value === ancienJour || dateFin.value === '')) {
         dateFin.value = dateDebut.value;
       }
-      ancienneValeur = dateDebut.value;
+      ancienJour = dateDebut.value;
+      garderAVenir();
+      ecartDuree = duree();
+      ancienJour = dateDebut.value;
     });
-  }
+
+    if (heureDebut) {
+      heureDebut.addEventListener('change', function () {
+        var d = lire(dateDebut.value, heureDebut.value);
+        if (d !== null && ecartDuree !== null && dateFin && heureFin) {
+          dateFin.value = jourDe(d + ecartDuree);
+          heureFin.value = heureDe(d + ecartDuree);
+        }
+        garderAVenir();
+        ecartDuree = duree();
+      });
+    }
+    if (heureFin) {
+      heureFin.addEventListener('change', function () { ecartDuree = duree(); });
+    }
+    if (dateFin) {
+      dateFin.addEventListener('change', function () { ecartDuree = duree(); });
+    }
+
+    // Le formulaire peut rester ouvert : l'heure avance, on revérifie à l'envoi.
+    var formulaire = dateDebut.form;
+    if (formulaire && maintenantServeur) {
+      formulaire.addEventListener('submit', function (evenement) {
+        var avant = heureDebut ? heureDebut.value : '';
+        garderAVenir();
+        if (heureDebut && heureDebut.value !== avant) {
+          evenement.preventDefault();
+          evenement.stopImmediatePropagation();
+          heureDebut.setCustomValidity('Cette heure vient de passer : le début a été avancé à ' + heureDebut.value + '.');
+          heureDebut.reportValidity();
+          heureDebut.addEventListener('input', function () { heureDebut.setCustomValidity(''); }, { once: true });
+          setTimeout(function () { heureDebut.setCustomValidity(''); }, 4000);
+        }
+      }, true);
+    }
+  };
+  initialiserHoraire(document);
 
   // Les filtres s'appliquent dès qu'on change une valeur — listes déroulantes
   // comme cases à cocher, et sur chaque formulaire qui le demande, non plus
@@ -443,6 +556,7 @@
         initialiserNotifications(corps);
         initialiserFiche(corps);
         initialiserSeance(corps);
+        initialiserHoraire(corps);
     };
 
     var ouvrir = function (adresse) {
