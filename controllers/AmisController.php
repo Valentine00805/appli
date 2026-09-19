@@ -179,6 +179,7 @@ final class AmisController
             'fichiersPartages' => $partages['fichiers'],
             'messages' => $partages['messages'],
             'fond' => Amis::fond($moi, $id),
+            'entreNous' => Partages::entreNous($moi, $id),
             'adresseFond' => Amis::adresseFond($moi, $id),
         ];
 

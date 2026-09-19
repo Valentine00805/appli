@@ -121,6 +121,44 @@ $pseudo = (string) $ami['pseudo'];
   <?php endif; ?>
 </section>
 
+<?php
+/*
+ * Ce qu'on s'est partagé, dans les deux sens : qui, quoi, avec quel droit,
+ * et de quoi l'ouvrir d'ici.
+ */
+$entreNous = $entreNous ?? ['recus' => [], 'envoyes' => []];
+$nbPartages = count($entreNous['recus']) + count($entreNous['envoyes']);
+?>
+<section class="carte profil-ami__section" id="partages-entre-nous">
+  <h2 style="margin-top:0"><?= Partages::icone(20) ?> Partages <span class="discret profil-ami__nombre"><?= $nbPartages ?></span></h2>
+  <?php if ($nbPartages === 0): ?>
+    <p class="discret" style="margin:0">Rien de partagé entre vous pour l’instant.</p>
+  <?php else: ?>
+    <?php foreach (['recus' => 'Partagé par ' . $pseudo, 'envoyes' => 'Partagé par vous'] as $sensPartage => $titreSens): ?>
+      <?php if ($entreNous[$sensPartage] === []) { continue; } ?>
+      <h3 class="groupe-sous-titre"><?= e($titreSens) ?> <span class="discret">(<?= count($entreNous[$sensPartage]) ?>)</span></h3>
+      <ul class="partage-lignes">
+        <?php foreach ($entreNous[$sensPartage] as $p): ?>
+          <li class="partage-ligne">
+            <a class="partage-ligne__lien" href="<?= e($p['url']) ?>"
+               <?= $p['fenetre'] ? 'data-fenetre' : '' ?><?= $p['nouvelOnglet'] ? ' target="_blank" rel="noopener"' : '' ?>>
+              <span class="partage-ligne__icone" aria-hidden="true"><?= e($p['icone']) ?></span>
+              <span class="partage-ligne__texte">
+                <span class="partage-ligne__titre"><?= e($p['titre']) ?></span>
+                <span class="partage-ligne__detail">
+                  <?= e(Partages::libelle($p['type'])) ?> · <?= e(mb_strtolower(Partages::libelleDroit($p['droit']))) ?>
+                  · <?= e(date_fr(Amis::local($p['quand'])->format('Y-m-d H:i:s'), false)) ?>
+                </span>
+              </span>
+            </a>
+            <span class="discret" style="font-size:.85rem" aria-hidden="true">Ouvrir ›</span>
+          </li>
+        <?php endforeach; ?>
+      </ul>
+    <?php endforeach; ?>
+  <?php endif; ?>
+</section>
+
 <section class="carte profil-ami__section profil-ami__danger">
   <button class="bouton bouton--danger" type="button" data-ouvrir-dialogue="confirmer-retrait-ami">Retirer <?= e($pseudo) ?> de mes amis</button>
   <button class="bouton bouton--danger" type="button" data-ouvrir-dialogue="confirmer-blocage-ami">🚫 Bloquer <?= e($pseudo) ?></button>

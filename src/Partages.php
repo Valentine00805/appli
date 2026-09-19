@@ -647,6 +647,61 @@ final class Partages
         ]);
     }
 
+    /**
+     * Ce qu'on s'est partagé, cet ami et moi : ce qu'il m'a partagé, ce que
+     * je lui ai partagé, du plus récent au plus ancien. Chaque ligne mène au
+     * document — sa page partagée pour ce qui vient de lui, ma propre page
+     * pour ce qui est à moi.
+     *
+     * @return array{recus: list<array>, envoyes: list<array>}
+     */
+    public static function entreNous(int $moi, int $ami): array
+    {
+        $sens = ['recus' => [$moi, $ami], 'envoyes' => [$ami, $moi]];
+        $listes = ['recus' => [], 'envoyes' => []];
+        foreach ($sens as $cle => [$destinataire, $proprietaire]) {
+            foreach (Database::all(
+                'SELECT cible_type, cible_id, droit, created_at FROM partages_amis
+                  WHERE destinataire_id = ? AND proprietaire_id = ? ORDER BY created_at DESC',
+                [$destinataire, $proprietaire]
+            ) as $p) {
+                $type = (string) $p['cible_type'];
+                $id = (int) $p['cible_id'];
+                $cible = self::cible($type, $id);
+                if ($cible === null || (int) $cible['user_id'] !== $proprietaire) {
+                    continue;
+                }
+                $aMoi = $cle === 'envoyes';
+                $listes[$cle][] = [
+                    'type' => $type,
+                    'titre' => (string) $cible['titre'],
+                    'icone' => match ($type) {
+                        'cours' => '📘',
+                        'fiche' => '📝',
+                        'dossier' => (string) $cible['icone'],
+                        'evenement' => '📅',
+                        default => Fichiers::icone((string) $cible['mime'], (string) $cible['nom_origine']),
+                    },
+                    'droit' => self::droitValide($p['droit']),
+                    'quand' => (string) $p['created_at'],
+                    // Ce qui vient de lui s'ouvre sur sa page partagée ; le mien, chez moi.
+                    'url' => $aMoi ? match ($type) {
+                        'cours' => url('cours/' . $id),
+                        'fiche' => url('revision/' . $id),
+                        'dossier' => url('cours', ['dossier' => $id]),
+                        'evenement' => url('evenements/' . $id),
+                        default => url('fichiers/' . $id),
+                    } : self::adresse($type, $id),
+                    // S'ouvre dans la fenêtre, sauf un dossier (une page) ou mon fichier (un onglet).
+                    'fenetre' => !($aMoi && in_array($type, ['dossier', 'fichier'], true)),
+                    'nouvelOnglet' => $aMoi && $type === 'fichier',
+                ];
+            }
+        }
+
+        return $listes;
+    }
+
     /** Combien de partages reçus je n'ai pas encore vus : de quoi l'annoncer sur l'onglet. */
     public static function nbNonVus(int $moi): int
     {
