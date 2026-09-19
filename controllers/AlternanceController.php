@@ -30,6 +30,11 @@ final class AlternanceController
                 $this->introuvable();
             }
         }
+        // « + Nouvelle note » l'ouvre dans une fenêtre, par-dessus la liste.
+        if (Vue::enFenetre()) {
+            Vue::fragment('alternance/note', ['note' => $note]);
+            return;
+        }
         $this->afficher('alternance/note', ['note' => $note],
             $note === null ? 'Nouvelle note' : (string) $note['titre'], 'notes');
     }
@@ -46,6 +51,10 @@ final class AlternanceController
         Database::run('INSERT INTO alternance_notes (user_id, titre, contenu) VALUES (?, ?, ?)',
             [Auth::id(), $titre, $contenu]);
         Session::flash('succes', 'Note « ' . $titre . ' » enregistrée.');
+        // Écrite dans la fenêtre : on retrouve la liste, où elle vient d'arriver.
+        if (($_POST['fenetre'] ?? '') === '1') {
+            redirect('alternance');
+        }
         redirect('alternance/notes/' . Database::dernierId());
     }
 

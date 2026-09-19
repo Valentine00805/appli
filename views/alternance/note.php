@@ -5,15 +5,22 @@
  * @var array|null $note
  * @var string $onglet
  * @var array|null $situation
+ * @var bool $dansUneFenetre  ouverte par « + Nouvelle note », par-dessus la liste
  */
+$dansUneFenetre = $dansUneFenetre ?? false;
 $edition = $note !== null;
 $action = $edition ? url('alternance/notes/' . (int) $note['id']) : url('alternance/notes/nouvelle');
 ?>
-<?= Vue::rendre('alternance/_onglets', ['onglet' => $onglet, 'situation' => $situation]) ?>
+<?php if (!$dansUneFenetre): ?>
+  <?= Vue::rendre('alternance/_onglets', ['onglet' => $onglet, 'situation' => $situation]) ?>
+<?php endif; ?>
 
-<div class="entete-page">
+<?php // Large : l'éditeur a besoin de place pour sa barre d'outils. ?>
+<div class="entete-page"<?= $dansUneFenetre ? ' data-large' : '' ?>>
   <div>
-    <p style="margin:0 0 .3rem"><a href="<?= url('alternance') ?>">← Toutes les notes</a></p>
+    <?php if (!$dansUneFenetre): ?>
+      <p style="margin:0 0 .3rem"><a href="<?= url('alternance') ?>">← Toutes les notes</a></p>
+    <?php endif; ?>
     <h1><?= $edition ? '🗒️ ' . e($note['titre']) : '🗒️ Nouvelle note' ?></h1>
     <?php if ($edition): ?>
       <p class="discret">Écrite le <?= e(date_fr((string) $note['created_at'])) ?>
@@ -25,7 +32,7 @@ $action = $edition ? url('alternance/notes/' . (int) $note['id']) : url('alterna
   </div>
 </div>
 
-<form method="post" action="<?= $action ?>" class="carte">
+<form method="post" action="<?= $action ?>" class="carte"<?= $dansUneFenetre ? ' data-envoi-fenetre' : '' ?>>
   <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
   <div class="champ">
     <label for="titre">Titre</label>
@@ -40,7 +47,7 @@ $action = $edition ? url('alternance/notes/' . (int) $note['id']) : url('alterna
   </div>
   <p class="actions">
     <button class="bouton" type="submit"><?= $edition ? 'Enregistrer' : 'Créer la note' ?></button>
-    <a class="bouton bouton--secondaire" href="<?= url('alternance') ?>">Annuler</a>
+    <a class="bouton bouton--secondaire" href="<?= url('alternance') ?>"<?= $dansUneFenetre ? ' data-fermer' : '' ?>>Annuler</a>
   </p>
 </form>
 

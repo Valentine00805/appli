@@ -15,14 +15,14 @@
     <h1>🗒️ Notes d’alternance</h1>
     <p>Ce que vous voulez garder de l’entreprise : une réunion, un outil, une procédure, une idée pour le rapport.</p>
   </div>
-  <a class="bouton" href="<?= url('alternance/notes/nouvelle') ?>">+ Nouvelle note</a>
+  <a class="bouton" href="<?= url('alternance/notes/nouvelle') ?>" data-fenetre>+ Nouvelle note</a>
 </div>
 
 <?php if ($notes === []): ?>
   <div class="vide">
     <span class="vide__icone">🗒️</span>
     <p>Aucune note pour l’instant.</p>
-    <p><a class="bouton bouton--secondaire" href="<?= url('alternance/notes/nouvelle') ?>">Écrire la première</a></p>
+    <p><a class="bouton bouton--secondaire" href="<?= url('alternance/notes/nouvelle') ?>" data-fenetre>Écrire la première</a></p>
   </div>
 <?php else: ?>
   <div class="alternance-notes">
