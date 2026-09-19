@@ -40,7 +40,11 @@ $actif = static function (string $prefixe) use ($route): string {
       <a href="<?= url('') ?>"<?= $actif('') ?>>Accueil</a>
       <a href="<?= url('calendrier') ?>"<?= $actif('calendrier') ?>>Calendrier</a>
       <a href="<?= url('cours') ?>"<?= $actif('cours') ?>>Mes cours</a>
-      <a href="<?= url('partages') ?>"<?= $actif('partages') ?>>Partagés</a>
+      <?php // Ce qu'on m'a partagé et que je n'ai pas encore vu. ?>
+      <?php $nouveauxPartages = $utilisateur !== null ? Partages::nbNonVus((int) $utilisateur['id']) : 0; ?>
+      <a href="<?= url('partages') ?>"<?= $actif('partages') ?>>
+        Partagés<?php if ($nouveauxPartages > 0): ?> <span class="compteur" title="<?= $nouveauxPartages ?> nouveau<?= $nouveauxPartages > 1 ? 'x' : '' ?>"><?= $nouveauxPartages > 99 ? '99+' : $nouveauxPartages ?></span><?php endif; ?>
+      </a>
       <a href="<?= url('revision') ?>"<?= $actif('revision') ?>>Révision</a>
       <a href="<?= url('cartes') ?>"<?= $actif('cartes') ?>>Cartes</a>
       <a href="<?= url('taches') ?>"<?= $actif('taches') ?>>Tâches</a>

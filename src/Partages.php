@@ -429,13 +429,18 @@ final class Partages
             . ' « ' . mb_strimwidth((string) ($cible['titre_cours'] ?? $cible['titre']), 0, 80, '…') . ' »';
 
         foreach ($amis as $a) {
-            self::donnerAcces($moi, $a, $type, $id, $droit);
+            self::donnerAcces($moi, $a, $type, $id, $droit, $texte);
             $atteints[$a] = true;
-            Database::run(
-                'INSERT INTO messages (expediteur_id, destinataire_id, texte, partage_type, partage_id, created_at) VALUES (?, ?, ?, ?, ?, UTC_TIMESTAMP())',
-                [$moi, $a, $texte, $type, $id]
-            );
-            $n = Amis::notifier($moi, $a, '🔗 ' . $pseudo . ' a partagé ' . $quoi . ($texte === '' ? '' : ' · ' . $texte));
+            $annonce = '🔗 ' . $pseudo . ' a partagé ' . $quoi . ($texte === '' ? '' : ' · ' . $texte);
+            if (self::dansLaDiscussion($a)) {
+                Database::run(
+                    'INSERT INTO messages (expediteur_id, destinataire_id, texte, partage_type, partage_id, created_at) VALUES (?, ?, ?, ?, ?, UTC_TIMESTAMP())',
+                    [$moi, $a, $texte, $type, $id]
+                );
+                $n = Amis::notifier($moi, $a, $annonce);
+            } else {
+                $n = self::notifierOnglet($a, $pseudo, $annonce);
+            }
             if ($n !== null) {
                 $notifications[] = $n;
             }
@@ -443,7 +448,7 @@ final class Partages
         foreach ($groupes as $g) {
             foreach (Conversations::membres($g) as $membre) {
                 if ($membre['id'] !== $moi) {
-                    self::donnerAcces($moi, $membre['id'], $type, $id, $droit);
+                    self::donnerAcces($moi, $membre['id'], $type, $id, $droit, $texte);
                     $atteints[$membre['id']] = true;
                 }
             }
@@ -542,15 +547,19 @@ final class Partages
             . ' (dont « ' . mb_strimwidth($documents[0]['titre'], 0, 60, '…') . ' »)';
 
         foreach ($amis as $a) {
+            $carte = self::dansLaDiscussion($a);
             foreach ($documents as $rang => $doc) {
-                self::donnerAcces($moi, $a, $doc['type'], $doc['id'], $droit);
-                Database::run(
-                    'INSERT INTO messages (expediteur_id, destinataire_id, texte, partage_type, partage_id, created_at) VALUES (?, ?, ?, ?, ?, UTC_TIMESTAMP())',
-                    [$moi, $a, $rang === 0 ? $texte : '', $doc['type'], $doc['id']]
-                );
+                self::donnerAcces($moi, $a, $doc['type'], $doc['id'], $droit, $texte);
+                if ($carte) {
+                    Database::run(
+                        'INSERT INTO messages (expediteur_id, destinataire_id, texte, partage_type, partage_id, created_at) VALUES (?, ?, ?, ?, ?, UTC_TIMESTAMP())',
+                        [$moi, $a, $rang === 0 ? $texte : '', $doc['type'], $doc['id']]
+                    );
+                }
             }
             $atteints[$a] = true;
-            $n = Amis::notifier($moi, $a, '🔗 ' . $pseudo . ' a partagé ' . $combien . ($texte === '' ? '' : ' · ' . $texte));
+            $annonce = '🔗 ' . $pseudo . ' a partagé ' . $combien . ($texte === '' ? '' : ' · ' . $texte);
+            $n = $carte ? Amis::notifier($moi, $a, $annonce) : self::notifierOnglet($a, $pseudo, $annonce);
             if ($n !== null) {
                 $notifications[] = $n;
             }
@@ -559,7 +568,7 @@ final class Partages
             foreach (Conversations::membres($g) as $membre) {
                 if ($membre['id'] !== $moi) {
                     foreach ($documents as $doc) {
-                        self::donnerAcces($moi, $membre['id'], $doc['type'], $doc['id'], $droit);
+                        self::donnerAcces($moi, $membre['id'], $doc['type'], $doc['id'], $droit, $texte);
                     }
                     $atteints[$membre['id']] = true;
                 }
@@ -605,13 +614,58 @@ final class Partages
         return $total . ' documents';
     }
 
-    private static function donnerAcces(int $moi, int $destinataire, string $type, int $id, string $droit = 'lecture'): void
+    private static function donnerAcces(int $moi, int $destinataire, string $type, int $id, string $droit = 'lecture', string $message = ''): void
     {
         Database::run(
-            'INSERT INTO partages_amis (destinataire_id, cible_type, cible_id, droit, proprietaire_id, created_at)
-                  VALUES (?, ?, ?, ?, ?, UTC_TIMESTAMP())
-             ON DUPLICATE KEY UPDATE droit = VALUES(droit)',
-            [$destinataire, $type, $id, self::droitValide($droit), $moi]
+            'INSERT INTO partages_amis (destinataire_id, cible_type, cible_id, droit, message, proprietaire_id, created_at)
+                  VALUES (?, ?, ?, ?, ?, ?, UTC_TIMESTAMP())
+             ON DUPLICATE KEY UPDATE droit = VALUES(droit), message = VALUES(message), created_at = VALUES(created_at), vu_le = NULL',
+            [$destinataire, $type, $id, self::droitValide($droit), $message === '' ? null : $message, $moi]
+        );
+    }
+
+    /** Cette personne reçoit-elle aussi ce qu'on lui partage en carte dans la discussion ? */
+    public static function dansLaDiscussion(int $userId): bool
+    {
+        return (int) (Database::valeur('SELECT partages_dans_discussion FROM users WHERE id = ?', [$userId]) ?? 1) !== 0;
+    }
+
+    /** Règle où arrive ce qu'on me partage. */
+    public static function reglerReception(int $moi, bool $dansLaDiscussion): void
+    {
+        Database::run('UPDATE users SET partages_dans_discussion = ? WHERE id = ?', [$dansLaDiscussion ? 1 : 0, $moi]);
+    }
+
+    /** La notification d'un partage qui n'arrive que dans l'onglet : un clic l'ouvre. */
+    private static function notifierOnglet(int $destinataire, string $pseudo, string $annonce): ?int
+    {
+        return FileNotifications::ajouter($destinataire, 'partage', [
+            'title' => '🔗 ' . $pseudo,
+            'body' => mb_strimwidth((string) preg_replace('/^🔗\s*/u', '', $annonce), 0, 200, '…'),
+            'url' => url('partages'),
+            'tag' => 'partages-recus',
+        ]);
+    }
+
+    /** Combien de partages reçus je n'ai pas encore vus : de quoi l'annoncer sur l'onglet. */
+    public static function nbNonVus(int $moi): int
+    {
+        return (int) Database::valeur(
+            'SELECT COUNT(*) FROM partages_amis WHERE destinataire_id = ? AND vu_le IS NULL',
+            [$moi]
+        );
+    }
+
+    /** Je les ai vus : l'onglet n'en annonce plus. Un seul, ou tous. */
+    public static function marquerVus(int $moi, ?string $type = null, ?int $id = null): void
+    {
+        if ($type === null) {
+            Database::run('UPDATE partages_amis SET vu_le = UTC_TIMESTAMP() WHERE destinataire_id = ? AND vu_le IS NULL', [$moi]);
+            return;
+        }
+        Database::run(
+            'UPDATE partages_amis SET vu_le = UTC_TIMESTAMP() WHERE destinataire_id = ? AND cible_type = ? AND cible_id = ? AND vu_le IS NULL',
+            [$moi, $type, $id]
         );
     }
 
@@ -652,7 +706,7 @@ final class Partages
     public static function recus(int $moi): array
     {
         $lignes = Database::all(
-            "SELECT p.cible_type, p.cible_id, p.droit, p.proprietaire_id, p.created_at, COALESCE(u.pseudo, '') AS proprietaire,
+            "SELECT p.cible_type, p.cible_id, p.droit, p.message, p.vu_le, p.proprietaire_id, p.created_at, COALESCE(u.pseudo, '') AS proprietaire,
                     c.titre AS titre_cours, c.contenu, f.nom_origine, f.mime, f.taille,
                     cf.titre AS titre_fiche, cf.fiche_revision, d.nom AS nom_dossier, d.icone AS icone_dossier, d.user_id AS dossier_a,
                     ev.titre AS titre_evenement, ev.debut AS debut_evenement, ev.journee_entiere AS journee_evenement
@@ -699,6 +753,8 @@ final class Partages
                     default => taille_lisible((int) $l['taille']),
                 },
                 'droit' => self::droitValide($l['droit']),
+                'message' => (string) ($l['message'] ?? ''),
+                'nouveau' => $l['vu_le'] === null,
                 'proprietaire' => (string) $l['proprietaire'],
                 'proprietaire_id' => (int) $l['proprietaire_id'],
                 'quand' => (string) $l['created_at'],

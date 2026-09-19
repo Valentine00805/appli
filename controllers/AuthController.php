@@ -239,6 +239,7 @@ final class AuthController
             'erreurs' => [],
             'fuseau'  => Auth::fuseau(),
             'calendrierAmis' => Partages::reglagesCalendrier($userId),
+            'partagesDansDiscussion' => Partages::dansLaDiscussion($userId),
             'fuseaux' => self::fuseauxParRegion(),
         ], 'Mon compte');
     }

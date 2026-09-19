@@ -501,6 +501,7 @@ $routes = [
     ['GET',  'partages/fichiers/{id}/contenu',      [PartagesController::class, 'contenu']],
     ['GET',  'partages/evenements/{id}/ics',        [PartagesController::class, 'ics']],
     ['POST', 'partages/calendrier/{id}',            [PartagesController::class, 'reglerCalendrier']],
+    ['POST', 'partages/reception',                  [PartagesController::class, 'reglerReception']],
     ['GET',  'partages/{mot}/{id}',                 [PartagesController::class, 'lire']],
     ['POST', 'partages/{mot}/{id}/copier',          [PartagesController::class, 'copier']],
     ['POST', 'partages/{mot}/{id}/oublier',         [PartagesController::class, 'oublier']],

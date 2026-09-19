@@ -366,6 +366,8 @@ textarea { min-height: 260px; resize: vertical; line-height: 1.65; }
 .partage-ligne__texte { display: grid; gap: .1rem; min-width: 0; }
 .partage-ligne__titre { font-weight: 600; overflow-wrap: anywhere; }
 .partage-ligne__detail, .partage-ligne__qui { font-size: .85rem; color: var(--texte-doux); }
+.partage-ligne__mot { font-size: .88rem; font-style: italic; overflow-wrap: anywhere; }
+.pastille--nouveau { background: var(--accent); color: #fff; font-size: .7rem; margin-left: .35rem; vertical-align: middle; }
 .partage-ligne__qui { display: flex; align-items: center; gap: .35rem; }
 
 .partage-cours { margin: 0; padding: 0; list-style: none; display: grid; gap: .5rem; }

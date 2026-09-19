@@ -38,9 +38,13 @@ final class PartagesController
     {
         Auth::exiger();
         $moi = Auth::id();
+        $recus = Partages::recus($moi);
+        if ($vue === 'recus') {
+            Partages::marquerVus($moi);
+        }
         Vue::afficher('partages/index', [
             'vue' => $vue,
-            'recus' => Partages::recus($moi),
+            'recus' => $recus,
             'envoyes' => Partages::envoyes($moi),
         ], $vue === 'recus' ? 'Partagés avec moi' : 'Ce que je partage');
     }
@@ -279,6 +283,8 @@ final class PartagesController
             Session::flash('erreur', 'Ce document n’est pas, ou plus, partagé avec vous.');
             redirect('partages');
         }
+        // L'ouvrir, c'est l'avoir vu : l'onglet ne le compte plus.
+        Partages::marquerVus($moi, $type, $id);
         $donnees = [
             'type' => $type,
             'cible' => $cible,
@@ -509,6 +515,19 @@ final class PartagesController
             });
         }
         redirect('partages/' . Partages::mot($type) . '/' . $id);
+    }
+
+    /** Où arrive ce qu'on me partage : aussi dans la discussion, ou seulement dans « Partagés ». */
+    public function reglerReception(): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $dansLaDiscussion = ($_POST['dans_discussion'] ?? '') === '1';
+        Partages::reglerReception(Auth::id(), $dansLaDiscussion);
+        Session::flash('succes', $dansLaDiscussion
+            ? 'Ce qu’on vous partage arrivera aussi en carte dans vos discussions.'
+            : 'Ce qu’on vous partage n’arrivera plus que dans l’onglet « Partagés », avec une notification.');
+        repartir_vers('compte');
     }
 
     /** Les évènements de cet ami paraissent, ou non, d'office dans mon calendrier. */

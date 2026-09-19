@@ -43,7 +43,7 @@ $lesRecus = $vue === 'recus';
       <p>Personne ne vous a encore partagé de document.</p>
       <p class="discret">
         Un ami qui partage un cours, une fiche de révision, un dossier ou un fichier le fait
-        paraître ici, et vous l’envoie aussi dans votre discussion.
+        paraître ici — et, si vous le voulez, en carte dans votre discussion.
       </p>
     </div>
   <?php else: ?>
@@ -62,11 +62,17 @@ $lesRecus = $vue === 'recus';
             <a class="partage-ligne__lien" href="<?= e($p['url']) ?>" data-fenetre>
               <span class="partage-ligne__icone" aria-hidden="true"><?= e($p['icone']) ?></span>
               <span class="partage-ligne__texte">
-                <span class="partage-ligne__titre"><?= e($p['titre']) ?></span>
+                <span class="partage-ligne__titre">
+                  <?= e($p['titre']) ?>
+                  <?php if (!empty($p['nouveau'])): ?><span class="pastille pastille--nouveau">Nouveau</span><?php endif; ?>
+                </span>
                 <span class="partage-ligne__detail">
                   <?= e(Partages::libelle($p['type'])) ?>
                   · <?= e(mb_strtolower(Partages::libelleDroit($p['droit']))) ?><?= $p['detail'] === '' ? '' : ' · ' . e($p['detail']) ?>
                 </span>
+                <?php if (($p['message'] ?? '') !== ''): ?>
+                  <span class="partage-ligne__mot">« <?= e(mb_strimwidth((string) $p['message'], 0, 140, '…')) ?> »</span>
+                <?php endif; ?>
                 <span class="partage-ligne__qui">
                   <?= Amis::avatar($p['proprietaire_id'], $p['proprietaire'], 'avatar--mini') ?>
                   <?= e($p['proprietaire']) ?> · <?= e(date_fr(Amis::local($p['quand'])->format('Y-m-d H:i:s'), false)) ?>

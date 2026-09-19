@@ -17,6 +17,8 @@ CREATE TABLE IF NOT EXISTS `users` (
   `fuseau`        VARCHAR(64)  NOT NULL DEFAULT 'Europe/Paris',
   -- Transcrire ses messages vocaux pendant l'enregistrement.
   `transcription_vocale` TINYINT(1) NOT NULL DEFAULT 1,
+  -- Ce qu'on me partage arrive aussi en carte dans la discussion (1), ou seulement dans « Partagés » (0).
+  `partages_dans_discussion` TINYINT(1) NOT NULL DEFAULT 1,
   `afficher_miens` TINYINT(1)  NOT NULL DEFAULT 1,
   `couleur_miens`  VARCHAR(7)  NULL,
   `volet_replie`    VARCHAR(190) NULL,
@@ -934,8 +936,11 @@ CREATE TABLE IF NOT EXISTS `partages_amis` (
   `cible_id`        INT UNSIGNED NOT NULL,
   -- Ce que le partage permet : lecture, commentaire ou modification.
   `droit`           VARCHAR(12)  NOT NULL DEFAULT 'lecture',
+  -- Le mot qui accompagnait le partage, et quand je l'ai vu.
+  `message`         TEXT         NULL,
   `proprietaire_id` INT UNSIGNED NOT NULL,
   `created_at`      DATETIME     NOT NULL,
+  `vu_le`           DATETIME     NULL,
   PRIMARY KEY (`destinataire_id`, `cible_type`, `cible_id`),
   KEY `idx_partages_amis_cible` (`cible_type`, `cible_id`),
   KEY `idx_partages_amis_proprietaire` (`proprietaire_id`),

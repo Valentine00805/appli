@@ -197,6 +197,39 @@ $transcription = (int) ($moi['transcription_vocale'] ?? 1) === 1;
  */
 $calendrierAmis = $calendrierAmis ?? [];
 ?>
+<?php $partagesDansDiscussion = $partagesDansDiscussion ?? true; ?>
+<section class="carte" style="margin-bottom:1rem" id="reception-partages" data-reglage>
+  <h2 style="margin-top:0">🔗 Ce qu’on me partage</h2>
+
+  <div class="reglage-lecture" data-reglage-lecture>
+    <p class="reglage-lecture__valeur">
+      <?= $partagesDansDiscussion ? '💬 Dans la discussion et dans « Partagés »' : '📥 Seulement dans « Partagés », avec une notification' ?>
+    </p>
+    <button class="bouton bouton--secondaire" type="button" data-reglage-modifier>✎ Modifier</button>
+  </div>
+
+  <form method="post" action="<?= url('partages/reception') ?>" data-reglage-edition hidden>
+    <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
+    <input type="hidden" name="retour" value="<?= e(url('compte') . '#reception-partages') ?>">
+    <fieldset class="reglage-choix">
+      <legend class="legende">Quand un ami me partage un document</legend>
+      <label><input type="radio" name="dans_discussion" value="1"<?= $partagesDansDiscussion ? ' checked' : '' ?>>
+        Il arrive en carte dans notre discussion, et dans « Partagés »</label>
+      <label><input type="radio" name="dans_discussion" value="0"<?= $partagesDansDiscussion ? '' : ' checked' ?>>
+        Il n’arrive que dans « Partagés », avec une notification</label>
+    </fieldset>
+    <div class="actions">
+      <button class="bouton" type="submit">Enregistrer</button>
+      <button class="bouton bouton--discret" type="button" data-reglage-annuler>Annuler</button>
+    </div>
+  </form>
+
+  <p class="champ__aide" style="margin-bottom:0">
+    Dans les deux cas, l’onglet « Partagés » compte ce que vous n’avez pas encore vu, et le mot qui accompagne un partage s’y lit.
+    Un partage fait à un groupe arrive toujours dans le groupe : la discussion est commune à tous ses membres.
+  </p>
+</section>
+
 <section class="carte" style="margin-bottom:1rem" id="calendrier-amis">
   <h2 style="margin-top:0">📅 Évènements partagés par mes amis</h2>
   <?php if ($calendrierAmis === []): ?>
