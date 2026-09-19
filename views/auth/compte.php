@@ -190,6 +190,45 @@ $transcription = (int) ($moi['transcription_vocale'] ?? 1) === 1;
   </p>
 </section>
 
+<?php
+/*
+ * Les évènements que mes amis me partagent : pour chacun, s'ils paraissent
+ * d'office dans mon calendrier, ou restent dans « Partagés ».
+ */
+$calendrierAmis = $calendrierAmis ?? [];
+?>
+<section class="carte" style="margin-bottom:1rem" id="calendrier-amis">
+  <h2 style="margin-top:0">📅 Évènements partagés par mes amis</h2>
+  <?php if ($calendrierAmis === []): ?>
+    <p class="discret" style="margin:0">Vous n’avez pas encore d’amis. Quand vous en aurez, vous choisirez ici qui s’affiche dans votre calendrier.</p>
+  <?php else: ?>
+    <p class="champ__aide" style="margin-top:0">
+      Choisissez, ami par ami, si les évènements qu’il vous partage paraissent d’office dans votre calendrier et sur votre accueil.
+      Ils y restent à jour, et disparaissent si le partage est retiré. Sinon, ils vous attendent dans « Partagés ».
+    </p>
+    <ul class="reglages-amis">
+      <?php foreach ($calendrierAmis as $ami): ?>
+        <li>
+          <span class="reglages-amis__qui">
+            <?= Amis::avatar($ami['id'], $ami['pseudo'], 'avatar--mini') ?>
+            <strong><?= e($ami['pseudo']) ?></strong>
+            <span class="discret">· <?= $ami['partages'] === 0 ? 'aucun évènement partagé' : $ami['partages'] . ' évènement' . ($ami['partages'] > 1 ? 's' : '') . ' partagé' . ($ami['partages'] > 1 ? 's' : '') ?></span>
+          </span>
+          <form method="post" action="<?= url('partages/calendrier/' . $ami['id']) ?>" class="en-ligne">
+            <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
+            <input type="hidden" name="retour" value="<?= e(url('compte') . '#calendrier-amis') ?>">
+            <input type="hidden" name="afficher" value="<?= $ami['affiche'] ? '0' : '1' ?>">
+            <button class="interrupteur" type="submit" role="switch" aria-checked="<?= $ami['affiche'] ? 'true' : 'false' ?>"
+                    title="<?= $ami['affiche'] ? 'Ne plus afficher d’office' : 'Afficher d’office' ?>">
+              <span class="interrupteur__texte"><?= $ami['affiche'] ? 'Dans mon calendrier' : 'Seulement dans « Partagés »' ?></span>
+            </button>
+          </form>
+        </li>
+      <?php endforeach; ?>
+    </ul>
+  <?php endif; ?>
+</section>
+
 <div class="colonnes">
   <?php
   /*

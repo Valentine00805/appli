@@ -306,6 +306,21 @@ textarea { min-height: 260px; resize: vertical; line-height: 1.65; }
 .partage-liens { margin: 0; padding-left: 1.2rem; display: grid; gap: .3rem; }
 .partage-droits { display: grid; gap: .4rem; border: 0; padding: 0; margin: 0; }
 .partage-personnes { display: flex; flex-wrap: wrap; gap: .35rem .9rem; align-items: center; }
+
+/* Les évènements qu'un ami partage, d'office dans le calendrier : un trait pointillé les distingue. */
+.evt--partage { border-left-style: dashed; }
+.partage-calendrier { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .8rem; max-width: 44rem;
+  margin: 0 0 .8rem; padding: .55rem .8rem; border: 1px dashed var(--bordure-forte); border-radius: var(--rayon-s); font-size: .92rem; }
+.reglages-amis { margin: 0; padding: 0; list-style: none; display: grid; }
+.reglages-amis li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .4rem .8rem;
+  padding: .5rem 0; border-top: 1px solid var(--bordure); }
+.reglages-amis li:first-child { border-top: 0; }
+.reglages-amis__qui { display: inline-flex; align-items: center; gap: .4rem; flex-wrap: wrap; }
+.interrupteur { display: inline-flex; align-items: center; gap: .5rem; padding: .3rem .7rem .3rem .35rem; border-radius: 999px;
+  border: 1px solid var(--bordure-forte); background: var(--fond-carte); color: var(--texte); cursor: pointer; font: inherit; font-size: .88rem; }
+.interrupteur::before { content: ''; width: 2rem; height: 1.1rem; border-radius: 999px; background: var(--bordure-forte);
+  box-shadow: inset -.9rem 0 0 .12rem var(--fond-carte); transition: background .15s, box-shadow .15s; }
+.interrupteur[aria-checked="true"]::before { background: #0d9488; box-shadow: inset .9rem 0 0 .12rem var(--fond-carte); }
 .partage-personne { display: inline-flex; align-items: center; gap: .35rem; }
 .partage-commentaires { margin: 0 0 .8rem; padding: 0; list-style: none; display: grid; gap: .7rem; }
 .partage-commentaires__qui { display: flex; align-items: center; gap: .4rem; flex-wrap: wrap; }

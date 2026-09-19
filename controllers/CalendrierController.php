@@ -1116,8 +1116,20 @@ final class CalendrierController
             $params[] = $typeId;
         }
         $sql .= ' ORDER BY e.debut ASC, e.fin ASC';
+        $evenements = Database::all($sql, $params);
 
-        return Database::all($sql, $params);
+        // Les évènements que mes amis me partagent, quand je veux les voir
+        // d'office. Un filtre par matière ou par type les écarte : ce sont
+        // les leurs, pas les miens.
+        if ($matiereId === null && $typeId === null) {
+            $partages = Partages::evenementsAffiches($userId, $debut, $fin);
+            if ($partages !== []) {
+                $evenements = array_merge($evenements, $partages);
+                usort($evenements, static fn (array $a, array $b): int => [$a['debut'], $a['fin']] <=> [$b['debut'], $b['fin']]);
+            }
+        }
+
+        return $evenements;
     }
 
     /**

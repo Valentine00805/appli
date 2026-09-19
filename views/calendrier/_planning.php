@@ -23,6 +23,9 @@ $compact = $compact ?? false;
 
 /** Où mène un élément : un évènement à sa fiche, une échéance à sa liste. */
 $ou = static function (array $evt): string {
+    if (!empty($evt['lien'])) {
+        return (string) $evt['lien'];
+    }
     return empty($evt['est_tache'])
         ? url('evenements/' . $evt['id'])
         : url('taches', ['liste' => $evt['liste_id']]);

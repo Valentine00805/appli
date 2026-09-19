@@ -17,6 +17,8 @@ $heureCourte = $evt['journee_entiere'] ? $heure : date('H:i', strtotime((string)
 $lienEvt = $estTache
     ? url('taches', ['liste' => $evt['liste_id']])
     : url('evenements/' . $evt['id'] . '/modifier');
+// Partagé par un ami : il se lit sur sa page, il ne se modifie pas d'ici.
+$estPartage = !empty($evt['est_partage']);
 ?>
 <div class="evt-ligne<?= (int) $evt['termine'] === 1 ? ' evt-ligne--termine' : '' ?><?= $estTache ? ' evt-ligne--tache' : '' ?>">
   <span class="evt-ligne__barre" style="background:<?= e($couleur) ?>"></span>
@@ -42,7 +44,10 @@ $lienEvt = $estTache
   </span>
 
   <span class="evt-ligne__droite">
-    <?php if ($estTache): ?>
+    <?php if ($estPartage): ?>
+      <a class="bouton bouton--discret bouton--petit" href="<?= e((string) $evt['lien']) ?>" data-fenetre
+         title="Ouvrir l’évènement partagé">↗</a>
+    <?php elseif ($estTache): ?>
       <?php
       // Cocher ici ramène sur le calendrier, au mois et aux filtres en cours.
       $estListe = ($evt['type_nom'] ?? '') === 'Tâche principale';

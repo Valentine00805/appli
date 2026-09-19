@@ -294,6 +294,7 @@ final class PartagesController
             'droit' => Partages::droit($type, $id, $moi) ?? 'lecture',
             'commentaires' => Partages::commentaires($type, $id, $moi),
             'adresseIcs' => url('partages/evenements/' . $id . '/ics'),
+            'afficheDOffice' => $type === 'evenement' && Partages::afficheDOffice($moi, (int) $cible['user_id']),
             'mot' => $mot,
         ];
         // Un cours ouvert depuis un dossier partagé : de quoi y revenir.
@@ -504,6 +505,22 @@ final class PartagesController
             });
         }
         redirect('partages/' . Partages::mot($type) . '/' . $id);
+    }
+
+    /** Les évènements de cet ami paraissent, ou non, d'office dans mon calendrier. */
+    public function reglerCalendrier(int $ami): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $afficher = ($_POST['afficher'] ?? '') === '1';
+        $compte = Amis::compte($ami);
+        if (!Partages::reglerAffichage(Auth::id(), $ami, $afficher)) {
+            self::introuvable();
+        }
+        Session::flash('succes', $afficher
+            ? 'Les évènements que ' . $compte['pseudo'] . ' vous partage s’affichent désormais dans votre calendrier.'
+            : 'Les évènements que ' . $compte['pseudo'] . ' vous partage ne s’affichent plus d’office : ils restent dans « Partagés ».');
+        repartir_vers('compte');
     }
 
     /** Un évènement partagé, au format de tous les agendas. */

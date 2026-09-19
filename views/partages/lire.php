@@ -142,6 +142,21 @@ $nom = $fichierSeul ? (string) $cible['nom_origine'] : '';
       $quand = 'Du ' . date_fr((string) $cible['debut']) . ' au ' . date_fr((string) $cible['fin']);
   }
   ?>
+  <?php if (!$public && (int) $cible['user_id'] !== Auth::id()): ?>
+    <?php // Le réglage de cet ami, là où l'on reçoit ses évènements. ?>
+    <form method="post" action="<?= url('partages/calendrier/' . (int) $cible['user_id']) ?>" class="partage-calendrier">
+      <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+      <input type="hidden" name="retour" value="<?= e((string) ($_SERVER['REQUEST_URI'] ?? '')) ?>">
+      <input type="hidden" name="afficher" value="<?= !empty($afficheDOffice) ? '0' : '1' ?>">
+      <span>
+        📅 Les évènements que <strong><?= e($proprietaire) ?></strong> vous partage
+        <?= !empty($afficheDOffice) ? 's’affichent d’office dans votre calendrier.' : 'ne s’affichent pas d’office dans votre calendrier.' ?>
+      </span>
+      <button class="bouton bouton--discret bouton--petit" type="submit">
+        <?= !empty($afficheDOffice) ? 'Ne plus les afficher' : 'Les afficher d’office' ?>
+      </button>
+    </form>
+  <?php endif; ?>
   <section class="carte fiche" style="max-width:44rem">
     <div class="fiche__ligne"><span class="fiche__etiquette">Quand</span><span class="fiche__valeur"><?= e($quand) ?></span></div>
     <?php if (trim((string) ($cible['lieu'] ?? '')) !== ''): ?>

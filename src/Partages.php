@@ -1518,6 +1518,103 @@ final class Partages
         return implode("\r\n", array_map($plier, $lignes)) . "\r\n";
     }
 
+    /** Couleur des évènements partagés dans le calendrier, quand ils n'ont pas de type. */
+    public const COULEUR_PARTAGE = '#0d9488';
+
+    /** Les évènements que cet ami me partage paraissent-ils d'office dans mon calendrier ? */
+    public static function afficheDOffice(int $moi, int $ami): bool
+    {
+        return Database::valeur('SELECT 1 FROM partages_calendrier WHERE user_id = ? AND ami_id = ?', [$moi, $ami]) !== null;
+    }
+
+    /** Règle ce choix pour un ami. */
+    public static function reglerAffichage(int $moi, int $ami, bool $afficher): bool
+    {
+        if ($ami === $moi || Amis::compte($ami) === null) {
+            return false;
+        }
+        if ($afficher) {
+            Database::run(
+                'INSERT IGNORE INTO partages_calendrier (user_id, ami_id, created_at) VALUES (?, ?, UTC_TIMESTAMP())',
+                [$moi, $ami]
+            );
+        } else {
+            Database::run('DELETE FROM partages_calendrier WHERE user_id = ? AND ami_id = ?', [$moi, $ami]);
+        }
+
+        return true;
+    }
+
+    /**
+     * Mes amis, et pour chacun : ses évènements paraissent-ils d'office dans
+     * mon calendrier, et combien m'en partage-t-il aujourd'hui.
+     *
+     * @return list<array{id: int, pseudo: string, affiche: bool, partages: int}>
+     */
+    public static function reglagesCalendrier(int $moi): array
+    {
+        $reglages = [];
+        foreach (Amis::liste($moi) as $ami) {
+            $reglages[] = [
+                'id' => (int) $ami['id'],
+                'pseudo' => (string) $ami['pseudo'],
+                'affiche' => self::afficheDOffice($moi, (int) $ami['id']),
+                'partages' => (int) Database::valeur(
+                    "SELECT COUNT(*) FROM partages_amis WHERE destinataire_id = ? AND proprietaire_id = ? AND cible_type = 'evenement'",
+                    [$moi, (int) $ami['id']]
+                ),
+            ];
+        }
+
+        return $reglages;
+    }
+
+    /**
+     * Les évènements qu'on me partage et que je veux voir d'office, entre deux
+     * dates, sous la forme des lignes du calendrier. Relus à chaque affichage :
+     * un changement de leur auteur s'y voit aussitôt, un partage retiré les
+     * fait disparaître. Ceux que j'ai déjà ajoutés à mon calendrier n'y
+     * paraissent pas deux fois.
+     */
+    public static function evenementsAffiches(int $moi, DateTimeInterface $debut, DateTimeInterface $fin): array
+    {
+        $lignes = Database::all(
+            "SELECT e.*, t.couleur AS type_couleur, COALESCE(u.pseudo, '') AS partage_par_pseudo
+               FROM partages_amis p
+               JOIN partages_calendrier r ON r.user_id = p.destinataire_id AND r.ami_id = p.proprietaire_id
+               JOIN evenements e ON e.id = p.cible_id AND e.user_id = p.proprietaire_id
+               JOIN users u ON u.id = e.user_id
+               LEFT JOIN types_evenement t ON t.id = e.type_id
+              WHERE p.destinataire_id = ? AND p.cible_type = 'evenement' AND e.debut <= ? AND e.fin >= ?
+                AND NOT EXISTS (SELECT 1 FROM evenements c WHERE c.user_id = p.destinataire_id AND c.partage_de = e.id)",
+            [$moi, $fin->format('Y-m-d H:i:s'), $debut->format('Y-m-d H:i:s')]
+        );
+        $evenements = [];
+        foreach ($lignes as $l) {
+            // Toujours ami, ou dans un même groupe : sinon, plus rien à montrer.
+            if (!Amis::sontAmis($moi, (int) $l['user_id']) && !self::partagentUnGroupe($moi, (int) $l['user_id'])) {
+                continue;
+            }
+            $evenements[] = [
+                // Ce qui est à l'auteur — sa matière, son cours — ne le regarde que lui.
+                'matiere_id' => null, 'matiere_nom' => null, 'matiere_couleur' => null,
+                'cours_id' => null, 'cours_titre' => null, 'serie_id' => null,
+                'type_nom' => 'Partagé par ' . $l['partage_par_pseudo'],
+                'type_icone' => '🔗',
+                'agenda_nom' => 'Partagé par ' . $l['partage_par_pseudo'],
+                'agenda_couleur' => self::COULEUR_PARTAGE,
+                'est_echeance' => 0,
+                'outlook_calendrier' => null,
+                'termine' => 0,
+                // Ce qui le distingue d'un évènement à soi : où il s'ouvre.
+                'est_partage' => true,
+                'lien' => url('partages/evenements/' . (int) $l['id']),
+            ] + $l;
+        }
+
+        return $evenements;
+    }
+
     /** Combien de modifications : de quoi l'annoncer. */
     public static function nbModifications(string $type, int $id): int
     {

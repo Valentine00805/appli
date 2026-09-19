@@ -76,6 +76,9 @@ if ($vue === 'jour') {
  * voir ce qu'il dit, pas pour le changer. Le changer reste à un clic de là.
  */
 $destination = static function (array $evt): string {
+    if (!empty($evt['lien'])) {
+        return (string) $evt['lien'];
+    }
     return empty($evt['est_tache'])
         ? url('evenements/' . $evt['id'])
         : url('taches', ['liste' => $evt['liste_id']]);
@@ -86,7 +89,8 @@ $puce = static function (array $evt) use ($destination): string {
     $couleur = couleur_evenement($evt);
     $fond = 'color-mix(in srgb, ' . $couleur . ' 16%, transparent)';
     $heure = $evt['journee_entiere'] ? '' : '<span class="evt__heure">' . date('H:i', strtotime($evt['debut'])) . '</span> ';
-    $classes = 'evt' . ($evt['termine'] ? ' evt--termine' : '') . (empty($evt['est_tache']) ? '' : ' evt--tache');
+    $classes = 'evt' . ($evt['termine'] ? ' evt--termine' : '') . (empty($evt['est_tache']) ? '' : ' evt--tache')
+        . (empty($evt['est_partage']) ? '' : ' evt--partage');
     return '<a class="' . $classes . '"'
         . ' href="' . $destination($evt) . '"'
         . (empty($evt['est_tache']) ? ' data-fenetre' : '')

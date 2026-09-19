@@ -1029,3 +1029,14 @@ CREATE TABLE IF NOT EXISTS `modifications_partage` (
   KEY `idx_modification_user` (`user_id`),
   CONSTRAINT `fk_modification_partage_user` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Les évènements qu'un ami me partage paraissent-ils d'office dans mon calendrier ?
+CREATE TABLE IF NOT EXISTS `partages_calendrier` (
+  `user_id`    INT UNSIGNED NOT NULL,
+  `ami_id`     INT UNSIGNED NOT NULL,
+  `created_at` DATETIME     NOT NULL,
+  PRIMARY KEY (`user_id`, `ami_id`),
+  KEY `idx_partages_calendrier_ami` (`ami_id`),
+  CONSTRAINT `fk_partages_calendrier_user` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_partages_calendrier_ami`  FOREIGN KEY (`ami_id`)  REFERENCES `users`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
