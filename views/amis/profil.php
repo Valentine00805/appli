@@ -151,7 +151,23 @@ $nbPartages = count($entreNous['recus']) + count($entreNous['envoyes']);
                 </span>
               </span>
             </a>
-            <span class="discret" style="font-size:.85rem" aria-hidden="true">Ouvrir ›</span>
+            <?php
+            // Ce que je partage : je retire son accès. Ce qu'on me partage : je le retire de ma liste.
+            $aMoi = $sensPartage === 'envoyes';
+            $actionRetrait = $aMoi
+                ? 'partager/' . Partages::mot($p['type']) . '/' . (int) $p['id'] . '/acces/' . (int) $ami['id'] . '/retirer'
+                : 'partages/' . Partages::mot($p['type']) . '/' . (int) $p['id'] . '/oublier';
+            $garde = $aMoi
+                ? e($pseudo) . ' n’aura plus accès à « ' . e($p['titre']) . ' ». Continuer ?'
+                : 'Retirer « ' . e($p['titre']) . ' » de vos partages ? Il faudra que ' . e($pseudo) . ' vous le partage de nouveau pour le revoir.';
+            ?>
+            <form method="post" action="<?= url($actionRetrait) ?>" data-envoi-fenetre data-confirmation="<?= $garde ?>">
+              <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
+              <input type="hidden" name="profil" value="<?= (int) $ami['id'] ?>">
+              <button class="bouton bouton--discret bouton--petit" type="submit">
+                <?= $aMoi ? 'Retirer l’accès' : 'Retirer de ma liste' ?>
+              </button>
+            </form>
           </li>
         <?php endforeach; ?>
       </ul>

@@ -219,7 +219,20 @@ final class PartagesController
         } else {
             Session::flash('erreur', 'Ce partage n’existe plus.');
         }
+        self::retourProfil();
         redirect('partager/' . $mot . '/' . $id);
+    }
+
+    /**
+     * Retiré depuis le profil d'un ami : c'est là qu'on revient, dans la même
+     * fenêtre, plutôt que dans celle du partage ou dans l'onglet.
+     */
+    private static function retourProfil(): void
+    {
+        $ami = entier_ou_null($_POST['profil'] ?? null);
+        if ($ami !== null) {
+            redirect('amis/' . $ami . '/profil');
+        }
     }
 
     /** Change ce qu'un ami peut faire de ce document. */
@@ -626,6 +639,7 @@ final class PartagesController
         Session::verifierCsrf();
         Partages::oublierRecu(Auth::id(), self::type($mot), $id);
         Session::flash('succes', 'Retiré de vos documents partagés.');
+        self::retourProfil();
         redirect('partages');
     }
 

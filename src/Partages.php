@@ -674,6 +674,7 @@ final class Partages
                 $aMoi = $cle === 'envoyes';
                 $listes[$cle][] = [
                     'type' => $type,
+                    'id' => $id,
                     'titre' => (string) $cible['titre'],
                     'icone' => match ($type) {
                         'cours' => '📘',
