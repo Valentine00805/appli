@@ -161,6 +161,22 @@ $nbPartages = count($entreNous['recus']) + count($entreNous['envoyes']);
                 ? e($pseudo) . ' n’aura plus accès à « ' . e($p['titre']) . ' ». Continuer ?'
                 : 'Retirer « ' . e($p['titre']) . ' » de vos partages ? Il faudra que ' . e($pseudo) . ' vous le partage de nouveau pour le revoir.';
             ?>
+            <?php if ($aMoi): ?>
+              <?php // Le droit de mon ami se change ici, comme dans la fenêtre « Partager ». ?>
+              <form method="post" class="en-ligne profil-ami__droit" data-envoi-fenetre
+                    action="<?= url('partager/' . Partages::mot($p['type']) . '/' . (int) $p['id'] . '/acces/' . (int) $ami['id'] . '/droit') ?>">
+                <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
+                <input type="hidden" name="profil" value="<?= (int) $ami['id'] ?>">
+                <label class="sr-only" for="droit-<?= e($p['type']) ?>-<?= (int) $p['id'] ?>">Ce que <?= e($pseudo) ?> peut faire de « <?= e($p['titre']) ?> »</label>
+                <select id="droit-<?= e($p['type']) ?>-<?= (int) $p['id'] ?>" name="droit">
+                  <?php foreach (Partages::DROITS as $unDroit): ?>
+                    <?php if (in_array($p['type'], ['fichier', 'evenement'], true) && $unDroit === 'modification') { continue; } ?>
+                    <option value="<?= e($unDroit) ?>"<?= $p['droit'] === $unDroit ? ' selected' : '' ?>><?= e(Partages::libelleDroit($unDroit)) ?></option>
+                  <?php endforeach; ?>
+                </select>
+                <button class="bouton bouton--discret bouton--petit" type="submit">Changer</button>
+              </form>
+            <?php endif; ?>
             <form method="post" action="<?= url($actionRetrait) ?>" data-envoi-fenetre data-confirmation="<?= $garde ?>">
               <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
               <input type="hidden" name="profil" value="<?= (int) $ami['id'] ?>">

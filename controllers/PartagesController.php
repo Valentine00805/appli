@@ -247,6 +247,7 @@ final class PartagesController
         } else {
             Session::flash('erreur', 'Ce partage n’existe plus.');
         }
+        self::retourProfil();
         redirect('partager/' . $mot . '/' . $id);
     }
 
