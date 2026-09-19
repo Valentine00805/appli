@@ -31,6 +31,9 @@ $fichierSeul = $type === 'fichier';
 $estFiche = $type === 'fiche';
 $estDossier = $type === 'dossier';
 $estEvenement = $type === 'evenement';
+// Déjà dans mon calendrier — ajouté par moi, ou affiché d'office : rien à y ajouter.
+$maCopie = $maCopie ?? null;
+$dejaDansCalendrier = $estEvenement && !$public && ($maCopie !== null || !empty($afficheDOffice));
 $liens = $liens ?? [];
 $groupes = $groupes ?? [];
 $retour = $retour ?? null;
@@ -68,13 +71,20 @@ $nom = $fichierSeul ? (string) $cible['nom_origine'] : '';
     <?php if ($fichierSeul): ?>
       <a class="bouton" href="<?= e($adresseFichier((int) $cible['id'], true)) ?>">⬇ Télécharger</a>
     <?php endif; ?>
-    <?php if ($estEvenement): ?>
+    <?php if ($dejaDansCalendrier): ?>
+      <?php // Il y est déjà : on le dit, et l'on mène à sa copie s'il en a une. ?>
+      <span class="pastille pastille--ok">✓ Déjà dans votre calendrier</span>
+      <?php if ($maCopie !== null): ?>
+        <a class="bouton bouton--discret" href="<?= url('evenements/' . (int) $maCopie) ?>"
+           <?= $dansUneFenetre ? 'data-fenetre' : '' ?>>Ouvrir le mien</a>
+      <?php endif; ?>
+    <?php elseif ($estEvenement): ?>
       <?php // Pour tout agenda : Google, Outlook, Apple — même sans compte ici. ?>
       <a class="bouton bouton--secondaire" href="<?= e((string) ($adresseIcs ?? '')) ?>"
          title="Un fichier .ics, que votre agenda sait ouvrir">📆 Ajouter à mon agenda</a>
     <?php endif; ?>
     <?php if (!$public): ?>
-      <?php if (!$fichierSeul): ?>
+      <?php if (!$fichierSeul && !$dejaDansCalendrier): ?>
         <form method="post" action="<?= url($base . '/copier') ?>" class="en-ligne"<?= $dansUneFenetre ? ' data-envoi-fenetre' : '' ?>>
           <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
           <button class="bouton bouton--secondaire" type="submit"><?= $estEvenement ? '📅 Ajouter à mon calendrier' : '📥 Copier ' . ($estDossier ? 'le dossier chez moi' : 'dans mes cours') ?></button>

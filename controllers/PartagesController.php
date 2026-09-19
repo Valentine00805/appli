@@ -295,6 +295,10 @@ final class PartagesController
             'commentaires' => Partages::commentaires($type, $id, $moi),
             'adresseIcs' => url('partages/evenements/' . $id . '/ics'),
             'afficheDOffice' => $type === 'evenement' && Partages::afficheDOffice($moi, (int) $cible['user_id']),
+            // Ma copie de cet évènement, si je l'ai ajouté à mon calendrier.
+            'maCopie' => $type === 'evenement'
+                ? Database::valeur('SELECT id FROM evenements WHERE user_id = ? AND partage_de = ?', [$moi, $id])
+                : null,
             'mot' => $mot,
         ];
         // Un cours ouvert depuis un dossier partagé : de quoi y revenir.
