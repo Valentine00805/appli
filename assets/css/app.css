@@ -305,6 +305,8 @@ textarea { min-height: 260px; resize: vertical; line-height: 1.65; }
 .partage-invitation { margin-top: 1.5rem; text-align: center; }
 .partage-liens { margin: 0; padding-left: 1.2rem; display: grid; gap: .3rem; }
 .partage-droits { display: grid; gap: .4rem; border: 0; padding: 0; margin: 0; }
+.partage-personnes { display: flex; flex-wrap: wrap; gap: .35rem .9rem; align-items: center; }
+.partage-personne { display: inline-flex; align-items: center; gap: .35rem; }
 .partage-commentaires { margin: 0 0 .8rem; padding: 0; list-style: none; display: grid; gap: .7rem; }
 .partage-commentaires__qui { display: flex; align-items: center; gap: .4rem; flex-wrap: wrap; }
 .partage-commentaires__texte { margin: .2rem 0 0; padding-left: 1.5rem; overflow-wrap: anywhere; }

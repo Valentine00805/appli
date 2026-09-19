@@ -275,6 +275,12 @@ final class CalendrierController
             'origine'   => $evenement['copie_de'] === null ? null
                 : Database::one('SELECT id, titre FROM evenements WHERE id = ? AND user_id = ?',
                     [(int) $evenement['copie_de'], $userId]),
+            // Partagé : avec qui, et par un lien ? Ou, ajouté depuis un partage : par qui ?
+            'partageAvec' => Partages::destinataires($userId, 'evenement', $id),
+            'lienPartage' => Partages::lien('evenement', $id),
+            'partagePar'  => $evenement['partage_par'] === null ? null : Amis::compte((int) $evenement['partage_par']),
+            'origineVisible' => $evenement['partage_de'] !== null
+                && Partages::peutVoir('evenement', (int) $evenement['partage_de'], $userId),
         ];
 
         if (Vue::enFenetre()) {

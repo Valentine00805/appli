@@ -12,6 +12,10 @@
  * @var array $vises    les agendas où il part, sous leur nom
  * @var ?array $copie   la copie à soi qu'on en a faite
  * @var ?array $origine l'évènement dont il est la copie
+ * @var list<array> $partageAvec  les amis avec qui je le partage, et leur droit
+ * @var ?array $lienPartage       son lien public, s'il en a un
+ * @var ?array $partagePar        l'ami qui me l'a partagé, s'il vient d'un partage
+ * @var bool $origineVisible      l'évènement de cet ami m'est encore ouvert
  * @var bool $dansUneFenetre  rendue seule, pour être posée dans une fenêtre
  */
 $dansUneFenetre = $dansUneFenetre ?? false;
@@ -155,6 +159,62 @@ $ligne = static function (string $etiquette, string $valeur): string {
         <?= $ligne('Copié depuis',
             '<a href="' . url('evenements/' . (int) $origine['id']) . '">'
             . e((string) $origine['titre']) . '</a>') ?>
+      <?php endif; ?>
+    </section>
+  <?php endif; ?>
+
+  <?php
+  /*
+   * Le partage, dans les deux sens : avec qui je le partage — et par un lien —,
+   * ou qui me l'a partagé. Rien à dire quand il n'est ni l'un ni l'autre.
+   */
+  $partageAvec = $partageAvec ?? [];
+  $lienPartage = $lienPartage ?? null;
+  $partagePar = $partagePar ?? null;
+  ?>
+  <?php if ($partageAvec !== [] || $lienPartage !== null || $partagePar !== null): ?>
+    <section class="carte fiche">
+      <?php if ($partagePar !== null): ?>
+        <div class="fiche__ligne">
+          <span class="fiche__etiquette">Partagé par</span>
+          <span class="fiche__valeur partage-personnes">
+            <span class="partage-personne">
+              <?= Amis::avatar((int) $partagePar['id'], (string) $partagePar['pseudo'], 'avatar--mini') ?>
+              <?= e((string) $partagePar['pseudo']) ?>
+            </span>
+            <?php if (!empty($origineVisible)): ?>
+              <a href="<?= url('partages/evenements/' . (int) $evenement['partage_de']) ?>" <?= $dansUneFenetre ? 'data-fenetre' : '' ?>>Voir son évènement</a>
+            <?php endif; ?>
+          </span>
+        </div>
+        <p class="champ__aide" style="margin:.2rem 0 0">
+          Vous l’avez ajouté à votre calendrier depuis son partage : c’est votre copie, ses changements n’y suivent pas.
+        </p>
+      <?php endif; ?>
+
+      <?php if ($partageAvec !== []): ?>
+        <div class="fiche__ligne">
+          <span class="fiche__etiquette">Partagé avec</span>
+          <span class="fiche__valeur partage-personnes">
+            <?php foreach ($partageAvec as $p): ?>
+              <span class="partage-personne">
+                <?= Amis::avatar((int) $p['id'], (string) $p['pseudo'], 'avatar--mini') ?>
+                <?= e((string) $p['pseudo']) ?>
+                <span class="discret">· <?= e(mb_strtolower(Partages::libelleDroit((string) $p['droit']))) ?></span>
+              </span>
+            <?php endforeach; ?>
+          </span>
+        </div>
+      <?php endif; ?>
+
+      <?php if ($lienPartage !== null): ?>
+        <?= $ligne('Lien public', e('Actif · ouvert ' . (int) $lienPartage['vues'] . ' fois')) ?>
+      <?php endif; ?>
+
+      <?php if ($partageAvec !== [] || $lienPartage !== null): ?>
+        <p style="margin:.4rem 0 0">
+          <a href="<?= url('partager/evenements/' . (int) $evenement['id']) ?>" <?= $dansUneFenetre ? 'data-fenetre-dessus' : 'data-fenetre' ?>>Gérer le partage</a>
+        </p>
       <?php endif; ?>
     </section>
   <?php endif; ?>

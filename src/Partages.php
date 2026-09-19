@@ -1805,9 +1805,10 @@ final class Partages
                 return [null, 'Cet évènement est déjà dans votre calendrier.'];
             }
             Database::run(
-                'INSERT INTO evenements (user_id, titre, description, lieu, debut, fin, journee_entiere) VALUES (?, ?, ?, ?, ?, ?, ?)',
-                [$moi, (string) $cible['titre'], $cible['description'], $cible['lieu'], (string) $cible['debut'], (string) $cible['fin'],
-                 (int) $cible['journee_entiere']]
+                'INSERT INTO evenements (user_id, partage_par, partage_de, titre, description, lieu, debut, fin, journee_entiere)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                [$moi, (int) $cible['user_id'], $id, (string) $cible['titre'], $cible['description'], $cible['lieu'],
+                 (string) $cible['debut'], (string) $cible['fin'], (int) $cible['journee_entiere']]
             );
             $nouveau = Database::dernierId();
             Agenda::viser($nouveau, [Agenda::DEFAUT]);

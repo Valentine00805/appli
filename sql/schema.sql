@@ -165,6 +165,9 @@ CREATE TABLE IF NOT EXISTS `evenements` (
   `cours_id`    INT UNSIGNED DEFAULT NULL,
   `serie_id`    INT UNSIGNED DEFAULT NULL,
   `copie_de`        INT UNSIGNED NULL,
+  -- Ajouté depuis un partage : l'ami qui l'a partagé, et son évènement d'origine.
+  `partage_par`     INT UNSIGNED NULL,
+  `partage_de`      INT UNSIGNED NULL,
   `titre`       VARCHAR(200) NOT NULL,
   `description` TEXT         NULL,
   `lieu`        VARCHAR(160) NULL,
@@ -182,12 +185,15 @@ CREATE TABLE IF NOT EXISTS `evenements` (
   KEY `idx_evt_type` (`type_id`),
   KEY `idx_evt_serie` (`serie_id`),
   KEY `idx_copie_de` (`copie_de`),
+  KEY `idx_evt_partage_de` (`partage_de`),
   CONSTRAINT `fk_evt_user`    FOREIGN KEY (`user_id`)    REFERENCES `users`(`id`)    ON DELETE CASCADE,
   CONSTRAINT `fk_evt_matiere` FOREIGN KEY (`matiere_id`) REFERENCES `matieres`(`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_evt_type`    FOREIGN KEY (`type_id`)    REFERENCES `types_evenement`(`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_evt_cours`   FOREIGN KEY (`cours_id`)   REFERENCES `cours`(`id`)    ON DELETE SET NULL,
   CONSTRAINT `fk_evt_serie`   FOREIGN KEY (`serie_id`)   REFERENCES `series_evenements`(`id`) ON DELETE SET NULL,
-  CONSTRAINT `fk_copie_de`    FOREIGN KEY (`copie_de`)   REFERENCES `evenements`(`id`) ON DELETE SET NULL
+  CONSTRAINT `fk_copie_de`    FOREIGN KEY (`copie_de`)   REFERENCES `evenements`(`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_evt_partage_par` FOREIGN KEY (`partage_par`) REFERENCES `users`(`id`)      ON DELETE SET NULL,
+  CONSTRAINT `fk_evt_partage_de`  FOREIGN KEY (`partage_de`)  REFERENCES `evenements`(`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Budget : categories et operations, propres a chaque utilisateur.
