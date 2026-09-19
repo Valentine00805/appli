@@ -56,8 +56,6 @@ $nom = $fichierSeul ? (string) $cible['nom_origine'] : '';
       <?php if ($estDossier): ?>
         · ses sous-dossiers compris
       <?php elseif ($estEvenement): ?>
-        <?php if (($cible['type_nom'] ?? null) !== null): ?> · <?= e((string) $cible['type_nom']) ?><?php endif; ?>
-        <?php if (($cible['matiere_nom'] ?? null) !== null): ?> · <?= e((string) $cible['matiere_nom']) ?><?php endif; ?>
       <?php elseif (!$fichierSeul): ?>
         <?php if (($cible['matiere_nom'] ?? null) !== null): ?> · <?= e((string) $cible['matiere_nom']) ?><?php endif; ?>
         · mis à jour le <?= e(date_fr((string) $cible['updated_at'], false)) ?>
@@ -167,14 +165,35 @@ $nom = $fichierSeul ? (string) $cible['nom_origine'] : '';
       </button>
     </form>
   <?php endif; ?>
+  <?php
+  // Les mêmes lignes que la fiche de son auteur, tues quand elles n'ont rien à dire.
+  $ligneEvt = static function (string $etiquette, string $valeur): string {
+      return trim(strip_tags($valeur)) === '' ? ''
+          : '<div class="fiche__ligne"><span class="fiche__etiquette">' . e($etiquette)
+            . '</span><span class="fiche__valeur">' . $valeur . '</span></div>';
+  };
+  $pastille = static fn (?string $nom, ?string $couleur, string $icone = ''): string => (string) $nom === '' ? ''
+      : '<span class="pastille" style="background:' . e((string) ($couleur ?: '#94a3b8'))
+        . ';color:' . e(couleur_texte((string) ($couleur ?: '#94a3b8'))) . '">'
+        . e(trim($icone . ' ' . $nom)) . '</span>';
+  ?>
   <section class="carte fiche" style="max-width:44rem">
-    <div class="fiche__ligne"><span class="fiche__etiquette">Quand</span><span class="fiche__valeur"><?= e($quand) ?></span></div>
-    <?php if (trim((string) ($cible['lieu'] ?? '')) !== ''): ?>
-      <div class="fiche__ligne"><span class="fiche__etiquette">Où</span><span class="fiche__valeur"><?= e((string) $cible['lieu']) ?></span></div>
+    <?= $ligneEvt('Quand', e($quand)) ?>
+    <?php if ((int) $cible['journee_entiere'] !== 1): ?>
+      <?php
+      $duree = $debutEvt->diff($finEvt);
+      $heures = $duree->days * 24 + $duree->h;
+      ?>
+      <?= $ligneEvt('Durée', e($heures > 0 ? $heures . ' h' . ($duree->i > 0 ? ' ' . $duree->i : '') : $duree->i . ' min')) ?>
     <?php endif; ?>
+    <?= $ligneEvt('Lieu', e((string) ($cible['lieu'] ?? ''))) ?>
+    <?= $ligneEvt('Type', $pastille($cible['type_nom'] ?? null, $cible['type_couleur'] ?? null, (string) ($cible['type_icone'] ?? ''))) ?>
+    <?= $ligneEvt('Matière', $pastille($cible['matiere_nom'] ?? null, $cible['matiere_couleur'] ?? null)) ?>
     <?php if (trim((string) ($cible['description'] ?? '')) !== ''): ?>
-      <div class="fiche__ligne"><span class="fiche__etiquette">Détails</span>
-        <span class="fiche__valeur texte-riche-affiche"><?= TexteRiche::versHtml((string) $cible['description']) ?></span></div>
+      <div class="fiche__notes">
+        <span class="fiche__etiquette">Notes</span>
+        <div class="texte-riche-affiche"><?= TexteRiche::versHtml((string) $cible['description']) ?></div>
+      </div>
     <?php endif; ?>
   </section>
 <?php elseif ($estDossier): ?>

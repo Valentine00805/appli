@@ -165,7 +165,8 @@ final class Partages
         if ($type === 'evenement') {
             return Database::one(
                 "SELECT e.id, e.user_id, e.titre, e.description, e.lieu, e.debut, e.fin, e.journee_entiere,
-                        t.nom AS type_nom, t.icone AS type_icone, m.nom AS matiere_nom,
+                        t.nom AS type_nom, t.icone AS type_icone, t.couleur AS type_couleur,
+                        m.nom AS matiere_nom, m.couleur AS matiere_couleur,
                         COALESCE(u.pseudo, '') AS proprietaire, u.fuseau
                    FROM evenements e JOIN users u ON u.id = e.user_id
                    LEFT JOIN types_evenement t ON t.id = e.type_id
