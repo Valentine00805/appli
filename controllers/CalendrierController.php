@@ -81,6 +81,8 @@ final class CalendrierController
             'typeId'        => $typeId,
             'sources'       => Agenda::sourcesDuCalendrier($userId),
             'voletFerme'    => Agenda::voletFerme($userId),
+            // École ou entreprise, jour par jour : l'espace alternance.
+            'rythme'        => Alternance::lieuxEntre($userId, $debut, $fin),
         ], 'Calendrier');
     }
 

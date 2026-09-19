@@ -49,6 +49,7 @@ require __DIR__ . '/src/Conversations.php';
 require __DIR__ . '/src/Partages.php';
 require __DIR__ . '/src/Difference.php';
 require __DIR__ . '/src/PlanningJour.php';
+require __DIR__ . '/src/Alternance.php';
 require __DIR__ . '/src/Fournisseur.php';
 require __DIR__ . '/src/FournisseurMicrosoft.php';
 require __DIR__ . '/src/FournisseurGoogle.php';
@@ -78,6 +79,7 @@ require __DIR__ . '/controllers/ImportController.php';
 require __DIR__ . '/controllers/RemboursementsController.php';
 require __DIR__ . '/controllers/SauvegardeController.php';
 require __DIR__ . '/controllers/TachesController.php';
+require __DIR__ . '/controllers/AlternanceController.php';
 require __DIR__ . '/controllers/KanbanController.php';
 require __DIR__ . '/controllers/TableauBordController.php';
 require __DIR__ . '/controllers/CartesController.php';
@@ -444,6 +446,26 @@ $routes = [
     ['POST', 'budget/categories/{id}/supprimer', [BudgetController::class, 'categorieSupprimer']],
     ['POST', 'budget/suggestions/appliquer',   [BudgetController::class, 'appliquerSuggestion']],
     ['POST', 'budget/suggestions/{id}/appliquer', [BudgetController::class, 'appliquerSuggestion']],
+
+    ['GET',  'alternance',                              [AlternanceController::class, 'notes']],
+    ['GET',  'alternance/notes/nouvelle',               [AlternanceController::class, 'note']],
+    ['POST', 'alternance/notes/nouvelle',               [AlternanceController::class, 'creerNote']],
+    ['GET',  'alternance/notes/{id}',                   [AlternanceController::class, 'note']],
+    ['POST', 'alternance/notes/{id}',                   [AlternanceController::class, 'modifierNote']],
+    ['POST', 'alternance/notes/{id}/supprimer',         [AlternanceController::class, 'supprimerNote']],
+    ['GET',  'alternance/rythme',                       [AlternanceController::class, 'rythme']],
+    ['POST', 'alternance/rythme',                       [AlternanceController::class, 'poserPeriode']],
+    ['POST', 'alternance/rythme/{id}',                  [AlternanceController::class, 'modifierPeriode']],
+    ['POST', 'alternance/rythme/{id}/supprimer',        [AlternanceController::class, 'supprimerPeriode']],
+    ['GET',  'alternance/journal',                      [AlternanceController::class, 'journal']],
+    ['GET',  'alternance/journal/semaine',              [AlternanceController::class, 'pageJournal']],
+    ['POST', 'alternance/journal',                      [AlternanceController::class, 'ecrireJournal']],
+    ['POST', 'alternance/journal/{id}/supprimer',       [AlternanceController::class, 'supprimerJournal']],
+    ['GET',  'alternance/documents',                    [AlternanceController::class, 'documents']],
+    ['POST', 'alternance/documents',                    [AlternanceController::class, 'deposer']],
+    ['GET',  'alternance/documents/{id}',               [AlternanceController::class, 'document']],
+    ['POST', 'alternance/documents/{id}/categorie',     [AlternanceController::class, 'rangerDocument']],
+    ['POST', 'alternance/documents/{id}/supprimer',     [AlternanceController::class, 'supprimerDocument']],
 
     ['GET',  'taches',                       [TachesController::class, 'index']],
     ['GET',  'taches/nouvelle',              [TachesController::class, 'nouvelle']],

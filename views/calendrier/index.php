@@ -282,6 +282,24 @@ $puce = static function (array $evt) use ($destination): string {
 
 <div class="cal-corps">
 
+<?php
+/*
+ * École ou entreprise, posé dans l'espace alternance : une étiquette en haut
+ * du jour. Rien quand rien n'est posé, ni le week-end.
+ */
+$rythme = $rythme ?? [];
+$etiquetteRythme = static function (string $cle, bool $court = false) use ($rythme): string {
+    if (!isset($rythme[$cle])) {
+        return '';
+    }
+    $l = Alternance::LIEUX[$rythme[$cle]['lieu']];
+    $titre = $l['nom'] . ($rythme[$cle]['note'] ? ' · ' . $rythme[$cle]['note'] : '');
+
+    return '<span class="rythme rythme--' . e($rythme[$cle]['lieu']) . '" title="' . e($titre) . '">'
+        . '<span aria-hidden="true">' . $l['icone'] . '</span>'
+        . ($court ? '<span class="sr-only">' : '<span class="rythme__nom">') . ' ' . e($l['nom']) . '</span></span>';
+};
+?>
 <?php if ($vue === 'jour'): ?>
 
   <?php
@@ -294,6 +312,7 @@ $puce = static function (array $evt) use ($destination): string {
       'planning'      => PlanningJour::disposer($parJour[$cle] ?? [], $ancre),
       'cle'           => $cle,
       'estAujourdhui' => $cle === $aujourdhui,
+      'rythme'        => $rythme[$cle] ?? false,
   ]);
   ?>
 
@@ -319,10 +338,14 @@ $puce = static function (array $evt) use ($destination): string {
         if ($cle === $aujourdhui) {
             $classes .= ' cal-jour--aujourdhui';
         }
+        if (isset($rythme[$cle])) {
+            $classes .= ' cal-jour--' . $rythme[$cle]['lieu'];
+        }
         ?>
         <div class="<?= $classes ?>">
           <div class="cal-jour__haut">
             <span class="cal-jour__numero"><?= (int) $curseur->format('j') ?></span>
+            <?= $etiquetteRythme($cle) ?>
             <a class="cal-jour__ajout" href="<?= url('evenements/nouveau', ['date' => $cle]) ?>" data-fenetre
                title="Ajouter un évènement le <?= e($curseur->format('d/m/Y')) ?>">+</a>
           </div>
@@ -431,8 +454,13 @@ $puce = static function (array $evt) use ($destination): string {
             if ($duJour !== []) { $classes .= ' cal-annee__jour--occupe'; }
             if ((int) $jour->format('N') >= 6) { $classes .= ' cal-annee__jour--weekend'; }
             if ($cle === $aujourdhui) { $classes .= ' cal-annee__jour--aujourdhui'; }
+            if (isset($rythme[$cle])) { $classes .= ' cal-annee__jour--' . $rythme[$cle]['lieu']; }
 
             $infobulle = ucfirst(date_fr($cle . ' 00:00:00', false));
+            if (isset($rythme[$cle])) {
+                $infobulle .= ' · ' . Alternance::LIEUX[$rythme[$cle]['lieu']]['icone'] . ' '
+                    . Alternance::LIEUX[$rythme[$cle]['lieu']]['nom'];
+            }
             foreach (array_slice($duJour, 0, 8) as $evt) {
                 $infobulle .= "\n• " . ($evt['journee_entiere'] ? '' : date('H:i', strtotime((string) $evt['debut'])) . ' ')
                     . icone_evenement($evt) . ' ' . $evt['titre'];
@@ -496,6 +524,7 @@ $puce = static function (array $evt) use ($destination): string {
                title="Voir le <?= e($unJour['date']->format('d/m/Y')) ?>">
               <span class="sem-planning__jour-nom"><?= e(jours_semaine()[(int) $unJour['date']->format('N') - 1]) ?></span>
               <span class="sem-planning__jour-numero"><?= (int) $unJour['date']->format('j') ?></span>
+              <?= $etiquetteRythme($unJour['cle'], true) ?>
             </a>
           <?php endforeach; ?>
         </div>

@@ -3570,3 +3570,94 @@ summary.cal-volet__groupe:focus-visible {
 }
 .mot-de-passe__oeil:hover, .mot-de-passe__oeil:focus-visible { color: var(--accent); background: var(--accent-doux); outline: none; }
 .mot-de-passe input::-ms-reveal { display: none; }
+
+/* --- Espace alternance ----------------------------------------------------- */
+:root {
+  --ecole: #0369a1;
+  --ecole-doux: #e0f2fe;
+  --entreprise: #b45309;
+  --entreprise-doux: #fef3c7;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ecole: #7dd3fc;
+    --ecole-doux: rgb(56 189 248 / 16%);
+    --entreprise: #fcd34d;
+    --entreprise-doux: rgb(251 191 36 / 16%);
+  }
+}
+.alternance-situation {
+  margin: 0 0 1.2rem; padding: .7rem 1rem; border-radius: var(--rayon-s);
+  background: var(--fond-doux); border-left: 4px solid var(--bordure-forte);
+}
+.alternance-situation--ecole { background: var(--ecole-doux); border-left-color: var(--ecole); }
+.alternance-situation--entreprise { background: var(--entreprise-doux); border-left-color: var(--entreprise); }
+.alternance-situation__ensuite { color: var(--texte-doux); }
+.alternance-notes { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1rem; }
+.alternance-note { display: flex; flex-direction: column; gap: .4rem; color: inherit; text-decoration: none; min-width: 0; }
+.alternance-note:hover { border-color: var(--accent); }
+.alternance-note__titre { font-size: 1.05rem; overflow-wrap: anywhere; }
+.alternance-note__extrait { color: var(--texte-doux); font-size: .9rem; overflow-wrap: anywhere; }
+.alternance-note__date { font-size: .8rem; margin-top: auto; }
+.alternance-lieux { display: flex; gap: .5rem; margin-bottom: .9rem; }
+.alternance-lieux input { position: absolute; opacity: 0; width: 0; height: 0; }
+.alternance-lieux label {
+  flex: 1; text-align: center; padding: .5rem .6rem; border-radius: var(--rayon-s); cursor: pointer;
+  border: 2px solid var(--bordure); background: var(--fond-carte); font-weight: 600;
+}
+.alternance-lieux input:focus-visible + label { outline: 2px solid var(--accent); outline-offset: 2px; }
+.alternance-lieux input:checked + .alternance-lieux__ecole { border-color: var(--ecole); background: var(--ecole-doux); color: var(--ecole); }
+.alternance-lieux input:checked + .alternance-lieux__entreprise { border-color: var(--entreprise); background: var(--entreprise-doux); color: var(--entreprise); }
+.alternance-periodes { list-style: none; margin: 0; padding: 0; display: grid; gap: .5rem; }
+.alternance-periode {
+  display: flex; flex-wrap: wrap; align-items: flex-start; gap: .4rem .8rem; padding: .6rem .8rem;
+  border-radius: var(--rayon-s); border-left: 4px solid var(--bordure-forte); background: var(--fond-doux);
+}
+.alternance-periode--ecole { border-left-color: var(--ecole); }
+.alternance-periode--entreprise { border-left-color: var(--entreprise); }
+.alternance-periode--en-cours { box-shadow: inset 0 0 0 1px var(--bordure-forte); }
+.alternance-periode__lieu { font-weight: 600; min-width: 7.5rem; }
+.alternance-periode--ecole .alternance-periode__lieu { color: var(--ecole); }
+.alternance-periode--entreprise .alternance-periode__lieu { color: var(--entreprise); }
+.alternance-periode__dates { flex: 1; min-width: 12rem; }
+.alternance-periode__actions { display: flex; align-items: flex-start; gap: .3rem; margin-left: auto; }
+.alternance-periode__modifier > summary { list-style: none; }
+.alternance-periode__modifier > summary::-webkit-details-marker { display: none; }
+.alternance-periode__modifier[open] { flex-basis: 100%; }
+.alternance-periode__formulaire { margin-top: .6rem; padding: .8rem; background: var(--fond-carte); border-radius: var(--rayon-s); min-width: min(320px, 70vw); }
+.alternance-bilan { list-style: none; margin: 0 0 .4rem; padding: 0; display: grid; gap: .4rem; }
+.alternance-bilan li { display: flex; align-items: baseline; gap: .6rem; }
+.alternance-bilan li > span:first-child { flex: 1; }
+.alternance-bilan__ecole strong { color: var(--ecole); }
+.alternance-bilan__entreprise strong { color: var(--entreprise); }
+.alternance-rappel { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin-bottom: 1rem;
+  background: var(--entreprise-doux); border-color: var(--entreprise); }
+.alternance-page__entete { display: flex; align-items: center; justify-content: space-between; gap: .6rem; flex-wrap: wrap; }
+.alternance-page__entete h2 { margin: 0; }
+.alternance-page__actions { display: flex; gap: .3rem; }
+.alternance-competences { display: flex; flex-wrap: wrap; gap: .35rem; align-items: center; margin: .8rem 0 0; }
+.alternance-semaine { display: flex; flex-wrap: wrap; gap: .35rem; align-items: center; margin: .4rem 0 0; }
+.alternance-semaine__jour {
+  padding: .15rem .5rem; border-radius: 999px; font-size: .82rem; background: var(--fond-doux); color: var(--texte-doux);
+}
+.alternance-semaine__jour--ecole { background: var(--ecole-doux); color: var(--ecole); }
+.alternance-semaine__jour--entreprise { background: var(--entreprise-doux); color: var(--entreprise); }
+.alternance-ranger select { font-size: .8rem; padding: .15rem .3rem; max-width: 9.5rem; }
+
+/* École ou entreprise, dans le calendrier. */
+.rythme {
+  display: inline-flex; align-items: center; gap: .15rem; padding: 0 .4rem; border-radius: 999px;
+  font-size: .72rem; font-weight: 600; line-height: 1.5; white-space: nowrap; text-decoration: none;
+}
+.rythme--ecole { background: var(--ecole-doux); color: var(--ecole); }
+.rythme--entreprise { background: var(--entreprise-doux); color: var(--entreprise); }
+.cal-jour--ecole { box-shadow: inset 0 3px 0 var(--ecole); }
+.cal-jour--entreprise { box-shadow: inset 0 3px 0 var(--entreprise); }
+.cal-jour__haut .rythme { margin-right: auto; margin-left: .3rem; }
+.sem-planning__jour .rythme { margin-top: .15rem; }
+.jour-planning__entete .rythme { margin-left: .5rem; }
+.cal-annee__jour--ecole { box-shadow: inset 0 -3px 0 var(--ecole); }
+.cal-annee__jour--entreprise { box-shadow: inset 0 -3px 0 var(--entreprise); }
+@media (max-width: 1100px) {
+  .cal-jour__haut .rythme__nom { display: none; }
+}

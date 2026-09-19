@@ -7,3 +7,5 @@
 /storage/courriels/*
 !/storage/courriels/.gitignore
 !/storage/messages/.gitignore
+/storage/alternance/*
+!/storage/alternance/.gitignore

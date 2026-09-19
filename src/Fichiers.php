@@ -18,8 +18,29 @@ final class Fichiers
      */
     public static function enregistrer(array $fichiers, int $coursId, int $userId, bool $pourFiche = false): array
     {
+        return self::recevoir($fichiers, (string) Config::get('app', 'dossier_uploads'),
+            static function (string $nomOrigine, string $nomStocke, string $mime, int $taille) use ($coursId, $userId, $pourFiche): void {
+                Database::run(
+                    'INSERT INTO fichiers (user_id, cours_id, pour_fiche, nom_origine, nom_stocke, mime, taille)
+                     VALUES (?, ?, ?, ?, ?, ?, ?)',
+                    [$userId, $coursId, $pourFiche ? 1 : 0, mb_substr($nomOrigine, 0, 255), $nomStocke, $mime, $taille]
+                );
+            });
+    }
+
+    /**
+     * Reçoit les fichiers téléversés dans un dossier, avec les contrôles de
+     * toujours (taille, extension, transfert), et laisse $ranger dire où la
+     * base les retient : les pièces jointes des cours, les documents de
+     * l'alternance… Renvoie la liste des erreurs rencontrées.
+     *
+     * @param callable(string, string, string, int): void $ranger
+     *        nom d'origine, nom stocké, type, taille
+     * @return string[]
+     */
+    public static function recevoir(array $fichiers, string $dossier, callable $ranger): array
+    {
         $erreurs = [];
-        $dossier = (string) Config::get('app', 'dossier_uploads');
         $tailleMax = self::tailleMax();
         $extensions = (array) Config::get('app', 'extensions_autorisees');
 
@@ -71,11 +92,7 @@ final class Fichiers
                 continue;
             }
 
-            Database::run(
-                'INSERT INTO fichiers (user_id, cours_id, pour_fiche, nom_origine, nom_stocke, mime, taille)
-                 VALUES (?, ?, ?, ?, ?, ?, ?)',
-                [$userId, $coursId, $pourFiche ? 1 : 0, mb_substr($nomOrigine, 0, 255), $nomStocke, $mime, $taille]
-            );
+            $ranger($nomOrigine, $nomStocke, $mime, $taille);
         }
 
         return $erreurs;

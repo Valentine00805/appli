@@ -62,7 +62,27 @@ final class Sauvegarde
         'listes_taches'     => ['portee' => 'user',  'liens' => []],
         'taches'            => ['portee' => 'user',  'liens' => ['liste_id' => 'listes_taches']],
         'cartes'            => ['portee' => 'user',  'liens' => ['cours_id' => 'cours']],
+        // Venues après les premières sauvegardes : une archive plus ancienne
+        // ne les contient pas, et se restaure quand même (facultative).
+        'alternance_notes'     => ['portee' => 'user', 'liens' => [], 'facultative' => true],
+        'alternance_periodes'  => ['portee' => 'user', 'liens' => [], 'facultative' => true],
+        'alternance_journal'   => ['portee' => 'user', 'liens' => [], 'facultative' => true],
+        'alternance_documents' => ['portee' => 'user', 'liens' => [], 'facultative' => true],
     ];
+
+    /** Les tables dont les lignes ont un fichier sur le disque, et où il est rangé dans l'archive. */
+    private const AVEC_FICHIERS = [
+        'fichiers'             => self::DOSSIER_FICHIERS,
+        'alternance_documents' => 'alternance/',
+    ];
+
+    /** Le dossier du disque des fichiers d'une table. */
+    private static function dossierDe(string $table): string
+    {
+        return $table === 'alternance_documents'
+            ? Alternance::dossier()
+            : (string) Config::get('app', 'dossier_uploads');
+    }
 
     // --- Export --------------------------------------------------------------
 
@@ -104,14 +124,16 @@ final class Sauvegarde
 
         // Les pièces jointes sont ajoutées par leur chemin : rien ne transite
         // par la mémoire, un gros fichier ne fait donc pas tomber la page.
-        $dossier = (string) Config::get('app', 'dossier_uploads');
         $manquants = 0;
-        foreach ($donnees['tables']['fichiers'] as $fichier) {
-            $chemin = $dossier . DIRECTORY_SEPARATOR . $fichier['nom_stocke'];
-            if (is_file($chemin)) {
-                $zip->addFile($chemin, self::DOSSIER_FICHIERS . $fichier['nom_stocke']);
-            } else {
-                $manquants++;
+        foreach (self::AVEC_FICHIERS as $table => $rangement) {
+            $dossier = self::dossierDe($table);
+            foreach ($donnees['tables'][$table] as $fichier) {
+                $chemin = $dossier . DIRECTORY_SEPARATOR . basename((string) $fichier['nom_stocke']);
+                if (is_file($chemin)) {
+                    $zip->addFile($chemin, $rangement . basename((string) $fichier['nom_stocke']));
+                } else {
+                    $manquants++;
+                }
             }
         }
         $zip->close();
@@ -139,14 +161,16 @@ final class Sauvegarde
             $resume['lignes'] += $n;
         }
 
-        $resume['fichiers'] = (int) Database::valeur(
-            'SELECT COUNT(*) FROM fichiers WHERE user_id = ?',
-            [$userId]
-        );
-        $resume['octets'] = (int) Database::valeur(
-            'SELECT COALESCE(SUM(taille), 0) FROM fichiers WHERE user_id = ?',
-            [$userId]
-        );
+        foreach (array_keys(self::AVEC_FICHIERS) as $table) {
+            $resume['fichiers'] += (int) Database::valeur(
+                "SELECT COUNT(*) FROM `$table` WHERE user_id = ?",
+                [$userId]
+            );
+            $resume['octets'] += (int) Database::valeur(
+                "SELECT COALESCE(SUM(taille), 0) FROM `$table` WHERE user_id = ?",
+                [$userId]
+            );
+        }
         return $resume;
     }
 
@@ -183,7 +207,10 @@ final class Sauvegarde
             }
 
             // Vérification complète avant de toucher à quoi que ce soit.
-            foreach (array_keys(self::TABLES) as $table) {
+            foreach (self::TABLES as $table => $reglage) {
+                if (!isset($donnees['tables'][$table]) && !empty($reglage['facultative'])) {
+                    $donnees['tables'][$table] = [];
+                }
                 if (!isset($donnees['tables'][$table]) || !is_array($donnees['tables'][$table])) {
                     throw new RuntimeException('Table manquante dans l\'archive : ' . $table . '.');
                 }
@@ -191,10 +218,13 @@ final class Sauvegarde
 
             // Les fichiers actuellement sur le disque ne seront effacés qu'une
             // fois les nouveaux écrits : en cas d'échec, on n'aura rien perdu.
-            $anciensFichiers = array_column(
-                Database::all('SELECT nom_stocke FROM fichiers WHERE user_id = ?', [$userId]),
-                'nom_stocke'
-            );
+            $anciensFichiers = [];
+            foreach (array_keys(self::AVEC_FICHIERS) as $table) {
+                $anciensFichiers[$table] = array_column(
+                    Database::all("SELECT nom_stocke FROM `$table` WHERE user_id = ?", [$userId]),
+                    'nom_stocke'
+                );
+            }
 
             $pdo = Database::pdo();
             $pdo->beginTransaction();
@@ -227,8 +257,11 @@ final class Sauvegarde
                 );
             }
 
-            $fichiers = self::restaurerFichiers($zip, $userId);
-            self::effacerAnciensFichiers($userId, $anciensFichiers);
+            $fichiers = 0;
+            foreach (self::AVEC_FICHIERS as $table => $rangement) {
+                $fichiers += self::restaurerFichiers($zip, $userId, $table, $rangement);
+                self::effacerAnciensFichiers($userId, $anciensFichiers[$table], $table);
+            }
 
             return ['lignes' => $lignes, 'fichiers' => $fichiers];
         } finally {
@@ -381,16 +414,16 @@ final class Sauvegarde
     }
 
     /** Réécrit les pièces jointes sur le disque et met à jour leur nom de stockage. */
-    private static function restaurerFichiers(ZipArchive $zip, int $userId): int
+    private static function restaurerFichiers(ZipArchive $zip, int $userId, string $table, string $rangement): int
     {
-        $dossier = (string) Config::get('app', 'dossier_uploads');
+        $dossier = self::dossierDe($table);
         if (!is_dir($dossier) && !mkdir($dossier, 0775, true) && !is_dir($dossier)) {
             return 0;
         }
 
         $restaures = 0;
-        foreach (Database::all('SELECT id, nom_stocke FROM fichiers WHERE user_id = ?', [$userId]) as $fichier) {
-            $contenu = $zip->getFromName(self::DOSSIER_FICHIERS . $fichier['nom_stocke']);
+        foreach (Database::all("SELECT id, nom_stocke FROM `$table` WHERE user_id = ?", [$userId]) as $fichier) {
+            $contenu = $zip->getFromName($rangement . basename((string) $fichier['nom_stocke']));
             if ($contenu === false) {
                 continue;
             }
@@ -400,7 +433,7 @@ final class Sauvegarde
             if (file_put_contents($dossier . DIRECTORY_SEPARATOR . $nom, $contenu) === false) {
                 continue;
             }
-            Database::run('UPDATE fichiers SET nom_stocke = ? WHERE id = ? AND user_id = ?',
+            Database::run("UPDATE `$table` SET nom_stocke = ? WHERE id = ? AND user_id = ?",
                 [$nom, $fichier['id'], $userId]);
             $restaures++;
         }
@@ -412,17 +445,17 @@ final class Sauvegarde
      * On ne touche qu'aux noms qui ne servent plus, pour ne rien casser si une
      * pièce jointe manquait dans l'archive et a été laissée telle quelle.
      */
-    private static function effacerAnciensFichiers(int $userId, array $anciens): void
+    private static function effacerAnciensFichiers(int $userId, array $anciens, string $table): void
     {
         if ($anciens === []) {
             return;
         }
 
         $actuels = array_flip(array_column(
-            Database::all('SELECT nom_stocke FROM fichiers WHERE user_id = ?', [$userId]),
+            Database::all("SELECT nom_stocke FROM `$table` WHERE user_id = ?", [$userId]),
             'nom_stocke'
         ));
-        $dossier = (string) Config::get('app', 'dossier_uploads');
+        $dossier = self::dossierDe($table);
 
         foreach ($anciens as $nom) {
             if (isset($actuels[$nom])) {

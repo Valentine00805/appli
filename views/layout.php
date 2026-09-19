@@ -49,6 +49,7 @@ $actif = static function (string $prefixe) use ($route): string {
       <a href="<?= url('cartes') ?>"<?= $actif('cartes') ?>>Cartes</a>
       <a href="<?= url('taches') ?>"<?= $actif('taches') ?>>Tâches</a>
       <a href="<?= url('tableau') ?>"<?= $actif('tableau') ?>>Tableau</a>
+      <a href="<?= url('alternance') ?>"<?= $actif('alternance') ?>>Alternance</a>
       <a href="<?= url('budget') ?>"<?= $actif('budget') ?>>Budget</a>
       <a href="<?= url('organisation/matieres') ?>"<?= $actif('organisation') ?>>Organisation</a>
       <?php // Les amis : la pastille compte les messages non lus et les demandes reçues. ?>

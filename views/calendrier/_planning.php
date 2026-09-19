@@ -20,6 +20,11 @@
  * @var bool $compact    resserré, pour tenir dans une colonne d'accueil
  */
 $compact = $compact ?? false;
+// École ou entreprise ce jour-là. Le calendrier le donne ; l'accueil le demande.
+$rythme = $rythme ?? null;
+if ($rythme === null && Auth::connecte()) {
+    $rythme = Alternance::lieuDuJour(Auth::id(), $cle);
+}
 
 /** Où mène un élément : un évènement à sa fiche, une échéance à sa liste. */
 $ou = static function (array $evt): string {
@@ -37,6 +42,13 @@ $ou = static function (array $evt): string {
     <span class="jour-planning__titre">
       <?= $estAujourdhui ? "Aujourd'hui" : e(ucfirst(date_fr($cle . ' 00:00:00', false))) ?>
     </span>
+    <?php if (is_array($rythme)): ?>
+      <?php $lieu = Alternance::LIEUX[$rythme['lieu']]; ?>
+      <a class="rythme rythme--<?= e($rythme['lieu']) ?>" href="<?= url('alternance/rythme') ?>"
+         title="<?= e($lieu['nom'] . ($rythme['note'] ? ' · ' . $rythme['note'] : '')) ?>">
+        <span aria-hidden="true"><?= $lieu['icone'] ?></span><span class="rythme__nom"> <?= e($lieu['nom']) ?></span>
+      </a>
+    <?php endif; ?>
     <a class="discret" href="<?= url('evenements/nouveau', ['date' => $cle]) ?>" data-fenetre>+ ajouter</a>
   </header>
 

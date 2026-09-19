@@ -376,6 +376,16 @@
   };
   initialiserHoraire(document);
 
+  // Une période d'alternance : la fin suit le début, et ne le précède jamais.
+  document.addEventListener('change', function (evenement) {
+    var champ = evenement.target;
+    if (!champ.matches || !champ.matches('form[data-periode] input[name="debut"]')) { return; }
+    var fin = champ.form.querySelector('input[name="fin"]');
+    if (!fin || !champ.value) { return; }
+    fin.min = champ.value;
+    if (!fin.value || fin.value < champ.value) { fin.value = champ.value; }
+  });
+
   // Les filtres s'appliquent dès qu'on change une valeur — listes déroulantes
   // comme cases à cocher, et sur chaque formulaire qui le demande, non plus
   // seulement le premier : le calendrier en a deux depuis le volet des agendas.
