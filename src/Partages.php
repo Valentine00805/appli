@@ -220,8 +220,116 @@ final class Partages
                 ? self::accesDirect('fiche', (int) $cible['cours_id'], $moi)
                 : self::peutVoir('cours', (int) $cible['cours_id'], $moi);
         }
+        // Un évènement se voit aussi quand tout le calendrier de son auteur m'est ouvert.
+        if ($type === 'evenement') {
+            return self::parSonCalendrier($id, (int) $cible['user_id'], $moi);
+        }
 
         return false;
+    }
+
+    /**
+     * Ce que « Mes évènements » veut dire, en SQL, pour l'évènement « $e » :
+     * écrit dans l'application et gardé pour soi — ni relu d'Outlook ou de
+     * Google, ni posé seulement dans un de ces agendas, ni reçu d'un ami.
+     * La même règle que le volet du calendrier.
+     */
+    private static function sqlMesEvenements(string $e): string
+    {
+        return "NOT EXISTS (SELECT 1 FROM agenda_liens ol WHERE ol.evenement_id = $e.id AND ol.user_id = $e.user_id)
+            AND $e.partage_par IS NULL
+            AND (NOT EXISTS (SELECT 1 FROM evenement_agendas ea WHERE ea.evenement_id = $e.id)
+                 OR EXISTS (SELECT 1 FROM evenement_agendas ea WHERE ea.evenement_id = $e.id AND ea.empreinte = ''))";
+    }
+
+    /** Cet évènement m'est-il ouvert parce que son auteur me partage tout son calendrier ? */
+    private static function parSonCalendrier(int $evenementId, int $proprietaire, int $moi): bool
+    {
+        if (!self::voitLeCalendrier($proprietaire, $moi)) {
+            return false;
+        }
+
+        return Database::valeur(
+            'SELECT 1 FROM evenements e WHERE e.id = ? AND ' . self::sqlMesEvenements('e'),
+            [$evenementId]
+        ) !== null;
+    }
+
+    /** Cet ami me partage-t-il tout son calendrier ? */
+    public static function voitLeCalendrier(int $proprietaire, int $moi): bool
+    {
+        return $proprietaire !== $moi && Database::valeur(
+            'SELECT 1 FROM calendriers_partages WHERE proprietaire_id = ? AND destinataire_id = ?',
+            [$proprietaire, $moi]
+        ) !== null;
+    }
+
+    /**
+     * Ouvre, ou referme, tout mon calendrier à un ami. L'ouvrir le fait
+     * paraître d'office dans le sien — il le masque d'un geste s'il préfère —
+     * et le prévient.
+     */
+    public static function partagerCalendrier(int $moi, int $ami, bool $partager): bool
+    {
+        if ($ami === $moi || !Amis::sontAmis($moi, $ami)) {
+            return false;
+        }
+        if (!$partager) {
+            Database::run('DELETE FROM calendriers_partages WHERE proprietaire_id = ? AND destinataire_id = ?', [$moi, $ami]);
+            return true;
+        }
+        $nouveau = Database::run(
+            'INSERT IGNORE INTO calendriers_partages (proprietaire_id, destinataire_id, created_at) VALUES (?, ?, UTC_TIMESTAMP())',
+            [$moi, $ami]
+        )->rowCount() > 0;
+        if ($nouveau) {
+            Database::run(
+                'INSERT IGNORE INTO partages_calendrier (user_id, ami_id, created_at) VALUES (?, ?, UTC_TIMESTAMP())',
+                [$ami, $moi]
+            );
+            $pseudo = (string) (Amis::compte($moi)['pseudo'] ?? 'Un ami');
+            $n = FileNotifications::ajouter($ami, 'partage', [
+                'title' => '📅 ' . $pseudo,
+                'body' => $pseudo . ' vous partage tout son calendrier : ses évènements paraissent dans le vôtre.',
+                'url' => url('calendrier'),
+                'tag' => 'calendrier-' . $moi,
+            ]);
+            if ($n !== null) {
+                FileNotifications::envoyer($n);
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Mes amis, et pour chacun : lui ai-je ouvert tout mon calendrier ? Et
+     * m'a-t-il ouvert le sien ?
+     *
+     * @return list<array{id: int, pseudo: string, voitLeMien: bool, meMontreLeSien: bool}>
+     */
+    public static function calendriersAvecMesAmis(int $moi): array
+    {
+        return array_map(static fn (array $ami): array => [
+            'id' => (int) $ami['id'],
+            'pseudo' => (string) $ami['pseudo'],
+            'voitLeMien' => self::voitLeCalendrier($moi, (int) $ami['id']),
+            'meMontreLeSien' => self::voitLeCalendrier((int) $ami['id'], $moi),
+        ], Amis::liste($moi));
+    }
+
+    /** Qui voit tout mon calendrier, s'il contient cet évènement. */
+    public static function calendrierVisiblePar(int $moi, int $evenementId): array
+    {
+        if (Database::valeur('SELECT 1 FROM evenements e WHERE e.id = ? AND e.user_id = ? AND ' . self::sqlMesEvenements('e'), [$evenementId, $moi]) === null) {
+            return [];
+        }
+
+        return Database::all(
+            "SELECT u.id, COALESCE(u.pseudo, '') AS pseudo FROM calendriers_partages c JOIN users u ON u.id = c.destinataire_id
+              WHERE c.proprietaire_id = ? ORDER BY u.pseudo",
+            [$moi]
+        );
     }
 
     /**
@@ -382,6 +490,8 @@ final class Partages
             if ($herite !== null) {
                 $droits[] = $herite;
             }
+        } elseif ($type === 'evenement' && self::parSonCalendrier($id, (int) $cible['user_id'], $moi)) {
+            $droits[] = 'lecture';
         }
         if ($droits === []) {
             return null;
@@ -1702,8 +1812,27 @@ final class Partages
                 AND NOT EXISTS (SELECT 1 FROM evenements c WHERE c.user_id = p.destinataire_id AND c.partage_de = e.id)",
             [$moi, $fin->format('Y-m-d H:i:s'), $debut->format('Y-m-d H:i:s')]
         );
+        // Tout le calendrier d'un ami, quand il me l'ouvre et que je veux le voir.
+        $lignes = array_merge($lignes, Database::all(
+            "SELECT e.*, t.couleur AS type_couleur, COALESCE(u.pseudo, '') AS partage_par_pseudo
+               FROM calendriers_partages cp
+               JOIN partages_calendrier r ON r.user_id = cp.destinataire_id AND r.ami_id = cp.proprietaire_id
+               JOIN evenements e ON e.user_id = cp.proprietaire_id
+               JOIN users u ON u.id = e.user_id
+               LEFT JOIN types_evenement t ON t.id = e.type_id
+              WHERE cp.destinataire_id = ? AND e.debut <= ? AND e.fin >= ?
+                AND " . self::sqlMesEvenements('e') . "
+                AND NOT EXISTS (SELECT 1 FROM evenements c WHERE c.user_id = cp.destinataire_id AND c.partage_de = e.id)",
+            [$moi, $fin->format('Y-m-d H:i:s'), $debut->format('Y-m-d H:i:s')]
+        ));
         $evenements = [];
+        $vus = [];
         foreach ($lignes as $l) {
+            // Partagé seul et par tout le calendrier : une seule fois.
+            if (isset($vus[(int) $l['id']])) {
+                continue;
+            }
+            $vus[(int) $l['id']] = true;
             // Toujours ami, ou dans un même groupe : sinon, plus rien à montrer.
             if (!Amis::sontAmis($moi, (int) $l['user_id']) && !self::partagentUnGroupe($moi, (int) $l['user_id'])) {
                 continue;

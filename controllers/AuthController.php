@@ -240,6 +240,7 @@ final class AuthController
             'fuseau'  => Auth::fuseau(),
             'calendrierAmis' => Partages::reglagesCalendrier($userId),
             'partagesDansDiscussion' => Partages::dansLaDiscussion($userId),
+            'calendriersAmis' => Partages::calendriersAvecMesAmis($userId),
             'fuseaux' => self::fuseauxParRegion(),
         ], 'Mon compte');
     }

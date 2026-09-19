@@ -277,6 +277,7 @@ final class CalendrierController
                     [(int) $evenement['copie_de'], $userId]),
             // Partagé : avec qui, et par un lien ? Ou, ajouté depuis un partage : par qui ?
             'partageAvec' => Partages::destinataires($userId, 'evenement', $id),
+            'calendrierVisiblePar' => Partages::calendrierVisiblePar($userId, $id),
             'lienPartage' => Partages::lien('evenement', $id),
             'partagePar'  => $evenement['partage_par'] === null ? null : Amis::compte((int) $evenement['partage_par']),
             'origineVisible' => $evenement['partage_de'] !== null

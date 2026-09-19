@@ -230,13 +230,52 @@ $calendrierAmis = $calendrierAmis ?? [];
   </p>
 </section>
 
+<?php
+/*
+ * Mon calendrier entier, ami par ami : il voit tous mes évènements, en
+ * lecture — ceux d'aujourd'hui comme ceux que j'ajouterai.
+ */
+$calendriersAmis = $calendriersAmis ?? [];
+?>
+<section class="carte" style="margin-bottom:1rem" id="mon-calendrier">
+  <h2 style="margin-top:0">📅 Partager mon calendrier</h2>
+  <?php if ($calendriersAmis === []): ?>
+    <p class="discret" style="margin:0">Vous n’avez pas encore d’amis à qui ouvrir votre calendrier.</p>
+  <?php else: ?>
+    <p class="champ__aide" style="margin-top:0">
+      Ouvert à un ami, votre calendrier paraît dans le sien, en lecture : tous vos évènements, ceux d’aujourd’hui comme ceux que vous ajouterez.
+      Seulement « Mes évènements » — ni vos agendas Outlook et Google, ni ce que d’autres vous ont partagé.
+    </p>
+    <ul class="reglages-amis">
+      <?php foreach ($calendriersAmis as $ami): ?>
+        <li>
+          <span class="reglages-amis__qui">
+            <?= Amis::avatar($ami['id'], $ami['pseudo'], 'avatar--mini') ?>
+            <strong><?= e($ami['pseudo']) ?></strong>
+            <?php if ($ami['meMontreLeSien']): ?><span class="discret">· vous montre le sien</span><?php endif; ?>
+          </span>
+          <form method="post" action="<?= url('partages/mon-calendrier/' . $ami['id']) ?>" class="en-ligne"
+                <?= $ami['voitLeMien'] ? 'data-confirmation="' . e($ami['pseudo']) . ' ne verra plus votre calendrier. Continuer ?"' : '' ?>>
+            <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
+            <input type="hidden" name="retour" value="<?= e(url('compte') . '#mon-calendrier') ?>">
+            <input type="hidden" name="partager" value="<?= $ami['voitLeMien'] ? '0' : '1' ?>">
+            <button class="interrupteur" type="submit" role="switch" aria-checked="<?= $ami['voitLeMien'] ? 'true' : 'false' ?>">
+              <span class="interrupteur__texte"><?= $ami['voitLeMien'] ? 'Voit mon calendrier' : 'Ne le voit pas' ?></span>
+            </button>
+          </form>
+        </li>
+      <?php endforeach; ?>
+    </ul>
+  <?php endif; ?>
+</section>
+
 <section class="carte" style="margin-bottom:1rem" id="calendrier-amis">
   <h2 style="margin-top:0">📅 Évènements partagés par mes amis</h2>
   <?php if ($calendrierAmis === []): ?>
     <p class="discret" style="margin:0">Vous n’avez pas encore d’amis. Quand vous en aurez, vous choisirez ici qui s’affiche dans votre calendrier.</p>
   <?php else: ?>
     <p class="champ__aide" style="margin-top:0">
-      Choisissez, ami par ami, si les évènements qu’il vous partage paraissent d’office dans votre calendrier et sur votre accueil.
+      Choisissez, ami par ami, si les évènements qu’il vous partage — un par un, ou tout son calendrier — paraissent d’office dans votre calendrier et sur votre accueil.
       Ils y restent à jour, et disparaissent si le partage est retiré. Sinon, ils vous attendent dans « Partagés ».
     </p>
     <ul class="reglages-amis">

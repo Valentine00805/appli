@@ -1045,3 +1045,14 @@ CREATE TABLE IF NOT EXISTS `partages_calendrier` (
   CONSTRAINT `fk_partages_calendrier_user` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_partages_calendrier_ami`  FOREIGN KEY (`ami_id`)  REFERENCES `users`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Partager tout son calendrier « Mes évènements » avec un ami.
+CREATE TABLE IF NOT EXISTS `calendriers_partages` (
+  `proprietaire_id` INT UNSIGNED NOT NULL,
+  `destinataire_id` INT UNSIGNED NOT NULL,
+  `created_at`      DATETIME     NOT NULL,
+  PRIMARY KEY (`proprietaire_id`, `destinataire_id`),
+  KEY `idx_calendriers_partages_destinataire` (`destinataire_id`),
+  CONSTRAINT `fk_calendriers_partages_proprietaire` FOREIGN KEY (`proprietaire_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_calendriers_partages_destinataire` FOREIGN KEY (`destinataire_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

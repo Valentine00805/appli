@@ -171,9 +171,24 @@ $ligne = static function (string $etiquette, string $valeur): string {
   $partageAvec = $partageAvec ?? [];
   $lienPartage = $lienPartage ?? null;
   $partagePar = $partagePar ?? null;
+  $calendrierVisiblePar = $calendrierVisiblePar ?? [];
   ?>
-  <?php if ($partageAvec !== [] || $lienPartage !== null || $partagePar !== null): ?>
+  <?php if ($partageAvec !== [] || $lienPartage !== null || $partagePar !== null || $calendrierVisiblePar !== []): ?>
     <section class="carte fiche">
+      <?php if ($calendrierVisiblePar !== []): ?>
+        <div class="fiche__ligne">
+          <span class="fiche__etiquette">Par mon calendrier</span>
+          <span class="fiche__valeur partage-personnes">
+            <?php foreach ($calendrierVisiblePar as $p): ?>
+              <span class="partage-personne">
+                <?= Amis::avatar((int) $p['id'], (string) $p['pseudo'], 'avatar--mini') ?>
+                <?= e((string) $p['pseudo']) ?>
+              </span>
+            <?php endforeach; ?>
+            <a href="<?= url('compte') ?>#mon-calendrier">Régler</a>
+          </span>
+        </div>
+      <?php endif; ?>
       <?php if ($partagePar !== null): ?>
         <div class="fiche__ligne">
           <span class="fiche__etiquette">Partagé par</span>

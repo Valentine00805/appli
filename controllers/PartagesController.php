@@ -531,6 +531,22 @@ final class PartagesController
         redirect('partages/' . Partages::mot($type) . '/' . $id);
     }
 
+    /** Ouvre, ou referme, tout mon calendrier à un ami. */
+    public function partagerCalendrier(int $ami): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $partager = ($_POST['partager'] ?? '') === '1';
+        $compte = Amis::compte($ami);
+        if (!Partages::partagerCalendrier(Auth::id(), $ami, $partager)) {
+            self::introuvable();
+        }
+        Session::flash('succes', $partager
+            ? $compte['pseudo'] . ' voit désormais tout votre calendrier, en lecture.'
+            : $compte['pseudo'] . ' ne voit plus votre calendrier.');
+        repartir_vers('compte');
+    }
+
     /** Où arrive ce qu'on me partage : aussi dans la discussion, ou seulement dans « Partagés ». */
     public function reglerReception(): void
     {
