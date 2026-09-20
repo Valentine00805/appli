@@ -126,11 +126,38 @@ final class AlternanceController
     public function notes(): void
     {
         Auth::exiger();
+        // Les épinglées d'abord : ce qu'on relit souvent reste en haut.
+        $recherche = trim((string) ($_GET['q'] ?? ''));
+        $ou = '';
+        $valeurs = [Auth::id()];
+        if ($recherche !== '') {
+            $ou = ' AND (titre LIKE ? OR contenu LIKE ?)';
+            $valeurs[] = '%' . $recherche . '%';
+            $valeurs[] = '%' . $recherche . '%';
+        }
+
         $this->afficher('alternance/notes', [
             'notes' => Database::all(
-                'SELECT id, titre, contenu, updated_at FROM alternance_notes
-                 WHERE user_id = ? ORDER BY updated_at DESC, id DESC', [Auth::id()]),
+                'SELECT id, titre, contenu, epinglee, updated_at FROM alternance_notes
+                 WHERE user_id = ?' . $ou . ' ORDER BY epinglee DESC, updated_at DESC, id DESC', $valeurs),
+            'recherche' => $recherche,
+            'combien'   => (int) Database::valeur(
+                'SELECT COUNT(*) FROM alternance_notes WHERE user_id = ?', [Auth::id()]),
         ], 'Alternance', 'notes');
+    }
+
+    /** Épingler une note, ou la décrocher. */
+    public function epinglerNote(int $id): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $this->exigerA('alternance_notes', $id);
+        $epinglee = (int) Database::valeur('SELECT epinglee FROM alternance_notes WHERE id = ?', [$id]) === 1;
+        // Épingler ne change pas la note : sa date de modification ne bouge pas.
+        Database::run('UPDATE alternance_notes SET epinglee = ?, updated_at = updated_at WHERE id = ? AND user_id = ?',
+            [$epinglee ? 0 : 1, $id, Auth::id()]);
+        Session::flash('succes', $epinglee ? 'Note décrochée.' : 'Note épinglée en haut de la liste.');
+        repartir_vers('alternance');
     }
 
     /** La note à écrire, ou à relire et modifier. */
@@ -288,11 +315,24 @@ final class AlternanceController
     {
         Auth::exiger();
         $userId = Auth::id();
+        // Chercher une mission ou une compétence, quand le journal s'allonge.
+        $recherche = trim((string) ($_GET['q'] ?? ''));
+        $ou = '';
+        $valeurs = [$userId];
+        if ($recherche !== '') {
+            $ou = ' AND (missions LIKE ? OR competences LIKE ?)';
+            $valeurs[] = '%' . $recherche . '%';
+            $valeurs[] = '%' . $recherche . '%';
+        }
+
         $this->afficher('alternance/journal', [
             'pages'    => Database::all(
-                'SELECT * FROM alternance_journal WHERE user_id = ? ORDER BY semaine DESC', [$userId]),
-            'aEcrire'  => Alternance::semainesAEcrire($userId),
+                'SELECT * FROM alternance_journal WHERE user_id = ?' . $ou . ' ORDER BY semaine DESC', $valeurs),
+            'aEcrire'  => $recherche === '' ? Alternance::semainesAEcrire($userId) : [],
             'cetteSemaine' => Alternance::lundi(date('Y-m-d')),
+            'recherche' => $recherche,
+            'combien'   => (int) Database::valeur(
+                'SELECT COUNT(*) FROM alternance_journal WHERE user_id = ?', [$userId]),
         ], 'Journal des missions', 'journal');
     }
 

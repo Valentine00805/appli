@@ -5,6 +5,8 @@
  * @var array $pages
  * @var list<string> $aEcrire  les lundis des semaines en entreprise sans page
  * @var string $cetteSemaine   le lundi de cette semaine
+ * @var string $recherche      ce qu’on cherche, ou une chaîne vide
+ * @var int $combien           le nombre de semaines écrites en tout
  * @var string $onglet
  * @var array|null $situation
  */
@@ -29,7 +31,19 @@ $ecrite = in_array($cetteSemaine, array_column($pages, 'semaine'), true);
   </span>
 </div>
 
-<?php if ($pages !== []): ?>
+<?php if ($combien > 0): ?>
+  <form method="get" action="<?= url('alternance/journal') ?>" class="filtres" role="search" style="margin-bottom:1rem">
+    <label class="sr-only" for="q">Chercher dans mon journal</label>
+    <input type="search" id="q" name="q" value="<?= e($recherche) ?>"
+           placeholder="Chercher une mission, une compétence…">
+    <button class="bouton bouton--secondaire" type="submit">Chercher</button>
+    <?php if ($recherche !== ''): ?>
+      <a class="bouton bouton--discret" href="<?= url('alternance/journal') ?>">Tout revoir</a>
+    <?php endif; ?>
+  </form>
+<?php endif; ?>
+
+<?php if ($pages !== [] && $recherche === ''): ?>
   <?php
   /*
    * Le journal en PDF : c'est ce qu'on recopie dans le livret, ou qu'on joint
@@ -73,9 +87,17 @@ $ecrite = in_array($cetteSemaine, array_column($pages, 'semaine'), true);
 <?php if ($pages === []): ?>
   <div class="vide">
     <span class="vide__icone">📓</span>
-    <p>Le journal est vide. Commencez par cette semaine : quelques lignes suffisent.</p>
+    <?php if ($recherche !== ''): ?>
+      <p>Aucune semaine ne parle de « <?= e($recherche) ?> ».</p>
+      <p><a class="bouton bouton--secondaire" href="<?= url('alternance/journal') ?>">Revoir tout le journal</a></p>
+    <?php else: ?>
+      <p>Le journal est vide. Commencez par cette semaine : quelques lignes suffisent.</p>
+    <?php endif; ?>
   </div>
 <?php else: ?>
+  <?php if ($recherche !== ''): ?>
+    <p class="discret"><?= count($pages) ?> semaine<?= count($pages) > 1 ? 's' : '' ?> sur <?= (int) $combien ?>.</p>
+  <?php endif; ?>
   <div class="pile">
     <?php foreach ($pages as $p): ?>
       <article class="carte alternance-page">
