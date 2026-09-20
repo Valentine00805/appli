@@ -350,6 +350,62 @@ final class TachesController
 
     /* --- Tâches --------------------------------------------------------- */
 
+    /** Ce qu'on peut demander à une tâche de refaire, et comment le dire. */
+    public const RECURRENCES = [
+        'jour'      => ['libelle' => 'Chaque jour',        'pas' => '+1 day'],
+        'semaine'   => ['libelle' => 'Chaque semaine',     'pas' => '+1 week'],
+        'quinzaine' => ['libelle' => 'Toutes les 2 semaines', 'pas' => '+2 weeks'],
+        'mois'      => ['libelle' => 'Chaque mois',        'pas' => '+1 month'],
+    ];
+
+    /** La répétition demandée, ou null — un mot inconnu ne répète rien. */
+    private function recurrenceValide(mixed $valeur): ?string
+    {
+        $valeur = is_string($valeur) ? $valeur : '';
+
+        return isset(self::RECURRENCES[$valeur]) ? $valeur : null;
+    }
+
+    /**
+     * Une tâche qui se répète, une fois cochée, renaît à l'échéance suivante.
+     *
+     * On repart de son échéance, pas du jour où l'on coche : une tâche du
+     * vendredi cochée le lundi suivant revient le vendredi d'après, et non le
+     * lundi. Tant que la date calculée est déjà passée, on avance d'un pas —
+     * une tâche oubliée trois semaines ne renaît pas trois fois.
+     */
+    private function refaireTache(array $tache): void
+    {
+        $recurrence = $this->recurrenceValide($tache['recurrence'] ?? null);
+        if ($recurrence === null) {
+            return;
+        }
+        $pas = self::RECURRENCES[$recurrence]['pas'];
+        $depart = (string) ($tache['echeance'] ?? '') !== ''
+            ? new DateTimeImmutable((string) $tache['echeance'])
+            : new DateTimeImmutable('today');
+
+        $suivante = $depart->modify($pas);
+        $aujourdhui = new DateTimeImmutable('today');
+        for ($tours = 0; $suivante < $aujourdhui && $tours < 400; $tours++) {
+            $suivante = $suivante->modify($pas);
+        }
+
+        // La sous-tâche ne dépasse pas l'échéance de sa liste : au-delà, la
+        // répétition s'arrête d'elle-même plutôt que de la faire déborder.
+        if ($this->souciDeSousTache((int) $tache['user_id'], (int) $tache['liste_id'], $suivante->format('Y-m-d')) !== null) {
+            Session::flash('succes', 'Dernière fois : la suivante dépasserait l’échéance de la tâche principale.');
+            return;
+        }
+
+        Database::run(
+            'INSERT INTO taches (user_id, liste_id, titre, echeance, recurrence, position) VALUES (?, ?, ?, ?, ?, ?)',
+            [(int) $tache['user_id'], (int) $tache['liste_id'], (string) $tache['titre'],
+             $suivante->format('Y-m-d'), $recurrence, $this->rangSuivant((int) $tache['user_id'], (int) $tache['liste_id'])]
+        );
+        Session::flash('succes', 'C’est fait. La prochaine est posée au ' . date_fr($suivante->format('Y-m-d'), false) . '.');
+    }
+
     public function creer(): void
     {
         Auth::exiger();
@@ -376,8 +432,9 @@ final class TachesController
         }
 
         Database::run(
-            'INSERT INTO taches (user_id, liste_id, titre, echeance, position) VALUES (?, ?, ?, ?, ?)',
-            [$userId, $listeId, $titre, $echeance, $this->rangSuivant($userId, $listeId)]
+            'INSERT INTO taches (user_id, liste_id, titre, echeance, recurrence, position) VALUES (?, ?, ?, ?, ?, ?)',
+            [$userId, $listeId, $titre, $echeance, $this->recurrenceValide($_POST['recurrence'] ?? null),
+             $this->rangSuivant($userId, $listeId)]
         );
 
         // Revenu au tableau, rien ne montre la liste où elle est rangée : on le dit.
@@ -428,8 +485,8 @@ final class TachesController
             : $this->rangSuivant($userId, $listeId);
 
         Database::run(
-            'UPDATE taches SET titre = ?, echeance = ?, liste_id = ?, position = ? WHERE id = ? AND user_id = ?',
-            [$titre, $echeance, $listeId, $rang, $id, $userId]
+            'UPDATE taches SET titre = ?, echeance = ?, recurrence = ?, liste_id = ?, position = ? WHERE id = ? AND user_id = ?',
+            [$titre, $echeance, $this->recurrenceValide($_POST['recurrence'] ?? null), $listeId, $rang, $id, $userId]
         );
 
         Session::flash('succes', 'Tâche mise à jour.');
@@ -537,7 +594,7 @@ final class TachesController
         Session::verifierCsrf();
         $userId = Auth::id();
 
-        $tache = Database::one('SELECT faite FROM taches WHERE id = ? AND user_id = ?', [$id, $userId]);
+        $tache = Database::one('SELECT * FROM taches WHERE id = ? AND user_id = ?', [$id, $userId]);
         if ($tache === null) {
             $this->introuvable();
         }
@@ -547,6 +604,16 @@ final class TachesController
             'UPDATE taches SET faite = ?, faite_le = ? WHERE id = ? AND user_id = ?',
             [$faite, $faite === 1 ? date('Y-m-d H:i:s') : null, $id, $userId]
         );
+
+        /*
+         * Cochée, une tâche qui se répète pose la suivante et cesse de se
+         * répéter elle-même : c'est la nouvelle qui porte la répétition, et
+         * décocher l'ancienne n'en fabrique pas une troisième.
+         */
+        if ($faite === 1 && $this->recurrenceValide($tache['recurrence'] ?? null) !== null) {
+            $this->refaireTache($tache);
+            Database::run('UPDATE taches SET recurrence = NULL WHERE id = ? AND user_id = ?', [$id, $userId]);
+        }
 
         // Retour à l'endroit exact d'où l'on vient : le calendrier s'il a lancé
         // l'action, sinon la page des tâches avec son filtre.

@@ -73,6 +73,10 @@ $ligneTache = static function (array $t) use ($csrf, $contexte, $listes, $vue, $
       <?php if ($texte !== ''): ?>
         <span class="echeance echeance--<?= e($etat) ?>"><?= e($texte) ?></span>
       <?php endif; ?>
+      <?php if ((string) ($t['recurrence'] ?? '') !== ''): ?>
+        <?php // Elle reviendra : la suivante se pose quand on coche celle-ci. ?>
+        <span class="pastille" title="<?= e(TachesController::RECURRENCES[$t['recurrence']]['libelle'] ?? 'Se répète') ?>">🔁</span>
+      <?php endif; ?>
 
       <span class="tache__actions">
         <button class="bouton bouton--discret bouton--petit" type="button"
@@ -112,6 +116,16 @@ $ligneTache = static function (array $t) use ($csrf, $contexte, $listes, $vue, $
                   ? 'Choisissez une autre tâche principale pour y déplacer celle-ci.'
                   : 'Créez une autre liste pour pouvoir y déplacer cette tâche.' ?>
             </span>
+          </div>
+          <div class="champ">
+            <label for="rep-<?= (int) $t['id'] ?>">Se répète</label>
+            <select id="rep-<?= (int) $t['id'] ?>" name="recurrence">
+              <option value="">Une seule fois</option>
+              <?php foreach (TachesController::RECURRENCES as $cle => $r): ?>
+                <option value="<?= e($cle) ?>"<?= (string) ($t['recurrence'] ?? '') === $cle ? ' selected' : '' ?>><?= e($r['libelle']) ?></option>
+              <?php endforeach; ?>
+            </select>
+            <span class="champ__aide">Cochée, elle repose la suivante toute seule.</span>
           </div>
         </div>
         <div class="actions">
@@ -245,6 +259,15 @@ $ligneTache = static function (array $t) use ($csrf, $contexte, $listes, $vue, $
             <input type="date" id="st-echeance" name="echeance" data-plafond-de="st-liste"
                    <?= $maxNouvelle === '' ? '' : 'max="' . e($maxNouvelle) . '"' ?>>
             <span class="champ__aide">Au plus tard à l’échéance de la tâche principale.</span>
+          </div>
+          <div class="champ">
+            <label for="st-recurrence">Se répète <span class="discret">(facultatif)</span></label>
+            <select id="st-recurrence" name="recurrence">
+              <option value="">Une seule fois</option>
+              <?php foreach (TachesController::RECURRENCES as $cle => $r): ?>
+                <option value="<?= e($cle) ?>"><?= e($r['libelle']) ?></option>
+              <?php endforeach; ?>
+            </select>
           </div>
 
           <button class="bouton bouton--bloc" type="submit">Ajouter la sous-tâche</button>
