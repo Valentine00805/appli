@@ -165,19 +165,27 @@ final class AlternanceController
         Auth::exiger();
         // Les épinglées d'abord : ce qu'on relit souvent reste en haut.
         $recherche = trim((string) ($_GET['q'] ?? ''));
+        $etiquette = trim((string) ($_GET['etiquette'] ?? ''));
         $ou = '';
         $valeurs = [Auth::id()];
         if ($recherche !== '') {
-            $ou = ' AND (titre LIKE ? OR contenu LIKE ?)';
+            $ou .= ' AND (titre LIKE ? OR contenu LIKE ? OR etiquettes LIKE ?)';
             $valeurs[] = '%' . $recherche . '%';
             $valeurs[] = '%' . $recherche . '%';
+            $valeurs[] = '%' . $recherche . '%';
+        }
+        if ($etiquette !== '') {
+            $ou .= ' AND etiquettes LIKE ?';
+            $valeurs[] = '%' . $etiquette . '%';
         }
 
         $this->afficher('alternance/notes', [
             'notes' => Database::all(
-                'SELECT id, titre, contenu, epinglee, updated_at FROM alternance_notes
+                'SELECT id, titre, contenu, epinglee, etiquettes, updated_at FROM alternance_notes
                  WHERE user_id = ?' . $ou . ' ORDER BY epinglee DESC, updated_at DESC, id DESC', $valeurs),
             'recherche' => $recherche,
+            'etiquette' => $etiquette,
+            'etiquettes' => Alternance::etiquettesConnues(Auth::id()),
             'combien'   => (int) Database::valeur(
                 'SELECT COUNT(*) FROM alternance_notes WHERE user_id = ?', [Auth::id()]),
         ], 'Alternance', 'notes');
@@ -263,13 +271,13 @@ final class AlternanceController
     {
         Auth::exiger();
         Session::verifierCsrf();
-        [$titre, $contenu] = $this->lireNote();
+        [$titre, $contenu, $etiquettes] = $this->lireNote();
         if ($titre === '') {
             Session::flash('erreur', 'Donnez un titre à la note.');
             redirect('alternance/notes/nouvelle');
         }
-        Database::run('INSERT INTO alternance_notes (user_id, titre, contenu) VALUES (?, ?, ?)',
-            [Auth::id(), $titre, $contenu]);
+        Database::run('INSERT INTO alternance_notes (user_id, titre, contenu, etiquettes) VALUES (?, ?, ?, ?)',
+            [Auth::id(), $titre, $contenu, $etiquettes]);
         Session::flash('succes', 'Note « ' . $titre . ' » enregistrée.');
         // Écrite dans la fenêtre : on retrouve la liste, où elle vient d'arriver.
         if (($_POST['fenetre'] ?? '') === '1') {
@@ -283,13 +291,13 @@ final class AlternanceController
         Auth::exiger();
         Session::verifierCsrf();
         $this->exigerA('alternance_notes', $id);
-        [$titre, $contenu] = $this->lireNote();
+        [$titre, $contenu, $etiquettes] = $this->lireNote();
         if ($titre === '') {
             Session::flash('erreur', 'Donnez un titre à la note.');
             redirect('alternance/notes/' . $id);
         }
-        Database::run('UPDATE alternance_notes SET titre = ?, contenu = ? WHERE id = ? AND user_id = ?',
-            [$titre, $contenu, $id, Auth::id()]);
+        Database::run('UPDATE alternance_notes SET titre = ?, contenu = ?, etiquettes = ? WHERE id = ? AND user_id = ?',
+            [$titre, $contenu, $etiquettes, $id, Auth::id()]);
         Session::flash('succes', 'Note enregistrée.');
         redirect('alternance/notes/' . $id);
     }
@@ -304,12 +312,15 @@ final class AlternanceController
         redirect('alternance');
     }
 
-    /** @return array{string, ?string} */
+    /** @return array{string, ?string, ?string} le titre, le texte, les étiquettes */
     private function lireNote(): array
     {
+        $etiquettes = implode(', ', Alternance::etiquettes(post('etiquettes')));
+
         return [
             mb_substr(trim(post('titre')), 0, 200),
             TexteRiche::depuisFormulaire(post('contenu')) ?: null,
+            mb_substr($etiquettes, 0, 200) ?: null,
         ];
     }
 

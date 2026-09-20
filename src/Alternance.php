@@ -589,6 +589,76 @@ final class Alternance
         return Database::dernierId();
     }
 
+    /**
+     * De quoi ne pas partir d'une page blanche. Un modèle n'impose rien : il
+     * pose les titres qu'on oublie sous la dictée d'une réunion, et les cases
+     * à cocher qui deviendront des tâches.
+     */
+    public const MODELES = [
+        'reunion' => [
+            'nom'   => 'Réunion d’équipe',
+            'titre' => 'Réunion du {date}',
+            'html'  => '<h3>Présents</h3><div>&nbsp;</div><h3>Ce qui a été dit</h3><div>&nbsp;</div>'
+                . '<h3>Décisions</h3><div>&nbsp;</div><h3>À faire</h3><div>[ ] </div>',
+        ],
+        'tuteur' => [
+            'nom'   => 'Point avec mon tuteur',
+            'titre' => 'Point tuteur du {date}',
+            'html'  => '<h3>Ce que j’ai fait depuis la dernière fois</h3><div>&nbsp;</div>'
+                . '<h3>Ce qui m’a bloqué</h3><div>&nbsp;</div><h3>Objectifs jusqu’au prochain point</h3><div>&nbsp;</div>'
+                . '<h3>À faire</h3><div>[ ] </div>',
+        ],
+        'procedure' => [
+            'nom'   => 'Procédure',
+            'titre' => 'Procédure : ',
+            'html'  => '<h3>À quoi ça sert</h3><div>&nbsp;</div><h3>Les étapes</h3>'
+                . '<ol><li>&nbsp;</li><li>&nbsp;</li></ol><h3>Les pièges</h3><div>&nbsp;</div>',
+        ],
+        'mission' => [
+            'nom'   => 'Compte rendu de mission',
+            'titre' => 'Mission : ',
+            'html'  => '<h3>Le besoin</h3><div>&nbsp;</div><h3>Ce que j’ai fait</h3><div>&nbsp;</div>'
+                . '<h3>Résultat</h3><div>&nbsp;</div><h3>Ce que j’en retiens</h3><div>&nbsp;</div>',
+        ],
+    ];
+
+    /**
+     * Les étiquettes d'une note, lues comme les compétences du journal :
+     * séparées par des virgules, sans doublon.
+     *
+     * @return list<string>
+     */
+    public static function etiquettes(?string $texte): array
+    {
+        return self::competences($texte);
+    }
+
+    /**
+     * Toutes les étiquettes posées sur ses notes, la plus fréquente d'abord.
+     *
+     * @return array<string, int> étiquette => combien de notes
+     */
+    public static function etiquettesConnues(int $userId): array
+    {
+        $vues = [];
+        foreach (Database::all(
+            'SELECT etiquettes FROM alternance_notes WHERE user_id = ? AND etiquettes IS NOT NULL', [$userId]) as $note) {
+            foreach (self::etiquettes($note['etiquettes']) as $etiquette) {
+                $cle = mb_strtolower($etiquette);
+                $vues[$cle] = ['nom' => $vues[$cle]['nom'] ?? $etiquette, 'n' => ($vues[$cle]['n'] ?? 0) + 1];
+            }
+        }
+        uasort($vues, static fn (array $a, array $b): int =>
+            [$b['n'], mb_strtolower($a['nom'])] <=> [$a['n'], mb_strtolower($b['nom'])]);
+
+        $comptes = [];
+        foreach ($vues as $vue) {
+            $comptes[$vue['nom']] = $vue['n'];
+        }
+
+        return $comptes;
+    }
+
     /** Le nom de cette liste : on la retrouve à son nom, et on n'en fait qu'une. */
     public const LISTE = 'Alternance';
 

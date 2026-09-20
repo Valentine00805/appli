@@ -41,12 +41,37 @@ $action = $edition ? url('alternance/notes/' . (int) $note['id']) : url('alterna
     <input type="text" id="titre" name="titre" required maxlength="200"<?= $edition ? '' : ' autofocus' ?>
            placeholder="Réunion d’équipe du lundi" value="<?= e($edition ? (string) $note['titre'] : post('titre')) ?>">
   </div>
+  <?php if (!$edition): ?>
+    <?php // Un modèle pose les titres qu'on oublie, et les cases à cocher. ?>
+    <div class="champ">
+      <label for="modele">Partir d’un modèle <span class="discret">(facultatif)</span></label>
+      <select id="modele" data-modele-note data-titre="titre" data-texte="contenu">
+        <option value="">Page blanche</option>
+        <?php foreach (Alternance::MODELES as $cle => $m): ?>
+          <option value="<?= e($cle) ?>"
+                  data-modele-titre="<?= e(str_replace('{date}', date_fr(date('Y-m-d'), false), $m['titre'])) ?>"
+                  data-modele-html="<?= e($m['html']) ?>"><?= e($m['nom']) ?></option>
+        <?php endforeach; ?>
+      </select>
+      <span class="champ__aide">Il remplit la note ; vous effacez ce qui ne sert pas.</span>
+    </div>
+  <?php endif; ?>
+
   <div class="champ">
     <label for="contenu">Note</label>
     <textarea id="contenu" name="contenu" style="min-height:320px" data-texte-riche="complet"
               data-tailles="<?= e(implode(',', TexteRiche::TAILLES)) ?>"
               placeholder="Ce qui a été dit, ce qu’il faut faire, ce que vous avez appris…"><?= e(TexteRiche::pourEditeur($edition ? $note['contenu'] : post('contenu'))) ?></textarea>
   </div>
+  <div class="champ">
+    <label for="etiquettes">Étiquettes <span class="discret">(facultatif)</span></label>
+    <input type="text" id="etiquettes" name="etiquettes" maxlength="200"
+           placeholder="sécurité, qualité, outils…"
+           value="<?= e($edition ? (string) ($note['etiquettes'] ?? '') : post('etiquettes')) ?>">
+    <span class="champ__aide">Séparées par des virgules. Elles servent à retrouver d’un clic
+      toutes les notes qui parlent du même sujet.</span>
+  </div>
+
   <p class="actions">
     <button class="bouton" type="submit"><?= $edition ? 'Enregistrer' : 'Créer la note' ?></button>
     <a class="bouton bouton--secondaire" href="<?= url('alternance') ?>"<?= $dansUneFenetre ? ' data-fermer' : '' ?>>Annuler</a>

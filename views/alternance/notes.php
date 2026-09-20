@@ -5,6 +5,8 @@
  *
  * @var array $notes
  * @var string $recherche  ce qu'on cherche, ou une chaîne vide
+ * @var string $etiquette  l'étiquette dont on ne veut que les notes
+ * @var array<string, int> $etiquettes  celles qu'on a déjà posées, et combien de fois
  * @var int $combien       le nombre de notes en tout, recherche comprise
  * @var string $onglet
  * @var array|null $situation
@@ -33,6 +35,18 @@ $csrf = Session::jetonCsrf();
   </form>
 <?php endif; ?>
 
+<?php if ($etiquettes !== []): ?>
+  <?php // Les étiquettes posées sur ses notes : un clic filtre. ?>
+  <p class="alternance-etiquettes">
+    <?php foreach ($etiquettes as $nom => $combien): ?>
+      <a class="pastille<?= mb_strtolower($nom) === mb_strtolower($etiquette) ? ' pastille--active' : '' ?>"
+         href="<?= url('alternance', mb_strtolower($nom) === mb_strtolower($etiquette) ? [] : ['etiquette' => $nom]) ?>">
+        <?= e($nom) ?> <span class="discret"><?= (int) $combien ?></span>
+      </a>
+    <?php endforeach; ?>
+  </p>
+<?php endif; ?>
+
 <?php if ($notes === []): ?>
   <div class="vide">
     <span class="vide__icone">🗒️</span>
@@ -59,6 +73,12 @@ $csrf = Session::jetonCsrf();
           <?php $texte = extrait(TexteRiche::versTexte($n['contenu']), 180); ?>
           <?php if ($texte !== ''): ?>
             <span class="alternance-note__extrait"><?= e($texte) ?></span>
+          <?php endif; ?>
+          <?php $siennes = Alternance::etiquettes($n['etiquettes'] ?? null); ?>
+          <?php if ($siennes !== []): ?>
+            <span class="alternance-note__etiquettes">
+              <?php foreach ($siennes as $une): ?><span class="pastille"><?= e($une) ?></span><?php endforeach; ?>
+            </span>
           <?php endif; ?>
           <span class="discret alternance-note__date">Modifiée le <?= e(date_fr((string) $n['updated_at'])) ?></span>
         </a>

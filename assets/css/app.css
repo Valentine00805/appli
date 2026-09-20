@@ -3768,3 +3768,9 @@ summary.cal-volet__groupe:focus-visible {
 /* Ce qu'une note laisse à faire, avant d'en faire des tâches. */
 .alternance-afaire { list-style: none; margin: 0 0 1rem; padding: 0; display: grid; gap: .35rem; }
 .alternance-afaire .case { margin: 0; }
+
+/* Les étiquettes des notes d'alternance. */
+.alternance-etiquettes { display: flex; flex-wrap: wrap; gap: .35rem; margin: 0 0 1rem; }
+.pastille--active { background: var(--accent); color: #fff; }
+.pastille--active .discret { color: inherit; opacity: .8; }
+.alternance-note__etiquettes { display: flex; flex-wrap: wrap; gap: .25rem; }

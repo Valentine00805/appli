@@ -376,6 +376,40 @@
   };
   initialiserHoraire(document);
 
+  /*
+   * Partir d'un modèle de note : il pose le titre et le texte, une fois. On
+   * ne remplace jamais ce qui est déjà écrit — un modèle choisi par erreur ne
+   * doit pas effacer une note commencée.
+   */
+  document.addEventListener('change', function (evenement) {
+    var choix = evenement.target;
+    if (!choix.matches || !choix.matches('[data-modele-note]')) { return; }
+    var option = choix.options[choix.selectedIndex];
+    var html = option ? option.getAttribute('data-modele-html') : '';
+    if (!html) { return; }
+
+    var titre = document.getElementById(choix.getAttribute('data-titre') || '');
+    var zone = document.getElementById(choix.getAttribute('data-texte') || '');
+    if (titre && !titre.value.trim()) { titre.value = option.getAttribute('data-modele-titre') || ''; }
+    if (!zone) { return; }
+
+    // L'éditeur remplace la zone de texte : c'est lui qu'il faut remplir.
+    var edition = zone.parentNode.querySelector('.texte-riche__zone');
+    var vide = edition ? edition.textContent.trim() === '' : zone.value.trim() === '';
+    if (!vide) {
+      choix.value = '';
+      window.alert('Cette note contient déjà du texte : le modèle ne l’a pas remplacé.');
+      return;
+    }
+    if (edition) {
+      edition.innerHTML = html;
+      edition.dispatchEvent(new Event('input', { bubbles: true }));
+      edition.focus();
+    } else {
+      zone.value = '<!--riche-->' + html;
+    }
+  });
+
   // Une période d'alternance : la fin suit le début, et ne le précède jamais.
   document.addEventListener('change', function (evenement) {
     var champ = evenement.target;
