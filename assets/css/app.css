@@ -3714,3 +3714,11 @@ summary.cal-volet__groupe:focus-visible {
 .cal-annee__jour--conges { box-shadow: inset 0 -3px 0 var(--conges); }
 .cal-annee__jour--ferie { box-shadow: inset 0 -3px 0 var(--ferie); }
 .cal-annee__jour--absence { box-shadow: inset 0 -3px 0 var(--absence); }
+
+/* La fiche de l'alternance : avancement du contrat, dates clés. */
+.alternance-avancement { height: 10px; border-radius: 999px; background: var(--fond-doux); overflow: hidden; }
+.alternance-avancement > span { display: block; height: 100%; background: var(--accent); }
+.alternance-avancement__chiffre { margin: 0 0 .4rem; }
+.alternance-echeances, .alternance-joindre { list-style: none; margin: 0; padding: 0; display: grid; gap: .45rem; }
+.alternance-echeances li { display: flex; align-items: baseline; gap: .5rem; flex-wrap: wrap; }
+.alternance-echeances li > span:first-child { flex: 1; }

@@ -7,6 +7,120 @@ declare(strict_types=1);
  */
 final class AlternanceController
 {
+    // --- La fiche de l'alternance ----------------------------------------------
+
+    public function entreprise(): void
+    {
+        Auth::exiger();
+        $userId = Auth::id();
+        $contrat = Alternance::contrat($userId);
+        $this->afficher('alternance/entreprise', [
+            'contrat'    => $contrat,
+            'avancement' => Alternance::avancementContrat($contrat),
+            'auCalendrier' => $this->echeancesPosees($userId, $contrat),
+        ], 'Mon alternance', 'entreprise');
+    }
+
+    public function enregistrerEntreprise(): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $userId = Auth::id();
+
+        $texte = static fn (string $champ, int $taille): ?string => mb_substr(trim(post($champ)), 0, $taille) ?: null;
+        $date = static fn (string $champ): ?string => Alternance::dateValide(post($champ));
+
+        $debut = $date('debut');
+        $fin = $date('fin');
+        if ($debut !== null && $fin !== null && $fin < $debut) {
+            Session::flash('erreur', 'La fin du contrat ne peut pas précéder son début.');
+            redirect('alternance/entreprise');
+        }
+        $courriel = $texte('tuteur_email', 190);
+        if ($courriel !== null && !filter_var($courriel, FILTER_VALIDATE_EMAIL)) {
+            Session::flash('erreur', 'L’adresse électronique du tuteur ne ressemble pas à une adresse.');
+            redirect('alternance/entreprise');
+        }
+
+        $valeurs = [
+            'entreprise'     => $texte('entreprise', 150),
+            'adresse'        => $texte('adresse', 255),
+            'poste'          => $texte('poste', 150),
+            'tuteur'         => $texte('tuteur', 120),
+            'tuteur_email'   => $courriel,
+            'tuteur_tel'     => $texte('tuteur_tel', 40),
+            'referent'       => $texte('referent', 120),
+            'debut'          => $debut,
+            'fin'            => $fin,
+            'remise_rapport' => $date('remise_rapport'),
+            'soutenance'     => $date('soutenance'),
+        ];
+        $colonnes = array_keys($valeurs);
+        Database::run(
+            'INSERT INTO alternance_contrat (user_id, `' . implode('`, `', $colonnes) . '`)
+             VALUES (?' . str_repeat(', ?', count($colonnes)) . ')
+             ON DUPLICATE KEY UPDATE '
+             . implode(', ', array_map(static fn (string $c): string => "`$c` = VALUES(`$c`)", $colonnes)),
+            array_merge([$userId], array_values($valeurs))
+        );
+
+        Session::flash('succes', 'Fiche enregistrée.');
+        redirect('alternance/entreprise');
+    }
+
+    /**
+     * Les dates du contrat posées au calendrier, en journées entières : on les
+     * retrouve là où l'on regarde les autres, avec leurs rappels. Celles qui y
+     * sont déjà ne sont pas reposées.
+     */
+    public function poserEcheances(): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $userId = Auth::id();
+        $contrat = Alternance::contrat($userId);
+
+        $posees = 0;
+        foreach (Alternance::ECHEANCES as $champ => $echeance) {
+            $jour = (string) ($contrat[$champ] ?? '');
+            if ($jour === '' || $this->echeancePosee($userId, $echeance['titre'], $jour)) {
+                continue;
+            }
+            Database::run(
+                'INSERT INTO evenements (user_id, titre, debut, fin, journee_entiere, lieu)
+                 VALUES (?, ?, ?, ?, 1, ?)',
+                [$userId, $echeance['titre'], $jour . ' 00:00:00', $jour . ' 23:59:59',
+                 mb_substr((string) $contrat['entreprise'], 0, 150) ?: null]);
+            $posees++;
+        }
+
+        Session::flash($posees === 0 ? 'erreur' : 'succes', match (true) {
+            $posees === 0 => 'Rien à poser : vos dates sont déjà au calendrier, ou vous n’en avez pas encore donné.',
+            $posees === 1 => 'Une date posée au calendrier.',
+            default       => $posees . ' dates posées au calendrier.',
+        });
+        redirect('alternance/entreprise');
+    }
+
+    /** @return array<string, bool> quelles dates du contrat sont déjà au calendrier */
+    private function echeancesPosees(int $userId, array $contrat): array
+    {
+        $posees = [];
+        foreach (Alternance::ECHEANCES as $champ => $echeance) {
+            $jour = (string) ($contrat[$champ] ?? '');
+            $posees[$champ] = $jour !== '' && $this->echeancePosee($userId, $echeance['titre'], $jour);
+        }
+
+        return $posees;
+    }
+
+    private function echeancePosee(int $userId, string $titre, string $jour): bool
+    {
+        return Database::valeur(
+            'SELECT id FROM evenements WHERE user_id = ? AND titre = ? AND DATE(debut) = ?',
+            [$userId, $titre, $jour]) !== null;
+    }
+
     // --- Les notes -------------------------------------------------------------
 
     public function notes(): void
@@ -305,7 +419,13 @@ final class AlternanceController
             ];
         }
 
-        $periode = 'Du ' . date_fr((string) $pages[0]['semaine'] . ' 00:00:00', false) . ' au '
+        // L'en-tête porte l'entreprise et le poste, quand la fiche les donne :
+        // le PDF part souvent seul, sans rien pour dire de qui il parle.
+        $contrat = Alternance::contrat($userId);
+        $qui = array_filter([trim((string) $contrat['entreprise']), trim((string) $contrat['poste'])], 'strlen');
+
+        $periode = ($qui === [] ? '' : implode(' · ', $qui) . ' — ')
+            . 'Du ' . date_fr((string) $pages[0]['semaine'] . ' 00:00:00', false) . ' au '
             . date_fr((new DateTimeImmutable((string) $pages[count($pages) - 1]['semaine']))->modify('+4 days')->format('Y-m-d') . ' 00:00:00', false)
             . ' · ' . count($semaines) . ' semaine' . (count($semaines) > 1 ? 's' : '');
 

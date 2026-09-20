@@ -8,6 +8,9 @@
 $lieu = static fn (array $p): string => Alternance::LIEUX[$p['lieu']]['icone'] . ' ' . Alternance::LIEUX[$p['lieu']]['dans'];
 ?>
 <nav class="onglets" aria-label="Sections de l’alternance">
+  <a href="<?= url('alternance/entreprise') ?>"<?= $onglet === 'entreprise' ? ' aria-current="page"' : '' ?>>
+    <span aria-hidden="true">🏢</span> Mon alternance
+  </a>
   <a href="<?= url('alternance') ?>"<?= $onglet === 'notes' ? ' aria-current="page"' : '' ?>>
     <span aria-hidden="true">🗒️</span> Notes
   </a>

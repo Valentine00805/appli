@@ -64,6 +64,7 @@ final class Sauvegarde
         'cartes'            => ['portee' => 'user',  'liens' => ['cours_id' => 'cours']],
         // Venues après les premières sauvegardes : une archive plus ancienne
         // ne les contient pas, et se restaure quand même (facultative).
+        'alternance_contrat'   => ['portee' => 'user', 'liens' => [], 'facultative' => true],
         'alternance_notes'     => ['portee' => 'user', 'liens' => [], 'facultative' => true],
         'alternance_periodes'  => ['portee' => 'user', 'liens' => [], 'facultative' => true],
         'alternance_journal'   => ['portee' => 'user', 'liens' => [], 'facultative' => true],

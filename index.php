@@ -448,6 +448,9 @@ $routes = [
     ['POST', 'budget/suggestions/{id}/appliquer', [BudgetController::class, 'appliquerSuggestion']],
 
     ['GET',  'alternance',                              [AlternanceController::class, 'notes']],
+    ['GET',  'alternance/entreprise',                   [AlternanceController::class, 'entreprise']],
+    ['POST', 'alternance/entreprise',                   [AlternanceController::class, 'enregistrerEntreprise']],
+    ['POST', 'alternance/entreprise/calendrier',        [AlternanceController::class, 'poserEcheances']],
     ['GET',  'alternance/notes/nouvelle',               [AlternanceController::class, 'note']],
     ['POST', 'alternance/notes/nouvelle',               [AlternanceController::class, 'creerNote']],
     ['GET',  'alternance/notes/{id}',                   [AlternanceController::class, 'note']],

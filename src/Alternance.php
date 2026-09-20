@@ -36,6 +36,14 @@ final class Alternance
     /** Une période ne dépasse pas trois ans : c'est déjà un contrat entier. */
     public const JOURS_MAX = 1100;
 
+    /** Les dates du contrat qui méritent d'être posées au calendrier. */
+    public const ECHEANCES = [
+        'debut'          => ['titre' => 'Début du contrat d’alternance', 'libelle' => 'Début du contrat'],
+        'fin'            => ['titre' => 'Fin du contrat d’alternance',   'libelle' => 'Fin du contrat'],
+        'remise_rapport' => ['titre' => 'Remise du rapport d’alternance', 'libelle' => 'Remise du rapport'],
+        'soutenance'     => ['titre' => 'Soutenance d’alternance',        'libelle' => 'Soutenance'],
+    ];
+
     private const JOURS_COURTS = ['lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.', 'dim.'];
     private const MOIS_COURTS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin',
         'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
@@ -252,6 +260,50 @@ final class Alternance
         }
 
         return $n;
+    }
+
+    // --- La fiche de l'alternance ----------------------------------------------
+
+    /** La fiche du compte : entreprise, tuteur, dates. Toujours un tableau. */
+    public static function contrat(int $userId): array
+    {
+        $vide = array_fill_keys(['entreprise', 'adresse', 'poste', 'tuteur', 'tuteur_email',
+            'tuteur_tel', 'referent', 'debut', 'fin', 'remise_rapport', 'soutenance'], null);
+
+        return (Database::one('SELECT * FROM alternance_contrat WHERE user_id = ?', [$userId]) ?? []) + $vide;
+    }
+
+    /** Une fiche encore vide ne s'affiche pas ailleurs dans l'application. */
+    public static function ficheRemplie(array $contrat): bool
+    {
+        foreach ($contrat as $cle => $valeur) {
+            if ($cle !== 'user_id' && $cle !== 'updated_at' && trim((string) $valeur) !== '') {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Où l'on en est du contrat : la part écoulée, en jours de semaine.
+     * Null tant que les deux dates ne sont pas données.
+     *
+     * @return array{faits: int, total: int, part: int}|null
+     */
+    public static function avancementContrat(array $contrat): ?array
+    {
+        $debut = (string) ($contrat['debut'] ?? '');
+        $fin = (string) ($contrat['fin'] ?? '');
+        if ($debut === '' || $fin === '' || $fin < $debut) {
+            return null;
+        }
+        $auj = date('Y-m-d');
+        $total = self::joursOuvres($debut, $fin);
+        $faits = $auj < $debut ? 0 : self::joursOuvres($debut, min($auj, $fin));
+
+        return ['faits' => $faits, 'total' => $total,
+                'part' => $total === 0 ? 0 : (int) round($faits / $total * 100)];
     }
 
     // --- Le journal ------------------------------------------------------------
