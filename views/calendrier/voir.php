@@ -51,6 +51,20 @@ $ligne = static function (string $etiquette, string $valeur): string {
   </div>
 
   <div class="actions">
+    <?php
+    /*
+     * Une révision qu'on a posée au calendrier : le bouton lance la session
+     * minutée, sur le cours qu'elle vise. C'est l'heure venue qu'on ouvre sa
+     * fiche — autant que le pas suivant soit à un clic.
+     */
+    $aReviser = (int) ($evenement['cours_id'] ?? 0) > 0
+        && str_starts_with((string) $evenement['titre'], 'Révision');
+    ?>
+    <?php if ($aReviser): ?>
+      <a class="bouton bouton--secondaire" href="<?= url('focus', ['cours' => (int) $evenement['cours_id']]) ?>">
+        🎯 Démarrer la session
+      </a>
+    <?php endif; ?>
     <?php // Partager l'évènement : à ses amis, ou par un lien. ?>
     <a class="bouton bouton--secondaire bouton-partage" href="<?= url('partager/evenements/' . (int) $evenement['id']) ?>"
        <?= $dansUneFenetre ? 'data-fenetre-dessus' : 'data-fenetre' ?>><?= Partages::icone() ?> Partager</a>

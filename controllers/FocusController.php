@@ -31,6 +31,10 @@ final class FocusController
                  WHERE c.user_id = ? ORDER BY c.updated_at DESC LIMIT 200', [$userId]),
             'coursChoisi' => entier_ou_null($_GET['cours'] ?? null),
             'dernierCours' => Focus::dernierCours($userId),
+            // Ce qu’on propose juste après une session : la revoir plus tard,
+            // et les cartes que ce cours donne à revoir aujourd’hui.
+            'apres'     => Focus::sessionRecente($userId),
+            'cartes'    => static fn (?int $coursId): int => Focus::cartesAReviser($userId, $coursId),
         ], 'Session de révision');
     }
 
@@ -125,6 +129,56 @@ final class FocusController
             ? 'Objectif retiré : le suivi continue, sans but à atteindre.'
             : 'Objectif de la semaine : ' . Focus::duree($minutes * 60) . ' de révision.');
         redirect('focus');
+    }
+
+    /**
+     * Les prochaines révisions du cours qu'on vient de travailler : le
+     * lendemain, trois jours après, une semaine après. On retient mieux en
+     * revoyant à intervalles qui s'écartent qu'en relisant tout la veille.
+     */
+    public function espacer(): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $userId = Auth::id();
+
+        $coursId = entier_ou_null($_POST['cours_id'] ?? null);
+        if ($coursId === null
+            || Database::valeur('SELECT id FROM cours WHERE id = ? AND user_id = ?', [$coursId, $userId]) === null) {
+            Session::flash('erreur', 'Ce cours est introuvable.');
+            redirect('focus');
+        }
+
+        $bilan = Focus::programmerRevisions($userId, $coursId);
+        Session::flash($bilan['posees'] === 0 ? 'erreur' : 'succes', $bilan['posees'] === 0
+            ? 'Ces révisions sont déjà dans votre liste « ' . Focus::LISTE . ' ».'
+            : $bilan['posees'] . ' révision' . ($bilan['posees'] > 1 ? 's posées' : ' posée')
+              . ' dans « ' . Focus::LISTE . ' » : demain, dans 3 jours, dans une semaine.');
+        redirect('focus');
+    }
+
+    /** Poser une session au calendrier, pour s'y tenir. */
+    public function planifier(): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $userId = Auth::id();
+
+        $coursId = entier_ou_null($_POST['cours_id'] ?? null);
+        if ($coursId !== null
+            && Database::valeur('SELECT id FROM cours WHERE id = ? AND user_id = ?', [$coursId, $userId]) === null) {
+            $coursId = null;
+        }
+
+        $evenement = Focus::planifier($userId, $coursId, post('jour'), post('heure'),
+            Focus::rythmeValide($_POST['minutes'] ?? null));
+        if ($evenement === null) {
+            Session::flash('erreur', 'Donnez un jour et une heure pour cette session.');
+            redirect('focus');
+        }
+
+        Session::flash('succes', 'Session posée au calendrier, avec son rappel un quart d’heure avant.');
+        redirect('evenements/' . $evenement);
     }
 
     /** Abandonner : la session se referme sans rien compter. */

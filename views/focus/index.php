@@ -10,6 +10,8 @@
  * @var array|null $dernierCours  le dernier cours révisé
  * @var int $objectif             l’objectif de la semaine, en minutes (0 : aucun)
  * @var array|null $avancement    où il en est, ou null sans objectif
+ * @var array|null $apres         la session qu’on vient de finir, si elle portait sur un cours
+ * @var callable $cartes         (int|null $coursId): int — les cartes à revoir aujourd’hui
  */
 $csrf = Session::jetonCsrf();
 $choisi = $coursChoisi ?? (int) ($dernierCours['id'] ?? 0);
@@ -36,6 +38,36 @@ $choisi = $coursChoisi ?? (int) ($dernierCours['id'] ?? 0);
         <button class="bouton bouton--discret" type="submit">Abandonner</button>
       </form>
     </p>
+  </div>
+<?php endif; ?>
+
+<?php if ($apres !== null): ?>
+  <?php
+  /*
+   * Ce qui se joue juste après une session : on retient mieux en revoyant
+   * plus tard qu'en relisant plus longtemps. C'est le moment de poser les
+   * prochaines révisions, et de passer aux cartes que ce cours réclame.
+   */
+  $aRevoir = $cartes((int) $apres['cours_id']);
+  ?>
+  <div class="carte" style="border-color:var(--accent);margin-bottom:1rem">
+    <h2 style="margin-top:0">Après « <?= e((string) $apres['cours_titre']) ?> »</h2>
+    <p class="discret">Vous venez d’y passer <?= e(Focus::duree((int) $apres['secondes'])) ?>.</p>
+    <p class="actions">
+      <form method="post" action="<?= url('focus/espacer') ?>" class="en-ligne">
+        <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+        <input type="hidden" name="cours_id" value="<?= (int) $apres['cours_id'] ?>">
+        <button class="bouton" type="submit">🔁 Le revoir demain, dans 3 jours, dans une semaine</button>
+      </form>
+      <?php if ($aRevoir > 0): ?>
+        <a class="bouton bouton--secondaire"
+           href="<?= url('cartes/seance', ['cours' => (int) $apres['cours_id']]) ?>">
+          🃏 <?= $aRevoir ?> carte<?= $aRevoir > 1 ? 's' : '' ?> à revoir
+        </a>
+      <?php endif; ?>
+    </p>
+    <p class="champ__aide" style="margin-bottom:0">Les révisions posées deviennent des tâches
+      dans « <?= e(Focus::LISTE) ?> », avec leur échéance — elles reviendront donc au rappel du matin.</p>
   </div>
 <?php endif; ?>
 
@@ -79,6 +111,46 @@ $choisi = $coursChoisi ?? (int) ($dernierCours['id'] ?? 0);
         </label>
 
         <button class="bouton bouton--bloc" type="submit">▶️ Commencer</button>
+      </form>
+    </section>
+
+    <section class="carte">
+      <h2>Planifier une session</h2>
+      <p class="discret" style="margin-top:0">Posée au calendrier, avec un rappel un quart d’heure avant :
+        décider maintenant coûte moins que décider au moment de s’y mettre.</p>
+      <form method="post" action="<?= url('focus/planifier') ?>">
+        <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+        <div class="ligne-champs">
+          <div class="champ">
+            <label for="jour">Quel jour</label>
+            <input type="date" id="jour" name="jour" required min="<?= e(date('Y-m-d')) ?>"
+                   value="<?= e(date('Y-m-d', strtotime('+1 day'))) ?>">
+          </div>
+          <div class="champ">
+            <label for="heure">À quelle heure</label>
+            <input type="time" id="heure" name="heure" required value="18:00">
+          </div>
+        </div>
+        <div class="ligne-champs">
+          <div class="champ">
+            <label for="planif-cours">Sur quel cours</label>
+            <select id="planif-cours" name="cours_id">
+              <option value="">Sans cours précis</option>
+              <?php foreach ($cours as $c): ?>
+                <option value="<?= (int) $c['id'] ?>"<?= (int) $c['id'] === $choisi ? ' selected' : '' ?>><?= e((string) $c['titre']) ?></option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+          <div class="champ">
+            <label for="planif-minutes">Combien de temps</label>
+            <select id="planif-minutes" name="minutes">
+              <?php foreach (Focus::RYTHMES as $minutes => $rythme): ?>
+                <option value="<?= (int) $minutes ?>"<?= (int) $minutes === 25 ? ' selected' : '' ?>><?= (int) $minutes ?> min</option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+        </div>
+        <button class="bouton bouton--secondaire bouton--bloc" type="submit">📅 Poser au calendrier</button>
       </form>
     </section>
 

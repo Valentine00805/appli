@@ -97,6 +97,113 @@ final class Focus
         ];
     }
 
+    // --- Ce qui suit la session -------------------------------------------------
+
+    /** Le nom de la liste où sont rangées les révisions à venir. */
+    public const LISTE = 'Révisions';
+
+    /** Les délais d'une révision espacée : le lendemain, puis trois, puis sept jours. */
+    public const ESPACEMENT = [1, 3, 7];
+
+    /**
+     * On retient mieux en revoyant plusieurs fois, de plus en plus loin. Une
+     * fois la session finie, on pose donc les prochaines : le lendemain, trois
+     * jours après, une semaine après. Ce sont des tâches, avec leur échéance —
+     * elles arrivent donc dans le rappel du matin, comme le reste.
+     *
+     * @return array{liste: int, posees: int, connues: int}
+     */
+    public static function programmerRevisions(int $userId, int $coursId): array
+    {
+        $titre = (string) Database::valeur('SELECT titre FROM cours WHERE id = ? AND user_id = ?', [$coursId, $userId]);
+        if ($titre === '') {
+            return ['liste' => 0, 'posees' => 0, 'connues' => 0];
+        }
+
+        $liste = self::listeDesRevisions($userId);
+        $libelle = mb_substr('Revoir : ' . $titre, 0, 200);
+        $posees = 0;
+        $connues = 0;
+
+        foreach (self::ESPACEMENT as $jours) {
+            $quand = (new DateTimeImmutable('today'))->modify('+' . $jours . ' days')->format('Y-m-d');
+            $deja = Database::valeur(
+                'SELECT id FROM taches WHERE user_id = ? AND liste_id = ? AND titre = ? AND echeance = ? AND faite = 0',
+                [$userId, $liste, $libelle, $quand]);
+            if ($deja !== null && $deja !== false) {
+                $connues++;
+                continue;
+            }
+            $rang = (int) Database::valeur(
+                'SELECT COALESCE(MAX(position), 0) + 1 FROM taches WHERE user_id = ? AND liste_id = ?', [$userId, $liste]);
+            Database::run(
+                'INSERT INTO taches (user_id, liste_id, titre, echeance, position) VALUES (?, ?, ?, ?, ?)',
+                [$userId, $liste, $libelle, $quand, $rang]);
+            $posees++;
+        }
+
+        return ['liste' => $liste, 'posees' => $posees, 'connues' => $connues];
+    }
+
+    /** La liste « Révisions », créée au premier besoin. */
+    public static function listeDesRevisions(int $userId): int
+    {
+        $liste = Database::valeur(
+            'SELECT id FROM listes_taches WHERE user_id = ? AND nom = ? LIMIT 1', [$userId, self::LISTE]);
+        if ($liste !== null && $liste !== false) {
+            return (int) $liste;
+        }
+
+        $rang = (int) Database::valeur('SELECT COALESCE(MAX(position), 0) + 1 FROM listes_taches WHERE user_id = ?', [$userId]);
+        Database::run(
+            'INSERT INTO listes_taches (user_id, nom, couleur, icone, position, created_at) VALUES (?, ?, ?, ?, ?, NOW())',
+            [$userId, self::LISTE, '#7c3aed', '🔁', $rang]);
+
+        return Database::dernierId();
+    }
+
+    /** Combien de cartes de ce cours sont à revoir aujourd'hui. */
+    public static function cartesAReviser(int $userId, ?int $coursId): int
+    {
+        return (int) Database::valeur(
+            'SELECT COUNT(*) FROM cartes WHERE user_id = ? AND revoir_le <= CURDATE()'
+            . ($coursId === null ? '' : ' AND cours_id = ?'),
+            $coursId === null ? [$userId] : [$userId, $coursId]);
+    }
+
+    /**
+     * Pose une session au calendrier : un évènement d'une heure ou d'une
+     * demi-heure, selon le rythme, rattaché au cours qu'on y révisera.
+     */
+    public static function planifier(int $userId, ?int $coursId, string $jour, string $heure, int $minutes): ?int
+    {
+        if (self::dateValide($jour) === null || preg_match('/^\d{2}:\d{2}$/', $heure) !== 1) {
+            return null;
+        }
+        $debut = new DateTimeImmutable($jour . ' ' . $heure . ':00');
+        $titre = 'Révision';
+        if ($coursId !== null) {
+            $cours = (string) Database::valeur('SELECT titre FROM cours WHERE id = ? AND user_id = ?', [$coursId, $userId]);
+            $titre = $cours === '' ? $titre : mb_substr('Révision : ' . $cours, 0, 200);
+        }
+
+        Database::run(
+            'INSERT INTO evenements (user_id, cours_id, titre, debut, fin, journee_entiere, rappels)
+             VALUES (?, ?, ?, ?, ?, 0, ?)',
+            [$userId, $coursId, $titre, $debut->format('Y-m-d H:i:s'),
+             $debut->modify('+' . $minutes . ' minutes')->format('Y-m-d H:i:s'), '15']);
+
+        return Database::dernierId();
+    }
+
+    /** Une date « Y-m-d » qui existe vraiment, ou null. */
+    private static function dateValide(string $date): ?string
+    {
+        $d = DateTimeImmutable::createFromFormat('!Y-m-d', $date);
+
+        return $d !== false && $d->format('Y-m-d') === $date ? $date : null;
+    }
+
     // --- Ne pas déranger --------------------------------------------------------
 
     /**
@@ -233,6 +340,22 @@ final class Focus
              LEFT JOIN matieres m ON m.id = c.matiere_id
              WHERE s.user_id = ? AND s.fin IS NOT NULL AND s.secondes >= ?
              ORDER BY s.debut DESC LIMIT ' . max(1, $limite),
+            [$userId, self::SECONDES_MIN]
+        );
+    }
+
+    /**
+     * La session qu'on vient de finir, si elle est fraîche et portait sur un
+     * cours : c'est à ce moment-là qu'il faut proposer la suite.
+     */
+    public static function sessionRecente(int $userId): ?array
+    {
+        return Database::one(
+            'SELECT s.id, s.cours_id, s.secondes, c.titre AS cours_titre
+             FROM sessions_revision s JOIN cours c ON c.id = s.cours_id
+             WHERE s.user_id = ? AND s.fin IS NOT NULL AND s.secondes >= ?
+               AND s.fin > (NOW() - INTERVAL 3 HOUR)
+             ORDER BY s.fin DESC LIMIT 1',
             [$userId, self::SECONDES_MIN]
         );
     }
