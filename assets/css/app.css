@@ -3742,3 +3742,13 @@ summary.cal-volet__groupe:focus-visible {
 .alternance-note__lien:hover .alternance-note__titre { text-decoration: underline; }
 .alternance-note--epinglee { border-color: var(--accent); }
 .alternance-note__epingle { position: absolute; top: .5rem; right: .5rem; }
+
+/* La légende d'un planning PDF : une couleur, ce qu'elle veut dire. */
+.alternance-legende { list-style: none; margin: 0; padding: 0; display: grid; gap: .6rem; }
+.alternance-legende__ligne { display: flex; align-items: center; gap: .7rem; flex-wrap: wrap; }
+.alternance-legende__pastille {
+  width: 2.2rem; height: 2.2rem; border-radius: 8px; border: 1px solid var(--bordure-forte);
+  flex: none; display: flex; align-items: center; justify-content: center; color: var(--texte-doux);
+}
+.alternance-legende__texte { flex: 1; min-width: 12rem; }
+.alternance-legende__choix { margin-left: auto; }

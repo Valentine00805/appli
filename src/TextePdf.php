@@ -83,6 +83,225 @@ final class TextePdf
         return mb_strlen($texte) >= self::PLANCHER ? $texte : null;
     }
 
+    /**
+     * Le contenu d'un PDF avec ses positions : chaque morceau de texte là où
+     * il est écrit, et chaque aplat de couleur là où il est peint.
+     *
+     * C'est ce qu'il faut pour relire un tableau : dans un planning, la case
+     * ne dit pas toujours ce qu'elle veut dire — c'est sa couleur qui le dit.
+     *
+     * @return array{pages: list<array{textes: list<array{x: float, y: float, texte: string}>,
+     *               aplats: list<array{x: float, y: float, l: float, h: float, couleur: string}>}>}|null
+     */
+    public static function elements(string $chemin): ?array
+    {
+        if (!is_file($chemin) || filesize($chemin) > self::TAILLE_MAX) {
+            return null;
+        }
+        $brut = @file_get_contents($chemin);
+        if ($brut === false || !str_starts_with($brut, '%PDF')) {
+            return null;
+        }
+        $objets = self::objets($brut);
+        if ($objets === []) {
+            return null;
+        }
+
+        $pages = [];
+        foreach ($objets as $corps) {
+            if (!preg_match('#/Type\s*/Page(?![a-zA-Z])#', $corps)) {
+                continue;
+            }
+            if (count($pages) >= self::PAGES_MAX) {
+                break;
+            }
+            $polices = self::policesDeLaPage($corps, $objets);
+            $page = ['textes' => [], 'aplats' => []];
+            foreach (self::contenusDeLaPage($corps, $objets) as $contenu) {
+                self::lireElements($contenu, $polices, $page);
+            }
+            foreach (self::formulairesDeLaPage($corps, $objets) as [$contenu, $sesPolices]) {
+                self::lireElements($contenu, $sesPolices + $polices, $page);
+            }
+            $pages[] = $page;
+        }
+
+        return $pages === [] ? null : ['pages' => $pages];
+    }
+
+    /**
+     * Le même parcours que pour le texte, mais on garde aussi où chaque chose
+     * est posée, et de quelle couleur sont les rectangles remplis.
+     *
+     * Les coordonnées passent par la matrice courante (« cm ») : sans elle, un
+     * document mis à l'échelle donnerait des positions qui ne se recoupent pas.
+     */
+    private static function lireElements(string $contenu, array $polices, array &$page): void
+    {
+        $ctm = [1.0, 0.0, 0.0, 1.0, 0.0, 0.0];
+        $pileCtm = [];
+        $couleur = '#000000';
+        $pileCouleur = [];
+        $rectangles = [];
+        $attente = '';
+        $police = [];
+        $pile = [];
+        $nom = '';
+        $tmX = 0.0; $tmY = 0.0; $dX = 0.0; $dY = 0.0;
+        $dansTableau = false;
+
+        // Un point, du repère courant vers celui de la page.
+        $poser = static function (float $x, float $y) use (&$ctm): array {
+            return [$ctm[0] * $x + $ctm[2] * $y + $ctm[4], $ctm[1] * $x + $ctm[3] * $y + $ctm[5]];
+        };
+
+        $longueur = strlen($contenu);
+        $i = 0;
+
+        while ($i < $longueur) {
+            $c = $contenu[$i];
+
+            if ($c === ' ' || $c === "\n" || $c === "\r" || $c === "\t") { $i++; continue; }
+            if ($c === '<' && ($contenu[$i + 1] ?? '') === '<') { $i = self::finDuDictionnaire($contenu, $i); continue; }
+
+            if ($c === '(') {
+                [$chaine, $i] = self::lireChaine($contenu, $i);
+                $attente .= self::decoder($chaine, $police);
+                $i++;
+                continue;
+            }
+            if ($c === '<') {
+                $ferme = strpos($contenu, '>', $i);
+                if ($ferme === false) { break; }
+                $hexa = preg_replace('/[^0-9A-Fa-f]/', '', substr($contenu, $i + 1, $ferme - $i - 1)) ?? '';
+                if (strlen($hexa) % 2 === 1) { $hexa .= '0'; }
+                $attente .= self::decoder((string) @hex2bin($hexa), $police);
+                $i = $ferme + 1;
+                continue;
+            }
+            if ($c === '[') { $dansTableau = true; $i++; continue; }
+            if ($c === ']') { $dansTableau = false; $i++; continue; }
+            if ($c === '/') {
+                preg_match('#\G/([^\s/<>\[\]()]*)#', $contenu, $m, 0, $i);
+                $nom = $m[1] ?? '';
+                $i += strlen($m[0] ?? '/');
+                continue;
+            }
+            if ($c === '-' || $c === '+' || $c === '.' || ctype_digit($c)) {
+                preg_match('/\G[-+]?\d*\.?\d+/', $contenu, $m, 0, $i);
+                if (($m[0] ?? '') === '') { $i++; continue; }
+                if (!$dansTableau) {
+                    $pile[] = (float) $m[0];
+                } elseif ((float) $m[0] <= -120 && !str_ends_with($attente, ' ')) {
+                    $attente .= ' ';
+                }
+                $i += strlen($m[0]);
+                continue;
+            }
+
+            preg_match('/\G[A-Za-z\'"*]+/', $contenu, $m, 0, $i);
+            $operateur = $m[0] ?? '';
+            if ($operateur === '') { $i++; continue; }
+            $i += strlen($operateur);
+            $n = count($pile);
+
+            switch ($operateur) {
+                case 'q':
+                    $pileCtm[] = $ctm;
+                    $pileCouleur[] = $couleur;
+                    break;
+                case 'Q':
+                    $ctm = array_pop($pileCtm) ?? $ctm;
+                    $couleur = array_pop($pileCouleur) ?? $couleur;
+                    break;
+                case 'cm':
+                    if ($n >= 6) {
+                        [$a, $b, $cc, $d, $e, $f] = array_slice($pile, -6);
+                        $ctm = [
+                            $a * $ctm[0] + $b * $ctm[2], $a * $ctm[1] + $b * $ctm[3],
+                            $cc * $ctm[0] + $d * $ctm[2], $cc * $ctm[1] + $d * $ctm[3],
+                            $e * $ctm[0] + $f * $ctm[2] + $ctm[4], $e * $ctm[1] + $f * $ctm[3] + $ctm[5],
+                        ];
+                    }
+                    break;
+                case 'g':  if ($n >= 1) { $couleur = self::teinteGris((float) $pile[$n - 1]); } break;
+                case 'rg': if ($n >= 3) { $couleur = self::teinteRvb(...array_slice($pile, -3)); } break;
+                case 'k':  if ($n >= 4) { $couleur = self::teinteCmjn(...array_slice($pile, -4)); } break;
+                case 'sc':
+                case 'scn':
+                    // Sans savoir l'espace de couleur, on la déduit du nombre de nombres.
+                    if ($n >= 4) { $couleur = self::teinteCmjn(...array_slice($pile, -4)); }
+                    elseif ($n === 3) { $couleur = self::teinteRvb(...$pile); }
+                    elseif ($n === 1) { $couleur = self::teinteGris((float) $pile[0]); }
+                    break;
+                case 're':
+                    if ($n >= 4) {
+                        [$x, $y, $l, $h] = array_slice($pile, -4);
+                        [$x1, $y1] = $poser($x, $y);
+                        [$x2, $y2] = $poser($x + $l, $y + $h);
+                        $rectangles[] = ['x' => min($x1, $x2), 'y' => min($y1, $y2),
+                                         'l' => abs($x2 - $x1), 'h' => abs($y2 - $y1)];
+                    }
+                    break;
+                case 'f': case 'F': case 'f*': case 'b': case 'b*': case 'B': case 'B*':
+                    foreach ($rectangles as $r) {
+                        // Les traits de tableau sont des rectangles plats : ils ne peignent rien.
+                        if ($r['l'] > 1.5 && $r['h'] > 1.5 && count($page['aplats']) < self::APLATS_MAX) {
+                            $page['aplats'][] = $r + ['couleur' => $couleur];
+                        }
+                    }
+                    $rectangles = [];
+                    break;
+                case 'n': case 'S': case 's': case 'W': case 'W*':
+                    $rectangles = [];
+                    break;
+                case 'Tf':
+                    $police = $polices[$nom] ?? [];
+                    break;
+                case 'BT':
+                    $dX = 0.0; $dY = 0.0;
+                    break;
+                case 'Tm':
+                    if ($n >= 6) { $tmX = $pile[$n - 2]; $tmY = $pile[$n - 1]; $dX = 0.0; $dY = 0.0; }
+                    break;
+                case 'Td': case 'TD':
+                    if ($n >= 2) { $dX += $pile[$n - 2]; $dY += $pile[$n - 1]; }
+                    break;
+                case 'Tj': case 'TJ': case "'": case '"':
+                    $texte = trim(self::nettoyer($attente));
+                    if ($texte !== '' && count($page['textes']) < self::TEXTES_MAX) {
+                        [$x, $y] = $poser($tmX + $dX, $tmY + $dY);
+                        $page['textes'][] = ['x' => $x, 'y' => $y, 'texte' => $texte];
+                    }
+                    break;
+            }
+
+            $attente = '';
+            $pile = [];
+        }
+    }
+
+    /** Bornes de sécurité : un planning n'a pas dix mille cases. */
+    private const APLATS_MAX = 20000;
+    private const TEXTES_MAX = 20000;
+
+    private static function teinteGris(float $g): string
+    {
+        return self::teinteRvb($g, $g, $g);
+    }
+
+    private static function teinteRvb(float $r, float $v, float $b): string
+    {
+        $octet = static fn (float $c): string => str_pad(dechex(max(0, min(255, (int) round($c * 255)))), 2, '0', STR_PAD_LEFT);
+
+        return '#' . $octet($r) . $octet($v) . $octet($b);
+    }
+
+    private static function teinteCmjn(float $c, float $m, float $j, float $n): string
+    {
+        return self::teinteRvb((1 - $c) * (1 - $n), (1 - $m) * (1 - $n), (1 - $j) * (1 - $n));
+    }
+
     // --- Les objets du document ---------------------------------------------
 
     /**

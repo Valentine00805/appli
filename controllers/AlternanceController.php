@@ -304,11 +304,18 @@ final class AlternanceController
         $contenu = trim(post('colle'));
         $depose = $_FILES['planning'] ?? null;
         if (is_array($depose) && (int) ($depose['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK) {
-            if ((int) $depose['size'] > 2 * 1024 * 1024) {
-                Session::flash('erreur', 'Ce fichier dépasse 2 Mo : ce n’est sans doute pas un planning.');
+            if ((int) $depose['size'] > 8 * 1024 * 1024) {
+                Session::flash('erreur', 'Ce fichier dépasse 8 Mo : ce n’est sans doute pas un planning.');
                 redirect('alternance/rythme');
             }
-            $contenu = (string) file_get_contents((string) $depose['tmp_name']);
+            $chemin = (string) $depose['tmp_name'];
+            $contenu = (string) file_get_contents($chemin);
+            // Un planning en PDF dit souvent par la couleur ce qu'il n'écrit
+            // pas : on le lit, puis on demande ce que chaque couleur veut dire.
+            if (str_starts_with($contenu, '%PDF')) {
+                $this->couleursDuPdf($chemin, (string) $depose['name'], $defaut);
+                return;
+            }
         }
         if (trim($contenu) === '') {
             Session::flash('erreur', 'Donnez un fichier .ics, ou collez un tableau : une ligne par période.');
@@ -342,6 +349,87 @@ final class AlternanceController
         Session::flash('succes', count($lu['periodes']) . ' période'
             . (count($lu['periodes']) > 1 ? 's importées' : ' importée') . ' : ' . implode(', ', $detail)
             . ($lu['ignorees'] > 0 ? ' · ' . $lu['ignorees'] . ' ligne(s) sautée(s), faute de date lisible.' : '.'));
+        redirect('alternance/rythme');
+    }
+
+    /**
+     * Ce qu'on a su lire d'un planning PDF : les jours et leur couleur. On ne
+     * devine pas ce qu'une couleur veut dire — la page le demande, légende en
+     * main, et l'import n'a lieu qu'après.
+     */
+    private function couleursDuPdf(string $chemin, string $nom, string $defaut): void
+    {
+        $annee = entier_ou_null(post('annee'));
+        $lu = PlanningPdf::lire($chemin, $annee !== null && $annee >= 2000 && $annee <= 2100 ? $annee : null);
+
+        if ($lu['jours'] === []) {
+            Session::flash('erreur', $lu['pages'] === 0
+                ? 'Ce PDF ne se laisse pas lire (il est peut-être scanné, c’est-à-dire fait d’images). Collez plutôt un tableau.'
+                : 'Aucune date trouvée dans ce PDF. S’il s’agit d’une grille sans année écrite, donnez l’année ; sinon, collez un tableau.');
+            redirect('alternance/rythme');
+        }
+
+        $this->afficher('alternance/import_pdf', [
+            'nomFichier' => mb_substr($nom, 0, 120),
+            'jours'      => $lu['jours'],
+            'couleurs'   => $lu['couleurs'],
+            'methode'    => $lu['methode'],
+            'defaut'     => $defaut,
+        ], 'Couleurs du planning', 'rythme');
+    }
+
+    /**
+     * L'import d'un PDF, une fois les couleurs expliquées : les jours qui se
+     * suivent et disent la même chose deviennent une période.
+     */
+    public function importerCouleurs(): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $userId = Auth::id();
+
+        $jours = json_decode(post('jours'), true);
+        if (!is_array($jours) || $jours === []) {
+            Session::flash('erreur', 'Ce planning s’est perdu en route : reprenez l’import.');
+            redirect('alternance/rythme');
+        }
+
+        $legende = [];
+        $couleurs = $_POST['couleurs'] ?? [];
+        $lieux = $_POST['lieux'] ?? [];
+        foreach (is_array($couleurs) ? $couleurs : [] as $rang => $couleur) {
+            $lieu = (string) ($lieux[$rang] ?? '');
+            if (is_string($couleur) && isset(Alternance::LIEUX[$lieu])) {
+                $legende[$couleur] = $lieu;
+            }
+        }
+        if ($legende === []) {
+            Session::flash('erreur', 'Dites au moins ce qu’une couleur veut dire, sans quoi il n’y a rien à importer.');
+            redirect('alternance/rythme');
+        }
+
+        $periodes = PlanningPdf::periodes(
+            array_map('strval', array_filter($jours, 'is_string')), $legende);
+        if ($periodes === []) {
+            Session::flash('erreur', 'Les couleurs choisies ne couvrent aucun jour.');
+            redirect('alternance/rythme');
+        }
+
+        $comptes = [];
+        $jours = 0;
+        foreach ($periodes as $p) {
+            Alternance::poserPeriode($userId, $p['lieu'], $p['debut'], $p['fin'], null);
+            $comptes[$p['lieu']] = ($comptes[$p['lieu']] ?? 0) + 1;
+            $jours += Alternance::joursOuvres($p['debut'], $p['fin']);
+        }
+
+        $detail = [];
+        foreach ($comptes as $lieu => $combien) {
+            $detail[] = $combien . ' ' . mb_strtolower(Alternance::LIEUX[$lieu]['nom']);
+        }
+        Session::flash('succes', count($periodes) . ' période' . (count($periodes) > 1 ? 's' : '')
+            . ' (' . $jours . ' jour' . ($jours > 1 ? 's' : '') . ' ouvré' . ($jours > 1 ? 's' : '') . ') : '
+            . implode(', ', $detail) . '.');
         redirect('alternance/rythme');
     }
 

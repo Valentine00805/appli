@@ -144,8 +144,17 @@ $ligne = static function (array $p) use ($csrf, $choixLieu, $auj): void {
         <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
         <div class="champ">
           <label for="planning">Le fichier de l’école</label>
-          <input type="file" id="planning" name="planning" accept=".ics,.csv,.txt,text/calendar,text/csv,text/plain">
-          <span class="champ__aide">Un agenda (.ics) ou un tableau enregistré en CSV.</span>
+          <input type="file" id="planning" name="planning"
+                 accept=".ics,.csv,.txt,.pdf,text/calendar,text/csv,text/plain,application/pdf">
+          <span class="champ__aide">Un agenda (.ics), un tableau en CSV, ou le planning en PDF.
+            Un PDF en couleurs vous demandera ensuite ce que chaque couleur veut dire.</span>
+        </div>
+        <div class="champ">
+          <label for="annee">Année du planning <span class="discret">(facultatif)</span></label>
+          <input type="number" id="annee" name="annee" min="2000" max="2100" step="1"
+                 placeholder="<?= (int) date('Y') ?>">
+          <span class="champ__aide">Pour un PDF en grille dont les cases ne portent qu’un numéro de jour,
+            sans année écrite nulle part.</span>
         </div>
         <div class="champ">
           <label for="colle">… ou collez votre tableau</label>
