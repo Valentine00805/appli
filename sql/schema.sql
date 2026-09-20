@@ -1115,3 +1115,10 @@ CREATE TABLE IF NOT EXISTS `alternance_documents` (
   KEY `idx_alternance_documents_user` (`user_id`, `categorie`),
   CONSTRAINT `fk_alternance_documents_user` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Le rythme ne connaissait que l'école et l'entreprise. Une semaine de congés,
+-- un jour férié ou une absence ne sont ni l'une ni l'autre : les compter comme
+-- des jours d'entreprise fausserait le bilan et le journal.
+
+ALTER TABLE `alternance_periodes`
+  MODIFY `lieu` ENUM('ecole', 'entreprise', 'conges', 'ferie', 'absence') NOT NULL;

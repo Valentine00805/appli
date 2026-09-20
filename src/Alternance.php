@@ -13,9 +13,16 @@ declare(strict_types=1);
  */
 final class Alternance
 {
+    /**
+     * Ce qu'un jour peut être. Les congés, les fériés et les absences ne sont
+     * ni l'école ni l'entreprise : les compter avec elles fausserait le bilan.
+     */
     public const LIEUX = [
         'ecole'      => ['icone' => '🏫', 'nom' => 'École',      'dans' => 'à l’école'],
         'entreprise' => ['icone' => '🏢', 'nom' => 'Entreprise', 'dans' => 'en entreprise'],
+        'conges'     => ['icone' => '🌴', 'nom' => 'Congés',     'dans' => 'en congés'],
+        'ferie'      => ['icone' => '🎌', 'nom' => 'Férié',      'dans' => 'férié'],
+        'absence'    => ['icone' => '🤒', 'nom' => 'Absence',    'dans' => 'absent'],
     ];
 
     public const CATEGORIES = [

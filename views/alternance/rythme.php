@@ -12,7 +12,7 @@ $auj = date('Y-m-d');
 $aVenir = array_values(array_filter($periodes, static fn (array $p): bool => $p['fin'] >= $auj));
 $passees = array_reverse(array_values(array_filter($periodes, static fn (array $p): bool => $p['fin'] < $auj)));
 
-/** Les deux boutons École / Entreprise d'un formulaire. */
+/** Les lieux possibles, en boutons, dans un formulaire. */
 $choixLieu = static function (string $prefixe, string $coche): string {
     $html = '<div class="alternance-lieux" role="radiogroup" aria-label="Lieu">';
     foreach (Alternance::LIEUX as $cle => $l) {
@@ -77,7 +77,7 @@ $ligne = static function (array $p) use ($csrf, $choixLieu, $auj): void {
 <div class="entete-page">
   <div>
     <h1>🔁 Rythme école / entreprise</h1>
-    <p>Posez vos périodes telles que l’école les donne. Elles s’affichent dans le
+    <p>Posez vos périodes telles que l’école les donne — et vos congés, jours fériés ou absences. Elles s’affichent dans le
       <a href="<?= url('calendrier') ?>">calendrier</a>, du lundi au vendredi.</p>
   </div>
 </div>
@@ -87,7 +87,7 @@ $ligne = static function (array $p) use ($csrf, $choixLieu, $auj): void {
     <?php if ($periodes === []): ?>
       <div class="vide">
         <span class="vide__icone">🔁</span>
-        <p>Aucune période pour l’instant. Posez la première avec « Poser une période » : du … au …, à l’école ou en entreprise.</p>
+        <p>Aucune période pour l’instant. Posez la première avec « Poser une période » : du … au …, à l’école, en entreprise, en congés…</p>
       </div>
     <?php else: ?>
       <section class="carte">
@@ -142,6 +142,8 @@ $ligne = static function (array $p) use ($csrf, $choixLieu, $auj): void {
         <h2>Bilan</h2>
         <ul class="alternance-bilan">
           <?php foreach (Alternance::LIEUX as $cle => $l): ?>
+            <?php // Les congés, fériés et absences ne s'affichent que s'il y en a. ?>
+            <?php if ($bilan[$cle]['total'] === 0 && !in_array($cle, ['ecole', 'entreprise'], true)) { continue; } ?>
             <li class="alternance-bilan__<?= e($cle) ?>">
               <span><?= $l['icone'] ?> <?= e($l['nom']) ?></span>
               <strong><?= (int) $bilan[$cle]['total'] ?> j</strong>

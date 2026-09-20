@@ -3665,3 +3665,52 @@ summary.cal-volet__groupe:focus-visible {
 .alternance-export { margin-bottom: 1rem; }
 .alternance-export__ouvrir { cursor: pointer; font-weight: 600; }
 .alternance-export form { margin-top: .8rem; max-width: 460px; }
+
+/* Les autres lieux du rythme : congés, fériés, absences. */
+:root {
+  --conges: #0f766e;
+  --conges-doux: #ccfbf1;
+  --ferie: #7c3aed;
+  --ferie-doux: #ede9fe;
+  --absence: #be123c;
+  --absence-doux: #ffe4e6;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --conges: #5eead4;
+    --conges-doux: rgb(45 212 191 / 16%);
+    --ferie: #c4b5fd;
+    --ferie-doux: rgb(167 139 250 / 16%);
+    --absence: #fda4af;
+    --absence-doux: rgb(251 113 133 / 16%);
+  }
+}
+.alternance-lieux { flex-wrap: wrap; }
+.alternance-lieux label { flex: 1 1 7rem; }
+.alternance-lieux input:checked + .alternance-lieux__conges { border-color: var(--conges); background: var(--conges-doux); color: var(--conges); }
+.alternance-lieux input:checked + .alternance-lieux__ferie { border-color: var(--ferie); background: var(--ferie-doux); color: var(--ferie); }
+.alternance-lieux input:checked + .alternance-lieux__absence { border-color: var(--absence); background: var(--absence-doux); color: var(--absence); }
+.alternance-periode--conges { border-left-color: var(--conges); }
+.alternance-periode--ferie { border-left-color: var(--ferie); }
+.alternance-periode--absence { border-left-color: var(--absence); }
+.alternance-periode--conges .alternance-periode__lieu { color: var(--conges); }
+.alternance-periode--ferie .alternance-periode__lieu { color: var(--ferie); }
+.alternance-periode--absence .alternance-periode__lieu { color: var(--absence); }
+.alternance-bilan__conges strong { color: var(--conges); }
+.alternance-bilan__ferie strong { color: var(--ferie); }
+.alternance-bilan__absence strong { color: var(--absence); }
+.alternance-situation--conges { background: var(--conges-doux); border-left-color: var(--conges); }
+.alternance-situation--ferie { background: var(--ferie-doux); border-left-color: var(--ferie); }
+.alternance-situation--absence { background: var(--absence-doux); border-left-color: var(--absence); }
+.alternance-semaine__jour--conges { background: var(--conges-doux); color: var(--conges); }
+.alternance-semaine__jour--ferie { background: var(--ferie-doux); color: var(--ferie); }
+.alternance-semaine__jour--absence { background: var(--absence-doux); color: var(--absence); }
+.rythme--conges { background: var(--conges-doux); color: var(--conges); }
+.rythme--ferie { background: var(--ferie-doux); color: var(--ferie); }
+.rythme--absence { background: var(--absence-doux); color: var(--absence); }
+.cal-jour--conges { box-shadow: inset 0 3px 0 var(--conges); }
+.cal-jour--ferie { box-shadow: inset 0 3px 0 var(--ferie); }
+.cal-jour--absence { box-shadow: inset 0 3px 0 var(--absence); }
+.cal-annee__jour--conges { box-shadow: inset 0 -3px 0 var(--conges); }
+.cal-annee__jour--ferie { box-shadow: inset 0 -3px 0 var(--ferie); }
+.cal-annee__jour--absence { box-shadow: inset 0 -3px 0 var(--absence); }
