@@ -6,7 +6,7 @@
  * @var array $bilan              ce que rend Focus::bilan()
  * @var list<array> $dernieres    les dernières sessions refermées
  * @var list<array> $cours        les cours, pour choisir quoi réviser
- * @var ?int $coursChoisi         celui proposé par l’adresse
+ * @var list<int> $coches        les cours cochés d’avance
  * @var array|null $dernierCours  le dernier cours révisé
  * @var int $objectif             l’objectif de la semaine, en minutes (0 : aucun)
  * @var array|null $avancement    où il en est, ou null sans objectif
@@ -15,7 +15,7 @@
  * @var list<array> $dossiers     les dossiers de cours, pour en prendre un entier
  */
 $csrf = Session::jetonCsrf();
-$choisi = $coursChoisi ?? (int) ($dernierCours['id'] ?? 0);
+$coches = array_flip(array_map('intval', $coches));
 ?>
 
 <div class="entete-page">
@@ -120,7 +120,7 @@ $choisi = $coursChoisi ?? (int) ($dernierCours['id'] ?? 0);
               <li data-nom="<?= e(mb_strtolower((string) $c['titre'] . ' ' . (string) ($c['matiere_nom'] ?? '')
                   . ' ' . (string) ($c['dossier_nom'] ?? ''))) ?>">
                 <label class="groupe-choix__ami">
-                  <input type="checkbox" name="cours[]" value="<?= (int) $c['id'] ?>"<?= (int) $c['id'] === $choisi ? ' checked' : '' ?>>
+                  <input type="checkbox" name="cours[]" value="<?= (int) $c['id'] ?>"<?= isset($coches[(int) $c['id']]) ? ' checked' : '' ?>>
                   <span aria-hidden="true">📘</span>
                   <span class="partage-liste__nom">
                     <?= e((string) $c['titre']) ?>
@@ -200,16 +200,60 @@ $choisi = $coursChoisi ?? (int) ($dernierCours['id'] ?? 0);
             <input type="time" id="heure" name="heure" required value="18:00">
           </div>
         </div>
-        <div class="ligne-champs">
-          <div class="champ">
-            <label for="planif-cours">Sur quel cours</label>
-            <select id="planif-cours" name="cours_id">
-              <option value="">Sans cours précis</option>
-              <?php foreach ($cours as $c): ?>
-                <option value="<?= (int) $c['id'] ?>"<?= (int) $c['id'] === $choisi ? ' selected' : '' ?>><?= e((string) $c['titre']) ?></option>
+        <?php // Les mêmes cases qu'au démarrage : un cours, plusieurs, ou des dossiers. ?>
+        <div class="champ">
+          <span class="legende">Sur quels cours</span>
+          <label class="discussions-recherche">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false">
+              <circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>
+            </svg>
+            <span class="sr-only">Rechercher un de mes cours</span>
+            <input type="search" placeholder="Rechercher un cours" autocomplete="off"
+                   data-filtre-liste="[data-liste-planif-cours]">
+          </label>
+          <ul class="groupe-choix__liste partage-liste focus-choix" style="margin-top:.5rem" data-liste-planif-cours>
+            <?php foreach ($cours as $c): ?>
+              <li data-nom="<?= e(mb_strtolower((string) $c['titre'] . ' ' . (string) ($c['matiere_nom'] ?? '')
+                  . ' ' . (string) ($c['dossier_nom'] ?? ''))) ?>">
+                <label class="groupe-choix__ami">
+                  <input type="checkbox" name="cours[]" value="<?= (int) $c['id'] ?>">
+                  <span aria-hidden="true">📘</span>
+                  <span class="partage-liste__nom">
+                    <?= e((string) $c['titre']) ?>
+                    <span class="discret">
+                      <?php if (($c['matiere_nom'] ?? null) !== null): ?>· <?= e((string) $c['matiere_nom']) ?><?php endif; ?>
+                      <?php if (($c['dossier_nom'] ?? null) !== null): ?>· <?= e((string) $c['dossier_nom']) ?><?php endif; ?>
+                    </span>
+                  </span>
+                </label>
+              </li>
+            <?php endforeach; ?>
+          </ul>
+          <p class="discret" data-filtre-vide hidden style="margin:.4rem 0 0">Aucun cours ne porte ce nom.</p>
+        </div>
+
+        <?php if ($dossiers !== []): ?>
+          <details class="champ">
+            <summary class="legende" style="cursor:pointer">… ou des dossiers entiers</summary>
+            <ul class="groupe-choix__liste partage-liste focus-choix" style="margin-top:.5rem">
+              <?php foreach ($dossiers as $d): ?>
+                <li>
+                  <label class="groupe-choix__ami">
+                    <input type="checkbox" name="dossiers[]" value="<?= (int) $d['id'] ?>">
+                    <span aria-hidden="true"><?= e((string) ($d['icone'] ?: '📁')) ?></span>
+                    <span class="partage-liste__nom">
+                      <?= e((string) $d['nom']) ?>
+                      <span class="discret">· <?= (int) $d['nb_cours'] ?> cours</span>
+                    </span>
+                  </label>
+                </li>
               <?php endforeach; ?>
-            </select>
-          </div>
+            </ul>
+          </details>
+        <?php endif; ?>
+
+        <div class="ligne-champs">
           <div class="champ">
             <label for="planif-minutes">Combien de temps</label>
             <select id="planif-minutes" name="minutes">

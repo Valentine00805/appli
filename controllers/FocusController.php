@@ -20,6 +20,17 @@ final class FocusController
 
         $bilan = Focus::bilan($userId);
         $apres = Focus::sessionRecente($userId);
+
+        $evenementId = entier_ou_null($_GET['evenement'] ?? null);
+        $coches = $evenementId === null ? [] : Focus::coursDUnEvenement($userId, $evenementId);
+        $unCours = entier_ou_null($_GET['cours'] ?? null);
+        if ($coches === [] && $unCours !== null) {
+            $coches = [$unCours];
+        }
+        if ($coches === [] && $evenementId === null && $unCours === null) {
+            $dernier = Focus::dernierCours($userId);
+            $coches = $dernier === null ? [] : [(int) $dernier['id']];
+        }
         Vue::afficher('focus/index', [
             'enCours'   => Focus::enCours($userId),
             'bilan'     => $bilan,
@@ -32,7 +43,9 @@ final class FocusController
                  LEFT JOIN matieres m ON m.id = c.matiere_id
                  LEFT JOIN dossiers d ON d.id = c.dossier_id
                  WHERE c.user_id = ? ORDER BY c.updated_at DESC LIMIT 300', [$userId]),
-            'coursChoisi' => entier_ou_null($_GET['cours'] ?? null),
+            // Cochés d’avance : ceux de l’adresse, ou ceux qu’une session
+            // posée au calendrier avait prévus.
+            'coches'    => $coches,
             'dossiers'  => Database::all(
                 'SELECT d.id, d.nom, d.icone,
                         (SELECT COUNT(*) FROM cours c WHERE c.dossier_id = d.id) AS nb_cours
@@ -178,13 +191,12 @@ final class FocusController
         Session::verifierCsrf();
         $userId = Auth::id();
 
-        $coursId = entier_ou_null($_POST['cours_id'] ?? null);
-        if ($coursId !== null
-            && Database::valeur('SELECT id FROM cours WHERE id = ? AND user_id = ?', [$coursId, $userId]) === null) {
-            $coursId = null;
-        }
+        // Les mêmes cases qu’au démarrage : des cours, ou des dossiers entiers.
+        $coursIds = Focus::coursChoisis($userId,
+            is_array($_POST['cours'] ?? null) ? $_POST['cours'] : [],
+            is_array($_POST['dossiers'] ?? null) ? $_POST['dossiers'] : []);
 
-        $evenement = Focus::planifier($userId, $coursId, post('jour'), post('heure'),
+        $evenement = Focus::planifier($userId, $coursIds, post('jour'), post('heure'),
             Focus::rythmeValide($_POST['minutes'] ?? null));
         if ($evenement === null) {
             Session::flash('erreur', 'Donnez un jour et une heure pour cette session.');

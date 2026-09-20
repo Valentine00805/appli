@@ -61,7 +61,8 @@ $ligne = static function (string $etiquette, string $valeur): string {
         && str_starts_with((string) $evenement['titre'], 'Révision');
     ?>
     <?php if ($aReviser): ?>
-      <a class="bouton bouton--secondaire" href="<?= url('focus', ['cours' => (int) $evenement['cours_id']]) ?>">
+      <?php // Tous les cours prévus se recochent : l’évènement s’en souvient. ?>
+      <a class="bouton bouton--secondaire" href="<?= url('focus', ['evenement' => (int) $evenement['id']]) ?>">
         🎯 Démarrer la session
       </a>
     <?php endif; ?>

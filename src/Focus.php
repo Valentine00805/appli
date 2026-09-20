@@ -245,25 +245,80 @@ final class Focus
      * Pose une session au calendrier : un évènement d'une heure ou d'une
      * demi-heure, selon le rythme, rattaché au cours qu'on y révisera.
      */
-    public static function planifier(int $userId, ?int $coursId, string $jour, string $heure, int $minutes): ?int
+    /** @param list<int> $coursIds */
+    public static function planifier(int $userId, array $coursIds, string $jour, string $heure, int $minutes): ?int
     {
         if (self::dateValide($jour) === null || preg_match('/^\d{2}:\d{2}$/', $heure) !== 1) {
             return null;
         }
         $debut = new DateTimeImmutable($jour . ' ' . $heure . ':00');
-        $titre = 'Révision';
-        if ($coursId !== null) {
-            $cours = (string) Database::valeur('SELECT titre FROM cours WHERE id = ? AND user_id = ?', [$coursId, $userId]);
-            $titre = $cours === '' ? $titre : mb_substr('Révision : ' . $cours, 0, 200);
-        }
+        $titres = array_column(self::titresDesCours($userId, $coursIds), 'titre');
+        $titre = match (true) {
+            $titres === []      => 'Révision',
+            count($titres) === 1 => 'Révision : ' . $titres[0],
+            default             => 'Révision : ' . count($titres) . ' cours',
+        };
 
         Database::run(
-            'INSERT INTO evenements (user_id, cours_id, titre, debut, fin, journee_entiere, rappels)
-             VALUES (?, ?, ?, ?, ?, 0, ?)',
-            [$userId, $coursId, $titre, $debut->format('Y-m-d H:i:s'),
+            'INSERT INTO evenements (user_id, cours_id, titre, description, debut, fin, journee_entiere, rappels)
+             VALUES (?, ?, ?, ?, ?, ?, 0, ?)',
+            [$userId, $coursIds[0] ?? null, mb_substr($titre, 0, 200),
+             count($titres) > 1 ? implode(', ', $titres) : null,
+             $debut->format('Y-m-d H:i:s'),
              $debut->modify('+' . $minutes . ' minutes')->format('Y-m-d H:i:s'), '15']);
+        $evenement = Database::dernierId();
 
-        return Database::dernierId();
+        foreach ($coursIds as $coursId) {
+            Database::run('INSERT IGNORE INTO evenement_revision_cours (evenement_id, cours_id) VALUES (?, ?)',
+                [$evenement, $coursId]);
+        }
+
+        return $evenement;
+    }
+
+    /**
+     * Les titres de ces cours, dans l’ordre donné, et seulement les siens.
+     *
+     * @param list<int> $coursIds
+     * @return list<array{id: int, titre: string}>
+     */
+    public static function titresDesCours(int $userId, array $coursIds): array
+    {
+        if ($coursIds === []) {
+            return [];
+        }
+        $lignes = Database::all(
+            'SELECT id, titre FROM cours WHERE user_id = ? AND id IN ('
+            . implode(',', array_fill(0, count($coursIds), '?')) . ')',
+            array_merge([$userId], $coursIds));
+        $parId = [];
+        foreach ($lignes as $ligne) {
+            $parId[(int) $ligne['id']] = ['id' => (int) $ligne['id'], 'titre' => (string) $ligne['titre']];
+        }
+
+        $ordonnes = [];
+        foreach ($coursIds as $coursId) {
+            if (isset($parId[(int) $coursId])) {
+                $ordonnes[] = $parId[(int) $coursId];
+            }
+        }
+
+        return $ordonnes;
+    }
+
+    /**
+     * Les cours prévus par une session posée au calendrier : ceux qu’on
+     * recoche quand on la démarre enfin.
+     *
+     * @return list<int>
+     */
+    public static function coursDUnEvenement(int $userId, int $evenementId): array
+    {
+        return array_map('intval', array_column(Database::all(
+            'SELECT c.cours_id FROM evenement_revision_cours c
+             JOIN evenements e ON e.id = c.evenement_id
+             WHERE c.evenement_id = ? AND e.user_id = ?',
+            [$evenementId, $userId]), 'cours_id'));
     }
 
     /** Une date « Y-m-d » qui existe vraiment, ou null. */
