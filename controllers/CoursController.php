@@ -62,10 +62,38 @@ final class CoursController
             );
         }
 
+        /*
+         * Ce qu'on cherche n'est pas toujours dans un cours : une note
+         * d'alternance, une semaine du journal, une tâche à faire. La
+         * recherche les regarde aussi — sans quoi on ne les retrouve qu'en
+         * sachant d'avance où elles sont.
+         */
+        $partout = static function (string $sql, array $valeurs) use ($recherche): array {
+            return $recherche === '' ? [] : Database::all($sql, $valeurs);
+        };
+        $comme = '%' . $recherche . '%';
+
+        $notes = $partout(
+            'SELECT id, titre, contenu, updated_at FROM alternance_notes
+             WHERE user_id = ? AND (titre LIKE ? OR contenu LIKE ?)
+             ORDER BY updated_at DESC LIMIT 30', [$userId, $comme, $comme]);
+        $semaines = $partout(
+            'SELECT id, semaine, missions, competences FROM alternance_journal
+             WHERE user_id = ? AND (missions LIKE ? OR competences LIKE ?)
+             ORDER BY semaine DESC LIMIT 30', [$userId, $comme, $comme]);
+        $taches = $partout(
+            'SELECT t.id, t.titre, t.echeance, t.faite, t.liste_id, l.nom AS liste_nom, l.icone AS liste_icone
+             FROM taches t JOIN listes_taches l ON l.id = t.liste_id
+             WHERE t.user_id = ? AND t.titre LIKE ?
+             ORDER BY t.faite, t.echeance IS NULL, t.echeance LIMIT 30', [$userId, $comme]);
+
         Vue::afficher('cours/recherche', [
             'recherche'  => $recherche,
             'cours'      => $cours,
             'evenements' => $evenements,
+            'notes'      => $notes,
+            'semaines'   => $semaines,
+            'taches'     => $taches,
             'termes'     => preg_split('/\s+/u', $recherche, -1, PREG_SPLIT_NO_EMPTY) ?: [],
         ], 'Recherche');
     }

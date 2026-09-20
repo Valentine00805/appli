@@ -60,7 +60,7 @@ $actif = static function (string $prefixe) use ($route): string {
       </a>
 
       <form class="recherche-rapide" action="<?= url('recherche') ?>" method="get" role="search">
-        <input type="search" name="q" placeholder="Rechercher…" aria-label="Rechercher dans mes cours"
+        <input type="search" name="q" placeholder="Rechercher…" aria-label="Rechercher partout : cours, calendrier, notes, journal, tâches"
                value="<?= e((string) ($_GET['q'] ?? '')) ?>">
       </form>
 
