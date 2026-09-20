@@ -306,6 +306,128 @@ final class Alternance
                 'part' => $total === 0 ? 0 : (int) round($faits / $total * 100)];
     }
 
+    // --- Importer un planning --------------------------------------------------
+
+    /** Ce qu'un titre d'agenda laisse deviner du lieu. */
+    private const MOTS_DES_LIEUX = [
+        'entreprise' => ['entreprise', 'boite', 'boîte', 'societe', 'société', 'travail', 'stage', 'pro', 'alternance'],
+        'ecole'      => ['ecole', 'école', 'cfa', 'cours', 'universite', 'université', 'fac', 'iut', 'bts', 'formation', 'centre'],
+        'conges'     => ['conge', 'congé', 'vacance', 'repos', 'rtt'],
+        'ferie'      => ['ferie', 'férié', 'jour ferie'],
+        'absence'    => ['absence', 'absent', 'maladie', 'arret', 'arrêt'],
+    ];
+
+    /** Le lieu que dit un intitulé, ou celui qu'on a choisi par défaut. */
+    public static function lieuDepuisTitre(string $titre, string $defaut): string
+    {
+        $titre = mb_strtolower($titre);
+        foreach (self::MOTS_DES_LIEUX as $lieu => $mots) {
+            foreach ($mots as $mot) {
+                if (str_contains($titre, $mot)) {
+                    return $lieu;
+                }
+            }
+        }
+
+        return $defaut;
+    }
+
+    /**
+     * Les périodes que contient un fichier : l'agenda de l'école (.ics) ou un
+     * tableau (CSV, une ligne par période : début ; fin ; lieu ; précision).
+     * Rien n'est écrit ici — l'appelant décide.
+     *
+     * @return array{periodes: list<array{lieu: string, debut: string, fin: string, note: ?string}>, ignorees: int}
+     */
+    public static function lirePlanning(string $contenu, string $defaut): array
+    {
+        $contenu = str_replace(["\r\n", "\r"], "\n", ltrim($contenu, "\u{FEFF} \n"));
+
+        return str_contains($contenu, 'BEGIN:VEVENT')
+            ? self::lireIcs($contenu, $defaut)
+            : self::lireTableau($contenu, $defaut);
+    }
+
+    /** @return array{periodes: list<array>, ignorees: int} */
+    private static function lireIcs(string $contenu, string $defaut): array
+    {
+        // Une ligne repliée reprend par une espace ou une tabulation.
+        $contenu = (string) preg_replace('/\n[ \t]/', '', $contenu);
+        $periodes = [];
+        $ignorees = 0;
+
+        foreach (explode('BEGIN:VEVENT', $contenu) as $rang => $bloc) {
+            if ($rang === 0) {
+                continue;
+            }
+            $bloc = explode('END:VEVENT', $bloc)[0];
+            $jour = static function (string $nom) use ($bloc): ?string {
+                if (preg_match('/^' . $nom . '[^:\n]*:(\d{8})/mi', $bloc, $m) !== 1) {
+                    return null;
+                }
+                return substr($m[1], 0, 4) . '-' . substr($m[1], 4, 2) . '-' . substr($m[1], 6, 2);
+            };
+            $debut = $jour('DTSTART');
+            if ($debut === null || self::dateValide($debut) === null) {
+                $ignorees++;
+                continue;
+            }
+            $fin = $jour('DTEND');
+            // Une journée entière finit le lendemain : on revient au dernier jour.
+            $journee = preg_match('/^DTSTART;VALUE=DATE:/mi', $bloc) === 1;
+            if ($fin !== null && self::dateValide($fin) !== null) {
+                $fin = $journee ? (new DateTimeImmutable($fin))->modify('-1 day')->format('Y-m-d') : $fin;
+            }
+            if ($fin === null || $fin < $debut) {
+                $fin = $debut;
+            }
+            $titre = preg_match('/^SUMMARY[^:\n]*:(.*)$/mi', $bloc, $m) === 1
+                ? trim(str_replace(['\\,', '\\;', '\\n', '\\\\'], [',', ';', ' ', '\\'], $m[1])) : '';
+
+            $periodes[] = ['lieu' => self::lieuDepuisTitre($titre, $defaut), 'debut' => $debut, 'fin' => $fin,
+                           'note' => mb_substr($titre, 0, 200) ?: null];
+        }
+
+        return ['periodes' => $periodes, 'ignorees' => $ignorees];
+    }
+
+    /** @return array{periodes: list<array>, ignorees: int} */
+    private static function lireTableau(string $contenu, string $defaut): array
+    {
+        $periodes = [];
+        $ignorees = 0;
+
+        foreach (explode("\n", $contenu) as $ligne) {
+            $ligne = trim($ligne);
+            if ($ligne === '') {
+                continue;
+            }
+            $cases = array_map('trim', preg_split('/[;\t,]/', $ligne) ?: []);
+            $debut = self::dateValide(self::dateEcrite($cases[0] ?? ''));
+            if ($debut === null) {
+                $ignorees++;   // L'en-tête du tableau tombe ici, et c'est très bien.
+                continue;
+            }
+            $fin = self::dateValide(self::dateEcrite($cases[1] ?? '')) ?? $debut;
+            $lieu = self::lieuDepuisTitre($cases[2] ?? '', $defaut);
+            $note = mb_substr(trim((string) ($cases[3] ?? '')), 0, 200) ?: null;
+
+            $periodes[] = ['lieu' => $lieu, 'debut' => $debut, 'fin' => max($debut, $fin), 'note' => $note];
+        }
+
+        return ['periodes' => $periodes, 'ignorees' => $ignorees];
+    }
+
+    /** « 05/10/2026 » comme « 2026-10-05 » : un tableau s'écrit des deux façons. */
+    private static function dateEcrite(string $valeur): string
+    {
+        $valeur = trim($valeur);
+
+        return preg_match('#^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})$#', $valeur, $m) === 1
+            ? sprintf('%04d-%02d-%02d', (int) $m[3], (int) $m[2], (int) $m[1])
+            : $valeur;
+    }
+
     // --- Le rythme dans un autre agenda ----------------------------------------
 
     /**

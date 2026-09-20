@@ -461,6 +461,7 @@ $routes = [
     ['GET',  'alternance/rythme/{jeton}.ics',            [AlternanceController::class, 'icsRythme']],
     ['POST', 'alternance/rythme/lien',                  [AlternanceController::class, 'lienIcs']],
     ['POST', 'alternance/rythme',                       [AlternanceController::class, 'poserPeriode']],
+    ['POST', 'alternance/rythme/import',                [AlternanceController::class, 'importerRythme']],
     ['POST', 'alternance/rythme/{id}',                  [AlternanceController::class, 'modifierPeriode']],
     ['POST', 'alternance/rythme/{id}/supprimer',        [AlternanceController::class, 'supprimerPeriode']],
     ['GET',  'alternance/journal',                      [AlternanceController::class, 'journal']],

@@ -285,6 +285,66 @@ final class AlternanceController
         redirect('alternance/rythme');
     }
 
+    /**
+     * Un planning importé : l'agenda de l'école (.ics) ou un tableau collé.
+     * Chaque période est posée comme à la main, et remplace donc les jours
+     * déjà prévus sur ses dates.
+     */
+    public function importerRythme(): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $userId = Auth::id();
+
+        $defaut = post('lieu_defaut');
+        if (!isset(Alternance::LIEUX[$defaut])) {
+            $defaut = 'entreprise';
+        }
+
+        $contenu = trim(post('colle'));
+        $depose = $_FILES['planning'] ?? null;
+        if (is_array($depose) && (int) ($depose['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK) {
+            if ((int) $depose['size'] > 2 * 1024 * 1024) {
+                Session::flash('erreur', 'Ce fichier dépasse 2 Mo : ce n’est sans doute pas un planning.');
+                redirect('alternance/rythme');
+            }
+            $contenu = (string) file_get_contents((string) $depose['tmp_name']);
+        }
+        if (trim($contenu) === '') {
+            Session::flash('erreur', 'Donnez un fichier .ics, ou collez un tableau : une ligne par période.');
+            redirect('alternance/rythme');
+        }
+        // Un fichier écrit par un tableur n'est pas toujours en UTF-8.
+        if (!mb_check_encoding($contenu, 'UTF-8')) {
+            $contenu = (string) mb_convert_encoding($contenu, 'UTF-8', 'Windows-1252');
+        }
+
+        $lu = Alternance::lirePlanning($contenu, $defaut);
+        if ($lu['periodes'] === []) {
+            Session::flash('erreur', 'Aucune période lisible là-dedans. Un tableau s’écrit « début ; fin ; lieu ».');
+            redirect('alternance/rythme');
+        }
+        if (count($lu['periodes']) > 400) {
+            Session::flash('erreur', 'Plus de 400 périodes : ce planning est trop gros pour être importé d’un coup.');
+            redirect('alternance/rythme');
+        }
+
+        $comptes = [];
+        foreach ($lu['periodes'] as $p) {
+            Alternance::poserPeriode($userId, $p['lieu'], $p['debut'], $p['fin'], $p['note']);
+            $comptes[$p['lieu']] = ($comptes[$p['lieu']] ?? 0) + 1;
+        }
+
+        $detail = [];
+        foreach ($comptes as $lieu => $combien) {
+            $detail[] = $combien . ' ' . mb_strtolower(Alternance::LIEUX[$lieu]['nom']);
+        }
+        Session::flash('succes', count($lu['periodes']) . ' période'
+            . (count($lu['periodes']) > 1 ? 's importées' : ' importée') . ' : ' . implode(', ', $detail)
+            . ($lu['ignorees'] > 0 ? ' · ' . $lu['ignorees'] . ' ligne(s) sautée(s), faute de date lisible.' : '.'));
+        redirect('alternance/rythme');
+    }
+
     public function poserPeriode(): void
     {
         $this->enregistrerPeriode(null);

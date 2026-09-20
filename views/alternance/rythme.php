@@ -138,6 +138,35 @@ $ligne = static function (array $p) use ($csrf, $choixLieu, $auj): void {
       </form>
     </section>
 
+    <details class="carte">
+      <summary class="alternance-export__ouvrir">📥 Importer un planning</summary>
+      <form method="post" action="<?= url('alternance/rythme/import') ?>" enctype="multipart/form-data" style="margin-top:.8rem">
+        <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+        <div class="champ">
+          <label for="planning">Le fichier de l’école</label>
+          <input type="file" id="planning" name="planning" accept=".ics,.csv,.txt,text/calendar,text/csv,text/plain">
+          <span class="champ__aide">Un agenda (.ics) ou un tableau enregistré en CSV.</span>
+        </div>
+        <div class="champ">
+          <label for="colle">… ou collez votre tableau</label>
+          <textarea id="colle" name="colle" rows="4"
+                    placeholder="2026-10-05 ; 2026-10-09 ; école&#10;12/10/2026 ; 23/10/2026 ; entreprise ; atelier"></textarea>
+          <span class="champ__aide">Une ligne par période : début ; fin ; lieu ; précision.</span>
+        </div>
+        <div class="champ">
+          <label for="lieu_defaut">Quand le fichier ne dit pas où</label>
+          <select id="lieu_defaut" name="lieu_defaut">
+            <?php foreach (Alternance::LIEUX as $cle => $l): ?>
+              <option value="<?= e($cle) ?>"<?= $cle === 'entreprise' ? ' selected' : '' ?>><?= $l['icone'] ?> <?= e($l['nom']) ?></option>
+            <?php endforeach; ?>
+          </select>
+        </div>
+        <button class="bouton bouton--bloc" type="submit">Importer</button>
+        <p class="champ__aide" style="margin-top:.6rem">Les périodes importées remplacent les jours
+          déjà prévus sur leurs dates, comme si vous les posiez une à une.</p>
+      </form>
+    </details>
+
     <section class="carte">
       <h2>Dans un autre agenda</h2>
       <?php if ($lienIcs === ''): ?>
