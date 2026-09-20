@@ -4,11 +4,13 @@ declare(strict_types=1);
 /**
  * Les rappels : ce qui doit partir maintenant, et le faire partir.
  *
- * Deux sortes de rappels :
+ * Trois sortes de rappels :
  *   - avant un évènement, de chacun des délais qu'il porte (quinze minutes par
  *     défaut) —
  *     un évènement « toute la journée » se rappelle à 8 h le jour même, ou
  *     les jours d'avant pour un délai d'un jour ou plus ;
+ *   - le vendredi à 17 h, la semaine d'alternance passée en entreprise dont
+ *     la page du journal est restée blanche ;
  *   - le matin d'une échéance, à 8 h, pour une sous-tâche pas encore faite ou
  *     une tâche principale qui en a encore.
  *
@@ -94,6 +96,9 @@ final class Rappels
 
     /** L'heure des rappels qui ne tombent pas à une heure précise. */
     private const HEURE_DU_MATIN = 8;
+
+    /** Le vendredi, l'heure à partir de laquelle on rappelle le journal d'alternance. */
+    private const HEURE_DU_JOURNAL = 17;
 
     /**
      * Envoie les rappels dus, pour tous les comptes qui ont un appareil abonné,
@@ -301,7 +306,56 @@ final class Rappels
             }
         }
 
+        // --- L'alternance : écrire sa semaine, le vendredi en fin de journée.
+        $rappel = self::journalDeLaSemaine($userId, $maintenant);
+        if ($rappel !== null) {
+            $rappels[] = $rappel;
+        }
+
         return $rappels;
+    }
+
+    /**
+     * Le vendredi à partir de 17 h, et tant que le week-end dure : une semaine
+     * passée en entreprise dont la page du journal reste blanche. On la
+     * rappelle une fois — la table des rappels envoyés s'en souvient.
+     *
+     * @return array{nature: string, objet_id: int, moment: string, message: array}|null
+     */
+    private static function journalDeLaSemaine(int $userId, DateTimeImmutable $maintenant): ?array
+    {
+        $jour = (int) $maintenant->format('N');
+        $vendredi = $maintenant->modify('friday this week')->setTime(self::HEURE_DU_JOURNAL, 0);
+        if ($jour < 5 || ($jour === 5 && $maintenant < $vendredi)) {
+            return null;
+        }
+
+        $lundi = $maintenant->modify('monday this week')->format('Y-m-d');
+        if (Database::valeur('SELECT id FROM alternance_journal WHERE user_id = ? AND semaine = ?',
+                [$userId, $lundi]) !== null) {
+            return null;
+        }
+
+        $jours = Alternance::lieuxEntre($userId, new DateTimeImmutable($lundi),
+            new DateTimeImmutable($vendredi->format('Y-m-d')));
+        $combien = count(array_filter($jours, static fn (array $l): bool => $l['lieu'] === 'entreprise'));
+        if ($combien === 0) {
+            return null;
+        }
+
+        return [
+            'nature' => 'journal',
+            // La semaine elle-même fait l'objet : « 202638 » pour la 38e de 2026.
+            'objet_id' => (int) $maintenant->format('oW'),
+            'moment' => $vendredi->format('Y-m-d H:i:s'),
+            'message' => [
+                'title' => '📓 Votre semaine d’alternance',
+                'body' => $combien . ' jour' . ($combien > 1 ? 's' : '') . ' en entreprise cette semaine : '
+                    . 'notez vos missions tant que c’est frais.',
+                'url' => url('alternance/journal/semaine', ['semaine' => $lundi]),
+                'tag' => 'journal-' . $lundi,
+            ],
+        ];
     }
 
     /** « Dans 15 min · 14:00 – 15:00 », « Demain à 9:00 », « Aujourd'hui, toute la journée ». */

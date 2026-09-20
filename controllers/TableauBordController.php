@@ -54,6 +54,39 @@ final class TableauBordController
              * moins à chaque ouverture de l'accueil.
              */
             'stats' => ['taches' => TachesController::resteAFaire($userId)],
+            // L'alternance, si l'on en fait une : où l'on est, ce qui reste à
+            // écrire, la prochaine date du contrat.
+            'alternance' => self::resumeAlternance($userId),
         ], 'Accueil');
+    }
+
+    /**
+     * Ce que l'accueil dit de l'alternance : où l'on est aujourd'hui, la
+     * semaine du journal restée blanche, la prochaine date du contrat. Null
+     * pour qui n'est pas en alternance — la carte n'apparaît alors pas.
+     *
+     * @return array{situation: ?array, aEcrire: ?string, prochaine: ?array, entreprise: string}|null
+     */
+    private static function resumeAlternance(int $userId): ?array
+    {
+        $situation = Alternance::situation($userId);
+        $aEcrire = Alternance::semainesAEcrire($userId)[0] ?? null;
+
+        $contrat = Alternance::contrat($userId);
+        $auj = date('Y-m-d');
+        $prochaine = null;
+        foreach (Alternance::ECHEANCES as $champ => $echeance) {
+            $jour = (string) ($contrat[$champ] ?? '');
+            if ($jour >= $auj && $jour !== '' && ($prochaine === null || $jour < $prochaine['jour'])) {
+                $prochaine = ['jour' => $jour, 'libelle' => $echeance['libelle']];
+            }
+        }
+
+        if ($situation === null && $aEcrire === null && $prochaine === null) {
+            return null;
+        }
+
+        return ['situation' => $situation, 'aEcrire' => $aEcrire, 'prochaine' => $prochaine,
+                'entreprise' => trim((string) $contrat['entreprise'])];
     }
 }

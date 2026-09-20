@@ -3,6 +3,7 @@
  * @var DateTimeImmutable $aujourdhui
  * @var array $planning  la journée d'aujourd'hui, disposée par PlanningJour
  * @var array $examens, $taches, $stats
+ * @var array|null $alternance  le résumé de l’alternance, ou null si l’on n’en fait pas
  */
 ?>
 
@@ -115,5 +116,53 @@
         'compact'       => true,
     ]);
     ?>
+
+    <?php if ($alternance !== null): ?>
+      <?php
+      /*
+       * L'alternance en trois lignes : où l'on est, ce qui reste à écrire,
+       * la prochaine date du contrat. Rien de tout cela n'existe pour qui
+       * n'en fait pas — la carte n'apparaît alors pas du tout.
+       */
+      $maintenant = $alternance['situation']['maintenant'] ?? null;
+      $ensuite = $alternance['situation']['ensuite'] ?? null;
+      ?>
+      <section class="carte">
+        <h2><a href="<?= url('alternance') ?>">Mon alternance</a></h2>
+        <?php if ($alternance['entreprise'] !== ''): ?>
+          <p class="discret" style="margin:0 0 .5rem"><?= e($alternance['entreprise']) ?></p>
+        <?php endif; ?>
+
+        <?php if ($maintenant !== null): ?>
+          <?php $lieu = Alternance::LIEUX[$maintenant['lieu']]; ?>
+          <p style="margin:0 0 .4rem">
+            Aujourd’hui : <strong><?= $lieu['icone'] ?> <?= e($lieu['dans']) ?></strong>
+            <?= $maintenant['fin'] === date('Y-m-d') ? '(dernier jour)'
+                : 'jusqu’au ' . e(Alternance::jourCourt($maintenant['fin'])) ?>
+          </p>
+        <?php elseif ($ensuite !== null): ?>
+          <?php $lieu = Alternance::LIEUX[$ensuite['lieu']]; ?>
+          <p style="margin:0 0 .4rem">
+            Ensuite : <strong><?= $lieu['icone'] ?> <?= e($lieu['dans']) ?></strong>
+            à partir du <?= e(rtrim(Alternance::jourCourt($ensuite['debut']), '.')) ?>.
+          </p>
+        <?php endif; ?>
+
+        <?php if ($alternance['aEcrire'] !== null): ?>
+          <p style="margin:0 0 .4rem">
+            ✍️ <a href="<?= url('alternance/journal/semaine', ['semaine' => $alternance['aEcrire']]) ?>" data-fenetre>
+              Écrire la semaine du <?= e(Alternance::jourCourt($alternance['aEcrire'])) ?>
+            </a>
+          </p>
+        <?php endif; ?>
+
+        <?php if ($alternance['prochaine'] !== null): ?>
+          <p class="discret" style="margin:0">
+            📅 <?= e($alternance['prochaine']['libelle']) ?> :
+            <?= e(Alternance::jourCourt($alternance['prochaine']['jour'])) ?>
+          </p>
+        <?php endif; ?>
+      </section>
+    <?php endif; ?>
   </div>
 </div>

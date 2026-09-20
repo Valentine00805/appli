@@ -1143,3 +1143,9 @@ CREATE TABLE IF NOT EXISTS `alternance_contrat` (
   PRIMARY KEY (`user_id`),
   CONSTRAINT `fk_alternance_contrat_user` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Le rappel du vendredi : écrire sa semaine dans le journal de l'alternance.
+-- Les rappels déjà partis se notent dans la même table que les autres.
+
+ALTER TABLE `rappels_envoyes`
+  MODIFY `nature` ENUM('evenement', 'tache', 'liste', 'journal') NOT NULL;
