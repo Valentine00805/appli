@@ -44,7 +44,8 @@ $joursEntreprise = count(array_filter($lieux, static fn (array $l): bool => $l['
   </div>
 </div>
 
-<form method="post" action="<?= url('alternance/journal') ?>" class="carte"<?= $dansUneFenetre ? ' data-envoi-fenetre' : '' ?>>
+<form method="post" action="<?= url('alternance/journal') ?>" class="carte"<?= $dansUneFenetre ? ' data-envoi-fenetre' : '' ?>
+      data-brouillon="journal-<?= e($semaine) ?>">
   <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
   <?php if ($edition): ?>
     <input type="hidden" name="id" value="<?= (int) $page['id'] ?>">

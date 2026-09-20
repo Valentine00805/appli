@@ -3774,3 +3774,11 @@ summary.cal-volet__groupe:focus-visible {
 .pastille--active { background: var(--accent); color: #fff; }
 .pastille--active .discret { color: inherit; opacity: .8; }
 .alternance-note__etiquettes { display: flex; flex-wrap: wrap; gap: .25rem; }
+
+/* Un brouillon gardé dans le navigateur, faute de réseau. */
+.brouillon-rappel {
+  display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; margin-bottom: 1rem;
+  padding: .6rem .8rem; border-radius: var(--rayon-s); background: var(--info-doux); color: var(--info);
+}
+.brouillon-etat { margin-top: .6rem; }
+.brouillon-etat--alerte { color: var(--erreur); font-weight: 600; }

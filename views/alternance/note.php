@@ -34,7 +34,8 @@ $action = $edition ? url('alternance/notes/' . (int) $note['id']) : url('alterna
   </div>
 </div>
 
-<form method="post" action="<?= $action ?>" class="carte"<?= $dansUneFenetre ? ' data-envoi-fenetre' : '' ?>>
+<form method="post" action="<?= $action ?>" class="carte"<?= $dansUneFenetre ? ' data-envoi-fenetre' : '' ?>
+      data-brouillon="note-<?= $edition ? (int) $note['id'] : 'nouvelle' ?>">
   <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
   <div class="champ">
     <label for="titre">Titre</label>

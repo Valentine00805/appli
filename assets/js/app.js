@@ -374,6 +374,134 @@
       }, true);
     }
   };
+  /*
+   * Ce qu'on écrit ne se perd pas, même sans réseau.
+   *
+   * Une note, une semaine de journal : le texte est gardé dans le navigateur
+   * à mesure qu'on tape. À l'envoi, si le réseau ne répond pas, il reste là
+   * et repart tout seul dès que la connexion revient — en atelier ou chez un
+   * client, c'est là qu'on écrit et c'est là qu'il n'y a pas de réseau.
+   *
+   * Retrouvé au retour sur la page, un brouillon ne se remet jamais tout
+   * seul : il se propose, et l'on décide.
+   */
+  var initialiserBrouillons = function (racine) {
+    [].slice.call(racine.querySelectorAll('form[data-brouillon]')).forEach(function (formulaire) {
+      if (formulaire.hasAttribute('data-brouillon-lance')) { return; }
+      formulaire.setAttribute('data-brouillon-lance', '');
+      var cle = 'mesCoursBrouillon:' + formulaire.getAttribute('data-brouillon');
+
+      var champs = function () {
+        var valeurs = {};
+        [].slice.call(formulaire.elements).forEach(function (champ) {
+          if (champ.name && champ.name !== '_csrf' && champ.type !== 'file'
+              && champ.type !== 'submit' && champ.type !== 'button') {
+            valeurs[champ.name] = champ.value;
+          }
+        });
+        return valeurs;
+      };
+      var garder = function () {
+        try { localStorage.setItem(cle, JSON.stringify({ quand: Date.now(), champs: champs() })); }
+        catch (e) { /* stockage plein ou refusé : tant pis, on n'y peut rien */ }
+      };
+      var oublier = function () {
+        try { localStorage.removeItem(cle); } catch (e) {}
+      };
+      var dire = function (texte, alerte) {
+        var ligne = formulaire.querySelector('[data-brouillon-etat]');
+        if (!ligne) {
+          ligne = document.createElement('p');
+          ligne.className = 'champ__aide brouillon-etat';
+          ligne.setAttribute('data-brouillon-etat', '');
+          ligne.setAttribute('aria-live', 'polite');
+          formulaire.appendChild(ligne);
+        }
+        ligne.textContent = texte;
+        ligne.classList.toggle('brouillon-etat--alerte', !!alerte);
+      };
+
+      // Ce qu'on tape est gardé, mais pas à chaque touche : une fois calmé.
+      var minuterie = null;
+      formulaire.addEventListener('input', function () {
+        clearTimeout(minuterie);
+        minuterie = setTimeout(garder, 1200);
+      });
+
+      // Un brouillon retrouvé : on le propose, on ne l'impose pas.
+      try {
+        var garde = JSON.parse(localStorage.getItem(cle) || 'null');
+        if (garde && garde.champs) {
+          var quand = new Date(garde.quand);
+          var rappel = document.createElement('div');
+          rappel.className = 'brouillon-rappel';
+          rappel.innerHTML = '<span>📝 Un brouillon non envoyé, gardé ici le '
+            + quand.toLocaleString('fr-FR', { dateStyle: 'long', timeStyle: 'short' })
+            + '.</span> <button class="bouton bouton--petit" type="button" data-brouillon-reprendre>Reprendre</button>'
+            + ' <button class="bouton bouton--discret bouton--petit" type="button" data-brouillon-jeter>Jeter</button>';
+          formulaire.insertBefore(rappel, formulaire.firstChild);
+          rappel.addEventListener('click', function (e) {
+            var bouton = e.target.closest('button');
+            if (!bouton) { return; }
+            if (bouton.hasAttribute('data-brouillon-reprendre')) {
+              Object.keys(garde.champs).forEach(function (nom) {
+                var champ = formulaire.elements[nom];
+                if (!champ || champ.type === 'file') { return; }
+                champ.value = garde.champs[nom];
+                // L'éditeur mis en forme a sa propre zone : elle suit le champ.
+                var edition = champ.parentNode ? champ.parentNode.querySelector('.texte-riche__zone') : null;
+                if (edition) {
+                  var marque = '<!--riche-->';
+                  edition.innerHTML = champ.value.indexOf(marque) === 0 ? champ.value.slice(marque.length) : champ.value;
+                }
+              });
+            }
+            rappel.remove();
+            if (bouton.hasAttribute('data-brouillon-jeter')) { oublier(); }
+          });
+        }
+      } catch (e) { /* rien de gardé, ou stockage refusé */ }
+
+      /*
+       * L'envoi passe par « fetch » pour savoir s'il a abouti. La fenêtre a
+       * déjà le sien : on la laisse faire, son échec retombe sur l'envoi
+       * ordinaire.
+       */
+      if (formulaire.hasAttribute('data-envoi-fenetre') || !window.fetch) { return; }
+
+      var envoyer = function (donnees) {
+        dire('Envoi…', false);
+        fetch(formulaire.action, { method: 'POST', body: donnees, credentials: 'same-origin' })
+          .then(function (reponse) {
+            if (!reponse.ok) { throw new Error('refus'); }
+            return reponse.text().then(function (html) { return { html: html, adresse: reponse.url }; });
+          })
+          .then(function (reponse) {
+            oublier();
+            // Le message du serveur est déjà arrivé : on le garde pour la page où l'on va.
+            try {
+              var recu = new DOMParser().parseFromString(reponse.html, 'text/html');
+              var messages = recu.querySelector('.flashs');
+              if (messages) { sessionStorage.setItem('mesCoursMessages', messages.outerHTML); }
+            } catch (e) {}
+            window.location.href = reponse.adresse;
+          })
+          .catch(function () {
+            garder();
+            dire('Pas de réseau : votre texte est gardé ici. Il repartira tout seul dès que la connexion revient.', true);
+            window.addEventListener('online', function () { envoyer(donnees); }, { once: true });
+          });
+      };
+
+      formulaire.addEventListener('submit', function (evenement) {
+        if (evenement.defaultPrevented) { return; }
+        evenement.preventDefault();
+        envoyer(new FormData(formulaire));
+      });
+    });
+  };
+  initialiserBrouillons(document);
+
   initialiserHoraire(document);
 
   /*
@@ -601,6 +729,7 @@
         initialiserFiche(corps);
         initialiserSeance(corps);
         initialiserHoraire(corps);
+        initialiserBrouillons(corps);
     };
 
     var ouvrir = function (adresse) {
