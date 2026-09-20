@@ -251,6 +251,84 @@ final class AlternanceController
         redirect('alternance/journal');
     }
 
+    /**
+     * Le journal en PDF, sur la période demandée : ce qu'on recopie dans le
+     * livret, ou qu'on joint au rapport. Les bornes sont ramenées à leur
+     * semaine, pour ne pas couper une semaine en deux.
+     */
+    public function pdfJournal(): void
+    {
+        Auth::exiger();
+        $userId = Auth::id();
+
+        $du = Alternance::dateValide((string) ($_GET['du'] ?? ''));
+        $au = Alternance::dateValide((string) ($_GET['au'] ?? ''));
+        $conditions = '';
+        $valeurs = [$userId];
+        if ($du !== null) {
+            $conditions .= ' AND semaine >= ?';
+            $valeurs[] = Alternance::lundi($du);
+        }
+        if ($au !== null) {
+            $conditions .= ' AND semaine <= ?';
+            $valeurs[] = Alternance::lundi($au);
+        }
+        $pages = Database::all(
+            'SELECT * FROM alternance_journal WHERE user_id = ?' . $conditions . ' ORDER BY semaine', $valeurs);
+        if ($pages === []) {
+            Session::flash('erreur', $du === null && $au === null
+                ? 'Le journal est vide : écrivez une semaine avant de l’exporter.'
+                : 'Aucune semaine écrite sur cette période.');
+            redirect('alternance/journal');
+        }
+
+        // Les jours passés en entreprise, pour situer chaque semaine.
+        $lieux = Alternance::lieuxEntre($userId, new DateTimeImmutable((string) $pages[0]['semaine']),
+            (new DateTimeImmutable((string) $pages[count($pages) - 1]['semaine']))->modify('+6 days'));
+
+        $semaines = [];
+        foreach ($pages as $page) {
+            $lundi = (string) $page['semaine'];
+            $vendredi = (new DateTimeImmutable($lundi))->modify('+4 days')->format('Y-m-d');
+            $jours = 0;
+            foreach ($lieux as $jour => $lieu) {
+                if ($jour >= $lundi && $jour <= $vendredi && $lieu['lieu'] === 'entreprise') {
+                    $jours++;
+                }
+            }
+            $semaines[] = [
+                'titre'       => 'Semaine du ' . date_fr($lundi . ' 00:00:00', false)
+                                 . ' au ' . date_fr($vendredi . ' 00:00:00', false),
+                'sous_titre'  => $jours === 0 ? '' : $jours . ' jour' . ($jours > 1 ? 's' : '') . ' en entreprise',
+                'missions'    => $page['missions'],
+                'competences' => Alternance::competences($page['competences']),
+            ];
+        }
+
+        $periode = 'Du ' . date_fr((string) $pages[0]['semaine'] . ' 00:00:00', false) . ' au '
+            . date_fr((new DateTimeImmutable((string) $pages[count($pages) - 1]['semaine']))->modify('+4 days')->format('Y-m-d') . ' 00:00:00', false)
+            . ' · ' . count($semaines) . ' semaine' . (count($semaines) > 1 ? 's' : '');
+
+        try {
+            $pdf = ExportPdf::depuisJournal($semaines, $periode);
+        } catch (Throwable) {
+            Session::flash('erreur', 'Le journal n’a pas pu être mis en PDF.');
+            redirect('alternance/journal');
+        }
+
+        $nom = 'Journal des missions.pdf';
+        header('Content-Type: application/pdf');
+        header('Content-Length: ' . strlen($pdf));
+        header('X-Content-Type-Options: nosniff');
+        header('Cache-Control: private, no-store');
+        header(sprintf(
+            "Content-Disposition: attachment; filename=\"%s\"; filename*=UTF-8''%s",
+            'journal-des-missions.pdf', rawurlencode($nom)
+        ));
+        echo $pdf;
+        exit;
+    }
+
     public function supprimerJournal(int $id): void
     {
         Auth::exiger();

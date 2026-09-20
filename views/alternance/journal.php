@@ -24,6 +24,36 @@ $ecrite = in_array($cetteSemaine, array_column($pages, 'semaine'), true);
   </a>
 </div>
 
+<?php if ($pages !== []): ?>
+  <?php
+  /*
+   * Le journal en PDF : c'est ce qu'on recopie dans le livret, ou qu'on joint
+   * au rapport. Les dates sont facultatives — sans elles, tout sort — et
+   * proposent d'avance la première et la dernière semaine écrites.
+   */
+  $premiere = (string) $pages[count($pages) - 1]['semaine'];
+  $derniere = (new DateTimeImmutable((string) $pages[0]['semaine']))->modify('+4 days')->format('Y-m-d');
+  ?>
+  <details class="carte alternance-export">
+    <summary class="alternance-export__ouvrir">⬇️ Exporter le journal en PDF</summary>
+    <form method="get" action="<?= url('alternance/journal/pdf') ?>">
+      <div class="ligne-champs">
+        <div class="champ">
+          <label for="du">Depuis</label>
+          <input type="date" id="du" name="du" value="<?= e($premiere) ?>">
+        </div>
+        <div class="champ">
+          <label for="au">Jusqu’au</label>
+          <input type="date" id="au" name="au" value="<?= e($derniere) ?>">
+        </div>
+      </div>
+      <button class="bouton" type="submit">Télécharger le PDF</button>
+      <p class="champ__aide">Une semaine entamée sort en entier. Videz les dates pour tout prendre.
+        Le PDF finit par le récapitulatif de vos compétences, de la plus travaillée à la moins travaillée.</p>
+    </form>
+  </details>
+<?php endif; ?>
+
 <?php if ($aEcrire !== []): ?>
   <div class="carte alternance-rappel">
     <strong>✍️ <?= count($aEcrire) ?> semaine<?= count($aEcrire) > 1 ? 's' : '' ?> en entreprise sans page :</strong>

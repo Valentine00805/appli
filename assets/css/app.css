@@ -3661,3 +3661,7 @@ summary.cal-volet__groupe:focus-visible {
 @media (max-width: 1100px) {
   .cal-jour__haut .rythme__nom { display: none; }
 }
+
+.alternance-export { margin-bottom: 1rem; }
+.alternance-export__ouvrir { cursor: pointer; font-weight: 600; }
+.alternance-export form { margin-top: .8rem; max-width: 460px; }

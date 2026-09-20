@@ -108,6 +108,60 @@ final class ExportPdf
     }
 
     /**
+     * Le journal des missions de l'alternance, semaine après semaine : c'est
+     * ce qu'on recopie dans le livret d'apprentissage, ou qu'on joint au
+     * rapport. Le récapitulatif des compétences vient à la fin, du plus
+     * souvent travaillé au moins souvent : il dit d'un coup d'œil ce qu'on a
+     * vu — et ce qu'on n'a pas encore vu.
+     *
+     * @param list<array{titre: string, sous_titre?: string, missions: ?string, competences: list<string>}> $semaines
+     */
+    public static function depuisJournal(array $semaines, string $sousTitre): string
+    {
+        $e = static fn (string $texte): string => htmlspecialchars($texte, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+        $gris = static fn (string $texte): string => '<span data-couleur="6b7280">' . $texte . '</span>';
+
+        $blocs = [];
+        $combien = [];
+        foreach ($semaines as $semaine) {
+            $blocs[] = ['html' => $e($semaine['titre']), 'titre' => 2];
+            if (trim((string) ($semaine['sous_titre'] ?? '')) !== '') {
+                $blocs[] = ['html' => $gris($e((string) $semaine['sous_titre']))];
+            }
+
+            [$texte] = self::blocsDuTexteRiche($semaine['missions']);
+            if ($texte === []) {
+                $texte = [['html' => '<i>' . $gris('Aucune mission notée cette semaine.') . '</i>']];
+            }
+            array_push($blocs, ...$texte);
+
+            if ($semaine['competences'] !== []) {
+                $blocs[] = ['html' => $gris('Compétences : ') . $e(implode(', ', $semaine['competences']))];
+            }
+            foreach ($semaine['competences'] as $competence) {
+                $cle = mb_strtolower($competence);
+                $combien[$cle] = ['nom' => $combien[$cle]['nom'] ?? $competence, 'n' => ($combien[$cle]['n'] ?? 0) + 1];
+            }
+        }
+
+        if (count($semaines) > 1 && $combien !== []) {
+            uasort($combien, static fn (array $a, array $b): int => [$b['n'], mb_strtolower($a['nom'])] <=> [$a['n'], mb_strtolower($b['nom'])]);
+            $blocs[] = ['html' => 'Compétences travaillées', 'titre' => 2];
+            foreach ($combien as $c) {
+                $blocs[] = ['html' => $e($c['nom']) . ' ' . $gris('— ' . $c['n'] . ' semaine' . ($c['n'] > 1 ? 's' : '')),
+                            'liste' => 'puce'];
+            }
+        }
+
+        return self::publier(
+            ['titre' => 'Journal des missions', 'sous_titre' => $sousTitre],
+            // Un sommaire dès que le journal compte assez de semaines pour
+            // qu'on y cherche la sienne.
+            $blocs, count($semaines) >= 3 ? 2 : 0, 'Le journal est vide.', 'Journal des missions'
+        );
+    }
+
+    /**
      * La fiche de révision d'un cours, en PDF : ce qu'il faut retenir, puis ce
      * qui lui est rattaché — fichiers, liens, autres cours, évènements —, en
      * listes, comme sur la fiche.
