@@ -19,7 +19,7 @@ $ecrite = in_array($cetteSemaine, array_column($pages, 'semaine'), true);
     <p>Chaque semaine, ce que vous avez fait et appris en entreprise. Le jour du
       livret ou du rapport, tout est déjà là.</p>
   </div>
-  <a class="bouton" href="<?= url('alternance/journal/semaine', ['semaine' => $cetteSemaine]) ?>">
+  <a class="bouton" href="<?= url('alternance/journal/semaine', ['semaine' => $cetteSemaine]) ?>" data-fenetre>
     <?= $ecrite ? 'Compléter cette semaine' : '+ Écrire cette semaine' ?>
   </a>
 </div>
@@ -28,7 +28,7 @@ $ecrite = in_array($cetteSemaine, array_column($pages, 'semaine'), true);
   <div class="carte alternance-rappel">
     <strong>✍️ <?= count($aEcrire) ?> semaine<?= count($aEcrire) > 1 ? 's' : '' ?> en entreprise sans page :</strong>
     <?php foreach ($aEcrire as $lundi): ?>
-      <a class="pastille" href="<?= url('alternance/journal/semaine', ['semaine' => $lundi]) ?>">
+      <a class="pastille" href="<?= url('alternance/journal/semaine', ['semaine' => $lundi]) ?>" data-fenetre>
         semaine du <?= e(Alternance::jourCourt($lundi)) ?>
       </a>
     <?php endforeach; ?>
@@ -48,7 +48,7 @@ $ecrite = in_array($cetteSemaine, array_column($pages, 'semaine'), true);
           <h2>Semaine du <?= e(Alternance::jourCourt((string) $p['semaine'])) ?></h2>
           <span class="alternance-page__actions">
             <a class="bouton bouton--discret bouton--petit"
-               href="<?= url('alternance/journal/semaine', ['semaine' => $p['semaine']]) ?>">Modifier</a>
+               href="<?= url('alternance/journal/semaine', ['semaine' => $p['semaine']]) ?>" data-fenetre>Modifier</a>
             <form method="post" action="<?= url('alternance/journal/' . (int) $p['id'] . '/supprimer') ?>" class="en-ligne"
                   data-confirmation="Supprimer la page de la semaine du <?= e(Alternance::jourCourt((string) $p['semaine'])) ?> ?">
               <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">

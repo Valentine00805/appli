@@ -7,16 +7,23 @@
  * @var array $lieux     le lieu de chaque jour de la semaine
  * @var string $onglet
  * @var array|null $situation
+ * @var bool $dansUneFenetre  ouverte par « Écrire cette semaine », par-dessus le journal
  */
+$dansUneFenetre = $dansUneFenetre ?? false;
 $edition = $page !== null;
 $vendredi = (new DateTimeImmutable($semaine))->modify('+4 days')->format('Y-m-d');
 $joursEntreprise = count(array_filter($lieux, static fn (array $l): bool => $l['lieu'] === 'entreprise'));
 ?>
-<?= Vue::rendre('alternance/_onglets', ['onglet' => $onglet, 'situation' => $situation]) ?>
+<?php if (!$dansUneFenetre): ?>
+  <?= Vue::rendre('alternance/_onglets', ['onglet' => $onglet, 'situation' => $situation]) ?>
+<?php endif; ?>
 
-<div class="entete-page">
+<?php // Large : l'éditeur a besoin de place pour sa barre d'outils. ?>
+<div class="entete-page"<?= $dansUneFenetre ? ' data-large' : '' ?>>
   <div>
-    <p style="margin:0 0 .3rem"><a href="<?= url('alternance/journal') ?>">← Tout le journal</a></p>
+    <?php if (!$dansUneFenetre): ?>
+      <p style="margin:0 0 .3rem"><a href="<?= url('alternance/journal') ?>">← Tout le journal</a></p>
+    <?php endif; ?>
     <h1>📓 Semaine du <?= e(Alternance::jourCourt($semaine)) ?> au <?= e(Alternance::jourCourt($vendredi)) ?></h1>
     <?php if ($lieux !== []): ?>
       <p class="alternance-semaine">
@@ -37,7 +44,7 @@ $joursEntreprise = count(array_filter($lieux, static fn (array $l): bool => $l['
   </div>
 </div>
 
-<form method="post" action="<?= url('alternance/journal') ?>" class="carte">
+<form method="post" action="<?= url('alternance/journal') ?>" class="carte"<?= $dansUneFenetre ? ' data-envoi-fenetre' : '' ?>>
   <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
   <?php if ($edition): ?>
     <input type="hidden" name="id" value="<?= (int) $page['id'] ?>">
@@ -62,6 +69,6 @@ $joursEntreprise = count(array_filter($lieux, static fn (array $l): bool => $l['
   </div>
   <p class="actions">
     <button class="bouton" type="submit">Enregistrer la semaine</button>
-    <a class="bouton bouton--secondaire" href="<?= url('alternance/journal') ?>">Annuler</a>
+    <a class="bouton bouton--secondaire" href="<?= url('alternance/journal') ?>"<?= $dansUneFenetre ? ' data-fermer' : '' ?>>Annuler</a>
   </p>
 </form>

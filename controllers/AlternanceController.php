@@ -191,12 +191,18 @@ final class AlternanceController
         $page = Database::one('SELECT * FROM alternance_journal WHERE user_id = ? AND semaine = ?', [$userId, $semaine]);
 
         $fin = (new DateTimeImmutable($semaine))->modify('+6 days');
-        $lieux = Alternance::lieuxEntre($userId, new DateTimeImmutable($semaine), $fin);
-        $this->afficher('alternance/page_journal', [
+        $donnees = [
             'semaine' => $semaine,
             'page'    => $page,
-            'lieux'   => $lieux,
-        ], 'Semaine du ' . Alternance::jourCourt($semaine), 'journal');
+            'lieux'   => Alternance::lieuxEntre($userId, new DateTimeImmutable($semaine), $fin),
+        ];
+        // Écrire sa semaine se fait dans une fenêtre, par-dessus le journal.
+        if (Vue::enFenetre()) {
+            Vue::fragment('alternance/page_journal', $donnees);
+            return;
+        }
+        $this->afficher('alternance/page_journal', $donnees,
+            'Semaine du ' . Alternance::jourCourt($semaine), 'journal');
     }
 
     public function ecrireJournal(): void
