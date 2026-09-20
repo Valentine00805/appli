@@ -463,6 +463,7 @@ $routes = [
     ['GET',  'alternance/journal',                      [AlternanceController::class, 'journal']],
     ['GET',  'alternance/journal/semaine',              [AlternanceController::class, 'pageJournal']],
     ['GET',  'alternance/journal/pdf',                  [AlternanceController::class, 'pdfJournal']],
+    ['GET',  'alternance/journal/competences',          [AlternanceController::class, 'competences']],
     ['POST', 'alternance/journal',                      [AlternanceController::class, 'ecrireJournal']],
     ['POST', 'alternance/journal/{id}/supprimer',       [AlternanceController::class, 'supprimerJournal']],
     ['GET',  'alternance/documents',                    [AlternanceController::class, 'documents']],

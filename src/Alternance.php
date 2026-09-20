@@ -324,6 +324,31 @@ final class Alternance
     }
 
     /**
+     * Toutes les compétences du journal, la plus travaillée en tête, avec les
+     * semaines où elles reviennent : c'est ce qu'on recopie dans le livret, et
+     * ce qui montre celles qu'on n'a pas encore vues.
+     *
+     * @return list<array{nom: string, semaines: list<string>}>
+     */
+    public static function bilanCompetences(int $userId): array
+    {
+        $vues = [];
+        foreach (Database::all(
+            'SELECT semaine, competences FROM alternance_journal
+             WHERE user_id = ? AND competences IS NOT NULL ORDER BY semaine DESC', [$userId]) as $page) {
+            foreach (self::competences($page['competences']) as $competence) {
+                $cle = mb_strtolower($competence);
+                $vues[$cle] ??= ['nom' => $competence, 'semaines' => []];
+                $vues[$cle]['semaines'][] = (string) $page['semaine'];
+            }
+        }
+        usort($vues, static fn (array $a, array $b): int =>
+            [count($b['semaines']), mb_strtolower($a['nom'])] <=> [count($a['semaines']), mb_strtolower($b['nom'])]);
+
+        return $vues;
+    }
+
+    /**
      * Les semaines passées en entreprise, jusqu'à celle-ci, dont la page du
      * journal reste à écrire : ce sont elles qu'on oublie. Douze au plus.
      *

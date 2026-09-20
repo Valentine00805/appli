@@ -19,9 +19,14 @@ $ecrite = in_array($cetteSemaine, array_column($pages, 'semaine'), true);
     <p>Chaque semaine, ce que vous avez fait et appris en entreprise. Le jour du
       livret ou du rapport, tout est déjà là.</p>
   </div>
-  <a class="bouton" href="<?= url('alternance/journal/semaine', ['semaine' => $cetteSemaine]) ?>" data-fenetre>
-    <?= $ecrite ? 'Compléter cette semaine' : '+ Écrire cette semaine' ?>
-  </a>
+  <span class="alternance-page__actions">
+    <?php if ($pages !== []): ?>
+      <a class="bouton bouton--secondaire" href="<?= url('alternance/journal/competences') ?>">🎯 Compétences</a>
+    <?php endif; ?>
+    <a class="bouton" href="<?= url('alternance/journal/semaine', ['semaine' => $cetteSemaine]) ?>" data-fenetre>
+      <?= $ecrite ? 'Compléter cette semaine' : '+ Écrire cette semaine' ?>
+    </a>
+  </span>
 </div>
 
 <?php if ($pages !== []): ?>

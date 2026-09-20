@@ -296,6 +296,18 @@ final class AlternanceController
         ], 'Journal des missions', 'journal');
     }
 
+    /** Ce qu'on a travaillé, toutes semaines confondues. */
+    public function competences(): void
+    {
+        Auth::exiger();
+        $userId = Auth::id();
+        $this->afficher('alternance/competences', [
+            'competences' => Alternance::bilanCompetences($userId),
+            'semaines'    => (int) Database::valeur(
+                'SELECT COUNT(*) FROM alternance_journal WHERE user_id = ?', [$userId]),
+        ], 'Compétences travaillées', 'journal');
+    }
+
     /** La page d'une semaine : celle qui existe, sinon une page blanche. */
     public function pageJournal(): void
     {

@@ -3722,3 +3722,16 @@ summary.cal-volet__groupe:focus-visible {
 .alternance-echeances, .alternance-joindre { list-style: none; margin: 0; padding: 0; display: grid; gap: .45rem; }
 .alternance-echeances li { display: flex; align-items: baseline; gap: .5rem; flex-wrap: wrap; }
 .alternance-echeances li > span:first-child { flex: 1; }
+
+/* Le bilan des compétences du journal. */
+.alternance-competence-liste { list-style: none; margin: 0; padding: 0; display: grid; gap: .7rem; }
+.alternance-competence { display: grid; grid-template-columns: minmax(8rem, 1.2fr) minmax(4rem, 1fr) auto; gap: .3rem .8rem; align-items: center; }
+.alternance-competence__nom { font-weight: 600; overflow-wrap: anywhere; }
+.alternance-competence__barre { height: 8px; border-radius: 999px; background: var(--fond-doux); overflow: hidden; }
+.alternance-competence__barre > span { display: block; height: 100%; background: var(--entreprise); }
+.alternance-competence__compte { color: var(--texte-doux); font-size: .85rem; white-space: nowrap; }
+.alternance-competence__semaines { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: .3rem; align-items: center; }
+@media (max-width: 620px) {
+  .alternance-competence { grid-template-columns: 1fr auto; }
+  .alternance-competence__barre { grid-column: 1 / -1; }
+}
