@@ -11,7 +11,8 @@
  * @var int $objectif             l’objectif de la semaine, en minutes (0 : aucun)
  * @var array|null $avancement    où il en est, ou null sans objectif
  * @var array|null $apres         la session qu’on vient de finir, si elle portait sur un cours
- * @var callable $cartes         (int|null $coursId): int — les cartes à revoir aujourd’hui
+ * @var list<array> $apresCours   les cours de cette session
+ * @var list<array> $dossiers     les dossiers de cours, pour en prendre un entier
  */
 $csrf = Session::jetonCsrf();
 $choisi = $coursChoisi ?? (int) ($dernierCours['id'] ?? 0);
@@ -41,27 +42,41 @@ $choisi = $coursChoisi ?? (int) ($dernierCours['id'] ?? 0);
   </div>
 <?php endif; ?>
 
-<?php if ($apres !== null): ?>
+<?php if ($apres !== null && $apresCours !== []): ?>
   <?php
   /*
    * Ce qui se joue juste après une session : on retient mieux en revoyant
    * plus tard qu'en relisant plus longtemps. C'est le moment de poser les
-   * prochaines révisions, et de passer aux cartes que ce cours réclame.
+   * prochaines révisions, et de passer aux cartes que ces cours réclament.
    */
-  $aRevoir = $cartes((int) $apres['cours_id']);
+  $aRevoir = 0;
+  foreach ($apresCours as $c) {
+    $aRevoir += Focus::cartesAReviser((int) Auth::id(), (int) $c['id']);
+  }
+  $plusieurs = count($apresCours) > 1;
   ?>
   <div class="carte" style="border-color:var(--accent);margin-bottom:1rem">
-    <h2 style="margin-top:0">Après « <?= e((string) $apres['cours_titre']) ?> »</h2>
-    <p class="discret">Vous venez d’y passer <?= e(Focus::duree((int) $apres['secondes'])) ?>.</p>
+    <h2 style="margin-top:0">
+      <?= $plusieurs
+          ? 'Après vos ' . count($apresCours) . ' cours'
+          : 'Après « ' . e((string) $apresCours[0]['titre']) . ' »' ?>
+    </h2>
+    <p class="discret">
+      Vous venez d’y passer <?= e(Focus::duree((int) $apres['secondes'])) ?><?php
+        ?><?= $plusieurs ? ' : ' . e(implode(', ', array_map(
+            static fn (array $c): string => (string) $c['titre'], $apresCours))) : '' ?>.
+    </p>
     <p class="actions">
       <form method="post" action="<?= url('focus/espacer') ?>" class="en-ligne">
         <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
-        <input type="hidden" name="cours_id" value="<?= (int) $apres['cours_id'] ?>">
-        <button class="bouton" type="submit">🔁 Le revoir demain, dans 3 jours, dans une semaine</button>
+        <input type="hidden" name="session_id" value="<?= (int) $apres['id'] ?>">
+        <button class="bouton" type="submit">
+          🔁 <?= $plusieurs ? 'Les revoir' : 'Le revoir' ?> demain, dans 3 jours, dans une semaine
+        </button>
       </form>
       <?php if ($aRevoir > 0): ?>
         <a class="bouton bouton--secondaire"
-           href="<?= url('cartes/seance', ['cours' => (int) $apres['cours_id']]) ?>">
+           href="<?= url('cartes/seance', $plusieurs ? [] : ['cours' => (int) $apresCours[0]['id']]) ?>">
           🃏 <?= $aRevoir ?> carte<?= $aRevoir > 1 ? 's' : '' ?> à revoir
         </a>
       <?php endif; ?>
@@ -78,18 +93,72 @@ $choisi = $coursChoisi ?? (int) ($dernierCours['id'] ?? 0);
       <form method="post" action="<?= url('focus/demarrer') ?>">
         <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
 
+        <?php
+        /*
+         * On révise rarement un seul cours : on coche ceux qu'on veut, ou
+         * l'on prend un dossier entier — ses sous-dossiers avec lui. Rien de
+         * coché vaut « sans cours précis », et le minuteur tourne quand même.
+         */
+        ?>
         <div class="champ">
-          <label for="cours_id">Ce que je révise</label>
-          <select id="cours_id" name="cours_id">
-            <option value="">Sans cours précis</option>
+          <span class="legende">Ce que je révise</span>
+          <label class="discussions-recherche">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false">
+              <circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>
+            </svg>
+            <span class="sr-only">Rechercher un de mes cours</span>
+            <input type="search" placeholder="Rechercher un cours" autocomplete="off"
+                   data-filtre-liste="[data-liste-focus-cours]">
+          </label>
+          <p style="margin:.5rem 0 0">
+            <button class="bouton bouton--discret bouton--petit" type="button"
+                    data-cocher-tout="[data-liste-focus-cours]">Tout cocher, ou décocher</button>
+          </p>
+          <ul class="groupe-choix__liste partage-liste focus-choix" data-liste-focus-cours>
             <?php foreach ($cours as $c): ?>
-              <option value="<?= (int) $c['id'] ?>"<?= (int) $c['id'] === $choisi ? ' selected' : '' ?>>
-                <?= e((string) $c['titre']) ?><?= $c['matiere_nom'] !== null ? ' · ' . e((string) $c['matiere_nom']) : '' ?>
-              </option>
+              <li data-nom="<?= e(mb_strtolower((string) $c['titre'] . ' ' . (string) ($c['matiere_nom'] ?? '')
+                  . ' ' . (string) ($c['dossier_nom'] ?? ''))) ?>">
+                <label class="groupe-choix__ami">
+                  <input type="checkbox" name="cours[]" value="<?= (int) $c['id'] ?>"<?= (int) $c['id'] === $choisi ? ' checked' : '' ?>>
+                  <span aria-hidden="true">📘</span>
+                  <span class="partage-liste__nom">
+                    <?= e((string) $c['titre']) ?>
+                    <span class="discret">
+                      <?php if (($c['matiere_nom'] ?? null) !== null): ?>· <?= e((string) $c['matiere_nom']) ?><?php endif; ?>
+                      <?php if (($c['dossier_nom'] ?? null) !== null): ?>· <?= e((string) $c['dossier_nom']) ?><?php endif; ?>
+                    </span>
+                  </span>
+                </label>
+              </li>
             <?php endforeach; ?>
-          </select>
-          <span class="champ__aide">Sa fiche de révision s’ouvrira avec le minuteur.</span>
+          </ul>
+          <p class="discret" data-filtre-vide hidden style="margin:.4rem 0 0">Aucun cours ne porte ce nom.</p>
+          <span class="champ__aide">Leurs fiches de révision s’ouvriront avec le minuteur.
+            Sans rien cocher, la session compte quand même.</span>
         </div>
+
+        <?php if ($dossiers !== []): ?>
+          <details class="champ">
+            <summary class="legende" style="cursor:pointer">… ou des dossiers entiers</summary>
+            <ul class="groupe-choix__liste partage-liste focus-choix" style="margin-top:.5rem">
+              <?php foreach ($dossiers as $d): ?>
+                <li>
+                  <label class="groupe-choix__ami">
+                    <input type="checkbox" name="dossiers[]" value="<?= (int) $d['id'] ?>">
+                    <span aria-hidden="true"><?= e((string) ($d['icone'] ?: '📁')) ?></span>
+                    <span class="partage-liste__nom">
+                      <?= e((string) $d['nom']) ?>
+                      <span class="discret">· <?= (int) $d['nb_cours'] ?> cours</span>
+                    </span>
+                  </label>
+                </li>
+              <?php endforeach; ?>
+            </ul>
+            <span class="champ__aide">Un dossier prend ses cours et ceux de ses sous-dossiers,
+              jusqu’à cinquante en tout.</span>
+          </details>
+        <?php endif; ?>
 
         <div class="champ">
           <label for="sujet">Sur quoi, précisément <span class="discret">(facultatif)</span></label>

@@ -3826,3 +3826,4 @@ summary.cal-volet__groupe:focus-visible {
 .focus-matieres__barre > span { display: block; height: 100%; }
 .en-focus .nav, .en-focus .burger, .en-focus .haut-de-page { display: none; }
 .en-focus .marque { pointer-events: auto; }
+.focus-choix { max-height: 16rem; overflow: auto; }

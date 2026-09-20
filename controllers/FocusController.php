@@ -19,6 +19,7 @@ final class FocusController
         $userId = Auth::id();
 
         $bilan = Focus::bilan($userId);
+        $apres = Focus::sessionRecente($userId);
         Vue::afficher('focus/index', [
             'enCours'   => Focus::enCours($userId),
             'bilan'     => $bilan,
@@ -26,15 +27,21 @@ final class FocusController
             'avancement' => Focus::avancementObjectif($userId, (int) $bilan['semaine']),
             'dernieres' => Focus::dernieres($userId),
             'cours'     => Database::all(
-                'SELECT c.id, c.titre, m.nom AS matiere_nom
-                 FROM cours c LEFT JOIN matieres m ON m.id = c.matiere_id
-                 WHERE c.user_id = ? ORDER BY c.updated_at DESC LIMIT 200', [$userId]),
+                'SELECT c.id, c.titre, m.nom AS matiere_nom, d.nom AS dossier_nom
+                 FROM cours c
+                 LEFT JOIN matieres m ON m.id = c.matiere_id
+                 LEFT JOIN dossiers d ON d.id = c.dossier_id
+                 WHERE c.user_id = ? ORDER BY c.updated_at DESC LIMIT 300', [$userId]),
             'coursChoisi' => entier_ou_null($_GET['cours'] ?? null),
+            'dossiers'  => Database::all(
+                'SELECT d.id, d.nom, d.icone,
+                        (SELECT COUNT(*) FROM cours c WHERE c.dossier_id = d.id) AS nb_cours
+                 FROM dossiers d WHERE d.user_id = ? ORDER BY d.nom', [$userId]),
             'dernierCours' => Focus::dernierCours($userId),
             // Ce qu’on propose juste après une session : la revoir plus tard,
             // et les cartes que ce cours donne à revoir aujourd’hui.
-            'apres'     => Focus::sessionRecente($userId),
-            'cartes'    => static fn (?int $coursId): int => Focus::cartesAReviser($userId, $coursId),
+            'apres'     => $apres,
+            'apresCours' => $apres === null ? [] : Focus::coursDeLaSession((int) $apres['id']),
         ], 'Session de révision');
     }
 
@@ -51,17 +58,16 @@ final class FocusController
             redirect('focus/' . (int) $ouverte['id']);
         }
 
-        $coursId = entier_ou_null($_POST['cours_id'] ?? null);
-        if ($coursId !== null
-            && Database::valeur('SELECT id FROM cours WHERE id = ? AND user_id = ?', [$coursId, $userId]) === null) {
-            $coursId = null;
-        }
+        // Un cours, plusieurs, ou des dossiers entiers : tout se vaut ici.
+        $coursIds = Focus::coursChoisis($userId,
+            is_array($_POST['cours'] ?? null) ? $_POST['cours'] : [],
+            is_array($_POST['dossiers'] ?? null) ? $_POST['dossiers'] : []);
         $sujet = mb_substr(trim(post('sujet')), 0, 150) ?: null;
         $minutes = Focus::rythmeValide($_POST['minutes'] ?? null);
         // Le silence est le défaut : on s’isole pour ne pas être dérangé.
         $silence = ($_POST['ne_pas_deranger'] ?? '1') !== '0';
 
-        redirect('focus/' . Focus::demarrer($userId, $coursId, $sujet, $minutes, $silence));
+        redirect('focus/' . Focus::demarrer($userId, $coursIds, $sujet, $minutes, $silence));
     }
 
     /** L'écran de la session : le minuteur, et ce qu'on révise. */
@@ -88,6 +94,7 @@ final class FocusController
 
         Vue::afficher('focus/session', [
             'session' => $session,
+            'coursDeLaSession' => Focus::coursDeLaSession($id),
             'pause'   => Focus::RYTHMES[Focus::rythmeValide($session['minutes_voulues'])]['pause'],
         ], 'Session en cours');
     }
@@ -142,17 +149,24 @@ final class FocusController
         Session::verifierCsrf();
         $userId = Auth::id();
 
-        $coursId = entier_ou_null($_POST['cours_id'] ?? null);
-        if ($coursId === null
-            || Database::valeur('SELECT id FROM cours WHERE id = ? AND user_id = ?', [$coursId, $userId]) === null) {
+        // Tous les cours de la session, ou le seul qu’on nomme.
+        $sessionId = entier_ou_null($_POST['session_id'] ?? null);
+        $coursIds = $sessionId === null
+            ? array_filter([entier_ou_null($_POST['cours_id'] ?? null)])
+            : array_map(static fn (array $c): int => (int) $c['id'], Focus::coursDeLaSession($sessionId));
+        $coursIds = Focus::coursChoisis($userId, $coursIds, []);
+        if ($coursIds === []) {
             Session::flash('erreur', 'Ce cours est introuvable.');
             redirect('focus');
         }
 
-        $bilan = Focus::programmerRevisions($userId, $coursId);
-        Session::flash($bilan['posees'] === 0 ? 'erreur' : 'succes', $bilan['posees'] === 0
+        $posees = 0;
+        foreach ($coursIds as $coursId) {
+            $posees += Focus::programmerRevisions($userId, $coursId)['posees'];
+        }
+        Session::flash($posees === 0 ? 'erreur' : 'succes', $posees === 0
             ? 'Ces révisions sont déjà dans votre liste « ' . Focus::LISTE . ' ».'
-            : $bilan['posees'] . ' révision' . ($bilan['posees'] > 1 ? 's posées' : ' posée')
+            : $posees . ' révision' . ($posees > 1 ? 's posées' : ' posée')
               . ' dans « ' . Focus::LISTE . ' » : demain, dans 3 jours, dans une semaine.');
         redirect('focus');
     }

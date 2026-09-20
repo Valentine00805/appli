@@ -8,10 +8,10 @@
  *
  * @var array $session  la ligne de sessions_revision, avec le cours
  * @var int $pause      les minutes de pause du rythme choisi
+ * @var list<array> $coursDeLaSession  tous les cours de la session, le principal d’abord
  */
 $minutes = (int) $session['minutes_voulues'];
-$fiche = (string) ($session['fiche_revision'] ?? '');
-$contenu = (string) ($session['contenu'] ?? '');
+$coursDeLaSession = $coursDeLaSession ?? [];
 ?>
 <div class="focus" data-focus
      data-id="<?= (int) $session['id'] ?>"
@@ -22,7 +22,12 @@ $contenu = (string) ($session['contenu'] ?? '');
 
   <div class="focus__minuteur">
     <p class="focus__quoi">
-      <?php if ($session['cours_titre'] !== null): ?>
+      <?php if (count($coursDeLaSession) > 1): ?>
+        📘 <strong><?= count($coursDeLaSession) ?> cours</strong>
+        <span class="discret">· <?= e(implode(', ', array_map(
+            static fn (array $c): string => (string) $c['titre'], array_slice($coursDeLaSession, 0, 3)))) ?><?php
+          ?><?= count($coursDeLaSession) > 3 ? '…' : '' ?></span>
+      <?php elseif ($session['cours_titre'] !== null): ?>
         📘 <strong><?= e((string) $session['cours_titre']) ?></strong>
         <?php if ($session['matiere_nom'] !== null): ?><span class="discret"> · <?= e((string) $session['matiere_nom']) ?></span><?php endif; ?>
       <?php else: ?>
@@ -54,27 +59,57 @@ $contenu = (string) ($session['contenu'] ?? '');
     <?php endif; ?>
   </div>
 
-  <?php if (trim($fiche) !== '' || trim($contenu) !== ''): ?>
+  <?php if ($coursDeLaSession !== []): ?>
+    <?php
+    /*
+     * Ce qu'on révise, cours par cours : la fiche d'abord, le cours entier
+     * replié dessous. Le premier est ouvert — c'est par là qu'on commence —,
+     * les suivants attendent qu'on y vienne.
+     */
+    ?>
     <div class="focus__matiere">
-      <?php if (trim($fiche) !== ''): ?>
-        <h2>📝 Fiche de révision</h2>
-        <div class="texte-riche-affiche"><?= TexteRiche::versHtml($fiche) ?></div>
-      <?php endif; ?>
-      <?php if (trim($contenu) !== ''): ?>
-        <details<?= trim($fiche) === '' ? ' open' : '' ?> style="margin-top:1rem">
-          <summary><strong>📘 Le cours en entier</strong></summary>
-          <div class="texte-riche-affiche" style="margin-top:.6rem"><?= TexteRiche::versHtml($contenu) ?></div>
-        </details>
-      <?php endif; ?>
-      <?php if ($session['cours_id'] !== null): ?>
-        <p class="champ__aide" style="margin-top:1rem">
-          <a href="<?= url('revision/' . (int) $session['cours_id']) ?>">Ouvrir la fiche entière</a> —
-          la session continue de tourner ailleurs dans l’application.
-        </p>
-      <?php endif; ?>
+      <?php foreach ($coursDeLaSession as $rang => $c): ?>
+        <?php
+        $fiche = trim((string) ($c['fiche_revision'] ?? ''));
+        $contenu = trim((string) ($c['contenu'] ?? ''));
+        $seul = count($coursDeLaSession) === 1;
+        ?>
+        <section<?= $rang > 0 ? ' style="margin-top:1.6rem"' : '' ?>>
+          <h2 style="margin-bottom:.4rem">
+            📘 <?= e((string) $c['titre']) ?>
+            <?php if (($c['matiere_nom'] ?? null) !== null): ?>
+              <span class="discret" style="font-size:.9rem">· <?= e((string) $c['matiere_nom']) ?></span>
+            <?php endif; ?>
+          </h2>
+
+          <?php if ($fiche === '' && $contenu === ''): ?>
+            <p class="discret">Ce cours n’a encore ni contenu ni fiche de révision.</p>
+          <?php else: ?>
+            <?php if ($fiche !== ''): ?>
+              <?php if ($seul): ?>
+                <div class="texte-riche-affiche"><?= TexteRiche::versHtml($fiche) ?></div>
+              <?php else: ?>
+                <details<?= $rang === 0 ? ' open' : '' ?>>
+                  <summary><strong>📝 Sa fiche de révision</strong></summary>
+                  <div class="texte-riche-affiche" style="margin-top:.6rem"><?= TexteRiche::versHtml($fiche) ?></div>
+                </details>
+              <?php endif; ?>
+            <?php endif; ?>
+            <?php if ($contenu !== ''): ?>
+              <details<?= $fiche === '' && ($seul || $rang === 0) ? ' open' : '' ?> style="margin-top:.6rem">
+                <summary><strong>📘 Le cours en entier</strong></summary>
+                <div class="texte-riche-affiche" style="margin-top:.6rem"><?= TexteRiche::versHtml($contenu) ?></div>
+              </details>
+            <?php endif; ?>
+          <?php endif; ?>
+
+          <p class="champ__aide" style="margin-top:.6rem">
+            <a href="<?= url('revision/' . (int) $c['id']) ?>">Ouvrir sa fiche entière</a> —
+            la session continue de tourner ailleurs dans l’application.
+          </p>
+        </section>
+      <?php endforeach; ?>
     </div>
-  <?php elseif ($session['cours_id'] !== null): ?>
-    <p class="discret focus__matiere">Ce cours n’a encore ni contenu ni fiche de révision.</p>
   <?php endif; ?>
 
   <?php // Terminer demande le ressenti : trois boutons, et c'est tout. ?>

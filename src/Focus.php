@@ -36,17 +36,87 @@ final class Focus
         return isset(self::RYTHMES[$minutes]) ? $minutes : 25;
     }
 
-    /** Ouvre une session, et rend son identifiant. */
-    public static function demarrer(int $userId, ?int $coursId, ?string $sujet, int $minutes,
+    /**
+     * Ouvre une session, et rend son identifiant.
+     *
+     * Une session peut porter sur plusieurs cours : le premier est le cours
+     * principal — celui qu’on ouvre en arrivant —, et tous sont retenus.
+     *
+     * @param list<int> $coursIds
+     */
+    public static function demarrer(int $userId, array $coursIds, ?string $sujet, int $minutes,
                                      bool $nePasDeranger = true): int
     {
+        $coursIds = array_values(array_unique(array_map('intval', $coursIds)));
         Database::run(
             'INSERT INTO sessions_revision (user_id, cours_id, sujet, minutes_voulues, ne_pas_deranger, debut)
              VALUES (?, ?, ?, ?, ?, NOW())',
-            [$userId, $coursId, $sujet === null ? null : mb_substr($sujet, 0, 150), $minutes, $nePasDeranger ? 1 : 0]
+            [$userId, $coursIds[0] ?? null, $sujet === null ? null : mb_substr($sujet, 0, 150),
+             $minutes, $nePasDeranger ? 1 : 0]
         );
+        $id = Database::dernierId();
+        foreach ($coursIds as $coursId) {
+            Database::run('INSERT IGNORE INTO session_revision_cours (session_id, cours_id) VALUES (?, ?)',
+                [$id, $coursId]);
+        }
 
-        return Database::dernierId();
+        return $id;
+    }
+
+    /**
+     * Les cours d’une session, le principal d’abord.
+     *
+     * @return list<array>
+     */
+    public static function coursDeLaSession(int $sessionId): array
+    {
+        return Database::all(
+            'SELECT c.id, c.titre, c.contenu, c.fiche_revision, m.nom AS matiere_nom
+             FROM session_revision_cours s
+             JOIN cours c ON c.id = s.cours_id
+             LEFT JOIN matieres m ON m.id = c.matiere_id
+             JOIN sessions_revision r ON r.id = s.session_id
+             WHERE s.session_id = ?
+             ORDER BY (c.id = r.cours_id) DESC, c.titre',
+            [$sessionId]
+        );
+    }
+
+    /**
+     * Tous les cours d’un choix : ceux cochés, et ceux des dossiers retenus,
+     * sous-dossiers compris. Seuls les siens, et cinquante au plus — au-delà,
+     * ce n’est plus une session, c’est une bibliothèque.
+     *
+     * @param list<mixed> $coursIds
+     * @param list<mixed> $dossierIds
+     * @return list<int>
+     */
+    public static function coursChoisis(int $userId, array $coursIds, array $dossierIds): array
+    {
+        $voulus = array_map('intval', array_filter($coursIds, 'is_numeric'));
+
+        foreach (array_map('intval', array_filter($dossierIds, 'is_numeric')) as $dossierId) {
+            if (Database::valeur('SELECT id FROM dossiers WHERE id = ? AND user_id = ?', [$dossierId, $userId]) === null) {
+                continue;
+            }
+            $sous = DossiersController::avecDescendants($userId, $dossierId);
+            $voulus = array_merge($voulus, array_column(Database::all(
+                'SELECT id FROM cours WHERE user_id = ? AND dossier_id IN ('
+                . implode(',', array_fill(0, count($sous), '?')) . ')',
+                array_merge([$userId], $sous)), 'id'));
+        }
+
+        $voulus = array_values(array_unique(array_map('intval', $voulus)));
+        if ($voulus === []) {
+            return [];
+        }
+
+        // On ne garde que les siens : un identifiant glissé dans le formulaire
+        // n’ouvre pas le cours de quelqu’un d’autre.
+        return array_map('intval', array_column(Database::all(
+            'SELECT id FROM cours WHERE user_id = ? AND id IN ('
+            . implode(',', array_fill(0, count($voulus), '?')) . ') ORDER BY titre LIMIT 50',
+            array_merge([$userId], $voulus)), 'id'));
     }
 
     // --- L'objectif de la semaine ----------------------------------------------
@@ -281,11 +351,19 @@ final class Focus
                 'SELECT COUNT(*) FROM sessions_revision WHERE user_id = ? AND secondes >= ? AND debut >= ?',
                 [$userId, self::SECONDES_MIN, $lundi]),
             'serie'      => self::serie($userId),
+            /*
+             * Une session peut couvrir plusieurs cours : son temps se partage
+             * alors à parts égales entre eux. Tout mettre sur le premier
+             * donnerait une matière gonflée et une autre à zéro.
+             */
             'par_matiere' => Database::all(
                 'SELECT COALESCE(m.nom, "Sans matière") AS matiere, COALESCE(m.couleur, "#94a3b8") AS couleur,
-                        SUM(s.secondes) AS secondes
+                        ROUND(SUM(s.secondes / n.combien)) AS secondes
                  FROM sessions_revision s
-                 LEFT JOIN cours c ON c.id = s.cours_id
+                 JOIN (SELECT session_id, COUNT(*) AS combien FROM session_revision_cours GROUP BY session_id) n
+                      ON n.session_id = s.id
+                 JOIN session_revision_cours sc ON sc.session_id = s.id
+                 JOIN cours c ON c.id = sc.cours_id
                  LEFT JOIN matieres m ON m.id = c.matiere_id
                  WHERE s.user_id = ? AND s.secondes >= ? AND s.debut >= ?
                  GROUP BY matiere, couleur ORDER BY secondes DESC',
