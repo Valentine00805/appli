@@ -458,6 +458,8 @@ $routes = [
     ['POST', 'alternance/notes/{id}/supprimer',         [AlternanceController::class, 'supprimerNote']],
     ['POST', 'alternance/notes/{id}/epingler',          [AlternanceController::class, 'epinglerNote']],
     ['GET',  'alternance/rythme',                       [AlternanceController::class, 'rythme']],
+    ['GET',  'alternance/rythme/{jeton}.ics',            [AlternanceController::class, 'icsRythme']],
+    ['POST', 'alternance/rythme/lien',                  [AlternanceController::class, 'lienIcs']],
     ['POST', 'alternance/rythme',                       [AlternanceController::class, 'poserPeriode']],
     ['POST', 'alternance/rythme/{id}',                  [AlternanceController::class, 'modifierPeriode']],
     ['POST', 'alternance/rythme/{id}/supprimer',        [AlternanceController::class, 'supprimerPeriode']],

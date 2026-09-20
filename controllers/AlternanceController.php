@@ -240,10 +240,49 @@ final class AlternanceController
     {
         Auth::exiger();
         $userId = Auth::id();
+        $jeton = (string) (Database::valeur('SELECT jeton_ics FROM alternance_contrat WHERE user_id = ?', [$userId]) ?? '');
         $this->afficher('alternance/rythme', [
             'periodes' => Alternance::periodes($userId),
             'bilan'    => Alternance::bilan($userId),
+            // Le lien d'abonnement, s'il a été créé : on ne le fabrique pas tout seul.
+            'lienIcs'  => $jeton === '' ? '' : Alternance::adresseIcs($jeton),
         ], 'Rythme d’alternance', 'rythme');
+    }
+
+    /**
+     * Le rythme en iCalendar, par le lien d'abonnement : pas de session ici,
+     * c'est Outlook ou Google qui vient le relire, jeton en main.
+     */
+    public function icsRythme(string $jeton): void
+    {
+        header('X-Robots-Tag: noindex, nofollow');
+        $userId = Alternance::parJetonIcs($jeton);
+        if ($userId === null) {
+            http_response_code(404);
+            exit('Lien inconnu.');
+        }
+
+        $ics = Alternance::icsRythme($userId);
+        header('Content-Type: text/calendar; charset=utf-8');
+        header('Content-Length: ' . strlen($ics));
+        header('X-Content-Type-Options: nosniff');
+        header('Content-Disposition: inline; filename="alternance.ics"');
+        echo $ics;
+        exit;
+    }
+
+    /** Créer le lien d'abonnement, ou le renouveler pour couper l'ancien. */
+    public function lienIcs(): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $renouveler = Database::valeur('SELECT jeton_ics FROM alternance_contrat WHERE user_id = ?',
+            [Auth::id()]) !== null && ($_POST['renouveler'] ?? '') === '1';
+        Alternance::jetonIcs(Auth::id(), $renouveler);
+        Session::flash('succes', $renouveler
+            ? 'Nouveau lien : l’ancien ne fonctionne plus. Réabonnez vos agendas.'
+            : 'Lien d’abonnement créé.');
+        redirect('alternance/rythme');
     }
 
     public function poserPeriode(): void

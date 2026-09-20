@@ -306,6 +306,79 @@ final class Alternance
                 'part' => $total === 0 ? 0 : (int) round($faits / $total * 100)];
     }
 
+    // --- Le rythme dans un autre agenda ----------------------------------------
+
+    /**
+     * Le jeton du lien d'abonnement, créé au premier besoin. Le renouveler
+     * coupe l'ancien lien : c'est ce qu'on fait quand on l'a partagé de trop.
+     */
+    public static function jetonIcs(int $userId, bool $renouveler = false): string
+    {
+        $jeton = bin2hex(random_bytes(16));
+        Database::run(
+            'INSERT INTO alternance_contrat (user_id, jeton_ics) VALUES (?, ?)
+             ON DUPLICATE KEY UPDATE jeton_ics = ' . ($renouveler ? 'VALUES(jeton_ics)' : 'COALESCE(jeton_ics, VALUES(jeton_ics))'),
+            [$userId, $jeton]);
+
+        return (string) Database::valeur('SELECT jeton_ics FROM alternance_contrat WHERE user_id = ?', [$userId]);
+    }
+
+    /** L'adresse entière du lien d'abonnement : elle part dans un autre agenda. */
+    public static function adresseIcs(string $jeton): string
+    {
+        $site = Reinitialisation::adresseDuSite();
+        if ($site === null) {
+            $https = (string) ($_SERVER['HTTPS'] ?? '') !== '' && $_SERVER['HTTPS'] !== 'off';
+            $site = ($https ? 'https' : 'http') . '://' . (string) ($_SERVER['HTTP_HOST'] ?? 'localhost');
+        }
+
+        return $site . url('alternance/rythme/' . $jeton . '.ics');
+    }
+
+    /** À qui appartient ce lien d'abonnement ? */
+    public static function parJetonIcs(string $jeton): ?int
+    {
+        $userId = Database::valeur('SELECT user_id FROM alternance_contrat WHERE jeton_ics = ?', [$jeton]);
+
+        return $userId === null || $userId === false ? null : (int) $userId;
+    }
+
+    /**
+     * Le rythme en iCalendar : une journée entière par période, que l'agenda
+     * d'Outlook ou de Google relit tout seul. Les périodes déplacées suivent,
+     * puisque chacune garde son identifiant.
+     */
+    public static function icsRythme(int $userId): string
+    {
+        $echapper = static fn (string $t): string => str_replace(
+            ['\\', ';', ',', "\r\n", "\n", "\r"], ['\\\\', '\\;', '\\,', '\\n', '\\n', '\\n'], $t);
+
+        $lignes = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Mes Cours//Alternance//FR',
+            'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', 'X-WR-CALNAME:Alternance',
+            // Une demi-journée : le délai au bout duquel un agenda relit le lien.
+            'REFRESH-INTERVAL;VALUE=DURATION:PT12H', 'X-PUBLISHED-TTL:PT12H'];
+
+        foreach (self::periodes($userId) as $p) {
+            $lieu = self::LIEUX[$p['lieu']];
+            $lignes[] = 'BEGIN:VEVENT';
+            $lignes[] = 'UID:alternance-periode-' . (int) $p['id'] . '@mes-cours';
+            $lignes[] = 'DTSTAMP:' . gmdate('Ymd\THis\Z');
+            $lignes[] = 'DTSTART;VALUE=DATE:' . str_replace('-', '', (string) $p['debut']);
+            // Une journée entière finit le lendemain, par convention.
+            $lignes[] = 'DTEND;VALUE=DATE:'
+                . (new DateTimeImmutable((string) $p['fin']))->modify('+1 day')->format('Ymd');
+            $lignes[] = 'SUMMARY:' . $echapper($lieu['icone'] . ' ' . $lieu['nom']);
+            if (trim((string) $p['note']) !== '') {
+                $lignes[] = 'DESCRIPTION:' . $echapper((string) $p['note']);
+            }
+            $lignes[] = 'TRANSP:TRANSPARENT';
+            $lignes[] = 'END:VEVENT';
+        }
+        $lignes[] = 'END:VCALENDAR';
+
+        return implode("\r\n", $lignes) . "\r\n";
+    }
+
     // --- Le journal ------------------------------------------------------------
 
     /** Les compétences tapées à la suite, séparées par des virgules ou des retours. */

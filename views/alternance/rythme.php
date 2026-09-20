@@ -4,6 +4,7 @@
  *
  * @var array $periodes
  * @var array $bilan
+ * @var string $lienIcs  le lien d’abonnement au rythme, ou une chaîne vide
  * @var string $onglet
  * @var array|null $situation
  */
@@ -135,6 +136,35 @@ $ligne = static function (array $p) use ($csrf, $choixLieu, $auj): void {
         <p class="champ__aide" style="margin-top:.6rem">Une période posée sur des jours déjà prévus les remplace :
           pour une journée d’école au milieu d’une semaine en entreprise, posez-la simplement par-dessus.</p>
       </form>
+    </section>
+
+    <section class="carte">
+      <h2>Dans un autre agenda</h2>
+      <?php if ($lienIcs === ''): ?>
+        <p class="discret" style="margin-top:0">Un lien d’abonnement met votre rythme dans Outlook,
+          Google Agenda ou celui de votre téléphone. Ils le relisent tout seuls : une période
+          que vous changez ici les suit.</p>
+        <form method="post" action="<?= url('alternance/rythme/lien') ?>">
+          <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+          <button class="bouton bouton--secondaire bouton--bloc" type="submit">📆 Créer le lien d’abonnement</button>
+        </form>
+      <?php else: ?>
+        <div class="partage-lien" data-partage-lien>
+          <label class="sr-only" for="lien-alternance">Lien d’abonnement au rythme</label>
+          <input type="text" id="lien-alternance" readonly value="<?= e($lienIcs) ?>" data-partage-adresse>
+          <button class="bouton" type="button" data-partage-copier>Copier</button>
+        </div>
+        <p class="champ__aide" data-partage-etat aria-live="polite">
+          Dans Outlook ou Google Agenda : « Ajouter un calendrier » puis « À partir du Web ».
+          Qui a ce lien voit votre rythme : ne le donnez qu’à qui de droit.
+        </p>
+        <form method="post" action="<?= url('alternance/rythme/lien') ?>"
+              data-confirmation="Renouveler le lien ? L’ancien cessera de fonctionner et il faudra réabonner vos agendas.">
+          <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+          <input type="hidden" name="renouveler" value="1">
+          <button class="bouton bouton--discret bouton--petit" type="submit">Renouveler le lien</button>
+        </form>
+      <?php endif; ?>
     </section>
 
     <?php if ($periodes !== []): ?>
