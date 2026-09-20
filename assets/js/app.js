@@ -593,6 +593,183 @@
   };
   initialiserHorsLigne(document);
 
+  /*
+   * Le minuteur d'une session de révision.
+   *
+   * Il compte le temps réellement travaillé : une pause l'arrête, et seul ce
+   * qui a tourné est envoyé au serveur à la fin. Le compte vit dans le
+   * navigateur, mais il est aussi écrit à mesure dans le stockage local : un
+   * onglet fermé par mégarde ne fait pas perdre la session, et partir en
+   * cours de route l'envoie quand même (« sendBeacon »).
+   */
+  var initialiserFocus = function (racine) {
+    var bloc = racine.querySelector('[data-focus]');
+    if (!bloc || bloc.hasAttribute('data-focus-lance')) { return; }
+    bloc.setAttribute('data-focus-lance', '');
+    // Le menu s\u2019efface : pendant une session, il n\u2019y a rien d\u2019autre à faire.
+    document.body.classList.add('en-focus');
+
+    var travail = parseInt(bloc.getAttribute('data-minutes'), 10) * 60;
+    var repos = parseInt(bloc.getAttribute('data-pause'), 10) * 60;
+    var cle = 'mesCoursFocus:' + bloc.getAttribute('data-id');
+
+    var temps = bloc.querySelector('[data-focus-temps]');
+    var trait = bloc.querySelector('[data-focus-trait]');
+    var phase = bloc.querySelector('[data-focus-phase]');
+    var bascule = bloc.querySelector('[data-focus-bascule]');
+    var compte = bloc.querySelector('[data-focus-compte]');
+    var bilan = bloc.querySelector('[data-focus-bilan]');
+
+    var etat = { tourne: false, enPause: false, reste: travail, travaille: 0, pauses: 0 };
+    try {
+      var garde = JSON.parse(localStorage.getItem(cle) || 'null');
+      if (garde && typeof garde.travaille === 'number') { etat = garde; etat.tourne = false; }
+    } catch (e) {}
+
+    var longueur = 2 * Math.PI * 54;
+    if (trait) { trait.style.strokeDasharray = longueur.toFixed(1); }
+
+    var enMinutes = function (secondes) {
+      var m = Math.floor(secondes / 60);
+      var s = secondes % 60;
+      return m + ':' + (s < 10 ? '0' : '') + s;
+    };
+
+    var afficher = function () {
+      var total = etat.enPause ? repos : travail;
+      if (temps) { temps.textContent = enMinutes(Math.max(0, etat.reste)); }
+      if (trait) {
+        trait.style.strokeDashoffset = (longueur * (1 - Math.max(0, etat.reste) / total)).toFixed(1);
+      }
+      if (phase) {
+        phase.textContent = !etat.tourne
+          ? (etat.travaille > 0 ? 'En pause — reprenez quand vous voulez' : 'Prêt à commencer')
+          : (etat.enPause ? '☕ Pause' : '🎯 Au travail');
+      }
+      if (bascule) { bascule.textContent = etat.tourne ? '⏸ Pause' : '▶️ Démarrer'; }
+      if (compte) {
+        compte.textContent = 'Temps travaillé : ' + Math.floor(etat.travaille / 60) + ' min · '
+          + (etat.pauses === 0 ? 'aucune pause' : etat.pauses + (etat.pauses > 1 ? ' pauses' : ' pause'));
+      }
+      document.title = (etat.tourne ? enMinutes(Math.max(0, etat.reste)) + ' · ' : '') + 'Session · Mes Cours';
+      try { localStorage.setItem(cle, JSON.stringify(etat)); } catch (e) {}
+    };
+
+    // La fin d'une phase se dit, même si l'on regarde ailleurs.
+    var prevenir = function (titre, corps) {
+      try {
+        if ('Notification' in window && Notification.permission === 'granted') {
+          new Notification(titre, { body: corps, tag: 'focus', lang: 'fr' });
+        }
+      } catch (e) {}
+      try {
+        var son = new AudioContext();
+        var note = son.createOscillator();
+        var volume = son.createGain();
+        note.connect(volume); volume.connect(son.destination);
+        note.frequency.value = etat.enPause ? 660 : 440;
+        volume.gain.setValueAtTime(0.0001, son.currentTime);
+        volume.gain.exponentialRampToValueAtTime(0.2, son.currentTime + 0.02);
+        volume.gain.exponentialRampToValueAtTime(0.0001, son.currentTime + 0.9);
+        note.start(); note.stop(son.currentTime + 0.95);
+      } catch (e) { /* le son n'est pas indispensable */ }
+    };
+
+    var minuterie = null;
+    var battre = function () {
+      if (!etat.tourne) { return; }
+      etat.reste--;
+      if (!etat.enPause) { etat.travaille++; }
+
+      if (etat.reste <= 0) {
+        if (etat.enPause) {
+          etat.enPause = false;
+          etat.reste = travail;
+          prevenir('🎯 On reprend', 'La pause est finie : au travail.');
+        } else {
+          etat.enPause = true;
+          etat.pauses++;
+          etat.reste = repos;
+          prevenir('☕ Pause', Math.floor(etat.travaille / 60) + ' min travaillées. Levez les yeux.');
+        }
+      }
+      afficher();
+    };
+
+    var lancer = function () {
+      etat.tourne = true;
+      clearInterval(minuterie);
+      minuterie = setInterval(battre, 1000);
+      // Une notification à la fin d'une phase : on demande une fois, au départ.
+      try {
+        if ('Notification' in window && Notification.permission === 'default') { Notification.requestPermission(); }
+      } catch (e) {}
+      afficher();
+    };
+    var arreter = function () {
+      etat.tourne = false;
+      clearInterval(minuterie);
+      afficher();
+    };
+
+    if (bascule) {
+      bascule.addEventListener('click', function () { etat.tourne ? arreter() : lancer(); });
+    }
+
+    var pleinEcran = bloc.querySelector('[data-focus-plein-ecran]');
+    if (pleinEcran) {
+      pleinEcran.addEventListener('click', function () {
+        if (document.fullscreenElement) { document.exitFullscreen(); return; }
+        if (bloc.requestFullscreen) { bloc.requestFullscreen().catch(function () {}); }
+      });
+      document.addEventListener('fullscreenchange', function () {
+        pleinEcran.textContent = document.fullscreenElement ? '⛶ Quitter le plein écran' : '⛶ Plein écran';
+      });
+    }
+
+    // Terminer : on arrête tout, on montre le compte, et on demande le ressenti.
+    var fin = bloc.querySelector('[data-focus-fin]');
+    var champSecondes = bloc.querySelector('[data-focus-secondes]');
+    var champPauses = bloc.querySelector('[data-focus-pauses]');
+    var texteBilan = bloc.querySelector('[data-focus-bilan-texte]');
+    if (fin && bilan) {
+      fin.addEventListener('click', function () {
+        arreter();
+        if (champSecondes) { champSecondes.value = etat.travaille; }
+        if (champPauses) { champPauses.value = etat.pauses; }
+        if (texteBilan) {
+          texteBilan.textContent = 'Temps travaillé : ' + Math.floor(etat.travaille / 60) + ' min, '
+            + (etat.pauses === 0 ? 'sans pause.' : etat.pauses + (etat.pauses > 1 ? ' pauses.' : ' pause.'));
+        }
+        if (document.fullscreenElement) { document.exitFullscreen(); }
+        if (bilan.showModal) { bilan.showModal(); } else { bloc.querySelector('[data-focus-formulaire]').submit(); }
+      });
+      var continuer = bloc.querySelector('[data-focus-continuer]');
+      if (continuer) { continuer.addEventListener('click', function () { bilan.close(); }); }
+      var formulaire = bloc.querySelector('[data-focus-formulaire]');
+      if (formulaire) {
+        formulaire.addEventListener('submit', function () { try { localStorage.removeItem(cle); } catch (e) {} });
+      }
+    }
+
+    /*
+     * Partir sans rien dire ne doit pas effacer ce qui a été travaillé : on
+     * l'envoie au vol. « sendBeacon » part même pendant que la page se ferme.
+     */
+    window.addEventListener('pagehide', function () {
+      if (etat.travaille < 60 || !navigator.sendBeacon) { return; }
+      var donnees = new FormData();
+      donnees.append('_csrf', bloc.getAttribute('data-csrf'));
+      donnees.append('secondes', etat.travaille);
+      donnees.append('pauses', etat.pauses);
+      navigator.sendBeacon(bloc.getAttribute('data-terminer'), donnees);
+      try { localStorage.removeItem(cle); } catch (e) {}
+    });
+
+    afficher();
+  };
+  initialiserFocus(document);
+
   // Le service worker : il garde l'application, et reçoit les notifications.
   if ('serviceWorker' in navigator && window.isSecureContext) {
     var adresseSW = document.body.getAttribute('data-service-worker');

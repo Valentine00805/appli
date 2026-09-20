@@ -72,6 +72,8 @@ $compteurs = static function (array $c): array {
       <?php endif; ?>
     </p>
   </div>
+  <?php // Réviser pour de bon : une session minutée, sur un écran sans rien d\u2019autre. ?>
+  <a class="bouton" href="<?= url('focus') ?>">🎯 Démarrer une session</a>
 </div>
 
 <form class="filtres" method="get" action="<?= url('revision') ?>" data-auto-envoi>

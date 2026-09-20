@@ -57,6 +57,8 @@ final class TableauBordController
             // L'alternance, si l'on en fait une : où l'on est, ce qui reste à
             // écrire, la prochaine date du contrat.
             'alternance' => self::resumeAlternance($userId),
+            // Le temps de révision du jour : une ligne, sous la date.
+            'focus' => Focus::bilan($userId),
         ], 'Accueil');
     }
 

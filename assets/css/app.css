@@ -3792,3 +3792,37 @@ summary.cal-volet__groupe:focus-visible {
 }
 .hors-ligne-bandeau--attente { background: var(--info); color: #fff; }
 @media print { .hors-ligne-bandeau { display: none; } }
+
+/* --- Le mode focus : une session de révision minutée ----------------------- */
+.focus { display: grid; gap: 1.2rem; }
+.focus:fullscreen { background: var(--fond); padding: 2rem; overflow: auto; align-content: start; }
+.focus__minuteur { text-align: center; }
+.focus__quoi { margin: 0 0 1rem; font-size: 1.05rem; }
+.focus__anneau { position: relative; width: min(16rem, 62vw); margin: 0 auto; }
+.focus__anneau svg { width: 100%; height: auto; transform: rotate(-90deg); }
+.focus__piste { fill: none; stroke: var(--fond-doux); stroke-width: 9; }
+.focus__trait {
+  fill: none; stroke: var(--accent); stroke-width: 9; stroke-linecap: round;
+  transition: stroke-dashoffset .9s linear;
+}
+.focus__temps {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  font-size: clamp(2rem, 9vw, 3rem); font-weight: 700; font-variant-numeric: tabular-nums;
+}
+.focus__phase { margin: .8rem 0 0; font-weight: 600; }
+.focus__boutons { justify-content: center; flex-wrap: wrap; }
+.focus__matiere { max-width: 46rem; margin: 0 auto; width: 100%; }
+.focus__bilan { border: none; border-radius: var(--rayon); padding: 1.4rem; max-width: 26rem; box-shadow: var(--ombre); }
+.focus__bilan::backdrop { background: rgb(15 20 40 / 55%); }
+.focus__ressentis { display: grid; gap: .4rem; margin: .8rem 0; }
+.focus-chiffre { margin: 0; font-size: 1.4rem; }
+.focus-liste { list-style: none; margin: 0; padding: 0; display: grid; gap: .6rem; }
+.focus-liste li { display: flex; align-items: center; gap: .7rem; }
+.focus-liste__barre { width: 4px; align-self: stretch; border-radius: 999px; flex: none; }
+.focus-matieres { list-style: none; margin: 0; padding: 0; display: grid; gap: .5rem; }
+.focus-matieres li { display: grid; grid-template-columns: minmax(6rem, 1fr) 2fr auto; gap: .6rem; align-items: center; }
+.focus-matieres__nom { overflow-wrap: anywhere; }
+.focus-matieres__barre { height: 8px; border-radius: 999px; background: var(--fond-doux); overflow: hidden; }
+.focus-matieres__barre > span { display: block; height: 100%; }
+.en-focus .nav, .en-focus .burger, .en-focus .haut-de-page { display: none; }
+.en-focus .marque { pointer-events: auto; }

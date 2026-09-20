@@ -4,6 +4,7 @@
  * @var array $planning  la journée d'aujourd'hui, disposée par PlanningJour
  * @var array $examens, $taches, $stats
  * @var array|null $alternance  le résumé de l’alternance, ou null si l’on n’en fait pas
+ * @var array $focus  le temps de révision d’aujourd’hui, et la série de jours
  */
 ?>
 
@@ -12,9 +13,12 @@
     <?php // Par son pseudo ; à défaut, par son prénom. ?>
     <h1>Bonjour <?= e((string) (Auth::utilisateur()['pseudo'] ?? '') !== ''
         ? (string) Auth::utilisateur()['pseudo'] : explode(' ', (string) Auth::utilisateur()['nom'])[0]) ?> 👋</h1>
-    <p>Nous sommes le <?= e(date_fr($aujourdhui->format('Y-m-d H:i:s'), false)) ?>.</p>
+    <p>Nous sommes le <?= e(date_fr($aujourdhui->format('Y-m-d H:i:s'), false)) ?>.<?php if ($focus['aujourdhui'] > 0): ?>
+      <span class="discret">· <?= e(Focus::duree((int) $focus['aujourdhui'])) ?> de révision aujourd’hui<?php if ($focus['serie'] > 1): ?>, <?= (int) $focus['serie'] ?> jours d’affilée 🔥<?php endif; ?>.</span><?php endif; ?></p>
   </div>
   <div class="actions">
+    <?php // Réviser d’un clic : la session reprend le dernier cours révisé. ?>
+    <a class="bouton bouton--secondaire" href="<?= url('focus') ?>">🎯 Réviser 25 min</a>
     <a class="bouton bouton--secondaire" href="<?= url('cours/nouveau') ?>" data-fenetre>+ Nouveau cours</a>
     <a class="bouton" href="<?= url('evenements/nouveau') ?>">+ Nouvel évènement</a>
   </div>

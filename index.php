@@ -50,6 +50,7 @@ require __DIR__ . '/src/Partages.php';
 require __DIR__ . '/src/Difference.php';
 require __DIR__ . '/src/PlanningJour.php';
 require __DIR__ . '/src/Alternance.php';
+require __DIR__ . '/src/Focus.php';
 require __DIR__ . '/src/PlanningPdf.php';
 require __DIR__ . '/src/Fournisseur.php';
 require __DIR__ . '/src/FournisseurMicrosoft.php';
@@ -86,6 +87,7 @@ require __DIR__ . '/controllers/TableauBordController.php';
 require __DIR__ . '/controllers/CartesController.php';
 require __DIR__ . '/controllers/NotificationsController.php';
 require __DIR__ . '/controllers/HorsLigneController.php';
+require __DIR__ . '/controllers/FocusController.php';
 
 /*
  * Réglages par défaut : ceux d'une installation WAMP ordinaire. Ils vivent ici
@@ -335,6 +337,11 @@ $routes = [
 
     ['GET',  'cours',                     [CoursController::class, 'index']],
     ['GET',  'revision',                  [CoursController::class, 'revisions']],
+    ['GET',  'focus',                     [FocusController::class, 'index']],
+    ['POST', 'focus/demarrer',            [FocusController::class, 'demarrer']],
+    ['GET',  'focus/{id}',                [FocusController::class, 'session']],
+    ['POST', 'focus/{id}/terminer',       [FocusController::class, 'terminer']],
+    ['POST', 'focus/{id}/abandonner',     [FocusController::class, 'abandonner']],
     ['GET',  'cours/nouveau',             [CoursController::class, 'formulaire']],
     ['POST', 'cours/nouveau',             [CoursController::class, 'creer']],
     ['POST', 'cours/ranger',              [CoursController::class, 'ranger']],
