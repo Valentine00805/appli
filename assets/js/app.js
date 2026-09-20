@@ -375,6 +375,234 @@
     }
   };
   /*
+   * L'application hors connexion.
+   *
+   * Le service worker garde la coquille et les pages qu'on ouvre : sans
+   * réseau, on relit ce qu'on a déjà vu. Ici, côté page, trois choses :
+   * l'installer, dire qu'on est hors connexion, et retenir ce qu'on envoie
+   * quand ça ne part pas — un enregistrement perdu parce que le train entre
+   * dans un tunnel, c'est une note à réécrire.
+   */
+  var FILE = 'mesCoursFile';
+
+  var lireFile = function () {
+    try { return JSON.parse(localStorage.getItem(FILE) || '[]'); } catch (e) { return []; }
+  };
+  var ecrireFile = function (file) {
+    try { localStorage.setItem(FILE, JSON.stringify(file)); } catch (e) {}
+    majBandeau();
+  };
+
+  var bandeau = null;
+  var majBandeau = function () {
+    var enAttente = lireFile().length;
+    var horsLigne = navigator.onLine === false;
+    if (!horsLigne && enAttente === 0) {
+      if (bandeau) { bandeau.remove(); bandeau = null; }
+      return;
+    }
+    if (!bandeau) {
+      bandeau = document.createElement('div');
+      bandeau.className = 'hors-ligne-bandeau';
+      bandeau.setAttribute('role', 'status');
+      document.body.appendChild(bandeau);
+    }
+    bandeau.classList.toggle('hors-ligne-bandeau--attente', !horsLigne && enAttente > 0);
+    bandeau.textContent = (horsLigne ? '🔌 Hors connexion — vous relisez ce qui est gardé ici. ' : '🔄 ')
+      + (enAttente > 0
+        ? enAttente + (enAttente > 1 ? ' envois en attente' : ' envoi en attente')
+          + (horsLigne ? ', ils repartiront tout seuls.' : ' : envoi en cours…')
+        : 'Ce que vous écrivez sera gardé et repartira au retour du réseau.');
+  };
+
+  /** Un envoi qui n'est pas parti : gardé tel quel, pour plus tard. */
+  var mettreEnFile = function (adresse, champs, libelle) {
+    var file = lireFile();
+    file.push({ adresse: adresse, champs: champs, libelle: libelle || '', quand: Date.now() });
+    // Une file sans fin ne se videra jamais : on garde les vingt derniers.
+    ecrireFile(file.slice(-20));
+  };
+
+  /**
+   * On rejoue la file dans l'ordre où elle a été écrite : deux modifications
+   * de la même note doivent s'appliquer dans le bon sens. Un envoi refusé par
+   * le serveur (et non par le réseau) est jeté : le rejouer indéfiniment ne
+   * le ferait pas passer.
+   */
+  var viderLaFile = function () {
+    var file = lireFile();
+    if (file === [] || file.length === 0 || !window.fetch || navigator.onLine === false) { return; }
+    majBandeau();
+
+    var suivant = function () {
+      var reste = lireFile();
+      if (reste.length === 0) { majBandeau(); return; }
+      var envoi = reste[0];
+      var corps = new FormData();
+      Object.keys(envoi.champs).forEach(function (nom) { corps.append(nom, envoi.champs[nom]); });
+
+      fetch(envoi.adresse, { method: 'POST', body: corps, credentials: 'same-origin' })
+        .then(function (reponse) {
+          ecrireFile(lireFile().slice(1));
+          // Parti pour de bon : le brouillon gardé avec lui n\u2019a plus lieu d\u2019être.
+          if (envoi.libelle) { try { localStorage.removeItem('mesCoursBrouillon:' + envoi.libelle); } catch (e) {} }
+          if (!reponse.ok) { throw new Error('refus'); }
+          suivant();
+        })
+        .catch(function (souci) {
+          // Le réseau a lâché de nouveau : on garde la suite pour la prochaine fois.
+          if (souci && souci.message === 'refus') { suivant(); return; }
+          majBandeau();
+        });
+    };
+    suivant();
+  };
+
+  /** Un message en haut du contenu, comme ceux du serveur. */
+  var direEnHaut = function (texte, type) {
+    var contenu = document.getElementById('contenu');
+    if (!contenu) { window.alert(texte); return; }
+    var bloc = contenu.querySelector(':scope > .flashs');
+    if (!bloc) {
+      bloc = document.createElement('div');
+      bloc.className = 'flashs';
+      contenu.insertBefore(bloc, contenu.firstChild);
+    }
+    var message = document.createElement('div');
+    message.className = 'flash flash--' + (type || 'succes');
+    message.setAttribute('role', 'status');
+    message.textContent = texte;
+    bloc.appendChild(message);
+    message.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  };
+
+  /*
+   * Hors connexion, un envoi ne part pas : on le garde plutôt que de le
+   * perdre. En capture, avant tous les autres : la fenêtre et les brouillons
+   * ont leur propre envoi, mais aucun ne peut rien sans réseau.
+   *
+   * Les fichiers font exception : on ne garde pas un téléversement dans le
+   * navigateur, et le dire vaut mieux que de faire semblant.
+   */
+  document.addEventListener('submit', function (evenement) {
+    if (navigator.onLine !== false || evenement.defaultPrevented) { return; }
+    var formulaire = evenement.target;
+    if (!formulaire.matches || !formulaire.matches('form')
+        || (formulaire.method || 'get').toLowerCase() !== 'post') { return; }
+
+    evenement.preventDefault();
+    evenement.stopPropagation();
+
+    if ((formulaire.enctype || '').indexOf('multipart') === 0) {
+      direEnHaut('Hors connexion : un fichier ne peut pas être envoyé maintenant. Réessayez au retour du réseau.', 'erreur');
+      return;
+    }
+
+    var champs = {};
+    var donnees = new FormData(formulaire);
+    var lisible = true;
+    donnees.forEach(function (valeur, nom) {
+      if (typeof valeur === 'string') { champs[nom] = valeur; } else { lisible = false; }
+    });
+    if (!lisible) {
+      direEnHaut('Hors connexion : cet envoi contient un fichier, il faudra le refaire avec le réseau.', 'erreur');
+      return;
+    }
+
+    mettreEnFile(formulaire.action, champs, formulaire.getAttribute('data-brouillon') || '');
+    direEnHaut('Hors connexion : c’est gardé sur cet appareil, et cela repartira tout seul dès le retour du réseau.', 'succes');
+  }, true);
+
+  window.addEventListener('online', function () { majBandeau(); viderLaFile(); });
+  window.addEventListener('offline', majBandeau);
+  majBandeau();
+  viderLaFile();
+
+  /*
+   * Le réglage « Hors connexion » de « Mon compte » : ce qui est gardé, de
+   * quoi le préparer d'avance, et de quoi tout jeter. C'est le service worker
+   * qui tient le cache : on lui parle, et il répond.
+   */
+  var initialiserHorsLigne = function (racine) {
+    var carte = racine.querySelector('[data-hors-ligne]');
+    if (!carte || carte.hasAttribute('data-hors-ligne-lance')) { return; }
+    carte.setAttribute('data-hors-ligne-lance', '');
+
+    var etat = carte.querySelector('[data-hors-ligne-etat]');
+    var garder = carte.querySelector('[data-hors-ligne-garder]');
+    var oublier = carte.querySelector('[data-hors-ligne-oublier]');
+    var dire = function (texte) { if (etat) { etat.textContent = texte; } };
+
+    if (!('serviceWorker' in navigator) || !window.isSecureContext) {
+      dire('Ce navigateur ne sait pas garder l’application hors connexion. '
+        + 'Sur un site en https, ou en localhost, il le saurait.');
+      return;
+    }
+
+    var parler = function (message) {
+      return navigator.serviceWorker.ready.then(function (enregistrement) {
+        if (!enregistrement.active) { throw new Error('pas prêt'); }
+        enregistrement.active.postMessage(message);
+      });
+    };
+    navigator.serviceWorker.addEventListener('message', function (evenement) {
+      var reponse = evenement.data || {};
+      if (reponse.quoi === 'combien') {
+        dire(reponse.pages > 0
+          ? reponse.pages + (reponse.pages > 1 ? ' pages gardées' : ' page gardée') + ' sur cet appareil.'
+          : 'Rien de gardé pour l’instant.');
+        if (oublier) { oublier.hidden = reponse.pages === 0; }
+      }
+      if (reponse.quoi === 'gardees') {
+        dire('C’est prêt : ces pages s’ouvriront sans réseau.');
+        if (garder) { garder.disabled = false; garder.textContent = 'Préparer mes pages'; }
+        parler({ quoi: 'combien' });
+      }
+      if (reponse.quoi === 'oubliees') {
+        dire('Rien de gardé pour l’instant.');
+        if (oublier) { oublier.hidden = true; }
+      }
+    });
+
+    parler({ quoi: 'combien' }).then(function () {
+      if (garder) { garder.hidden = false; }
+    }).catch(function () {
+      dire('L’application n’est pas encore installée sur cet appareil : rechargez la page une fois.');
+    });
+
+    if (garder) {
+      garder.addEventListener('click', function () {
+        var pages = [];
+        try { pages = JSON.parse(carte.getAttribute('data-pages') || '[]'); } catch (e) {}
+        garder.disabled = true;
+        garder.textContent = 'Préparation…';
+        dire('Préparation en cours : les pages sont chargées une à une.');
+        parler({ quoi: 'garder', pages: pages }).catch(function () {
+          garder.disabled = false;
+          garder.textContent = 'Préparer mes pages';
+          dire('La préparation n’a pas abouti : réessayez avec du réseau.');
+        });
+      });
+    }
+    if (oublier) {
+      oublier.addEventListener('click', function () {
+        if (!window.confirm('Vider ce qui est gardé ici ? Sans réseau, plus rien ne s’ouvrira tant que vous n’aurez pas rouvert les pages.')) { return; }
+        parler({ quoi: 'oublier' });
+      });
+    }
+  };
+  initialiserHorsLigne(document);
+
+  // Le service worker : il garde l'application, et reçoit les notifications.
+  if ('serviceWorker' in navigator && window.isSecureContext) {
+    var adresseSW = document.body.getAttribute('data-service-worker');
+    if (adresseSW) {
+      navigator.serviceWorker.register(adresseSW, { scope: document.body.getAttribute('data-portee') || './' })
+        .catch(function () { /* refusé : l'application marche, sans le hors-ligne */ });
+    }
+  }
+
+  /*
    * Ce qu'on écrit ne se perd pas, même sans réseau.
    *
    * Une note, une semaine de journal : le texte est gardé dans le navigateur

@@ -19,10 +19,14 @@ $actif = static function (string $prefixe) use ($route): string {
 <meta name="theme-color" content="#4f46e5">
 <title><?= e($titrePage) ?></title>
 <link rel="stylesheet" href="<?= asset('assets/css/app.css') ?>">
+<?php // Installable, et gardée pour le hors-ligne. ?>
+<link rel="manifest" href="<?= url('manifeste.webmanifest') ?>">
+<link rel="apple-touch-icon" href="<?= url('icone-192.png') ?>">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>">
 </head>
 <?php // Le réglage « transcription de la voix » vaut aussi pour la dictée dans l’éditeur. ?>
-<body data-transcription="<?= Auth::connecte() ? (int) (Auth::utilisateur()['transcription_vocale'] ?? 1) : 1 ?>">
+<body data-transcription="<?= Auth::connecte() ? (int) (Auth::utilisateur()['transcription_vocale'] ?? 1) : 1 ?>"
+      data-service-worker="<?= url('service-worker.js') ?>" data-portee="<?= url('') ?>">
 
 <a class="lien-evitement" href="#contenu">Aller au contenu</a>
 

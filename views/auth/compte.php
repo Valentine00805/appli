@@ -359,6 +359,35 @@ $calendriersAmis = $calendriersAmis ?? [];
       <a class="bouton bouton--secondaire bouton--bloc" href="<?= url('notifications') ?>" data-fenetre>Régler les notifications</a>
     </div>
 
+    <?php
+    /*
+     * Le hors-ligne : l'application garde d'elle-même les pages qu'on ouvre,
+     * mais on peut lui demander de prendre d'avance celles dont on sait
+     * qu'on en aura besoin — avant de partir en atelier, par exemple.
+     */
+    $aGarder = [url(''), url('calendrier'), url('cours'), url('taches'), url('tableau'),
+        url('revision'), url('cartes'), url('alternance'), url('alternance/entreprise'),
+        url('alternance/rythme'), url('alternance/journal'), url('alternance/documents'),
+        url('budget'), url('amis'), url('compte'), url('hors-ligne')];
+    ?>
+    <div class="carte" data-hors-ligne data-pages="<?= e((string) json_encode($aGarder, JSON_UNESCAPED_SLASHES)) ?>">
+      <h2>📴 Hors connexion</h2>
+      <p class="discret" style="margin-bottom:.8rem">
+        Les pages que vous ouvrez sont gardées sur cet appareil : sans réseau,
+        vous les relisez, et ce que vous écrivez repart tout seul au retour de
+        la connexion.
+      </p>
+      <p class="champ__aide" data-hors-ligne-etat aria-live="polite" style="margin-top:0">Vérification…</p>
+      <p class="actions" style="margin-bottom:0">
+        <button class="bouton bouton--secondaire bouton--petit" type="button" data-hors-ligne-garder hidden>
+          Préparer mes pages
+        </button>
+        <button class="bouton bouton--discret bouton--petit" type="button" data-hors-ligne-oublier hidden>
+          Vider ce qui est gardé
+        </button>
+      </p>
+    </div>
+
     <div class="carte" style="border-color:var(--accent)">
       <h2>💾 Sauvegarde</h2>
       <p class="discret" style="margin-bottom:.8rem">

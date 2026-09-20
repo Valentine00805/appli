@@ -3782,3 +3782,13 @@ summary.cal-volet__groupe:focus-visible {
 }
 .brouillon-etat { margin-top: .6rem; }
 .brouillon-etat--alerte { color: var(--erreur); font-weight: 600; }
+
+/* Le bandeau du hors-ligne, et les envois qui attendent le réseau. */
+.hors-ligne-bandeau {
+  position: fixed; left: 50%; bottom: 1rem; transform: translateX(-50%); z-index: 60;
+  max-width: min(92vw, 34rem); padding: .55rem 1rem; border-radius: 999px;
+  background: var(--texte); color: var(--fond-carte); font-size: .9rem; text-align: center;
+  box-shadow: var(--ombre);
+}
+.hors-ligne-bandeau--attente { background: var(--info); color: #fff; }
+@media print { .hors-ligne-bandeau { display: none; } }

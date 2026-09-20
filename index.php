@@ -85,6 +85,7 @@ require __DIR__ . '/controllers/KanbanController.php';
 require __DIR__ . '/controllers/TableauBordController.php';
 require __DIR__ . '/controllers/CartesController.php';
 require __DIR__ . '/controllers/NotificationsController.php';
+require __DIR__ . '/controllers/HorsLigneController.php';
 
 /*
  * Réglages par défaut : ceux d'une installation WAMP ordinaire. Ils vivent ici
@@ -229,6 +230,10 @@ $routes = [
     ['GET',  'compte',                    [AuthController::class, 'compte']],
     ['GET',  'notifications',             [NotificationsController::class, 'index']],
     ['GET',  'service-worker.js',         [NotificationsController::class, 'serviceWorker']],
+    // Le hors-ligne : la page de secours, le manifeste et l’icône. Sans session.
+    ['GET',  'hors-ligne',                [HorsLigneController::class, 'page']],
+    ['GET',  'manifeste.webmanifest',     [HorsLigneController::class, 'manifeste']],
+    ['GET',  'icone-{id}.png',            [HorsLigneController::class, 'icone']],
     ['POST', 'notifications/abonnement',  [NotificationsController::class, 'abonner']],
     ['POST', 'notifications/desabonnement', [NotificationsController::class, 'desabonner']],
     ['POST', 'notifications/essai',       [NotificationsController::class, 'essai']],

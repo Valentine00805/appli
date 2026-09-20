@@ -41,16 +41,156 @@ final class NotificationsController
      * Le service worker : il reçoit les messages même quand aucun onglet n'est
      * ouvert, affiche la notification, et ouvre la bonne page au clic. Servi
      * depuis la racine de l'application, pour la couvrir toute entière.
+     *
+     * Il garde aussi l'application pour le hors-ligne : la feuille de style et
+     * le script une fois pour toutes, chaque page au fur et à mesure qu'on
+     * l'ouvre. Sans réseau, on relit donc ce qu'on a déjà vu, et une page
+     * jamais ouverte répond par « Pas de réseau » plutôt que par l'écran du
+     * navigateur.
+     *
+     * La version du cache suit la date des fichiers : une mise à jour de
+     * l'application jette d'elle-même l'ancien cache, sans quoi on servirait
+     * un script d'hier avec une page d'aujourd'hui.
      */
     public function serviceWorker(): void
     {
         header('Content-Type: application/javascript; charset=utf-8');
         header('Cache-Control: no-cache');
         header('Service-Worker-Allowed: ' . BASE_URL . '/');
+
+        $version = self::versionDesFichiers();
+        $coquille = json_encode([
+            asset('assets/css/app.css'),
+            asset('assets/js/app.js'),
+            url('hors-ligne'),
+            url('manifeste.webmanifest'),
+        ], JSON_UNESCAPED_SLASHES);
+        $base = json_encode(url(''), JSON_UNESCAPED_SLASHES);
+        $horsLigne = json_encode(url('hors-ligne'), JSON_UNESCAPED_SLASHES);
+
+        echo <<<JS
+/* Mes Cours — les notifications de rappel, et l'application hors connexion. */
+var VERSION = '$version';
+var CACHE = 'mescours-' + VERSION;
+var BASE = $base;
+var HORS_LIGNE = $horsLigne;
+var COQUILLE = $coquille;
+JS;
         echo <<<'JS'
-/* Mes Cours — les notifications de rappel. */
-self.addEventListener('install', function () { self.skipWaiting(); });
-self.addEventListener('activate', function (e) { e.waitUntil(self.clients.claim()); });
+
+/*
+ * Ce qui ne se garde jamais : ce qui pèse (les fichiers déposés, les PDF, les
+ * exports), ce qui ne vaut que sur l'instant (l'envoi des rappels, les
+ * sondages du chat) et ce qui appartient à quelqu'un d'autre (les liens
+ * publics). Une réponse partielle ou un téléchargement n'ont rien à faire
+ * dans un cache de pages.
+ */
+var SANS_CACHE = /(\/(fichiers|storage|p)\/|\/documents\/\d+|\/(pdf|ics|export|apercu|contenu|telecharger|battement|envoyer|fil|messages)(\/|$|\?))/;
+
+self.addEventListener('install', function (evenement) {
+  evenement.waitUntil(
+    caches.open(CACHE)
+      .then(function (cache) { return cache.addAll(COQUILLE); })
+      .catch(function () { /* hors ligne dès l'installation : on fera sans */ })
+      .then(function () { return self.skipWaiting(); })
+  );
+});
+
+self.addEventListener('activate', function (evenement) {
+  evenement.waitUntil(
+    caches.keys().then(function (noms) {
+      return Promise.all(noms.map(function (nom) {
+        // Les caches d'une version précédente n'ont plus lieu d'être.
+        return nom.indexOf('mescours-') === 0 && nom !== CACHE ? caches.delete(nom) : null;
+      }));
+    }).then(function () { return self.clients.claim(); })
+  );
+});
+
+/** Une page de plus dans le cache, et les plus vieilles s'effacent. */
+function garder(requete, reponse) {
+  if (!reponse || !reponse.ok || reponse.type !== 'basic') { return reponse; }
+  if ((reponse.headers.get('Content-Disposition') || '').indexOf('attachment') === 0) { return reponse; }
+  var copie = reponse.clone();
+  caches.open(CACHE).then(function (cache) {
+    return cache.put(requete, copie).then(function () { return cache.keys(); }).then(function (gardees) {
+      var trop = gardees.length - 120;
+      // Le cache ne grossit pas sans fin : au-delà, les plus anciennes partent.
+      for (var i = 0; i < trop; i++) {
+        if (COQUILLE.indexOf(new URL(gardees[i].url).pathname) === -1) { cache.delete(gardees[i]); }
+      }
+    });
+  }).catch(function () { /* cache plein ou refusé : on sert quand même */ });
+  return reponse;
+}
+
+/** Le réseau d'abord ; à défaut, ce qu'on avait gardé. */
+function reseauDAbord(requete, secours) {
+  return fetch(requete)
+    .then(function (reponse) { return garder(requete, reponse); })
+    .catch(function () {
+      return caches.match(requete).then(function (gardee) {
+        if (gardee) { return gardee; }
+        return secours ? caches.match(HORS_LIGNE) : Response.error();
+      });
+    });
+}
+
+/** Le cache d'abord, pour ce qui ne change qu'avec la version. */
+function cacheDAbord(requete) {
+  return caches.match(requete).then(function (gardee) {
+    return gardee || fetch(requete).then(function (reponse) { return garder(requete, reponse); });
+  });
+}
+
+self.addEventListener('fetch', function (evenement) {
+  var requete = evenement.request;
+  if (requete.method !== 'GET') { return; }
+
+  var url = new URL(requete.url);
+  if (url.origin !== self.location.origin || url.pathname.indexOf(BASE) !== 0) { return; }
+  // Une lecture partielle (un son, une vidéo) ne se garde pas par morceaux.
+  if (requete.headers.get('Range') || SANS_CACHE.test(url.pathname + url.search)) { return; }
+
+  if (url.pathname.indexOf(BASE + 'assets/') === 0 || url.pathname.indexOf(BASE + 'icone-') === 0) {
+    evenement.respondWith(cacheDAbord(requete));
+    return;
+  }
+
+  var page = requete.mode === 'navigate'
+    || (requete.headers.get('Accept') || '').indexOf('text/html') !== -1;
+  evenement.respondWith(reseauDAbord(requete, page));
+});
+
+/*
+ * Ce que la page demande au service worker : garder d'avance les pages qu'on
+ * voudra relire sans réseau, ou dire ce qu'il a déjà.
+ */
+self.addEventListener('message', function (evenement) {
+  var message = evenement.data || {};
+  if (message.quoi === 'garder' && Array.isArray(message.pages)) {
+    evenement.waitUntil(caches.open(CACHE).then(function (cache) {
+      return Promise.all(message.pages.map(function (page) {
+        return fetch(page, { credentials: 'same-origin' })
+          .then(function (reponse) { return reponse.ok ? cache.put(page, reponse) : null; })
+          .catch(function () { return null; });
+      }));
+    }).then(function () {
+      if (evenement.source) { evenement.source.postMessage({ quoi: 'gardees' }); }
+    }));
+  }
+  if (message.quoi === 'combien') {
+    evenement.waitUntil(caches.open(CACHE).then(function (cache) { return cache.keys(); })
+      .then(function (gardees) {
+        if (evenement.source) { evenement.source.postMessage({ quoi: 'combien', pages: gardees.length }); }
+      }));
+  }
+  if (message.quoi === 'oublier') {
+    evenement.waitUntil(caches.delete(CACHE).then(function () {
+      if (evenement.source) { evenement.source.postMessage({ quoi: 'oubliees' }); }
+    }));
+  }
+});
 
 self.addEventListener('push', function (evenement) {
   var message = {};
@@ -81,6 +221,18 @@ self.addEventListener('notificationclick', function (evenement) {
 });
 JS;
         exit;
+    }
+
+    /** La version du cache : la date du script et de la feuille de style. */
+    private static function versionDesFichiers(): string
+    {
+        $dates = [];
+        foreach (['assets/js/app.js', 'assets/css/app.css'] as $fichier) {
+            $chemin = dirname(__DIR__) . '/' . $fichier;
+            $dates[] = is_file($chemin) ? (string) filemtime($chemin) : '0';
+        }
+
+        return substr(sha1(implode('-', $dates)), 0, 12);
     }
 
     /** Un appareil s'abonne, ou renouvelle son abonnement. */
