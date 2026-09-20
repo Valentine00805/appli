@@ -8,6 +8,8 @@
  * @var list<array> $cours        les cours, pour choisir quoi réviser
  * @var ?int $coursChoisi         celui proposé par l’adresse
  * @var array|null $dernierCours  le dernier cours révisé
+ * @var int $objectif             l’objectif de la semaine, en minutes (0 : aucun)
+ * @var array|null $avancement    où il en est, ou null sans objectif
  */
 $csrf = Session::jetonCsrf();
 $choisi = $coursChoisi ?? (int) ($dernierCours['id'] ?? 0);
@@ -71,6 +73,11 @@ $choisi = $coursChoisi ?? (int) ($dernierCours['id'] ?? 0);
           </select>
         </div>
 
+        <label class="case" style="margin:.2rem 0 .9rem">
+          <input type="checkbox" name="ne_pas_deranger" value="1" checked>
+          🔕 Retenir les rappels pendant la session
+        </label>
+
         <button class="bouton bouton--bloc" type="submit">▶️ Commencer</button>
       </form>
     </section>
@@ -114,6 +121,42 @@ $choisi = $coursChoisi ?? (int) ($dernierCours['id'] ?? 0);
           <?php endif; ?>
         </p>
       <?php endif; ?>
+    </section>
+
+    <section class="carte">
+      <h2>Objectif de la semaine</h2>
+      <?php if ($avancement !== null): ?>
+        <p class="focus-chiffre" style="font-size:1.1rem">
+          <strong><?= (int) $avancement['part'] ?> %</strong> de <?= e(Focus::duree($avancement['minutes'] * 60)) ?>
+        </p>
+        <div class="alternance-avancement" role="img"
+             aria-label="<?= (int) $avancement['part'] ?> % de l’objectif de la semaine">
+          <span style="width:<?= (int) $avancement['part'] ?>%"></span>
+        </div>
+        <p class="discret" style="margin:.5rem 0 .8rem">
+          <?php if ($avancement['reste'] === 0): ?>
+            C’est fait pour cette semaine. Tout ce qui suit est du bonus.
+          <?php else: ?>
+            Il reste <?= e(Focus::duree($avancement['reste'] * 60)) ?>,
+            soit environ <?= (int) $avancement['par_jour'] ?> min par jour
+            sur les <?= (int) $avancement['jours'] ?> jour<?= $avancement['jours'] > 1 ? 's' : '' ?> qui restent.
+          <?php endif; ?>
+        </p>
+      <?php else: ?>
+        <p class="discret" style="margin-top:0">Sans objectif, le suivi compte quand même le temps passé.</p>
+      <?php endif; ?>
+      <form method="post" action="<?= url('focus/objectif') ?>" class="filtres" style="margin:0" data-auto-envoi>
+        <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+        <div class="champ" style="flex:1">
+          <label for="objectif">Me fixer</label>
+          <select id="objectif" name="minutes">
+            <?php foreach (Focus::OBJECTIFS as $minutes => $nom): ?>
+              <option value="<?= (int) $minutes ?>"<?= (int) $minutes === (int) $objectif ? ' selected' : '' ?>><?= e($nom) ?></option>
+            <?php endforeach; ?>
+          </select>
+        </div>
+        <noscript><button class="bouton bouton--petit" type="submit">Enregistrer</button></noscript>
+      </form>
     </section>
 
     <?php if ($bilan['par_matiere'] !== []): ?>

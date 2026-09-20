@@ -37,15 +37,82 @@ final class Focus
     }
 
     /** Ouvre une session, et rend son identifiant. */
-    public static function demarrer(int $userId, ?int $coursId, ?string $sujet, int $minutes): int
+    public static function demarrer(int $userId, ?int $coursId, ?string $sujet, int $minutes,
+                                     bool $nePasDeranger = true): int
     {
         Database::run(
-            'INSERT INTO sessions_revision (user_id, cours_id, sujet, minutes_voulues, debut)
-             VALUES (?, ?, ?, ?, NOW())',
-            [$userId, $coursId, $sujet === null ? null : mb_substr($sujet, 0, 150), $minutes]
+            'INSERT INTO sessions_revision (user_id, cours_id, sujet, minutes_voulues, ne_pas_deranger, debut)
+             VALUES (?, ?, ?, ?, ?, NOW())',
+            [$userId, $coursId, $sujet === null ? null : mb_substr($sujet, 0, 150), $minutes, $nePasDeranger ? 1 : 0]
         );
 
         return Database::dernierId();
+    }
+
+    // --- L'objectif de la semaine ----------------------------------------------
+
+    /** Les objectifs proposés, en minutes par semaine. */
+    public const OBJECTIFS = [0 => 'Aucun objectif', 60 => '1 h', 120 => '2 h', 180 => '3 h',
+        300 => '5 h', 420 => '7 h', 600 => '10 h', 900 => '15 h'];
+
+    /** L'objectif hebdomadaire du compte, en minutes. 0 : aucun. */
+    public static function objectif(int $userId): int
+    {
+        return (int) Database::valeur('SELECT objectif_revision FROM users WHERE id = ?', [$userId]);
+    }
+
+    /** Retient l'objectif voulu ; un chiffre inconnu remet « aucun ». */
+    public static function changerObjectif(int $userId, mixed $minutes): int
+    {
+        $minutes = isset(self::OBJECTIFS[(int) $minutes]) ? (int) $minutes : 0;
+        Database::run('UPDATE users SET objectif_revision = ? WHERE id = ?', [$minutes, $userId]);
+
+        return $minutes;
+    }
+
+    /**
+     * Où en est l'objectif de la semaine : la part faite, ce qu'il reste, et
+     * ce que cela ferait par jour d'ici dimanche. Null sans objectif.
+     *
+     * @return array{minutes: int, faites: int, part: int, reste: int, jours: int, par_jour: int}|null
+     */
+    public static function avancementObjectif(int $userId, int $secondesSemaine): ?array
+    {
+        $minutes = self::objectif($userId);
+        if ($minutes === 0) {
+            return null;
+        }
+        $faites = intdiv($secondesSemaine, 60);
+        $reste = max(0, $minutes - $faites);
+        // Aujourd'hui compris : la journée n'est pas finie, elle compte encore.
+        $jours = max(1, 8 - (int) date('N'));
+
+        return [
+            'minutes'  => $minutes,
+            'faites'   => $faites,
+            'part'     => (int) min(100, round($faites / $minutes * 100)),
+            'reste'    => $reste,
+            'jours'    => $jours,
+            'par_jour' => (int) ceil($reste / $jours),
+        ];
+    }
+
+    // --- Ne pas déranger --------------------------------------------------------
+
+    /**
+     * Une session est-elle en cours, et demande-t-elle le silence ?
+     *
+     * Les rappels qui tombent pendant ne partent pas : ils repartiront après.
+     * Interrompre une session de révision par une notification de révision,
+     * ce serait se tirer dans le pied.
+     */
+    public static function silence(int $userId): bool
+    {
+        return Database::valeur(
+            'SELECT id FROM sessions_revision
+             WHERE user_id = ? AND fin IS NULL AND ne_pas_deranger = 1
+               AND debut > (NOW() - INTERVAL 4 HOUR) LIMIT 1',
+            [$userId]) !== null;
     }
 
     /**

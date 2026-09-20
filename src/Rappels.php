@@ -117,6 +117,15 @@ final class Rappels
         );
 
         foreach ($comptes as $compte) {
+            /*
+             * Une session de révision en cours demande le silence : ses
+             * rappels ne sont ni envoyés ni inscrits, ils repartiront donc
+             * d’eux-mêmes à la fin de la session.
+             */
+            if (Focus::silence((int) $compte['id'])) {
+                $bilan['retenus'] = ($bilan['retenus'] ?? 0) + 1;
+                continue;
+            }
             $fuseau = Auth::fuseauValide((string) $compte['fuseau']) ? (string) $compte['fuseau'] : Auth::FUSEAU_PAR_DEFAUT;
             $maintenant = new DateTimeImmutable('now', new DateTimeZone($fuseau));
 
@@ -156,8 +165,11 @@ final class Rappels
             }
         }
 
-        // Les messages et demandes d'ami restés en file : même tâche, même rythme que les rappels.
-        $file = FileNotifications::envoyerEnAttente($seulement);
+        // Les messages et demandes d'ami restés en file : même tâche, même rythme
+        // que les rappels, et le même silence pendant une session.
+        $file = $seulement !== null && Focus::silence($seulement)
+            ? ['envoyees' => 0, 'retenues' => 0]
+            : FileNotifications::envoyerEnAttente($seulement);
         $bilan['file_envoyees'] = $file['envoyees'];
         $bilan['file_retenues'] = $file['retenues'];
 

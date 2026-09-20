@@ -1197,3 +1197,13 @@ CREATE TABLE IF NOT EXISTS `sessions_revision` (
   CONSTRAINT `fk_sessions_revision_user` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_sessions_revision_cours` FOREIGN KEY (`cours_id`) REFERENCES `cours`(`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- L'objectif de révision de la semaine, en minutes (0 : aucun objectif), et
+-- le silence pendant une session : les rappels attendent la fin plutôt que
+-- d'interrompre ce pour quoi on s'est justement isolé.
+
+ALTER TABLE `users`
+  ADD COLUMN `objectif_revision` SMALLINT UNSIGNED NOT NULL DEFAULT 0 AFTER `transcription_vocale`;
+
+ALTER TABLE `sessions_revision`
+  ADD COLUMN `ne_pas_deranger` TINYINT(1) NOT NULL DEFAULT 1 AFTER `minutes_voulues`;

@@ -18,9 +18,12 @@ final class FocusController
         Auth::exiger();
         $userId = Auth::id();
 
+        $bilan = Focus::bilan($userId);
         Vue::afficher('focus/index', [
             'enCours'   => Focus::enCours($userId),
-            'bilan'     => Focus::bilan($userId),
+            'bilan'     => $bilan,
+            'objectif'  => Focus::objectif($userId),
+            'avancement' => Focus::avancementObjectif($userId, (int) $bilan['semaine']),
             'dernieres' => Focus::dernieres($userId),
             'cours'     => Database::all(
                 'SELECT c.id, c.titre, m.nom AS matiere_nom
@@ -51,8 +54,10 @@ final class FocusController
         }
         $sujet = mb_substr(trim(post('sujet')), 0, 150) ?: null;
         $minutes = Focus::rythmeValide($_POST['minutes'] ?? null);
+        // Le silence est le défaut : on s’isole pour ne pas être dérangé.
+        $silence = ($_POST['ne_pas_deranger'] ?? '1') !== '0';
 
-        redirect('focus/' . Focus::demarrer($userId, $coursId, $sujet, $minutes));
+        redirect('focus/' . Focus::demarrer($userId, $coursId, $sujet, $minutes, $silence));
     }
 
     /** L'écran de la session : le minuteur, et ce qu'on révise. */
@@ -106,6 +111,19 @@ final class FocusController
                     ? 'Session terminée : ' . Focus::duree($secondes) . ' de révision. Bravo.'
                     : 'Session trop courte pour être comptée — elle n’apparaîtra pas dans votre suivi.');
         }
+        redirect('focus');
+    }
+
+    /** L’objectif de la semaine, changé depuis la page du focus. */
+    public function objectif(): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+
+        $minutes = Focus::changerObjectif(Auth::id(), $_POST['minutes'] ?? 0);
+        Session::flash('succes', $minutes === 0
+            ? 'Objectif retiré : le suivi continue, sans but à atteindre.'
+            : 'Objectif de la semaine : ' . Focus::duree($minutes * 60) . ' de révision.');
         redirect('focus');
     }
 

@@ -339,6 +339,7 @@ $routes = [
     ['GET',  'revision',                  [CoursController::class, 'revisions']],
     ['GET',  'focus',                     [FocusController::class, 'index']],
     ['POST', 'focus/demarrer',            [FocusController::class, 'demarrer']],
+    ['POST', 'focus/objectif',            [FocusController::class, 'objectif']],
     ['GET',  'focus/{id}',                [FocusController::class, 'session']],
     ['POST', 'focus/{id}/terminer',       [FocusController::class, 'terminer']],
     ['POST', 'focus/{id}/abandonner',     [FocusController::class, 'abandonner']],

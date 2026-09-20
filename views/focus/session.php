@@ -48,6 +48,10 @@ $contenu = (string) ($session['contenu'] ?? '');
     </p>
 
     <p class="champ__aide" data-focus-compte>Temps travaillé : 0 min · aucune pause</p>
+    <?php if ((int) $session['ne_pas_deranger'] === 1): ?>
+      <?php // Les rappels attendent : ils repartiront d'eux-mêmes à la fin. ?>
+      <p class="champ__aide">🔕 Vos rappels et notifications attendent la fin de la session.</p>
+    <?php endif; ?>
   </div>
 
   <?php if (trim($fiche) !== '' || trim($contenu) !== ''): ?>
