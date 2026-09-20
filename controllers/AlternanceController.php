@@ -103,6 +103,42 @@ final class AlternanceController
         redirect('alternance/entreprise');
     }
 
+    /**
+     * Le rétroplanning du rapport et de la soutenance, en tâches datées : on
+     * sait alors quoi faire ce mois-ci, plutôt que de découvrir l'échéance
+     * trois jours avant.
+     */
+    public function retroplanning(): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $userId = Auth::id();
+        $contrat = Alternance::contrat($userId);
+
+        $posees = 0;
+        $depassees = 0;
+        foreach (array_keys(Alternance::JALONS) as $quoi) {
+            $jour = (string) ($contrat[$quoi] ?? '');
+            if ($jour === '') {
+                continue;
+            }
+            $jalons = Alternance::jalonsAvant($jour, $quoi);
+            $depassees += count(Alternance::JALONS[$quoi]) - count($jalons);
+            foreach ($jalons as $jalon) {
+                $bilan = Alternance::poserTaches($userId, [$jalon['titre']], $jalon['echeance']);
+                $posees += $bilan['ajoutees'];
+            }
+        }
+
+        Session::flash($posees === 0 ? 'erreur' : 'succes', match (true) {
+            $posees === 0 && $depassees > 0 => 'Toutes ces étapes sont déjà passées, ou déjà dans votre liste.',
+            $posees === 0 => 'Donnez d’abord la date de remise du rapport ou de la soutenance.',
+            default => $posees . ' étape' . ($posees > 1 ? 's posées' : ' posée') . ' dans « ' . Alternance::LISTE . ' »'
+                . ($depassees > 0 ? ' (' . $depassees . ' déjà passée' . ($depassees > 1 ? 's' : '') . ').' : '.'),
+        });
+        redirect('alternance/entreprise');
+    }
+
     /** @return array<string, bool> quelles dates du contrat sont déjà au calendrier */
     private function echeancesPosees(int $userId, array $contrat): array
     {

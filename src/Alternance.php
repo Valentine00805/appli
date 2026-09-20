@@ -593,6 +593,47 @@ final class Alternance
     public const LISTE = 'Alternance';
 
     /**
+     * Le rétroplanning du rapport et de la soutenance : ce qu'il faut avoir
+     * fait, et combien de jours avant. Un rapport ne s'écrit pas la veille ;
+     * ces jalons le disent une fois pour toutes.
+     */
+    public const JALONS = [
+        'remise_rapport' => [
+            [60, 'Rapport : faire le plan détaillé'],
+            [45, 'Rapport : rassembler les documents et les chiffres'],
+            [30, 'Rapport : écrire le brouillon'],
+            [14, 'Rapport : le faire relire par mon tuteur'],
+            [7,  'Rapport : corriger et mettre en forme'],
+            [3,  'Rapport : imprimer et relier'],
+        ],
+        'soutenance' => [
+            [21, 'Soutenance : préparer le support'],
+            [7,  'Soutenance : répéter à voix haute'],
+            [2,  'Soutenance : vérifier le matériel et le trajet'],
+        ],
+    ];
+
+    /**
+     * Les jalons à poser avant une échéance, du plus lointain au plus proche.
+     * Ceux déjà passés sont laissés : les poser en retard n'aide personne.
+     *
+     * @return list<array{titre: string, echeance: string}>
+     */
+    public static function jalonsAvant(string $jour, string $quoi): array
+    {
+        $jalons = [];
+        $auj = date('Y-m-d');
+        foreach (self::JALONS[$quoi] ?? [] as [$avant, $titre]) {
+            $date = (new DateTimeImmutable($jour))->modify('-' . $avant . ' days')->format('Y-m-d');
+            if ($date >= $auj) {
+                $jalons[] = ['titre' => $titre, 'echeance' => $date];
+            }
+        }
+
+        return $jalons;
+    }
+
+    /**
      * Ce qu'une note laisse à faire : les lignes cochables qu'on y a écrites.
      * « - [ ] rappeler le fournisseur », « [ ] », « ☐ » — celles déjà cochées
      * sont laissées de côté, elles sont faites.

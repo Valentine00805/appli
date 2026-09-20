@@ -159,6 +159,16 @@ foreach (array_keys(Alternance::ECHEANCES) as $champ) {
           <p class="champ__aide" style="margin-top:.5rem">Des journées entières, que vous pourrez ouvrir
             pour leur ajouter un rappel. Une date déjà posée ne l’est pas deux fois.</p>
         </form>
+
+        <?php if ($v('remise_rapport') !== '' || $v('soutenance') !== ''): ?>
+          <?php // Le rapport ne s'écrit pas la veille : on pose les étapes à l'avance. ?>
+          <form method="post" action="<?= url('alternance/entreprise/retroplanning') ?>" style="margin-top:.8rem">
+            <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+            <button class="bouton bouton--secondaire bouton--bloc" type="submit">🗓️ Préparer le rapport pas à pas</button>
+            <p class="champ__aide" style="margin-top:.5rem">Plan, brouillon, relecture, impression : les étapes
+              deviennent des tâches datées dans « <?= e(Alternance::LISTE) ?> ». Celles déjà passées sont laissées.</p>
+          </form>
+        <?php endif; ?>
       </section>
     <?php endif; ?>
 
