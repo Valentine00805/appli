@@ -570,6 +570,109 @@ final class Alternance
         return $semaines;
     }
 
+    // --- Ce qu'il y a à faire --------------------------------------------------
+
+    /** La liste de tâches de l'alternance, créée au premier besoin. */
+    public static function listeDesTaches(int $userId): int
+    {
+        $liste = Database::valeur(
+            'SELECT id FROM listes_taches WHERE user_id = ? AND nom = ? LIMIT 1', [$userId, self::LISTE]);
+        if ($liste !== null && $liste !== false) {
+            return (int) $liste;
+        }
+
+        $rang = (int) Database::valeur('SELECT COALESCE(MAX(position), 0) + 1 FROM listes_taches WHERE user_id = ?', [$userId]);
+        Database::run(
+            'INSERT INTO listes_taches (user_id, nom, couleur, icone, position, created_at) VALUES (?, ?, ?, ?, ?, NOW())',
+            [$userId, self::LISTE, '#b45309', '🏢', $rang]);
+
+        return Database::dernierId();
+    }
+
+    /** Le nom de cette liste : on la retrouve à son nom, et on n'en fait qu'une. */
+    public const LISTE = 'Alternance';
+
+    /**
+     * Ce qu'une note laisse à faire : les lignes cochables qu'on y a écrites.
+     * « - [ ] rappeler le fournisseur », « [ ] », « ☐ » — celles déjà cochées
+     * sont laissées de côté, elles sont faites.
+     *
+     * @return list<string>
+     */
+    public static function aFaireDans(?string $contenu): array
+    {
+        $aFaire = [];
+        foreach (preg_split('/\r\n|\r|\n/', TexteRiche::versTexte($contenu)) ?: [] as $ligne) {
+            $ligne = trim(str_replace("\u{00A0}", ' ', $ligne));
+            if (preg_match('/^(?:[-*•]\s*)?(?:\[\s*\]|\[\s*[xX✓]\s*\]|☐|☑|✅)\s*(.*)$/u', $ligne, $m) !== 1) {
+                continue;
+            }
+            $cochee = preg_match('/^(?:[-*•]\s*)?(?:\[\s*[xX✓]\s*\]|☑|✅)/u', $ligne) === 1;
+            $texte = trim($m[1]);
+            if (!$cochee && $texte !== '') {
+                $aFaire[] = mb_substr($texte, 0, 200);
+            }
+        }
+
+        return array_values(array_unique($aFaire));
+    }
+
+    /**
+     * Range ces tâches dans la liste de l'alternance. Celles qui y sont déjà,
+     * et pas encore faites, ne sont pas écrites deux fois.
+     *
+     * @param list<string> $titres
+     * @return array{liste: int, ajoutees: int, connues: int}
+     */
+    public static function poserTaches(int $userId, array $titres, ?string $echeance = null): array
+    {
+        $liste = self::listeDesTaches($userId);
+        $ajoutees = 0;
+        $connues = 0;
+
+        foreach ($titres as $titre) {
+            $titre = mb_substr(trim($titre), 0, 200);
+            if ($titre === '') {
+                continue;
+            }
+            $deja = Database::valeur(
+                'SELECT id FROM taches WHERE user_id = ? AND liste_id = ? AND titre = ? AND faite = 0',
+                [$userId, $liste, $titre]);
+            if ($deja !== null && $deja !== false) {
+                $connues++;
+                continue;
+            }
+            $rang = (int) Database::valeur(
+                'SELECT COALESCE(MAX(position), 0) + 1 FROM taches WHERE user_id = ? AND liste_id = ?', [$userId, $liste]);
+            Database::run(
+                'INSERT INTO taches (user_id, liste_id, titre, echeance, position) VALUES (?, ?, ?, ?, ?)',
+                [$userId, $liste, $titre, $echeance, $rang]);
+            $ajoutees++;
+        }
+
+        return ['liste' => $liste, 'ajoutees' => $ajoutees, 'connues' => $connues];
+    }
+
+    /**
+     * Ce qui reste à faire dans la liste de l'alternance, échéances d'abord.
+     *
+     * @return list<array>
+     */
+    public static function tachesAFaire(int $userId, int $limite = 8): array
+    {
+        $liste = Database::valeur(
+            'SELECT id FROM listes_taches WHERE user_id = ? AND nom = ? LIMIT 1', [$userId, self::LISTE]);
+        if ($liste === null || $liste === false) {
+            return [];
+        }
+
+        return Database::all(
+            'SELECT id, titre, echeance FROM taches
+             WHERE user_id = ? AND liste_id = ? AND faite = 0
+             ORDER BY echeance IS NULL, echeance, position LIMIT ' . max(1, $limite),
+            [$userId, (int) $liste]);
+    }
+
     // --- Les documents ---------------------------------------------------------
 
     /** @return string[] les erreurs rencontrées */

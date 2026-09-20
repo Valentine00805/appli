@@ -4951,6 +4951,13 @@
     h += bouton('class="barre-outils__bouton barre-outils__dicter" data-riche-dicter aria-pressed="false" hidden',
       'Dicter le texte à la voix', '<span aria-hidden="true">🎤</span> Dicter');
 
+    /*
+     * Une case à cocher : « [ ] rappeler le fournisseur ». C'est du texte, et
+     * rien d'autre — il survit à l'export, au PDF et au copier-coller. Une
+     * note d'alternance sait en faire de vraies tâches.
+     */
+    h += bouton('data-riche-case', 'Écrire une case à cocher', '<span aria-hidden="true">☐</span><span class="sr-only">Case à cocher</span>');
+
     if (complet) {
       h += bouton('data-riche-saut', 'Aller à la ligne sans changer de paragraphe (Maj+Entrée)', '↵');
       h += bouton('class="barre-outils__bouton barre-outils__image" data-riche-image', 'Ajouter une image à l’endroit du curseur',
@@ -5348,6 +5355,17 @@
         if (bouton.hasAttribute('data-riche-saut')) {
           remettreSelection();
           if (!document.execCommand('insertLineBreak')) { document.execCommand('insertHTML', false, '<br>'); }
+          recopier();
+        }
+        if (bouton.hasAttribute('data-riche-case')) {
+          remettreSelection();
+          // Sur une ligne déjà commencée, la case s'écrit sur la suivante.
+          var sel = window.getSelection();
+          var debutDeLigne = sel.anchorOffset === 0 || /\n$/.test(sel.anchorNode ? (sel.anchorNode.textContent || '') : '');
+          if (!debutDeLigne && !document.execCommand('insertLineBreak')) {
+            document.execCommand('insertHTML', false, '<br>');
+          }
+          document.execCommand('insertText', false, '[ ] ');
           recopier();
         }
         if (bouton.hasAttribute('data-riche-dicter') && typeof lancerDictee === 'function') {

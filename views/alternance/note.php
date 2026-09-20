@@ -3,11 +3,13 @@
  * Une note d'alternance, à écrire ou à modifier.
  *
  * @var array|null $note
+ * @var list<string> $aFaire  les cases à cocher écrites dans la note
  * @var string $onglet
  * @var array|null $situation
  * @var bool $dansUneFenetre  ouverte par « + Nouvelle note », par-dessus la liste
  */
 $dansUneFenetre = $dansUneFenetre ?? false;
+$aFaire = $aFaire ?? [];
 $edition = $note !== null;
 $action = $edition ? url('alternance/notes/' . (int) $note['id']) : url('alternance/notes/nouvelle');
 ?>
@@ -50,6 +52,44 @@ $action = $edition ? url('alternance/notes/' . (int) $note['id']) : url('alterna
     <a class="bouton bouton--secondaire" href="<?= url('alternance') ?>"<?= $dansUneFenetre ? ' data-fermer' : '' ?>>Annuler</a>
   </p>
 </form>
+
+<?php if ($edition && $aFaire !== []): ?>
+  <?php
+  /*
+   * Ce que la note laisse à faire : les lignes cochables qu'on y a écrites.
+   * Elles deviennent de vraies tâches, avec leur échéance, dans la liste de
+   * l'alternance — sans quoi une décision prise en réunion reste au fond
+   * d'une note que personne ne rouvre.
+   */
+  ?>
+  <section class="carte" style="margin-top:1rem">
+    <h2 style="margin-top:0">✅ À faire dans cette note <span class="discret">(<?= count($aFaire) ?>)</span></h2>
+    <form method="post" action="<?= url('alternance/notes/' . (int) $note['id'] . '/taches') ?>">
+      <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
+      <ul class="alternance-afaire">
+        <?php foreach ($aFaire as $rang => $ligne): ?>
+          <li>
+            <label class="case">
+              <input type="checkbox" name="aFaire[]" value="<?= e($ligne) ?>" checked>
+              <?= e($ligne) ?>
+            </label>
+          </li>
+        <?php endforeach; ?>
+      </ul>
+      <div class="ligne-champs" style="align-items:flex-end">
+        <div class="champ" style="max-width:220px">
+          <label for="echeance-taches">Pour quand <span class="discret">(facultatif)</span></label>
+          <input type="date" id="echeance-taches" name="echeance">
+        </div>
+        <p class="actions" style="margin:0">
+          <button class="bouton" type="submit">En faire des tâches</button>
+        </p>
+      </div>
+      <p class="champ__aide" style="margin-top:.6rem">Elles iront dans votre liste
+        « <?= e(Alternance::LISTE) ?> ». Une tâche déjà là n’y sera pas écrite deux fois.</p>
+    </form>
+  </section>
+<?php endif; ?>
 
 <?php if ($edition): ?>
   <form method="post" action="<?= url('alternance/notes/' . (int) $note['id'] . '/supprimer') ?>"

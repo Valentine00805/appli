@@ -5,6 +5,7 @@
  * @var array $contrat
  * @var array|null $avancement  ce que rend Alternance::avancementContrat()
  * @var array<string, bool> $auCalendrier  les dates déjà posées au calendrier
+ * @var list<array> $taches  ce qui reste à faire dans la liste « Alternance »
  * @var string $onglet
  * @var array|null $situation
  */
@@ -111,6 +112,28 @@ foreach (array_keys(Alternance::ECHEANCES) as $champ) {
           <?= (int) $avancement['faits'] ?> jour<?= $avancement['faits'] > 1 ? 's' : '' ?> sur
           <?= (int) $avancement['total'] ?>, du lundi au vendredi ·
           <?= max(0, $avancement['total'] - $avancement['faits']) ?> restant<?= $avancement['total'] - $avancement['faits'] > 1 ? 's' : '' ?>
+        </p>
+      </section>
+    <?php endif; ?>
+
+    <?php if ($taches !== []): ?>
+      <?php // Ce qui reste à faire dans la liste « Alternance », échéances d'abord. ?>
+      <section class="carte">
+        <h2>✅ À faire</h2>
+        <ul class="alternance-echeances">
+          <?php foreach ($taches as $t): ?>
+            <li>
+              <span><?= e((string) $t['titre']) ?></span>
+              <?php if ($t['echeance'] !== null): ?>
+                <span class="echeance echeance--<?= e(echeance_etat((string) $t['echeance'])) ?>">
+                  <?= e(echeance_libelle((string) $t['echeance'])) ?>
+                </span>
+              <?php endif; ?>
+            </li>
+          <?php endforeach; ?>
+        </ul>
+        <p class="champ__aide" style="margin-top:.6rem">
+          <a href="<?= url('taches') ?>">Ouvrir mes listes</a> pour les cocher.
         </p>
       </section>
     <?php endif; ?>

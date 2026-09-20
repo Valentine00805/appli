@@ -18,6 +18,7 @@ final class AlternanceController
             'contrat'    => $contrat,
             'avancement' => Alternance::avancementContrat($contrat),
             'auCalendrier' => $this->echeancesPosees($userId, $contrat),
+            'taches'     => Alternance::tachesAFaire($userId),
         ], 'Mon alternance', 'entreprise');
     }
 
@@ -146,6 +147,45 @@ final class AlternanceController
         ], 'Alternance', 'notes');
     }
 
+    /**
+     * Les cases à cocher d'une note deviennent des tâches, rangées dans la
+     * liste « Alternance ». Ce qu'on a décidé en réunion ne reste pas au fond
+     * d'une note.
+     */
+    public function tachesDepuisNote(int $id): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $userId = Auth::id();
+        $note = Database::one('SELECT titre, contenu FROM alternance_notes WHERE id = ? AND user_id = ?', [$id, $userId]);
+        if ($note === null) {
+            $this->introuvable();
+        }
+
+        $voulues = $_POST['aFaire'] ?? [];
+        $titres = is_array($voulues)
+            ? array_values(array_filter(array_map('strval', $voulues), static fn (string $t): bool => trim($t) !== ''))
+            : [];
+        // Rien de coché : on prend tout ce que la note laisse à faire.
+        if ($titres === []) {
+            $titres = Alternance::aFaireDans((string) $note['contenu']);
+        }
+        if ($titres === []) {
+            Session::flash('erreur', 'Cette note ne contient aucune case à cocher.');
+            redirect('alternance/notes/' . $id);
+        }
+
+        $bilan = Alternance::poserTaches($userId, $titres, Alternance::dateValide(post('echeance')));
+        Session::flash($bilan['ajoutees'] === 0 ? 'erreur' : 'succes', match (true) {
+            $bilan['ajoutees'] === 0 => 'Ces tâches sont déjà dans votre liste « ' . Alternance::LISTE . ' ».',
+            $bilan['ajoutees'] === 1 => 'Une tâche ajoutée à « ' . Alternance::LISTE . ' »'
+                . ($bilan['connues'] > 0 ? ' (' . $bilan['connues'] . ' y étaient déjà).' : '.'),
+            default => $bilan['ajoutees'] . ' tâches ajoutées à « ' . Alternance::LISTE . ' »'
+                . ($bilan['connues'] > 0 ? ' (' . $bilan['connues'] . ' y étaient déjà).' : '.'),
+        });
+        redirect('alternance/notes/' . $id);
+    }
+
     /** Épingler une note, ou la décrocher. */
     public function epinglerNote(int $id): void
     {
@@ -171,12 +211,15 @@ final class AlternanceController
                 $this->introuvable();
             }
         }
+        // Les cases à cocher écrites dans la note : à en faire des tâches.
+        $aFaire = $note === null ? [] : Alternance::aFaireDans((string) $note['contenu']);
+
         // « + Nouvelle note » l'ouvre dans une fenêtre, par-dessus la liste.
         if (Vue::enFenetre()) {
-            Vue::fragment('alternance/note', ['note' => $note]);
+            Vue::fragment('alternance/note', ['note' => $note, 'aFaire' => $aFaire]);
             return;
         }
-        $this->afficher('alternance/note', ['note' => $note],
+        $this->afficher('alternance/note', ['note' => $note, 'aFaire' => $aFaire],
             $note === null ? 'Nouvelle note' : (string) $note['titre'], 'notes');
     }
 

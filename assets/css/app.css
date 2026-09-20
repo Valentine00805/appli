@@ -3764,3 +3764,7 @@ summary.cal-volet__groupe:focus-visible {
   .barre-outils__dicter--ecoute { animation: dictee-pulse 1.6s ease-in-out infinite; }
   @keyframes dictee-pulse { 50% { opacity: .55; } }
 }
+
+/* Ce qu'une note laisse à faire, avant d'en faire des tâches. */
+.alternance-afaire { list-style: none; margin: 0 0 1rem; padding: 0; display: grid; gap: .35rem; }
+.alternance-afaire .case { margin: 0; }
