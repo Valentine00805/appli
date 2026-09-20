@@ -3752,3 +3752,15 @@ summary.cal-volet__groupe:focus-visible {
 }
 .alternance-legende__texte { flex: 1; min-width: 12rem; }
 .alternance-legende__choix { margin-left: auto; }
+
+/* Dicter dans l'éditeur : le bouton qui écoute, et ce qu'il entend. */
+.barre-outils__dicter--ecoute { background: var(--erreur-doux); color: var(--erreur); border-color: var(--erreur); }
+.texte-riche__dictee {
+  margin: .3rem 0 0; padding: .3rem .6rem; font-size: .85rem; color: var(--texte-doux);
+  background: var(--fond-doux); border-radius: var(--rayon-s);
+}
+.texte-riche__dictee--ecoute { color: var(--erreur); background: var(--erreur-doux); }
+@media (prefers-reduced-motion: no-preference) {
+  .barre-outils__dicter--ecoute { animation: dictee-pulse 1.6s ease-in-out infinite; }
+  @keyframes dictee-pulse { 50% { opacity: .55; } }
+}

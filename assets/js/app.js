@@ -4943,6 +4943,14 @@
       + '<input type="color" class="barre-outils__couleur" data-riche-fond-teinte value="#ffff00" aria-label="Choisir la couleur du surlignage">'
       + bouton('data-riche-fond-defaut', 'Retirer le surlignage', '⌫'));
 
+    /*
+     * Dicter : le navigateur écoute et écrit à la place du clavier. Le bouton
+     * naît caché — il ne paraît que là où la reconnaissance existe (Chrome,
+     * Edge, Safari) et si l'on n'a pas coupé la transcription dans son compte.
+     */
+    h += bouton('class="barre-outils__bouton barre-outils__dicter" data-riche-dicter aria-pressed="false" hidden',
+      'Dicter le texte à la voix', '<span aria-hidden="true">🎤</span> Dicter');
+
     if (complet) {
       h += bouton('data-riche-saut', 'Aller à la ligne sans changer de paragraphe (Maj+Entrée)', '↵');
       h += bouton('class="barre-outils__bouton barre-outils__image" data-riche-image', 'Ajouter une image à l’endroit du curseur',
@@ -5224,6 +5232,96 @@
         });
       }
 
+      /* --- Dicter ---------------------------------------------------------- */
+
+      /*
+       * La parole va droit dans le texte, à l'endroit du curseur : c'est la
+       * même reconnaissance que celle des messages vocaux, mais ici rien ne
+       * s'enregistre — seul le texte reste, et il se corrige comme le reste.
+       *
+       * Le navigateur s'arrête tout seul après un silence : on le relance tant
+       * qu'on n'a pas dit d'arrêter. « À la ligne » et « nouveau paragraphe »,
+       * dits seuls, valent la touche Entrée.
+       */
+      var Reconnaissance = document.body.getAttribute('data-transcription') === '0'
+        ? null : (window.SpeechRecognition || window.webkitSpeechRecognition);
+      var boutonDicter = barre.querySelector('[data-riche-dicter]');
+      var dictee = null;
+      var dicteeVoulue = false;
+
+      if (boutonDicter && Reconnaissance) {
+        boutonDicter.hidden = false;
+        var etatDictee = document.createElement('p');
+        etatDictee.className = 'texte-riche__dictee';
+        etatDictee.setAttribute('aria-live', 'polite');
+        etatDictee.hidden = true;
+
+        var direDictee = function (texte, ecoute) {
+          etatDictee.textContent = texte;
+          etatDictee.hidden = texte === '';
+          etatDictee.classList.toggle('texte-riche__dictee--ecoute', !!ecoute);
+        };
+        var ecrireDicte = function (phrase) {
+          var commande = phrase.toLowerCase().replace(/[.,;:!?]/g, '').trim();
+          remettreSelection();
+          if (commande === 'à la ligne' || commande === 'a la ligne' || commande === 'nouvelle ligne') {
+            if (!document.execCommand('insertLineBreak')) { document.execCommand('insertHTML', false, '<br>'); }
+          } else if (commande === 'nouveau paragraphe') {
+            document.execCommand('insertParagraph');
+          } else {
+            document.execCommand('insertText', false, phrase + ' ');
+          }
+          recopier();
+        };
+        var arreterDictee = function (message) {
+          dicteeVoulue = false;
+          var r = dictee;
+          dictee = null;
+          if (r) { try { r.stop(); } catch (e) {} }
+          boutonDicter.setAttribute('aria-pressed', 'false');
+          boutonDicter.classList.remove('barre-outils__dicter--ecoute');
+          direDictee(message || '', false);
+        };
+        var lancerDictee = function () {
+          var r = new Reconnaissance();
+          r.lang = document.documentElement.lang || 'fr-FR';
+          r.continuous = true;
+          r.interimResults = true;
+          r.addEventListener('result', function (e) {
+            var encours = '';
+            for (var i = e.resultIndex; i < e.results.length; i++) {
+              var bout = e.results[i][0].transcript.trim();
+              if (!bout) { continue; }
+              if (e.results[i].isFinal) { ecrireDicte(bout); } else { encours += ' ' + bout; }
+            }
+            direDictee(encours.trim() ? '🎤 ' + encours.trim() + '…' : '🎤 J’écoute…', true);
+          });
+          r.addEventListener('end', function () {
+            // Un silence l'arrête : on repart, tant qu'on n'a pas dit stop.
+            if (dicteeVoulue && dictee === r) {
+              try { r.start(); } catch (e) { arreterDictee('La dictée s’est arrêtée.'); }
+            }
+          });
+          r.addEventListener('error', function (e) {
+            if (e.error === 'no-speech' || e.error === 'aborted') { return; }
+            arreterDictee(e.error === 'not-allowed' || e.error === 'service-not-allowed'
+              ? 'Le micro a été refusé : autorisez-le dans votre navigateur.'
+              : 'La dictée n’a pas pu démarrer.');
+          });
+          dictee = r;
+          dicteeVoulue = true;
+          boutonDicter.setAttribute('aria-pressed', 'true');
+          boutonDicter.classList.add('barre-outils__dicter--ecoute');
+          direDictee('🎤 J’écoute…', true);
+          try { r.start(); } catch (e) { arreterDictee('La dictée n’a pas pu démarrer.'); }
+        };
+
+        barre.insertAdjacentElement('afterend', etatDictee);
+        // Quitter la page en dictant ne doit pas laisser le micro ouvert.
+        window.addEventListener('pagehide', function () { arreterDictee(''); });
+        if (zone.form) { zone.form.addEventListener('submit', function () { arreterDictee(''); }); }
+      }
+
       // Cliquer un bouton ne doit pas voler la sélection au texte.
       barre.addEventListener('mousedown', function (e) {
         if (e.target.closest('button')) { e.preventDefault(); }
@@ -5251,6 +5349,9 @@
           remettreSelection();
           if (!document.execCommand('insertLineBreak')) { document.execCommand('insertHTML', false, '<br>'); }
           recopier();
+        }
+        if (bouton.hasAttribute('data-riche-dicter') && typeof lancerDictee === 'function') {
+          if (dicteeVoulue) { arreterDictee('Dictée arrêtée.'); } else { lancerDictee(); }
         }
         if (bouton.hasAttribute('data-riche-image')) { barre.querySelector('[data-riche-fichier]').click(); }
         if (bouton.hasAttribute('data-riche-largeur-origine') && imageChoisie) {

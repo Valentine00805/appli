@@ -21,7 +21,8 @@ $actif = static function (string $prefixe) use ($route): string {
 <link rel="stylesheet" href="<?= asset('assets/css/app.css') ?>">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>">
 </head>
-<body>
+<?php // Le réglage « transcription de la voix » vaut aussi pour la dictée dans l’éditeur. ?>
+<body data-transcription="<?= Auth::connecte() ? (int) (Auth::utilisateur()['transcription_vocale'] ?? 1) : 1 ?>">
 
 <a class="lien-evitement" href="#contenu">Aller au contenu</a>
 
