@@ -3866,3 +3866,6 @@ summary.cal-volet__groupe:focus-visible {
 }
 .travaux-formulaire textarea, .travaux-modifier textarea { min-height: 6rem; }
 .travaux-formulaire .groupe-choix__liste { max-height: 14rem; overflow: auto; }
+/* La poignée des tâches à glisser : dans le coin, sans pousser le titre. */
+.travaux-kanban .kanban-carte.est-saisissable::before { position: absolute; top: .45rem; right: .55rem; margin: 0; }
+.travaux-kanban .kanban-carte__titre { padding-right: 1rem; }

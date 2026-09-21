@@ -64,9 +64,10 @@ $choixMembre = static function (string $id, ?int $choisi) use ($membres): string
       </div>
     <?php endif; ?>
 
-    <div class="kanban travaux-kanban">
+    <?php // On saisit une carte et on la dépose dans une autre colonne ; sans script, le menu fait la même chose. ?>
+    <div class="kanban travaux-kanban" data-glisser-taches>
       <?php foreach (Travaux::STATUTS as $statut => $s): ?>
-        <section class="kanban__colonne">
+        <section class="kanban__colonne" data-statut="<?= e($statut) ?>">
           <h2 class="kanban__entete"><?= $s['icone'] ?> <?= e($s['nom']) ?>
             <span class="kanban__compteur"><?= count($parStatut[$statut]) ?></span></h2>
           <ul class="kanban__pile" style="list-style:none;padding:0;margin:0">
@@ -75,7 +76,8 @@ $choixMembre = static function (string $id, ?int $choisi) use ($membres): string
             <?php endif; ?>
             <?php foreach ($parStatut[$statut] as $t): ?>
               <?php $id = (int) $t['id']; $fait = $statut === 'fait'; ?>
-              <li class="kanban-carte<?= $fait ? ' kanban-carte--faite' : '' ?>" id="tache-<?= $id ?>">
+              <li class="kanban-carte est-saisissable<?= $fait ? ' kanban-carte--faite' : '' ?>" id="tache-<?= $id ?>" draggable="true"
+                  data-tache="<?= $id ?>" data-adresse="<?= url('travaux/taches/' . $id . '/statut') ?>">
                 <p class="kanban-carte__titre"><?= e((string) $t['titre']) ?></p>
                 <?php if ((string) ($t['note'] ?? '') !== ''): ?>
                   <p class="discret" style="margin:.2rem 0 0;font-size:.85rem"><?= nl2br(e((string) $t['note'])) ?></p>

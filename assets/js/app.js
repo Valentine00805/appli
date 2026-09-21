@@ -3942,6 +3942,83 @@
     });
   }
 
+  /*
+   * Les tâches d'un travail de groupe se glissent d'une colonne à l'autre.
+   *
+   * Écouté sur le document : le tableau peut arriver plus tard, dans une
+   * fenêtre. Déposer une carte choisit la colonne dans son menu « statut »
+   * et envoie ce formulaire-là — le même chemin qu'à la main, qui recharge
+   * la page ou la fenêtre. Dans un champ de la carte (« Modifier »), on
+   * sélectionne du texte : la carte ne se saisit pas.
+   */
+  if ("draggable" in document.createElement("div")) {
+    var tacheGlissee = null;
+
+    document.addEventListener("pointerdown", function (evenement) {
+      var carte = evenement.target.closest && evenement.target.closest("[data-glisser-taches] [data-tache]");
+      if (!carte) { return; }
+      carte.draggable = !evenement.target.closest("input, textarea, select, button, summary, details[open] form");
+    });
+
+    document.addEventListener("dragstart", function (evenement) {
+      var carte = evenement.target.closest && evenement.target.closest("[data-glisser-taches] [data-tache]");
+      if (!carte) { return; }
+      tacheGlissee = carte;
+      carte.classList.add("kanban-carte--glisse");
+      evenement.dataTransfer.effectAllowed = "move";
+      try { evenement.dataTransfer.setData("text/plain", carte.getAttribute("data-tache")); } catch (e) {}
+    });
+
+    document.addEventListener("dragend", function () {
+      if (tacheGlissee) { tacheGlissee.classList.remove("kanban-carte--glisse"); }
+      tacheGlissee = null;
+      document.querySelectorAll("[data-glisser-taches] .kanban__colonne--cible").forEach(function (c) {
+        c.classList.remove("kanban__colonne--cible");
+      });
+    });
+
+    var colonneVisee = function (evenement) {
+      if (!tacheGlissee || !evenement.target.closest) { return null; }
+      var colonne = evenement.target.closest("[data-glisser-taches] [data-statut]");
+      // Une colonne d'un autre tableau n'accueille pas cette carte.
+      return colonne && colonne.closest("[data-glisser-taches]") === tacheGlissee.closest("[data-glisser-taches]") ? colonne : null;
+    };
+
+    document.addEventListener("dragover", function (evenement) {
+      var colonne = colonneVisee(evenement);
+      if (!colonne) { return; }
+      evenement.preventDefault();
+      evenement.dataTransfer.dropEffect = "move";
+      colonne.classList.add("kanban__colonne--cible");
+    });
+
+    document.addEventListener("dragleave", function (evenement) {
+      var colonne = colonneVisee(evenement);
+      if (colonne && !colonne.contains(evenement.relatedTarget)) { colonne.classList.remove("kanban__colonne--cible"); }
+    });
+
+    document.addEventListener("drop", function (evenement) {
+      var colonne = colonneVisee(evenement);
+      if (!colonne) { return; }
+      evenement.preventDefault();
+      colonne.classList.remove("kanban__colonne--cible");
+      var carte = tacheGlissee;
+      // Reposée dans sa propre colonne : rien à enregistrer.
+      if (carte.closest("[data-statut]") === colonne) { return; }
+
+      // Tout de suite à sa place, le temps que l'enregistrement revienne.
+      var vide = colonne.querySelector(".kanban__vide");
+      if (vide) { vide.remove(); }
+      colonne.querySelector(".kanban__pile").appendChild(carte);
+      carte.classList.remove("kanban-carte--glisse");
+      carte.closest("[data-glisser-taches]").classList.add("est-en-cours");
+
+      var choix = carte.querySelector('select[name="statut"]');
+      choix.value = colonne.getAttribute("data-statut");
+      if (choix.form.requestSubmit) { choix.form.requestSubmit(); } else { choix.form.submit(); }
+    });
+  }
+
   // Les dossiers se plient : seuls ceux de premier niveau restent
   // visibles, un clic sur un dossier montre ou masque les siens.
   // Sans JavaScript, rien ne se replie et l arborescence reste entiere.
