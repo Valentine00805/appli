@@ -1248,6 +1248,9 @@
         return;
       }
 
+      // Ce qui se clique dans la fenêtre du dessus la regarde, elle.
+      if (evenement.target.closest('.fenetre--dessus')) { return; }
+
       var fermeture = evenement.target.closest('[data-fermer]');
       if (fermeture !== null && fenetre.open) {
         evenement.preventDefault();
@@ -1282,6 +1285,12 @@
     document.body.appendChild(dessus);
     var corpsDessus = dessus.querySelector('.fenetre__corps');
     var adresseDessus = null;
+    // Les pages vues dans la fenêtre du dessus : « Annuler » revient à la précédente.
+    var cheminDessus = [];
+    // Ouverte par un lien « data-relire-derriere » : ce qu'on y enregistre change la
+    // page derrière (les types d'échéance d'un projet), qu'on relit en la fermant.
+    var relireDerriere = false;
+    var changeDessus = false;
 
     var poserDessus = function (html) {
       corpsDessus.innerHTML = html;
@@ -1293,6 +1302,8 @@
     };
     var ouvrirDessus = function (adresse) {
       adresseDessus = adresse;
+      var deja = cheminDessus.indexOf(adresse);
+      if (deja >= 0) { cheminDessus = cheminDessus.slice(0, deja + 1); } else { cheminDessus.push(adresse); }
       corpsDessus.innerHTML = '<p class="discret" style="padding:1rem">Un instant…</p>';
       if (!dessus.open) { dessus.showModal(); }
       fetch(adresse + (adresse.indexOf('?') === -1 ? '?' : '&') + 'fenetre=1', { credentials: 'same-origin' })
@@ -1310,7 +1321,19 @@
     var fermerDessus = function () {
       corpsDessus.innerHTML = '';
       adresseDessus = null;
+      cheminDessus = [];
       dessus.close();
+      if (relireDerriere && changeDessus) {
+        // La fenêtre principale se relit à sa page ; sans elle, c'est la page.
+        if (fenetre.open && historique.length > 0) {
+          aChange = true;
+          ouvrir(historique[historique.length - 1]);
+        } else {
+          window.location.reload();
+        }
+      }
+      relireDerriere = false;
+      changeDessus = false;
     };
 
     // Comme l'autre : la croix seule la ferme.
@@ -1337,13 +1360,22 @@
 
       var donnees = new FormData(formulaire);
       donnees.append('fenetre', '1');
+      changeDessus = true;
       fetch(formulaire.action, { method: 'POST', body: donnees, credentials: 'same-origin' })
         .then(function (reponse) {
           if (!reponse.ok) { throw new Error('refus'); }
-          return reponse.text();
+          return reponse.text().then(function (html) { return { html: html, adresse: reponse.url }; });
         })
-        .then(function (html) {
-          if (/<header class="entete"/.test(html)) { ouvrirDessus(adresseDessus); } else { poserDessus(html); }
+        .then(function (reponse) {
+          if (/<header class="entete"/.test(reponse.html)) { ouvrirDessus(adresseDessus); return; }
+          // Là où l'enregistrement a mené (la liste, ou le formulaire refusé) :
+          // c'est désormais la page de la fenêtre, et « Annuler » part de là.
+          var arrivee = new URL(reponse.adresse, window.location.href);
+          arrivee.searchParams.delete('fenetre');
+          adresseDessus = arrivee.pathname + arrivee.search;
+          var deja = cheminDessus.indexOf(adresseDessus);
+          if (deja >= 0) { cheminDessus = cheminDessus.slice(0, deja + 1); } else { cheminDessus.push(adresseDessus); }
+          poserDessus(reponse.html);
         })
         .catch(function () { if (adresseDessus !== null) { ouvrirDessus(adresseDessus); } });
     });
@@ -1354,9 +1386,27 @@
         return;
       }
       var lien = evenement.target.closest('[data-fenetre-dessus]');
-      if (lien === null) { return; }
-      evenement.preventDefault();
-      ouvrirDessus(lien.getAttribute('href'));
+      if (lien !== null) {
+        evenement.preventDefault();
+        cheminDessus = [];
+        relireDerriere = lien.hasAttribute('data-relire-derriere');
+        changeDessus = false;
+        ouvrirDessus(lien.getAttribute('href'));
+        return;
+      }
+      if (!dessus.open || !dessus.contains(evenement.target)) { return; }
+      // « Annuler » : la page d'avant dans la fenêtre du dessus, ou la fermer.
+      if (evenement.target.closest('[data-fermer]')) {
+        evenement.preventDefault();
+        if (cheminDessus.length > 1) { ouvrirDessus(cheminDessus[cheminDessus.length - 2]); } else { fermerDessus(); }
+        return;
+      }
+      // Un lien vers une autre fenêtre s'ouvre dans celle du dessus, où l'on est.
+      var dedans = evenement.target.closest('[data-fenetre]');
+      if (dedans !== null) {
+        evenement.preventDefault();
+        ouvrirDessus(dedans.getAttribute('href'));
+      }
     });
   }
   /*

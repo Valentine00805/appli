@@ -51,7 +51,7 @@ $ligne = static function (array $e) use ($csrf, $envoi, $types): string {
 
 <p class="actions" style="margin:0 0 1rem">
   <a class="bouton bouton--petit" href="<?= url('travaux/' . (int) $projet['id'] . '/echeances/nouvelle') ?>" data-fenetre>+ Nouvelle échéance</a>
-  <a class="bouton bouton--secondaire bouton--petit" href="<?= url('travaux/' . (int) $projet['id'] . '/types') ?>"<?= $dansUneFenetre ? ' data-fenetre' : '' ?>>🏷️ Types d’échéance</a>
+  <a class="bouton bouton--secondaire bouton--petit" href="<?= url('travaux/' . (int) $projet['id'] . '/types') ?>" data-fenetre-dessus data-relire-derriere>🏷️ Types d’échéance</a>
 </p>
 
 <div class="pile" style="max-width:48rem">

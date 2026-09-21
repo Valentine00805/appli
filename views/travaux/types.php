@@ -13,12 +13,18 @@ $envoi = $dansUneFenetre ? ' data-envoi-fenetre' : '';
 $csrf = Session::jetonCsrf();
 $dernier = count($types) - 1;
 ?>
-<?= Vue::rendre('travaux/_onglets', ['projet' => $projet, 'onglet' => $onglet, 'dansUneFenetre' => $dansUneFenetre]) ?>
+<?php // Ouverte par-dessus le projet, la page se suffit : ni onglets, ni retour. ?>
+<?php if (!$dansUneFenetre): ?>
+  <?= Vue::rendre('travaux/_onglets', ['projet' => $projet, 'onglet' => $onglet]) ?>
+<?php endif; ?>
 
 <div class="entete-page">
   <div>
-    <p style="margin:0 0 .3rem"><a href="<?= url('travaux/' . (int) $projet['id'] . '/echeances') ?>"<?= $dansUneFenetre ? ' data-fenetre' : '' ?>>← Les échéances</a></p>
-    <h2 style="margin:0">🏷️ Types d’échéance</h2>
+    <?php if (!$dansUneFenetre): ?>
+      <p style="margin:0 0 .3rem"><a href="<?= url('travaux/' . (int) $projet['id'] . '/echeances') ?>">← Les échéances</a></p>
+    <?php endif; ?>
+    <h1 style="margin:0">🏷️ Types d’échéance</h1>
+    <p class="discret" style="margin:.2rem 0 .4rem"><?= e((string) $projet['nom']) ?></p>
     <p>Ils classent les échéances du groupe. Chacun a son icône, sa couleur, ses rappels et sa place dans le menu —
       pour tous les membres du projet.</p>
   </div>
@@ -26,7 +32,7 @@ $dernier = count($types) - 1;
 
 <p style="margin:0 0 1rem"><a class="bouton bouton--petit" href="<?= url('travaux/' . (int) $projet['id'] . '/types/nouveau') ?>" data-fenetre>+ Nouveau type</a></p>
 
-<div class="pile" style="max-width:48rem">
+<div class="pile"<?= $dansUneFenetre ? '' : ' style="max-width:48rem"' ?>>
   <?php if ($types === []): ?>
     <div class="vide">
       <span class="vide__icone">🏷️</span>
