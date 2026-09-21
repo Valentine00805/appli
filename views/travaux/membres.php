@@ -9,11 +9,14 @@
  * @var list<array> $discussions  les discussions de groupe dont je fais partie
  * @var string $onglet
  */
+$dansUneFenetre = $dansUneFenetre ?? false;
+// Dans la fenêtre, on y reste : les formulaires s'y enregistrent.
+$envoi = $dansUneFenetre ? ' data-envoi-fenetre' : '';
 $csrf = Session::jetonCsrf();
 $admin = $projet['role'] === 'admin';
 $jeton = $projet['jeton'] === null ? null : (string) $projet['jeton'];
 ?>
-<?= Vue::rendre('travaux/_onglets', ['projet' => $projet, 'onglet' => $onglet]) ?>
+<?= Vue::rendre('travaux/_onglets', ['projet' => $projet, 'onglet' => $onglet, 'dansUneFenetre' => $dansUneFenetre]) ?>
 
 <div class="colonnes">
   <div class="pile">
@@ -41,13 +44,13 @@ $jeton = $projet['jeton'] === null ? null : (string) $projet['jeton'];
             <?php if ($admin && !$moi): ?>
               <span class="en-ligne">
                 <?php if ($m['user_id'] !== null && $m['statut'] === 'membre'): ?>
-                  <form method="post" action="<?= url('travaux/membres/' . (int) $m['id'] . ($m['role'] === 'admin' ? '/membre' : '/admin')) ?>" class="en-ligne">
+                  <form method="post"<?= $envoi ?> action="<?= url('travaux/membres/' . (int) $m['id'] . ($m['role'] === 'admin' ? '/membre' : '/admin')) ?>" class="en-ligne">
                     <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
                     <button class="bouton bouton--discret bouton--petit" type="submit">
                       <?= $m['role'] === 'admin' ? 'Retirer l’administration' : 'Nommer administrateur' ?></button>
                   </form>
                 <?php endif; ?>
-                <form method="post" action="<?= url('travaux/membres/' . (int) $m['id'] . '/retirer') ?>" class="en-ligne"
+                <form method="post"<?= $envoi ?> action="<?= url('travaux/membres/' . (int) $m['id'] . '/retirer') ?>" class="en-ligne"
                       data-confirmation="Retirer <?= e((string) $m['nom_affiche']) ?> du projet ? Ses tâches resteront, sans personne pour les faire.">
                   <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
                   <button class="bouton bouton--discret bouton--petit" type="submit"><?= $m['statut'] === 'invite' ? 'Annuler l’invitation' : 'Retirer' ?></button>
@@ -65,7 +68,7 @@ $jeton = $projet['jeton'] === null ? null : (string) $projet['jeton'];
         <?php if ($amisAInviter === []): ?>
           <p class="discret">Tous vos amis sont déjà dans le projet — ou vous n’en avez pas encore : <a href="<?= url('amis') ?>">en ajouter</a>.</p>
         <?php else: ?>
-          <form method="post" action="<?= url('travaux/' . (int) $projet['id'] . '/inviter') ?>">
+          <form method="post"<?= $envoi ?> action="<?= url('travaux/' . (int) $projet['id'] . '/inviter') ?>">
             <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
             <label class="discussions-recherche">
               <span class="sr-only">Rechercher un ami</span>
@@ -90,7 +93,7 @@ $jeton = $projet['jeton'] === null ? null : (string) $projet['jeton'];
 
       <section class="carte">
         <h2>Ajouter une personne sans compte</h2>
-        <form method="post" action="<?= url('travaux/' . (int) $projet['id'] . '/sans-compte') ?>">
+        <form method="post"<?= $envoi ?> action="<?= url('travaux/' . (int) $projet['id'] . '/sans-compte') ?>">
           <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
           <div class="champ">
             <label for="nom-sans-compte">Son nom</label>
@@ -110,19 +113,19 @@ $jeton = $projet['jeton'] === null ? null : (string) $projet['jeton'];
         <p><a class="bouton bouton--bloc" href="<?= url('groupes/' . (int) $projet['conversation_id']) ?>">Ouvrir la discussion</a></p>
         <p class="champ__aide">Qui rejoint le projet y entre aussi.</p>
         <?php if ($admin): ?>
-          <form method="post" action="<?= url('travaux/' . (int) $projet['id'] . '/discussion/delier') ?>">
+          <form method="post"<?= $envoi ?> action="<?= url('travaux/' . (int) $projet['id'] . '/discussion/delier') ?>">
             <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
             <button class="bouton bouton--discret bouton--petit" type="submit">Délier la discussion</button>
           </form>
         <?php endif; ?>
       <?php else: ?>
-        <form method="post" action="<?= url('travaux/' . (int) $projet['id'] . '/discussion') ?>">
+        <form method="post"<?= $envoi ?> action="<?= url('travaux/' . (int) $projet['id'] . '/discussion') ?>">
           <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
           <button class="bouton bouton--bloc" type="submit">Créer la discussion du groupe</button>
           <span class="champ__aide">Avec tous les membres qui ont un compte.</span>
         </form>
         <?php if ($discussions !== []): ?>
-          <form method="post" action="<?= url('travaux/' . (int) $projet['id'] . '/discussion') ?>" style="margin-top:.8rem">
+          <form method="post"<?= $envoi ?> action="<?= url('travaux/' . (int) $projet['id'] . '/discussion') ?>" style="margin-top:.8rem">
             <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
             <div class="champ">
               <label for="discussion-existante">Ou relier une discussion existante</label>
@@ -143,7 +146,7 @@ $jeton = $projet['jeton'] === null ? null : (string) $projet['jeton'];
       <?php if ($jeton === null): ?>
         <p class="discret">Pour qui n’a pas de compte : il voit les tâches, les échéances, les fichiers et le document, sans rien modifier.</p>
         <?php if ($admin): ?>
-          <form method="post" action="<?= url('travaux/' . (int) $projet['id'] . '/lien') ?>">
+          <form method="post"<?= $envoi ?> action="<?= url('travaux/' . (int) $projet['id'] . '/lien') ?>">
             <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
             <button class="bouton bouton--secondaire bouton--bloc" type="submit">Créer le lien</button>
           </form>
@@ -156,7 +159,7 @@ $jeton = $projet['jeton'] === null ? null : (string) $projet['jeton'];
         </div>
         <p class="champ__aide" data-partage-etat aria-live="polite">Qui a ce lien voit le projet, en lecture seule.</p>
         <?php if ($admin): ?>
-          <form method="post" action="<?= url('travaux/' . (int) $projet['id'] . '/lien/fermer') ?>"
+          <form method="post"<?= $envoi ?> action="<?= url('travaux/' . (int) $projet['id'] . '/lien/fermer') ?>"
                 data-confirmation="Désactiver le lien ? Il ne mènera plus nulle part.">
             <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
             <button class="bouton bouton--discret bouton--petit" type="submit">Désactiver le lien</button>
@@ -168,7 +171,7 @@ $jeton = $projet['jeton'] === null ? null : (string) $projet['jeton'];
     <?php if ($admin): ?>
       <details class="carte">
         <summary><strong>Réglages du projet</strong></summary>
-        <form method="post" action="<?= url('travaux/' . (int) $projet['id'] . '/modifier') ?>" style="margin-top:.8rem">
+        <form method="post"<?= $envoi ?> action="<?= url('travaux/' . (int) $projet['id'] . '/modifier') ?>" style="margin-top:.8rem">
           <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
           <div class="champ">
             <label for="nom-projet">Nom</label>
@@ -180,7 +183,7 @@ $jeton = $projet['jeton'] === null ? null : (string) $projet['jeton'];
           </div>
           <button class="bouton bouton--petit" type="submit">Enregistrer</button>
         </form>
-        <form method="post" action="<?= url('travaux/' . (int) $projet['id'] . '/supprimer') ?>" style="margin-top:1rem"
+        <form method="post"<?= $envoi ?> action="<?= url('travaux/' . (int) $projet['id'] . '/supprimer') ?>" style="margin-top:1rem"
               data-confirmation="Supprimer « <?= e((string) $projet['nom']) ?> » pour tout le groupe ? Tâches, fichiers, document et échéances seront effacés.">
           <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
           <button class="bouton bouton--danger bouton--petit" type="submit">Supprimer le projet</button>
@@ -188,7 +191,7 @@ $jeton = $projet['jeton'] === null ? null : (string) $projet['jeton'];
       </details>
     <?php endif; ?>
 
-    <form method="post" action="<?= url('travaux/' . (int) $projet['id'] . '/quitter') ?>"
+    <form method="post"<?= $envoi ?> action="<?= url('travaux/' . (int) $projet['id'] . '/quitter') ?>"
           data-confirmation="Quitter « <?= e((string) $projet['nom']) ?> » ? Ses échéances quitteront votre calendrier.">
       <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
       <button class="bouton bouton--discret bouton--petit" type="submit">🚪 Quitter le projet</button>

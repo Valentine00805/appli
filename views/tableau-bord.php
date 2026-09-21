@@ -181,7 +181,7 @@
           <ul class="travaux-mes-taches">
             <?php foreach ($travaux['taches'] as $t): ?>
               <li>
-                <a href="<?= url('travaux/' . (int) $t['projet_id']) ?>"><?= e((string) $t['titre']) ?></a>
+                <a href="<?= url('travaux/' . (int) $t['projet_id']) ?>" data-fenetre><?= e((string) $t['titre']) ?></a>
                 <span class="discret">· <?= e((string) $t['projet_nom']) ?></span>
                 <?php $texte = echeance_libelle($t['echeance']); ?>
                 <?php if ($texte !== ''): ?>

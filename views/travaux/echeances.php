@@ -7,13 +7,16 @@
  * @var list<array> $echeances
  * @var string $onglet
  */
+$dansUneFenetre = $dansUneFenetre ?? false;
+// Dans la fenêtre, on y reste : les formulaires s'y enregistrent.
+$envoi = $dansUneFenetre ? ' data-envoi-fenetre' : '';
 $csrf = Session::jetonCsrf();
 $maintenant = date('Y-m-d H:i:s');
 $avenir = array_filter($echeances, static fn (array $e): bool => (string) $e['fin'] >= $maintenant);
 $passees = array_reverse(array_filter($echeances, static fn (array $e): bool => (string) $e['fin'] < $maintenant));
 
 /** Une échéance de la liste, avec de quoi la modifier. */
-$ligne = static function (array $e) use ($csrf): string {
+$ligne = static function (array $e) use ($csrf, $envoi): string {
     $n = Travaux::NATURES[$e['nature']];
     $journee = (int) $e['journee_entiere'] === 1;
     ob_start(); ?>
@@ -26,12 +29,12 @@ $ligne = static function (array $e) use ($csrf): string {
         <?php if ((string) ($e['lieu'] ?? '') !== ''): ?><span class="discret">· <?= e((string) $e['lieu']) ?></span><?php endif; ?>
         <details class="travaux-modifier">
           <summary>Modifier</summary>
-          <form method="post" action="<?= url('travaux/echeances/' . (int) $e['id'] . '/modifier') ?>">
+          <form method="post"<?= $envoi ?> action="<?= url('travaux/echeances/' . (int) $e['id'] . '/modifier') ?>">
             <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
             <?= Vue::rendre('travaux/_champs_echeance', ['suffixe' => (string) (int) $e['id'], 'e' => $e]) ?>
             <button class="bouton bouton--petit" type="submit">Enregistrer</button>
           </form>
-          <form method="post" action="<?= url('travaux/echeances/' . (int) $e['id'] . '/supprimer') ?>" class="en-ligne"
+          <form method="post"<?= $envoi ?> action="<?= url('travaux/echeances/' . (int) $e['id'] . '/supprimer') ?>" class="en-ligne"
                 data-confirmation="Retirer « <?= e((string) $e['titre']) ?> » ? Elle quittera aussi le calendrier de chaque membre.">
             <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
             <button class="bouton bouton--discret bouton--petit" type="submit">Supprimer</button>
@@ -42,7 +45,7 @@ $ligne = static function (array $e) use ($csrf): string {
     <?php return (string) ob_get_clean();
 };
 ?>
-<?= Vue::rendre('travaux/_onglets', ['projet' => $projet, 'onglet' => $onglet]) ?>
+<?= Vue::rendre('travaux/_onglets', ['projet' => $projet, 'onglet' => $onglet, 'dansUneFenetre' => $dansUneFenetre]) ?>
 
 <p style="margin:0 0 1rem"><a class="bouton bouton--petit" href="<?= url('travaux/' . (int) $projet['id'] . '/echeances/nouvelle') ?>" data-fenetre>+ Nouvelle échéance</a></p>
 

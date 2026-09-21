@@ -8,9 +8,17 @@
  * @var string $filtre  tous | moi | personne
  * @var string $onglet
  */
+$dansUneFenetre = $dansUneFenetre ?? false;
+// Dans la fenêtre, on y reste : les formulaires s'y enregistrent, les liens s'y ouvrent.
+$envoi = $dansUneFenetre ? ' data-envoi-fenetre' : '';
+$lien = $dansUneFenetre ? ' data-fenetre' : '';
 $csrf = Session::jetonCsrf();
 // Changer un statut ramène au même filtre.
-$retour = '<input type="hidden" name="retour" value="' . e((string) ($_SERVER['REQUEST_URI'] ?? '')) . '">';
+$adresseRetour = (string) ($_SERVER['REQUEST_URI'] ?? '');
+if ($dansUneFenetre) {
+    $adresseRetour .= (str_contains($adresseRetour, '?') ? '&' : '?') . 'fenetre=1';
+}
+$retour = '<input type="hidden" name="retour" value="' . e($adresseRetour) . '">';
 $moi = (int) $projet['mon_membre_id'];
 $visibles = array_filter($taches, static fn (array $t): bool => match ($filtre) {
     'moi' => (int) ($t['membre_id'] ?? 0) === $moi,
@@ -36,15 +44,15 @@ $choixMembre = static function (string $id, ?int $choisi) use ($membres): string
     return $html . '</select>';
 };
 ?>
-<?= Vue::rendre('travaux/_onglets', ['projet' => $projet, 'onglet' => $onglet]) ?>
+<?= Vue::rendre('travaux/_onglets', ['projet' => $projet, 'onglet' => $onglet, 'dansUneFenetre' => $dansUneFenetre]) ?>
 
-<div class="colonnes">
+<div class="<?= $dansUneFenetre ? 'pile' : 'colonnes' ?>">
   <div class="pile">
     <div class="travaux-filtres">
       <a class="bouton bouton--petit" href="<?= url('travaux/' . (int) $projet['id'] . '/taches/nouvelle') ?>" data-fenetre>+ Nouvelle tâche</a>
       <?php foreach (['tous' => 'Toutes', 'moi' => 'Les miennes', 'personne' => 'Sans personne'] as $cle => $nom): ?>
         <a class="pastille<?= $filtre === $cle ? ' pastille--active' : '' ?>"
-           href="<?= url('travaux/' . (int) $projet['id'], $cle === 'tous' ? [] : ['voir' => $cle]) ?>"><?= e($nom) ?></a>
+           href="<?= url('travaux/' . (int) $projet['id'], $cle === 'tous' ? [] : ['voir' => $cle]) ?>"<?= $lien ?>><?= e($nom) ?></a>
       <?php endforeach; ?>
     </div>
 
@@ -85,7 +93,7 @@ $choixMembre = static function (string $id, ?int $choisi) use ($membres): string
                   <?php endif; ?>
                 </p>
                 <div class="travaux-tache__actions">
-                  <form method="post" action="<?= url('travaux/taches/' . $id . '/statut') ?>" class="en-ligne" data-auto-envoi>
+                  <form method="post"<?= $envoi ?> action="<?= url('travaux/taches/' . $id . '/statut') ?>" class="en-ligne" data-auto-envoi>
                     <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
                     <?= $retour ?>
                     <label class="sr-only" for="statut-<?= $id ?>">Où en est « <?= e((string) $t['titre']) ?> »</label>
@@ -97,7 +105,7 @@ $choixMembre = static function (string $id, ?int $choisi) use ($membres): string
                     <noscript><button class="bouton bouton--discret bouton--petit" type="submit">OK</button></noscript>
                   </form>
                   <?php if ($t['membre_id'] === null && !$fait): ?>
-                    <form method="post" action="<?= url('travaux/taches/' . $id . '/prendre') ?>" class="en-ligne">
+                    <form method="post"<?= $envoi ?> action="<?= url('travaux/taches/' . $id . '/prendre') ?>" class="en-ligne">
                       <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
                       <?= $retour ?>
                       <button class="bouton bouton--secondaire bouton--petit" type="submit">✋ Je m’en occupe</button>
@@ -106,7 +114,7 @@ $choixMembre = static function (string $id, ?int $choisi) use ($membres): string
                 </div>
                 <details class="travaux-modifier">
                   <summary>Modifier</summary>
-                  <form method="post" action="<?= url('travaux/taches/' . $id . '/modifier') ?>">
+                  <form method="post"<?= $envoi ?> action="<?= url('travaux/taches/' . $id . '/modifier') ?>">
                     <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
                     <div class="champ">
                       <label for="titre-<?= $id ?>">Tâche</label>
@@ -126,7 +134,7 @@ $choixMembre = static function (string $id, ?int $choisi) use ($membres): string
                     </div>
                     <button class="bouton bouton--petit" type="submit">Enregistrer</button>
                   </form>
-                  <form method="post" action="<?= url('travaux/taches/' . $id . '/supprimer') ?>" class="en-ligne"
+                  <form method="post"<?= $envoi ?> action="<?= url('travaux/taches/' . $id . '/supprimer') ?>" class="en-ligne"
                         data-confirmation="Supprimer la tâche « <?= e((string) $t['titre']) ?> » pour tout le groupe ?">
                     <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
                     <button class="bouton bouton--discret bouton--petit" type="submit">Supprimer</button>

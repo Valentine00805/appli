@@ -1751,13 +1751,21 @@
     choix.addEventListener('change', suivreLePlafond);
   });
 
-  document.querySelectorAll('[data-auto-envoi]').forEach(function (formulaire) {
-    // « elements », et non les seuls descendants : un champ rangé ailleurs dans
-    // la page mais rattaché au formulaire (« form="…" ») s'envoie aussi.
-    [].slice.call(formulaire.elements).forEach(function (champ) {
-      if (!champ.matches('select, input[type="checkbox"], input[type="radio"], input[type="color"]')) { return; }
-      champ.addEventListener('change', function () { formulaire.submit(); });
-    });
+  /*
+   * Un formulaire « data-auto-envoi » part dès qu'on change un choix.
+   *
+   * Écouté sur le document : un formulaire arrivé plus tard, dans une
+   * fenêtre, en profite aussi. « champ.form », et non l'ancêtre : un champ
+   * rangé ailleurs dans la page mais rattaché au formulaire (« form="…" »)
+   * s'envoie aussi. « requestSubmit » passe par l'évènement d'envoi : dans
+   * une fenêtre, le formulaire s'y enregistre au lieu de quitter la page.
+   */
+  document.addEventListener('change', function (evenement) {
+    var champ = evenement.target;
+    if (!champ.matches || !champ.matches('select, input[type="checkbox"], input[type="radio"], input[type="color"]')) { return; }
+    var formulaire = champ.form;
+    if (!formulaire || !formulaire.hasAttribute('data-auto-envoi')) { return; }
+    if (formulaire.requestSubmit) { formulaire.requestSubmit(); } else { formulaire.submit(); }
   });
 
   // Les champs de remboursement n'apparaissent qu'une fois la case cochée

@@ -361,7 +361,7 @@ final class TravauxController
     {
         Auth::exiger();
         $version = Travaux::version(Auth::id(), $id) ?? $this->introuvable();
-        Vue::afficher('travaux/version', ['version' => $version,
+        $this->formulaire('travaux/version', ['version' => $version,
             'projet' => Travaux::projet((int) $version['projet_id'], Auth::id())], 'Version du document');
     }
 
@@ -455,6 +455,11 @@ final class TravauxController
 
     private function afficher(string $vue, array $projet, array $donnees, string $onglet): void
     {
+        // Ouvert depuis la liste, le projet vit dans une fenêtre, onglets compris.
+        if (Vue::enFenetre()) {
+            Vue::fragment($vue, $donnees + ['projet' => $projet, 'onglet' => $onglet]);
+            return;
+        }
         Vue::afficher($vue, $donnees + ['projet' => $projet, 'onglet' => $onglet], (string) $projet['nom']);
     }
 

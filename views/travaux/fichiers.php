@@ -6,10 +6,13 @@
  * @var list<array> $fichiers
  * @var string $onglet
  */
+$dansUneFenetre = $dansUneFenetre ?? false;
+// Dans la fenêtre, on y reste : les formulaires s'y enregistrent.
+$envoi = $dansUneFenetre ? ' data-envoi-fenetre' : '';
 $csrf = Session::jetonCsrf();
 $admin = $projet['role'] === 'admin';
 ?>
-<?= Vue::rendre('travaux/_onglets', ['projet' => $projet, 'onglet' => $onglet]) ?>
+<?= Vue::rendre('travaux/_onglets', ['projet' => $projet, 'onglet' => $onglet, 'dansUneFenetre' => $dansUneFenetre]) ?>
 
 <div class="colonnes">
   <div class="pile">
@@ -40,7 +43,7 @@ $admin = $projet['role'] === 'admin';
                    href="<?= url('travaux/fichiers/' . (int) $f['id'], ['telecharger' => 1]) ?>"
                    title="Télécharger" aria-label="Télécharger <?= e((string) $f['nom_origine']) ?>">⬇</a>
                 <?php if ($admin || (int) ($f['user_id'] ?? 0) === Auth::id()): ?>
-                  <form method="post" action="<?= url('travaux/fichiers/' . (int) $f['id'] . '/supprimer') ?>" class="en-ligne"
+                  <form method="post"<?= $envoi ?> action="<?= url('travaux/fichiers/' . (int) $f['id'] . '/supprimer') ?>" class="en-ligne"
                         data-confirmation="Supprimer « <?= e((string) $f['nom_origine']) ?> » pour tout le groupe ?">
                     <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
                     <button class="bouton bouton--discret bouton--petit" type="submit" title="Supprimer"
@@ -58,7 +61,7 @@ $admin = $projet['role'] === 'admin';
   <div class="pile">
     <section class="carte">
       <h2>Déposer</h2>
-      <form method="post" action="<?= url('travaux/' . (int) $projet['id'] . '/fichiers') ?>" enctype="multipart/form-data" class="depot" data-depot>
+      <form method="post"<?= $envoi ?> action="<?= url('travaux/' . (int) $projet['id'] . '/fichiers') ?>" enctype="multipart/form-data" class="depot" data-depot>
         <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
         <label class="depot__zone" for="depot-travaux">
           <span class="depot__icone" aria-hidden="true">📎</span>

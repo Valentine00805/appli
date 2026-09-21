@@ -60,7 +60,7 @@ $csrf = Session::jetonCsrf();
     <div class="grille grille--2">
       <?php foreach ($projets as $p): ?>
         <?php $avancement = Travaux::avancement((int) $p['nb_taches'], (int) $p['nb_faites']); ?>
-        <a class="carte travaux-carte" href="<?= url('travaux/' . (int) $p['id']) ?>">
+        <a class="carte travaux-carte" href="<?= url('travaux/' . (int) $p['id']) ?>" data-fenetre>
           <h2 class="travaux-carte__titre"><?= e((string) $p['nom']) ?></h2>
           <p class="discret" style="margin:0">
             <?= (int) $p['nb_membres'] ?> membre<?= (int) $p['nb_membres'] > 1 ? 's' : '' ?>
@@ -94,7 +94,7 @@ $csrf = Session::jetonCsrf();
         <ul class="travaux-mes-taches">
           <?php foreach ($mesTaches as $t): ?>
             <li>
-              <a href="<?= url('travaux/' . (int) $t['projet_id']) ?>"><?= e((string) $t['titre']) ?></a>
+              <a href="<?= url('travaux/' . (int) $t['projet_id']) ?>" data-fenetre><?= e((string) $t['titre']) ?></a>
               <span class="discret">· <?= e((string) $t['projet_nom']) ?></span>
               <?php $texte = echeance_libelle($t['echeance']); ?>
               <?php if ($texte !== ''): ?>

@@ -9,13 +9,17 @@
  * @var ?array $auteur      qui l'a modifié en dernier
  * @var string $onglet
  */
+$dansUneFenetre = $dansUneFenetre ?? false;
+// Dans la fenêtre, on y reste : les formulaires s'y enregistrent, les liens s'y ouvrent.
+$envoi = $dansUneFenetre ? ' data-envoi-fenetre' : '';
+$lien = $dansUneFenetre ? ' data-fenetre' : '';
 $csrf = Session::jetonCsrf();
 ?>
-<?= Vue::rendre('travaux/_onglets', ['projet' => $projet, 'onglet' => $onglet]) ?>
+<?= Vue::rendre('travaux/_onglets', ['projet' => $projet, 'onglet' => $onglet, 'dansUneFenetre' => $dansUneFenetre]) ?>
 
 <div class="colonnes">
   <div class="pile">
-    <form method="post" action="<?= url('travaux/' . (int) $projet['id'] . '/document') ?>" class="carte">
+    <form method="post"<?= $envoi ?> action="<?= url('travaux/' . (int) $projet['id'] . '/document') ?>" class="carte">
       <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
       <?php // La version lue : si quelqu'un enregistre entre-temps, on ne l'écrase pas. ?>
       <input type="hidden" name="version" value="<?= (int) $projet['document_version'] ?>">
@@ -49,7 +53,7 @@ $csrf = Session::jetonCsrf();
         <ul class="travaux-versions">
           <?php foreach ($versions as $v): ?>
             <li>
-              <a href="<?= url('travaux/versions/' . (int) $v['id']) ?>"><?= e(date_fr((string) $v['created_at'])) ?></a>
+              <a href="<?= url('travaux/versions/' . (int) $v['id']) ?>"<?= $lien ?>><?= e(date_fr((string) $v['created_at'])) ?></a>
               <span class="discret">· <?= e((string) ($v['auteur'] ?? 'un ancien membre')) ?></span>
             </li>
           <?php endforeach; ?>
