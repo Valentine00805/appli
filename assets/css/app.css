@@ -3846,9 +3846,6 @@ summary.cal-volet__groupe:focus-visible {
 .travaux-kanban .kanban-carte__meta { display: flex; flex-wrap: wrap; gap: .35rem; margin: .45rem 0 0; }
 .travaux-tache__actions { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; margin-top: .5rem; }
 .travaux-tache__actions select { width: auto; padding: .2rem .4rem; font-size: .85rem; }
-.travaux-modifier { margin-top: .4rem; font-size: .9rem; }
-.travaux-modifier summary { cursor: pointer; color: var(--texte-doux); }
-.travaux-modifier form { margin-top: .5rem; }
 .travaux-echeance { display: flex; gap: .6rem; align-items: flex-start; }
 .travaux-echeance__icone { font-size: 1.3rem; line-height: 1.2; }
 .travaux-membre { display: flex; gap: .6rem; align-items: center; flex-wrap: wrap; }
@@ -3859,12 +3856,12 @@ summary.cal-volet__groupe:focus-visible {
   .travaux-kanban { grid-template-columns: minmax(0, 1fr); }
 }
 /* Les formulaires des travaux : la durée habillée comme les autres champs, des précisions courtes. */
-.travaux-formulaire input[type="number"], .travaux-modifier input[type="number"] {
+.travaux-formulaire input[type="number"] {
   width: 100%; padding: .6rem .75rem; font: inherit; color: var(--texte);
   background: var(--fond-carte); border: 1px solid var(--bordure-forte);
   border-radius: var(--rayon-s);
 }
-.travaux-formulaire textarea, .travaux-modifier textarea { min-height: 6rem; }
+.travaux-formulaire textarea { min-height: 6rem; }
 .travaux-formulaire .groupe-choix__liste { max-height: 14rem; overflow: auto; }
 /* La poignée des tâches à glisser : dans le coin, sans pousser le titre. */
 .travaux-kanban .kanban-carte.est-saisissable::before { position: absolute; top: .45rem; right: .55rem; margin: 0; }

@@ -1372,6 +1372,13 @@
           // c'est désormais la page de la fenêtre, et « Annuler » part de là.
           var arrivee = new URL(reponse.adresse, window.location.href);
           arrivee.searchParams.delete('fenetre');
+          // Enregistré, et l'on n'est pas revenu au formulaire (un refus y ramène) :
+          // la fenêtre a fini son travail, la page derrière se relit.
+          if (formulaire.hasAttribute('data-fermer-apres') && arrivee.pathname !== new URL(formulaire.action, window.location.href).pathname
+              && arrivee.pathname + arrivee.search !== adresseDessus) {
+            fermerDessus();
+            return;
+          }
           adresseDessus = arrivee.pathname + arrivee.search;
           var deja = cheminDessus.indexOf(adresseDessus);
           if (deja >= 0) { cheminDessus = cheminDessus.slice(0, deja + 1); } else { cheminDessus.push(adresseDessus); }

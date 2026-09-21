@@ -29,19 +29,8 @@ $ligne = static function (array $e) use ($csrf, $envoi, $types): string {
         <?php endif; ?><br>
         <?= e(ucfirst(date_fr((string) $e['debut'], !$journee))) ?><?= $journee ? ' — toute la journée' : '' ?>
         <?php if ((string) ($e['lieu'] ?? '') !== ''): ?><span class="discret">· <?= e((string) $e['lieu']) ?></span><?php endif; ?>
-        <details class="travaux-modifier">
-          <summary>Modifier</summary>
-          <form method="post"<?= $envoi ?> action="<?= url('travaux/echeances/' . (int) $e['id'] . '/modifier') ?>">
-            <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
-            <?= Vue::rendre('travaux/_champs_echeance', ['suffixe' => (string) (int) $e['id'], 'e' => $e, 'types' => $types]) ?>
-            <button class="bouton bouton--petit" type="submit">Enregistrer</button>
-          </form>
-          <form method="post"<?= $envoi ?> action="<?= url('travaux/echeances/' . (int) $e['id'] . '/supprimer') ?>" class="en-ligne"
-                data-confirmation="Retirer « <?= e((string) $e['titre']) ?> » ? Elle quittera aussi le calendrier de chaque membre.">
-            <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
-            <button class="bouton bouton--discret bouton--petit" type="submit">Supprimer</button>
-          </form>
-        </details>
+        <br><a class="bouton bouton--discret bouton--petit" href="<?= url('travaux/echeances/' . (int) $e['id'] . '/modifier') ?>"
+               data-fenetre-dessus data-relire-derriere style="margin-top:.3rem">✎ Modifier</a>
       </span>
     </li>
     <?php return (string) ob_get_clean();

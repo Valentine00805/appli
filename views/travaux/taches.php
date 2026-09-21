@@ -32,17 +32,6 @@ foreach ($visibles as $t) {
 $total = count($taches);
 $faites = count(array_filter($taches, static fn (array $t): bool => $t['statut'] === 'fait'));
 $avancement = Travaux::avancement($total, $faites);
-
-/** Le menu « qui s'en occupe », pour l'ajout et la modification. */
-$choixMembre = static function (string $id, ?int $choisi) use ($membres): string {
-    $html = '<select id="' . e($id) . '" name="membre_id"><option value="">Personne pour l’instant</option>';
-    foreach ($membres as $m) {
-        $html .= '<option value="' . (int) $m['id'] . '"' . ((int) $m['id'] === $choisi ? ' selected' : '') . '>'
-            . e((string) $m['nom_affiche']) . ($m['user_id'] === null ? ' (sans compte)' : '') . '</option>';
-    }
-
-    return $html . '</select>';
-};
 ?>
 <?= Vue::rendre('travaux/_onglets', ['projet' => $projet, 'onglet' => $onglet, 'dansUneFenetre' => $dansUneFenetre]) ?>
 
@@ -113,35 +102,10 @@ $choixMembre = static function (string $id, ?int $choisi) use ($membres): string
                       <button class="bouton bouton--secondaire bouton--petit" type="submit">✋ Je m’en occupe</button>
                     </form>
                   <?php endif; ?>
+                  <?php // Par-dessus le tableau ; en se fermant, elle le relit. ?>
+                  <a class="bouton bouton--discret bouton--petit" href="<?= url('travaux/taches/' . $id . '/modifier') ?>"
+                     data-fenetre-dessus data-relire-derriere>✎ Modifier</a>
                 </div>
-                <details class="travaux-modifier">
-                  <summary>Modifier</summary>
-                  <form method="post"<?= $envoi ?> action="<?= url('travaux/taches/' . $id . '/modifier') ?>">
-                    <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
-                    <div class="champ">
-                      <label for="titre-<?= $id ?>">Tâche</label>
-                      <input type="text" id="titre-<?= $id ?>" name="titre" required maxlength="200" value="<?= e((string) $t['titre']) ?>">
-                    </div>
-                    <div class="champ">
-                      <label for="membre-<?= $id ?>">Qui s’en occupe</label>
-                      <?= $choixMembre('membre-' . $id, $t['membre_id'] === null ? null : (int) $t['membre_id']) ?>
-                    </div>
-                    <div class="champ">
-                      <label for="echeance-<?= $id ?>">Pour le</label>
-                      <input type="date" id="echeance-<?= $id ?>" name="echeance" value="<?= e((string) ($t['echeance'] ?? '')) ?>">
-                    </div>
-                    <div class="champ">
-                      <label for="note-<?= $id ?>">Précisions</label>
-                      <textarea id="note-<?= $id ?>" name="note" rows="2" maxlength="2000"><?= e((string) ($t['note'] ?? '')) ?></textarea>
-                    </div>
-                    <button class="bouton bouton--petit" type="submit">Enregistrer</button>
-                  </form>
-                  <form method="post"<?= $envoi ?> action="<?= url('travaux/taches/' . $id . '/supprimer') ?>" class="en-ligne"
-                        data-confirmation="Supprimer la tâche « <?= e((string) $t['titre']) ?> » pour tout le groupe ?">
-                    <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
-                    <button class="bouton bouton--discret bouton--petit" type="submit">Supprimer</button>
-                  </form>
-                </details>
               </li>
             <?php endforeach; ?>
           </ul>

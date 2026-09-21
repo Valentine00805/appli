@@ -226,12 +226,27 @@ final class TravauxController
         $this->finir(null, 'Tâche ajoutée.', 'travaux/' . $id);
     }
 
+    /** Modifier une tâche, dans une fenêtre par-dessus le tableau. */
+    public function formulaireTache(int $id): void
+    {
+        Auth::exiger();
+        $tache = Travaux::tache(Auth::id(), $id) ?? $this->introuvable();
+        $this->formulaire('travaux/tache', [
+            'tache' => $tache,
+            'projet' => Travaux::projet((int) $tache['projet_id'], Auth::id()),
+            'membres' => Travaux::membresActifs((int) $tache['projet_id']),
+        ], 'Modifier la tâche');
+    }
+
     public function modifierTache(int $id): void
     {
         $this->exigerPost();
         $tache = Travaux::tache(Auth::id(), $id) ?? $this->introuvable();
-        $this->finir(Travaux::modifierTache(Auth::id(), $id, post('titre'), $_POST['membre_id'] ?? null,
-            post('echeance'), post('note')), 'Tâche modifiée.', 'travaux/' . (int) $tache['projet_id']);
+        $refus = Travaux::modifierTache(Auth::id(), $id, post('titre'), $_POST['membre_id'] ?? null,
+            post('echeance'), post('note'));
+        // Refusé : on reste sur le formulaire, pour corriger.
+        $this->finir($refus, 'Tâche modifiée.',
+            $refus === null ? 'travaux/' . (int) $tache['projet_id'] : 'travaux/taches/' . $id . '/modifier');
     }
 
     public function statutTache(int $id): void
@@ -277,6 +292,18 @@ final class TravauxController
         redirect('travaux/' . $id . '/echeances');
     }
 
+    /** Modifier une échéance, dans une fenêtre par-dessus la liste. */
+    public function formulaireEcheance(int $id): void
+    {
+        Auth::exiger();
+        $echeance = Travaux::echeance(Auth::id(), $id) ?? $this->introuvable();
+        $this->formulaire('travaux/echeance', [
+            'echeance' => $echeance,
+            'projet' => Travaux::projet((int) $echeance['projet_id'], Auth::id()),
+            'types' => Travaux::types((int) $echeance['projet_id']),
+        ], 'Modifier l’échéance');
+    }
+
     public function modifierEcheance(int $id): void
     {
         $this->exigerPost();
@@ -284,7 +311,7 @@ final class TravauxController
         $retour = 'travaux/' . (int) $echeance['projet_id'] . '/echeances';
         $donnees = Travaux::lireEcheance($_POST, (int) $echeance['projet_id']);
         if (is_string($donnees)) {
-            $this->finir($donnees, '', $retour);
+            $this->finir($donnees, '', 'travaux/echeances/' . $id . '/modifier');
         }
         Travaux::modifierEcheance($id, $donnees);
         Session::flash('succes', 'Échéance modifiée, dans le calendrier de chacun aussi.');
