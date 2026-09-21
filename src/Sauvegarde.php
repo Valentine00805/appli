@@ -373,6 +373,19 @@ final class Sauvegarde
             $ligne[$colonne] = $correspondances[$cible][$ancien] ?? null;
         }
 
+        /*
+         * La copie d'une échéance de travail de groupe reste reliée à son
+         * projet s'il existe encore et qu'on en est toujours membre ; sinon,
+         * elle redevient un évènement ordinaire.
+         */
+        if (($ligne['projet_echeance_id'] ?? null) !== null
+            && Database::valeur(
+                "SELECT e.id FROM projet_echeances e
+                   JOIN projet_membres pm ON pm.projet_id = e.projet_id AND pm.user_id = ? AND pm.statut = 'membre'
+                  WHERE e.id = ?", [$userId, (int) $ligne['projet_echeance_id']]) === null) {
+            $ligne['projet_echeance_id'] = null;
+        }
+
         $colonnes = array_keys($ligne);
         $sql = sprintf(
             'INSERT INTO `%s` (%s) VALUES (%s)',

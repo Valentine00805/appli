@@ -85,7 +85,7 @@ JS;
  * publics). Une réponse partielle ou un téléchargement n'ont rien à faire
  * dans un cache de pages.
  */
-var SANS_CACHE = /(\/(fichiers|storage|p)\/|\/documents\/\d+|\/(pdf|ics|export|apercu|contenu|telecharger|battement|envoyer|fil|messages)(\/|$|\?))/;
+var SANS_CACHE = /(\/(fichiers|storage|p|g)\/|\/documents\/\d+|\/(pdf|ics|export|apercu|contenu|telecharger|battement|envoyer|fil|messages)(\/|$|\?))/;
 
 self.addEventListener('install', function (evenement) {
   evenement.waitUntil(

@@ -4,6 +4,7 @@
  * @var array $planning  la journée d'aujourd'hui, disposée par PlanningJour
  * @var array $examens, $taches, $stats
  * @var array|null $alternance  le résumé de l’alternance, ou null si l’on n’en fait pas
+ * @var array $travaux  mes tâches de groupe à faire, et les invitations reçues
  * @var array $focus  le temps de révision d’aujourd’hui, et la série de jours
  */
 ?>
@@ -165,6 +166,30 @@
             📅 <?= e($alternance['prochaine']['libelle']) ?> :
             <?= e(Alternance::jourCourt($alternance['prochaine']['jour'])) ?>
           </p>
+        <?php endif; ?>
+      </section>
+    <?php endif; ?>
+
+    <?php if ($travaux['taches'] !== [] || $travaux['invitations'] > 0): ?>
+      <?php // Les travaux de groupe : ce qu'on m'a confié, et qui m'attend. ?>
+      <section class="carte">
+        <h2><a href="<?= url('travaux') ?>">Travaux de groupe</a></h2>
+        <?php if ($travaux['invitations'] > 0): ?>
+          <p style="margin:0 0 .5rem">✉️ <a href="<?= url('travaux') ?>"><?= (int) $travaux['invitations'] ?> invitation<?= $travaux['invitations'] > 1 ? 's' : '' ?> à un travail de groupe</a></p>
+        <?php endif; ?>
+        <?php if ($travaux['taches'] !== []): ?>
+          <ul class="travaux-mes-taches">
+            <?php foreach ($travaux['taches'] as $t): ?>
+              <li>
+                <a href="<?= url('travaux/' . (int) $t['projet_id']) ?>"><?= e((string) $t['titre']) ?></a>
+                <span class="discret">· <?= e((string) $t['projet_nom']) ?></span>
+                <?php $texte = echeance_libelle($t['echeance']); ?>
+                <?php if ($texte !== ''): ?>
+                  <span class="echeance echeance--<?= e(echeance_etat($t['echeance'])) ?>"><?= e($texte) ?></span>
+                <?php endif; ?>
+              </li>
+            <?php endforeach; ?>
+          </ul>
         <?php endif; ?>
       </section>
     <?php endif; ?>

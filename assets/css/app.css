@@ -3827,3 +3827,34 @@ summary.cal-volet__groupe:focus-visible {
 .en-focus .nav, .en-focus .burger, .en-focus .haut-de-page { display: none; }
 .en-focus .marque { pointer-events: auto; }
 .focus-choix { max-height: 16rem; overflow: auto; }
+
+/* --- Travaux de groupe ---------------------------------------------------- */
+
+.travaux-carte { display: block; text-decoration: none; color: inherit; }
+.travaux-carte:hover { border-color: var(--accent); }
+.travaux-carte__titre { margin: 0 0 .3rem; font-size: 1.05rem; }
+.travaux-invitation { display: flex; flex-wrap: wrap; gap: .6rem; align-items: center; justify-content: space-between; }
+.travaux-mes-taches, .travaux-versions, .travaux-repartition, .travaux-echeances, .travaux-membres, .travaux-public-taches {
+  list-style: none; padding: 0; margin: 0; display: grid; gap: .55rem;
+}
+.travaux-repartition li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .4rem; }
+.travaux-filtres { display: flex; flex-wrap: wrap; gap: .4rem; }
+.travaux-kanban { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.travaux-kanban .kanban__entete { font-size: 1rem; margin: 0 0 .7rem; }
+.travaux-kanban .kanban-carte__titre { margin: 0; font-weight: 650; }
+.travaux-kanban .kanban-carte__titre:hover { color: inherit; }
+.travaux-kanban .kanban-carte__meta { display: flex; flex-wrap: wrap; gap: .35rem; margin: .45rem 0 0; }
+.travaux-tache__actions { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; margin-top: .5rem; }
+.travaux-tache__actions select { width: auto; padding: .2rem .4rem; font-size: .85rem; }
+.travaux-modifier { margin-top: .4rem; font-size: .9rem; }
+.travaux-modifier summary { cursor: pointer; color: var(--texte-doux); }
+.travaux-modifier form { margin-top: .5rem; }
+.travaux-echeance { display: flex; gap: .6rem; align-items: flex-start; }
+.travaux-echeance__icone { font-size: 1.3rem; line-height: 1.2; }
+.travaux-membre { display: flex; gap: .6rem; align-items: center; flex-wrap: wrap; }
+.travaux-public-taches li { display: flex; gap: .5rem; align-items: baseline; flex-wrap: wrap; }
+.travaux-public-taches--faite { color: var(--texte-doux); text-decoration: line-through; }
+.travaux-brouillon { border-color: var(--accent); }
+@media (max-width: 900px) {
+  .travaux-kanban { grid-template-columns: minmax(0, 1fr); }
+}

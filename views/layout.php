@@ -55,6 +55,11 @@ $actif = static function (string $prefixe) use ($route): string {
       <a href="<?= url('taches') ?>"<?= $actif('taches') ?>>Tâches</a>
       <a href="<?= url('tableau') ?>"<?= $actif('tableau') ?>>Tableau</a>
       <a href="<?= url('alternance') ?>"<?= $actif('alternance') ?>>Alternance</a>
+      <?php // Les travaux de groupe : la pastille compte les invitations reçues. ?>
+      <?php $invitationsTravaux = $utilisateur !== null ? Travaux::nbInvitations((int) $utilisateur['id']) : 0; ?>
+      <a href="<?= url('travaux') ?>"<?= $actif('travaux') ?>>
+        Groupes<?php if ($invitationsTravaux > 0): ?> <span class="compteur" title="<?= $invitationsTravaux ?> invitation<?= $invitationsTravaux > 1 ? 's' : '' ?>"><?= $invitationsTravaux ?></span><?php endif; ?>
+      </a>
       <a href="<?= url('budget') ?>"<?= $actif('budget') ?>>Budget</a>
       <a href="<?= url('organisation/matieres') ?>"<?= $actif('organisation') ?>>Organisation</a>
       <?php // Les amis : la pastille compte les messages non lus et les demandes reçues. ?>

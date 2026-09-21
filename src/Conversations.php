@@ -188,6 +188,70 @@ final class Conversations
         return [$ids, null];
     }
 
+    /**
+     * La discussion d'un travail de groupe : ses membres y sont tous, qu'ils
+     * soient amis de qui la crée ou non — ils sont déjà ensemble dans le projet.
+     *
+     * @return array{0: ?int, 1: ?string} la conversation, ou la raison du refus
+     */
+    public static function creerPourProjet(int $moi, string $nom, array $ids): array
+    {
+        if ((string) (Amis::compte($moi)['pseudo'] ?? '') === '') {
+            return [null, 'Choisissez d’abord un pseudo dans « Mon compte » : c’est lui que verront les membres.'];
+        }
+        $nom = mb_substr(self::nettoyerNom($nom), 0, self::NOM_MAX);
+        if ($nom === '') {
+            return [null, 'Donnez un nom au groupe.'];
+        }
+        $ids = array_slice(array_values(array_unique(array_filter(array_map('intval', $ids),
+            static fn (int $id): bool => $id > 0 && $id !== $moi))), 0, self::MEMBRES_MAX - 1);
+
+        Database::run('INSERT INTO conversations (nom, cree_par, created_at) VALUES (?, ?, UTC_TIMESTAMP())', [$nom, $moi]);
+        $conversation = Database::dernierId();
+        Database::run(
+            "INSERT INTO conversation_membres (conversation_id, user_id, role, rejoint_le) VALUES (?, ?, 'admin', UTC_TIMESTAMP())",
+            [$conversation, $moi]
+        );
+        foreach ($ids as $id) {
+            Database::run(
+                "INSERT INTO conversation_membres (conversation_id, user_id, role, rejoint_le) VALUES (?, ?, 'membre', UTC_TIMESTAMP())",
+                [$conversation, $id]
+            );
+        }
+        self::noter($conversation, $moi, 'creation', null, $nom);
+
+        return [$conversation, null];
+    }
+
+    /**
+     * Fait entrer un membre du projet dans sa discussion. Sans auteur, c'est
+     * lui qui la rejoint (il vient d'accepter l'invitation au projet).
+     */
+    public static function ajouterDepuisProjet(int $conversation, int $userId, ?int $par): bool
+    {
+        if (self::membre($conversation, $userId) !== null) {
+            return false;
+        }
+        $nombre = (int) Database::valeur('SELECT COUNT(*) FROM conversation_membres WHERE conversation_id = ?', [$conversation]);
+        if ($nombre >= self::MEMBRES_MAX) {
+            return false;
+        }
+        $dernier = (int) Database::valeur('SELECT COALESCE(MAX(id), 0) FROM conversation_messages WHERE conversation_id = ?', [$conversation]);
+        Database::run(
+            "INSERT INTO conversation_membres (conversation_id, user_id, role, rejoint_le, depuis_message, lu_jusqua)
+             VALUES (?, ?, 'membre', UTC_TIMESTAMP(), ?, ?)",
+            [$conversation, $userId, $dernier, $dernier]
+        );
+        Database::run('DELETE FROM conversation_invitations WHERE conversation_id = ? AND user_id = ?', [$conversation, $userId]);
+        if ($par === null || $par === $userId) {
+            self::noter($conversation, $userId, 'rejoint');
+        } else {
+            self::noter($conversation, $par, 'ajout', $userId);
+        }
+
+        return true;
+    }
+
     /** Retire un membre (réservé aux administrateurs ; pour soi, c'est « quitter »). */
     public static function retirer(int $moi, int $conversation, int $cible): ?string
     {

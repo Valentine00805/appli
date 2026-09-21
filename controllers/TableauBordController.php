@@ -59,6 +59,8 @@ final class TableauBordController
             'alternance' => self::resumeAlternance($userId),
             // Le temps de révision du jour : une ligne, sous la date.
             'focus' => Focus::bilan($userId),
+            // Les travaux de groupe : ce qu'on m'a confié, et les invitations.
+            'travaux' => ['taches' => Travaux::mesTaches($userId, 4), 'invitations' => Travaux::nbInvitations($userId)],
         ], 'Accueil');
     }
 

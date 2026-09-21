@@ -66,6 +66,14 @@ $ligne = static function (string $etiquette, string $valeur): string {
         🎯 Démarrer la session
       </a>
     <?php endif; ?>
+    <?php // Une échéance d'un travail de groupe mène à son projet. ?>
+    <?php $projetDuGroupe = Travaux::projetDeLEvenement(Auth::id(), entier_ou_null($evenement['projet_echeance_id'] ?? null)); ?>
+    <?php if ($projetDuGroupe !== null): ?>
+      <a class="bouton bouton--secondaire" href="<?= url('travaux/' . (int) $projetDuGroupe['id'] . '/echeances') ?>"
+         title="Échéance du travail de groupe « <?= e((string) $projetDuGroupe['nom']) ?> » : la modifier là-bas la change pour tout le groupe.">
+        👥 Travail de groupe
+      </a>
+    <?php endif; ?>
     <?php // Partager l'évènement : à ses amis, ou par un lien. ?>
     <a class="bouton bouton--secondaire bouton-partage" href="<?= url('partager/evenements/' . (int) $evenement['id']) ?>"
        <?= $dansUneFenetre ? 'data-fenetre-dessus' : 'data-fenetre' ?>><?= Partages::icone() ?> Partager</a>

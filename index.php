@@ -51,6 +51,7 @@ require __DIR__ . '/src/Difference.php';
 require __DIR__ . '/src/PlanningJour.php';
 require __DIR__ . '/src/Alternance.php';
 require __DIR__ . '/src/Focus.php';
+require __DIR__ . '/src/Travaux.php';
 require __DIR__ . '/src/PlanningPdf.php';
 require __DIR__ . '/src/Fournisseur.php';
 require __DIR__ . '/src/FournisseurMicrosoft.php';
@@ -88,6 +89,7 @@ require __DIR__ . '/controllers/CartesController.php';
 require __DIR__ . '/controllers/NotificationsController.php';
 require __DIR__ . '/controllers/HorsLigneController.php';
 require __DIR__ . '/controllers/FocusController.php';
+require __DIR__ . '/controllers/TravauxController.php';
 
 /*
  * Réglages par défaut : ceux d'une installation WAMP ordinaire. Ils vivent ici
@@ -345,6 +347,46 @@ $routes = [
     ['GET',  'focus/{id}',                [FocusController::class, 'session']],
     ['POST', 'focus/{id}/terminer',       [FocusController::class, 'terminer']],
     ['POST', 'focus/{id}/abandonner',     [FocusController::class, 'abandonner']],
+
+    // Les travaux de groupe : qui fait quoi, les fichiers, le document commun,
+    // les échéances dans le calendrier de chacun, et un lien pour qui n'a pas de compte.
+    ['GET',  'travaux',                        [TravauxController::class, 'index']],
+    ['POST', 'travaux',                        [TravauxController::class, 'creer']],
+    ['GET',  'travaux/{id}',                   [TravauxController::class, 'taches']],
+    ['GET',  'travaux/{id}/echeances',         [TravauxController::class, 'echeances']],
+    ['GET',  'travaux/{id}/fichiers',          [TravauxController::class, 'fichiers']],
+    ['GET',  'travaux/{id}/document',          [TravauxController::class, 'document']],
+    ['GET',  'travaux/{id}/membres',           [TravauxController::class, 'membres']],
+    ['POST', 'travaux/{id}/modifier',          [TravauxController::class, 'modifier']],
+    ['POST', 'travaux/{id}/supprimer',         [TravauxController::class, 'supprimer']],
+    ['POST', 'travaux/{id}/rejoindre',         [TravauxController::class, 'rejoindre']],
+    ['POST', 'travaux/{id}/refuser',           [TravauxController::class, 'refuser']],
+    ['POST', 'travaux/{id}/quitter',           [TravauxController::class, 'quitter']],
+    ['POST', 'travaux/{id}/inviter',           [TravauxController::class, 'inviter']],
+    ['POST', 'travaux/{id}/sans-compte',       [TravauxController::class, 'ajouterSansCompte']],
+    ['POST', 'travaux/membres/{id}/retirer',   [TravauxController::class, 'retirerMembre']],
+    ['POST', 'travaux/membres/{id}/admin',     [TravauxController::class, 'nommerAdmin']],
+    ['POST', 'travaux/membres/{id}/membre',    [TravauxController::class, 'retirerAdmin']],
+    ['POST', 'travaux/{id}/taches',            [TravauxController::class, 'ajouterTache']],
+    ['POST', 'travaux/taches/{id}/modifier',   [TravauxController::class, 'modifierTache']],
+    ['POST', 'travaux/taches/{id}/statut',     [TravauxController::class, 'statutTache']],
+    ['POST', 'travaux/taches/{id}/prendre',    [TravauxController::class, 'prendreTache']],
+    ['POST', 'travaux/taches/{id}/supprimer',  [TravauxController::class, 'supprimerTache']],
+    ['POST', 'travaux/{id}/echeances',         [TravauxController::class, 'poserEcheance']],
+    ['POST', 'travaux/echeances/{id}/modifier', [TravauxController::class, 'modifierEcheance']],
+    ['POST', 'travaux/echeances/{id}/supprimer', [TravauxController::class, 'supprimerEcheance']],
+    ['POST', 'travaux/{id}/fichiers',          [TravauxController::class, 'deposer']],
+    ['GET',  'travaux/fichiers/{id}',          [TravauxController::class, 'fichier']],
+    ['POST', 'travaux/fichiers/{id}/supprimer', [TravauxController::class, 'supprimerFichier']],
+    ['POST', 'travaux/{id}/document',          [TravauxController::class, 'ecrireDocument']],
+    ['GET',  'travaux/versions/{id}',          [TravauxController::class, 'version']],
+    ['POST', 'travaux/versions/{id}/restaurer', [TravauxController::class, 'restaurer']],
+    ['POST', 'travaux/{id}/discussion',        [TravauxController::class, 'discussion']],
+    ['POST', 'travaux/{id}/discussion/delier', [TravauxController::class, 'delierDiscussion']],
+    ['POST', 'travaux/{id}/lien',              [TravauxController::class, 'ouvrirLien']],
+    ['POST', 'travaux/{id}/lien/fermer',       [TravauxController::class, 'fermerLien']],
+    ['GET',  'g/{jeton}',                      [TravauxController::class, 'public']],
+    ['GET',  'g/{jeton}/fichiers/{id}',        [TravauxController::class, 'fichierPublic']],
     ['GET',  'cours/nouveau',             [CoursController::class, 'formulaire']],
     ['POST', 'cours/nouveau',             [CoursController::class, 'creer']],
     ['POST', 'cours/ranger',              [CoursController::class, 'ranger']],
