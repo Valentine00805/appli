@@ -1251,7 +1251,9 @@
       var fermeture = evenement.target.closest('[data-fermer]');
       if (fermeture !== null && fenetre.open) {
         evenement.preventDefault();
-        fermer();
+        // Arrivé là depuis une autre page de la fenêtre : « Annuler » y ramène,
+        // sans fermer ce qu'on regardait avant.
+        if (historique.length > 1) { boutonRetour.click(); } else { fermer(); }
 
         return;
       }

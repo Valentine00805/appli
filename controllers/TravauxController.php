@@ -306,27 +306,47 @@ final class TravauxController
     public function types(int $id): void
     {
         $projet = $this->projet($id);
-        $this->afficher('travaux/types', $projet, [
-            'types'   => Travaux::types($id),
-            'palette' => TypesEvenementController::PALETTE,
-            'icones'  => Travaux::icones(),
-        ], 'echeances');
+        $this->afficher('travaux/types', $projet, ['types' => Travaux::types($id)], 'echeances');
+    }
+
+    /** Un nouveau type, en fenêtre. */
+    public function nouveauType(int $id): void
+    {
+        $projet = $this->projet($id);
+        $this->formulaire('travaux/type', [
+            'projet' => $projet, 'type' => null,
+            'palette' => TypesEvenementController::PALETTE, 'icones' => Travaux::icones(),
+        ], 'Nouveau type');
+    }
+
+    /** Modifier un type, en fenêtre. */
+    public function formulaireType(int $id): void
+    {
+        Auth::exiger();
+        $type = Travaux::type(Auth::id(), $id) ?? $this->introuvable();
+        $this->formulaire('travaux/type', [
+            'projet' => Travaux::projet((int) $type['projet_id'], Auth::id()), 'type' => $type,
+            'palette' => TypesEvenementController::PALETTE, 'icones' => Travaux::icones(),
+        ], 'Modifier le type');
     }
 
     public function creerType(int $id): void
     {
         $this->exigerPost();
         $this->projet($id);
-        $this->finir(Travaux::enregistrerType($id, null, $_POST),
-            'Type « ' . trim(post('nom')) . ' » créé.', 'travaux/' . $id . '/types');
+        $refus = Travaux::enregistrerType($id, null, $_POST);
+        // Refusé : on reste sur le formulaire, pour corriger.
+        $this->finir($refus, 'Type « ' . trim(post('nom')) . ' » créé.',
+            'travaux/' . $id . ($refus === null ? '/types' : '/types/nouveau'));
     }
 
     public function modifierType(int $id): void
     {
         $this->exigerPost();
         $type = Travaux::type(Auth::id(), $id) ?? $this->introuvable();
-        $this->finir(Travaux::enregistrerType((int) $type['projet_id'], $id, $_POST),
-            'Type mis à jour.', 'travaux/' . (int) $type['projet_id'] . '/types');
+        $refus = Travaux::enregistrerType((int) $type['projet_id'], $id, $_POST);
+        $this->finir($refus, 'Type mis à jour.',
+            $refus === null ? 'travaux/' . (int) $type['projet_id'] . '/types' : 'travaux/types/' . $id . '/modifier');
     }
 
     public function supprimerType(int $id): void

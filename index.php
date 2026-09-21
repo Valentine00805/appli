@@ -377,6 +377,8 @@ $routes = [
     ['GET',  'travaux/{id}/echeances/nouvelle', [TravauxController::class, 'nouvelleEcheance']],
     ['GET',  'travaux/{id}/types',             [TravauxController::class, 'types']],
     ['POST', 'travaux/{id}/types',             [TravauxController::class, 'creerType']],
+    ['GET',  'travaux/{id}/types/nouveau',     [TravauxController::class, 'nouveauType']],
+    ['GET',  'travaux/types/{id}/modifier',    [TravauxController::class, 'formulaireType']],
     ['POST', 'travaux/types/{id}/modifier',    [TravauxController::class, 'modifierType']],
     ['POST', 'travaux/types/{id}/supprimer',   [TravauxController::class, 'supprimerType']],
     ['POST', 'travaux/types/{id}/deplacer',    [TravauxController::class, 'deplacerType']],
