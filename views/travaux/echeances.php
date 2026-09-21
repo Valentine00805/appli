@@ -5,6 +5,7 @@
  *
  * @var array $projet
  * @var list<array> $echeances
+ * @var list<array> $types  les types d'échéance du projet
  * @var string $onglet
  */
 $dansUneFenetre = $dansUneFenetre ?? false;
@@ -15,19 +16,17 @@ $maintenant = date('Y-m-d H:i:s');
 $avenir = array_filter($echeances, static fn (array $e): bool => (string) $e['fin'] >= $maintenant);
 $passees = array_reverse(array_filter($echeances, static fn (array $e): bool => (string) $e['fin'] < $maintenant));
 
-// Les types à soi déjà employés : le menu de chaque échéance les propose.
-$types = Travaux::typesDuProjet((int) $projet['id']);
-
 /** Une échéance de la liste, avec de quoi la modifier. */
 $ligne = static function (array $e) use ($csrf, $envoi, $types): string {
-    $n = Travaux::NATURES[$e['nature']];
     $journee = (int) $e['journee_entiere'] === 1;
     ob_start(); ?>
     <li class="travaux-echeance">
-      <span class="travaux-echeance__icone" aria-hidden="true"><?= $n['icone'] ?></span>
+      <span class="travaux-echeance__icone" aria-hidden="true"><?= e((string) ($e['type_icone'] ?? Travaux::ICONE_SANS_TYPE)) ?></span>
       <span style="min-width:0;flex:1">
         <strong><?= e((string) $e['titre']) ?></strong>
-        <span class="discret">· <?= e(Travaux::nomDuType($e)) ?></span><br>
+        <?php if ($e['type_nom'] !== null): ?>
+          <span class="travaux-type" style="--couleur-type:<?= e((string) $e['type_couleur']) ?>"><?= e((string) $e['type_nom']) ?></span>
+        <?php endif; ?><br>
         <?= e(ucfirst(date_fr((string) $e['debut'], !$journee))) ?><?= $journee ? ' — toute la journée' : '' ?>
         <?php if ((string) ($e['lieu'] ?? '') !== ''): ?><span class="discret">· <?= e((string) $e['lieu']) ?></span><?php endif; ?>
         <details class="travaux-modifier">
@@ -50,7 +49,10 @@ $ligne = static function (array $e) use ($csrf, $envoi, $types): string {
 ?>
 <?= Vue::rendre('travaux/_onglets', ['projet' => $projet, 'onglet' => $onglet, 'dansUneFenetre' => $dansUneFenetre]) ?>
 
-<p style="margin:0 0 1rem"><a class="bouton bouton--petit" href="<?= url('travaux/' . (int) $projet['id'] . '/echeances/nouvelle') ?>" data-fenetre>+ Nouvelle échéance</a></p>
+<p class="actions" style="margin:0 0 1rem">
+  <a class="bouton bouton--petit" href="<?= url('travaux/' . (int) $projet['id'] . '/echeances/nouvelle') ?>" data-fenetre>+ Nouvelle échéance</a>
+  <a class="bouton bouton--secondaire bouton--petit" href="<?= url('travaux/' . (int) $projet['id'] . '/types') ?>"<?= $dansUneFenetre ? ' data-fenetre' : '' ?>>🏷️ Types d’échéance</a>
+</p>
 
 <div class="pile" style="max-width:48rem">
   <section class="carte">

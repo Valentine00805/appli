@@ -4,33 +4,23 @@
  *
  * @var string $suffixe  pour des identifiants uniques dans la page
  * @var ?array $e
- * @var list<string> $types  les types à soi déjà employés dans le projet
+ * @var list<array> $types  les types d'échéance du projet
  */
 $journee = $e !== null && (int) $e['journee_entiere'] === 1;
 $duree = $e === null || $journee ? 60
     : (int) round((strtotime((string) $e['fin']) - strtotime((string) $e['debut'])) / 60);
 $types = $types ?? [];
-// Ce qui est choisi : « rendu », « autre:Projet », ou « autre » (un type à écrire).
-$choisi = $e === null ? 'rendu'
-    : (($e['nature'] === 'autre' && (string) ($e['type_nom'] ?? '') !== '') ? 'autre:' . $e['type_nom'] : (string) $e['nature']);
+$choisi = $e === null ? (int) ($types[0]['id'] ?? 0) : (int) ($e['type_id'] ?? 0);
 ?>
 <div class="champ">
-  <label for="nature-<?= e($suffixe) ?>">C’est</label>
-  <select id="nature-<?= e($suffixe) ?>" name="nature" data-type-echeance>
-    <?php foreach (Travaux::NATURES as $cle => $n): ?>
-      <?php if ($cle === 'autre') { continue; } ?>
-      <option value="<?= e($cle) ?>"<?= $choisi === $cle ? ' selected' : '' ?>><?= $n['icone'] ?> <?= e($n['nom']) ?></option>
+  <label for="type-<?= e($suffixe) ?>">C’est</label>
+  <select id="type-<?= e($suffixe) ?>" name="type_id">
+    <?php foreach ($types as $t): ?>
+      <option value="<?= (int) $t['id'] ?>"<?= $choisi === (int) $t['id'] ? ' selected' : '' ?>><?= e($t['icone']) ?> <?= e($t['nom']) ?></option>
     <?php endforeach; ?>
-    <?php foreach ($types as $type): ?>
-      <option value="<?= e('autre:' . $type) ?>"<?= $choisi === 'autre:' . $type ? ' selected' : '' ?>><?= Travaux::NATURES['autre']['icone'] ?> <?= e($type) ?></option>
-    <?php endforeach; ?>
-    <option value="autre"<?= $choisi === 'autre' ? ' selected' : '' ?>>✏️ Un autre type…</option>
+    <option value=""<?= $choisi === 0 ? ' selected' : '' ?>><?= Travaux::ICONE_SANS_TYPE ?> Sans type</option>
   </select>
-</div>
-<?php // N'apparaît que pour « Un autre type… » : on l'écrit, il rejoint ensuite le menu du projet. ?>
-<div class="champ" data-type-libre<?= $choisi === 'autre' ? '' : ' hidden' ?>>
-  <label for="type-<?= e($suffixe) ?>">Nom du type</label>
-  <input type="text" id="type-<?= e($suffixe) ?>" name="type_nom" maxlength="40" placeholder="Projet, oral blanc, partiel…">
+  <span class="champ__aide">Chaque type a son icône, sa couleur et ses rappels : ils se règlent dans « 🏷️ Types d’échéance ».</span>
 </div>
 <div class="champ">
   <label for="titre-<?= e($suffixe) ?>">Titre <span class="discret">(facultatif)</span></label>

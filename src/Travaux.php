@@ -31,14 +31,6 @@ final class Travaux
         'fait'     => ['nom' => 'Fait',     'icone' => '✅'],
     ];
 
-    /** Les échéances, et les rappels que leur copie prend dans le calendrier. */
-    public const NATURES = [
-        'rendu'      => ['nom' => 'Rendu',      'icone' => '📦', 'rappels' => '2880,1440'],
-        'soutenance' => ['nom' => 'Soutenance', 'icone' => '🎤', 'rappels' => '1440,60'],
-        'reunion'    => ['nom' => 'Réunion',    'icone' => '👥', 'rappels' => '60,15'],
-        'autre'      => ['nom' => 'Autre',      'icone' => '📌', 'rappels' => '1440'],
-    ];
-
     public static function dossier(): string
     {
         return dirname((string) Config::get('app', 'dossier_uploads')) . DIRECTORY_SEPARATOR . 'travaux';
@@ -146,6 +138,7 @@ final class Travaux
         Database::run(
             "INSERT INTO projet_membres (projet_id, user_id, role, statut) VALUES (?, ?, 'admin', 'membre')",
             [$projet, $moi]);
+        self::creerTypesDeDepart($projet);
 
         [, $refus] = $amis === [] ? [0, null] : self::inviter($moi, $projet, $amis);
 
@@ -537,11 +530,132 @@ final class Travaux
         return $total === 0 ? null : (int) round($faites * 100 / $total);
     }
 
+    // --- Les types d'échéance, réglables comme les types d'évènement ----------
+
+    /** Les types d'un nouveau projet ; chacun les règle ensuite comme il veut. */
+    public const TYPES_DEPART = [
+        ['nom' => 'Rendu',      'icone' => '📦', 'couleur' => '#dc2626', 'rappels' => '2880,1440'],
+        ['nom' => 'Soutenance', 'icone' => '🎤', 'couleur' => '#7c3aed', 'rappels' => '1440,60'],
+        ['nom' => 'Réunion',    'icone' => '👥', 'couleur' => '#0ea5e9', 'rappels' => '60,15'],
+    ];
+
+    /** Une échéance sans type (le sien a été supprimé) garde cette icône. */
+    public const ICONE_SANS_TYPE = '📌';
+
+    /** Les icônes proposées : celles des types d'évènement, et celles des types de départ. */
+    public static function icones(): array
+    {
+        return array_values(array_unique(array_merge(['📦', '🎤', '👥'], icones_proposees())));
+    }
+
+    public static function creerTypesDeDepart(int $projet): void
+    {
+        foreach (self::TYPES_DEPART as $rang => $t) {
+            Database::run(
+                'INSERT IGNORE INTO projet_types (projet_id, nom, icone, couleur, rappels, position) VALUES (?, ?, ?, ?, ?, ?)',
+                [$projet, $t['nom'], $t['icone'], $t['couleur'], $t['rappels'], $rang + 1]);
+        }
+    }
+
+    /** Les types du projet, dans leur ordre, avec le nombre d'échéances de chacun. */
+    public static function types(int $projet): array
+    {
+        return Database::all(
+            'SELECT t.*, (SELECT COUNT(*) FROM projet_echeances e WHERE e.type_id = t.id) AS nb_echeances
+               FROM projet_types t WHERE t.projet_id = ? ORDER BY t.position, t.nom', [$projet]);
+    }
+
+    /** Le type, s'il appartient à un projet dont je suis membre. */
+    public static function type(int $moi, int $typeId): ?array
+    {
+        return Database::one(
+            "SELECT t.* FROM projet_types t
+               JOIN projet_membres pm ON pm.projet_id = t.projet_id AND pm.user_id = ? AND pm.statut = 'membre'
+              WHERE t.id = ?", [$moi, $typeId]);
+    }
+
+    /**
+     * Crée un type, ou modifie celui donné, depuis son formulaire.
+     *
+     * @return ?string la raison du refus
+     */
+    public static function enregistrerType(int $projet, ?int $typeId, array $source): ?string
+    {
+        $nom = self::nettoyer((string) ($source['nom'] ?? ''), 40);
+        if ($nom === '') {
+            return 'Le nom du type est obligatoire.';
+        }
+        if (Database::valeur('SELECT id FROM projet_types WHERE projet_id = ? AND nom = ? AND id <> ?',
+                [$projet, $nom, (int) $typeId]) !== null) {
+            return 'Le projet a déjà un type nommé « ' . $nom . ' ».';
+        }
+        $icone = trim((string) ($source['icone'] ?? ''));
+        $icone = $icone === '' || mb_strlen($icone) > 4 ? self::ICONE_SANS_TYPE : $icone;
+        $couleur = (string) ($source['couleur'] ?? '');
+        $couleur = preg_match('/^#[0-9a-fA-F]{6}$/', $couleur) === 1 ? strtolower($couleur) : '#64748b';
+        $rappels = Rappels::ecrire(Rappels::depuisFormulaire($source['rappels'] ?? []));
+
+        if ($typeId === null) {
+            $position = (int) Database::valeur('SELECT COALESCE(MAX(position), 0) + 1 FROM projet_types WHERE projet_id = ?', [$projet]);
+            Database::run('INSERT INTO projet_types (projet_id, nom, icone, couleur, rappels, position) VALUES (?, ?, ?, ?, ?, ?)',
+                [$projet, $nom, $icone, $couleur, $rappels, $position]);
+            return null;
+        }
+        Database::run('UPDATE projet_types SET nom = ?, icone = ?, couleur = ?, rappels = ? WHERE id = ? AND projet_id = ?',
+            [$nom, $icone, $couleur, $rappels, $typeId, $projet]);
+        // L'icône est dans le titre des copies du calendrier : elles la suivent.
+        foreach (Database::all('SELECT id FROM projet_echeances WHERE type_id = ?', [$typeId]) as $e) {
+            self::mettreAJourCopies((int) $e['id']);
+        }
+
+        return null;
+    }
+
+    /** Supprime le type ; ses échéances restent, sans type. */
+    public static function supprimerType(int $moi, int $typeId): ?array
+    {
+        $type = self::type($moi, $typeId);
+        if ($type === null) {
+            return null;
+        }
+        $echeances = array_column(Database::all('SELECT id FROM projet_echeances WHERE type_id = ?', [$typeId]), 'id');
+        Database::run('DELETE FROM projet_types WHERE id = ?', [$typeId]);
+        foreach ($echeances as $e) {
+            self::mettreAJourCopies((int) $e);
+        }
+
+        return $type + ['nb_echeances' => count($echeances)];
+    }
+
+    /** Monte ou descend un type dans la liste. */
+    public static function deplacerType(int $moi, int $typeId, bool $versLeHaut): ?int
+    {
+        $type = self::type($moi, $typeId);
+        if ($type === null) {
+            return null;
+        }
+        $ids = array_map('intval', array_column(Database::all(
+            'SELECT id FROM projet_types WHERE projet_id = ? ORDER BY position, nom', [(int) $type['projet_id']]), 'id'));
+        $rang = (int) array_search($typeId, $ids, true);
+        $cible = $versLeHaut ? $rang - 1 : $rang + 1;
+        if ($cible >= 0 && $cible < count($ids)) {
+            [$ids[$rang], $ids[$cible]] = [$ids[$cible], $ids[$rang]];
+            foreach ($ids as $i => $id) {
+                Database::run('UPDATE projet_types SET position = ? WHERE id = ?', [$i + 1, $id]);
+            }
+        }
+
+        return (int) $type['projet_id'];
+    }
+
     // --- Les échéances, dans le calendrier de chacun ---------------------------
 
     public static function echeances(int $projet): array
     {
-        return Database::all('SELECT * FROM projet_echeances WHERE projet_id = ? ORDER BY debut', [$projet]);
+        return Database::all(
+            'SELECT e.*, t.nom AS type_nom, t.icone AS type_icone, t.couleur AS type_couleur
+               FROM projet_echeances e LEFT JOIN projet_types t ON t.id = e.type_id
+              WHERE e.projet_id = ? ORDER BY e.debut', [$projet]);
     }
 
     /** L'échéance, si elle appartient à un projet dont je suis membre. */
@@ -559,25 +673,17 @@ final class Travaux
      *
      * @return array|string les données, ou la raison du refus
      */
-    public static function lireEcheance(array $source): array|string
+    public static function lireEcheance(array $source, int $projet): array|string
     {
-        /*
-         * Le type : un des proposés, un type à soi déjà employé dans le projet
-         * (« autre:Projet »), ou un nouveau, écrit dans « type_nom ».
-         */
-        $choix = (string) ($source['nature'] ?? 'rendu');
-        $typeNom = null;
-        if (str_starts_with($choix, 'autre:')) {
-            $typeNom = self::nettoyer(substr($choix, 6), 40);
-            $choix = 'autre';
-        } elseif ($choix === 'autre') {
-            $typeNom = self::nettoyer((string) ($source['type_nom'] ?? ''), 40);
+        // Un type du projet, ou aucun.
+        $type = null;
+        $typeId = entier_ou_null($source['type_id'] ?? null);
+        if ($typeId !== null) {
+            $type = Database::one('SELECT * FROM projet_types WHERE id = ? AND projet_id = ?', [$typeId, $projet]);
         }
-        $nature = isset(self::NATURES[$choix]) ? $choix : 'autre';
-        $typeNom = $nature === 'autre' && $typeNom !== null && $typeNom !== '' ? $typeNom : null;
         $titre = self::nettoyer((string) ($source['titre'] ?? ''), 160);
         if ($titre === '') {
-            $titre = $typeNom ?? self::NATURES[$nature]['nom'];
+            $titre = $type['nom'] ?? 'Échéance';
         }
         $jour = self::dateValide(trim((string) ($source['jour'] ?? '')));
         if ($jour === null) {
@@ -594,8 +700,7 @@ final class Travaux
             : (new DateTimeImmutable($debut))->modify('+' . $duree . ' minutes')->format('Y-m-d H:i:s');
 
         return [
-            'nature' => $nature,
-            'type_nom' => $typeNom,
+            'type_id' => $type === null ? null : (int) $type['id'],
             'titre' => $titre,
             'lieu' => self::nettoyer((string) ($source['lieu'] ?? ''), 160) ?: null,
             'debut' => $debut,
@@ -604,41 +709,23 @@ final class Travaux
         ];
     }
 
-    /** Le nom du type d'une échéance : le sien, s'il en a un, ou celui proposé. */
-    public static function nomDuType(array $e): string
-    {
-        return (string) ($e['type_nom'] ?? '') !== '' ? (string) $e['type_nom'] : self::NATURES[$e['nature']]['nom'];
-    }
-
-    /**
-     * Les types à soi déjà employés dans le projet : proposés dans le menu,
-     * pour ne pas avoir à les réécrire.
-     *
-     * @return list<string>
-     */
-    public static function typesDuProjet(int $projet): array
-    {
-        return array_column(Database::all(
-            "SELECT DISTINCT type_nom FROM projet_echeances WHERE projet_id = ? AND nature = 'autre' AND type_nom IS NOT NULL ORDER BY type_nom",
-            [$projet]), 'type_nom');
-    }
-
     /** Pose une échéance, et sa copie chez chaque membre. */
     public static function poserEcheance(int $moi, int $projet, array $d): int
     {
         Database::run(
-            'INSERT INTO projet_echeances (projet_id, nature, type_nom, titre, lieu, debut, fin, journee_entiere, cree_par)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-            [$projet, $d['nature'], $d['type_nom'], $d['titre'], $d['lieu'], $d['debut'], $d['fin'], $d['journee_entiere'], $moi]);
+            'INSERT INTO projet_echeances (projet_id, type_id, titre, lieu, debut, fin, journee_entiere, cree_par)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            [$projet, $d['type_id'], $d['titre'], $d['lieu'], $d['debut'], $d['fin'], $d['journee_entiere'], $moi]);
         $id = Database::dernierId();
 
         $nom = (string) Database::valeur('SELECT nom FROM projets WHERE id = ?', [$projet]);
+        $icone = (string) (Database::valeur('SELECT icone FROM projet_types WHERE id = ?', [(int) $d['type_id']]) ?: self::ICONE_SANS_TYPE);
         $auteur = (string) (Amis::compte($moi)['pseudo'] ?? 'Quelqu’un');
         foreach (self::comptes($projet) as $userId) {
             self::copier($id, $userId);
             if ($userId !== $moi) {
                 FileNotifications::ajouter($userId, 'projet', [
-                    'title' => self::NATURES[$d['nature']]['icone'] . ' ' . $nom,
+                    'title' => $icone . ' ' . $nom,
                     'body'  => $auteur . ' a posé « ' . $d['titre'] . ' » le ' . date_fr($d['debut'], !$d['journee_entiere']) . '.',
                     'url'   => url('travaux/' . $projet),
                     'tag'   => 'projet-echeance-' . $id,
@@ -652,8 +739,8 @@ final class Travaux
     public static function modifierEcheance(int $echeanceId, array $d): void
     {
         Database::run(
-            'UPDATE projet_echeances SET nature = ?, type_nom = ?, titre = ?, lieu = ?, debut = ?, fin = ?, journee_entiere = ? WHERE id = ?',
-            [$d['nature'], $d['type_nom'], $d['titre'], $d['lieu'], $d['debut'], $d['fin'], $d['journee_entiere'], $echeanceId]);
+            'UPDATE projet_echeances SET type_id = ?, titre = ?, lieu = ?, debut = ?, fin = ?, journee_entiere = ? WHERE id = ?',
+            [$d['type_id'], $d['titre'], $d['lieu'], $d['debut'], $d['fin'], $d['journee_entiere'], $echeanceId]);
         self::mettreAJourCopies($echeanceId);
     }
 
@@ -669,15 +756,20 @@ final class Travaux
     private static function contenuCopie(int $echeanceId): ?array
     {
         $e = Database::one(
-            'SELECT e.*, p.nom AS projet_nom FROM projet_echeances e JOIN projets p ON p.id = e.projet_id WHERE e.id = ?',
+            'SELECT e.*, p.nom AS projet_nom, t.icone AS type_icone, t.rappels AS type_rappels
+               FROM projet_echeances e
+               JOIN projets p ON p.id = e.projet_id
+               LEFT JOIN projet_types t ON t.id = e.type_id
+              WHERE e.id = ?',
             [$echeanceId]);
         if ($e === null) {
             return null;
         }
 
         return $e + [
-            'titre_copie' => mb_substr(self::NATURES[$e['nature']]['icone'] . ' ' . $e['titre'] . ' · ' . $e['projet_nom'], 0, 200),
+            'titre_copie' => mb_substr(($e['type_icone'] ?? self::ICONE_SANS_TYPE) . ' ' . $e['titre'] . ' · ' . $e['projet_nom'], 0, 200),
             'description_copie' => 'Travail de groupe « ' . $e['projet_nom'] . ' ».',
+            'rappels_copie' => (string) ($e['type_rappels'] ?? '1440'),
         ];
     }
 
@@ -693,7 +785,7 @@ final class Travaux
             'INSERT INTO evenements (user_id, titre, description, lieu, debut, fin, journee_entiere, rappels, projet_echeance_id)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
             [$userId, $e['titre_copie'], $e['description_copie'], $e['lieu'], $e['debut'], $e['fin'],
-             (int) $e['journee_entiere'], self::NATURES[$e['nature']]['rappels'], $echeanceId]);
+             (int) $e['journee_entiere'], $e['rappels_copie'], $echeanceId]);
     }
 
     /**

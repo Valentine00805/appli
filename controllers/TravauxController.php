@@ -57,7 +57,8 @@ final class TravauxController
     public function nouvelleEcheance(int $id): void
     {
         $projet = $this->projet($id);
-        $this->formulaire('travaux/nouvelle_echeance', ['projet' => $projet], 'Nouvelle échéance');
+        $this->formulaire('travaux/nouvelle_echeance',
+            ['projet' => $projet, 'types' => Travaux::types($id)], 'Nouvelle échéance');
     }
 
     private function formulaire(string $vue, array $donnees, string $titre): void
@@ -85,7 +86,8 @@ final class TravauxController
     public function echeances(int $id): void
     {
         $projet = $this->projet($id);
-        $this->afficher('travaux/echeances', $projet, ['echeances' => Travaux::echeances($id)], 'echeances');
+        $this->afficher('travaux/echeances', $projet,
+            ['echeances' => Travaux::echeances($id), 'types' => Travaux::types($id)], 'echeances');
     }
 
     public function fichiers(int $id): void
@@ -266,7 +268,7 @@ final class TravauxController
     {
         $this->exigerPost();
         $this->projet($id);
-        $donnees = Travaux::lireEcheance($_POST);
+        $donnees = Travaux::lireEcheance($_POST, $id);
         if (is_string($donnees)) {
             $this->finir($donnees, '', 'travaux/' . $id . '/echeances/nouvelle');
         }
@@ -280,7 +282,7 @@ final class TravauxController
         $this->exigerPost();
         $echeance = Travaux::echeance(Auth::id(), $id) ?? $this->introuvable();
         $retour = 'travaux/' . (int) $echeance['projet_id'] . '/echeances';
-        $donnees = Travaux::lireEcheance($_POST);
+        $donnees = Travaux::lireEcheance($_POST, (int) $echeance['projet_id']);
         if (is_string($donnees)) {
             $this->finir($donnees, '', $retour);
         }
@@ -296,6 +298,52 @@ final class TravauxController
         Database::run('DELETE FROM projet_echeances WHERE id = ?', [$id]);
         Session::flash('succes', '« ' . $echeance['titre'] . ' » retirée, du calendrier de chacun aussi.');
         redirect('travaux/' . (int) $echeance['projet_id'] . '/echeances');
+    }
+
+    // --- Les types d'échéance ----------------------------------------------------
+
+    /** Régler les types du projet, comme ceux d'évènement dans Organisation. */
+    public function types(int $id): void
+    {
+        $projet = $this->projet($id);
+        $this->afficher('travaux/types', $projet, [
+            'types'   => Travaux::types($id),
+            'palette' => TypesEvenementController::PALETTE,
+            'icones'  => Travaux::icones(),
+        ], 'echeances');
+    }
+
+    public function creerType(int $id): void
+    {
+        $this->exigerPost();
+        $this->projet($id);
+        $this->finir(Travaux::enregistrerType($id, null, $_POST),
+            'Type « ' . trim(post('nom')) . ' » créé.', 'travaux/' . $id . '/types');
+    }
+
+    public function modifierType(int $id): void
+    {
+        $this->exigerPost();
+        $type = Travaux::type(Auth::id(), $id) ?? $this->introuvable();
+        $this->finir(Travaux::enregistrerType((int) $type['projet_id'], $id, $_POST),
+            'Type mis à jour.', 'travaux/' . (int) $type['projet_id'] . '/types');
+    }
+
+    public function supprimerType(int $id): void
+    {
+        $this->exigerPost();
+        $type = Travaux::supprimerType(Auth::id(), $id) ?? $this->introuvable();
+        $n = (int) $type['nb_echeances'];
+        $this->finir(null, 'Type « ' . $type['nom'] . ' » supprimé.'
+            . ($n === 0 ? '' : ' ' . $n . ' échéance' . ($n > 1 ? 's gardées' : ' gardée') . ', désormais sans type.'),
+            'travaux/' . (int) $type['projet_id'] . '/types');
+    }
+
+    public function deplacerType(int $id): void
+    {
+        $this->exigerPost();
+        $projet = Travaux::deplacerType(Auth::id(), $id, post('sens') !== 'bas') ?? $this->introuvable();
+        redirect('travaux/' . $projet . '/types');
     }
 
     // --- Les fichiers ----------------------------------------------------------

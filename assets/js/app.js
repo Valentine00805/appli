@@ -4019,17 +4019,6 @@
     });
   }
 
-  // Le type d'une échéance de groupe : « Un autre type… » fait paraître le
-  // champ où l'écrire. Sur le document : le formulaire vit souvent dans une fenêtre.
-  document.addEventListener("change", function (evenement) {
-    var choix = evenement.target;
-    if (!choix.matches || !choix.matches("select[data-type-echeance]")) { return; }
-    var champ = choix.form && choix.form.querySelector("[data-type-libre]");
-    if (!champ) { return; }
-    champ.hidden = choix.value !== "autre";
-    if (!champ.hidden) { champ.querySelector("input").focus(); }
-  });
-
   // Les dossiers se plient : seuls ceux de premier niveau restent
   // visibles, un clic sur un dossier montre ou masque les siens.
   // Sans JavaScript, rien ne se replie et l arborescence reste entiere.

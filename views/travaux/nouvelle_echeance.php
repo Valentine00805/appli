@@ -3,6 +3,7 @@
  * Une nouvelle échéance, ouverte en fenêtre par-dessus les échéances.
  *
  * @var array $projet
+ * @var list<array> $types  les types d'échéance du projet
  * @var bool $dansUneFenetre
  */
 $dansUneFenetre = $dansUneFenetre ?? false;
@@ -19,9 +20,8 @@ $dansUneFenetre = $dansUneFenetre ?? false;
 
 <form method="post" action="<?= url('travaux/' . (int) $projet['id'] . '/echeances') ?>" class="carte travaux-formulaire"<?= $dansUneFenetre ? ' data-envoi-fenetre' : '' ?>>
   <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
-  <?= Vue::rendre('travaux/_champs_echeance', ['suffixe' => 'nouvelle', 'e' => null, 'types' => Travaux::typesDuProjet((int) $projet['id'])]) ?>
-  <p class="champ__aide" style="margin-top:0">Chaque membre la retrouve dans son calendrier, avec ses rappels
-    (rendu : 2 jours et la veille ; soutenance : la veille et 1 h avant ; réunion : 1 h et 15 min avant).</p>
+  <?= Vue::rendre('travaux/_champs_echeance', ['suffixe' => 'nouvelle', 'e' => null, 'types' => $types]) ?>
+  <p class="champ__aide" style="margin-top:0">Chaque membre la retrouve dans son calendrier, avec les rappels de son type.</p>
   <p class="actions">
     <button class="bouton" type="submit">Poser dans le calendrier du groupe</button>
     <a class="bouton bouton--secondaire" href="<?= url('travaux/' . (int) $projet['id'] . '/echeances') ?>"<?= $dansUneFenetre ? ' data-fermer' : '' ?>>Annuler</a>

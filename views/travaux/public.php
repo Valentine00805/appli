@@ -72,7 +72,7 @@ $avancement = Travaux::avancement(count($taches), $faites);
           <?php foreach ($avenir as $e): ?>
             <?php $journee = (int) $e['journee_entiere'] === 1; ?>
             <li class="travaux-echeance">
-              <span class="travaux-echeance__icone" aria-hidden="true"><?= Travaux::NATURES[$e['nature']]['icone'] ?></span>
+              <span class="travaux-echeance__icone" aria-hidden="true"><?= e((string) ($e['type_icone'] ?? Travaux::ICONE_SANS_TYPE)) ?></span>
               <span><strong><?= e((string) $e['titre']) ?></strong><br>
                 <?= e(ucfirst(date_fr((string) $e['debut'], !$journee))) ?>
                 <?php if ((string) ($e['lieu'] ?? '') !== ''): ?><span class="discret">· <?= e((string) $e['lieu']) ?></span><?php endif; ?></span>
