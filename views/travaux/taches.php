@@ -41,6 +41,7 @@ $choixMembre = static function (string $id, ?int $choisi) use ($membres): string
 <div class="colonnes">
   <div class="pile">
     <div class="travaux-filtres">
+      <a class="bouton bouton--petit" href="<?= url('travaux/' . (int) $projet['id'] . '/taches/nouvelle') ?>" data-fenetre>+ Nouvelle tâche</a>
       <?php foreach (['tous' => 'Toutes', 'moi' => 'Les miennes', 'personne' => 'Sans personne'] as $cle => $nom): ?>
         <a class="pastille<?= $filtre === $cle ? ' pastille--active' : '' ?>"
            href="<?= url('travaux/' . (int) $projet['id'], $cle === 'tous' ? [] : ['voir' => $cle]) ?>"><?= e($nom) ?></a>
@@ -51,6 +52,7 @@ $choixMembre = static function (string $id, ?int $choisi) use ($membres): string
       <div class="vide">
         <span class="vide__icone">✅</span>
         <p>Aucune tâche pour l’instant. Découpez le travail en morceaux, et dites qui fait quoi.</p>
+        <p><a class="bouton bouton--secondaire" href="<?= url('travaux/' . (int) $projet['id'] . '/taches/nouvelle') ?>" data-fenetre>Ajouter la première</a></p>
       </div>
     <?php endif; ?>
 
@@ -139,30 +141,6 @@ $choixMembre = static function (string $id, ?int $choisi) use ($membres): string
   </div>
 
   <div class="pile">
-    <section class="carte">
-      <h2>Nouvelle tâche</h2>
-      <form method="post" action="<?= url('travaux/' . (int) $projet['id'] . '/taches') ?>">
-        <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
-        <div class="champ">
-          <label for="titre-nouvelle">Tâche</label>
-          <input type="text" id="titre-nouvelle" name="titre" required maxlength="200" placeholder="Rédiger l’introduction">
-        </div>
-        <div class="champ">
-          <label for="membre-nouvelle">Qui s’en occupe</label>
-          <?= $choixMembre('membre-nouvelle', null) ?>
-        </div>
-        <div class="champ">
-          <label for="echeance-nouvelle">Pour le <span class="discret">(facultatif)</span></label>
-          <input type="date" id="echeance-nouvelle" name="echeance">
-        </div>
-        <div class="champ">
-          <label for="note-nouvelle">Précisions <span class="discret">(facultatif)</span></label>
-          <textarea id="note-nouvelle" name="note" rows="2" maxlength="2000"></textarea>
-        </div>
-        <button class="bouton bouton--bloc" type="submit">Ajouter</button>
-      </form>
-    </section>
-
     <section class="carte">
       <h2>Répartition</h2>
       <?php if ($avancement !== null): ?>

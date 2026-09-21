@@ -4,7 +4,6 @@
  *
  * @var list<array> $projets
  * @var list<array> $invitations
- * @var list<array> $amis
  * @var list<array> $mesTaches  mes tâches à faire, tous projets confondus
  */
 $csrf = Session::jetonCsrf();
@@ -14,6 +13,7 @@ $csrf = Session::jetonCsrf();
     <h1>👥 Travaux de groupe</h1>
     <p>Qui fait quoi, les fichiers, un document écrit ensemble, et les échéances dans le calendrier de chacun.</p>
   </div>
+  <a class="bouton" href="<?= url('travaux/nouveau') ?>" data-fenetre>+ Nouveau travail de groupe</a>
 </div>
 
 <?php if ($invitations !== []): ?>
@@ -46,12 +46,14 @@ $csrf = Session::jetonCsrf();
   </section>
 <?php endif; ?>
 
-<div class="colonnes">
+<?php // Sans tâche à faire, la liste prend toute la largeur. ?>
+<div class="<?= $mesTaches === [] ? 'pile' : 'colonnes' ?>">
   <div class="pile">
     <?php if ($projets === []): ?>
       <div class="vide">
         <span class="vide__icone">👥</span>
         <p>Aucun travail de groupe pour l’instant. Créez le premier, et invitez-y vos amis.</p>
+        <p><a class="bouton bouton--secondaire" href="<?= url('travaux/nouveau') ?>" data-fenetre>Créer le premier</a></p>
       </div>
     <?php endif; ?>
 
@@ -103,46 +105,5 @@ $csrf = Session::jetonCsrf();
         </ul>
       </section>
     <?php endif; ?>
-
-    <section class="carte">
-      <h2>Nouveau travail de groupe</h2>
-      <form method="post" action="<?= url('travaux') ?>">
-        <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
-        <div class="champ">
-          <label for="nom-projet">Nom</label>
-          <input type="text" id="nom-projet" name="nom" required maxlength="<?= Travaux::NOM_MAX ?>"
-                 placeholder="Exposé d’histoire, projet de fin d’année…">
-        </div>
-        <div class="champ">
-          <label for="description-projet">Le sujet, les consignes <span class="discret">(facultatif)</span></label>
-          <textarea id="description-projet" name="description" rows="3" maxlength="2000"></textarea>
-        </div>
-        <div class="champ">
-          <span class="legende">Inviter des amis <span class="discret">(ils acceptent ou refusent)</span></span>
-          <?php if ($amis === []): ?>
-            <p class="discret" style="margin:.3rem 0 0">Pas encore d’amis dans l’appli :
-              <a href="<?= url('amis') ?>">en ajouter</a>. Vous pourrez aussi ajouter des personnes sans compte.</p>
-          <?php else: ?>
-            <label class="discussions-recherche">
-              <span class="sr-only">Rechercher un ami</span>
-              <input type="search" placeholder="Rechercher un ami" autocomplete="off" data-filtre-liste="[data-liste-amis-projet]">
-            </label>
-            <ul class="groupe-choix__liste partage-liste" data-liste-amis-projet>
-              <?php foreach ($amis as $a): ?>
-                <li data-nom="<?= e(mb_strtolower((string) $a['pseudo'])) ?>">
-                  <label class="groupe-choix__ami">
-                    <input type="checkbox" name="amis[]" value="<?= (int) $a['id'] ?>">
-                    <?= Amis::avatar((int) $a['id'], (string) $a['pseudo'], 'avatar--mini') ?>
-                    <span class="partage-liste__nom"><?= e((string) $a['pseudo']) ?></span>
-                  </label>
-                </li>
-              <?php endforeach; ?>
-            </ul>
-            <p class="discret" data-filtre-vide hidden style="margin:.4rem 0 0">Aucun ami ne porte ce nom.</p>
-          <?php endif; ?>
-        </div>
-        <button class="bouton bouton--bloc" type="submit">Créer</button>
-      </form>
-    </section>
   </div>
 </div>

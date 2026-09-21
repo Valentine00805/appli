@@ -16,7 +16,6 @@ final class TravauxController
         Vue::afficher('travaux/index', [
             'projets'     => Travaux::mesProjets($moi),
             'invitations' => Travaux::invitations($moi),
-            'amis'        => Amis::liste($moi),
             'mesTaches'   => Travaux::mesTaches($moi, 8),
         ], 'Travaux de groupe');
     }
@@ -29,13 +28,45 @@ final class TravauxController
             is_array($_POST['amis'] ?? null) ? $_POST['amis'] : []);
         if ($projet === null) {
             Session::flash('erreur', (string) $refus);
-            redirect('travaux');
+            redirect('travaux/nouveau');
         }
         if ($refus !== null) {
             Session::flash('erreur', $refus);
         }
         Session::flash('succes', 'Travail de groupe créé. Répartissez les premières tâches.');
         redirect('travaux/' . $projet);
+    }
+
+    /**
+     * Les formulaires de création s’ouvrent dans une fenêtre, par-dessus la
+     * page ; sans script, ils sont une page à part entière.
+     */
+    public function nouveau(): void
+    {
+        Auth::exiger();
+        $this->formulaire('travaux/nouveau', ['amis' => Amis::liste(Auth::id())], 'Nouveau travail de groupe');
+    }
+
+    public function nouvelleTache(int $id): void
+    {
+        $projet = $this->projet($id);
+        $this->formulaire('travaux/nouvelle_tache',
+            ['projet' => $projet, 'membres' => Travaux::membresActifs($id)], 'Nouvelle tâche');
+    }
+
+    public function nouvelleEcheance(int $id): void
+    {
+        $projet = $this->projet($id);
+        $this->formulaire('travaux/nouvelle_echeance', ['projet' => $projet], 'Nouvelle échéance');
+    }
+
+    private function formulaire(string $vue, array $donnees, string $titre): void
+    {
+        if (Vue::enFenetre()) {
+            Vue::fragment($vue, $donnees);
+            return;
+        }
+        Vue::afficher($vue, $donnees, $titre);
     }
 
     // --- Les onglets -----------------------------------------------------------
@@ -187,7 +218,10 @@ final class TravauxController
         $this->projet($id);
         $resultat = Travaux::ajouterTache(Auth::id(), $id, post('titre'), $_POST['membre_id'] ?? null,
             post('echeance'), post('note'));
-        $this->finir(is_string($resultat) ? $resultat : null, 'Tâche ajoutée.', 'travaux/' . $id);
+        if (is_string($resultat)) {
+            $this->finir($resultat, '', 'travaux/' . $id . '/taches/nouvelle');
+        }
+        $this->finir(null, 'Tâche ajoutée.', 'travaux/' . $id);
     }
 
     public function modifierTache(int $id): void
@@ -234,7 +268,7 @@ final class TravauxController
         $this->projet($id);
         $donnees = Travaux::lireEcheance($_POST);
         if (is_string($donnees)) {
-            $this->finir($donnees, '', 'travaux/' . $id . '/echeances');
+            $this->finir($donnees, '', 'travaux/' . $id . '/echeances/nouvelle');
         }
         Travaux::poserEcheance(Auth::id(), $id, $donnees);
         Session::flash('succes', '« ' . $donnees['titre'] . ' » posée dans le calendrier de chaque membre, avec ses rappels.');
