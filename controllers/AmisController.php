@@ -167,15 +167,20 @@ final class AmisController
         if (!Amis::sontAmis(Auth::id(), $id)) {
             redirect('amis');
         }
-        $muette = ($_POST['recevoir'] ?? '1') !== '1';
-        Amis::rendreMuette(Auth::id(), $id, $muette);
+        // Décochée : coupée ; « pendant » (1h, 1j…) lui donne une fin.
+        $pendant = (string) ($_POST['pendant'] ?? '');
+        $muette = ($_POST['recevoir'] ?? '1') !== '1' || isset(FileNotifications::DUREES[$pendant]);
+        $jusqua = $muette ? FileNotifications::finDans($pendant) : null;
+        Amis::rendreMuette(Auth::id(), $id, $muette, $jusqua);
         Session::flash('succes', $muette
-            ? '🔕 Notifications coupées pour cette conversation : ses messages arrivent sans vous prévenir.'
+            ? '🔕 ' . FileNotifications::texteCoupure($jusqua)
             : '🔔 Notifications rétablies pour cette conversation.');
         // Le script de la carte n'attend que la réponse : il met la carte à jour lui-même.
         if (veut_du_json()) {
             Session::flashs();
-            repondre_json(['muette' => $muette]);
+            repondre_json(['muette' => $muette, 'etat' => $muette
+                ? FileNotifications::texteCoupure($jusqua)
+                : 'Un nouveau message ou une réaction à l’un des vôtres vous prévient.']);
         }
         redirect('amis/' . $id . '/profil');
     }
@@ -203,6 +208,7 @@ final class AmisController
             'entreNous' => Partages::entreNous($moi, $id),
             'adresseFond' => Amis::adresseFond($moi, $id),
             'muette' => Amis::estMuette($moi, $id),
+            'coupure' => Amis::coupure($moi, $id),
         ];
 
         if (Vue::enFenetre()) {

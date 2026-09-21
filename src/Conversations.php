@@ -1237,18 +1237,32 @@ final class Conversations
     }
 
     /** Ce membre n'a pas la conversation sous les yeux à l'instant. */
+    /** Muette en ce moment : coupée sans fin, ou jusqu'à un moment pas encore venu. */
+    public const SQL_MUETTE = '(muette = 1 AND (muette_jusqua IS NULL OR muette_jusqua > UTC_TIMESTAMP()))';
+
     /** Le membre a-t-il coupé les notifications de cette conversation ? */
     public static function estMuette(int $conversation, int $userId): bool
     {
-        return (int) Database::valeur(
-            'SELECT muette FROM conversation_membres WHERE conversation_id = ? AND user_id = ?', [$conversation, $userId]) === 1;
+        return self::coupure($conversation, $userId) !== false;
     }
 
-    /** Coupe, ou rétablit, les notifications de la conversation pour ce membre. */
-    public static function rendreMuette(int $conversation, int $moi, bool $muette): bool
+    /**
+     * La coupure en cours : false s'il n'y en a pas, null si elle est sans fin,
+     * ou sa fin (UTC).
+     */
+    public static function coupure(int $conversation, int $userId): string|null|false
     {
-        return Database::run('UPDATE conversation_membres SET muette = ? WHERE conversation_id = ? AND user_id = ?',
-            [$muette ? 1 : 0, $conversation, $moi])->rowCount() > 0 || self::membre($conversation, $moi) !== null;
+        $l = Database::one('SELECT muette_jusqua FROM conversation_membres WHERE conversation_id = ? AND user_id = ? AND '
+            . self::SQL_MUETTE, [$conversation, $userId]);
+
+        return $l === null ? false : $l['muette_jusqua'];
+    }
+
+    /** Coupe (sans fin, ou jusqu'à $jusqua), ou rétablit, les notifications de la conversation pour ce membre. */
+    public static function rendreMuette(int $conversation, int $moi, bool $muette, ?string $jusqua = null): bool
+    {
+        return Database::run('UPDATE conversation_membres SET muette = ?, muette_jusqua = ? WHERE conversation_id = ? AND user_id = ?',
+            [$muette ? 1 : 0, $muette ? $jusqua : null, $conversation, $moi])->rowCount() > 0 || self::membre($conversation, $moi) !== null;
     }
 
     private static function absent(int $conversation, int $userId): bool
@@ -1285,7 +1299,7 @@ final class Conversations
 
         $ids = [];
         // Qui a coupé la conversation n'est pas prévenu.
-        foreach (Database::all('SELECT user_id FROM conversation_membres WHERE conversation_id = ? AND user_id <> ? AND muette = 0', [$conversation, $expediteur]) as $l) {
+        foreach (Database::all('SELECT user_id FROM conversation_membres WHERE conversation_id = ? AND user_id <> ? AND NOT ' . self::SQL_MUETTE, [$conversation, $expediteur]) as $l) {
             $membre = (int) $l['user_id'];
             if (!self::absent($conversation, $membre)) {
                 continue;

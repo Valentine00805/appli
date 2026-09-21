@@ -60,13 +60,79 @@ final class FileNotifications
         return null;
     }
 
-    /** @return list<string> les sortes que le compte a coupées */
-    public static function coupees(int $userId): array
+    /** Pour combien de temps couper : une heure, une nuit, un jour… (en minutes). */
+    public const DUREES = [
+        '1h' => ['nom' => '1 heure',   'minutes' => 60],
+        '8h' => ['nom' => '8 heures',  'minutes' => 480],
+        '1j' => ['nom' => '1 jour',    'minutes' => 1440],
+        '3j' => ['nom' => '3 jours',   'minutes' => 4320],
+        '7j' => ['nom' => '1 semaine', 'minutes' => 10080],
+    ];
+
+    /** La fin d'une coupure (en UTC) pour cette durée, ou null : jusqu'à ce qu'on la lève. */
+    public static function finDans(?string $duree): ?string
+    {
+        if ($duree === null || !isset(self::DUREES[$duree])) {
+            return null;
+        }
+
+        return (new DateTimeImmutable('now', new DateTimeZone('UTC')))
+            ->modify('+' . self::DUREES[$duree]['minutes'] . ' minutes')->format('Y-m-d H:i:s');
+    }
+
+    /** « Coupées jusqu'à demain 18:30 », ou sans fin. */
+    public static function texteCoupure(?string $jusquaUtc): string
+    {
+        if ($jusquaUtc === null) {
+            return 'Coupées : rien ne vous prévient, jusqu’à ce que vous recochiez.';
+        }
+        $fin = Amis::local($jusquaUtc);
+        $aujourdhui = new DateTimeImmutable('today');
+        $quand = match ($fin->format('Y-m-d')) {
+            $aujourdhui->format('Y-m-d') => 'jusqu’à ' . $fin->format('H:i'),
+            $aujourdhui->modify('+1 day')->format('Y-m-d') => 'jusqu’à demain ' . $fin->format('H:i'),
+            default => 'jusqu’au ' . date_fr($fin->format('Y-m-d H:i:s'), false) . ', ' . $fin->format('H:i'),
+        };
+
+        return 'Coupées ' . $quand . ' — elles reviendront toutes seules.';
+    }
+
+    /**
+     * Les sortes coupées, et la fin de chacune (en UTC ; null : sans fin). Une
+     * coupure passée n'y est plus : la sorte est revenue.
+     *
+     * @return array<string, ?string>
+     */
+    public static function coupures(int $userId): array
     {
         $valeur = (string) Database::valeur('SELECT notifications_coupees FROM users WHERE id = ?', [$userId]);
+        $maintenant = gmdate('Y-m-d H:i:s');
+        $coupures = [];
+        foreach (array_filter(explode(',', $valeur)) as $morceau) {
+            [$cle, $fin] = array_pad(explode('@', $morceau, 2), 2, null);
+            if (!isset(self::CATEGORIES[$cle])) {
+                continue;
+            }
+            $fin = $fin === null ? null : DateTimeImmutable::createFromFormat('YmdHis', $fin, new DateTimeZone('UTC'));
+            if ($fin === false) {
+                continue;
+            }
+            $finTexte = $fin?->format('Y-m-d H:i:s');
+            if ($finTexte !== null && $finTexte <= $maintenant) {
+                continue;
+            }
+            $coupures[$cle] = $finTexte;
+        }
 
-        return array_values(array_intersect(explode(',', $valeur), array_keys(self::CATEGORIES)));
+        return $coupures;
     }
+
+    /** @return list<string> les sortes que le compte a coupées, en ce moment */
+    public static function coupees(int $userId): array
+    {
+        return array_keys(self::coupures($userId));
+    }
+
 
     /** Le compte a-t-il coupé les notifications de cette nature ? */
     public static function estCoupee(int $userId, string $nature): bool
@@ -77,17 +143,26 @@ final class FileNotifications
     }
 
     /**
-     * Enregistre les sortes cochées : on garde celles qui ne le sont pas.
+     * Enregistre les sortes cochées ; celles qui ne le sont pas sont coupées,
+     * chacune pour la durée choisie à côté (« toujours », « 1h », « 1j »…) —
+     * « garder » laisse la coupure en cours comme elle est.
      *
      * @param list<string> $cochees
+     * @param array<string, string> $durees
      * @return list<string> les sortes coupées
      */
-    public static function regler(int $userId, array $cochees): array
+    public static function regler(int $userId, array $cochees, array $durees = []): array
     {
-        $coupees = array_values(array_diff(array_keys(self::CATEGORIES), $cochees));
-        Database::run('UPDATE users SET notifications_coupees = ? WHERE id = ?', [implode(',', $coupees), $userId]);
+        $avant = self::coupures($userId);
+        $morceaux = [];
+        foreach (array_diff(array_keys(self::CATEGORIES), $cochees) as $cle) {
+            $duree = (string) ($durees[$cle] ?? 'toujours');
+            $fin = $duree === 'garder' && array_key_exists($cle, $avant) ? $avant[$cle] : self::finDans($duree);
+            $morceaux[$cle] = $cle . ($fin === null ? '' : '@' . str_replace(['-', ' ', ':'], '', $fin));
+        }
+        Database::run('UPDATE users SET notifications_coupees = ? WHERE id = ?', [implode(',', $morceaux), $userId]);
 
-        return $coupees;
+        return array_keys($morceaux);
     }
 
     /**

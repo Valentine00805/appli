@@ -3879,3 +3879,12 @@ summary.cal-volet__groupe:focus-visible {
 }
 .notifications-choix__ligne:has(input:checked) { border-color: var(--accent); background: var(--accent-doux); }
 .notifications-choix__ligne input { width: auto; margin-top: .25rem; }
+/* Couper pour un temps : la durée d'une sorte, les boutons d'une conversation. */
+.notifications-choix__duree { display: flex; align-items: center; gap: .4rem; margin: .3rem 0 0 2.2rem; font-size: .85rem; }
+.notifications-choix__duree select { width: auto; padding: .2rem .4rem; font-size: .85rem; }
+.notifications-choix__coupure { font-size: .82rem; font-weight: 600; color: var(--texte); }
+.notifications-pendant { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem; margin: .6rem 0 0; }
+.notifications-pendant__choix { border: 1px solid var(--bordure); cursor: pointer; font: inherit; font-size: .78rem; }
+.notifications-pendant__choix:hover { border-color: var(--accent); color: var(--accent); }
+/* Le menu de durée ne paraît que pour une sorte décochée. */
+.notifications-choix li:has(> .notifications-choix__ligne input:checked) > .notifications-choix__duree { display: none; }

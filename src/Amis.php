@@ -1480,15 +1480,29 @@ final class Amis
     /** A-t-on coupé les notifications de la conversation avec cet ami ? */
     public static function estMuette(int $moi, int $ami): bool
     {
-        return (int) Database::valeur('SELECT muette FROM discussions_etat WHERE user_id = ? AND ami_id = ?', [$moi, $ami]) === 1;
+        return self::coupure($moi, $ami) !== false;
     }
 
-    /** Coupe, ou rétablit, les notifications de la conversation avec cet ami. */
-    public static function rendreMuette(int $moi, int $ami, bool $muette): void
+    /**
+     * La coupure en cours : false s'il n'y en a pas, null si elle est sans fin,
+     * ou sa fin (UTC). Passé ce moment, les notifications reviennent d'elles-mêmes.
+     */
+    public static function coupure(int $moi, int $ami): string|null|false
+    {
+        $l = Database::one(
+            'SELECT muette_jusqua FROM discussions_etat WHERE user_id = ? AND ami_id = ? AND ' . Conversations::SQL_MUETTE,
+            [$moi, $ami]);
+
+        return $l === null ? false : $l['muette_jusqua'];
+    }
+
+    /** Coupe (sans fin, ou jusqu'à $jusqua), ou rétablit, les notifications de la conversation avec cet ami. */
+    public static function rendreMuette(int $moi, int $ami, bool $muette, ?string $jusqua = null): void
     {
         Database::run(
-            'INSERT INTO discussions_etat (user_id, ami_id, muette) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE muette = VALUES(muette)',
-            [$moi, $ami, $muette ? 1 : 0]);
+            'INSERT INTO discussions_etat (user_id, ami_id, muette, muette_jusqua) VALUES (?, ?, ?, ?)
+             ON DUPLICATE KEY UPDATE muette = VALUES(muette), muette_jusqua = VALUES(muette_jusqua)',
+            [$moi, $ami, $muette ? 1 : 0, $muette ? $jusqua : null]);
     }
 
     public static function notifier(int $expediteur, int $destinataire, string $texte, bool $avecImage = false, ?string $nomFichier = null,

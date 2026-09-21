@@ -19,6 +19,7 @@
  * @var ?string $adresseFond
  * @var ?string $fondPar
  * @var bool $muette  ai-je coupé les notifications du groupe ?
+ * @var string|null|false $coupure  la fin de la coupure (UTC), null sans fin, false sans coupure
  * @var bool $dansUneFenetre
  */
 $dansUneFenetre = $dansUneFenetre ?? false;
@@ -91,7 +92,7 @@ $moi = Auth::id();
 
 <?php // Recevoir, ou non, les notifications de ce groupe : un choix de chacun. ?>
 <?= Vue::rendre('amis/_notifications_conversation', [
-    'action' => url('groupes/' . $id . '/notifications'), 'muette' => $muette,
+    'action' => url('groupes/' . $id . '/notifications'), 'muette' => $muette, 'coupure' => $coupure,
     'laquelle' => 'ce groupe', 'dansUneFenetre' => $dansUneFenetre,
 ]) ?>
 

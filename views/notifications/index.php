@@ -9,7 +9,7 @@
  * @var list<array> $appareils
  * @var string $clePublique  la clé VAPID de l'application, en base64url
  * @var string $adresseEnvoi l'adresse que la tâche planifiée appelle chaque minute
- * @var list<string> $coupees  les sortes de notifications que le compte ne reçoit pas
+ * @var array<string, ?string> $coupures  les sortes coupées, et la fin de chacune (UTC ; null : sans fin)
  * @var bool $dansUneFenetre  rendue seule, pour être posée dans une fenêtre
  */
 $csrf = Session::jetonCsrf();
@@ -59,7 +59,8 @@ $dansUneFenetre = $dansUneFenetre ?? false;
     /*
      * Ce que je reçois : une case par sorte de notification, toutes cochées au
      * départ. Ce qui est décoché ne part plus, ni vers cet appareil ni vers
-     * les autres ; un rappel passé pendant ce temps ne revient pas après.
+     * les autres — sans fin, ou pour le temps choisi dessous (le menu ne paraît
+     * que pour une case décochée). Un rappel passé pendant ce temps ne revient pas après.
      */
     ?>
     <section class="carte">
@@ -72,14 +73,31 @@ $dansUneFenetre = $dansUneFenetre ?? false;
         </p>
         <ul class="notifications-choix" data-liste-notifications>
           <?php foreach (FileNotifications::CATEGORIES as $cle => $categorie): ?>
+            <?php $coupee = array_key_exists($cle, $coupures); $fin = $coupures[$cle] ?? null; ?>
             <li>
               <label class="notifications-choix__ligne">
-                <input type="checkbox" name="recevoir[]" value="<?= e($cle) ?>"<?= in_array($cle, $coupees, true) ? '' : ' checked' ?>>
+                <input type="checkbox" name="recevoir[]" value="<?= e($cle) ?>"<?= $coupee ? '' : ' checked' ?>>
                 <span aria-hidden="true"><?= $categorie['icone'] ?></span>
                 <span>
                   <strong><?= e($categorie['nom']) ?></strong><br>
                   <span class="discret"><?= e($categorie['aide']) ?></span>
+                  <?php if ($coupee): ?>
+                    <br><span class="notifications-choix__coupure">🔕 <?= e(FileNotifications::texteCoupure($fin)) ?></span>
+                  <?php endif; ?>
                 </span>
+              </label>
+              <?php // Décochée, pour combien de temps : ensuite, elle revient d'elle-même. ?>
+              <label class="notifications-choix__duree">
+                <span class="discret">Coupée :</span>
+                <select name="duree[<?= e($cle) ?>]">
+                  <?php if ($coupee && $fin !== null): ?>
+                    <option value="garder" selected>comme maintenant</option>
+                  <?php endif; ?>
+                  <option value="toujours"<?= $coupee && $fin === null ? ' selected' : '' ?>>jusqu’à ce que je la recoche</option>
+                  <?php foreach (FileNotifications::DUREES as $d => $duree): ?>
+                    <option value="<?= e($d) ?>">pendant <?= e($duree['nom']) ?></option>
+                  <?php endforeach; ?>
+                </select>
               </label>
             </li>
           <?php endforeach; ?>

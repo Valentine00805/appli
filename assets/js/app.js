@@ -4081,33 +4081,47 @@
   /*
    * Recevoir, ou non, les notifications d'une conversation : la case
    * s'enregistre en arrière-plan, et seule sa carte change — les réglages
-   * autour (photo, fond d'écran) restent tels qu'ils sont.
+   * autour (photo, fond d'écran) restent tels qu'ils sont. Les boutons
+   * « 1 heure », « 1 jour »… coupent pour ce temps-là, et décochent la case.
    */
-  document.addEventListener("change", function (evenement) {
-    var formulaire = evenement.target.form;
-    if (!formulaire || !formulaire.hasAttribute("data-notifications-conversation")) { return; }
+  var enregistrerCoupure = function (formulaire, pendant, annuler) {
     var carte = formulaire.closest("section") || formulaire;
     var message = formulaire.querySelector("[data-notifications-message]");
-    var caseRecevoir = evenement.target;
+    var donnees = new FormData(formulaire);
+    if (pendant) { donnees.append("pendant", pendant); }
     fetch(formulaire.action, {
-      method: "POST", body: new FormData(formulaire), credentials: "same-origin",
+      method: "POST", body: donnees, credentials: "same-origin",
       headers: { "Accept": "application/json" }
     })
       .then(function (reponse) {
         if (!reponse.ok) { throw new Error("refus"); }
         return reponse.json();
       })
-      .then(function (donnees) {
-        carte.querySelector("[data-notifications-icone]").textContent = donnees.muette ? "🔕" : "🔔";
-        carte.querySelector("[data-notifications-etat]").textContent = donnees.muette
-          ? "Coupées : les messages et les réactions arrivent sans vous prévenir."
-          : "Un nouveau message ou une réaction à l’un des vôtres vous prévient.";
-        if (message) { message.textContent = donnees.muette ? "Notifications coupées." : "Notifications rétablies."; }
+      .then(function (reponse) {
+        formulaire.querySelector('input[type="checkbox"][name="recevoir"]').checked = !reponse.muette;
+        carte.querySelector("[data-notifications-icone]").textContent = reponse.muette ? "🔕" : "🔔";
+        carte.querySelector("[data-notifications-etat]").textContent = reponse.etat;
+        if (message) { message.textContent = reponse.muette ? "Notifications coupées." : "Notifications rétablies."; }
       })
       .catch(function () {
-        caseRecevoir.checked = !caseRecevoir.checked;
+        annuler();
         if (message) { message.textContent = "Pas enregistré : vérifiez votre connexion, puis réessayez."; }
       });
+  };
+
+  document.addEventListener("change", function (evenement) {
+    var formulaire = evenement.target.form;
+    if (!formulaire || !formulaire.hasAttribute("data-notifications-conversation")) { return; }
+    var caseRecevoir = evenement.target;
+    enregistrerCoupure(formulaire, null, function () { caseRecevoir.checked = !caseRecevoir.checked; });
+  });
+
+  document.addEventListener("submit", function (evenement) {
+    var formulaire = evenement.target;
+    if (!formulaire.hasAttribute || !formulaire.hasAttribute("data-notifications-conversation")) { return; }
+    evenement.preventDefault();
+    var bouton = evenement.submitter;
+    enregistrerCoupure(formulaire, bouton && bouton.name === "pendant" ? bouton.value : null, function () {});
   });
 
   // Les dossiers se plient : seuls ceux de premier niveau restent

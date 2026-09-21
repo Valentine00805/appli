@@ -124,6 +124,7 @@ final class ConversationsController
             'fondPar' => $groupe['fond_par'] === null ? null
                 : ((int) $groupe['fond_par'] === $moi ? 'vous' : (string) (Amis::compte((int) $groupe['fond_par'])['pseudo'] ?? '')),
             'muette' => Conversations::estMuette($id, $moi),
+            'coupure' => Conversations::coupure($id, $moi),
         ];
         if (Vue::enFenetre()) {
             Vue::fragment('amis/groupe_reglages', $donnees);
@@ -228,17 +229,22 @@ final class ConversationsController
     {
         Auth::exiger();
         Session::verifierCsrf();
-        $muette = ($_POST['recevoir'] ?? '1') !== '1';
-        if (!Conversations::rendreMuette($id, Auth::id(), $muette)) {
+        // Décochée : coupée ; « pendant » (1h, 1j…) lui donne une fin.
+        $pendant = (string) ($_POST['pendant'] ?? '');
+        $muette = ($_POST['recevoir'] ?? '1') !== '1' || isset(FileNotifications::DUREES[$pendant]);
+        $jusqua = $muette ? FileNotifications::finDans($pendant) : null;
+        if (!Conversations::rendreMuette($id, Auth::id(), $muette, $jusqua)) {
             $this->retour($id);
         }
         Session::flash('succes', $muette
-            ? '🔕 Notifications coupées pour ce groupe : ses messages arrivent sans vous prévenir.'
+            ? '🔕 ' . FileNotifications::texteCoupure($jusqua)
             : '🔔 Notifications rétablies pour ce groupe.');
         // Le script de la carte n'attend que la réponse : il met la carte à jour lui-même.
         if (veut_du_json()) {
             Session::flashs();
-            repondre_json(['muette' => $muette]);
+            repondre_json(['muette' => $muette, 'etat' => $muette
+                ? FileNotifications::texteCoupure($jusqua)
+                : 'Un nouveau message ou une réaction à l’un des vôtres vous prévient.']);
         }
         redirect('groupes/' . $id . '/reglages');
     }
