@@ -24,16 +24,88 @@ final class FileNotifications
     private const TENTATIVES_MAX = 30;
 
     /**
+     * Les sortes de notifications qu'on choisit de recevoir ou non, et les
+     * natures qu'elles couvrent — celles des rappels comme celles de la file.
+     */
+    public const CATEGORIES = [
+        'calendrier' => ['nom' => 'Calendrier', 'icone' => '📅', 'natures' => ['evenement'],
+            'aide' => 'Les rappels de vos évènements, et des échéances des travaux de groupe.'],
+        'taches'     => ['nom' => 'Tâches', 'icone' => '✅', 'natures' => ['tache', 'liste'],
+            'aide' => 'À 8 h, le jour de l’échéance d’une tâche pas encore faite.'],
+        'messages'   => ['nom' => 'Messages de mes amis', 'icone' => '💬', 'natures' => ['message'],
+            'aide' => 'Dès qu’ils arrivent, à deux ou en groupe.'],
+        'reactions'  => ['nom' => 'Réactions à mes messages', 'icone' => '😊', 'natures' => ['reaction'],
+            'aide' => 'Quand un ami réagit d’un emoji à ce que vous avez écrit.'],
+        'demandes'   => ['nom' => 'Demandes d’ami', 'icone' => '🤝', 'natures' => ['demande', 'acceptation'],
+            'aide' => 'Les demandes reçues, et vos demandes acceptées.'],
+        'groupes'    => ['nom' => 'Discussions de groupe', 'icone' => '👥', 'natures' => ['groupe'],
+            'aide' => 'Une invitation dans un groupe, ou quand on vous y ajoute.'],
+        'partages'   => ['nom' => 'Partages', 'icone' => '📤', 'natures' => ['partage', 'commentaire'],
+            'aide' => 'Un cours, un fichier ou un évènement qu’on vous partage, et leurs commentaires.'],
+        'travaux'    => ['nom' => 'Travaux de groupe', 'icone' => '🧩', 'natures' => ['projet'],
+            'aide' => 'Une invitation, une tâche qu’on vous confie, une nouvelle échéance.'],
+        'journal'    => ['nom' => 'Journal d’alternance', 'icone' => '📓', 'natures' => ['journal'],
+            'aide' => 'Le rappel d’écrire la semaine de votre journal des missions.'],
+    ];
+
+    /** La sorte d'une nature (« message » → « messages »), ou null si elle n'en a pas. */
+    public static function categorieDe(string $nature): ?string
+    {
+        foreach (self::CATEGORIES as $cle => $categorie) {
+            if (in_array($nature, $categorie['natures'], true)) {
+                return $cle;
+            }
+        }
+
+        return null;
+    }
+
+    /** @return list<string> les sortes que le compte a coupées */
+    public static function coupees(int $userId): array
+    {
+        $valeur = (string) Database::valeur('SELECT notifications_coupees FROM users WHERE id = ?', [$userId]);
+
+        return array_values(array_intersect(explode(',', $valeur), array_keys(self::CATEGORIES)));
+    }
+
+    /** Le compte a-t-il coupé les notifications de cette nature ? */
+    public static function estCoupee(int $userId, string $nature): bool
+    {
+        $categorie = self::categorieDe($nature);
+
+        return $categorie !== null && in_array($categorie, self::coupees($userId), true);
+    }
+
+    /**
+     * Enregistre les sortes cochées : on garde celles qui ne le sont pas.
+     *
+     * @param list<string> $cochees
+     * @return list<string> les sortes coupées
+     */
+    public static function regler(int $userId, array $cochees): array
+    {
+        $coupees = array_values(array_diff(array_keys(self::CATEGORIES), $cochees));
+        Database::run('UPDATE users SET notifications_coupees = ? WHERE id = ?', [implode(',', $coupees), $userId]);
+
+        return $coupees;
+    }
+
+    /**
      * Met une notification en file pour un compte — seulement s'il a un
      * appareil abonné : sans appareil, il n'y a personne à prévenir.
      *
      * @param array{title: string, body: string, url: string, tag: string} $message
-     * @return ?int l'identifiant en file, ou null si le compte n'a pas d'appareil
+     * @return ?int l'identifiant en file, ou null si le compte n'a pas d'appareil,
+     *              ou s'il a choisi de ne pas recevoir cette sorte de notification
      */
     public static function ajouter(int $userId, string $nature, array $message): ?int
     {
         $appareils = (int) Database::valeur('SELECT COUNT(*) FROM abonnements_push WHERE user_id = ?', [$userId]);
         if ($appareils === 0) {
+            return null;
+        }
+        // Une sorte de notification qu'on a choisi de ne pas recevoir ne part pas.
+        if (self::estCoupee($userId, $nature)) {
             return null;
         }
 

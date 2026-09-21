@@ -25,6 +25,8 @@ final class NotificationsController
             ),
             'clePublique' => WebPush::clesVapid()['publique'],
             'adresseEnvoi' => self::adresseAbsolue(url('notifications/envoyer', ['cle' => self::cleEnvoi()])),
+            // Les sortes de notifications que le compte a choisi de ne pas recevoir.
+            'coupees' => FileNotifications::coupees($userId),
         ];
 
         // Depuis « Mon compte », la page s'ouvre dans une fenêtre.
@@ -35,6 +37,22 @@ final class NotificationsController
         }
 
         Vue::afficher('notifications/index', $donnees, 'Notifications');
+    }
+
+    /** Ce qu'on choisit de recevoir : une case par sorte de notification. */
+    public function choisir(): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $cochees = is_array($_POST['recevoir'] ?? null) ? array_map('strval', $_POST['recevoir']) : [];
+        $coupees = FileNotifications::regler(Auth::id(), $cochees);
+        $n = count(FileNotifications::CATEGORIES) - count($coupees);
+        Session::flash($n === 0 ? 'erreur' : 'succes', match (true) {
+            $n === 0 => 'Plus aucune notification ne vous arrivera : cochez au moins ce que vous voulez recevoir.',
+            $coupees === [] => 'Vous recevez toutes les notifications.',
+            default => 'Choix enregistré : ' . $n . ' sorte' . ($n > 1 ? 's' : '') . ' de notifications sur ' . count(FileNotifications::CATEGORIES) . '.',
+        });
+        redirect('notifications');
     }
 
     /**

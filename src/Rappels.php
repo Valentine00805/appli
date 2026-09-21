@@ -129,6 +129,9 @@ final class Rappels
             $fuseau = Auth::fuseauValide((string) $compte['fuseau']) ? (string) $compte['fuseau'] : Auth::FUSEAU_PAR_DEFAUT;
             $maintenant = new DateTimeImmutable('now', new DateTimeZone($fuseau));
 
+            // Les sortes que le compte a choisi de ne pas recevoir (calendrier, tâches…).
+            $coupees = FileNotifications::coupees((int) $compte['id']);
+
             foreach (self::dus((int) $compte['id'], $maintenant) as $rappel) {
                 // Inscrit d'abord : un second passage simultané bute sur la clé unique.
                 $inscrit = Database::run(
@@ -136,6 +139,13 @@ final class Rappels
                     [(int) $compte['id'], $rappel['nature'], $rappel['objet_id'], $rappel['moment']]
                 )->rowCount();
                 if ($inscrit === 0) {
+                    continue;
+                }
+                /*
+                 * Coupé : inscrit sans partir. Recocher la case plus tard ne
+                 * fera pas arriver d'un coup les rappels qu'on a laissés passer.
+                 */
+                if (in_array(FileNotifications::categorieDe($rappel['nature']), $coupees, true)) {
                     continue;
                 }
                 $bilan['rappels']++;

@@ -226,7 +226,6 @@ textarea { min-height: 260px; resize: vertical; line-height: 1.65; }
 /* La page « Notifications ». */
 .notifications__etat { font-weight: 600; }
 .notifications [hidden] { display: none !important; }
-.notifications__liste { margin: 0; padding-left: 1.2rem; display: grid; gap: .45rem; }
 
 /* --- Amis et discussions --------------------------------------------- */
 
@@ -3872,3 +3871,11 @@ summary.cal-volet__groupe:focus-visible {
   font-size: .75rem; font-weight: 650; vertical-align: .1em;
   color: var(--couleur-type); background: color-mix(in srgb, var(--couleur-type) 14%, transparent);
 }
+/* Ce que je reçois : une case par sorte de notification. */
+.notifications-choix { list-style: none; padding: 0; margin: 0; display: grid; gap: .35rem; }
+.notifications-choix__ligne {
+  display: flex; gap: .6rem; align-items: flex-start; cursor: pointer;
+  padding: .5rem .6rem; border: 1px solid var(--bordure); border-radius: var(--rayon-s);
+}
+.notifications-choix__ligne:has(input:checked) { border-color: var(--accent); background: var(--accent-doux); }
+.notifications-choix__ligne input { width: auto; margin-top: .25rem; }

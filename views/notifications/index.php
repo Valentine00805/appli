@@ -9,6 +9,7 @@
  * @var list<array> $appareils
  * @var string $clePublique  la clé VAPID de l'application, en base64url
  * @var string $adresseEnvoi l'adresse que la tâche planifiée appelle chaque minute
+ * @var list<string> $coupees  les sortes de notifications que le compte ne reçoit pas
  * @var bool $dansUneFenetre  rendue seule, pour être posée dans une fenêtre
  */
 $csrf = Session::jetonCsrf();
@@ -54,20 +55,41 @@ $dansUneFenetre = $dansUneFenetre ?? false;
       </p>
     </section>
 
+    <?php
+    /*
+     * Ce que je reçois : une case par sorte de notification, toutes cochées au
+     * départ. Ce qui est décoché ne part plus, ni vers cet appareil ni vers
+     * les autres ; un rappel passé pendant ce temps ne revient pas après.
+     */
+    ?>
     <section class="carte">
-      <h2 style="margin-top:0">Ce qui vous est rappelé</h2>
-      <ul class="notifications__liste">
-        <li><strong>Les évènements</strong> — ceux de l’application comme ceux d’Outlook et de Google —,
-          15 minutes avant par défaut. Chaque évènement choisit ses rappels dans son formulaire,
-          autant qu’il en faut : la semaine d’avant, la veille, un quart d’heure avant…</li>
-        <li><strong>Un évènement « toute la journée »</strong> : à 8 h le jour même, ou les jours d’avant
-          pour un rappel d’un jour ou plus.</li>
-        <li><strong>Les échéances de tâches</strong> : à 8 h le jour de l’échéance, pour une sous-tâche pas
-          encore faite ou une tâche principale qui en a encore.</li>
-        <li><strong>Les messages de vos amis</strong>, dès qu’ils arrivent — sauf si vous êtes à ce
-          moment-là dans la discussion, fenêtre active.</li>
-        <li><strong>Les demandes d’ami</strong> reçues, et vos demandes acceptées.</li>
-      </ul>
+      <h2 style="margin-top:0">Ce que je reçois</h2>
+      <form method="post" action="<?= url('notifications/choix') ?>"<?= $dansUneFenetre ? ' data-envoi-fenetre' : '' ?>>
+        <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+        <p style="margin:0 0 .6rem">
+          <button class="bouton bouton--discret bouton--petit" type="button"
+                  data-cocher-tout="[data-liste-notifications]">Tout cocher, ou décocher</button>
+        </p>
+        <ul class="notifications-choix" data-liste-notifications>
+          <?php foreach (FileNotifications::CATEGORIES as $cle => $categorie): ?>
+            <li>
+              <label class="notifications-choix__ligne">
+                <input type="checkbox" name="recevoir[]" value="<?= e($cle) ?>"<?= in_array($cle, $coupees, true) ? '' : ' checked' ?>>
+                <span aria-hidden="true"><?= $categorie['icone'] ?></span>
+                <span>
+                  <strong><?= e($categorie['nom']) ?></strong><br>
+                  <span class="discret"><?= e($categorie['aide']) ?></span>
+                </span>
+              </label>
+            </li>
+          <?php endforeach; ?>
+        </ul>
+        <button class="bouton" type="submit" style="margin-top:.8rem">Enregistrer mon choix</button>
+        <p class="champ__aide" style="margin-bottom:0">
+          Les rappels du calendrier partent 15 minutes avant par défaut ; chaque évènement règle les siens
+          dans son formulaire. Un évènement « toute la journée » et une tâche sonnent à 8 h.
+        </p>
+      </form>
     </section>
   </div>
 

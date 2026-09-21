@@ -241,6 +241,7 @@ $routes = [
     ['POST', 'notifications/abonnement',  [NotificationsController::class, 'abonner']],
     ['POST', 'notifications/desabonnement', [NotificationsController::class, 'desabonner']],
     ['POST', 'notifications/essai',       [NotificationsController::class, 'essai']],
+    ['POST', 'notifications/choix',       [NotificationsController::class, 'choisir']],
     ['POST', 'notifications/battement',   [NotificationsController::class, 'battement']],
     ['GET',  'notifications/envoyer',     [NotificationsController::class, 'envoyer']],
     ['POST', 'notifications/envoyer',     [NotificationsController::class, 'envoyer']],
