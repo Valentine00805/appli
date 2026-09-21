@@ -18,6 +18,7 @@
  * @var list<array> $fichiersPartages
  * @var ?string $adresseFond
  * @var ?string $fondPar
+ * @var bool $muette  ai-je coupé les notifications du groupe ?
  * @var bool $dansUneFenetre
  */
 $dansUneFenetre = $dansUneFenetre ?? false;
@@ -87,6 +88,12 @@ $moi = Auth::id();
     </div>
   </form>
 </section>
+
+<?php // Recevoir, ou non, les notifications de ce groupe : un choix de chacun. ?>
+<?= Vue::rendre('amis/_notifications_conversation', [
+    'action' => url('groupes/' . $id . '/notifications'), 'muette' => $muette,
+    'laquelle' => 'ce groupe', 'dansUneFenetre' => $dansUneFenetre,
+]) ?>
 
 <?php // Le fond d'écran, commun à tout le groupe : même carte qu'entre deux amis. ?>
 <section class="carte profil-ami__section" id="fond-discussion">

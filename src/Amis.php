@@ -1208,7 +1208,7 @@ final class Amis
                 'SELECT TIMESTAMPDIFF(SECOND, regarde_le, UTC_TIMESTAMP()) FROM discussions_etat WHERE user_id = ? AND ami_id = ?',
                 [$auteur, $moi]
             );
-            if ($depuis === null || (int) $depuis >= self::PRESENCE_SECONDES) {
+            if (($depuis === null || (int) $depuis >= self::PRESENCE_SECONDES) && !self::estMuette($auteur, $moi)) {
                 $extrait = self::extrait([
                     'r_texte' => $message['texte'], 'r_image' => $message['image_nom'],
                     'r_fichier' => $message['fichier_origine'], 'r_supprime' => null, 'r_masque' => 0,
@@ -1477,6 +1477,20 @@ final class Amis
      *
      * @return ?int la notification en file, ou null s'il n'y a personne à prévenir
      */
+    /** A-t-on coupé les notifications de la conversation avec cet ami ? */
+    public static function estMuette(int $moi, int $ami): bool
+    {
+        return (int) Database::valeur('SELECT muette FROM discussions_etat WHERE user_id = ? AND ami_id = ?', [$moi, $ami]) === 1;
+    }
+
+    /** Coupe, ou rétablit, les notifications de la conversation avec cet ami. */
+    public static function rendreMuette(int $moi, int $ami, bool $muette): void
+    {
+        Database::run(
+            'INSERT INTO discussions_etat (user_id, ami_id, muette) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE muette = VALUES(muette)',
+            [$moi, $ami, $muette ? 1 : 0]);
+    }
+
     public static function notifier(int $expediteur, int $destinataire, string $texte, bool $avecImage = false, ?string $nomFichier = null,
                                     ?int $dureeVocal = null): ?int
     {
@@ -1485,6 +1499,10 @@ final class Amis
             [$destinataire, $expediteur]
         );
         if ($depuis !== null && (int) $depuis < self::PRESENCE_SECONDES) {
+            return null;
+        }
+        // Conversation coupée : le message arrive, sans notification.
+        if (self::estMuette($destinataire, $expediteur)) {
             return null;
         }
 

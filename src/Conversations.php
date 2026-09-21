@@ -1067,7 +1067,8 @@ final class Conversations
         $notification = null;
         $auteur = $message['expediteur_id'] === null ? null : (int) $message['expediteur_id'];
         $conversation = (int) $message['conversation_id'];
-        if ($pose && $auteur !== null && $auteur !== $moi && self::absent($conversation, $auteur)) {
+        if ($pose && $auteur !== null && $auteur !== $moi && self::absent($conversation, $auteur)
+            && !self::estMuette($conversation, $auteur)) {
             $extrait = Amis::extrait([
                 'r_texte' => $message['texte'], 'r_image' => $message['image_nom'], 'r_fichier' => $message['fichier_origine'],
                 'r_audio' => $message['audio_nom'], 'r_supprime' => null, 'r_masque' => 0,
@@ -1236,6 +1237,20 @@ final class Conversations
     }
 
     /** Ce membre n'a pas la conversation sous les yeux à l'instant. */
+    /** Le membre a-t-il coupé les notifications de cette conversation ? */
+    public static function estMuette(int $conversation, int $userId): bool
+    {
+        return (int) Database::valeur(
+            'SELECT muette FROM conversation_membres WHERE conversation_id = ? AND user_id = ?', [$conversation, $userId]) === 1;
+    }
+
+    /** Coupe, ou rétablit, les notifications de la conversation pour ce membre. */
+    public static function rendreMuette(int $conversation, int $moi, bool $muette): bool
+    {
+        return Database::run('UPDATE conversation_membres SET muette = ? WHERE conversation_id = ? AND user_id = ?',
+            [$muette ? 1 : 0, $conversation, $moi])->rowCount() > 0 || self::membre($conversation, $moi) !== null;
+    }
+
     private static function absent(int $conversation, int $userId): bool
     {
         $depuis = Database::valeur(
@@ -1269,7 +1284,8 @@ final class Conversations
         $nom = self::nom($conversation);
 
         $ids = [];
-        foreach (Database::all('SELECT user_id FROM conversation_membres WHERE conversation_id = ? AND user_id <> ?', [$conversation, $expediteur]) as $l) {
+        // Qui a coupé la conversation n'est pas prévenu.
+        foreach (Database::all('SELECT user_id FROM conversation_membres WHERE conversation_id = ? AND user_id <> ? AND muette = 0', [$conversation, $expediteur]) as $l) {
             $membre = (int) $l['user_id'];
             if (!self::absent($conversation, $membre)) {
                 continue;

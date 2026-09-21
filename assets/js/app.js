@@ -4078,6 +4078,38 @@
     });
   }
 
+  /*
+   * Recevoir, ou non, les notifications d'une conversation : la case
+   * s'enregistre en arrière-plan, et seule sa carte change — les réglages
+   * autour (photo, fond d'écran) restent tels qu'ils sont.
+   */
+  document.addEventListener("change", function (evenement) {
+    var formulaire = evenement.target.form;
+    if (!formulaire || !formulaire.hasAttribute("data-notifications-conversation")) { return; }
+    var carte = formulaire.closest("section") || formulaire;
+    var message = formulaire.querySelector("[data-notifications-message]");
+    var caseRecevoir = evenement.target;
+    fetch(formulaire.action, {
+      method: "POST", body: new FormData(formulaire), credentials: "same-origin",
+      headers: { "Accept": "application/json" }
+    })
+      .then(function (reponse) {
+        if (!reponse.ok) { throw new Error("refus"); }
+        return reponse.json();
+      })
+      .then(function (donnees) {
+        carte.querySelector("[data-notifications-icone]").textContent = donnees.muette ? "🔕" : "🔔";
+        carte.querySelector("[data-notifications-etat]").textContent = donnees.muette
+          ? "Coupées : les messages et les réactions arrivent sans vous prévenir."
+          : "Un nouveau message ou une réaction à l’un des vôtres vous prévient.";
+        if (message) { message.textContent = donnees.muette ? "Notifications coupées." : "Notifications rétablies."; }
+      })
+      .catch(function () {
+        caseRecevoir.checked = !caseRecevoir.checked;
+        if (message) { message.textContent = "Pas enregistré : vérifiez votre connexion, puis réessayez."; }
+      });
+  });
+
   // Les dossiers se plient : seuls ceux de premier niveau restent
   // visibles, un clic sur un dossier montre ou masque les siens.
   // Sans JavaScript, rien ne se replie et l arborescence reste entiere.

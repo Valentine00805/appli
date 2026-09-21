@@ -159,6 +159,27 @@ final class AmisController
     }
 
     /** Le profil d'un ami : ce qu'on a échangé, et de quoi le retirer de ses amis. */
+    /** Recevoir, ou non, les notifications de la conversation avec cet ami. */
+    public function notifications(int $id): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        if (!Amis::sontAmis(Auth::id(), $id)) {
+            redirect('amis');
+        }
+        $muette = ($_POST['recevoir'] ?? '1') !== '1';
+        Amis::rendreMuette(Auth::id(), $id, $muette);
+        Session::flash('succes', $muette
+            ? '🔕 Notifications coupées pour cette conversation : ses messages arrivent sans vous prévenir.'
+            : '🔔 Notifications rétablies pour cette conversation.');
+        // Le script de la carte n'attend que la réponse : il met la carte à jour lui-même.
+        if (veut_du_json()) {
+            Session::flashs();
+            repondre_json(['muette' => $muette]);
+        }
+        redirect('amis/' . $id . '/profil');
+    }
+
     public function profil(int $id): void
     {
         Auth::exiger();
@@ -181,6 +202,7 @@ final class AmisController
             'fond' => Amis::fond($moi, $id),
             'entreNous' => Partages::entreNous($moi, $id),
             'adresseFond' => Amis::adresseFond($moi, $id),
+            'muette' => Amis::estMuette($moi, $id),
         ];
 
         if (Vue::enFenetre()) {

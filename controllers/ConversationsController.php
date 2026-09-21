@@ -123,6 +123,7 @@ final class ConversationsController
             'adresseFond' => Conversations::adresseFond($id, $groupe['fond_nom']),
             'fondPar' => $groupe['fond_par'] === null ? null
                 : ((int) $groupe['fond_par'] === $moi ? 'vous' : (string) (Amis::compte((int) $groupe['fond_par'])['pseudo'] ?? '')),
+            'muette' => Conversations::estMuette($id, $moi),
         ];
         if (Vue::enFenetre()) {
             Vue::fragment('amis/groupe_reglages', $donnees);
@@ -220,6 +221,26 @@ final class ConversationsController
         $refus = Conversations::renommer(Auth::id(), $id, (string) ($_POST['nom'] ?? ''));
         Session::flash($refus === null ? 'succes' : 'erreur', $refus ?? 'Groupe renommé.');
         $this->retour($id);
+    }
+
+    /** Recevoir, ou non, les notifications de ce groupe. */
+    public function notifications(int $id): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $muette = ($_POST['recevoir'] ?? '1') !== '1';
+        if (!Conversations::rendreMuette($id, Auth::id(), $muette)) {
+            $this->retour($id);
+        }
+        Session::flash('succes', $muette
+            ? '🔕 Notifications coupées pour ce groupe : ses messages arrivent sans vous prévenir.'
+            : '🔔 Notifications rétablies pour ce groupe.');
+        // Le script de la carte n'attend que la réponse : il met la carte à jour lui-même.
+        if (veut_du_json()) {
+            Session::flashs();
+            repondre_json(['muette' => $muette]);
+        }
+        redirect('groupes/' . $id . '/reglages');
     }
 
     public function ajouter(int $id): void

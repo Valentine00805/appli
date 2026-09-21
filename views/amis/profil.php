@@ -15,6 +15,7 @@
  * @var int $messages
  * @var ?array $fond
  * @var ?string $adresseFond
+ * @var bool $muette  les notifications de la conversation sont-elles coupées ?
  * @var bool $dansUneFenetre
  */
 $dansUneFenetre = $dansUneFenetre ?? false;
@@ -36,6 +37,12 @@ $pseudo = (string) $ami['pseudo'];
     </div>
   </div>
 </div>
+
+<?php // Recevoir, ou non, les notifications de cette conversation. ?>
+<?= Vue::rendre('amis/_notifications_conversation', [
+    'action' => url('amis/' . (int) $ami['id'] . '/notifications'), 'muette' => $muette,
+    'laquelle' => 'cette conversation', 'dansUneFenetre' => $dansUneFenetre,
+]) ?>
 
 <?php
 /*
