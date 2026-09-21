@@ -561,13 +561,23 @@ final class Travaux
      */
     public static function lireEcheance(array $source): array|string
     {
-        $nature = (string) ($source['nature'] ?? 'rendu');
-        if (!isset(self::NATURES[$nature])) {
-            $nature = 'autre';
+        /*
+         * Le type : un des proposés, un type à soi déjà employé dans le projet
+         * (« autre:Projet »), ou un nouveau, écrit dans « type_nom ».
+         */
+        $choix = (string) ($source['nature'] ?? 'rendu');
+        $typeNom = null;
+        if (str_starts_with($choix, 'autre:')) {
+            $typeNom = self::nettoyer(substr($choix, 6), 40);
+            $choix = 'autre';
+        } elseif ($choix === 'autre') {
+            $typeNom = self::nettoyer((string) ($source['type_nom'] ?? ''), 40);
         }
+        $nature = isset(self::NATURES[$choix]) ? $choix : 'autre';
+        $typeNom = $nature === 'autre' && $typeNom !== null && $typeNom !== '' ? $typeNom : null;
         $titre = self::nettoyer((string) ($source['titre'] ?? ''), 160);
         if ($titre === '') {
-            $titre = self::NATURES[$nature]['nom'];
+            $titre = $typeNom ?? self::NATURES[$nature]['nom'];
         }
         $jour = self::dateValide(trim((string) ($source['jour'] ?? '')));
         if ($jour === null) {
@@ -585,6 +595,7 @@ final class Travaux
 
         return [
             'nature' => $nature,
+            'type_nom' => $typeNom,
             'titre' => $titre,
             'lieu' => self::nettoyer((string) ($source['lieu'] ?? ''), 160) ?: null,
             'debut' => $debut,
@@ -593,13 +604,32 @@ final class Travaux
         ];
     }
 
+    /** Le nom du type d'une échéance : le sien, s'il en a un, ou celui proposé. */
+    public static function nomDuType(array $e): string
+    {
+        return (string) ($e['type_nom'] ?? '') !== '' ? (string) $e['type_nom'] : self::NATURES[$e['nature']]['nom'];
+    }
+
+    /**
+     * Les types à soi déjà employés dans le projet : proposés dans le menu,
+     * pour ne pas avoir à les réécrire.
+     *
+     * @return list<string>
+     */
+    public static function typesDuProjet(int $projet): array
+    {
+        return array_column(Database::all(
+            "SELECT DISTINCT type_nom FROM projet_echeances WHERE projet_id = ? AND nature = 'autre' AND type_nom IS NOT NULL ORDER BY type_nom",
+            [$projet]), 'type_nom');
+    }
+
     /** Pose une échéance, et sa copie chez chaque membre. */
     public static function poserEcheance(int $moi, int $projet, array $d): int
     {
         Database::run(
-            'INSERT INTO projet_echeances (projet_id, nature, titre, lieu, debut, fin, journee_entiere, cree_par)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-            [$projet, $d['nature'], $d['titre'], $d['lieu'], $d['debut'], $d['fin'], $d['journee_entiere'], $moi]);
+            'INSERT INTO projet_echeances (projet_id, nature, type_nom, titre, lieu, debut, fin, journee_entiere, cree_par)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [$projet, $d['nature'], $d['type_nom'], $d['titre'], $d['lieu'], $d['debut'], $d['fin'], $d['journee_entiere'], $moi]);
         $id = Database::dernierId();
 
         $nom = (string) Database::valeur('SELECT nom FROM projets WHERE id = ?', [$projet]);
@@ -622,8 +652,8 @@ final class Travaux
     public static function modifierEcheance(int $echeanceId, array $d): void
     {
         Database::run(
-            'UPDATE projet_echeances SET nature = ?, titre = ?, lieu = ?, debut = ?, fin = ?, journee_entiere = ? WHERE id = ?',
-            [$d['nature'], $d['titre'], $d['lieu'], $d['debut'], $d['fin'], $d['journee_entiere'], $echeanceId]);
+            'UPDATE projet_echeances SET nature = ?, type_nom = ?, titre = ?, lieu = ?, debut = ?, fin = ?, journee_entiere = ? WHERE id = ?',
+            [$d['nature'], $d['type_nom'], $d['titre'], $d['lieu'], $d['debut'], $d['fin'], $d['journee_entiere'], $echeanceId]);
         self::mettreAJourCopies($echeanceId);
     }
 

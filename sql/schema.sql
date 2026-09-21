@@ -1349,3 +1349,9 @@ ALTER TABLE `evenements`
   ADD COLUMN `projet_echeance_id` INT UNSIGNED NULL AFTER `partage_de`,
   ADD KEY `idx_evt_projet_echeance` (`projet_echeance_id`),
   ADD CONSTRAINT `fk_evt_projet_echeance` FOREIGN KEY (`projet_echeance_id`) REFERENCES `projet_echeances`(`id`) ON DELETE CASCADE;
+
+-- Une échéance de groupe peut porter un type à soi (« Projet », « Oral blanc »…),
+-- en plus des types proposés : son nom, quand la nature est « autre ».
+
+ALTER TABLE `projet_echeances`
+  ADD COLUMN `type_nom` VARCHAR(40) NULL AFTER `nature`;

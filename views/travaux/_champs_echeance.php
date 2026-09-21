@@ -4,18 +4,33 @@
  *
  * @var string $suffixe  pour des identifiants uniques dans la page
  * @var ?array $e
+ * @var list<string> $types  les types à soi déjà employés dans le projet
  */
 $journee = $e !== null && (int) $e['journee_entiere'] === 1;
 $duree = $e === null || $journee ? 60
     : (int) round((strtotime((string) $e['fin']) - strtotime((string) $e['debut'])) / 60);
+$types = $types ?? [];
+// Ce qui est choisi : « rendu », « autre:Projet », ou « autre » (un type à écrire).
+$choisi = $e === null ? 'rendu'
+    : (($e['nature'] === 'autre' && (string) ($e['type_nom'] ?? '') !== '') ? 'autre:' . $e['type_nom'] : (string) $e['nature']);
 ?>
 <div class="champ">
   <label for="nature-<?= e($suffixe) ?>">C’est</label>
-  <select id="nature-<?= e($suffixe) ?>" name="nature">
+  <select id="nature-<?= e($suffixe) ?>" name="nature" data-type-echeance>
     <?php foreach (Travaux::NATURES as $cle => $n): ?>
-      <option value="<?= e($cle) ?>"<?= ($e['nature'] ?? 'rendu') === $cle ? ' selected' : '' ?>><?= $n['icone'] ?> <?= e($n['nom']) ?></option>
+      <?php if ($cle === 'autre') { continue; } ?>
+      <option value="<?= e($cle) ?>"<?= $choisi === $cle ? ' selected' : '' ?>><?= $n['icone'] ?> <?= e($n['nom']) ?></option>
     <?php endforeach; ?>
+    <?php foreach ($types as $type): ?>
+      <option value="<?= e('autre:' . $type) ?>"<?= $choisi === 'autre:' . $type ? ' selected' : '' ?>><?= Travaux::NATURES['autre']['icone'] ?> <?= e($type) ?></option>
+    <?php endforeach; ?>
+    <option value="autre"<?= $choisi === 'autre' ? ' selected' : '' ?>>✏️ Un autre type…</option>
   </select>
+</div>
+<?php // N'apparaît que pour « Un autre type… » : on l'écrit, il rejoint ensuite le menu du projet. ?>
+<div class="champ" data-type-libre<?= $choisi === 'autre' ? '' : ' hidden' ?>>
+  <label for="type-<?= e($suffixe) ?>">Nom du type</label>
+  <input type="text" id="type-<?= e($suffixe) ?>" name="type_nom" maxlength="40" placeholder="Projet, oral blanc, partiel…">
 </div>
 <div class="champ">
   <label for="titre-<?= e($suffixe) ?>">Titre <span class="discret">(facultatif)</span></label>

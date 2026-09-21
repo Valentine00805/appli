@@ -19,7 +19,7 @@ $dansUneFenetre = $dansUneFenetre ?? false;
 
 <form method="post" action="<?= url('travaux/' . (int) $projet['id'] . '/echeances') ?>" class="carte travaux-formulaire"<?= $dansUneFenetre ? ' data-envoi-fenetre' : '' ?>>
   <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
-  <?= Vue::rendre('travaux/_champs_echeance', ['suffixe' => 'nouvelle', 'e' => null]) ?>
+  <?= Vue::rendre('travaux/_champs_echeance', ['suffixe' => 'nouvelle', 'e' => null, 'types' => Travaux::typesDuProjet((int) $projet['id'])]) ?>
   <p class="champ__aide" style="margin-top:0">Chaque membre la retrouve dans son calendrier, avec ses rappels
     (rendu : 2 jours et la veille ; soutenance : la veille et 1 h avant ; réunion : 1 h et 15 min avant).</p>
   <p class="actions">
