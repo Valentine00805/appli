@@ -40,14 +40,24 @@ $enEdition = is_string($pseudoSaisi);
 /*
  * L'apparence : claire, sombre, ou celle de l'appareil.
  *
- * Le choix s'applique à l'instant où on le fait — le script pose le thème sur
- * la page avant même l'enregistrement —, puis le formulaire part tout seul.
+ * Comme le pseudo et le fuseau : l'apparence choisie se lit, et les trois
+ * vignettes ne se déplient qu'en passant par « Modifier ». Le choix s'applique
+ * à l'instant où on le fait — le script pose le thème sur la page avant même
+ * l'enregistrement —, puis le formulaire part tout seul.
  */
 $themeActuel = Auth::theme($moi);
 ?>
-<section class="carte" style="margin-bottom:1rem" id="apparence">
+<section class="carte" style="margin-bottom:1rem" id="apparence" data-reglage>
   <h2 style="margin-top:0">🎨 Apparence</h2>
-  <form method="post" action="<?= url('compte/theme') ?>" data-auto-envoi data-choix-theme>
+
+  <div class="reglage-lecture" data-reglage-lecture>
+    <p class="reglage-lecture__valeur">
+      <?= Auth::THEMES[$themeActuel]['icone'] ?> <?= e(Auth::THEMES[$themeActuel]['nom']) ?>
+    </p>
+    <button class="bouton bouton--secondaire" type="button" data-reglage-modifier>✎ Modifier</button>
+  </div>
+
+  <form method="post" action="<?= url('compte/theme') ?>" data-auto-envoi data-choix-theme data-reglage-edition hidden>
     <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
     <div class="themes-choix">
       <?php foreach (Auth::THEMES as $cle => $theme): ?>
@@ -63,7 +73,10 @@ $themeActuel = Auth::theme($moi);
         </label>
       <?php endforeach; ?>
     </div>
-    <noscript><button class="bouton bouton--petit" type="submit" style="margin-top:.8rem">Enregistrer</button></noscript>
+    <p class="actions" style="margin:.8rem 0 0">
+      <noscript><button class="bouton bouton--petit" type="submit">Enregistrer</button></noscript>
+      <button class="bouton bouton--discret bouton--petit" type="button" data-reglage-annuler>Fermer</button>
+    </p>
   </form>
 </section>
 

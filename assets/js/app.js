@@ -3767,6 +3767,12 @@
     edition.querySelectorAll('[data-valeur-actuelle]').forEach(function (c) {
       c.value = c.getAttribute('data-valeur-actuelle');
     });
+    // L'apparence s'essaie avant d'être enregistrée : en refermant, la page
+    // reprend le thème du compte.
+    if (edition.hasAttribute('data-choix-theme')) {
+      var themeGarde = edition.querySelector('input[name="theme"]:checked');
+      if (themeGarde) { document.documentElement.setAttribute('data-theme', themeGarde.value); }
+    }
     edition.hidden = true;
     lecture.hidden = false;
     modifier.focus();
