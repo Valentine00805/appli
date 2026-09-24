@@ -34,7 +34,7 @@ final class CoursController
             'dossierId' => $dossierId,
             'favoris'   => $favoris,
             'tri'       => $tri,
-        ], 'Mes cours');
+        ], t('cours.titre'));
     }
 
     public function recherche(): void
@@ -704,7 +704,7 @@ final class CoursController
             return;
         }
 
-        Vue::afficher('cours/formulaire', $donnees, $cours === null ? 'Nouveau cours' : 'Modifier le cours');
+        Vue::afficher('cours/formulaire', $donnees, $cours === null ? t('cours.nouveau') : t('cours.modifier_titre'));
     }
 
     /**

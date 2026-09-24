@@ -32,7 +32,7 @@ $valeur = static function (string $champ, string $defaut = '') use ($evenement, 
 $joursSemaine = static function (array $coches, string $prefixe): string {
     $noms = [1 => 'lundi', 2 => 'mardi', 3 => 'mercredi', 4 => 'jeudi',
              5 => 'vendredi', 6 => 'samedi', 7 => 'dimanche'];
-    $html = '<span class="legende">Jours de la semaine</span><div class="jours-semaine">';
+    $html = '<span class="legende">' . e(t('evtf.jours_semaine')) . '</span><div class="jours-semaine">';
     foreach ($noms as $numero => $nom) {
         $id = $prefixe . '-jour-' . $numero;
         $html .= '<input type="checkbox" id="' . $id . '" name="jours[]" value="' . $numero . '"'
@@ -55,19 +55,19 @@ $borneRepetition = static function (?string $date, ?int $nombre, string $prefixe
     $parNombre = $nombre !== null;
     $q = static fn (string $v): string => e($v);
 
-    return '<span class="legende">Fin de la répétition</span>'
+    return '<span class="legende">' . e(t('evtf.fin_repetition')) . '</span>'
         . '<div class="fin-repetition">'
         . '<label class="case"><input type="radio" name="fin_type" value="date"'
-        . ($parNombre ? '' : ' checked') . '> le</label>'
+        . ($parNombre ? '' : ' checked') . '> ' . e(t('evtf.le')) . '</label>'
         . '<input type="date" id="' . $prefixe . '-jusqu" name="repeter_jusqu_au"'
-        . ' aria-label="Date de fin de la répétition"'
+        . ' aria-label="' . e(t('evtf.date_fin_repetition')) . '"'
         . ' value="' . $q((string) $date) . '">'
         . '<label class="case"><input type="radio" name="fin_type" value="nombre"'
-        . ($parNombre ? ' checked' : '') . '> après</label>'
+        . ($parNombre ? ' checked' : '') . '> ' . e(t('evtf.apres')) . '</label>'
         . '<input type="number" id="' . $prefixe . '-nombre" name="repeter_nombre"'
-        . ' min="1" max="200" step="1" aria-label="Nombre d\'occurrences"'
+        . ' min="1" max="200" step="1" aria-label="' . e(t('evtf.nombre_occurrences')) . '"'
         . ' value="' . ($parNombre ? (int) $nombre : '') . '">'
-        . '<span class="discret">occurrences</span>'
+        . '<span class="discret">' . e(t('evtf.occurrences')) . '</span>'
         . '</div>';
 };
 
@@ -130,10 +130,10 @@ $matiereActive = $edition ? entier_ou_null($evenement['matiere_id']) : null;
   <div>
     <?php if (!$dansUneFenetre): ?>
       <p class="discret" style="margin-bottom:.35rem">
-        <a href="<?= url('calendrier', ['date' => $dateDebut]) ?>">← Retour au calendrier</a>
+        <a href="<?= url('calendrier', ['date' => $dateDebut]) ?>"><?= e(t('evt.retour_calendrier')) ?></a>
       </p>
     <?php endif; ?>
-    <h1><?= $edition ? "Modifier l'évènement" : 'Nouvel évènement' ?></h1>
+    <h1><?= e($edition ? t('evtf.modifier') : t('evtf.nouveau')) ?></h1>
   </div>
 </div>
 
@@ -143,22 +143,22 @@ $matiereActive = $edition ? entier_ou_null($evenement['matiere_id']) : null;
   <div class="colonnes">
     <div class="carte">
       <div class="champ">
-        <label for="titre">Titre</label>
+        <label for="titre"><?= e(t('evtf.titre')) ?></label>
         <input type="text" id="titre" name="titre" required maxlength="200" autofocus
-               placeholder="Contrôle de mathématiques" value="<?= e($valeur('titre')) ?>">
+               placeholder="<?= e(t('evtf.titre_exemple')) ?>" value="<?= e($valeur('titre')) ?>">
       </div>
 
       <fieldset>
-        <legend>Type d'évènement</legend>
+        <legend><?= e(t('evtf.type')) ?></legend>
         <?php if ($types === []): ?>
           <p class="discret" style="margin:0">
-            Vous n'avez aucun type. <a href="<?= url('organisation/types') ?>">En créer un</a> pour classer vos évènements.
+            <?= e(t('evtf.aucun_type')) ?> <a href="<?= url('organisation/types') ?>"><?= e(t('evtf.creer_type')) ?></a> <?= e(t('evtf.creer_type_suite')) ?>
           </p>
         <?php else: ?>
           <div style="display:flex;gap:.5rem;flex-wrap:wrap">
             <label class="case">
               <input type="radio" name="type_id" value=""<?= $typeActif === null ? ' checked' : '' ?>>
-              <span class="pastille pastille--muette">Aucun</span>
+              <span class="pastille pastille--muette"><?= e(t('evtf.aucun')) ?></span>
             </label>
             <?php foreach ($types as $t): ?>
               <label class="case">
@@ -170,35 +170,35 @@ $matiereActive = $edition ? entier_ou_null($evenement['matiere_id']) : null;
             <?php endforeach; ?>
           </div>
           <p class="champ__aide" style="margin-top:.5rem">
-            <a href="<?= url('organisation/types') ?>">Gérer les types d'évènement</a>
+            <a href="<?= url('organisation/types') ?>"><?= e(t('evtf.gerer_types')) ?></a>
           </p>
         <?php endif; ?>
       </fieldset>
 
       <div class="ligne-champs">
         <div class="champ">
-          <label for="date_debut">Date de début</label>
+          <label for="date_debut"><?= e(t('evtf.date_debut')) ?></label>
           <input type="date" id="date_debut" name="date_debut" required value="<?= e($dateDebut) ?>"
                  <?php if (!$edition): ?>min="<?= e($aujourdhui) ?>" data-maintenant="<?= e(date('Y-m-d\TH:i')) ?>"<?php endif; ?>>
         </div>
         <div class="champ">
-          <label for="date_fin">Date de fin</label>
+          <label for="date_fin"><?= e(t('evtf.date_fin')) ?></label>
           <input type="date" id="date_fin" name="date_fin" value="<?= e($dateFin) ?>">
         </div>
       </div>
 
       <label class="case" style="margin-bottom:1rem">
         <input type="checkbox" id="journee_entiere" name="journee_entiere" value="1"<?= $journee ? ' checked' : '' ?>>
-        Journée entière
+        <?= e(t('evtf.journee_entiere')) ?>
       </label>
 
       <div class="ligne-champs" id="bloc-heures">
         <div class="champ">
-          <label for="heure_debut">Heure de début</label>
+          <label for="heure_debut"><?= e(t('evtf.heure_debut')) ?></label>
           <input type="time" id="heure_debut" name="heure_debut" value="<?= e($heureDebut) ?>">
         </div>
         <div class="champ">
-          <label for="heure_fin">Heure de fin</label>
+          <label for="heure_fin"><?= e(t('evtf.heure_fin')) ?></label>
           <input type="time" id="heure_fin" name="heure_fin" value="<?= e($heureFin) ?>">
         </div>
       </div>
@@ -212,19 +212,18 @@ $matiereActive = $edition ? entier_ou_null($evenement['matiere_id']) : null;
       $rappelsActuels = $edition ? Rappels::lire((string) ($evenement['rappels'] ?? '')) : [15];
       ?>
       <fieldset class="rappels-choix">
-        <legend>🔔 Rappels</legend>
+        <legend><?= e(t('evtf.rappels')) ?></legend>
         <div class="rappels-choix__liste">
           <?php foreach (array_reverse(Rappels::DELAIS_COURTS, true) as $minutes => $court): ?>
-            <label class="rappels-choix__option" title="<?= e(Rappels::DELAIS[$minutes]) ?>">
+            <label class="rappels-choix__option" title="<?= e(Rappels::libelle((int) $minutes)) ?>">
               <input type="checkbox" name="rappels[]" value="<?= (int) $minutes ?>"<?= in_array($minutes, $rappelsActuels, true) ? ' checked' : '' ?>>
-              <span class="pastille"><?= e($court) ?></span>
+              <span class="pastille"><?= e(Rappels::court((int) $minutes)) ?></span>
             </label>
           <?php endforeach; ?>
         </div>
         <span class="champ__aide">
-          Avant l’évènement — cochez-en autant que vous voulez, aucun pour ne pas être prévenu.
-          En journée entière, le rappel tombe à 8 h.
-          (<a href="<?= url('notifications') ?>" data-fenetre-dessus>Régler les notifications</a>)
+          <?= e(t('evtf.rappels_aide')) ?>
+          (<a href="<?= url('notifications') ?>" data-fenetre-dessus><?= e(t('evtf.regler_notifications')) ?></a>)
         </span>
       </fieldset>
 
@@ -239,27 +238,26 @@ $matiereActive = $edition ? entier_ou_null($evenement['matiere_id']) : null;
       <?php if ($edition === false): ?>
         <div class="ligne-champs">
           <div class="champ">
-            <label for="repetition">Répéter</label>
+            <label for="repetition"><?= e(t('evtf.repeter')) ?></label>
             <select id="repetition" name="repetition">
-              <option value="jamais">Ne pas répéter</option>
-              <option value="jour">Chaque jour</option>
-              <option value="semaine">Chaque semaine</option>
-              <option value="quinzaine">Toutes les deux semaines</option>
-              <option value="mois">Chaque mois</option>
+              <option value="jamais"><?= e(t('evtf.jamais')) ?></option>
+              <option value="jour"><?= e(t('taches.recurrence.jour')) ?></option>
+              <option value="semaine"><?= e(t('taches.recurrence.semaine')) ?></option>
+              <option value="quinzaine"><?= e(t('evtf.quinzaine')) ?></option>
+              <option value="mois"><?= e(t('taches.recurrence.mois')) ?></option>
             </select>
           </div>
 
           <div class="champ">
             <?= $borneRepetition(null, null, 'neuf') ?>
-            <span class="champ__aide">Deux ans au plus, deux cents occurrences au maximum.</span>
+            <span class="champ__aide"><?= e(t('evtf.repetition_limite')) ?></span>
           </div>
         </div>
 
         <div class="champ">
           <?= $joursSemaine([], 'neuf') ?>
           <span class="champ__aide">
-            Pour un rythme hebdomadaire : cochez les jours voulus, par exemple
-            lundi et jeudi. Rien de coché garde le jour de la date de début.
+            <?= e(t('evtf.jours_aide')) ?>
           </span>
         </div>
       <?php elseif ($serie !== null): ?>
@@ -282,11 +280,11 @@ $matiereActive = $edition ? entier_ou_null($evenement['matiere_id']) : null;
           </legend>
           <label class="case">
             <input type="radio" name="portee" value="occurrence" checked>
-            Ne modifier que cette occurrence
+            <?= e(t('evtf.serie_occurrence')) ?>
           </label>
           <label class="case">
             <input type="radio" name="portee" value="serie">
-            Modifier les <?= (int) $serie['occurrences'] ?> occurrences
+            <?= e(t('evtf.serie_toutes', ['n' => (int) $serie['occurrences']])) ?>
           </label>
           <span class="champ__aide">
             Sur toute la série, chaque occurrence garde sa date — sans quoi
@@ -336,45 +334,45 @@ $matiereActive = $edition ? entier_ou_null($evenement['matiere_id']) : null;
       <?php endif; ?>
 
       <div class="champ">
-        <label for="lieu">Lieu</label>
-        <input type="text" id="lieu" name="lieu" maxlength="160" placeholder="Salle B203, amphi, à la maison…"
+        <label for="lieu"><?= e(t('evtf.lieu')) ?></label>
+        <input type="text" id="lieu" name="lieu" maxlength="160" placeholder="<?= e(t('evtf.lieu_exemple')) ?>"
                value="<?= e($valeur('lieu')) ?>">
       </div>
 
 
       <div class="champ">
-        <label for="description">Notes</label>
+        <label for="description"><?= e(t('evtf.notes')) ?></label>
         <textarea id="description" name="description" style="min-height:120px" data-texte-riche
-                  placeholder="Chapitres à réviser, matériel à apporter…"><?= e(TexteRiche::pourEditeur($valeur('description'))) ?></textarea>
+                  placeholder="<?= e(t('evtf.notes_exemple')) ?>"><?= e(TexteRiche::pourEditeur($valeur('description'))) ?></textarea>
       </div>
     </div>
 
     <div class="pile">
       <div class="carte">
         <div class="champ">
-          <label for="matiere_id">Matière</label>
+          <label for="matiere_id"><?= e(t('cours.matiere')) ?></label>
           <select id="matiere_id" name="matiere_id">
-            <option value="">— Aucune —</option>
+            <option value=""><?= e(t('commun.aucune')) ?></option>
             <?php foreach ($matieres as $m): ?>
               <option value="<?= (int) $m['id'] ?>"<?= $matiereActive === (int) $m['id'] ? ' selected' : '' ?>>
                 <?= e($m['nom']) ?>
               </option>
             <?php endforeach; ?>
           </select>
-          <span class="champ__aide">Donne sa couleur à l'évènement dans le calendrier.</span>
+          <span class="champ__aide"><?= e(t('evtf.matiere_aide')) ?></span>
         </div>
 
         <div class="champ">
-          <label for="cours_id">Cours lié</label>
+          <label for="cours_id"><?= e(t('evtf.cours_lie')) ?></label>
           <select id="cours_id" name="cours_id">
-            <option value="">— Aucun —</option>
+            <option value=""><?= e(t('commun.aucun')) ?></option>
             <?php foreach ($coursListe as $c): ?>
               <option value="<?= (int) $c['id'] ?>"<?= $coursActif === (int) $c['id'] ? ' selected' : '' ?>>
                 <?= e($c['titre']) ?>
               </option>
             <?php endforeach; ?>
           </select>
-          <span class="champ__aide">Pratique pour retrouver ses notes le jour J.</span>
+          <span class="champ__aide"><?= e(t('evtf.cours_aide')) ?></span>
         </div>
       </div>
 
@@ -481,23 +479,23 @@ $matiereActive = $edition ? entier_ou_null($evenement['matiere_id']) : null;
       <?php endif; ?>
       <button class="bouton bouton--bloc" type="submit">
 
-        <?= $edition ? 'Enregistrer' : 'Ajouter au calendrier' ?>
+        <?= e($edition ? t('evtf.enregistrer') : t('evtf.ajouter')) ?>
       </button>
       <a class="bouton bouton--secondaire bouton--bloc"
          href="<?= url('calendrier', ['date' => $dateDebut]) ?>"
          <?php // Dans une fenêtre, annuler c'est la refermer : recharger le
             // calendrier pour revenir là où l'on n'a jamais cessé d'être
             // ferait clignoter la page pour rien. ?>
-         <?= $dansUneFenetre ? 'data-fermer' : '' ?>>Annuler</a>
+         <?= $dansUneFenetre ? 'data-fermer' : '' ?>><?= e(t('commun.annuler')) ?></a>
     </div>
   </div>
 </form>
 
 <?php if ($edition): ?>
   <form method="post" action="<?= url('evenements/' . $evenement['id'] . '/supprimer') ?>"
-        data-confirmation="Supprimer cet évènement ?" style="margin-top:1rem;max-width:320px">
+        data-confirmation="<?= e(t('evtf.supprimer_confirmation')) ?>" style="margin-top:1rem;max-width:320px">
     <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
-    <button class="bouton bouton--danger" type="submit">Supprimer cet évènement</button>
+    <button class="bouton bouton--danger" type="submit"><?= e(t('evtf.supprimer')) ?></button>
   </form>
 
   <?php
@@ -511,12 +509,12 @@ $matiereActive = $edition ? entier_ou_null($evenement['matiere_id']) : null;
   ?>
   <?php if ($serie !== null): ?>
     <form method="post" action="<?= url('evenements/' . $evenement['id'] . '/supprimer') ?>"
-          data-confirmation="Supprimer les <?= (int) $serie['occurrences'] ?> occurrences de cette série ?"
+          data-confirmation="<?= e(t('evtf.serie_supprimer_confirmation', ['n' => (int) $serie['occurrences']])) ?>"
           style="margin-top:.5rem;max-width:320px">
       <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
       <input type="hidden" name="serie" value="1">
       <button class="bouton bouton--danger bouton--petit" type="submit">
-        Supprimer toute la série (<?= (int) $serie['occurrences'] ?>)
+        <?= e(t('evtf.serie_supprimer', ['n' => (int) $serie['occurrences']])) ?>
       </button>
     </form>
   <?php endif; ?>

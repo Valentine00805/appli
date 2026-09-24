@@ -90,7 +90,7 @@ final class TachesController
             'compteurs'    => $this->compteurs($userId),
             'palette'      => self::PALETTE,
             'icones'       => icones_listes(),
-        ], 'Mes tâches');
+        ], t('taches.titre'));
     }
 
     /* --- Listes --------------------------------------------------------- */

@@ -83,7 +83,7 @@ final class CalendrierController
             'voletFerme'    => Agenda::voletFerme($userId),
             // École ou entreprise, jour par jour : l'espace alternance.
             'rythme'        => Alternance::lieuxEntre($userId, $debut, $fin),
-        ], 'Calendrier');
+        ], t('cal.titre'));
     }
 
     /** Les vues que le calendrier sait afficher. */
@@ -343,7 +343,7 @@ final class CalendrierController
         }
 
         Vue::afficher('calendrier/formulaire', $donnees,
-            $evenement === null ? 'Nouvel événement' : 'Modifier l\'événement');
+            $evenement === null ? t('evtf.nouveau') : t('evtf.modifier'));
     }
 
     public function creer(): void

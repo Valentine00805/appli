@@ -88,10 +88,22 @@ final class Rappels
         return implode(',', $delais);
     }
 
+    /** Le délai en toutes lettres, dans la langue choisie : « 15 minutes avant ». */
+    public static function libelle(int $minutes): string
+    {
+        return t('rappel.' . $minutes);
+    }
+
+    /** Le même, en court, pour une pastille : « 15 min ». */
+    public static function court(int $minutes): string
+    {
+        return t('rappel.court.' . $minutes);
+    }
+
     /** « 1 jour avant · 15 minutes avant », ou une chaîne vide. */
     public static function dire(?string $valeur): string
     {
-        return implode(' · ', array_map(static fn (int $d): string => self::DELAIS[$d], self::lire($valeur)));
+        return implode(' · ', array_map(static fn (int $d): string => self::libelle($d), self::lire($valeur)));
     }
 
     /** L'heure des rappels qui ne tombent pas à une heure précise. */

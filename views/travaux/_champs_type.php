@@ -40,9 +40,9 @@ $choixIcones = in_array($icone, $icones, true) ? $icones : array_merge([$icone],
   <legend>🔔 Rappels</legend>
   <div class="rappels-choix__liste">
     <?php foreach (array_reverse(Rappels::DELAIS_COURTS, true) as $minutes => $court): ?>
-      <label class="rappels-choix__option" title="<?= e(Rappels::DELAIS[$minutes]) ?>">
+      <label class="rappels-choix__option" title="<?= e(Rappels::libelle((int) $minutes)) ?>">
         <input type="checkbox" name="rappels[]" value="<?= (int) $minutes ?>"<?= in_array($minutes, $rappels, true) ? ' checked' : '' ?>>
-        <span class="pastille"><?= e($court) ?></span>
+        <span class="pastille"><?= e(Rappels::court((int) $minutes)) ?></span>
       </label>
     <?php endforeach; ?>
   </div>

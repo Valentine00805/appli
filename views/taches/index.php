@@ -3,11 +3,11 @@
 $csrf = Session::jetonCsrf();
 
 $onglets = [
-    'tout'       => ['Mes listes',   $compteurs['a_faire']],
-    'retard'     => ['En retard',    $compteurs['retard']],
-    'aujourdhui' => ["Aujourd'hui",  $compteurs['aujourdhui']],
-    'semaine'    => ['Cette semaine', $compteurs['semaine']],
-    'terminees'  => ['Terminées',    $compteurs['terminees']],
+    'tout'       => [t('taches.onglet_listes'),      $compteurs['a_faire']],
+    'retard'     => [t('taches.onglet_retard'),      $compteurs['retard']],
+    'aujourdhui' => [t('taches.onglet_aujourdhui'),  $compteurs['aujourdhui']],
+    'semaine'    => [t('taches.onglet_semaine'),     $compteurs['semaine']],
+    'terminees'  => [t('taches.onglet_terminees'),   $compteurs['terminees']],
 ];
 
 /** La liste actuellement ouverte dans le volet. */
@@ -59,7 +59,7 @@ $ligneTache = static function (array $t) use ($csrf, $contexte, $listes, $vue, $
         <?= $contexte() ?>
         <input type="checkbox" class="tache__case" id="case-<?= (int) $t['id'] ?>"
                data-envoi-immediat<?= $faite ? ' checked' : '' ?>
-               title="<?= $faite ? 'Décocher' : 'Marquer comme faite' ?>">
+               title="<?= e($faite ? t('taches.decocher') : t('taches.cocher')) ?>">
         <noscript><button class="bouton bouton--petit" type="submit">OK</button></noscript>
       </form>
 
@@ -75,12 +75,12 @@ $ligneTache = static function (array $t) use ($csrf, $contexte, $listes, $vue, $
       <?php endif; ?>
       <?php if ((string) ($t['recurrence'] ?? '') !== ''): ?>
         <?php // Elle reviendra : la suivante se pose quand on coche celle-ci. ?>
-        <span class="pastille" title="<?= e(TachesController::RECURRENCES[$t['recurrence']]['libelle'] ?? 'Se répète') ?>">🔁</span>
+        <span class="pastille" title="<?= e(t('taches.recurrence.' . $t['recurrence'])) ?>">🔁</span>
       <?php endif; ?>
 
       <span class="tache__actions">
         <button class="bouton bouton--discret bouton--petit" type="button"
-                data-bascule="tache-<?= (int) $t['id'] ?>">Modifier</button>
+                data-bascule="tache-<?= (int) $t['id'] ?>"><?= e(t('evt.modifier')) ?></button>
       </span>
     </li>
 
@@ -94,7 +94,7 @@ $ligneTache = static function (array $t) use ($csrf, $contexte, $listes, $vue, $
         </div>
         <div class="ligne-champs">
           <div class="champ">
-            <label for="ech-<?= (int) $t['id'] ?>">Échéance</label>
+            <label for="ech-<?= (int) $t['id'] ?>"><?= e(t('taches.echeance')) ?></label>
             <input type="date" id="ech-<?= (int) $t['id'] ?>" name="echeance"
                    value="<?= e((string) $t['echeance']) ?>"
                    data-plafond-de="lst-<?= (int) $t['id'] ?>"
@@ -102,7 +102,7 @@ $ligneTache = static function (array $t) use ($csrf, $contexte, $listes, $vue, $
                    <?= $max === '' ? '' : 'max="' . e($max) . '"' ?>>
           </div>
           <div class="champ">
-            <label for="lst-<?= (int) $t['id'] ?>">Déplacer vers</label>
+            <label for="lst-<?= (int) $t['id'] ?>"><?= e(t('taches.deplacer')) ?></label>
             <select id="lst-<?= (int) $t['id'] ?>" name="liste_id">
               <?php foreach ($listes as $l): ?>
                 <option value="<?= (int) $l['id'] ?>"<?= (int) $l['id'] === (int) $t['liste_id'] ? ' selected' : '' ?>
@@ -112,31 +112,29 @@ $ligneTache = static function (array $t) use ($csrf, $contexte, $listes, $vue, $
               <?php endforeach; ?>
             </select>
             <span class="champ__aide">
-              <?= count($listes) > 1
-                  ? 'Choisissez une autre tâche principale pour y déplacer celle-ci.'
-                  : 'Créez une autre liste pour pouvoir y déplacer cette tâche.' ?>
+              <?= e(count($listes) > 1 ? t('taches.deplacer_aide') : t('taches.deplacer_aide_seule')) ?>
             </span>
           </div>
           <div class="champ">
-            <label for="rep-<?= (int) $t['id'] ?>">Se répète</label>
+            <label for="rep-<?= (int) $t['id'] ?>"><?= e(t('taches.se_repete')) ?></label>
             <select id="rep-<?= (int) $t['id'] ?>" name="recurrence">
-              <option value="">Une seule fois</option>
+              <option value=""><?= e(t('taches.une_fois')) ?></option>
               <?php foreach (TachesController::RECURRENCES as $cle => $r): ?>
-                <option value="<?= e($cle) ?>"<?= (string) ($t['recurrence'] ?? '') === $cle ? ' selected' : '' ?>><?= e($r['libelle']) ?></option>
+                <option value="<?= e($cle) ?>"<?= (string) ($t['recurrence'] ?? '') === $cle ? ' selected' : '' ?>><?= e(t('taches.recurrence.' . $cle)) ?></option>
               <?php endforeach; ?>
             </select>
-            <span class="champ__aide">Cochée, elle repose la suivante toute seule.</span>
+            <span class="champ__aide"><?= e(t('taches.recurrence_aide')) ?></span>
           </div>
         </div>
         <div class="actions">
-          <button class="bouton bouton--petit" type="submit">Enregistrer</button>
+          <button class="bouton bouton--petit" type="submit"><?= e(t('commun.enregistrer')) ?></button>
         </div>
       </form>
 
       <form method="post" action="<?= url('taches/' . $t['id'] . '/supprimer') ?>"
             data-confirmation="Supprimer définitivement cette tâche ?">
         <?= $contexte() ?>
-        <button class="bouton bouton--danger bouton--petit" type="submit">Supprimer</button>
+        <button class="bouton bouton--danger bouton--petit" type="submit"><?= e(t('commun.supprimer')) ?></button>
       </form>
     </li>
     <?php
@@ -146,14 +144,14 @@ $ligneTache = static function (array $t) use ($csrf, $contexte, $listes, $vue, $
 
 <div class="entete-page">
   <div>
-    <h1>Mes tâches</h1>
-    <p>Une liste est une tâche principale. Cliquez dessus pour voir ce qu'elle contient.</p>
+    <h1><?= e(t('taches.titre')) ?></h1>
+    <p><?= e(t('taches.sous_titre')) ?></p>
   </div>
 </div>
 
 <div class="barre-taches">
   <?php if ($listes !== []): ?>
-    <nav class="onglets" aria-label="Filtrer les tâches">
+    <nav class="onglets" aria-label="<?= e(t('taches.filtrer')) ?>">
       <?php foreach ($onglets as $cle => [$libelle, $nombre]): ?>
         <a href="<?= $cle === 'tout' ? url('taches') : url('taches', ['vue' => $cle]) ?>"
            <?= $vue === $cle ? ' aria-current="page"' : '' ?>>
@@ -171,27 +169,27 @@ $ligneTache = static function (array $t) use ($csrf, $contexte, $listes, $vue, $
   <div class="barre-taches__actions">
   <?php // Le formulaire s'ouvre en panneau, sous le bouton. ?>
   <details class="nouvelle-liste"<?= $listes === [] ? ' open' : '' ?>>
-    <summary class="bouton bouton--petit">+ Nouvelle liste</summary>
+    <summary class="bouton bouton--petit"><?= e(t('taches.bouton_nouvelle_liste')) ?></summary>
     <div class="nouvelle-liste__panneau carte">
       <?php // La croix referme le panneau, comme celle d'une fenêtre. ?>
-      <button class="panneau-fermer" type="button" data-fermer-panneau title="Fermer" aria-label="Fermer la nouvelle liste">✕</button>
-      <h2 style="margin-top:0">Nouvelle liste</h2>
+      <button class="panneau-fermer" type="button" data-fermer-panneau title="Fermer" aria-label="<?= e(t('taches.fermer_nouvelle_liste')) ?>">✕</button>
+      <h2 style="margin-top:0"><?= e(t('taches.nouvelle_liste')) ?></h2>
       <form method="post" action="<?= url('taches/listes') ?>">
         <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
 
         <div class="champ">
-          <label for="nom">Nom</label>
-          <input type="text" id="nom" name="nom" required maxlength="120" placeholder="Cette semaine">
+          <label for="nom"><?= e(t('taches.nom')) ?></label>
+          <input type="text" id="nom" name="nom" required maxlength="120" placeholder="<?= e(t('taches.nom_exemple')) ?>">
         </div>
 
         <div class="champ">
-          <label for="ech-liste">Échéance <span class="discret">(facultative)</span></label>
+          <label for="ech-liste"><?= e(t('taches.echeance')) ?> <span class="discret"><?= e(t('taches.echeance_facultative')) ?></span></label>
           <input type="date" id="ech-liste" name="echeance">
-          <span class="champ__aide">La date de la tâche principale, indépendante de ses sous-tâches.</span>
+          <span class="champ__aide"><?= e(t('taches.liste_echeance_aide')) ?></span>
         </div>
 
         <div class="champ">
-          <span class="legende">Icône</span>
+          <span class="legende"><?= e(t('taches.icone')) ?></span>
           <div class="choix-icones">
             <?php foreach ($icones as $i => $icone): ?>
               <input type="radio" id="ni-<?= $i ?>" name="icone" value="<?= e($icone) ?>"<?= $i === 0 ? ' checked' : '' ?>>
@@ -201,7 +199,7 @@ $ligneTache = static function (array $t) use ($csrf, $contexte, $listes, $vue, $
         </div>
 
         <div class="champ">
-          <span class="legende">Couleur</span>
+          <span class="legende"><?= e(t('taches.couleur')) ?></span>
           <div class="choix-couleurs">
             <?php foreach ($palette as $i => $couleur): ?>
               <input type="radio" id="nc-<?= $i ?>" name="couleur" value="<?= e($couleur) ?>"<?= $i === 0 ? ' checked' : '' ?>>
@@ -210,7 +208,7 @@ $ligneTache = static function (array $t) use ($csrf, $contexte, $listes, $vue, $
           </div>
         </div>
 
-        <button class="bouton bouton--bloc" type="submit">Créer la liste</button>
+        <button class="bouton bouton--bloc" type="submit"><?= e(t('taches.creer_liste')) ?></button>
       </form>
     </div>
   </details>
@@ -219,10 +217,10 @@ $ligneTache = static function (array $t) use ($csrf, $contexte, $listes, $vue, $
   <?php // Une sous-tâche, rangée dans la tâche principale de votre choix. ?>
   <?php if ($listes !== []): ?>
     <details class="nouvelle-liste nouvelle-tache">
-      <summary class="bouton bouton--petit bouton--secondaire">+ Nouvelle sous-tâche</summary>
+      <summary class="bouton bouton--petit bouton--secondaire"><?= e(t('taches.bouton_nouvelle_sous_tache')) ?></summary>
       <div class="nouvelle-liste__panneau carte">
-        <button class="panneau-fermer" type="button" data-fermer-panneau title="Fermer" aria-label="Fermer la nouvelle sous-tâche">✕</button>
-        <h2 style="margin-top:0">Nouvelle sous-tâche</h2>
+        <button class="panneau-fermer" type="button" data-fermer-panneau title="Fermer" aria-label="<?= e(t('taches.fermer_nouvelle_sous_tache')) ?>">✕</button>
+        <h2 style="margin-top:0"><?= e(t('taches.nouvelle_sous_tache')) ?></h2>
         <form method="post" action="<?= url('taches') ?>">
           <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
 
@@ -237,13 +235,13 @@ $ligneTache = static function (array $t) use ($csrf, $contexte, $listes, $vue, $
                 </option>
               <?php endforeach; ?>
             </select>
-            <span class="champ__aide">La liste dans laquelle ranger cette sous-tâche.</span>
+            <span class="champ__aide"><?= e(t('taches.liste_aide')) ?></span>
           </div>
 
           <div class="champ">
-            <label for="st-titre">Tâche</label>
+            <label for="st-titre"><?= e(t('taches.tache')) ?></label>
             <input type="text" id="st-titre" name="titre" required maxlength="200"
-                   placeholder="Relire le chapitre 3">
+                   placeholder="<?= e(t('taches.tache_exemple')) ?>">
           </div>
 
           <?php
@@ -255,22 +253,22 @@ $ligneTache = static function (array $t) use ($csrf, $contexte, $listes, $vue, $
           $maxNouvelle = $plafond($choisie);
           ?>
           <div class="champ">
-            <label for="st-echeance">Échéance <span class="discret">(facultative)</span></label>
+            <label for="st-echeance"><?= e(t('taches.echeance')) ?> <span class="discret"><?= e(t('taches.echeance_facultative')) ?></span></label>
             <input type="date" id="st-echeance" name="echeance" data-plafond-de="st-liste"
                    <?= $maxNouvelle === '' ? '' : 'max="' . e($maxNouvelle) . '"' ?>>
-            <span class="champ__aide">Au plus tard à l’échéance de la tâche principale.</span>
+            <span class="champ__aide"><?= e(t('taches.sous_tache_echeance_aide')) ?></span>
           </div>
           <div class="champ">
-            <label for="st-recurrence">Se répète <span class="discret">(facultatif)</span></label>
+            <label for="st-recurrence"><?= e(t('taches.se_repete')) ?> <span class="discret"><?= e(t('taches.echeance_facultative')) ?></span></label>
             <select id="st-recurrence" name="recurrence">
-              <option value="">Une seule fois</option>
+              <option value=""><?= e(t('taches.une_fois')) ?></option>
               <?php foreach (TachesController::RECURRENCES as $cle => $r): ?>
-                <option value="<?= e($cle) ?>"><?= e($r['libelle']) ?></option>
+                <option value="<?= e($cle) ?>"><?= e(t('taches.recurrence.' . $cle)) ?></option>
               <?php endforeach; ?>
             </select>
           </div>
 
-          <button class="bouton bouton--bloc" type="submit">Ajouter la sous-tâche</button>
+          <button class="bouton bouton--bloc" type="submit"><?= e(t('taches.ajouter_sous_tache')) ?></button>
         </form>
       </div>
     </details>
@@ -287,8 +285,7 @@ $ligneTache = static function (array $t) use ($csrf, $contexte, $listes, $vue, $
       <div class="vide">
         <span class="vide__icone">📋</span>
         <p>
-          Aucune liste pour l'instant. Créez-en une avec le bouton « + Nouvelle liste »,
-          en haut à droite — « Cette semaine », « Dossier d'inscription », « Courses »…
+          <?= e(t('taches.aucune_liste')) ?>
         </p>
       </div>
     <?php else: ?>
@@ -470,10 +467,10 @@ $ligneTache = static function (array $t) use ($csrf, $contexte, $listes, $vue, $
         <?php endif; ?>
 
         <?php if ($taches === [] && $listesFiltrees === []): ?>
-          <p class="discret" style="margin:1rem 0 0">Rien à afficher ici. Bonne nouvelle.</p>
+          <p class="discret" style="margin:1rem 0 0"><?= e(t('taches.rien_ici')) ?></p>
         <?php elseif ($taches !== []): ?>
           <?php if ($listesFiltrees !== []): ?>
-            <h3 class="volet__section">Sous-tâches</h3>
+            <h3 class="volet__section"><?= e(t('taches.sous_taches')) ?></h3>
           <?php endif; ?>
           <ul class="taches">
             <?php foreach ($taches as $t): ?><?= $ligneTache($t) ?><?php endforeach; ?>
@@ -485,9 +482,7 @@ $ligneTache = static function (array $t) use ($csrf, $contexte, $listes, $vue, $
       <div class="vide">
         <span class="vide__icone">👈</span>
         <p>
-          <?= $listes === []
-              ? 'Créez votre première liste : elle s’ouvrira ici.'
-              : 'Cliquez sur une tâche principale à gauche pour voir ce qu’elle contient.' ?>
+          <?= e($listes === [] ? t('taches.premiere_liste') : t('taches.cliquez_liste')) ?>
         </p>
       </div>
 
@@ -542,7 +537,7 @@ $ligneTache = static function (array $t) use ($csrf, $contexte, $listes, $vue, $
           </div>
 
           <button class="bouton bouton--secondaire bouton--petit" type="button"
-                  data-bascule="reglages-liste">Modifier</button>
+                  data-bascule="reglages-liste"><?= e(t('evt.modifier')) ?></button>
         </div>
 
         <div id="reglages-liste" hidden class="liste-taches__reglages">
@@ -551,7 +546,7 @@ $ligneTache = static function (array $t) use ($csrf, $contexte, $listes, $vue, $
             <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
             <div class="ligne-champs">
               <div class="champ">
-                <label for="ln">Nom de la liste</label>
+                <label for="ln"><?= e(t('taches.nom_liste')) ?></label>
                 <input type="text" id="ln" name="nom" required maxlength="120" value="<?= e($ouverte['nom']) ?>">
               </div>
               <?php
@@ -581,7 +576,7 @@ $ligneTache = static function (array $t) use ($csrf, $contexte, $listes, $vue, $
             </div>
 
             <div class="champ">
-              <span class="legende">Icône</span>
+              <span class="legende"><?= e(t('taches.icone')) ?></span>
               <div class="choix-icones">
                 <?php foreach ($icones as $i => $icone): ?>
                   <input type="radio" id="li-<?= $i ?>" name="icone" value="<?= e($icone) ?>"
@@ -592,7 +587,7 @@ $ligneTache = static function (array $t) use ($csrf, $contexte, $listes, $vue, $
             </div>
 
             <div class="champ">
-              <span class="legende">Couleur</span>
+              <span class="legende"><?= e(t('taches.couleur')) ?></span>
               <div class="choix-couleurs">
                 <?php foreach ($palette as $i => $couleur): ?>
                   <input type="radio" id="lc-<?= $i ?>" name="couleur" value="<?= e($couleur) ?>"
@@ -603,7 +598,7 @@ $ligneTache = static function (array $t) use ($csrf, $contexte, $listes, $vue, $
             </div>
 
             <div class="actions">
-              <button class="bouton bouton--petit" type="submit">Enregistrer</button>
+              <button class="bouton bouton--petit" type="submit"><?= e(t('commun.enregistrer')) ?></button>
             </div>
           </form>
 
@@ -620,7 +615,7 @@ $ligneTache = static function (array $t) use ($csrf, $contexte, $listes, $vue, $
             <form method="post" action="<?= url('taches/listes/' . $ouverte['id'] . '/supprimer') ?>"
                   data-confirmation="Supprimer cette liste et toutes ses tâches ? C'est définitif.">
               <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
-              <button class="bouton bouton--danger bouton--petit" type="submit">Supprimer la liste</button>
+              <button class="bouton bouton--danger bouton--petit" type="submit"><?= e(t('taches.supprimer_liste')) ?></button>
             </form>
           </div>
         </div>
@@ -648,12 +643,12 @@ $ligneTache = static function (array $t) use ($csrf, $contexte, $listes, $vue, $
         <form method="post" action="<?= url('taches') ?>" class="tache-ajout">
           <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
           <input type="hidden" name="liste_id" value="<?= (int) $ouverte['id'] ?>">
-          <input type="text" name="titre" required maxlength="200" placeholder="Ajouter une sous-tâche…"
+          <input type="text" name="titre" required maxlength="200" placeholder="<?= e(t('taches.ajouter_placeholder')) ?>"
                  aria-label="Nouvelle sous-tâche dans <?= e($ouverte['nom']) ?>">
           <input type="date" name="echeance" aria-label="Échéance (facultative)"
                  <?= $ouverte['echeance'] === null ? '' : 'max="' . e((string) $ouverte['echeance'])
                      . '" title="Au plus tard le ' . e(date_fr((string) $ouverte['echeance'], false)) . '"' ?>>
-          <button class="bouton bouton--petit" type="submit">Ajouter</button>
+          <button class="bouton bouton--petit" type="submit"><?= e(t('taches.ajouter')) ?></button>
         </form>
       </section>
     <?php endif; ?>

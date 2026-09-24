@@ -15,15 +15,15 @@ $dansEntete = $dansEntete ?? false;
 ?>
 <details class="nouveau-dossier<?= $dansEntete ? ' nouveau-dossier--entete' : '' ?>">
   <summary class="bouton bouton--secondaire<?= $dansEntete ? '' : ' bouton--petit bouton--bloc' ?>">
-    ＋ Nouveau dossier
+    ＋ <?= e(t('cours.nom_dossier_bouton')) ?>
   </summary>
   <form class="nouveau-dossier__panneau" method="post" action="<?= url('dossiers') ?>">
     <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
     <input type="hidden" name="retour" value="<?= e((string) ($_SERVER['REQUEST_URI'] ?? '')) ?>">
 
-    <label class="sr-only" for="nouveau-dossier-nom">Nom du dossier</label>
+    <label class="sr-only" for="nouveau-dossier-nom"><?= e(t('cours.nom_dossier')) ?></label>
     <input type="text" id="nouveau-dossier-nom" name="nom" maxlength="120"
-           placeholder="Nom du dossier" required>
+           placeholder="<?= e(t('cours.nom_dossier')) ?>" required>
 
     <?php
     /*
@@ -32,7 +32,7 @@ $dansEntete = $dansEntete ?? false;
      */
     ?>
     <?php if ($dossiers !== []): ?>
-      <label for="nouveau-dossier-parent">Ranger dans</label>
+      <label for="nouveau-dossier-parent"><?= e(t('cours.ranger_dans')) ?></label>
       <select id="nouveau-dossier-parent" name="parent_id">
         <option value="">— À la racine</option>
         <?php foreach ($dossiers as $d): ?>
@@ -43,6 +43,6 @@ $dansEntete = $dansEntete ?? false;
       </select>
     <?php endif; ?>
 
-    <button class="bouton bouton--petit bouton--bloc" type="submit">Créer le dossier</button>
+    <button class="bouton bouton--petit bouton--bloc" type="submit"><?= e(t('cours.creer_dossier')) ?></button>
   </form>
 </details>

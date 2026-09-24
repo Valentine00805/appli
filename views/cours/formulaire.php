@@ -24,10 +24,10 @@ $dossierActif  = $edition ? entier_ou_null($cours['dossier_id']) : entier_ou_nul
     <?php // Dans une fenêtre, le cours est juste derrière : la croix y ramène. ?>
     <?php if (!$dansUneFenetre): ?>
       <p class="discret" style="margin-bottom:.35rem">
-        <a href="<?= $edition ? url('cours/' . $cours['id']) : url('cours') ?>">← Retour</a>
+        <a href="<?= $edition ? url('cours/' . $cours['id']) : url('cours') ?>"><?= e(t('commun.retour')) ?></a>
       </p>
     <?php endif; ?>
-    <h1><?= $edition ? 'Modifier le cours' : 'Nouveau cours' ?></h1>
+    <h1><?= e($edition ? t('cours.modifier_titre') : t('cours.nouveau')) ?></h1>
   </div>
 </div>
 
@@ -38,26 +38,26 @@ $dossierActif  = $edition ? entier_ou_null($cours['dossier_id']) : entier_ou_nul
   <div class="colonnes">
     <div class="carte">
       <div class="champ">
-        <label for="titre">Titre du cours</label>
+        <label for="titre"><?= e(t('cours.titre_champ')) ?></label>
         <input type="text" id="titre" name="titre" required maxlength="200" autofocus
-               placeholder="Chapitre 3 — Les fonctions affines"
+               placeholder="<?= e(t('cours.titre_exemple')) ?>"
                value="<?= e($edition ? $cours['titre'] : post('titre')) ?>">
       </div>
 
       <div class="champ">
-        <label for="contenu">Contenu</label>
+        <label for="contenu"><?= e(t('cours.contenu')) ?></label>
         <textarea id="contenu" name="contenu" data-texte-riche="complet" data-tailles="<?= e(implode(',', TexteRiche::TAILLES)) ?>"
-                  placeholder="Notes, définitions, formules, plan du cours…"><?= e(TexteRiche::pourEditeur($edition ? (string) $cours['contenu'] : post('contenu'))) ?></textarea>
-        <span class="champ__aide">Sélectionnez du texte, puis cliquez sur une commande : titres, listes, alignement, taille, couleurs, images.</span>
+                  placeholder="<?= e(t('cours.contenu_placeholder')) ?>"><?= e(TexteRiche::pourEditeur($edition ? (string) $cours['contenu'] : post('contenu'))) ?></textarea>
+        <span class="champ__aide"><?= e(t('cours.contenu_aide')) ?></span>
       </div>
     </div>
 
     <div class="pile">
       <div class="carte">
         <div class="champ">
-          <label for="matiere_id">Matière</label>
+          <label for="matiere_id"><?= e(t('cours.matiere')) ?></label>
           <select id="matiere_id" name="matiere_id">
-            <option value="">— Aucune —</option>
+            <option value=""><?= e(t('commun.aucune')) ?></option>
             <?php foreach ($matieres as $m): ?>
               <option value="<?= (int) $m['id'] ?>"<?= $matiereActive === (int) $m['id'] ? ' selected' : '' ?>>
                 <?= e($m['nom']) ?>
@@ -68,9 +68,9 @@ $dossierActif  = $edition ? entier_ou_null($cours['dossier_id']) : entier_ou_nul
         </div>
 
         <div class="champ">
-          <label for="dossier_id">Dossier</label>
+          <label for="dossier_id"><?= e(t('cours.dossier')) ?></label>
           <select id="dossier_id" name="dossier_id">
-            <option value="">— Aucun —</option>
+            <option value=""><?= e(t('commun.aucun')) ?></option>
             <?php foreach ($dossiers as $d): ?>
               <option value="<?= (int) $d['id'] ?>"<?= $dossierActif === (int) $d['id'] ? ' selected' : '' ?>>
                 <?= e(retrait_dossier($d) . $d['icone'] . ' ' . $d['nom']) ?>
@@ -84,8 +84,8 @@ $dossierActif  = $edition ? entier_ou_null($cours['dossier_id']) : entier_ou_nul
         </div>
 
         <div class="champ">
-          <label for="tags">Tags</label>
-          <input type="text" id="tags" name="tags" placeholder="révision, chapitre 3, important"
+          <label for="tags"><?= e(t('cours.tags')) ?></label>
+          <input type="text" id="tags" name="tags" placeholder="<?= e(t('cours.tags_exemple')) ?>"
                  list="tags-existants" value="<?= e($edition ? $tagsCours : post('tags')) ?>">
           <datalist id="tags-existants">
             <?php foreach ($tousLesTags as $nomTag): ?>
@@ -93,23 +93,22 @@ $dossierActif  = $edition ? entier_ou_null($cours['dossier_id']) : entier_ou_nul
             <?php endforeach; ?>
           </datalist>
           <span class="champ__aide">
-            Séparés par des virgules. <a href="<?= url('organisation/tags') ?>">Gérer mes tags</a>
+            <?= e(t('cours.tags_aide')) ?> <a href="<?= url('organisation/tags') ?>"><?= e(t('cours.gerer_tags')) ?></a>
           </span>
         </div>
       </div>
 
       <div class="carte">
         <div class="champ">
-          <label for="fichiers">Ajouter des fichiers</label>
+          <label for="fichiers"><?= e(t('cours.ajouter_fichiers')) ?></label>
           <input type="file" id="fichiers" name="fichiers[]" multiple>
           <span class="champ__aide">
-            PDF, images, Word, PowerPoint, Excel, audio…
-            <?= e(taille_lisible(Fichiers::tailleMax())) ?> maximum par fichier.
+            <?= e(t('cours.fichiers_aide', ['taille' => taille_lisible(Fichiers::tailleMax())])) ?>
           </span>
         </div>
 
         <?php if ($fichiers !== []): ?>
-          <p class="discret" style="margin:.5rem 0 .35rem">Fichiers déjà joints :</p>
+          <p class="discret" style="margin:.5rem 0 .35rem"><?= e(t('cours.deja_joints')) ?></p>
           <ul class="liste-fichiers">
             <?php foreach ($fichiers as $f): ?>
               <li class="fichier">
@@ -123,16 +122,16 @@ $dossierActif  = $edition ? entier_ou_null($cours['dossier_id']) : entier_ou_nul
               </li>
             <?php endforeach; ?>
           </ul>
-          <p class="champ__aide">La suppression d'un fichier se fait depuis la page du cours.</p>
+          <p class="champ__aide"><?= e(t('cours.suppression_ailleurs')) ?></p>
         <?php endif; ?>
       </div>
 
       <button class="bouton bouton--bloc" type="submit">
-        <?= $edition ? 'Enregistrer les modifications' : 'Créer le cours' ?>
+        <?= e($edition ? t('cours.enregistrer_modifications') : t('cours.creer')) ?>
       </button>
       <?php // Dans une fenêtre, « Annuler » la ferme ; sur la page, il y ramène. ?>
       <a class="bouton bouton--secondaire bouton--bloc" data-fermer
-         href="<?= $edition ? url('cours/' . $cours['id']) : url('cours') ?>">Annuler</a>
+         href="<?= $edition ? url('cours/' . $cours['id']) : url('cours') ?>"><?= e(t('commun.annuler')) ?></a>
     </div>
   </div>
 </form>

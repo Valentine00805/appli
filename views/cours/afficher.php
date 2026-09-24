@@ -34,8 +34,7 @@ $nbElements = count($elements) + count($fichiersFiche);
           <?= e($cours['matiere_nom']) ?>
         </span>
       <?php endif; ?>
-      <span class="discret">Créé le <?= e(date_fr($cours['created_at'], false)) ?>
-        · modifié le <?= e(date_fr($cours['updated_at'])) ?></span>
+      <span class="discret"><?= e(t('cours.cree_modifie', ['cree' => date_fr($cours['created_at'], false), 'modifie' => date_fr($cours['updated_at'])])) ?></span>
     </p>
   </div>
 
@@ -43,8 +42,8 @@ $nbElements = count($elements) + count($fichiersFiche);
     <form method="post" action="<?= url('cours/' . $cours['id'] . '/favori') ?>" class="en-ligne"<?= $surPlace ?>>
       <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
       <button class="bouton bouton--secondaire" type="submit"
-              title="<?= (int) $cours['favori'] === 1 ? 'Retirer des favoris' : 'Ajouter aux favoris' ?>">
-        <?= (int) $cours['favori'] === 1 ? '⭐ Favori' : '☆ Favori' ?>
+              title="<?= e((int) $cours['favori'] === 1 ? t('cours.retirer_favori') : t('cours.ajouter_favori')) ?>">
+        <?= (int) $cours['favori'] === 1 ? '⭐' : '☆' ?> <?= e(t('cours.favori')) ?>
       </button>
     </form>
     <?php
@@ -56,16 +55,16 @@ $nbElements = count($elements) + count($fichiersFiche);
     ?>
     <a class="bouton bouton--secondaire<?= $revision ? ' est-actif' : '' ?>"
        href="<?= url('revision/' . $cours['id']) ?>" data-fenetre>
-      📝 Révision<?= $fiche !== '' || $nbElements > 0 ? ' •' : '' ?>
+      <?= e(t('cours.revision')) ?><?= $fiche !== '' || $nbElements > 0 ? ' •' : '' ?>
     </a>
     <?php // Partager le cours : à ses amis, ou par un lien. ?>
     <a class="bouton bouton--secondaire bouton-partage" href="<?= url('partager/cours/' . $cours['id']) ?>" <?= $dansUneFenetre ? 'data-fenetre-dessus' : 'data-fenetre' ?>>
-      <?= Partages::icone() ?> Partager
+      <?= Partages::icone() ?> <?= e(t('evt.partager')) ?>
     </a>
     <?php // Le nouvel évènement, déjà lié au cours, s'ouvre dans une fenêtre. ?>
-    <a class="bouton bouton--secondaire" href="<?= url('evenements/nouveau', ['cours' => $cours['id']]) ?>" data-fenetre>Planifier</a>
+    <a class="bouton bouton--secondaire" href="<?= url('evenements/nouveau', ['cours' => $cours['id']]) ?>" data-fenetre><?= e(t('cours.planifier')) ?></a>
     <?php // Le formulaire s'ouvre dans une fenêtre, par-dessus le cours. ?>
-    <a class="bouton" href="<?= url('cours/' . $cours['id'] . '/modifier') ?>" data-fenetre>Modifier</a>
+    <a class="bouton" href="<?= url('cours/' . $cours['id'] . '/modifier') ?>" data-fenetre><?= e(t('evt.modifier')) ?></a>
   </div>
 </div>
 
@@ -75,12 +74,12 @@ $nbElements = count($elements) + count($fichiersFiche);
     <?php $sansContenu = trim((string) $cours['contenu']) === ''; ?>
     <article class="carte">
       <?php if ($sansContenu): ?>
-        <p class="discret">Ce cours n'a pas encore de contenu écrit.</p>
+        <p class="discret"><?= e(t('cours.sans_contenu')) ?></p>
       <?php else: ?>
         <?php // Le contenu, à emporter : en PDF, mis en pages avec son sommaire. ?>
         <p class="contenu-cours__actions">
           <a class="bouton bouton--secondaire bouton--petit" href="<?= url('cours/' . $cours['id'] . '/pdf') ?>"
-             title="Télécharger le contenu de ce cours en PDF">⬇ Contenu en PDF</a>
+             title="<?= e(t('cours.pdf_aide')) ?>"><?= e(t('cours.pdf')) ?></a>
         </p>
         <?php // Nettoyé à l'affichage : la mise en forme passe, rien d'autre. ?>
         <div class="contenu-cours texte-riche-affiche"><?= TexteRiche::versHtml($cours['contenu']) ?></div>
@@ -104,13 +103,13 @@ $nbElements = count($elements) + count($fichiersFiche);
       <?php $nbCommentaires = Partages::nbCommentaires('cours', (int) $cours['id']); ?>
       <?php if ($nbCommentaires > 0): ?>
         <p class="discret" style="margin:.4rem 0 0">
-          💬 <a href="<?= url('partages/cours/' . (int) $cours['id'] . '/commentaires') ?>" <?= $dansUneFenetre ? 'data-fenetre-dessus' : 'data-fenetre' ?>><?= $nbCommentaires ?> commentaire<?= $nbCommentaires > 1 ? 's' : '' ?></a>
-          de vos amis sur ce cours.
+          💬 <a href="<?= url('partages/cours/' . (int) $cours['id'] . '/commentaires') ?>" <?= $dansUneFenetre ? 'data-fenetre-dessus' : 'data-fenetre' ?>><?= e(t('cours.commentaires', ['n' => $nbCommentaires])) ?></a>
+          <?= e(t('cours.commentaires_suite')) ?>
         </p>
       <?php endif; ?>
       <details class="edition-contenu"<?= $sansContenu ? ' open' : '' ?>>
         <summary class="edition-contenu__ouvrir">
-          ✏️ <?= $sansContenu ? 'Écrire le contenu' : 'Modifier le contenu' ?>
+          ✏️ <?= e($sansContenu ? t('cours.ecrire_contenu') : t('cours.modifier_contenu')) ?>
         </summary>
 
         <form method="post" action="<?= url('cours/' . $cours['id'] . '/contenu') ?>"<?= $surPlace ?>>
@@ -121,13 +120,13 @@ $nbElements = count($elements) + count($fichiersFiche);
           <?php endif; ?>
 
           <div class="champ">
-            <label for="contenu-cours" class="legende">Le cours lui-même</label>
+            <label for="contenu-cours" class="legende"><?= e(t('cours.le_cours')) ?></label>
             <textarea id="contenu-cours" name="contenu" class="edition-contenu__texte" data-texte-riche="complet" data-tailles="<?= e(implode(',', TexteRiche::TAILLES)) ?>"
-                      placeholder="Le plan, les notes prises en amphi, ce que le professeur a dicté…"><?= e(TexteRiche::pourEditeur($cours['contenu'])) ?></textarea>
+                      placeholder="<?= e(t('cours.contenu_placeholder')) ?>"><?= e(TexteRiche::pourEditeur($cours['contenu'])) ?></textarea>
           </div>
 
           <p class="actions">
-            <button class="bouton bouton--petit" type="submit">Enregistrer le contenu</button>
+            <button class="bouton bouton--petit" type="submit"><?= e(t('cours.enregistrer_contenu')) ?></button>
           </p>
         </form>
       </details>
@@ -135,10 +134,10 @@ $nbElements = count($elements) + count($fichiersFiche);
 
     <div class="pile">
       <section class="carte">
-        <h2>Fichiers joints <span class="discret">(<?= count($fichiers) ?>)</span></h2>
+        <h2><?= e(t('cours.fichiers_joints')) ?> <span class="discret">(<?= count($fichiers) ?>)</span></h2>
 
         <?php if ($fichiers === []): ?>
-          <p class="discret">Aucun fichier joint pour l'instant.</p>
+          <p class="discret"><?= e(t('cours.aucun_fichier')) ?></p>
         <?php else: ?>
           <ul class="liste-fichiers">
             <?php foreach ($fichiers as $f): ?>
@@ -160,11 +159,11 @@ $nbElements = count($elements) + count($fichiersFiche);
                   <?php // Le fichier d'origine, ou le PDF pour un document. ?>
                   <?= Vue::rendre('cours/_telecharger', ['fichier' => $f, 'compact' => true]) ?>
                   <a class="bouton bouton--discret bouton--petit bouton-partage" href="<?= url('partager/fichiers/' . $f['id']) ?>"
-                     <?= $dansUneFenetre ? 'data-fenetre-dessus' : 'data-fenetre' ?> title="Partager ce fichier" aria-label="Partager <?= e($f['nom_origine']) ?>"><?= Partages::icone(15) ?></a>
+                     <?= $dansUneFenetre ? 'data-fenetre-dessus' : 'data-fenetre' ?> title="<?= e(t('cours.partager_fichier')) ?>" aria-label="<?= e(t('cours.partager_nom', ['nom' => $f['nom_origine']])) ?>"><?= Partages::icone(15) ?></a>
                   <form method="post" action="<?= url('fichiers/' . $f['id'] . '/supprimer') ?>" class="en-ligne"<?= $surPlace ?>
                         data-confirmation="Supprimer définitivement ce fichier ?">
                     <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
-                    <button class="bouton bouton--discret bouton--petit" type="submit" title="Supprimer">✕</button>
+                    <button class="bouton bouton--discret bouton--petit" type="submit" title="<?= e(t('commun.supprimer')) ?>">✕</button>
                   </form>
                 </span>
               </li>
@@ -180,21 +179,20 @@ $nbElements = count($elements) + count($fichiersFiche);
           <label class="depot__zone" for="depot-<?= (int) $cours['id'] ?>">
             <span class="depot__icone" aria-hidden="true">📎</span>
             <span>
-              <strong>Déposez vos fichiers ici</strong><br>
-              <span class="discret">ou cliquez pour les choisir — PDF, images, Word, audio…
-                <?= e(taille_lisible(Fichiers::tailleMax())) ?> par fichier</span>
+              <strong><?= e(t('cours.deposer_ici')) ?></strong><br>
+              <span class="discret"><?= e(t('cours.deposer_aide', ['taille' => taille_lisible(Fichiers::tailleMax())])) ?></span>
             </span>
           </label>
 
           <input type="file" id="depot-<?= (int) $cours['id'] ?>" name="fichiers[]" multiple
                  class="depot__champ" data-depot-champ>
-          <button class="bouton bouton--petit bouton--bloc" type="submit" data-depot-envoi>Joindre</button>
+          <button class="bouton bouton--petit bouton--bloc" type="submit" data-depot-envoi><?= e(t('cours.joindre')) ?></button>
         </form>
       </section>
 
       <?php if ($tags !== []): ?>
         <section class="carte">
-          <h2>Tags</h2>
+          <h2><?= e(t('cours.tags')) ?></h2>
           <div style="display:flex;gap:.4rem;flex-wrap:wrap">
             <?php foreach ($tags as $t): ?>
               <a class="pastille" href="<?= url('cours', ['tag' => $t['id']]) ?>">#<?= e($t['nom']) ?></a>
@@ -205,7 +203,7 @@ $nbElements = count($elements) + count($fichiersFiche);
 
       <?php if ($evenements !== []): ?>
         <section class="carte">
-          <h2>Au calendrier</h2>
+          <h2><?= e(t('cours.au_calendrier')) ?></h2>
           <div class="pile">
             <?php foreach ($evenements as $evt): ?>
               <a class="evt-ligne" href="<?= url('evenements/' . $evt['id'] . '/modifier') ?>">
@@ -221,7 +219,7 @@ $nbElements = count($elements) + count($fichiersFiche);
 
       <?php if ($images !== []): ?>
         <section class="carte">
-          <h2>Aperçu des images</h2>
+          <h2><?= e(t('cours.apercu_images')) ?></h2>
           <div class="grille" style="grid-template-columns:repeat(auto-fill,minmax(110px,1fr))">
             <?php foreach ($images as $f): ?>
               <a href="<?= url('fichiers/' . $f['id']) ?>" target="_blank" rel="noopener">
@@ -234,9 +232,9 @@ $nbElements = count($elements) + count($fichiersFiche);
       <?php endif; ?>
 
       <form method="post" action="<?= url('cours/' . $cours['id'] . '/supprimer') ?>"
-            data-confirmation="Supprimer ce cours et tous ses fichiers ? Cette action est définitive.">
+            data-confirmation="<?= e(t('cours.supprimer_confirmation')) ?>">
         <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
-        <button class="bouton bouton--danger bouton--bloc" type="submit">Supprimer ce cours</button>
+        <button class="bouton bouton--danger bouton--bloc" type="submit"><?= e(t('cours.supprimer')) ?></button>
       </form>
     </div>
   </div>

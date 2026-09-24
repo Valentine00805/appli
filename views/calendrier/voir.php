@@ -41,7 +41,7 @@ $ligne = static function (string $etiquette, string $valeur): string {
   <div>
     <?php if (!$dansUneFenetre): ?>
       <p class="discret" style="margin-bottom:.35rem">
-        <a href="<?= url('calendrier', ['date' => $debut->format('Y-m-d')]) ?>">← Calendrier</a>
+        <a href="<?= url('calendrier', ['date' => $debut->format('Y-m-d')]) ?>"><?= e(t('evt.retour_calendrier')) ?></a>
       </p>
     <?php endif; ?>
     <h1 style="display:flex;align-items:center;gap:.6rem">
@@ -63,26 +63,26 @@ $ligne = static function (string $etiquette, string $valeur): string {
     <?php if ($aReviser): ?>
       <?php // Tous les cours prévus se recochent : l’évènement s’en souvient. ?>
       <a class="bouton bouton--secondaire" href="<?= url('focus', ['evenement' => (int) $evenement['id']]) ?>">
-        🎯 Démarrer la session
+        <?= e(t('evt.demarrer_session')) ?>
       </a>
     <?php endif; ?>
     <?php // Une échéance d'un travail de groupe mène à son projet. ?>
     <?php $projetDuGroupe = Travaux::projetDeLEvenement(Auth::id(), entier_ou_null($evenement['projet_echeance_id'] ?? null)); ?>
     <?php if ($projetDuGroupe !== null): ?>
       <a class="bouton bouton--secondaire" href="<?= url('travaux/' . (int) $projetDuGroupe['id'] . '/echeances') ?>"
-         title="Échéance du travail de groupe « <?= e((string) $projetDuGroupe['nom']) ?> » : la modifier là-bas la change pour tout le groupe.">
-        👥 Travail de groupe
+         title="<?= e(t('evt.travail_groupe_aide', ['nom' => (string) $projetDuGroupe['nom']])) ?>">
+        <?= e(t('evt.travail_groupe')) ?>
       </a>
     <?php endif; ?>
     <?php // Partager l'évènement : à ses amis, ou par un lien. ?>
     <a class="bouton bouton--secondaire bouton-partage" href="<?= url('partager/evenements/' . (int) $evenement['id']) ?>"
-       <?= $dansUneFenetre ? 'data-fenetre-dessus' : 'data-fenetre' ?>><?= Partages::icone() ?> Partager</a>
+       <?= $dansUneFenetre ? 'data-fenetre-dessus' : 'data-fenetre' ?>><?= Partages::icone() ?> <?= e(t('evt.partager')) ?></a>
     <a class="bouton" href="<?= url('evenements/' . (int) $evenement['id'] . '/modifier') ?>"
        <?php // Ouverte en fenêtre, la fiche y laisse la place au formulaire
           // plutôt que de renvoyer sur une page : on modifie ce qu'on vient
           // de lire, au même endroit. ?>
        <?= $dansUneFenetre ? 'data-fenetre' : '' ?>>
-      ✎ Modifier
+      <?= e(t('commun.modifier')) ?>
     </a>
   </div>
 </div>
@@ -96,42 +96,42 @@ $ligne = static function (string $etiquette, string $valeur): string {
      */
     if ($journee) {
         $quand = $memeJour
-            ? ucfirst(date_fr($evenement['debut'], false)) . ' — toute la journée'
-            : 'Du ' . date_fr($evenement['debut'], false) . ' au ' . date_fr($evenement['fin'], false);
+            ? t('evt.toute_la_journee', ['date' => ucfirst(date_fr($evenement['debut'], false))])
+            : t('evt.du_au', ['debut' => date_fr($evenement['debut'], false), 'fin' => date_fr($evenement['fin'], false)]);
     } elseif ($memeJour) {
-        $quand = ucfirst(date_fr($evenement['debut'], false))
-            . ', de ' . $debut->format('H:i') . ' à ' . $fin->format('H:i');
+        $quand = t('evt.de_a', ['date' => ucfirst(date_fr($evenement['debut'], false)),
+            'debut' => $debut->format('H:i'), 'fin' => $fin->format('H:i')]);
     } else {
-        $quand = 'Du ' . date_fr($evenement['debut']) . ' au ' . date_fr($evenement['fin']);
+        $quand = t('evt.du_au', ['debut' => date_fr($evenement['debut']), 'fin' => date_fr($evenement['fin'])]);
     }
-    echo $ligne('Quand', e($quand));
+    echo $ligne(t('evt.quand'), e($quand));
 
     if (!$journee) {
         $duree = $debut->diff($fin);
         $heures = $duree->days * 24 + $duree->h;
-        echo $ligne('Durée', e(
+        echo $ligne(t('evt.duree'), e(
             ($heures > 0 ? $heures . ' h' . ($duree->i > 0 ? ' ' . $duree->i : '') : $duree->i . ' min')
         ));
     }
 
-    echo $ligne('Lieu', e((string) ($evenement['lieu'] ?? '')));
-    echo $ligne('Type', (string) ($evenement['type_nom'] ?? '') === '' ? '' :
+    echo $ligne(t('evt.lieu'), e((string) ($evenement['lieu'] ?? '')));
+    echo $ligne(t('evt.type'), (string) ($evenement['type_nom'] ?? '') === '' ? '' :
         '<span class="pastille" style="background:' . e((string) $evenement['type_couleur'])
         . ';color:' . e(couleur_texte((string) $evenement['type_couleur'])) . '">'
         . e((string) $evenement['type_icone'] . ' ' . (string) $evenement['type_nom']) . '</span>');
-    echo $ligne('Matière', e((string) ($evenement['matiere_nom'] ?? '')));
-    echo $ligne('Cours lié', (string) ($evenement['cours_titre'] ?? '') === '' ? '' :
+    echo $ligne(t('evt.matiere'), e((string) ($evenement['matiere_nom'] ?? '')));
+    echo $ligne(t('evt.cours_lie'), (string) ($evenement['cours_titre'] ?? '') === '' ? '' :
         '<a href="' . url('cours/' . (int) $evenement['cours_id']) . '">'
         . e((string) $evenement['cours_titre']) . '</a>');
-    echo $ligne('État', (int) $evenement['termine'] === 1 ? 'Terminé' : '');
+    echo $ligne(t('evt.etat'), (int) $evenement['termine'] === 1 ? e(t('evt.termine')) : '');
     // Les rappels : seulement s'il y en a, dits comme dans le formulaire.
     $rappels = Rappels::dire((string) ($evenement['rappels'] ?? ''));
-    echo $ligne(str_contains($rappels, ' · ') ? 'Rappels' : 'Rappel', $rappels === '' ? '' : '🔔 ' . e($rappels));
+    echo $ligne(str_contains($rappels, ' · ') ? t('evt.rappels') : t('evt.rappel'), $rappels === '' ? '' : '🔔 ' . e($rappels));
     ?>
 
     <?php if ((string) ($evenement['description'] ?? '') !== ''): ?>
       <div class="fiche__notes">
-        <span class="fiche__etiquette">Notes</span>
+        <span class="fiche__etiquette"><?= e(t('evt.notes')) ?></span>
         <?php // Un bloc, et non un paragraphe : une liste ne se range pas dans un « p ». ?>
         <div class="texte-riche-affiche"><?= TexteRiche::versHtml($evenement['description']) ?></div>
       </div>
@@ -149,7 +149,7 @@ $ligne = static function (string $etiquette, string $valeur): string {
   <?php if ($aDire): ?>
     <section class="carte fiche">
       <?php if ($venuDAilleurs): ?>
-        <?= $ligne('Vient de',
+        <?= $ligne(t('evt.vient_de'),
             '<span class="fiche__teinte fiche__teinte--puce" style="background:'
             . e((string) ($evenement['agenda_couleur'] ?: '#94a3b8')) . '"></span> '
             . e((string) $evenement['agenda_nom'])
@@ -269,7 +269,7 @@ $ligne = static function (string $etiquette, string $valeur): string {
     <form method="post" action="<?= url('evenements/' . (int) $evenement['id'] . '/supprimer') ?>"
           data-confirmation="Supprimer cet évènement ?">
       <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
-      <button class="bouton bouton--danger bouton--petit" type="submit">Supprimer</button>
+      <button class="bouton bouton--danger bouton--petit" type="submit"><?= e(t('evt.supprimer')) ?></button>
     </form>
   </div>
 </div>

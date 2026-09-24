@@ -24,34 +24,34 @@ $champsCommuns = '<input type="hidden" name="_csrf" value="' . e($csrf) . '">'
   <div>
     <?php if (!$dansUneFenetre): ?>
       <p class="discret" style="margin-bottom:.35rem">
-        <a href="<?= e($retour !== '' ? $retour : url('tableau')) ?>">← Retour</a>
+        <a href="<?= e($retour !== '' ? $retour : url('tableau')) ?>"><?= e(t('commun.retour')) ?></a>
       </p>
     <?php endif; ?>
-    <h1>Nouvelle tâche</h1>
+    <h1><?= e(t('taches.nouvelle_titre')) ?></h1>
     <p class="discret" style="margin:0">
-      Une sous-tâche se range dans une tâche principale, et paraît au tableau.
+      <?= e(t('taches.nouvelle_aide')) ?>
     </p>
   </div>
 </div>
 
 <div class="nouvelle-tache-choix">
   <section class="carte">
-    <h2 style="margin-top:0">Tâche principale</h2>
+    <h2 style="margin-top:0"><?= e(t('taches.principale')) ?></h2>
     <form method="post" action="<?= url('taches/listes') ?>"<?= $surPlace ?>>
       <?= $champsCommuns ?>
 
       <div class="champ">
-        <label for="nt-nom">Nom</label>
-        <input type="text" id="nt-nom" name="nom" required maxlength="120" placeholder="Cette semaine">
+        <label for="nt-nom"><?= e(t('taches.nom')) ?></label>
+        <input type="text" id="nt-nom" name="nom" required maxlength="120" placeholder="<?= e(t('taches.nom_exemple')) ?>">
       </div>
 
       <div class="champ">
-        <label for="nt-ech-liste">Échéance <span class="discret">(facultative)</span></label>
+        <label for="nt-ech-liste"><?= e(t('taches.echeance')) ?> <span class="discret"><?= e(t('taches.echeance_facultative')) ?></span></label>
         <input type="date" id="nt-ech-liste" name="echeance">
       </div>
 
       <div class="champ">
-        <span class="legende">Icône</span>
+        <span class="legende"><?= e(t('taches.icone')) ?></span>
         <div class="choix-icones">
           <?php foreach ($icones as $i => $icone): ?>
             <input type="radio" id="nt-i-<?= $i ?>" name="icone" value="<?= e($icone) ?>"<?= $i === 0 ? ' checked' : '' ?>>
@@ -61,7 +61,7 @@ $champsCommuns = '<input type="hidden" name="_csrf" value="' . e($csrf) . '">'
       </div>
 
       <div class="champ">
-        <span class="legende">Couleur</span>
+        <span class="legende"><?= e(t('taches.couleur')) ?></span>
         <div class="choix-couleurs">
           <?php foreach ($palette as $i => $couleur): ?>
             <input type="radio" id="nt-c-<?= $i ?>" name="couleur" value="<?= e($couleur) ?>"<?= $i === 0 ? ' checked' : '' ?>>
@@ -70,22 +70,22 @@ $champsCommuns = '<input type="hidden" name="_csrf" value="' . e($csrf) . '">'
         </div>
       </div>
 
-      <button class="bouton bouton--bloc" type="submit">Créer la tâche principale</button>
+      <button class="bouton bouton--bloc" type="submit"><?= e(t('taches.creer_principale')) ?></button>
     </form>
   </section>
 
   <section class="carte">
-    <h2 style="margin-top:0">Sous-tâche</h2>
+    <h2 style="margin-top:0"><?= e(t('taches.sous_tache')) ?></h2>
     <?php if ($listes === []): ?>
       <p class="discret" style="margin:0">
-        Il faut d'abord une tâche principale pour la ranger : créez-la à côté.
+        <?= e(t('taches.principale_dabord')) ?>
       </p>
     <?php else: ?>
       <form method="post" action="<?= url('taches') ?>"<?= $surPlace ?>>
         <?= $champsCommuns ?>
 
         <div class="champ">
-          <label for="nt-liste">Tâche principale</label>
+          <label for="nt-liste"><?= e(t('taches.principale')) ?></label>
           <select id="nt-liste" name="liste_id" required>
             <?php foreach ($listes as $l): ?>
               <option value="<?= (int) $l['id'] ?>" data-echeance="<?= e((string) ($l['echeance'] ?? '')) ?>">
@@ -96,19 +96,19 @@ $champsCommuns = '<input type="hidden" name="_csrf" value="' . e($csrf) . '">'
         </div>
 
         <div class="champ">
-          <label for="nt-titre">Tâche</label>
-          <input type="text" id="nt-titre" name="titre" required maxlength="200" placeholder="Relire le chapitre 3">
+          <label for="nt-titre"><?= e(t('taches.tache')) ?></label>
+          <input type="text" id="nt-titre" name="titre" required maxlength="200" placeholder="<?= e(t('taches.tache_exemple')) ?>">
         </div>
 
         <?php $premier = (string) ($listes[0]['echeance'] ?? ''); ?>
         <div class="champ">
-          <label for="nt-echeance">Échéance <span class="discret">(facultative)</span></label>
+          <label for="nt-echeance"><?= e(t('taches.echeance')) ?> <span class="discret"><?= e(t('taches.echeance_facultative')) ?></span></label>
           <input type="date" id="nt-echeance" name="echeance" data-plafond-de="nt-liste"
                  <?= $premier === '' ? '' : 'max="' . e($premier) . '"' ?>>
-          <span class="champ__aide">Au plus tard à l’échéance de la tâche principale.</span>
+          <span class="champ__aide"><?= e(t('taches.sous_tache_echeance_aide')) ?></span>
         </div>
 
-        <button class="bouton bouton--bloc" type="submit">Ajouter la sous-tâche</button>
+        <button class="bouton bouton--bloc" type="submit"><?= e(t('taches.ajouter_sous_tache')) ?></button>
       </form>
     <?php endif; ?>
   </section>

@@ -9,7 +9,7 @@ $couleur = couleur_evenement($evt);
 // Une échéance de tâche n'a pas d'heure, et se modifie depuis « Tâches ».
 $estTache = !empty($evt['est_tache']);
 $heure = $evt['journee_entiere']
-    ? ($estTache ? 'Échéance' : 'Journée')
+    ? ($estTache ? t('evt.echeance') : t('evt.journee'))
     : date('H:i', strtotime((string) $evt['debut'])) . ' – ' . date('H:i', strtotime((string) $evt['fin']));
 // Quand la date précède l'heure, la place manque pour la plage entière :
 // seul le début est montré. Un libellé, lui, se garde en un seul morceau.
@@ -46,7 +46,7 @@ $estPartage = !empty($evt['est_partage']);
   <span class="evt-ligne__droite">
     <?php if ($estPartage): ?>
       <a class="bouton bouton--discret bouton--petit" href="<?= e((string) $evt['lien']) ?>" data-fenetre
-         title="Ouvrir l’évènement partagé">↗</a>
+         title="<?= e(t('evt.ouvrir_partage')) ?>">↗</a>
     <?php elseif ($estTache): ?>
       <?php
       // Cocher ici ramène sur le calendrier, au mois et aux filtres en cours.
@@ -57,20 +57,20 @@ $estPartage = !empty($evt['est_partage']);
         <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
         <input type="hidden" name="retour" value="<?= e((string) ($_SERVER['REQUEST_URI'] ?? '')) ?>">
         <button class="bouton bouton--discret bouton--petit" type="submit"
-                title="<?= $estListe
-                    ? ($fait ? 'Rouvrir toute la liste' : 'Terminer toute la liste')
-                    : ($fait ? 'Marquer comme à faire' : 'Marquer comme faite') ?>">
+                title="<?= e($estListe
+                    ? ($fait ? t('evt.rouvrir_liste') : t('evt.terminer_liste'))
+                    : ($fait ? t('evt.a_faire') : t('evt.faite'))) ?>">
           <?= $fait ? '☑' : '☐' ?>
         </button>
       </form>
       <a class="bouton bouton--discret bouton--petit" href="<?= e($lienEvt) ?>"
-         title="Ouvrir dans Tâches">↗</a>
+         title="<?= e(t('evt.ouvrir_taches')) ?>">↗</a>
     <?php else: ?>
       <form method="post" action="<?= url('evenements/' . $evt['id'] . '/termine') ?>" class="en-ligne">
         <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
         <input type="hidden" name="retour" value="<?= e(ROUTE === '' ? '' : ROUTE) ?>">
         <button class="bouton bouton--discret bouton--petit" type="submit"
-                title="<?= (int) $evt['termine'] === 1 ? 'Marquer comme à faire' : 'Marquer comme terminé' ?>">
+                title="<?= e((int) $evt['termine'] === 1 ? t('evt.a_faire') : t('evt.terminee')) ?>">
           <?= (int) $evt['termine'] === 1 ? '☑' : '☐' ?>
         </button>
       </form>
@@ -83,16 +83,16 @@ $estPartage = !empty($evt['est_partage']);
       ?>
       <?php if ($coursId > 0): ?>
         <a class="bouton bouton--secondaire" href="<?= url('cours/' . $coursId) ?>"
-           title="Ouvrir le cours<?= !empty($evt['cours_titre']) ? ' : ' . e((string) $evt['cours_titre']) : '' ?>">
+           title="<?= e(t('evt.ouvrir_cours')) ?><?= !empty($evt['cours_titre']) ? ' : ' . e((string) $evt['cours_titre']) : '' ?>">
           📘 Cours
         </a>
         <a class="bouton bouton--secondaire" href="<?= url('revision/' . $coursId) ?>"
-           title="Ouvrir la fiche de révision">
+           title="<?= e(t('evt.ouvrir_fiche')) ?>">
           📝 Révision
         </a>
       <?php endif; ?>
       <a class="bouton bouton--discret bouton--petit" href="<?= url('evenements/' . $evt['id'] . '/modifier') ?>"
-         title="Modifier">✎</a>
+         title="<?= e(t('evt.modifier')) ?>">✎</a>
     <?php endif; ?>
   </span>
 </div>

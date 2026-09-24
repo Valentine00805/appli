@@ -10,8 +10,8 @@
 
 <div class="entete-page">
   <div>
-    <h1>Mes cours</h1>
-    <p><?= count($cours) ?> cours affiché<?= count($cours) > 1 ? 's' : '' ?></p>
+    <h1><?= e(t('cours.titre')) ?></h1>
+    <p><?= e(t('cours.affiches', ['n' => count($cours)])) ?></p>
   </div>
   <div class="actions">
     <?php
@@ -32,11 +32,11 @@
           data-url="<?= url('cours/depot-dossier') ?>"
           data-jeton="<?= e(Session::jetonCsrf()) ?>"
           data-dossier="<?= $dossierId === null ? '' : (int) $dossierId ?>">
-      <label class="bouton bouton--secondaire" for="import-dossier-champ">📁 Importer un dossier</label>
+      <label class="bouton bouton--secondaire" for="import-dossier-champ"><?= e(t('cours.importer_dossier')) ?></label>
       <input type="file" id="import-dossier-champ" class="sr-only"
              data-import-champ webkitdirectory directory multiple>
       <span class="import-dossier__etat" data-import-etat>
-        Un cours par fichier, vos sous-dossiers repris.
+        <?= e(t('cours.importer_aide')) ?>
       </span>
     </span>
     <?php
@@ -54,27 +54,27 @@
       ]) ?>
     <?php endif; ?>
     <a class="bouton bouton--secondaire bouton-partage" href="<?= url('partager/plusieurs') ?>"
-       data-fenetre title="Partager plusieurs cours ou fichiers en un envoi"><?= Partages::icone() ?> Partager plusieurs</a>
+       data-fenetre title="<?= e(t('cours.partager_plusieurs_aide')) ?>"><?= Partages::icone() ?> <?= e(t('cours.partager_plusieurs')) ?></a>
     <?php // Un dossier ouvert : de quoi le partager tel quel, avec ses cours. ?>
     <?php if ($dossierId !== null): ?>
       <a class="bouton bouton--secondaire bouton-partage" href="<?= url('partager/dossiers/' . $dossierId) ?>"
          data-fenetre><?= Partages::icone() ?> Partager le dossier</a>
     <?php endif; ?>
-    <a class="bouton" href="<?= url('cours/nouveau') ?>" data-fenetre>+ Nouveau cours</a>
+    <a class="bouton" href="<?= url('cours/nouveau') ?>" data-fenetre><?= e(t('cours.bouton_nouveau')) ?></a>
   </div>
 </div>
 
 <?php // Ce que mes amis m'ont partagé a son propre onglet : rien ici. ?>
 <form class="filtres" method="get" action="<?= url('cours') ?>" data-auto-envoi>
   <div class="champ">
-    <label for="f-q">Rechercher</label>
-    <input type="search" id="f-q" name="q" value="<?= e($recherche) ?>" placeholder="titre, contenu…">
+    <label for="f-q"><?= e(t('cours.rechercher')) ?></label>
+    <input type="search" id="f-q" name="q" value="<?= e($recherche) ?>" placeholder="<?= e(t('cours.rechercher_placeholder')) ?>">
   </div>
 
   <div class="champ">
-    <label for="f-matiere">Matière</label>
+    <label for="f-matiere"><?= e(t('cours.matiere')) ?></label>
     <select id="f-matiere" name="matiere">
-      <option value="">Toutes</option>
+      <option value=""><?= e(t('cours.toutes')) ?></option>
       <?php foreach ($matieres as $m): ?>
         <option value="<?= (int) $m['id'] ?>"<?= $matiereId === (int) $m['id'] ? ' selected' : '' ?>>
           <?= e($m['nom']) ?>
@@ -85,9 +85,9 @@
 
   <?php if ($tags !== []): ?>
     <div class="champ">
-      <label for="f-tag">Tag</label>
+      <label for="f-tag"><?= e(t('cours.tag')) ?></label>
       <select id="f-tag" name="tag">
-        <option value="">Tous</option>
+        <option value=""><?= e(t('cours.tous')) ?></option>
         <?php foreach ($tags as $t): ?>
           <option value="<?= (int) $t['id'] ?>"<?= $tagId === (int) $t['id'] ? ' selected' : '' ?>>
             <?= e($t['nom']) ?> (<?= (int) $t['nb'] ?>)
@@ -103,22 +103,22 @@
   <?php endif; ?>
 
   <div class="champ">
-    <label for="f-tri">Trier par</label>
+    <label for="f-tri"><?= e(t('cours.trier')) ?></label>
     <select id="f-tri" name="tri">
-      <option value="recent"<?= $tri === 'recent' ? ' selected' : '' ?>>Modifié récemment</option>
-      <option value="titre"<?= $tri === 'titre' ? ' selected' : '' ?>>Titre (A→Z)</option>
-      <option value="ancien"<?= $tri === 'ancien' ? ' selected' : '' ?>>Plus ancien d'abord</option>
+      <option value="recent"<?= $tri === 'recent' ? ' selected' : '' ?>><?= e(t('cours.tri_recent')) ?></option>
+      <option value="titre"<?= $tri === 'titre' ? ' selected' : '' ?>><?= e(t('cours.tri_titre')) ?></option>
+      <option value="ancien"<?= $tri === 'ancien' ? ' selected' : '' ?>><?= e(t('cours.tri_ancien')) ?></option>
     </select>
   </div>
 
   <label class="case" style="padding-bottom:.55rem">
     <input type="checkbox" name="favoris" value="1"<?= $favoris ? ' checked' : '' ?>
-           onchange="this.form.submit()"> Favoris
+           onchange="this.form.submit()"> <?= e(t('cours.favoris')) ?>
   </label>
 
-  <button class="bouton bouton--secondaire" type="submit">Filtrer</button>
+  <button class="bouton bouton--secondaire" type="submit"><?= e(t('cours.filtrer')) ?></button>
   <?php if ($recherche !== '' || $matiereId !== null || $tagId !== null || $dossierId !== null || $favoris): ?>
-    <a class="bouton bouton--discret" href="<?= url('cours') ?>">Réinitialiser</a>
+    <a class="bouton bouton--discret" href="<?= url('cours') ?>"><?= e(t('cours.reinitialiser')) ?></a>
   <?php endif; ?>
 </form>
 
@@ -189,14 +189,14 @@ $descendanceDe = static function (int $id) use (&$descendanceDe, $enfantsDe): ar
       <input type="hidden" name="ferme" value="<?= $dossiersFermes ? '0' : '1' ?>">
       <button type="submit"
               aria-expanded="<?= $dossiersFermes ? 'false' : 'true' ?>"
-              title="<?= $dossiersFermes ? 'Montrer les dossiers' : 'Masquer les dossiers' ?>">
+              title="<?= e($dossiersFermes ? t('cours.montrer_dossiers') : t('cours.masquer_dossiers')) ?>">
         <span aria-hidden="true"><?= $dossiersFermes ? '›' : '‹' ?></span>
-        <span class="sr-only"><?= $dossiersFermes ? 'Montrer les dossiers' : 'Masquer les dossiers' ?></span>
+        <span class="sr-only"><?= e($dossiersFermes ? t('cours.montrer_dossiers') : t('cours.masquer_dossiers')) ?></span>
       </button>
     </form>
 
   <aside class="cours-dossiers" data-dossiers-cibles>
-    <p class="cours-dossiers__titre">Dossiers</p>
+    <p class="cours-dossiers__titre"><?= e(t('cours.dossiers')) ?></p>
 
     <?php
     /*
@@ -234,7 +234,7 @@ $descendanceDe = static function (int $id) use (&$descendanceDe, $enfantsDe): ar
           <a class="dossier-cible<?= $dossierId === (int) $d['id'] ? ' dossier-cible--active' : '' ?>"
              href="<?= $lienDossier((int) $d['id']) ?>"
              data-dossier="<?= (int) $d['id'] ?>"
-             title="Déposez un cours ici pour le ranger dans « <?= e($d['nom']) ?> »">
+             title="<?= e(t('cours.deposer_dans', ['nom' => $d['nom']])) ?>">
             <span aria-hidden="true"><?= e($d['icone']) ?></span>
             <span style="flex:1;min-width:0"><?= e($d['nom']) ?></span>
             <span class="dossier-cible__compte"><?= (int) $d['nb_cours'] ?></span>
@@ -252,7 +252,7 @@ $descendanceDe = static function (int $id) use (&$descendanceDe, $enfantsDe): ar
            */
           ?>
           <details class="dossier-renommer">
-            <summary title="Renommer, déplacer ou supprimer « <?= e($d['nom']) ?> »">
+            <summary title="<?= e(t('cours.renommer_dossier', ['nom' => $d['nom']])) ?>">
               <span aria-hidden="true">✎</span>
               <span class="sr-only">Modifier <?= e($d['nom']) ?></span>
             </summary>
@@ -281,7 +281,7 @@ $descendanceDe = static function (int $id) use (&$descendanceDe, $enfantsDe): ar
                   <?php endforeach; ?>
                 </select>
 
-                <button class="bouton bouton--petit bouton--bloc" type="submit">Enregistrer</button>
+                <button class="bouton bouton--petit bouton--bloc" type="submit"><?= e(t('commun.enregistrer')) ?></button>
               </form>
 
               <?php
@@ -325,7 +325,7 @@ $descendanceDe = static function (int $id) use (&$descendanceDe, $enfantsDe): ar
     <div class="dossier-rang">
       <span class="dossier-rang__plier dossier-rang__plier--vide" aria-hidden="true" hidden></span>
       <a class="dossier-cible" href="<?= $lienDossier(null) ?>" data-dossier=""
-         title="Déposez un cours ici pour le sortir de son dossier">
+         title="<?= e(t('cours.sortir_dossier')) ?>">
         <span aria-hidden="true">➖</span>
         <span style="flex:1;min-width:0">Sans dossier</span>
         <span class="dossier-cible__compte"><?= (int) $sansDossier ?></span>
@@ -389,7 +389,7 @@ for ($haut = $courant; $haut !== null;) {
 }
 ?>
 <?php if ($courant !== null): ?>
-  <nav class="fil-dossiers" aria-label="Chemin du dossier">
+  <nav class="fil-dossiers" aria-label="<?= e(t('cours.chemin_dossier')) ?>">
     <a href="<?= $lienDossier(null) ?>">Tous les cours</a>
     <?php foreach ($chemin as $rang => $etape): ?>
       <span class="fil-dossiers__separateur" aria-hidden="true">›</span>
@@ -411,7 +411,7 @@ for ($haut = $courant; $haut !== null;) {
       ?>
       <a class="dossier-enfant" href="<?= $lienDossier((int) $enfant['id']) ?>"
          data-dossier="<?= (int) $enfant['id'] ?>"
-         title="Ouvrir « <?= e($enfant['nom']) ?> »">
+         title="<?= e(t('cours.ouvrir_dossier', ['nom' => $enfant['nom']])) ?>">
         <span class="dossier-enfant__icone" aria-hidden="true"><?= e($enfant['icone']) ?></span>
         <span class="dossier-enfant__nom"><?= e($enfant['nom']) ?></span>
         <span class="dossier-enfant__compte">
@@ -426,13 +426,13 @@ for ($haut = $courant; $haut !== null;) {
   <div class="vide">
     <span class="vide__icone">📄</span>
     <?php if ($sousDossiers !== []): ?>
-      <p>Ce dossier ne contient que des sous-dossiers. Ouvrez-en un ci-dessus.</p>
+      <p><?= e(t('cours.que_sous_dossiers')) ?></p>
     <?php elseif ($recherche !== '' || $matiereId !== null || $tagId !== null || $dossierId !== null || $favoris): ?>
-      <p>Aucun cours ne correspond à ces critères.</p>
+      <p><?= e(t('cours.aucun_resultat')) ?></p>
       <a class="bouton bouton--secondaire" href="<?= url('cours') ?>">Voir tous les cours</a>
     <?php else: ?>
-      <p>Vous n'avez pas encore de cours enregistré.</p>
-      <a class="bouton" href="<?= url('cours/nouveau') ?>" data-fenetre>Créer mon premier cours</a>
+      <p><?= e(t('cours.aucun')) ?></p>
+      <a class="bouton" href="<?= url('cours/nouveau') ?>" data-fenetre><?= e(t('cours.premier')) ?></a>
     <?php endif; ?>
   </div>
 <?php else: ?>
@@ -447,19 +447,19 @@ for ($haut = $courant; $haut !== null;) {
               <?= e($c['matiere_nom']) ?>
             </span>
           <?php else: ?>
-            <span class="pastille">Sans matière</span>
+            <span class="pastille"><?= e(t('cours.sans_matiere')) ?></span>
           <?php endif; ?>
           <?php if ($c['dossier_nom'] !== null): ?>
-            <span class="pastille" title="Dossier : <?= e((string) $c['dossier_nom']) ?>"><?= e($c['dossier_icone'] . ' ' . $c['dossier_nom']) ?></span>
+            <span class="pastille" title="<?= e(t('cours.dossier_de', ['nom' => (string) $c['dossier_nom']])) ?>"><?= e($c['dossier_icone'] . ' ' . $c['dossier_nom']) ?></span>
           <?php endif; ?>
-          <?php if ((int) $c['favori'] === 1): ?><span title="Favori">⭐</span><?php endif; ?>
+          <?php if ((int) $c['favori'] === 1): ?><span title="<?= e(t('cours.favori')) ?>">⭐</span><?php endif; ?>
         </div>
 
         <div class="cours-carte__titre"><?= e($c['titre']) ?></div>
         <p class="cours-carte__extrait"><?= e(extrait($c['contenu'])) ?></p>
 
         <div class="cours-carte__bas">
-          <span>Modifié le <?= e(date_fr($c['updated_at'], false)) ?></span>
+          <span><?= e(t('cours.modifie_le', ['date' => date_fr($c['updated_at'], false)])) ?></span>
           <?php if ((int) $c['nb_fichiers'] > 0): ?>
             <span>· 📎 <?= (int) $c['nb_fichiers'] ?></span>
           <?php endif; ?>

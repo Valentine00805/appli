@@ -103,8 +103,8 @@ $puce = static function (array $evt) use ($destination): string {
 
 <div class="entete-page">
   <div>
-    <h1>Calendrier</h1>
-    <p>Vos évènements et les échéances de vos tâches, au même endroit.</p>
+    <h1><?= e(t('cal.titre')) ?></h1>
+    <p><?= e(t('cal.sous_titre')) ?></p>
   </div>
   <div class="actions">
     <?php
@@ -119,19 +119,19 @@ $puce = static function (array $evt) use ($destination): string {
         <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
         <input type="hidden" name="retour" value="<?= e((string) ($_SERVER['REQUEST_URI'] ?? '')) ?>">
         <button class="bouton bouton--secondaire" type="submit"
-                title="Synchroniser mes agendas maintenant">↻</button>
+                title="<?= e(t('cal.synchroniser')) ?>">↻</button>
       </form>
     <?php endif; ?>
-    <a class="bouton bouton--secondaire" href="<?= url('agenda') ?>" data-fenetre>📆 Mes agendas</a>
-    <a class="bouton" href="<?= url('evenements/nouveau') ?>" data-fenetre>+ Évènement</a>
+    <a class="bouton bouton--secondaire" href="<?= url('agenda') ?>" data-fenetre><?= e(t('cal.mes_agendas')) ?></a>
+    <a class="bouton" href="<?= url('evenements/nouveau') ?>" data-fenetre><?= e(t('cal.nouvel_evenement')) ?></a>
   </div>
 </div>
 
 <div class="cal-barre">
   <div class="actions">
-    <a class="bouton bouton--secondaire bouton--petit" href="<?= $lien($vue, $precedent) ?>" aria-label="Période précédente">←</a>
-    <a class="bouton bouton--secondaire bouton--petit" href="<?= $lien($vue, new DateTimeImmutable('today')) ?>">Aujourd'hui</a>
-    <a class="bouton bouton--secondaire bouton--petit" href="<?= $lien($vue, $suivant) ?>" aria-label="Période suivante">→</a>
+    <a class="bouton bouton--secondaire bouton--petit" href="<?= $lien($vue, $precedent) ?>" aria-label="<?= e(t('cal.precedent')) ?>">←</a>
+    <a class="bouton bouton--secondaire bouton--petit" href="<?= $lien($vue, new DateTimeImmutable('today')) ?>"><?= e(t('cal.aujourdhui')) ?></a>
+    <a class="bouton bouton--secondaire bouton--petit" href="<?= $lien($vue, $suivant) ?>" aria-label="<?= e(t('cal.suivant')) ?>">→</a>
     <h2 class="cal-titre"><?= e($titre) ?></h2>
   </div>
 
@@ -139,8 +139,8 @@ $puce = static function (array $evt) use ($destination): string {
     <form class="cal-filtres" id="cal-filtres" method="get" action="<?= url('calendrier') ?>" data-auto-envoi>
       <input type="hidden" name="vue" value="<?= e($vue) ?>">
       <input type="hidden" name="date" value="<?= e($ancre->format('Y-m-d')) ?>">
-      <select name="matiere" aria-label="Filtrer par matière">
-        <option value="">Toutes les matières</option>
+      <select name="matiere" aria-label="<?= e(t('cal.filtrer_matiere')) ?>">
+        <option value=""><?= e(t('cal.toutes_matieres')) ?></option>
         <?php foreach ($matieres as $m): ?>
           <option value="<?= (int) $m['id'] ?>"<?= $matiereId === (int) $m['id'] ? ' selected' : '' ?>>
             <?= e($m['nom']) ?>
@@ -150,12 +150,12 @@ $puce = static function (array $evt) use ($destination): string {
       <noscript><button class="bouton bouton--secondaire bouton--petit" type="submit">OK</button></noscript>
     </form>
 
-    <nav class="cal-onglets" aria-label="Type d'affichage">
-      <a href="<?= $lien('jour', $ancre) ?>"<?= $vue === 'jour' ? ' aria-current="page"' : '' ?>>Jour</a>
-      <a href="<?= $lien('semaine', $ancre) ?>"<?= $vue === 'semaine' ? ' aria-current="page"' : '' ?>>Semaine</a>
-      <a href="<?= $lien('mois', $ancre) ?>"<?= $vue === 'mois' ? ' aria-current="page"' : '' ?>>Mois</a>
-      <a href="<?= $lien('annee', $ancre) ?>"<?= $vue === 'annee' ? ' aria-current="page"' : '' ?>>Année</a>
-      <a href="<?= $lien('liste', $ancre) ?>"<?= $vue === 'liste' ? ' aria-current="page"' : '' ?>>Liste</a>
+    <nav class="cal-onglets" aria-label="<?= e(t('cal.affichage')) ?>">
+      <a href="<?= $lien('jour', $ancre) ?>"<?= $vue === 'jour' ? ' aria-current="page"' : '' ?>><?= e(t('cal.jour')) ?></a>
+      <a href="<?= $lien('semaine', $ancre) ?>"<?= $vue === 'semaine' ? ' aria-current="page"' : '' ?>><?= e(t('cal.semaine')) ?></a>
+      <a href="<?= $lien('mois', $ancre) ?>"<?= $vue === 'mois' ? ' aria-current="page"' : '' ?>><?= e(t('cal.mois')) ?></a>
+      <a href="<?= $lien('annee', $ancre) ?>"<?= $vue === 'annee' ? ' aria-current="page"' : '' ?>><?= e(t('cal.annee')) ?></a>
+      <a href="<?= $lien('liste', $ancre) ?>"<?= $vue === 'liste' ? ' aria-current="page"' : '' ?>><?= e(t('cal.liste')) ?></a>
     </nav>
   </div>
 </div>
@@ -168,10 +168,10 @@ $puce = static function (array $evt) use ($destination): string {
  */
 ?>
 <?php if ($types !== []): ?>
-  <div class="filtre-types cal-types" role="radiogroup" aria-label="Filtrer par type d'évènement">
+  <div class="filtre-types cal-types" role="radiogroup" aria-label="<?= e(t('cal.filtrer_type')) ?>">
     <label class="filtre-types__choix">
       <input type="radio" name="type" value="" form="cal-filtres"<?= $typeId === null ? ' checked' : '' ?>>
-      <span class="pastille pastille--muette">Tous les types</span>
+      <span class="pastille pastille--muette"><?= e(t('cal.tous_types')) ?></span>
     </label>
     <?php foreach ($types as $t): ?>
       <label class="filtre-types__choix">
@@ -217,18 +217,18 @@ $puce = static function (array $evt) use ($destination): string {
       <input type="hidden" name="ferme" value="<?= $voletFerme ? '0' : '1' ?>">
       <button type="submit"
               aria-expanded="<?= $voletFerme ? 'false' : 'true' ?>"
-              title="<?= $voletFerme ? 'Montrer les agendas' : 'Masquer les agendas' ?>">
+              title="<?= e($voletFerme ? t('cal.montrer_agendas') : t('cal.masquer_agendas')) ?>">
         <span aria-hidden="true"><?= $voletFerme ? '›' : '‹' ?></span>
-        <span class="sr-only"><?= $voletFerme ? 'Montrer les agendas' : 'Masquer les agendas' ?></span>
+        <span class="sr-only"><?= e($voletFerme ? t('cal.montrer_agendas') : t('cal.masquer_agendas')) ?></span>
       </button>
     </form>
 
-  <aside class="cal-volet" aria-label="Agendas affichés"
+  <aside class="cal-volet" aria-label="<?= e(t('cal.agendas_affiches')) ?>"
          data-volet="<?= e(url('calendrier/volet')) ?>">
     <form method="post" action="<?= url('calendrier/agendas') ?>" data-auto-envoi>
       <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
       <input type="hidden" name="retour" value="<?= e((string) ($_SERVER['REQUEST_URI'] ?? '')) ?>">
-      <h2 class="cal-volet__titre">Agendas</h2>
+      <h2 class="cal-volet__titre"><?= e(t('cal.agendas')) ?></h2>
       <?php
       /*
        * Chaque section se plie. « details » le fait sans une ligne de script :
@@ -259,21 +259,21 @@ $puce = static function (array $evt) use ($destination): string {
             <input type="color" class="cal-volet__teinte"
                    name="couleur[<?= e($source['cle']) ?>]"
                    value="<?= e($source['couleur']) ?>"
-                   title="Couleur de <?= e($source['nom']) ?>"
-                   aria-label="Couleur de <?= e($source['nom']) ?>">
+                   title="<?= e(t('cal.couleur_de', ['nom' => $source['nom']])) ?>"
+                   aria-label="<?= e(t('cal.couleur_de', ['nom' => $source['nom']])) ?>">
           </li>
         <?php endforeach; ?>
         </ul>
       </details>
       <?php endforeach; ?>
       <noscript>
-        <button class="bouton bouton--secondaire bouton--petit" type="submit">Appliquer</button>
+        <button class="bouton bouton--secondaire bouton--petit" type="submit"><?= e(t('cal.appliquer')) ?></button>
       </noscript>
       <p class="champ__aide cal-volet__note">
         La couleur d'un agenda ne s'applique qu'aux évènements sans matière ni
         type : celles-ci gardent la main.
         Masquer un agenda ne le désynchronise pas et n'efface rien.
-        <a href="<?= url('agenda') ?>">Choisir ceux à synchroniser</a>
+        <a href="<?= url('agenda') ?>"><?= e(t('cal.choisir_synchro')) ?></a>
       </p>
     </form>
   </aside>
@@ -347,7 +347,7 @@ $etiquetteRythme = static function (string $cle, bool $court = false) use ($ryth
             <span class="cal-jour__numero"><?= (int) $curseur->format('j') ?></span>
             <?= $etiquetteRythme($cle) ?>
             <a class="cal-jour__ajout" href="<?= url('evenements/nouveau', ['date' => $cle]) ?>" data-fenetre
-               title="Ajouter un évènement le <?= e($curseur->format('d/m/Y')) ?>">+</a>
+               title="<?= e(t('cal.ajouter_le', ['date' => $curseur->format('d/m/Y')])) ?>">+</a>
           </div>
           <?php foreach (array_slice($duJour, 0, 4) as $evt): ?>
             <?= $puce($evt) ?>
@@ -472,7 +472,7 @@ $etiquetteRythme = static function (string $cle, bool $court = false) use ($ryth
             $couleurs = array_slice(array_values(array_unique(array_map('couleur_evenement', $duJour))), 0, 3);
             ?>
             <a class="<?= $classes ?>" href="<?= $lien('jour', $jour) ?>" title="<?= e($infobulle) ?>"
-               aria-label="<?= e(ucfirst(date_fr($cle . ' 00:00:00', false)) . ($duJour === [] ? '' : ', ' . count($duJour) . ' évènement' . (count($duJour) > 1 ? 's' : ''))) ?>">
+               aria-label="<?= e(ucfirst(date_fr($cle . ' 00:00:00', false)) . ($duJour === [] ? '' : ', ' . t('cal.evenements_nombre', ['n' => count($duJour)]))) ?>">
               <span class="cal-annee__numero"><?= $j ?></span>
               <?php if ($couleurs !== []): ?>
                 <span class="cal-annee__points" aria-hidden="true">
@@ -521,7 +521,7 @@ $etiquetteRythme = static function (string $cle, bool $court = false) use ($ryth
           <?php foreach ($planning['jours'] as $unJour): ?>
             <a class="sem-planning__jour<?= $unJour['cle'] === $aujourdhui ? ' sem-planning__jour--aujourdhui' : '' ?>"
                href="<?= $lien('jour', $unJour['date']) ?>"
-               title="Voir le <?= e($unJour['date']->format('d/m/Y')) ?>">
+               title="<?= e(t('cal.voir_le', ['date' => $unJour['date']->format('d/m/Y')])) ?>">
               <span class="sem-planning__jour-nom"><?= e(jours_semaine()[(int) $unJour['date']->format('N') - 1]) ?></span>
               <span class="sem-planning__jour-numero"><?= (int) $unJour['date']->format('j') ?></span>
               <?= $etiquetteRythme($unJour['cle'], true) ?>
@@ -605,9 +605,8 @@ $etiquetteRythme = static function (string $cle, bool $court = false) use ($ryth
   <?php if ($evenements === []): ?>
     <div class="vide">
       <span class="vide__icone">🗓️</span>
-      <p>Aucun évènement à partir de <?= e(strtolower(nom_mois((int) $ancre->format('n')))) ?>
-         <?= e($ancre->format('Y')) ?>.</p>
-      <a class="bouton" href="<?= url('evenements/nouveau') ?>" data-fenetre>Planifier quelque chose</a>
+      <p><?= e(t('cal.rien_a_partir_de', ['mois' => mb_strtolower(nom_mois((int) $ancre->format('n'))), 'annee' => $ancre->format('Y')])) ?></p>
+      <a class="bouton" href="<?= url('evenements/nouveau') ?>" data-fenetre><?= e(t('cal.planifier')) ?></a>
     </div>
   <?php else: ?>
     <div class="pile">
