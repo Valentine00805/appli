@@ -5,21 +5,21 @@ $moi = Auth::utilisateur();
 
 <div class="entete-page">
   <div>
-    <h1>Mon compte</h1>
+    <h1><?= e(t('compte.titre')) ?></h1>
     <p>
       <?php if ((string) ($moi['pseudo'] ?? '') !== ''): ?><strong><?= e((string) $moi['pseudo']) ?></strong> · <?php endif; ?>
-      <?= e((string) $moi['email']) ?> — inscrit le <?= e(date_fr((string) $moi['created_at'], false)) ?>
+      <?= e((string) $moi['email']) ?> — <?= e(t('compte.inscrit_le', ['date' => date_fr((string) $moi['created_at'], false)])) ?>
     </p>
   </div>
 </div>
 
 <div class="grille grille--4" style="margin-bottom:1.5rem">
-  <div class="carte stat"><div class="stat__valeur"><?= (int) $stats['cours'] ?></div><div class="stat__libelle">cours</div></div>
-  <div class="carte stat"><div class="stat__valeur"><?= (int) $stats['matieres'] ?></div><div class="stat__libelle">matières</div></div>
-  <div class="carte stat"><div class="stat__valeur"><?= (int) $stats['evenements'] ?></div><div class="stat__libelle">évènements</div></div>
+  <div class="carte stat"><div class="stat__valeur"><?= (int) $stats['cours'] ?></div><div class="stat__libelle"><?= e(t('compte.stat_cours')) ?></div></div>
+  <div class="carte stat"><div class="stat__valeur"><?= (int) $stats['matieres'] ?></div><div class="stat__libelle"><?= e(t('compte.stat_matieres')) ?></div></div>
+  <div class="carte stat"><div class="stat__valeur"><?= (int) $stats['evenements'] ?></div><div class="stat__libelle"><?= e(t('compte.stat_evenements')) ?></div></div>
   <div class="carte stat">
     <div class="stat__valeur"><?= (int) $stats['fichiers'] ?></div>
-    <div class="stat__libelle">fichiers · <?= e(taille_lisible((int) $stats['octets'])) ?></div>
+    <div class="stat__libelle"><?= e(t('compte.stat_fichiers')) ?> · <?= e(taille_lisible((int) $stats['octets'])) ?></div>
   </div>
 </div>
 
@@ -48,13 +48,13 @@ $enEdition = is_string($pseudoSaisi);
 $themeActuel = Auth::theme($moi);
 ?>
 <section class="carte" style="margin-bottom:1rem" id="apparence" data-reglage>
-  <h2 style="margin-top:0">🎨 Apparence</h2>
+  <h2 style="margin-top:0"><?= e(t('apparence.titre')) ?></h2>
 
   <div class="reglage-lecture" data-reglage-lecture>
     <p class="reglage-lecture__valeur">
-      <?= Auth::THEMES[$themeActuel]['icone'] ?> <?= e(Auth::THEMES[$themeActuel]['nom']) ?>
+      <?= Auth::THEMES[$themeActuel]['icone'] ?> <?= e(t('apparence.' . $themeActuel)) ?>
     </p>
-    <button class="bouton bouton--secondaire" type="button" data-reglage-modifier>✎ Modifier</button>
+    <button class="bouton bouton--secondaire" type="button" data-reglage-modifier><?= e(t('commun.modifier')) ?></button>
   </div>
 
   <form method="post" action="<?= url('compte/theme') ?>" data-auto-envoi data-choix-theme data-reglage-edition hidden>
@@ -68,14 +68,51 @@ $themeActuel = Auth::theme($moi);
             <span class="themes-choix__ligne"></span>
             <span class="themes-choix__ligne themes-choix__ligne--courte"></span>
           </span>
-          <span class="themes-choix__nom"><?= $theme['icone'] ?> <?= e($theme['nom']) ?></span>
-          <span class="discret themes-choix__aide"><?= e($theme['aide']) ?></span>
+          <span class="themes-choix__nom"><?= $theme['icone'] ?> <?= e(t('apparence.' . $cle)) ?></span>
+          <span class="discret themes-choix__aide"><?= e(t('apparence.' . $cle . '_aide')) ?></span>
         </label>
       <?php endforeach; ?>
     </div>
     <p class="actions" style="margin:.8rem 0 0">
       <noscript><button class="bouton bouton--petit" type="submit">Enregistrer</button></noscript>
-      <button class="bouton bouton--discret bouton--petit" type="button" data-reglage-annuler>Fermer</button>
+      <button class="bouton bouton--discret bouton--petit" type="button" data-reglage-annuler><?= e(t('commun.fermer')) ?></button>
+    </p>
+  </form>
+</section>
+
+<?php
+/*
+ * La langue de l'application.
+ *
+ * Comme l'apparence : elle se lit, et les choix ne se déplient qu'en passant
+ * par « Modifier ». Ce qu'on écrit soi-même n'est jamais traduit.
+ */
+$langueActuelle = Langue::courante();
+?>
+<section class="carte" style="margin-bottom:1rem" id="langue" data-reglage>
+  <h2 style="margin-top:0"><?= e(t('langue.titre')) ?></h2>
+
+  <div class="reglage-lecture" data-reglage-lecture>
+    <p class="reglage-lecture__valeur">
+      <?= Langue::LANGUES[$langueActuelle]['drapeau'] ?> <?= e(Langue::LANGUES[$langueActuelle]['nom']) ?>
+    </p>
+    <button class="bouton bouton--secondaire" type="button" data-reglage-modifier><?= e(t('commun.modifier')) ?></button>
+  </div>
+
+  <form method="post" action="<?= url('compte/langue') ?>" data-auto-envoi data-reglage-edition hidden>
+    <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
+    <div class="themes-choix">
+      <?php foreach (Langue::LANGUES as $code => $langue): ?>
+        <label class="themes-choix__option">
+          <input type="radio" name="langue" value="<?= e($code) ?>"<?= $langueActuelle === $code ? ' checked' : '' ?>>
+          <span class="themes-choix__nom"><?= $langue['drapeau'] ?> <?= e($langue['nom']) ?></span>
+        </label>
+      <?php endforeach; ?>
+    </div>
+    <p class="champ__aide"><?= e(t('langue.aide')) ?> <?= e(t('langue.partielle')) ?></p>
+    <p class="actions" style="margin:.4rem 0 0">
+      <noscript><button class="bouton bouton--petit" type="submit"><?= e(t('commun.enregistrer')) ?></button></noscript>
+      <button class="bouton bouton--discret bouton--petit" type="button" data-reglage-annuler><?= e(t('commun.fermer')) ?></button>
     </p>
   </form>
 </section>

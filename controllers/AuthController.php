@@ -286,6 +286,22 @@ final class AuthController
      * reste à 8 h — ce qui est presque toujours ce qu'on veut en déménageant,
      * mais pas en corrigeant une erreur de réglage. L'écran le dit avant.
      */
+    /** La langue de l'application. */
+    public function changerLangue(): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $langue = post('langue');
+        if (!isset(Langue::LANGUES[$langue])) {
+            $langue = Langue::PAR_DEFAUT;
+        }
+        Database::run('UPDATE users SET langue = ? WHERE id = ?', [$langue, Auth::id()]);
+        // Le message part dans la langue qu'on vient de choisir.
+        Langue::imposer($langue);
+        Session::flash('succes', t('langue.enregistree', ['nom' => Langue::LANGUES[$langue]['nom']]));
+        redirect('compte');
+    }
+
     /** L'apparence : claire, sombre, ou celle de l'appareil. */
     public function changerTheme(): void
     {
@@ -296,7 +312,7 @@ final class AuthController
             $theme = 'auto';
         }
         Database::run('UPDATE users SET theme = ? WHERE id = ?', [$theme, Auth::id()]);
-        Session::flash('succes', 'Apparence : ' . mb_strtolower(Auth::THEMES[$theme]['nom']) . '.');
+        Session::flash('succes', t('apparence.enregistree', ['nom' => mb_strtolower(t('apparence.' . $theme))]));
         redirect('compte');
     }
 

@@ -22,6 +22,7 @@ date_default_timezone_set('Europe/Paris');
 require __DIR__ . '/src/Config.php';
 require __DIR__ . '/src/Depot.php';
 require __DIR__ . '/src/Session.php';
+require __DIR__ . '/src/Langue.php';
 require __DIR__ . '/src/Auth.php';
 require __DIR__ . '/src/LimiteurConnexion.php';
 require __DIR__ . '/src/Courriel.php';
@@ -248,6 +249,7 @@ $routes = [
     ['POST', 'compte/mot-de-passe',       [AuthController::class, 'changerMotDePasse']],
     ['POST', 'compte/fuseau',            [AuthController::class, 'changerFuseau']],
     ['POST', 'compte/theme',             [AuthController::class, 'changerTheme']],
+    ['POST', 'compte/langue',            [AuthController::class, 'changerLangue']],
     ['POST', 'compte/pseudo',            [AuthController::class, 'changerPseudo']],
     ['POST', 'compte/transcription',     [AuthController::class, 'changerTranscription']],
     ['POST', 'compte/photo',             [AuthController::class, 'changerPhoto']],

@@ -40,7 +40,7 @@ $ou = static function (array $evt): string {
     ?><?= $compact ? ' jour-planning--compact' : '' ?>">
   <header class="jour-planning__entete">
     <span class="jour-planning__titre">
-      <?= $estAujourdhui ? "Aujourd'hui" : e(ucfirst(date_fr($cle . ' 00:00:00', false))) ?>
+      <?= $estAujourdhui ? e(t('planning.aujourdhui')) : e(ucfirst(date_fr($cle . ' 00:00:00', false))) ?>
     </span>
     <?php if (is_array($rythme)): ?>
       <?php $lieu = Alternance::LIEUX[$rythme['lieu']]; ?>
@@ -49,7 +49,7 @@ $ou = static function (array $evt): string {
         <span aria-hidden="true"><?= $lieu['icone'] ?></span><span class="rythme__nom"> <?= e($lieu['nom']) ?></span>
       </a>
     <?php endif; ?>
-    <a class="discret" href="<?= url('evenements/nouveau', ['date' => $cle]) ?>" data-fenetre>+ ajouter</a>
+    <a class="discret" href="<?= url('evenements/nouveau', ['date' => $cle]) ?>" data-fenetre><?= e(t('planning.ajouter')) ?></a>
   </header>
 
   <?php if ($planning['journee'] !== []): ?>
@@ -99,7 +99,7 @@ $ou = static function (array $evt): string {
       <?php endif; ?>
 
       <?php if ($planning['blocs'] === []): ?>
-        <p class="jour-planning__vide discret">Rien de prévu à cette heure-là.</p>
+        <p class="jour-planning__vide discret"><?= e(t('planning.rien')) ?></p>
       <?php endif; ?>
 
       <?php foreach ($planning['blocs'] as $bloc): ?>

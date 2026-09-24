@@ -64,23 +64,32 @@ function taille_lisible(int $octets): string
     return ($i === 0 ? (string) (int) $taille : number_format($taille, 1, ',', ' ')) . ' ' . $unites[$i];
 }
 
-/** Noms français des mois et des jours. */
-function nom_mois(int $mois): string
+/**
+ * Un mot de l'application, dans la langue choisie.
+ *
+ * C'est le seul chemin : partout ailleurs, on écrit « t('nav.accueil') » plutôt
+ * que « Accueil ». Ce qu'écrit l'utilisateur, lui, n'est jamais traduit.
+ */
+function t(string $cle, array $valeurs = []): string
 {
-    return [1 => 'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
-        'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'][$mois] ?? '';
+    return Langue::texte($cle, $valeurs);
 }
 
-/** Abréviation française usuelle d'un mois : janv., févr., juil., sept.… */
+/** Nom du mois, dans la langue choisie. */
+function nom_mois(int $mois): string
+{
+    return Langue::liste('mois')[$mois - 1] ?? '';
+}
+
+/** Abréviation usuelle d'un mois : janv., févr., juil., sept.… */
 function nom_mois_court(int $mois): string
 {
-    return [1 => 'janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin',
-        'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'][$mois] ?? '';
+    return Langue::liste('mois_courts')[$mois - 1] ?? '';
 }
 
 function jours_semaine(): array
 {
-    return ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+    return Langue::liste('jours');
 }
 
 /** Affiche une date/heure au format français. */
@@ -91,11 +100,13 @@ function date_fr(string $datetime, bool $avecHeure = true): string
         return $datetime;
     }
     $jour = date('j', $ts);
-    $mois = strtolower(nom_mois((int) date('n', $ts)));
+    // Les mois s'écrivent en minuscule en français et en espagnol, en majuscule ailleurs.
+    $mois = nom_mois((int) date('n', $ts));
+    $mois = t('date.mois_minuscule') === '1' ? mb_strtolower($mois) : $mois;
     $annee = date('Y', $ts);
     $texte = "$jour $mois $annee";
     if ($avecHeure) {
-        $texte .= ' à ' . date('H\hi', $ts);
+        $texte .= ' ' . t('date.a') . ' ' . date('H\hi', $ts);
     }
     return $texte;
 }

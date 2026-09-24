@@ -12,16 +12,16 @@
 <div class="entete-page">
   <div>
     <?php // Par son pseudo ; à défaut, par son prénom. ?>
-    <h1>Bonjour <?= e((string) (Auth::utilisateur()['pseudo'] ?? '') !== ''
-        ? (string) Auth::utilisateur()['pseudo'] : explode(' ', (string) Auth::utilisateur()['nom'])[0]) ?> 👋</h1>
-    <p>Nous sommes le <?= e(date_fr($aujourdhui->format('Y-m-d H:i:s'), false)) ?>.<?php if ($focus['aujourdhui'] > 0): ?>
-      <span class="discret">· <?= e(Focus::duree((int) $focus['aujourdhui'])) ?> de révision aujourd’hui<?php if ($focus['serie'] > 1): ?>, <?= (int) $focus['serie'] ?> jours d’affilée 🔥<?php endif; ?>.</span><?php endif; ?></p>
+    <h1><?= e(t('accueil.bonjour', ['nom' => (string) (Auth::utilisateur()['pseudo'] ?? '') !== ''
+        ? (string) Auth::utilisateur()['pseudo'] : explode(' ', (string) Auth::utilisateur()['nom'])[0]])) ?></h1>
+    <p><?= e(t('accueil.nous_sommes', ['date' => date_fr($aujourdhui->format('Y-m-d H:i:s'), false)])) ?><?php if ($focus['aujourdhui'] > 0): ?>
+      <span class="discret">· <?= e(t('accueil.revision_du_jour', ['duree' => Focus::duree((int) $focus['aujourdhui'])])) ?><?php if ($focus['serie'] > 1): ?><?= e(t('accueil.serie', ['jours' => (int) $focus['serie']])) ?><?php endif; ?>.</span><?php endif; ?></p>
   </div>
   <div class="actions">
     <?php // Réviser d’un clic : la session reprend le dernier cours révisé. ?>
-    <a class="bouton bouton--secondaire" href="<?= url('focus') ?>">🎯 Réviser 25 min</a>
-    <a class="bouton bouton--secondaire" href="<?= url('cours/nouveau') ?>" data-fenetre>+ Nouveau cours</a>
-    <a class="bouton" href="<?= url('evenements/nouveau') ?>">+ Nouvel évènement</a>
+    <a class="bouton bouton--secondaire" href="<?= url('focus') ?>"><?= e(t('accueil.reviser')) ?></a>
+    <a class="bouton bouton--secondaire" href="<?= url('cours/nouveau') ?>" data-fenetre><?= e(t('accueil.nouveau_cours')) ?></a>
+    <a class="bouton" href="<?= url('evenements/nouveau') ?>"><?= e(t('accueil.nouvel_evenement')) ?></a>
   </div>
 </div>
 
@@ -37,15 +37,15 @@
      */
     ?>
     <section class="carte">
-      <h2>Mes tâches</h2>
+      <h2><?= e(t('accueil.mes_taches')) ?></h2>
       <?php if ($taches === []): ?>
         <p class="discret" style="margin:0">
           <?php if ((int) $stats['taches'] > 0): ?>
-            <?= (int) $stats['taches'] ?> tâche<?= (int) $stats['taches'] > 1 ? 's' : '' ?> en attente, sans échéance proche.
-            <a href="<?= url('taches') ?>">Voir mes listes</a>.
+            <?= e(t('accueil.taches_en_attente', ['n' => (int) $stats['taches']])) ?>
+            <a href="<?= url('taches') ?>"><?= e(t('accueil.voir_listes')) ?></a>.
           <?php else: ?>
-            Rien à faire dans les jours qui viennent.
-            <a href="<?= url('taches') ?>">Ouvrir mes listes</a>.
+            <?= e(t('accueil.rien_a_faire')) ?>
+            <a href="<?= url('taches') ?>"><?= e(t('accueil.ouvrir_listes')) ?></a>.
           <?php endif; ?>
         </p>
       <?php else: ?>
@@ -68,9 +68,9 @@
     </section>
 
     <section class="carte">
-      <h2>Examens &amp; devoirs</h2>
+      <h2><?= e(t('accueil.examens')) ?></h2>
       <?php if ($examens === []): ?>
-        <p class="discret">Aucune échéance enregistrée.</p>
+        <p class="discret"><?= e(t('accueil.aucune_echeance')) ?></p>
       <?php else: ?>
         <div class="pile">
           <?php foreach ($examens as $evt):
@@ -85,18 +85,18 @@
               </span>
               <span class="evt-ligne__droite">
                 <span class="pastille">
-                  <?= $jours <= 0 ? "aujourd'hui" : ($jours === 1 ? 'demain' : 'J-' . $jours) ?>
+                  <?= e($jours <= 0 ? t('accueil.aujourdhui') : ($jours === 1 ? t('accueil.demain') : 'J-' . $jours)) ?>
                 </span>
                 <?php // Avant une échéance, on va au cours ou à sa fiche. ?>
                 <?php $coursId = (int) ($evt['cours_id'] ?? 0); ?>
                 <?php if ($coursId > 0): ?>
                   <a class="bouton bouton--secondaire" href="<?= url('cours/' . $coursId) ?>"
-                     title="Ouvrir le cours">📘 Cours</a>
+                     title="Ouvrir le cours"><?= e(t('accueil.cours')) ?></a>
                   <a class="bouton bouton--secondaire" href="<?= url('revision/' . $coursId) ?>"
-                     title="Ouvrir la fiche de révision">📝 Révision</a>
+                     title="Ouvrir la fiche de révision"><?= e(t('accueil.fiche_revision')) ?></a>
                 <?php endif; ?>
                 <a class="bouton bouton--discret bouton--petit"
-                   href="<?= url('evenements/' . $evt['id'] . '/modifier') ?>" title="Modifier">✎</a>
+                   href="<?= url('evenements/' . $evt['id'] . '/modifier') ?>" title="<?= e(t('accueil.modifier')) ?>">✎</a>
               </span>
             </div>
           <?php endforeach; ?>
@@ -133,7 +133,7 @@
       $ensuite = $alternance['situation']['ensuite'] ?? null;
       ?>
       <section class="carte">
-        <h2><a href="<?= url('alternance') ?>">Mon alternance</a></h2>
+        <h2><a href="<?= url('alternance') ?>"><?= e(t('accueil.alternance')) ?></a></h2>
         <?php if ($alternance['entreprise'] !== ''): ?>
           <p class="discret" style="margin:0 0 .5rem"><?= e($alternance['entreprise']) ?></p>
         <?php endif; ?>
@@ -173,7 +173,7 @@
     <?php if ($travaux['taches'] !== [] || $travaux['invitations'] > 0): ?>
       <?php // Les travaux de groupe : ce qu'on m'a confié, et qui m'attend. ?>
       <section class="carte">
-        <h2><a href="<?= url('travaux') ?>">Travaux de groupe</a></h2>
+        <h2><a href="<?= url('travaux') ?>"><?= e(t('accueil.travaux')) ?></a></h2>
         <?php if ($travaux['invitations'] > 0): ?>
           <p style="margin:0 0 .5rem">✉️ <a href="<?= url('travaux') ?>"><?= (int) $travaux['invitations'] ?> invitation<?= $travaux['invitations'] > 1 ? 's' : '' ?> à un travail de groupe</a></p>
         <?php endif; ?>

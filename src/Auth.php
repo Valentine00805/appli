@@ -45,7 +45,7 @@ final class Auth
         if (!$id) {
             return null;
         }
-        $u = Database::one('SELECT id, nom, pseudo, photo_nom, email, fuseau, theme, transcription_vocale, created_at, password_hash FROM users WHERE id = ?', [$id]);
+        $u = Database::one('SELECT id, nom, pseudo, photo_nom, email, fuseau, theme, langue, transcription_vocale, created_at, password_hash FROM users WHERE id = ?', [$id]);
         $empreinte = $u === null ? null : substr(hash('sha256', (string) $u['password_hash']), 0, 32);
         if ($u === null || (isset($_SESSION['empreinte_mdp']) && !hash_equals((string) $_SESSION['empreinte_mdp'], $empreinte))) {
             self::deconnecter();

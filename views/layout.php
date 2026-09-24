@@ -13,7 +13,7 @@ $actif = static function (string $prefixe) use ($route): string {
 ?>
 <!doctype html>
 <?php // L'apparence choisie dans « Mon compte » ; « auto » suit l'appareil. ?>
-<html lang="fr" data-theme="<?= e(Auth::theme()) ?>">
+<html lang="<?= e(Langue::courante()) ?>" data-theme="<?= e(Auth::theme()) ?>">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -29,7 +29,7 @@ $actif = static function (string $prefixe) use ($route): string {
 <body data-transcription="<?= Auth::connecte() ? (int) (Auth::utilisateur()['transcription_vocale'] ?? 1) : 1 ?>"
       data-service-worker="<?= url('service-worker.js') ?>" data-portee="<?= url('') ?>">
 
-<a class="lien-evitement" href="#contenu">Aller au contenu</a>
+<a class="lien-evitement" href="#contenu"><?= e(t('nav.aller_contenu')) ?></a>
 
 <header class="entete" id="haut">
   <div class="entete__interieur">
@@ -38,54 +38,54 @@ $actif = static function (string $prefixe) use ($route): string {
       <span><?= e((string) Config::get('app', 'nom')) ?></span>
     </a>
 
-    <button class="burger" type="button" aria-expanded="false" aria-controls="navigation" aria-label="Ouvrir le menu">
+    <button class="burger" type="button" aria-expanded="false" aria-controls="navigation" aria-label="<?= e(t('nav.ouvrir_menu')) ?>">
       <span></span><span></span><span></span>
     </button>
 
     <nav class="nav" id="navigation" aria-label="Navigation principale">
-      <a href="<?= url('') ?>"<?= $actif('') ?>>Accueil</a>
-      <a href="<?= url('calendrier') ?>"<?= $actif('calendrier') ?>>Calendrier</a>
-      <a href="<?= url('cours') ?>"<?= $actif('cours') ?>>Mes cours</a>
+      <a href="<?= url('') ?>"<?= $actif('') ?>><?= e(t('nav.accueil')) ?></a>
+      <a href="<?= url('calendrier') ?>"<?= $actif('calendrier') ?>><?= e(t('nav.calendrier')) ?></a>
+      <a href="<?= url('cours') ?>"<?= $actif('cours') ?>><?= e(t('nav.cours')) ?></a>
       <?php // Ce qu'on m'a partagé et que je n'ai pas encore vu. ?>
       <?php $nouveauxPartages = $utilisateur !== null ? Partages::nbNonVus((int) $utilisateur['id']) : 0; ?>
       <a href="<?= url('partages') ?>"<?= $actif('partages') ?>>
-        Partagés<?php if ($nouveauxPartages > 0): ?> <span class="compteur" title="<?= $nouveauxPartages ?> nouveau<?= $nouveauxPartages > 1 ? 'x' : '' ?>"><?= $nouveauxPartages > 99 ? '99+' : $nouveauxPartages ?></span><?php endif; ?>
+        <?= e(t('nav.partages')) ?><?php if ($nouveauxPartages > 0): ?> <span class="compteur" title="<?= e(t('nav.nouveaux', ['n' => $nouveauxPartages])) ?>"><?= $nouveauxPartages > 99 ? '99+' : $nouveauxPartages ?></span><?php endif; ?>
       </a>
-      <a href="<?= url('revision') ?>"<?= $actif('revision') ?>>Révision</a>
-      <a href="<?= url('cartes') ?>"<?= $actif('cartes') ?>>Cartes</a>
-      <a href="<?= url('taches') ?>"<?= $actif('taches') ?>>Tâches</a>
-      <a href="<?= url('tableau') ?>"<?= $actif('tableau') ?>>Tableau</a>
-      <a href="<?= url('alternance') ?>"<?= $actif('alternance') ?>>Alternance</a>
+      <a href="<?= url('revision') ?>"<?= $actif('revision') ?>><?= e(t('nav.revision')) ?></a>
+      <a href="<?= url('cartes') ?>"<?= $actif('cartes') ?>><?= e(t('nav.cartes')) ?></a>
+      <a href="<?= url('taches') ?>"<?= $actif('taches') ?>><?= e(t('nav.taches')) ?></a>
+      <a href="<?= url('tableau') ?>"<?= $actif('tableau') ?>><?= e(t('nav.tableau')) ?></a>
+      <a href="<?= url('alternance') ?>"<?= $actif('alternance') ?>><?= e(t('nav.alternance')) ?></a>
       <?php // Les travaux de groupe : la pastille compte les invitations reçues. ?>
       <?php $invitationsTravaux = $utilisateur !== null ? Travaux::nbInvitations((int) $utilisateur['id']) : 0; ?>
       <a href="<?= url('travaux') ?>"<?= $actif('travaux') ?>>
-        Groupes<?php if ($invitationsTravaux > 0): ?> <span class="compteur" title="<?= $invitationsTravaux ?> invitation<?= $invitationsTravaux > 1 ? 's' : '' ?>"><?= $invitationsTravaux ?></span><?php endif; ?>
+        <?= e(t('nav.groupes')) ?><?php if ($invitationsTravaux > 0): ?> <span class="compteur" title="<?= e(t('nav.invitations', ['n' => $invitationsTravaux])) ?>"><?= $invitationsTravaux ?></span><?php endif; ?>
       </a>
-      <a href="<?= url('budget') ?>"<?= $actif('budget') ?>>Budget</a>
-      <a href="<?= url('organisation/matieres') ?>"<?= $actif('organisation') ?>>Organisation</a>
+      <a href="<?= url('budget') ?>"<?= $actif('budget') ?>><?= e(t('nav.budget')) ?></a>
+      <a href="<?= url('organisation/matieres') ?>"<?= $actif('organisation') ?>><?= e(t('nav.organisation')) ?></a>
       <?php // Les amis : la pastille compte les messages non lus et les demandes reçues. ?>
       <?php $attenteAmis = $utilisateur !== null ? Amis::enAttente((int) $utilisateur['id']) : 0; ?>
       <a href="<?= url('amis') ?>"<?= $actif('amis') ?> class="nav__amis">
-        Amis<?php if ($attenteAmis > 0): ?> <span class="compteur" title="<?= $attenteAmis ?> en attente"><?= $attenteAmis > 99 ? '99+' : $attenteAmis ?></span><?php endif; ?>
+        <?= e(t('nav.amis')) ?><?php if ($attenteAmis > 0): ?> <span class="compteur" title="<?= e(t('nav.en_attente', ['n' => $attenteAmis])) ?>"><?= $attenteAmis > 99 ? '99+' : $attenteAmis ?></span><?php endif; ?>
       </a>
 
       <form class="recherche-rapide" action="<?= url('recherche') ?>" method="get" role="search">
-        <input type="search" name="q" placeholder="Rechercher…" aria-label="Rechercher partout : cours, calendrier, notes, journal, tâches"
+        <input type="search" name="q" placeholder="<?= e(t('nav.rechercher')) ?>" aria-label="<?= e(t('nav.rechercher_aide')) ?>"
                value="<?= e((string) ($_GET['q'] ?? '')) ?>">
       </form>
 
       <div class="nav__compte">
         <?php if ($utilisateur !== null): ?>
-          <a class="nav__utilisateur" href="<?= url('compte') ?>" title="Mon compte">
+          <a class="nav__utilisateur" href="<?= url('compte') ?>" title="<?= e(t('nav.compte')) ?>">
             <?= Amis::avatar((int) $utilisateur['id'], Auth::nomAffiche($utilisateur)) ?>
             <span class="nav__utilisateur-nom"><?= e(Auth::nomAffiche($utilisateur)) ?></span>
           </a>
           <form action="<?= url('deconnexion') ?>" method="post">
             <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
-            <button class="bouton bouton--discret" type="submit">Déconnexion</button>
+            <button class="bouton bouton--discret" type="submit"><?= e(t('nav.deconnexion')) ?></button>
           </form>
         <?php else: ?>
-          <a class="bouton bouton--secondaire" href="<?= url('connexion') ?>">Connexion</a>
+          <a class="bouton bouton--secondaire" href="<?= url('connexion') ?>"><?= e(t('nav.connexion')) ?></a>
         <?php endif; ?>
       </div>
     </nav>
@@ -126,13 +126,13 @@ if ($utilisateur !== null
  * efface la flèche tant qu'on est en haut, où elle n'aurait rien à faire.
  */
 ?>
-<a class="haut-de-page" href="#haut" title="Remonter en haut de la page">
+<a class="haut-de-page" href="#haut" title="<?= e(t('nav.haut_de_page')) ?>">
   <svg class="haut-de-page__anneau" viewBox="0 0 44 44" aria-hidden="true" focusable="false">
     <circle class="haut-de-page__piste" cx="22" cy="22" r="20"></circle>
     <circle class="haut-de-page__part" cx="22" cy="22" r="20"></circle>
   </svg>
   <span class="haut-de-page__fleche" aria-hidden="true">↑</span>
-  <span class="sr-only">Remonter en haut de la page</span>
+  <span class="sr-only"><?= e(t('nav.haut_de_page')) ?></span>
 </a>
 
 <?php
