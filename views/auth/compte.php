@@ -36,6 +36,37 @@ $pseudoActuel = (string) ($moi['pseudo'] ?? '');
 $pseudoSaisi = Session::reprendre('pseudo_saisi');
 $enEdition = is_string($pseudoSaisi);
 ?>
+<?php
+/*
+ * L'apparence : claire, sombre, ou celle de l'appareil.
+ *
+ * Le choix s'applique à l'instant où on le fait — le script pose le thème sur
+ * la page avant même l'enregistrement —, puis le formulaire part tout seul.
+ */
+$themeActuel = Auth::theme($moi);
+?>
+<section class="carte" style="margin-bottom:1rem" id="apparence">
+  <h2 style="margin-top:0">🎨 Apparence</h2>
+  <form method="post" action="<?= url('compte/theme') ?>" data-auto-envoi data-choix-theme>
+    <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
+    <div class="themes-choix">
+      <?php foreach (Auth::THEMES as $cle => $theme): ?>
+        <label class="themes-choix__option">
+          <input type="radio" name="theme" value="<?= e($cle) ?>"<?= $themeActuel === $cle ? ' checked' : '' ?>>
+          <span class="themes-choix__apercu themes-choix__apercu--<?= e($cle) ?>" aria-hidden="true">
+            <span class="themes-choix__barre"></span>
+            <span class="themes-choix__ligne"></span>
+            <span class="themes-choix__ligne themes-choix__ligne--courte"></span>
+          </span>
+          <span class="themes-choix__nom"><?= $theme['icone'] ?> <?= e($theme['nom']) ?></span>
+          <span class="discret themes-choix__aide"><?= e($theme['aide']) ?></span>
+        </label>
+      <?php endforeach; ?>
+    </div>
+    <noscript><button class="bouton bouton--petit" type="submit" style="margin-top:.8rem">Enregistrer</button></noscript>
+  </form>
+</section>
+
 <section class="carte" style="margin-bottom:1rem" id="pseudo-carte" data-reglage>
   <h2 style="margin-top:0">🏷️ Mon pseudo</h2>
 

@@ -247,6 +247,7 @@ $routes = [
     ['POST', 'notifications/envoyer',     [NotificationsController::class, 'envoyer']],
     ['POST', 'compte/mot-de-passe',       [AuthController::class, 'changerMotDePasse']],
     ['POST', 'compte/fuseau',            [AuthController::class, 'changerFuseau']],
+    ['POST', 'compte/theme',             [AuthController::class, 'changerTheme']],
     ['POST', 'compte/pseudo',            [AuthController::class, 'changerPseudo']],
     ['POST', 'compte/transcription',     [AuthController::class, 'changerTranscription']],
     ['POST', 'compte/photo',             [AuthController::class, 'changerPhoto']],

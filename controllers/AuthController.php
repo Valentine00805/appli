@@ -286,6 +286,20 @@ final class AuthController
      * reste à 8 h — ce qui est presque toujours ce qu'on veut en déménageant,
      * mais pas en corrigeant une erreur de réglage. L'écran le dit avant.
      */
+    /** L'apparence : claire, sombre, ou celle de l'appareil. */
+    public function changerTheme(): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $theme = post('theme');
+        if (!isset(Auth::THEMES[$theme])) {
+            $theme = 'auto';
+        }
+        Database::run('UPDATE users SET theme = ? WHERE id = ?', [$theme, Auth::id()]);
+        Session::flash('succes', 'Apparence : ' . mb_strtolower(Auth::THEMES[$theme]['nom']) . '.');
+        redirect('compte');
+    }
+
     public function changerFuseau(): void
     {
         Auth::exiger();

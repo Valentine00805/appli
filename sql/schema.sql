@@ -1430,3 +1430,9 @@ ALTER TABLE `conversation_membres`
 -- Chaque sorte coupée peut porter sa fin : « messages@20260922180000 ».
 ALTER TABLE `users`
   MODIFY `notifications_coupees` VARCHAR(500) NOT NULL DEFAULT '';
+
+-- L'apparence choisie : claire, sombre, ou celle de l'appareil (« auto »,
+-- ce que l'application faisait jusqu'ici).
+
+ALTER TABLE `users`
+  ADD COLUMN `theme` ENUM('auto', 'clair', 'sombre') NOT NULL DEFAULT 'auto' AFTER `fuseau`;

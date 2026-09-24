@@ -4124,6 +4124,16 @@
     enregistrerCoupure(formulaire, bouton && bouton.name === "pendant" ? bouton.value : null, function () {});
   });
 
+  /*
+   * L'apparence choisie s'applique à l'instant du clic : la page prend le
+   * thème sans attendre l'enregistrement, qui part juste après (data-auto-envoi).
+   */
+  document.addEventListener("change", function (evenement) {
+    var choix = evenement.target;
+    if (!choix.form || !choix.form.hasAttribute("data-choix-theme") || choix.name !== "theme") { return; }
+    document.documentElement.setAttribute("data-theme", choix.value);
+  });
+
   // Les dossiers se plient : seuls ceux de premier niveau restent
   // visibles, un clic sur un dossier montre ou masque les siens.
   // Sans JavaScript, rien ne se replie et l arborescence reste entiere.

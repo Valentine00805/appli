@@ -45,7 +45,7 @@ final class Auth
         if (!$id) {
             return null;
         }
-        $u = Database::one('SELECT id, nom, pseudo, photo_nom, email, fuseau, transcription_vocale, created_at, password_hash FROM users WHERE id = ?', [$id]);
+        $u = Database::one('SELECT id, nom, pseudo, photo_nom, email, fuseau, theme, transcription_vocale, created_at, password_hash FROM users WHERE id = ?', [$id]);
         $empreinte = $u === null ? null : substr(hash('sha256', (string) $u['password_hash']), 0, 32);
         if ($u === null || (isset($_SESSION['empreinte_mdp']) && !hash_equals((string) $_SESSION['empreinte_mdp'], $empreinte))) {
             self::deconnecter();
@@ -126,6 +126,23 @@ final class Auth
         $dit = trim((string) ($u['fuseau'] ?? ''));
 
         return self::fuseauValide($dit) ? $dit : self::FUSEAU_PAR_DEFAUT;
+    }
+
+    /** Les apparences possibles, et ce qu'on en dit. */
+    public const THEMES = [
+        'auto'   => ['nom' => 'Comme mon appareil', 'icone' => '🌗',
+                     'aide' => 'Claire le jour, sombre le soir : l’application suit le réglage de votre téléphone ou de votre ordinateur.'],
+        'clair'  => ['nom' => 'Claire',  'icone' => '☀️', 'aide' => 'Toujours claire, quel que soit l’appareil.'],
+        'sombre' => ['nom' => 'Sombre',  'icone' => '🌙', 'aide' => 'Toujours sombre — reposante le soir, et plus douce sur un écran OLED.'],
+    ];
+
+    /** L'apparence choisie : « auto » tant qu'on n'a rien choisi. */
+    public static function theme(?array $utilisateur = null): string
+    {
+        $utilisateur ??= self::utilisateur();
+        $theme = (string) ($utilisateur['theme'] ?? 'auto');
+
+        return isset(self::THEMES[$theme]) ? $theme : 'auto';
     }
 
     /** Ce fuseau existe-t-il vraiment ? On n'écrit pas n'importe quoi en base. */

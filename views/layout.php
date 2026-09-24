@@ -12,7 +12,8 @@ $actif = static function (string $prefixe) use ($route): string {
 };
 ?>
 <!doctype html>
-<html lang="fr">
+<?php // L'apparence choisie dans « Mon compte » ; « auto » suit l'appareil. ?>
+<html lang="fr" data-theme="<?= e(Auth::theme()) ?>">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">

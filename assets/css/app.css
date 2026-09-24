@@ -24,8 +24,25 @@
   --rayon-s: 9px;
 }
 
+/*
+ * Le thème : « auto » suit l'appareil (c'est le défaut), « clair » et
+ * « sombre » imposent le leur. « color-scheme » prévient le navigateur, pour
+ * qu'il habille aussi ce qu'il dessine lui-même : cases à cocher, menus,
+ * calendriers des champs de date, barres de défilement.
+ */
+/* L'avertissement d'un agenda à relire : chaud en clair, sourd en sombre. */
+:root { --attention: #e0a030; --attention-bordure: #f0c36d; --attention-doux: #fdf6e6; }
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="clair"]) { --attention: #fbbf24; --attention-bordure: #78350f; --attention-doux: rgb(251 191 36 / 12%); }
+}
+:root[data-theme="sombre"] { --attention: #fbbf24; --attention-bordure: #78350f; --attention-doux: rgb(251 191 36 / 12%); }
+
+:root { color-scheme: light dark; }
+:root[data-theme="clair"] { color-scheme: light; }
+:root[data-theme="sombre"] { color-scheme: dark; }
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="clair"]) {
     --fond: #12141d;
     --fond-carte: #1b1e2b;
     --fond-doux: #232739;
@@ -45,6 +62,26 @@
     --ombre: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 24px rgba(0, 0, 0, .35);
   }
 }
+:root[data-theme="sombre"] {
+    --fond: #12141d;
+    --fond-carte: #1b1e2b;
+    --fond-doux: #232739;
+    --bordure: #2f3446;
+    --bordure-forte: #454b63;
+    --texte: #e8eaf3;
+    --texte-doux: #9aa2bd;
+    --accent: #8b85ff;
+    --accent-fonce: #a29dff;
+    --accent-doux: #2a2850;
+    --succes: #34d399;
+    --succes-doux: #123a2e;
+    --erreur: #fca5a5;
+    --erreur-doux: #401c1c;
+    --info: #7dd3fc;
+    --info-doux: #10334a;
+    --ombre: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 24px rgba(0, 0, 0, .35);
+  }
+
 
 * { box-sizing: border-box; }
 
@@ -345,9 +382,12 @@ textarea { min-height: 260px; resize: vertical; line-height: 1.65; }
 .difference__ajout, .difference__retrait { padding: .15rem .35rem; }
 .difference__legende { display: flex; gap: .8rem; font-size: .82rem; margin: 0 0 .4rem; }
 @media (prefers-color-scheme: dark) {
-  .difference ins, .difference__ajout { background: #14532d; color: #dcfce7; }
-  .difference del, .difference__retrait { background: #7f1d1d; color: #fee2e2; }
+  :root:not([data-theme="clair"]) .difference ins, :root:not([data-theme="clair"]) .difference__ajout { background: #14532d; color: #dcfce7; }
+  :root:not([data-theme="clair"]) .difference del, :root:not([data-theme="clair"]) .difference__retrait { background: #7f1d1d; color: #fee2e2; }
 }
+:root[data-theme="sombre"] .difference ins, :root[data-theme="sombre"] .difference__ajout { background: #14532d; color: #dcfce7; }
+:root[data-theme="sombre"] .difference del, :root[data-theme="sombre"] .difference__retrait { background: #7f1d1d; color: #fee2e2; }
+
 .bouton-jaime { font-variant-numeric: tabular-nums; }
 .bouton-jaime[aria-pressed="true"] { color: #e11d48; }
 .partage-droits__choix { display: flex; gap: .5rem; align-items: flex-start; padding: .45rem .6rem;
@@ -429,7 +469,7 @@ a.bulle__partage:hover, a.bulle__partage:focus-visible { border-color: var(--acc
   flex: none; display: inline-flex; align-items: center; justify-content: center; width: 2.2rem; height: 2.2rem;
   border: 0; border-radius: var(--rayon-s); background: transparent; color: var(--texte-doux); cursor: pointer;
 }
-.epingles__retirer:hover, .epingles__retirer:focus-visible { background: #fee2e2; color: #b91c1c; outline: none; }
+.epingles__retirer:hover, .epingles__retirer:focus-visible { background: var(--erreur-doux); color: var(--erreur); outline: none; }
 .epingles__retirer:disabled { opacity: .5; cursor: wait; }
 .epingles__entete { display: flex; justify-content: space-between; gap: .5rem; font-size: .8rem; }
 .epingles__entete span { color: var(--texte-doux); flex: none; }
@@ -502,7 +542,11 @@ a.bulle__partage:hover, a.bulle__partage:focus-visible { border-color: var(--acc
 .chat__messages { flex: 1; overflow-y: auto; padding: 1rem; display: flex; flex-direction: column; gap: .35rem; }
 /* Le fond d'écran : l'image reste en place pendant qu'on défile, sous un voile qui garde le texte lisible. */
 :root { --voile-fond: rgb(255 255 255 / 30%); }
-@media (prefers-color-scheme: dark) { :root { --voile-fond: rgb(0 0 0 / 45%); } }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="clair"]) { --voile-fond: rgb(0 0 0 / 45%); }
+}
+:root[data-theme="sombre"] { --voile-fond: rgb(0 0 0 / 45%); }
+
 .chat__messages--fond {
   background: linear-gradient(var(--voile-fond), var(--voile-fond)), var(--fond-discussion) center / cover no-repeat;
 }
@@ -2796,9 +2840,9 @@ ul.apercu-liste--n2 { list-style-type: square; }
   margin: 0 0 .8rem;
   padding: .65rem .8rem;
   border-radius: var(--rayon-s);
-  border: 1px solid #f0c36d;
-  border-left: 4px solid #e0a030;
-  background: #fdf6e6;
+  border: 1px solid var(--attention-bordure);
+  border-left: 4px solid var(--attention);
+  background: var(--attention-doux);
   font-size: .9rem;
   line-height: 1.45;
 }
@@ -2919,7 +2963,7 @@ ul.apercu-liste--n2 { list-style-type: square; }
   margin-bottom: .4rem;
 }
 .agenda-carte__titre h2 { margin: 0; font-size: 1.05rem; }
-.pastille--ok { background: #dcfce7; color: #14532d; }
+.pastille--ok { background: var(--succes-doux); color: var(--succes); }
 .pastille--muette { background: var(--fond); color: var(--texte-doux, #64748b); }
 
 /* Le volet range les agendas par fournisseur : un intertitre discret, qui
@@ -3578,13 +3622,20 @@ summary.cal-volet__groupe:focus-visible {
   --entreprise-doux: #fef3c7;
 }
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="clair"]) {
     --ecole: #7dd3fc;
     --ecole-doux: rgb(56 189 248 / 16%);
     --entreprise: #fcd34d;
     --entreprise-doux: rgb(251 191 36 / 16%);
   }
 }
+:root[data-theme="sombre"] {
+    --ecole: #7dd3fc;
+    --ecole-doux: rgb(56 189 248 / 16%);
+    --entreprise: #fcd34d;
+    --entreprise-doux: rgb(251 191 36 / 16%);
+  }
+
 .alternance-situation {
   margin: 0 0 1.2rem; padding: .7rem 1rem; border-radius: var(--rayon-s);
   background: var(--fond-doux); border-left: 4px solid var(--bordure-forte);
@@ -3675,7 +3726,7 @@ summary.cal-volet__groupe:focus-visible {
   --absence-doux: #ffe4e6;
 }
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="clair"]) {
     --conges: #5eead4;
     --conges-doux: rgb(45 212 191 / 16%);
     --ferie: #c4b5fd;
@@ -3684,6 +3735,15 @@ summary.cal-volet__groupe:focus-visible {
     --absence-doux: rgb(251 113 133 / 16%);
   }
 }
+:root[data-theme="sombre"] {
+    --conges: #5eead4;
+    --conges-doux: rgb(45 212 191 / 16%);
+    --ferie: #c4b5fd;
+    --ferie-doux: rgb(167 139 250 / 16%);
+    --absence: #fda4af;
+    --absence-doux: rgb(251 113 133 / 16%);
+  }
+
 .alternance-lieux { flex-wrap: wrap; }
 .alternance-lieux label { flex: 1 1 7rem; }
 .alternance-lieux input:checked + .alternance-lieux__conges { border-color: var(--conges); background: var(--conges-doux); color: var(--conges); }
@@ -3888,3 +3948,32 @@ summary.cal-volet__groupe:focus-visible {
 .notifications-pendant__choix:hover { border-color: var(--accent); color: var(--accent); }
 /* Le menu de durée ne paraît que pour une sorte décochée. */
 .notifications-choix li:has(> .notifications-choix__ligne input:checked) > .notifications-choix__duree { display: none; }
+/* --- Apparence : claire, sombre, ou celle de l'appareil ------------------- */
+
+.themes-choix { display: grid; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); gap: .7rem; }
+.themes-choix__option {
+  display: grid; gap: .3rem; padding: .7rem; cursor: pointer;
+  border: 1px solid var(--bordure); border-radius: var(--rayon-s); background: var(--fond-carte);
+}
+.themes-choix__option:hover { border-color: var(--bordure-forte); }
+.themes-choix__option:has(input:checked) { border-color: var(--accent); background: var(--accent-doux); }
+.themes-choix__option input { position: absolute; opacity: 0; width: 0; height: 0; }
+.themes-choix__nom { font-weight: 650; }
+.themes-choix__aide { font-size: .82rem; }
+
+/* L'aperçu : une page en miniature, dans les couleurs du thème proposé. */
+.themes-choix__apercu {
+  display: grid; gap: .35rem; align-content: start;
+  height: 4.2rem; padding: .5rem; border-radius: var(--rayon-s); border: 1px solid var(--bordure);
+  background: #f5f6fa;
+}
+.themes-choix__barre { height: .7rem; border-radius: 3px; background: #4f46e5; }
+.themes-choix__ligne { height: .45rem; border-radius: 3px; background: #c6ccdd; }
+.themes-choix__ligne--courte { width: 60%; }
+.themes-choix__apercu--sombre { background: #12141d; border-color: #2f3446; }
+.themes-choix__apercu--sombre .themes-choix__barre { background: #8b85ff; }
+.themes-choix__apercu--sombre .themes-choix__ligne { background: #454b63; }
+/* « Comme mon appareil » : la moitié claire, la moitié sombre. */
+.themes-choix__apercu--auto { background: linear-gradient(105deg, #f5f6fa 50%, #12141d 50%); }
+.themes-choix__apercu--auto .themes-choix__barre { background: linear-gradient(105deg, #4f46e5 50%, #8b85ff 50%); }
+.themes-choix__apercu--auto .themes-choix__ligne { background: linear-gradient(105deg, #c6ccdd 50%, #454b63 50%); }
