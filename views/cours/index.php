@@ -11,7 +11,7 @@
 <div class="entete-page">
   <div>
     <h1><?= e(t('cours.titre')) ?></h1>
-    <p><?= e(t('cours.affiches', ['n' => count($cours)])) ?></p>
+    <p><?= e(tn('cours.affiches', count($cours))) ?></p>
   </div>
   <div class="actions">
     <?php
@@ -58,7 +58,7 @@
     <?php // Un dossier ouvert : de quoi le partager tel quel, avec ses cours. ?>
     <?php if ($dossierId !== null): ?>
       <a class="bouton bouton--secondaire bouton-partage" href="<?= url('partager/dossiers/' . $dossierId) ?>"
-         data-fenetre><?= Partages::icone() ?> Partager le dossier</a>
+         data-fenetre><?= Partages::icone() ?> <?= e(t('cours.partager_dossier')) ?></a>
     <?php endif; ?>
     <a class="bouton" href="<?= url('cours/nouveau') ?>" data-fenetre><?= e(t('cours.bouton_nouveau')) ?></a>
   </div>
@@ -183,7 +183,9 @@ $descendanceDe = static function (int $id) use (&$descendanceDe, $enfantsDe): ar
     <form class="cal-volet-bascule" method="post"
           action="<?= url('dossiers/colonne') ?>"
           data-volet-bascule="<?= e(url('dossiers/colonne')) ?>"
-          data-classe-ferme="cours-vue--ferme" data-quoi="les dossiers">
+          data-classe-ferme="cours-vue--ferme"
+          data-montrer="<?= e(t('cours.montrer_dossiers')) ?>"
+          data-masquer="<?= e(t('cours.masquer_dossiers')) ?>">
       <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
       <input type="hidden" name="retour" value="<?= e((string) ($_SERVER['REQUEST_URI'] ?? '')) ?>">
       <input type="hidden" name="ferme" value="<?= $dossiersFermes ? '0' : '1' ?>">
@@ -210,7 +212,7 @@ $descendanceDe = static function (int $id) use (&$descendanceDe, $enfantsDe): ar
       <a class="dossier-cible<?= $dossierId === null ? ' dossier-cible--active' : '' ?>"
          href="<?= $lienDossier(null) ?>">
         <span aria-hidden="true">🗃️</span>
-        <span style="flex:1;min-width:0">Tous les cours</span>
+        <span style="flex:1;min-width:0"><?= e(t('cours.tous')) ?></span>
         <span class="dossier-cible__compte"><?= (int) $total ?></span>
       </a>
     </div>
@@ -254,7 +256,7 @@ $descendanceDe = static function (int $id) use (&$descendanceDe, $enfantsDe): ar
           <details class="dossier-renommer">
             <summary title="<?= e(t('cours.renommer_dossier', ['nom' => $d['nom']])) ?>">
               <span aria-hidden="true">✎</span>
-              <span class="sr-only">Modifier <?= e($d['nom']) ?></span>
+              <span class="sr-only"><?= e(t('cours.modifier_dossier', ['nom' => $d['nom']])) ?></span>
             </summary>
             <div class="dossier-renommer__panneau">
               <form class="dossier-renommer__ligne" method="post"
@@ -264,14 +266,14 @@ $descendanceDe = static function (int $id) use (&$descendanceDe, $enfantsDe): ar
                 <input type="hidden" name="couleur" value="<?= e($d['couleur']) ?>">
                 <input type="hidden" name="icone" value="<?= e($d['icone']) ?>">
 
-                <label class="sr-only" for="renommer-<?= (int) $d['id'] ?>">Nom du dossier</label>
+                <label class="sr-only" for="renommer-<?= (int) $d['id'] ?>"><?= e(t('cours.nom_dossier')) ?></label>
                 <input type="text" id="renommer-<?= (int) $d['id'] ?>" name="nom"
                        value="<?= e($d['nom']) ?>" maxlength="120" required>
 
                 <?php $siens = $descendanceDe((int) $d['id']); ?>
-                <label for="ranger-<?= (int) $d['id'] ?>">Ranger dans</label>
+                <label for="ranger-<?= (int) $d['id'] ?>"><?= e(t('cours.ranger_dans')) ?></label>
                 <select id="ranger-<?= (int) $d['id'] ?>" name="parent_id">
-                  <option value="">— À la racine</option>
+                  <option value=""><?= e(t('cours.a_la_racine')) ?></option>
                   <?php foreach ($dossiers as $ailleurs): ?>
                     <?php if (isset($siens[(int) $ailleurs['id']])) { continue; } ?>
                     <option value="<?= (int) $ailleurs['id'] ?>"<?=
@@ -291,14 +293,12 @@ $descendanceDe = static function (int $id) use (&$descendanceDe, $enfantsDe): ar
                * question le dit, pour qu'on ne l'imagine pas plus grave qu'il
                * n'est — ni moins.
                */
-              $garde = ['Supprimer le dossier « ' . $d['nom'] . ' » ?'];
+              $garde = [t('cours.supprimer_dossier_sur', ['nom' => $d['nom']])];
               if ((int) $d['nb_cours'] > 0) {
-                  $garde[] = 'Ses ' . (int) $d['nb_cours'] . ' cours '
-                      . ((int) $d['nb_cours'] > 1 ? 'seront conservés' : 'sera conservé') . ', sans dossier.';
+                  $garde[] = tn('cours.dossier_cours_gardes', (int) $d['nb_cours']);
               }
               if ($enfants !== []) {
-                  $garde[] = 'Ses ' . count($enfants) . ' sous-dossier'
-                      . (count($enfants) > 1 ? 's remonteront' : ' remontera') . ' à la racine.';
+                  $garde[] = tn('cours.dossier_enfants_remontent', count($enfants));
               }
               ?>
               <form method="post" action="<?= url('dossiers/' . (int) $d['id'] . '/supprimer') ?>"
@@ -306,7 +306,7 @@ $descendanceDe = static function (int $id) use (&$descendanceDe, $enfantsDe): ar
                 <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
                 <input type="hidden" name="retour" value="<?= e((string) ($_SERVER['REQUEST_URI'] ?? '')) ?>">
                 <button class="bouton bouton--petit bouton--danger bouton--bloc" type="submit">
-                  Supprimer le dossier
+                  <?= e(t('cours.supprimer_dossier')) ?>
                 </button>
               </form>
             </div>
@@ -327,7 +327,7 @@ $descendanceDe = static function (int $id) use (&$descendanceDe, $enfantsDe): ar
       <a class="dossier-cible" href="<?= $lienDossier(null) ?>" data-dossier=""
          title="<?= e(t('cours.sortir_dossier')) ?>">
         <span aria-hidden="true">➖</span>
-        <span style="flex:1;min-width:0">Sans dossier</span>
+        <span style="flex:1;min-width:0"><?= e(t('cours.sans_dossier')) ?></span>
         <span class="dossier-cible__compte"><?= (int) $sansDossier ?></span>
       </a>
     </div>
@@ -345,8 +345,7 @@ $descendanceDe = static function (int $id) use (&$descendanceDe, $enfantsDe): ar
     ]) ?>
 
     <p class="champ__aide" style="margin:.6rem .2rem 0">
-      Faites glisser un cours sur un dossier pour l'y ranger. Un fichier déposé
-      sur un dossier y crée un cours qui le contient.
+      <?= e(t('cours.glisser_aide')) ?>
     </p>
   </aside>
   </div>
@@ -390,7 +389,7 @@ for ($haut = $courant; $haut !== null;) {
 ?>
 <?php if ($courant !== null): ?>
   <nav class="fil-dossiers" aria-label="<?= e(t('cours.chemin_dossier')) ?>">
-    <a href="<?= $lienDossier(null) ?>">Tous les cours</a>
+    <a href="<?= $lienDossier(null) ?>"><?= e(t('cours.tous')) ?></a>
     <?php foreach ($chemin as $rang => $etape): ?>
       <span class="fil-dossiers__separateur" aria-hidden="true">›</span>
       <?php if ($rang === count($chemin) - 1): ?>
@@ -415,7 +414,7 @@ for ($haut = $courant; $haut !== null;) {
         <span class="dossier-enfant__icone" aria-hidden="true"><?= e($enfant['icone']) ?></span>
         <span class="dossier-enfant__nom"><?= e($enfant['nom']) ?></span>
         <span class="dossier-enfant__compte">
-          <?= $lus ?> cours<?= $dedans > 0 ? ' · ' . $dedans . ' dossier' . ($dedans > 1 ? 's' : '') : '' ?>
+          <?= e(tn('cours.nb_cours', $lus)) ?><?= $dedans > 0 ? ' · ' . tn('cours.nb_dossiers', $dedans) : '' ?>
         </span>
       </a>
     <?php endforeach; ?>
@@ -429,7 +428,7 @@ for ($haut = $courant; $haut !== null;) {
       <p><?= e(t('cours.que_sous_dossiers')) ?></p>
     <?php elseif ($recherche !== '' || $matiereId !== null || $tagId !== null || $dossierId !== null || $favoris): ?>
       <p><?= e(t('cours.aucun_resultat')) ?></p>
-      <a class="bouton bouton--secondaire" href="<?= url('cours') ?>">Voir tous les cours</a>
+      <a class="bouton bouton--secondaire" href="<?= url('cours') ?>"><?= e(t('cours.voir_tous')) ?></a>
     <?php else: ?>
       <p><?= e(t('cours.aucun')) ?></p>
       <a class="bouton" href="<?= url('cours/nouveau') ?>" data-fenetre><?= e(t('cours.premier')) ?></a>

@@ -34,7 +34,7 @@ $dansEntete = $dansEntete ?? false;
     <?php if ($dossiers !== []): ?>
       <label for="nouveau-dossier-parent"><?= e(t('cours.ranger_dans')) ?></label>
       <select id="nouveau-dossier-parent" name="parent_id">
-        <option value="">— À la racine</option>
+        <option value=""><?= e(t('cours.a_la_racine')) ?></option>
         <?php foreach ($dossiers as $d): ?>
           <option value="<?= (int) $d['id'] ?>"<?= $dossierId === (int) $d['id'] ? ' selected' : '' ?>>
             <?= retrait_dossier($d) ?><?= e($d['nom']) ?>

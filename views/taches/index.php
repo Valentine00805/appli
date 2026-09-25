@@ -88,7 +88,7 @@ $ligneTache = static function (array $t) use ($csrf, $contexte, $listes, $vue, $
       <form method="post" action="<?= url('taches/' . $t['id'] . '/modifier') ?>" class="tache-edition__forme">
         <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
         <div class="champ">
-          <label for="titre-<?= (int) $t['id'] ?>">Tâche</label>
+          <label for="titre-<?= (int) $t['id'] ?>"><?= e(t('taches.tache')) ?></label>
           <input type="text" id="titre-<?= (int) $t['id'] ?>" name="titre" required maxlength="200"
                  value="<?= e($t['titre']) ?>">
         </div>
@@ -132,7 +132,7 @@ $ligneTache = static function (array $t) use ($csrf, $contexte, $listes, $vue, $
       </form>
 
       <form method="post" action="<?= url('taches/' . $t['id'] . '/supprimer') ?>"
-            data-confirmation="Supprimer définitivement cette tâche ?">
+            data-confirmation="<?= e(t('taches.supprimer_sur')) ?>">
         <?= $contexte() ?>
         <button class="bouton bouton--danger bouton--petit" type="submit"><?= e(t('commun.supprimer')) ?></button>
       </form>
@@ -172,7 +172,7 @@ $ligneTache = static function (array $t) use ($csrf, $contexte, $listes, $vue, $
     <summary class="bouton bouton--petit"><?= e(t('taches.bouton_nouvelle_liste')) ?></summary>
     <div class="nouvelle-liste__panneau carte">
       <?php // La croix referme le panneau, comme celle d'une fenêtre. ?>
-      <button class="panneau-fermer" type="button" data-fermer-panneau title="Fermer" aria-label="<?= e(t('taches.fermer_nouvelle_liste')) ?>">✕</button>
+      <button class="panneau-fermer" type="button" data-fermer-panneau title="<?= e(t('commun.fermer')) ?>" aria-label="<?= e(t('taches.fermer_nouvelle_liste')) ?>">✕</button>
       <h2 style="margin-top:0"><?= e(t('taches.nouvelle_liste')) ?></h2>
       <form method="post" action="<?= url('taches/listes') ?>">
         <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
@@ -219,13 +219,13 @@ $ligneTache = static function (array $t) use ($csrf, $contexte, $listes, $vue, $
     <details class="nouvelle-liste nouvelle-tache">
       <summary class="bouton bouton--petit bouton--secondaire"><?= e(t('taches.bouton_nouvelle_sous_tache')) ?></summary>
       <div class="nouvelle-liste__panneau carte">
-        <button class="panneau-fermer" type="button" data-fermer-panneau title="Fermer" aria-label="<?= e(t('taches.fermer_nouvelle_sous_tache')) ?>">✕</button>
+        <button class="panneau-fermer" type="button" data-fermer-panneau title="<?= e(t('commun.fermer')) ?>" aria-label="<?= e(t('taches.fermer_nouvelle_sous_tache')) ?>">✕</button>
         <h2 style="margin-top:0"><?= e(t('taches.nouvelle_sous_tache')) ?></h2>
         <form method="post" action="<?= url('taches') ?>">
           <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
 
           <div class="champ">
-            <label for="st-liste">Tâche principale</label>
+            <label for="st-liste"><?= e(t('taches.tache_principale')) ?></label>
             <select id="st-liste" name="liste_id" required>
               <?php foreach ($listes as $l): ?>
                 <option value="<?= (int) $l['id'] ?>"
@@ -308,10 +308,10 @@ $ligneTache = static function (array $t) use ($csrf, $contexte, $listes, $vue, $
             <input type="checkbox" class="tache__case tache__case--liste"
                    data-envoi-immediat<?= $terminee ? ' checked' : '' ?><?= $partielle ? ' data-partiel' : '' ?>
                    <?= $total === 0 ? ' disabled' : '' ?>
-                   aria-label="<?= $terminee ? 'Rouvrir' : 'Terminer' ?> la liste <?= e($liste['nom']) ?>"
-                   title="<?= $total === 0
-                       ? 'Liste vide'
-                       : ($terminee ? 'Rouvrir toute la liste' : 'Terminer toute la liste') ?>">
+                   aria-label="<?= e(t($terminee ? 'taches.rouvrir_liste' : 'taches.terminer_liste', ['nom' => $liste['nom']])) ?>"
+                   title="<?= e($total === 0
+                       ? t('taches.liste_vide')
+                       : t($terminee ? 'taches.rouvrir_tout' : 'taches.terminer_tout')) ?>">
             <noscript><button class="bouton bouton--petit" type="submit">OK</button></noscript>
           </form>
 
@@ -319,7 +319,7 @@ $ligneTache = static function (array $t) use ($csrf, $contexte, $listes, $vue, $
           <?php // draggable=false : sans quoi le navigateur glisserait l'URL du lien. ?>
           <a class="liste-carte__lien" draggable="false"
              href="<?= $active ? url('taches') : url('taches', ['liste' => $liste['id']]) . '#volet' ?>"
-             aria-label="<?= $active ? 'Fermer' : 'Ouvrir' ?> la liste <?= e($liste['nom']) ?>"
+             aria-label="<?= e(t($active ? 'taches.fermer_liste' : 'taches.ouvrir_liste', ['nom' => $liste['nom']])) ?>"
              aria-expanded="<?= $active ? 'true' : 'false' ?>"
              <?= $active ? ' aria-current="true"' : '' ?>>
             <span class="liste-carte__icone" aria-hidden="true"><?= e($liste['icone']) ?></span>
@@ -327,13 +327,13 @@ $ligneTache = static function (array $t) use ($csrf, $contexte, $listes, $vue, $
               <span class="liste-carte__nom"><?= e($liste['nom']) ?></span>
               <span class="liste-carte__meta">
                 <?php if ($total === 0): ?>
-                  vide
+                  <?= e(t('taches.vide')) ?>
                 <?php elseif ($terminee): ?>
-                  tout est fait 🎉
+                  <?= e(t('taches.tout_fait')) ?>
                 <?php else: ?>
-                  <?= (int) $liste['reste'] ?> à faire
+                  <?= e(t('taches.a_faire_n', ['n' => (int) $liste['reste']])) ?>
                   <?php if ((int) $liste['en_retard'] > 0): ?>
-                    · <strong class="alerte"><?= (int) $liste['en_retard'] ?> en retard</strong>
+                    · <strong class="alerte"><?= e(t('taches.en_retard_n', ['n' => (int) $liste['en_retard']])) ?></strong>
                   <?php elseif ($liste['prochaine'] !== null): ?>
                     · <?= e(echeance_libelle((string) $liste['prochaine'])) ?>
                   <?php endif; ?>
@@ -361,8 +361,8 @@ $ligneTache = static function (array $t) use ($csrf, $contexte, $listes, $vue, $
                   <input type="hidden" name="liste" value="<?= (int) $listeOuverte ?>">
                 <?php endif; ?>
                 <input type="hidden" name="sens" value="haut">
-                <button type="submit" title="Monter « <?= e($liste['nom']) ?> »"
-                        aria-label="Monter la liste <?= e($liste['nom']) ?>"
+                <button type="submit" title="<?= e(t('taches.monter_liste', ['nom' => $liste['nom']])) ?>"
+                        aria-label="<?= e(t('taches.monter_liste_aide', ['nom' => $liste['nom']])) ?>"
                         <?= $rang === 0 ? ' disabled' : '' ?>>↑</button>
               </form>
               <form method="post" action="<?= url('taches/listes/' . $liste['id'] . '/deplacer') ?>">
@@ -372,8 +372,8 @@ $ligneTache = static function (array $t) use ($csrf, $contexte, $listes, $vue, $
                   <input type="hidden" name="liste" value="<?= (int) $listeOuverte ?>">
                 <?php endif; ?>
                 <input type="hidden" name="sens" value="bas">
-                <button type="submit" title="Descendre « <?= e($liste['nom']) ?> »"
-                        aria-label="Descendre la liste <?= e($liste['nom']) ?>"
+                <button type="submit" title="<?= e(t('taches.descendre_liste', ['nom' => $liste['nom']])) ?>"
+                        aria-label="<?= e(t('taches.descendre_liste_aide', ['nom' => $liste['nom']])) ?>"
                         <?= $rang === $derniere ? ' disabled' : '' ?>>↓</button>
               </form>
             </span>
@@ -419,22 +419,22 @@ $ligneTache = static function (array $t) use ($csrf, $contexte, $listes, $vue, $
   <!-- Volet de droite : la tâche principale ouverte, et ses sous-tâches. -->
   <div class="volet" id="volet">
     <?php if ($vue !== 'tout'): ?>
-      <?php $titres = ['retard' => '⏰ En retard', 'aujourdhui' => "📅 Aujourd'hui",
-                       'semaine' => '🗓️ Cette semaine', 'terminees' => '✓ Terminées']; ?>
+      <?php $titres = ['retard' => '⏰ ' . t('taches.onglet_retard'), 'aujourdhui' => '📅 ' . t('taches.onglet_aujourdhui'),
+                       'semaine' => '🗓️ ' . t('taches.onglet_semaine'), 'terminees' => '✓ ' . t('taches.onglet_terminees')]; ?>
       <section class="carte">
         <div class="volet__entete">
           <div style="flex:1;min-width:0">
             <h2 style="margin:0"><?= e($titres[$vue] ?? '') ?></h2>
             <p class="discret" style="margin:.15rem 0 0;font-size:.84rem">
               <?php $nbTotal = count($taches) + count($listesFiltrees); ?>
-              <?= $nbTotal ?> élément<?= $nbTotal > 1 ? 's' : '' ?>, toutes listes confondues
+              <?= e(tn('taches.elements', $nbTotal)) ?>
             </p>
           </div>
-          <a class="bouton bouton--discret bouton--petit" href="<?= url('taches') ?>">← Mes listes</a>
+          <a class="bouton bouton--discret bouton--petit" href="<?= url('taches') ?>"><?= e(t('taches.mes_listes')) ?></a>
         </div>
 
         <?php if ($listesFiltrees !== []): ?>
-          <h3 class="volet__section">Tâches principales</h3>
+          <h3 class="volet__section"><?= e(t('taches.taches_principales')) ?></h3>
           <div class="pile">
             <?php foreach ($listesFiltrees as $l): ?>
               <?php $lTerminee = ((int) $l['reste'] + (int) $l['finies']) > 0 && (int) $l['reste'] === 0; ?>
@@ -446,15 +446,15 @@ $ligneTache = static function (array $t) use ($csrf, $contexte, $listes, $vue, $
                   <input type="checkbox" class="tache__case tache__case--liste"
                          data-envoi-immediat<?= $lTerminee ? ' checked' : '' ?>
                          <?= ((int) $l['reste'] + (int) $l['finies']) === 0 ? ' disabled' : '' ?>
-                         aria-label="Terminer la liste <?= e($l['nom']) ?>">
+                         aria-label="<?= e(t('taches.terminer_liste', ['nom' => $l['nom']])) ?>">
                   <noscript><button class="bouton bouton--petit" type="submit">OK</button></noscript>
                 </form>
                 <a class="liste-carte__lien" href="<?= url('taches', ['liste' => $l['id']]) ?>"
-                   aria-label="Ouvrir la liste <?= e($l['nom']) ?>">
+                   aria-label="<?= e(t('taches.ouvrir_liste', ['nom' => $l['nom']])) ?>">
                   <span class="liste-carte__icone" aria-hidden="true"><?= e($l['icone']) ?></span>
                   <span style="flex:1;min-width:0">
                     <span class="liste-carte__nom"><?= e($l['nom']) ?></span>
-                    <span class="liste-carte__meta"><?= (int) $l['reste'] ?> sous-tâche<?= (int) $l['reste'] > 1 ? 's' : '' ?> à faire</span>
+                    <span class="liste-carte__meta"><?= e(tn('taches.sous_taches_restantes', (int) $l['reste'])) ?></span>
                   </span>
                   <span class="echeance echeance--<?= e(echeance_etat($l['echeance'])) ?>">
                     <?= e(echeance_libelle($l['echeance'])) ?>
@@ -502,9 +502,9 @@ $ligneTache = static function (array $t) use ($csrf, $contexte, $listes, $vue, $
             <input type="checkbox" class="tache__case tache__case--liste" id="volet-case"
                    data-envoi-immediat<?= $terminee ? ' checked' : '' ?><?= $partielle ? ' data-partiel' : '' ?>
                    <?= $total === 0 ? ' disabled' : '' ?>
-                   title="<?= $total === 0
-                       ? 'Liste vide'
-                       : ($terminee ? 'Rouvrir toute la liste' : 'Terminer toute la liste') ?>">
+                   title="<?= e($total === 0
+                       ? t('taches.liste_vide')
+                       : t($terminee ? 'taches.rouvrir_tout' : 'taches.terminer_tout')) ?>">
             <noscript><button class="bouton bouton--petit" type="submit">OK</button></noscript>
           </form>
 
@@ -522,15 +522,15 @@ $ligneTache = static function (array $t) use ($csrf, $contexte, $listes, $vue, $
             </h2>
             <p class="discret" style="margin:.15rem 0 0;font-size:.84rem">
               <?php if ($total === 0): ?>
-                Aucune sous-tâche pour l'instant
+                <?= e(t('taches.aucune_sous_tache')) ?>
               <?php elseif ($terminee): ?>
-                Tout est fait 🎉
+                <?= e(t('taches.tout_fait_maj')) ?>
               <?php else: ?>
-                <?= (int) $ouverte['reste'] ?> à faire sur <?= $total ?>
+                <?= e(t('taches.a_faire_sur', ['n' => (int) $ouverte['reste'], 'total' => $total])) ?>
                 <?php if ((int) $ouverte['en_retard'] > 0): ?>
-                  · <strong class="alerte"><?= (int) $ouverte['en_retard'] ?> en retard</strong>
+                  · <strong class="alerte"><?= e(t('taches.en_retard_n', ['n' => (int) $ouverte['en_retard']])) ?></strong>
                 <?php elseif ($ouverte['prochaine'] !== null): ?>
-                  · prochaine : <?= e(echeance_libelle((string) $ouverte['prochaine'])) ?>
+                  · <?= e(t('taches.prochaine')) ?> <?= e(echeance_libelle((string) $ouverte['prochaine'])) ?>
                 <?php endif; ?>
               <?php endif; ?>
             </p>
@@ -563,13 +563,12 @@ $ligneTache = static function (array $t) use ($csrf, $contexte, $listes, $vue, $
               }
               ?>
               <div class="champ">
-                <label for="le">Échéance <span class="discret">(facultative)</span></label>
+                <label for="le"><?= e(t('taches.echeance')) ?> <span class="discret"><?= e(t('taches.facultative')) ?></span></label>
                 <input type="date" id="le" name="echeance" value="<?= e((string) $ouverte['echeance']) ?>"
                        <?= $plancher === '' ? '' : 'min="' . e($plancher) . '"' ?>>
                 <?php if ($plancher !== ''): ?>
                   <span class="champ__aide">
-                    Pas avant le <?= e(date_fr($plancher, false)) ?> :
-                    c’est la sous-tâche la plus tardive.
+                    <?= e(t('taches.pas_avant', ['date' => date_fr($plancher, false)])) ?>
                   </span>
                 <?php endif; ?>
               </div>
@@ -605,15 +604,15 @@ $ligneTache = static function (array $t) use ($csrf, $contexte, $listes, $vue, $
           <div class="actions" style="margin-top:.75rem">
             <?php if ((int) $ouverte['finies'] > 0): ?>
               <form method="post" action="<?= url('taches/listes/' . $ouverte['id'] . '/vider') ?>"
-                    data-confirmation="Retirer les tâches déjà cochées de cette liste ?">
+                    data-confirmation="<?= e(t('taches.vider_sur')) ?>">
                 <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
                 <button class="bouton bouton--discret bouton--petit" type="submit">
-                  Retirer les <?= (int) $ouverte['finies'] ?> terminée<?= (int) $ouverte['finies'] > 1 ? 's' : '' ?>
+                  <?= e(tn('taches.retirer_terminees', (int) $ouverte['finies'])) ?>
                 </button>
               </form>
             <?php endif; ?>
             <form method="post" action="<?= url('taches/listes/' . $ouverte['id'] . '/supprimer') ?>"
-                  data-confirmation="Supprimer cette liste et toutes ses tâches ? C'est définitif.">
+                  data-confirmation="<?= e(t('taches.supprimer_liste_sur')) ?>">
               <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
               <button class="bouton bouton--danger bouton--petit" type="submit"><?= e(t('taches.supprimer_liste')) ?></button>
             </form>
@@ -627,13 +626,13 @@ $ligneTache = static function (array $t) use ($csrf, $contexte, $listes, $vue, $
           </ul>
         <?php elseif ($terminees === []): ?>
           <p class="discret" style="margin:1rem 0 0">
-            Aucune sous-tâche. Ajoutez la première ci-dessous.
+            <?= e(t('taches.aucune_sous_tache_ajout')) ?>
           </p>
         <?php endif; ?>
 
         <?php if ($terminees !== []): ?>
           <details class="taches-terminees">
-            <summary><?= count($terminees) ?> terminée<?= count($terminees) > 1 ? 's' : '' ?></summary>
+            <summary><?= e(tn('taches.terminees', count($terminees))) ?></summary>
             <ul class="taches">
               <?php foreach ($terminees as $t): ?><?= $ligneTache($t) ?><?php endforeach; ?>
             </ul>
@@ -644,10 +643,10 @@ $ligneTache = static function (array $t) use ($csrf, $contexte, $listes, $vue, $
           <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
           <input type="hidden" name="liste_id" value="<?= (int) $ouverte['id'] ?>">
           <input type="text" name="titre" required maxlength="200" placeholder="<?= e(t('taches.ajouter_placeholder')) ?>"
-                 aria-label="Nouvelle sous-tâche dans <?= e($ouverte['nom']) ?>">
-          <input type="date" name="echeance" aria-label="Échéance (facultative)"
+                 aria-label="<?= e(t('taches.nouvelle_sous_tache_dans', ['nom' => $ouverte['nom']])) ?>">
+          <input type="date" name="echeance" aria-label="<?= e(t('taches.echeance_facultative')) ?>"
                  <?= $ouverte['echeance'] === null ? '' : 'max="' . e((string) $ouverte['echeance'])
-                     . '" title="Au plus tard le ' . e(date_fr((string) $ouverte['echeance'], false)) . '"' ?>>
+                     . '" title="' . e(t('taches.au_plus_tard', ['date' => date_fr((string) $ouverte['echeance'], false)])) . '"' ?>>
           <button class="bouton bouton--petit" type="submit"><?= e(t('taches.ajouter')) ?></button>
         </form>
       </section>

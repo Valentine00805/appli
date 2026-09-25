@@ -75,6 +75,12 @@ function t(string $cle, array $valeurs = []): string
     return Langue::texte($cle, $valeurs);
 }
 
+/** Une phrase accordée au nombre : tn('taches.reste', 3). */
+function tn(string $cle, int $n, array $valeurs = []): string
+{
+    return Langue::nombre($cle, $n, $valeurs);
+}
+
 /** Nom du mois, dans la langue choisie. */
 function nom_mois(int $mois): string
 {
@@ -106,9 +112,20 @@ function date_fr(string $datetime, bool $avecHeure = true): string
     $annee = date('Y', $ts);
     $texte = "$jour $mois $annee";
     if ($avecHeure) {
-        $texte .= ' ' . t('date.a') . ' ' . date('H\hi', $ts);
+        $texte .= ' ' . t('date.a') . ' ' . heure_courte($ts);
     }
     return $texte;
+}
+
+/**
+ * L'heure seule, écrite comme on l'écrit dans la langue choisie.
+ *
+ * « 8h51 » en français, « 8:51 » ailleurs : c'est le fichier de langue qui
+ * porte le format, et nulle part on ne le réécrit à la main.
+ */
+function heure_courte(int $ts): string
+{
+    return date(t('date.heure'), $ts);
 }
 
 /**

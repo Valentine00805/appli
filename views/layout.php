@@ -49,7 +49,7 @@ $actif = static function (string $prefixe) use ($route): string {
       <?php // Ce qu'on m'a partagé et que je n'ai pas encore vu. ?>
       <?php $nouveauxPartages = $utilisateur !== null ? Partages::nbNonVus((int) $utilisateur['id']) : 0; ?>
       <a href="<?= url('partages') ?>"<?= $actif('partages') ?>>
-        <?= e(t('nav.partages')) ?><?php if ($nouveauxPartages > 0): ?> <span class="compteur" title="<?= e(t('nav.nouveaux', ['n' => $nouveauxPartages])) ?>"><?= $nouveauxPartages > 99 ? '99+' : $nouveauxPartages ?></span><?php endif; ?>
+        <?= e(t('nav.partages')) ?><?php if ($nouveauxPartages > 0): ?> <span class="compteur" title="<?= e(tn('nav.nouveaux', $nouveauxPartages)) ?>"><?= $nouveauxPartages > 99 ? '99+' : $nouveauxPartages ?></span><?php endif; ?>
       </a>
       <a href="<?= url('revision') ?>"<?= $actif('revision') ?>><?= e(t('nav.revision')) ?></a>
       <a href="<?= url('cartes') ?>"<?= $actif('cartes') ?>><?= e(t('nav.cartes')) ?></a>
@@ -59,7 +59,7 @@ $actif = static function (string $prefixe) use ($route): string {
       <?php // Les travaux de groupe : la pastille compte les invitations reçues. ?>
       <?php $invitationsTravaux = $utilisateur !== null ? Travaux::nbInvitations((int) $utilisateur['id']) : 0; ?>
       <a href="<?= url('travaux') ?>"<?= $actif('travaux') ?>>
-        <?= e(t('nav.groupes')) ?><?php if ($invitationsTravaux > 0): ?> <span class="compteur" title="<?= e(t('nav.invitations', ['n' => $invitationsTravaux])) ?>"><?= $invitationsTravaux ?></span><?php endif; ?>
+        <?= e(t('nav.groupes')) ?><?php if ($invitationsTravaux > 0): ?> <span class="compteur" title="<?= e(tn('nav.invitations', $invitationsTravaux)) ?>"><?= $invitationsTravaux ?></span><?php endif; ?>
       </a>
       <a href="<?= url('budget') ?>"<?= $actif('budget') ?>><?= e(t('nav.budget')) ?></a>
       <a href="<?= url('organisation/matieres') ?>"<?= $actif('organisation') ?>><?= e(t('nav.organisation')) ?></a>
@@ -152,6 +152,8 @@ if ($utilisateur !== null
        data-csrf="<?= e(Session::jetonCsrf()) ?>"></div>
 <?php endif; ?>
 
+<?php // Le script affiche lui aussi des phrases : voici les siennes, traduites. ?>
+<script>window.MOTS = <?= json_encode(Langue::pourLeScript(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;</script>
 <script src="<?= asset('assets/js/app.js') ?>" defer></script>
 <script src="<?= asset('assets/js/mot-de-passe.js') ?>" defer></script>
 </body>

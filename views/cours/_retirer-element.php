@@ -9,8 +9,8 @@ $surPage = $surPage ?? false;
 $surPlace = ($dansUneFenetre ?? false) ? ' data-envoi-fenetre' : '';
 ?>
 <form<?= $surPlace ?> method="post" action="<?= url('revision/element/' . (int) $element['id'] . '/supprimer') ?>" class="en-ligne"
-      data-confirmation="Retirer cet élément de la fiche ?">
+      data-confirmation="<?= e(t('fiche.retirer_sur')) ?>">
   <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
   <?php if ($surPage): ?><input type="hidden" name="page" value="fiche"><?php endif; ?>
-  <button class="bouton bouton--discret bouton--petit" type="submit" title="Retirer de la fiche">✕</button>
+  <button class="bouton bouton--discret bouton--petit" type="submit" title="<?= e(t('fiche.retirer')) ?>">✕</button>
 </form>

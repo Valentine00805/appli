@@ -3,6 +3,31 @@
   'use strict';
 
   /*
+   * Les phrases du script, dans la langue du compte.
+   *
+   * La page les a posées dans « window.MOTS » juste avant de nous charger.
+   * Une clé inconnue se rend telle quelle : on voit ce qui manque, plutôt
+   * qu'un trou. Les accolades marquent ce qui change : mot('page_sur', {page: 2, total: 9}).
+   */
+  var MOTS = window.MOTS || {};
+  var mot = function (cle, valeurs) {
+    var phrase = Object.prototype.hasOwnProperty.call(MOTS, cle) ? MOTS[cle] : cle;
+    if (valeurs) {
+      Object.keys(valeurs).forEach(function (nom) {
+        phrase = phrase.split('{' + nom + '}').join(String(valeurs[nom]));
+      });
+    }
+    return phrase;
+  };
+  // Une phrase qui s'accorde, comme « tn() » au serveur.
+  var motN = function (cle, n, valeurs) {
+    var seul = (MOTS['_langue'] === 'fr') ? Math.abs(n) < 2 : Math.abs(n) === 1;
+    var avec = valeurs || {};
+    avec.n = n;
+    return mot(cle + (seul ? '.un' : '.plusieurs'), avec);
+  };
+
+  /*
    * Remonter en haut, et voir d'un coup d'œil où l'on en est.
    *
    * L'anneau autour de la flèche se remplit à mesure qu'on descend. C'est la
@@ -1471,7 +1496,8 @@
    */
   document.querySelectorAll('[data-volet-bascule]').forEach(function (bascule) {
     var classeFerme = bascule.dataset.classeFerme || 'cal-avec-volet--ferme';
-    var quoi = bascule.dataset.quoi || 'les agendas';
+    var montrer = bascule.dataset.montrer || '';
+    var masquer = bascule.dataset.masquer || '';
     var zone = bascule.closest('.' + classeFerme.replace(/--ferme$/, ''));
     if (!zone) { return; }
     var jetonBascule = bascule.querySelector('input[name="_csrf"]');
@@ -1490,7 +1516,7 @@
       // geste, pas l'état où l'on se trouve.
       etat.value = ferme ? '0' : '1';
       boutonBascule.setAttribute('aria-expanded', ferme ? 'false' : 'true');
-      var mot = (ferme ? 'Montrer ' : 'Masquer ') + quoi;
+      var mot = ferme ? montrer : masquer;
       boutonBascule.title = mot;
       fleche.textContent = ferme ? '›' : '‹';
       motBascule.textContent = mot;
@@ -4555,7 +4581,7 @@
       envoyerForme(forme);
     });
 
-    if (envoi) { envoi.textContent = "Joindre les fichiers choisis"; }
+    if (envoi) { envoi.textContent = mot('depot.joindre'); }
   });
   };
   initialiserDepots(document);
@@ -5675,47 +5701,47 @@
     var groupe = function (contenu, attributs) {
       return '<span class="barre-outils__couleurs"' + (attributs || '') + '>' + contenu + '</span>';
     };
-    var h = bouton('data-riche="bold" aria-pressed="false"', 'Gras (Ctrl+B)', '<b>G</b>')
-      + bouton('data-riche="italic" aria-pressed="false"', 'Italique (Ctrl+I)', '<i>I</i>')
-      + bouton('data-riche="underline" aria-pressed="false"', 'Souligné (Ctrl+U)', '<u>S</u>');
+    var h = bouton('data-riche="bold" aria-pressed="false"', mot('riche.gras'), '<b>G</b>')
+      + bouton('data-riche="italic" aria-pressed="false"', mot('riche.italique'), '<i>I</i>')
+      + bouton('data-riche="underline" aria-pressed="false"', mot('riche.souligne'), '<u>S</u>');
 
-    var listes = bouton('data-riche="insertUnorderedList" aria-pressed="false"', 'Liste à puces', '•—')
-      + bouton('data-riche="insertOrderedList" aria-pressed="false"', 'Liste numérotée', '1—');
+    var listes = bouton('data-riche="insertUnorderedList" aria-pressed="false"', mot('riche.puces'), '•—')
+      + bouton('data-riche="insertOrderedList" aria-pressed="false"', mot('riche.numerotee'), '1—');
     if (complet) {
       h += groupe(
-        bouton('data-riche="justifyLeft" aria-pressed="false"', 'Aligner à gauche', '<span aria-hidden="true">◧</span><span class="sr-only">Aligner à gauche</span>')
-        + bouton('data-riche="justifyCenter" aria-pressed="false"', 'Centrer', '<span aria-hidden="true">▣</span><span class="sr-only">Centrer</span>')
-        + bouton('data-riche="justifyRight" aria-pressed="false"', 'Aligner à droite', '<span aria-hidden="true">◨</span><span class="sr-only">Aligner à droite</span>')
+        bouton('data-riche="justifyLeft" aria-pressed="false"', mot('riche.gauche'), '<span aria-hidden="true">◧</span><span class="sr-only">' + mot('riche.gauche') + '</span>')
+        + bouton('data-riche="justifyCenter" aria-pressed="false"', mot('riche.centrer'), '<span aria-hidden="true">▣</span><span class="sr-only">' + mot('riche.centrer') + '</span>')
+        + bouton('data-riche="justifyRight" aria-pressed="false"', mot('riche.droite'), '<span aria-hidden="true">◨</span><span class="sr-only">' + mot('riche.droite') + '</span>')
         + listes
-        + bouton('data-riche-retrait="1"', 'Sous-liste, ou retrait (Tab)', '<span aria-hidden="true">⇥</span><span class="sr-only">Abaisser d’un niveau</span>')
-        + bouton('data-riche-retrait="-1"', 'Remonter d’un niveau (Maj+Tab)', '<span aria-hidden="true">⇤</span><span class="sr-only">Remonter d’un niveau</span>'));
+        + bouton('data-riche-retrait="1"', mot('riche.abaisser'), '<span aria-hidden="true">⇥</span><span class="sr-only">' + mot('riche.abaisser_court') + '</span>')
+        + bouton('data-riche-retrait="-1"', mot('riche.remonter'), '<span aria-hidden="true">⇤</span><span class="sr-only">' + mot('riche.remonter_court') + '</span>'));
       h += groupe(
-        bouton('data-riche-titre="h2" aria-pressed="false"', 'Mettre ou retirer le Titre 1', 'T1')
-        + bouton('data-riche-titre="h3" aria-pressed="false"', 'Mettre ou retirer le Titre 2', 'T2')
-        + bouton('data-riche-titre="h4" aria-pressed="false"', 'Mettre ou retirer le Titre 3', 'T3'));
-      h += '<label class="barre-outils__taille"><span class="discret">Sommaire</span>'
-        + '<select data-riche-sommaire title="Jusqu’à quel niveau de titre le sommaire descend">'
-        + '<option value="0">Aucun</option><option value="1">Titres 1</option>'
-        + '<option value="2">Jusqu’aux Titres 2</option><option value="3">Jusqu’aux Titres 3</option>'
+        bouton('data-riche-titre="h2" aria-pressed="false"', mot('riche.titre1'), 'T1')
+        + bouton('data-riche-titre="h3" aria-pressed="false"', mot('riche.titre2'), 'T2')
+        + bouton('data-riche-titre="h4" aria-pressed="false"', mot('riche.titre3'), 'T3'));
+      h += '<label class="barre-outils__taille"><span class="discret">' + mot('riche.sommaire') + '</span>'
+        + '<select data-riche-sommaire title="' + mot('riche.sommaire_aide') + '">'
+        + '<option value="0">' + mot('riche.sommaire_aucun') + '</option><option value="1">' + mot('riche.sommaire_1') + '</option>'
+        + '<option value="2">' + mot('riche.sommaire_2') + '</option><option value="3">' + mot('riche.sommaire_3') + '</option>'
         + '</select></label>';
-      h += '<label class="barre-outils__taille"><span class="discret">Taille</span><select data-riche-taille>'
-        + '<option value="">Celle du texte</option>'
+      h += '<label class="barre-outils__taille"><span class="discret">' + mot('riche.taille') + '</span><select data-riche-taille>'
+        + '<option value="">' + mot('riche.taille_texte') + '</option>'
         + tailles.map(function (t) { return '<option value="' + t + '">' + t + ' pt</option>'; }).join('')
         + '</select></label>';
     } else {
       h += listes;
     }
 
-    h += groupe('<span class="discret">Couleur</span>'
-      + bouton('class="barre-outils__bouton barre-outils__appliquer" data-riche-couleur', 'Appliquer cette couleur au texte choisi',
-        '<span aria-hidden="true">A</span><span class="barre-outils__trait"></span><span class="sr-only">Appliquer la couleur</span>')
-      + '<input type="color" class="barre-outils__couleur" data-riche-teinte value="#dc2626" aria-label="Choisir la couleur du texte">'
-      + bouton('data-riche-couleur-defaut', 'Remettre la couleur normale', '⌫'));
-    h += groupe('<span class="discret">Surlignage</span>'
-      + bouton('class="barre-outils__bouton barre-outils__surligner" data-riche-fond', 'Surligner le texte choisi',
-        '<span aria-hidden="true">🖍</span><span class="sr-only">Surligner</span>')
-      + '<input type="color" class="barre-outils__couleur" data-riche-fond-teinte value="#ffff00" aria-label="Choisir la couleur du surlignage">'
-      + bouton('data-riche-fond-defaut', 'Retirer le surlignage', '⌫'));
+    h += groupe('<span class="discret">' + mot('riche.couleur') + '</span>'
+      + bouton('class="barre-outils__bouton barre-outils__appliquer" data-riche-couleur', mot('riche.couleur_appliquer'),
+        '<span aria-hidden="true">A</span><span class="barre-outils__trait"></span><span class="sr-only">' + mot('riche.couleur_appliquer_court') + '</span>')
+      + '<input type="color" class="barre-outils__couleur" data-riche-teinte value="#dc2626" aria-label="' + mot('riche.couleur_choisir') + '">'
+      + bouton('data-riche-couleur-defaut', mot('riche.couleur_defaut'), '⌫'));
+    h += groupe('<span class="discret">' + mot('riche.surlignage') + '</span>'
+      + bouton('class="barre-outils__bouton barre-outils__surligner" data-riche-fond', mot('riche.surligner'),
+        '<span aria-hidden="true">🖍</span><span class="sr-only">' + mot('riche.surligner_court') + '</span>')
+      + '<input type="color" class="barre-outils__couleur" data-riche-fond-teinte value="#ffff00" aria-label="' + mot('riche.surlignage_choisir') + '">'
+      + bouton('data-riche-fond-defaut', mot('riche.surlignage_retirer'), '⌫'));
 
     /*
      * Dicter : le navigateur écoute et écrit à la place du clavier. Le bouton
@@ -5723,29 +5749,29 @@
      * Edge, Safari) et si l'on n'a pas coupé la transcription dans son compte.
      */
     h += bouton('class="barre-outils__bouton barre-outils__dicter" data-riche-dicter aria-pressed="false" hidden',
-      'Dicter le texte à la voix', '<span aria-hidden="true">🎤</span> Dicter');
+      mot('riche.dicter'), '<span aria-hidden="true">🎤</span> ' + mot('riche.dicter_court'));
 
     /*
      * Une case à cocher : « [ ] rappeler le fournisseur ». C'est du texte, et
      * rien d'autre — il survit à l'export, au PDF et au copier-coller. Une
      * note d'alternance sait en faire de vraies tâches.
      */
-    h += bouton('data-riche-case', 'Écrire une case à cocher', '<span aria-hidden="true">☐</span><span class="sr-only">Case à cocher</span>');
+    h += bouton('data-riche-case', mot('riche.case'), '<span aria-hidden="true">☐</span><span class="sr-only">' + mot('riche.case_court') + '</span>');
 
     if (complet) {
-      h += bouton('data-riche-saut', 'Aller à la ligne sans changer de paragraphe (Maj+Entrée)', '↵');
-      h += bouton('class="barre-outils__bouton barre-outils__image" data-riche-image', 'Ajouter une image à l’endroit du curseur',
-        '<span aria-hidden="true">🖼</span> Image')
-        + '<input type="file" accept="image/png,image/jpeg,image/gif,image/webp" hidden data-riche-fichier aria-label="Choisir une image à ajouter">';
-      h += groupe('<span class="discret">Largeur</span>'
-        + '<input type="range" min="10" max="100" step="1" value="100" data-riche-largeur aria-label="Largeur de l’image, en part de la largeur du texte">'
+      h += bouton('data-riche-saut', mot('riche.saut'), '↵');
+      h += bouton('class="barre-outils__bouton barre-outils__image" data-riche-image', mot('riche.image'),
+        '<span aria-hidden="true">🖼</span> ' + mot('riche.image_court'))
+        + '<input type="file" accept="image/png,image/jpeg,image/gif,image/webp" hidden data-riche-fichier aria-label="' + mot('riche.image_choisir') + '">';
+      h += groupe('<span class="discret">' + mot('riche.largeur') + '</span>'
+        + '<input type="range" min="10" max="100" step="1" value="100" data-riche-largeur aria-label="' + mot('riche.image_largeur') + '">'
         + '<output data-riche-largeur-valeur>—</output>'
-        + bouton('data-riche-largeur-origine', 'Toute la largeur', '↺'), ' data-riche-groupe-image hidden');
-      h += groupe('<span class="discret">Texte</span>'
-        + bouton('data-riche-habillage="ligne" aria-pressed="false"', 'L’image dans la ligne, comme un mot', '▭')
-        + bouton('data-riche-habillage="gauche" aria-pressed="false"', 'L’image à gauche, le texte à sa droite', '◧≡')
-        + bouton('data-riche-habillage="centre" aria-pressed="false"', 'L’image centrée, le texte au-dessus et en dessous', '▣')
-        + bouton('data-riche-habillage="droite" aria-pressed="false"', 'L’image à droite, le texte à sa gauche', '≡◨'), ' data-riche-groupe-image hidden');
+        + bouton('data-riche-largeur-origine', mot('riche.image_pleine'), '↺'), ' data-riche-groupe-image hidden');
+      h += groupe('<span class="discret">' + mot('riche.texte') + '</span>'
+        + bouton('data-riche-habillage="ligne" aria-pressed="false"', mot('riche.image_ligne'), '▭')
+        + bouton('data-riche-habillage="gauche" aria-pressed="false"', mot('riche.image_gauche'), '◧≡')
+        + bouton('data-riche-habillage="centre" aria-pressed="false"', mot('riche.image_centre'), '▣')
+        + bouton('data-riche-habillage="droite" aria-pressed="false"', mot('riche.image_droite'), '≡◨'), ' data-riche-groupe-image hidden');
       h += '<p class="message-erreur barre-outils__souci" data-riche-souci role="alert" hidden></p>';
     }
 
@@ -5760,15 +5786,15 @@
   var IMAGE_RICHE_MAX = 6 * 1024 * 1024;
   var preparerImage = function (fichier, fini, echec) {
     if (!/^image\/(png|jpeg|gif|webp)$/.test(fichier.type)) {
-      echec('Seules les images PNG, JPEG, GIF ou WebP peuvent être ajoutées.');
+      echec(mot('riche.image_format'));
       return;
     }
     var lecteur = new FileReader();
-    lecteur.onerror = function () { echec('Cette image n’a pas pu être lue.'); };
+    lecteur.onerror = function () { echec(mot('riche.image_illisible')); };
     lecteur.onload = function () {
       var origine = String(lecteur.result);
       var image = new Image();
-      image.onerror = function () { echec('Cette image n’a pas pu être lue.'); };
+      image.onerror = function () { echec(mot('riche.image_illisible')); };
       image.onload = function () {
         var cote = 1600;
         var echelle = Math.min(1, cote / Math.max(image.naturalWidth, image.naturalHeight));
@@ -5786,7 +5812,7 @@
           if (resultat.length > IMAGE_RICHE_MAX) { resultat = toile.toDataURL('image/jpeg', 0.8); }
         }
         if (resultat.length > IMAGE_RICHE_MAX) {
-          echec('Cette image est trop lourde, même réduite.');
+          echec(mot('riche.image_lourde'));
           return;
         }
         fini(resultat, Math.round(image.naturalWidth * echelle));
@@ -6080,21 +6106,21 @@
           r.addEventListener('end', function () {
             // Un silence l'arrête : on repart, tant qu'on n'a pas dit stop.
             if (dicteeVoulue && dictee === r) {
-              try { r.start(); } catch (e) { arreterDictee('La dictée s’est arrêtée.'); }
+              try { r.start(); } catch (e) { arreterDictee(mot('dictee.arretee')); }
             }
           });
           r.addEventListener('error', function (e) {
             if (e.error === 'no-speech' || e.error === 'aborted') { return; }
             arreterDictee(e.error === 'not-allowed' || e.error === 'service-not-allowed'
-              ? 'Le micro a été refusé : autorisez-le dans votre navigateur.'
-              : 'La dictée n’a pas pu démarrer.');
+              ? mot('dictee.micro_refuse')
+              : mot('dictee.echec'));
           });
           dictee = r;
           dicteeVoulue = true;
           boutonDicter.setAttribute('aria-pressed', 'true');
           boutonDicter.classList.add('barre-outils__dicter--ecoute');
           direDictee('🎤 J’écoute…', true);
-          try { r.start(); } catch (e) { arreterDictee('La dictée n’a pas pu démarrer.'); }
+          try { r.start(); } catch (e) { arreterDictee(mot('dictee.echec')); }
         };
 
         barre.insertAdjacentElement('afterend', etatDictee);
@@ -6419,14 +6445,16 @@
           anneau.classList.remove("anneau--inconnu");
           anneau.classList.toggle("anneau--fini", part >= 100);
         }
-        if (libelle) { libelle.textContent = "Page " + page + " sur " + pages; }
+        if (libelle) { libelle.textContent = mot('fiche.page_sur', { page: page, total: pages }); }
         if (minutage) {
-          minutage.textContent = atteinte > 0 ? "Page " + atteinte + " sur " + pages : "pas encore lu";
+          minutage.textContent = atteinte > 0
+            ? mot('fiche.page_sur', { page: atteinte, total: pages })
+            : mot('fiche.pas_encore_lu');
         }
         if (recule) { recule.disabled = page <= 1; }
         if (avance) { avance.disabled = page >= pages; }
         direLeBouton(fini, atteinte >= pages,
-          "Marquer ce document comme lu", "Remettre ce document comme non lu");
+          mot('fiche.doc_lu'), mot('fiche.doc_non_lu'));
         majTotalFiche();
       };
 
@@ -6544,17 +6572,17 @@
           anneau.classList.remove("anneau--inconnu");
           anneau.classList.toggle("anneau--fini", part >= 100);
         }
-        if (libelle) { libelle.textContent = "Image " + (rang + 1) + " sur " + total; }
+        if (libelle) { libelle.textContent = mot('fiche.image_sur', { rang: rang + 1, total: total }); }
         if (compte) {
           compte.textContent = lues === 0
-            ? "pas encore vue"
-            : lues + (lues > 1 ? " images vues sur " : " image vue sur ") + total;
+            ? mot('fiche.image_pas_vue')
+            : motN('fiche.images_vues', lues, { total: total });
         }
         if (recule) { recule.disabled = rang <= 0; }
         if (avance) { avance.disabled = rang >= total - 1; }
         direLeBouton(fini, lues >= total,
-          total > 1 ? "Marquer toutes les images comme vues" : "Marquer cette image comme vue",
-          total > 1 ? "Remettre toutes les images comme non vues" : "Remettre cette image comme non vue");
+          mot(total > 1 ? 'fiche.images_vues_toutes' : 'fiche.image_vue'),
+          mot(total > 1 ? 'fiche.images_non_vues' : 'fiche.image_non_vue'));
         majTotalFiche();
       };
 
@@ -6723,7 +6751,7 @@
       if (anneau) {
         anneau.classList.remove("anneau--inconnu");
         anneau.classList.toggle("anneau--fini", part >= 100);
-        anneau.setAttribute("aria-label", "Avancement du paquet : " + part + " %");
+        anneau.setAttribute("aria-label", mot('cartes.avancement') + part + " %");
       }
     };
 
@@ -6735,7 +6763,7 @@
           var montrer = carte.querySelector("[data-montrer]");
           carte.querySelector("[data-reponse]").hidden = true;
           montrer.hidden = false;
-          montrer.textContent = "Voir la réponse";
+          montrer.textContent = mot('cartes.voir_reponse');
           montrer.setAttribute("aria-expanded", "false");
           carte.querySelectorAll("[data-verdict]").forEach(function (b) { b.hidden = true; });
           var arriere = carte.querySelector("[data-precedente]");
@@ -6788,9 +6816,7 @@
       cartesSeance.forEach(function (carte) { carte.hidden = true; });
       if (compteur) { compteur.hidden = true; }
       if (bilan) {
-        bilan.textContent = sues + " sue" + (sues > 1 ? "s" : "") + ", "
-          + rates + " à revoir, sur " + cartesSeance.length + " carte"
-          + (cartesSeance.length > 1 ? "s" : "") + ".";
+        bilan.textContent = motN('cartes.bilan', cartesSeance.length, { sues: sues, rates: rates });
       }
       if (fin) { fin.hidden = false; }
     };
@@ -6924,7 +6950,7 @@
         var visible = reponse.hidden;
 
         reponse.hidden = !visible;
-        bouton.textContent = visible ? "Cacher la réponse" : "Voir la réponse";
+        bouton.textContent = mot(visible ? 'cartes.cacher_reponse' : 'cartes.voir_reponse');
         bouton.setAttribute("aria-expanded", visible ? "true" : "false");
 
         // Une fois la réponse vue, on peut trancher, même en la recachant

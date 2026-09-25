@@ -15,7 +15,7 @@ $dansUneFenetre = $dansUneFenetre ?? false;
     <?php // Dans une fenêtre, on vient d'un cours ou de la liste : la croix y ramène. ?>
     <?php if (!$dansUneFenetre): ?>
       <p class="discret sans-impression" style="margin-bottom:.35rem">
-        <a href="<?= url('revision') ?>">← Révision</a>
+        <a href="<?= url('revision') ?>"><?= e(t('fiche.retour_revision')) ?></a>
       </p>
     <?php endif; ?>
     <h1><?= e($cours['titre']) ?></h1>
@@ -25,7 +25,7 @@ $dansUneFenetre = $dansUneFenetre ?? false;
           <?= e($cours['matiere_nom']) ?>
         </span>
       <?php endif; ?>
-      <span class="discret">Fiche de révision</span>
+      <span class="discret"><?= e(t('fiche.titre')) ?></span>
     </p>
   </div>
 
@@ -39,19 +39,19 @@ $dansUneFenetre = $dansUneFenetre ?? false;
        */
       ?>
       <a class="bouton bouton--secondaire" href="<?= url('revision/' . $cours['id'], ['imprimer' => 1]) ?>"
-         target="_blank" rel="noopener">🖨 Imprimer</a>
+         target="_blank" rel="noopener"><?= e(t('fiche.imprimer')) ?></a>
     <?php else: ?>
-      <button class="bouton bouton--secondaire" type="button" onclick="window.print()">🖨 Imprimer</button>
+      <button class="bouton bouton--secondaire" type="button" onclick="window.print()"><?= e(t('fiche.imprimer')) ?></button>
     <?php endif; ?>
     <?php // Partager la fiche : à ses amis, ou par un lien. ?>
     <a class="bouton bouton--secondaire bouton-partage sans-impression" href="<?= url('partager/fiches/' . $cours['id']) ?>"
-       <?= $dansUneFenetre ? 'data-fenetre-dessus' : 'data-fenetre' ?>><?= Partages::icone() ?> Partager</a>
+       <?= $dansUneFenetre ? 'data-fenetre-dessus' : 'data-fenetre' ?>><?= Partages::icone() ?> <?= e(t('evt.partager')) ?></a>
     <?php // La fiche enregistrée, à emporter : son texte et ce qui lui est rattaché. ?>
     <a class="bouton bouton--secondaire" href="<?= url('revision/' . $cours['id'] . '/pdf') ?>"
-       title="Télécharger la fiche de révision en PDF">⬇ PDF</a>
+       title="<?= e(t('fiche.pdf_aide')) ?>">⬇ PDF</a>
     <a class="bouton bouton--secondaire" href="<?= url('cours/' . $cours['id']) ?>"
        <?= $dansUneFenetre ? 'data-fenetre' : '' ?>>
-      Voir le cours
+      <?= e(t('fiche.voir_cours')) ?>
     </a>
   </div>
 </div>
@@ -59,8 +59,8 @@ $dansUneFenetre = $dansUneFenetre ?? false;
 <?php $nbModifications = Partages::nbModifications('fiche', (int) $cours['id']); ?>
 <?php if ($nbModifications > 0): ?>
   <p class="discret sans-impression" style="margin:0 0 .8rem">
-    🕘 <a href="<?= e(Partages::adresseHistorique('fiche', (int) $cours['id'])) ?>" <?= $dansUneFenetre ? 'data-fenetre-dessus' : 'data-fenetre' ?>><?= $nbModifications ?> modification<?= $nbModifications > 1 ? 's' : '' ?></a>
-    depuis que cette fiche est partagée.
+    🕘 <a href="<?= e(Partages::adresseHistorique('fiche', (int) $cours['id'])) ?>" <?= $dansUneFenetre ? 'data-fenetre-dessus' : 'data-fenetre' ?>><?= e(tn('cours.modifications', $nbModifications)) ?></a>
+    <?= e(t('fiche.modifications_suite')) ?>
   </p>
 <?php endif; ?>
 <div class="fiche-seule">

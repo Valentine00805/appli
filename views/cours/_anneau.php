@@ -13,7 +13,7 @@ $connu = $pourcentage !== null;
 $valeur = $connu ? max(0, min(100, (int) $pourcentage)) : 0;
 ?>
 <span class="anneau<?= $connu ? '' : ' anneau--inconnu' ?><?= $valeur >= 100 ? ' anneau--fini' : '' ?>"
-      role="img" aria-label="<?= e($titre ?? 'Avancement') ?> : <?= $connu ? $valeur . ' %' : 'pas encore commencé' ?>">
+      role="img" aria-label="<?= e($titre ?? t('commun.avancement')) ?> : <?= $connu ? $valeur . ' %' : e(t('commun.pas_commence')) ?>">
   <svg viewBox="0 0 36 36" aria-hidden="true">
     <circle class="anneau__fond" cx="18" cy="18" r="15.915"></circle>
     <circle class="anneau__part" cx="18" cy="18" r="15.915"

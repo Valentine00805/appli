@@ -24,7 +24,7 @@ $nbElements = count($elements) + count($fichiersFiche);
     <?php // Dans une fenêtre, la liste des cours est juste derrière : la croix y ramène. ?>
     <?php if (!$dansUneFenetre): ?>
       <p class="discret" style="margin-bottom:.35rem">
-        <a href="<?= url('cours') ?>">← Mes cours</a>
+        <a href="<?= url('cours') ?>"><?= e(t('cours.retour_liste')) ?></a>
       </p>
     <?php endif; ?>
     <h1><?= e($cours['titre']) ?></h1>
@@ -96,14 +96,14 @@ $nbElements = count($elements) + count($fichiersFiche);
       <?php $nbModifications = Partages::nbModifications('cours', (int) $cours['id']); ?>
       <?php if ($nbModifications > 0): ?>
         <p class="discret" style="margin:.4rem 0 0">
-          🕘 <a href="<?= e(Partages::adresseHistorique('cours', (int) $cours['id'])) ?>" <?= $dansUneFenetre ? 'data-fenetre-dessus' : 'data-fenetre' ?>><?= $nbModifications ?> modification<?= $nbModifications > 1 ? 's' : '' ?></a>
-          depuis que ce cours est partagé.
+          🕘 <a href="<?= e(Partages::adresseHistorique('cours', (int) $cours['id'])) ?>" <?= $dansUneFenetre ? 'data-fenetre-dessus' : 'data-fenetre' ?>><?= e(tn('cours.modifications', $nbModifications)) ?></a>
+          <?= e(t('cours.modifications_suite')) ?>
         </p>
       <?php endif; ?>
       <?php $nbCommentaires = Partages::nbCommentaires('cours', (int) $cours['id']); ?>
       <?php if ($nbCommentaires > 0): ?>
         <p class="discret" style="margin:.4rem 0 0">
-          💬 <a href="<?= url('partages/cours/' . (int) $cours['id'] . '/commentaires') ?>" <?= $dansUneFenetre ? 'data-fenetre-dessus' : 'data-fenetre' ?>><?= e(t('cours.commentaires', ['n' => $nbCommentaires])) ?></a>
+          💬 <a href="<?= url('partages/cours/' . (int) $cours['id'] . '/commentaires') ?>" <?= $dansUneFenetre ? 'data-fenetre-dessus' : 'data-fenetre' ?>><?= e(tn('cours.commentaires', $nbCommentaires)) ?></a>
           <?= e(t('cours.commentaires_suite')) ?>
         </p>
       <?php endif; ?>
@@ -161,7 +161,7 @@ $nbElements = count($elements) + count($fichiersFiche);
                   <a class="bouton bouton--discret bouton--petit bouton-partage" href="<?= url('partager/fichiers/' . $f['id']) ?>"
                      <?= $dansUneFenetre ? 'data-fenetre-dessus' : 'data-fenetre' ?> title="<?= e(t('cours.partager_fichier')) ?>" aria-label="<?= e(t('cours.partager_nom', ['nom' => $f['nom_origine']])) ?>"><?= Partages::icone(15) ?></a>
                   <form method="post" action="<?= url('fichiers/' . $f['id'] . '/supprimer') ?>" class="en-ligne"<?= $surPlace ?>
-                        data-confirmation="Supprimer définitivement ce fichier ?">
+                        data-confirmation="<?= e(t('cours.supprimer_fichier_sur')) ?>">
                     <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
                     <button class="bouton bouton--discret bouton--petit" type="submit" title="<?= e(t('commun.supprimer')) ?>">✕</button>
                   </form>

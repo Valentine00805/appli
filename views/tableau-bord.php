@@ -41,7 +41,7 @@
       <?php if ($taches === []): ?>
         <p class="discret" style="margin:0">
           <?php if ((int) $stats['taches'] > 0): ?>
-            <?= e(t('accueil.taches_en_attente', ['n' => (int) $stats['taches']])) ?>
+            <?= e(tn('accueil.taches_en_attente', (int) $stats['taches'])) ?>
             <a href="<?= url('taches') ?>"><?= e(t('accueil.voir_listes')) ?></a>.
           <?php else: ?>
             <?= e(t('accueil.rien_a_faire')) ?>

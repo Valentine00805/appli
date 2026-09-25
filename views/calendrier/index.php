@@ -211,7 +211,9 @@ $puce = static function (array $evt) use ($destination): string {
     ?>
     <form class="cal-volet-bascule" method="post"
           action="<?= url('calendrier/volet-ouvert') ?>"
-          data-volet-bascule="<?= e(url('calendrier/volet-ouvert')) ?>">
+          data-volet-bascule="<?= e(url('calendrier/volet-ouvert')) ?>"
+          data-montrer="<?= e(t('cal.montrer_agendas')) ?>"
+          data-masquer="<?= e(t('cal.masquer_agendas')) ?>">
       <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
       <input type="hidden" name="retour" value="<?= e((string) ($_SERVER['REQUEST_URI'] ?? '')) ?>">
       <input type="hidden" name="ferme" value="<?= $voletFerme ? '0' : '1' ?>">
@@ -472,7 +474,7 @@ $etiquetteRythme = static function (string $cle, bool $court = false) use ($ryth
             $couleurs = array_slice(array_values(array_unique(array_map('couleur_evenement', $duJour))), 0, 3);
             ?>
             <a class="<?= $classes ?>" href="<?= $lien('jour', $jour) ?>" title="<?= e($infobulle) ?>"
-               aria-label="<?= e(ucfirst(date_fr($cle . ' 00:00:00', false)) . ($duJour === [] ? '' : ', ' . t('cal.evenements_nombre', ['n' => count($duJour)]))) ?>">
+               aria-label="<?= e(ucfirst(date_fr($cle . ' 00:00:00', false)) . ($duJour === [] ? '' : ', ' . tn('cal.evenements_nombre', count($duJour)))) ?>">
               <span class="cal-annee__numero"><?= $j ?></span>
               <?php if ($couleurs !== []): ?>
                 <span class="cal-annee__points" aria-hidden="true">

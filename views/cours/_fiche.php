@@ -40,7 +40,7 @@ $avancementFiche = avancement_anneaux(
   <div class="volet__entete">
     <span class="volet__icone" aria-hidden="true">📝</span>
     <div style="min-width:0">
-      <h2 style="margin:0">Fiche de révision</h2>
+      <h2 style="margin:0"><?= e(t('fiche.titre')) ?></h2>
       <?php if (!$surPage): ?>
         <p class="discret" style="margin:.15rem 0 0"><?= e($cours['titre']) ?></p>
       <?php endif; ?>
@@ -57,11 +57,10 @@ $avancementFiche = avancement_anneaux(
       <span class="fiche__total" data-total-fiche>
         <?= Vue::rendre('cours/_anneau', [
             'pourcentage' => $avancementFiche['pourcentage'],
-            'titre'       => 'Avancement de cette fiche',
+            'titre'       => t('fiche.avancement'),
         ]) ?>
         <span class="fiche__total-mot">
-          <?= $avancementFiche['total'] ?> élément<?= $avancementFiche['total'] > 1 ? 's' : '' ?><br>
-          suivi<?= $avancementFiche['total'] > 1 ? 's' : '' ?>
+          <?= tn('fiche.suivis', $avancementFiche['total']) ?>
         </span>
       </span>
     <?php endif; ?>
@@ -74,9 +73,9 @@ $avancementFiche = avancement_anneaux(
     <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>"><?= $champPage ?>
 
     <div class="champ">
-      <label for="fiche_revision">Ce qu'il faut retenir</label>
+      <label for="fiche_revision"><?= e(t('fiche.a_retenir')) ?></label>
       <textarea id="fiche_revision" name="fiche_revision" class="fiche__texte" data-texte-riche
-                placeholder="Définitions, formules, dates, plan du chapitre, questions à se poser…"><?= e(TexteRiche::pourEditeur($fiche)) ?></textarea>
+                placeholder="<?= e(t('fiche.a_retenir_exemple')) ?>"><?= e(TexteRiche::pourEditeur($fiche)) ?></textarea>
       <?php
       /*
        * Une zone de saisie s'imprime mal : seule la partie visible sort, avec
@@ -86,19 +85,19 @@ $avancementFiche = avancement_anneaux(
        */
       ?>
       <div class="fiche__impression texte-riche-affiche" data-impression-fiche aria-hidden="true"><?= TexteRiche::versHtml($fiche) ?></div>
-      <span class="champ__aide">Gras, italique, souligné, listes et couleurs : sélectionnez du texte, puis la barre au-dessus.</span>
+      <span class="champ__aide"><?= e(t('fiche.mise_en_forme_aide')) ?></span>
     </div>
 
     <div class="actions">
-      <button class="bouton" type="submit">Enregistrer la fiche</button>
+      <button class="bouton" type="submit"><?= e(t('fiche.enregistrer')) ?></button>
       <?php if ($surPage): ?>
         <?php
         // Toujours vers la liste des fiches, fenêtre ou non : la fermer ramènerait
         // à la page d'où on l'a ouverte, qui n'est souvent pas cette liste.
         ?>
-        <a class="bouton bouton--discret" href="<?= url('revision') ?>">Retour aux fiches</a>
+        <a class="bouton bouton--discret" href="<?= url('revision') ?>"><?= e(t('fiche.retour_fiches')) ?></a>
       <?php else: ?>
-        <a class="bouton bouton--discret" href="<?= url('cours/' . $cours['id']) ?>">Fermer</a>
+        <a class="bouton bouton--discret" href="<?= url('cours/' . $cours['id']) ?>"><?= e(t('commun.fermer')) ?></a>
       <?php endif; ?>
     </div>
   </form>
@@ -108,19 +107,19 @@ $avancementFiche = avancement_anneaux(
     <div class="fiche-grille__elements<?= $nbElements === 0 ? ' fiche-grille__elements--vide' : '' ?>">
 
   <h3 class="volet__section" style="margin-top:0">
-    Éléments rattachés
+    <?= e(t('fiche.elements')) ?>
     <?php if ($nbElements > 0): ?><span class="discret">(<?= $nbElements ?>)</span><?php endif; ?>
   </h3>
   <p class="champ__aide" style="margin:-.35rem 0 .9rem">
-    Ce qui ne vient pas du cours lui-même : documents, liens, autres chapitres, échéances.
+    <?= e(t('fiche.elements_aide')) ?>
   </p>
 
   <?php // --- Fichiers et images propres à la fiche ------------------- ?>
   <div class="fiche__rayon<?= $fichiersFiche === [] ? ' fiche__rayon--vide' : '' ?>">
-    <h4 class="fiche__titre">📎 Fichiers et images</h4>
+    <h4 class="fiche__titre"><?= e(t('fiche.fichiers')) ?></h4>
 
     <?php if ($fichiersFiche === []): ?>
-      <p class="discret fiche__vide">Rien pour l'instant.</p>
+      <p class="discret fiche__vide"><?= e(t('commun.rien')) ?></p>
     <?php else: ?>
       <ul class="liste-fichiers">
         <?php foreach ($fichiersFiche as $f): ?>
@@ -153,9 +152,9 @@ $avancementFiche = avancement_anneaux(
             <span class="fichier__actions">
               <?= Vue::rendre('cours/_telecharger', ['fichier' => $f, 'compact' => true]) ?>
               <form<?= $surPlace ?> method="post" action="<?= url('fichiers/' . $f['id'] . '/supprimer') ?>" class="en-ligne"
-                    data-confirmation="Retirer ce fichier de la fiche ?">
+                    data-confirmation="<?= e(t('fiche.retirer_fichier_sur')) ?>">
                 <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>"><?= $champPage ?>
-                <button class="bouton bouton--discret bouton--petit" type="submit" title="Retirer">✕</button>
+                <button class="bouton bouton--discret bouton--petit" type="submit" title="<?= e(t('commun.retirer')) ?>">✕</button>
               </form>
             </span>
 
@@ -172,18 +171,18 @@ $avancementFiche = avancement_anneaux(
               <span class="fichier__avancement" data-avancement="<?= (int) $f['id'] ?>">
                 <?= Vue::rendre('cours/_anneau', [
                     'pourcentage' => $avance,
-                    'titre'       => 'Avancement de « ' . $f['nom_origine'] . ' »',
+                    'titre'       => t('fiche.avancement_de', ['nom' => $f['nom_origine']]),
                 ]) ?>
                 <span class="fichier__minutage">
                   <?php if ($pages > 1 && $pageAtteinte > 0): ?>
-                    Page <?= $pageAtteinte ?> sur <?= $pages ?>
+                    <?= e(t('fiche.page_sur', ['page' => $pageAtteinte, 'total' => $pages])) ?>
                   <?php elseif ($pages > 1): ?>
-                    pas encore lu
+                    <?= e(t('fiche.pas_encore_lu')) ?>
                   <?php elseif ((int) $f['duree_lecture'] > 0): ?>
                     <?= e(duree_lisible((int) $f['position_lecture'])) ?>
                     / <?= e(duree_lisible((int) $f['duree_lecture'])) ?>
                   <?php else: ?>
-                    pas encore lu
+                    <?= e(t('fiche.pas_encore_lu')) ?>
                   <?php endif; ?>
                 </span>
               </span>
@@ -197,7 +196,7 @@ $avancementFiche = avancement_anneaux(
                      data-position-url="<?= url('fichiers/' . $f['id'] . '/position') ?>"
                      src="<?= url('fichiers/' . $f['id']) ?>">
                 <a href="<?= url('fichiers/' . $f['id'], ['telecharger' => 1]) ?>">
-                  Télécharger l'enregistrement
+                  <?= e(t('fiche.telecharger_audio')) ?>
                 </a>
               </audio>
             <?php elseif ($estVideo): ?>
@@ -207,7 +206,7 @@ $avancementFiche = avancement_anneaux(
                      data-position-url="<?= url('fichiers/' . $f['id'] . '/position') ?>"
                      src="<?= url('fichiers/' . $f['id']) ?>">
                 <a href="<?= url('fichiers/' . $f['id'], ['telecharger' => 1]) ?>">
-                  Télécharger la vidéo
+                  <?= e(t('fiche.telecharger_video')) ?>
                 </a>
               </video>
             <?php endif; ?>
@@ -238,12 +237,12 @@ $avancementFiche = avancement_anneaux(
                   ?>
                   <span class="fichier__pages">
                     <button class="bouton bouton--discret bouton--petit" type="button"
-                            data-pdf-recule title="Page précédente">◀</button>
+                            data-pdf-recule title="<?= e(t('fiche.page_precedente')) ?>">◀</button>
                     <span class="fichier__page" data-pdf-libelle aria-live="polite">
-                      Page <?= $pageLue ?> sur <?= $pages ?>
+                      <?= e(t('fiche.page_sur', ['page' => $pageLue, 'total' => $pages])) ?>
                     </span>
                     <button class="bouton bouton--discret bouton--petit" type="button"
-                            data-pdf-avance title="Page suivante">▶</button>
+                            data-pdf-avance title="<?= e(t('fiche.page_suivante')) ?>">▶</button>
                     <?php
                     /*
                      * Lu en diagonale, ou déjà connu : on le déclare fini sans
@@ -254,17 +253,15 @@ $avancementFiche = avancement_anneaux(
                     ?>
                     <button class="bouton bouton--discret bouton--petit" type="button"
                             data-pdf-fini
-                            title="<?= $luEnEntier
-                                ? 'Remettre ce document comme non lu'
-                                : 'Marquer ce document comme lu' ?>"><?=
-                        $luEnEntier ? 'Annuler' : 'Terminer' ?></button>
+                            title="<?= e(t($luEnEntier ? 'fiche.doc_non_lu' : 'fiche.doc_lu')) ?>"><?=
+                        e(t($luEnEntier ? 'commun.annuler' : 'commun.terminer')) ?></button>
                   </span>
                 <?php endif; ?>
 
                 <span class="fichier__repli">
-                  Le document ne s'affiche pas ?
+                  <?= e(t('fiche.pdf_repli')) ?>
                   <a href="<?= url('fichiers/' . $f['id']) ?>" target="_blank" rel="noopener">
-                    L'ouvrir dans un onglet
+                    <?= e(t('fiche.pdf_onglet')) ?>
                   </a>
                 </span>
               </span>
@@ -303,9 +300,8 @@ $avancementFiche = avancement_anneaux(
             }
         }
         $compte = $vues === 0
-            ? 'pas encore vue'
-            : $vues . ' image' . ($vues > 1 ? 's' : '') . ' vue' . ($vues > 1 ? 's' : '')
-              . ' sur ' . $total;
+            ? t('fiche.image_pas_vue')
+            : tn('fiche.images_vues', $vues, ['total' => $total]);
         ?>
         <div class="fichier__images" data-images data-total="<?= $total ?>"
              data-depart="<?= $depart ?>">
@@ -314,7 +310,7 @@ $avancementFiche = avancement_anneaux(
                     data-vue="<?= (int) $image['position_lecture'] >= 1 ? '1' : '' ?>"
                     data-position-url="<?= url('fichiers/' . $image['id'] . '/position') ?>">
               <a href="<?= url('fichiers/' . $image['id']) ?>" target="_blank" rel="noopener"
-                 title="Ouvrir l'image en grand">
+                 title="<?= e(t('fiche.image_grand')) ?>">
                 <img src="<?= url('fichiers/' . $image['id']) ?>" loading="lazy"
                      alt="<?= e($image['nom_origine']) ?>">
               </a>
@@ -325,7 +321,7 @@ $avancementFiche = avancement_anneaux(
           <span class="fichier__avancement" data-avancement="images">
             <?= Vue::rendre('cours/_anneau', [
                 'pourcentage' => $total > 0 ? (int) round($vues / $total * 100) : null,
-                'titre'       => 'Images vues de la fiche',
+                'titre'       => t('fiche.images_vues_titre'),
             ]) ?>
             <span class="fichier__minutage" data-images-compte><?= e($compte) ?></span>
           </span>
@@ -333,12 +329,12 @@ $avancementFiche = avancement_anneaux(
           <span class="fichier__pages">
             <?php if ($total > 1): ?>
               <button class="bouton bouton--discret bouton--petit" type="button"
-                      data-images-recule title="Image précédente">◀</button>
+                      data-images-recule title="<?= e(t('fiche.image_precedente')) ?>">◀</button>
               <span class="fichier__page" data-images-libelle aria-live="polite">
-                Image <?= $depart + 1 ?> sur <?= $total ?>
+                <?= e(t('fiche.image_sur', ['rang' => $depart + 1, 'total' => $total])) ?>
               </span>
               <button class="bouton bouton--discret bouton--petit" type="button"
-                      data-images-avance title="Image suivante">▶</button>
+                      data-images-avance title="<?= e(t('fiche.image_suivante')) ?>">▶</button>
             <?php endif; ?>
             <?php
             /*
@@ -348,12 +344,10 @@ $avancementFiche = avancement_anneaux(
             ?>
             <button class="bouton bouton--discret bouton--petit" type="button"
                     data-images-fini
-                    title="<?= $vues >= $total
-                        ? ($total > 1 ? 'Remettre toutes les images comme non vues'
-                                      : 'Remettre cette image comme non vue')
-                        : ($total > 1 ? 'Marquer toutes les images comme vues'
-                                      : 'Marquer cette image comme vue') ?>"><?=
-                $vues >= $total ? 'Annuler' : 'Terminer' ?></button>
+                    title="<?= e(t($vues >= $total
+                        ? ($total > 1 ? 'fiche.images_non_vues' : 'fiche.image_non_vue')
+                        : ($total > 1 ? 'fiche.images_vues_toutes' : 'fiche.image_vue'))) ?>"><?=
+                e(t($vues >= $total ? 'commun.annuler' : 'commun.terminer')) ?></button>
           </span>
         </div>
       <?php endif; ?>
@@ -364,12 +358,12 @@ $avancementFiche = avancement_anneaux(
       <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>"><?= $champPage ?>
       <label class="depot__zone" for="depot-fiche-<?= (int) $cours['id'] ?>">
         <span class="depot__icone" aria-hidden="true">📎</span>
-        <span><strong>Déposez ici</strong>
-          <span class="discret">— photo du tableau, schéma, annales, audio, vidéo…</span></span>
+        <span><strong><?= e(t('fiche.deposez')) ?></strong>
+          <span class="discret"><?= e(t('fiche.deposez_aide')) ?></span></span>
       </label>
       <input type="file" id="depot-fiche-<?= (int) $cours['id'] ?>" name="fichiers[]" multiple
              class="depot__champ" data-depot-champ>
-      <button class="bouton bouton--petit bouton--bloc" type="submit" data-depot-envoi>Joindre à la fiche</button>
+      <button class="bouton bouton--petit bouton--bloc" type="submit" data-depot-envoi><?= e(t('fiche.joindre')) ?></button>
     </form>
   </div>
 
@@ -382,24 +376,24 @@ $avancementFiche = avancement_anneaux(
    */
   ?>
   <div class="fiche__rayon<?= $cartes['total'] === 0 ? ' fiche__rayon--vide' : '' ?>">
-    <h4 class="fiche__titre">🃏 Cartes</h4>
+    <h4 class="fiche__titre"><?= e(t('fiche.cartes')) ?></h4>
 
     <div data-cartes-resume>
       <?php if ($cartes['total'] === 0): ?>
-        <p class="discret fiche__vide">Aucune carte pour ce cours.</p>
+        <p class="discret fiche__vide"><?= e(t('fiche.aucune_carte')) ?></p>
       <?php else: ?>
         <p class="fiche__cartes">
           <?php // L'anneau du paquet : la boîte moyenne, de 1 à 5, ramenée en pourcentage. ?>
           <?= Vue::rendre('cours/_anneau', [
               'pourcentage' => $cartes['avancement'],
-              'titre'       => 'Avancement des cartes',
+              'titre'       => t('fiche.cartes_avancement'),
           ]) ?>
           <span>
-            <strong><?= $cartes['total'] ?></strong> carte<?= $cartes['total'] > 1 ? 's' : '' ?>
+            <?= tn('fiche.nb_cartes', (int) $cartes['total']) ?>
           <?php if ($cartes['a_revoir'] > 0): ?>
-            · <span class="carte-du"><?= $cartes['a_revoir'] ?> à revoir</span>
+            · <span class="carte-du"><?= e(t('fiche.a_revoir', ['n' => $cartes['a_revoir']])) ?></span>
           <?php else: ?>
-            · <span class="discret">rien à revoir aujourd'hui</span>
+            · <span class="discret"><?= e(t('fiche.rien_a_revoir')) ?></span>
           <?php endif; ?>
           </span>
         </p>
@@ -415,25 +409,25 @@ $avancementFiche = avancement_anneaux(
            */
           ?>
           <a class="bouton bouton--petit" data-ouvrir-seance
-             href="<?= url('cartes/seance', ['cours' => $cours['id']]) ?>">Réviser</a>
+             href="<?= url('cartes/seance', ['cours' => $cours['id']]) ?>"><?= e(t('fiche.reviser')) ?></a>
         <?php endif; ?>
         <?php // Les cartes se fabriquent dans l'onglet Cartes, et nulle part ailleurs. ?>
         <a class="bouton bouton--secondaire bouton--petit"
            href="<?= $cartes['total'] === 0
                ? url('cartes')
                : url('cours/' . $cours['id'] . '/cartes') ?>">
-          <?= $cartes['total'] === 0 ? 'En fabriquer' : 'Voir le paquet' ?>
+          <?= e(t($cartes['total'] === 0 ? 'fiche.en_fabriquer' : 'fiche.voir_paquet')) ?>
         </a>
 
         <?php if ($cartes['total'] > 0): ?>
           <form<?= $surPlace ?> method="post" action="<?= url('cours/' . $cours['id'] . '/cartes/rezero') ?>"
                 class="en-ligne"
-                data-confirmation="Remettre les <?= $cartes['total'] ?> cartes de ce cours à revoir aujourd'hui ?">
+                data-confirmation="<?= e(t('fiche.rezero_sur', ['n' => $cartes['total']])) ?>">
             <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
             <input type="hidden" name="retour" value="<?= $surPage ? 'fiche' : 'volet' ?>">
             <button class="bouton bouton--discret bouton--petit" type="submit"
-                    title="Ramener toutes les cartes de ce cours en boîte 1">
-              Tout remettre à revoir
+                    title="<?= e(t('fiche.rezero_aide')) ?>">
+              <?= e(t('fiche.rezero')) ?>
             </button>
           </form>
         <?php endif; ?>
@@ -458,10 +452,10 @@ $avancementFiche = avancement_anneaux(
 
   <?php // --- Liens web ----------------------------------------------- ?>
   <div class="fiche__rayon<?= $parType['lien'] === [] ? ' fiche__rayon--vide' : '' ?>">
-    <h4 class="fiche__titre">🔗 Liens</h4>
+    <h4 class="fiche__titre"><?= e(t('fiche.liens')) ?></h4>
 
     <?php if ($parType['lien'] === []): ?>
-      <p class="discret fiche__vide">Rien pour l'instant.</p>
+      <p class="discret fiche__vide"><?= e(t('commun.rien')) ?></p>
     <?php else: ?>
       <ul class="fiche__liste">
         <?php foreach ($parType['lien'] as $lien): ?>
@@ -477,30 +471,30 @@ $avancementFiche = avancement_anneaux(
     <?php endif; ?>
 
     <details class="fiche__ajout">
-      <summary>+ Ajouter un lien</summary>
+      <summary><?= e(t('fiche.ajouter_lien')) ?></summary>
       <form<?= $surPlace ?> method="post" action="<?= url('cours/' . $cours['id'] . '/revision/elements') ?>">
         <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>"><?= $champPage ?>
         <input type="hidden" name="type" value="lien">
         <div class="champ">
-          <label for="lien-url">Adresse</label>
+          <label for="lien-url"><?= e(t('fiche.adresse')) ?></label>
           <input type="url" id="lien-url" name="url" required placeholder="https://…">
         </div>
         <div class="champ">
-          <label for="lien-libelle">Intitulé <span class="discret">(facultatif)</span></label>
+          <label for="lien-libelle"><?= e(t('fiche.intitule')) ?> <span class="discret"><?= e(t('commun.facultatif')) ?></span></label>
           <input type="text" id="lien-libelle" name="libelle" maxlength="200"
-                 placeholder="Vidéo sur les fonctions affines">
+                 placeholder="<?= e(t('fiche.lien_exemple')) ?>">
         </div>
-        <button class="bouton bouton--petit" type="submit">Ajouter le lien</button>
+        <button class="bouton bouton--petit" type="submit"><?= e(t('fiche.ajouter_le_lien')) ?></button>
       </form>
     </details>
   </div>
 
   <?php // --- Renvois vers d'autres cours ----------------------------- ?>
   <div class="fiche__rayon<?= $parType['cours'] === [] ? ' fiche__rayon--vide' : '' ?>">
-    <h4 class="fiche__titre">📘 Autres cours</h4>
+    <h4 class="fiche__titre"><?= e(t('fiche.autres_cours')) ?></h4>
 
     <?php if ($parType['cours'] === []): ?>
-      <p class="discret fiche__vide">Rien pour l'instant.</p>
+      <p class="discret fiche__vide"><?= e(t('commun.rien')) ?></p>
     <?php else: ?>
       <ul class="fiche__liste">
         <?php foreach ($parType['cours'] as $renvoi): ?>
@@ -518,15 +512,15 @@ $avancementFiche = avancement_anneaux(
     <?php endif; ?>
 
     <?php if ($autresCours === []): ?>
-      <p class="champ__aide">Vous n'avez pas d'autre cours pour l'instant.</p>
+      <p class="champ__aide"><?= e(t('fiche.aucun_autre_cours')) ?></p>
     <?php else: ?>
       <details class="fiche__ajout">
-        <summary>+ Renvoyer vers un cours</summary>
+        <summary><?= e(t('fiche.renvoyer_cours')) ?></summary>
         <form<?= $surPlace ?> method="post" action="<?= url('cours/' . $cours['id'] . '/revision/elements') ?>">
           <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>"><?= $champPage ?>
           <input type="hidden" name="type" value="cours">
           <div class="champ">
-            <label for="renvoi-cours">Cours</label>
+            <label for="renvoi-cours"><?= e(t('fiche.cours')) ?></label>
             <select id="renvoi-cours" name="cible" required>
               <?php foreach ($autresCours as $c): ?>
                 <option value="<?= (int) $c['id'] ?>"><?= e($c['titre']) ?></option>
@@ -534,11 +528,11 @@ $avancementFiche = avancement_anneaux(
             </select>
           </div>
           <div class="champ">
-            <label for="renvoi-note">Pourquoi <span class="discret">(facultatif)</span></label>
+            <label for="renvoi-note"><?= e(t('fiche.pourquoi')) ?> <span class="discret"><?= e(t('commun.facultatif')) ?></span></label>
             <input type="text" id="renvoi-note" name="libelle" maxlength="200"
-                   placeholder="Les dérivées y sont expliquées">
+                   placeholder="<?= e(t('fiche.renvoi_exemple')) ?>">
           </div>
-          <button class="bouton bouton--petit" type="submit">Ajouter le renvoi</button>
+          <button class="bouton bouton--petit" type="submit"><?= e(t('fiche.ajouter_renvoi')) ?></button>
         </form>
       </details>
     <?php endif; ?>
@@ -546,10 +540,10 @@ $avancementFiche = avancement_anneaux(
 
   <?php // --- Évènements du calendrier -------------------------------- ?>
   <div class="fiche__rayon<?= $parType['evenement'] === [] ? ' fiche__rayon--vide' : '' ?>">
-    <h4 class="fiche__titre">📅 Au calendrier</h4>
+    <h4 class="fiche__titre"><?= e(t('fiche.au_calendrier')) ?></h4>
 
     <?php if ($parType['evenement'] === []): ?>
-      <p class="discret fiche__vide">Rien pour l'instant.</p>
+      <p class="discret fiche__vide"><?= e(t('commun.rien')) ?></p>
     <?php else: ?>
       <ul class="fiche__liste">
         <?php foreach ($parType['evenement'] as $renvoi): ?>
@@ -559,7 +553,7 @@ $avancementFiche = avancement_anneaux(
             </a>
             <span class="fiche__url discret">
               <?= e(date_fr((string) $renvoi['evenement_debut'], (int) $renvoi['journee_entiere'] === 0)) ?>
-              <?= (int) $renvoi['termine'] === 1 ? '· terminé' : '' ?>
+              <?= (int) $renvoi['termine'] === 1 ? e(t('fiche.termine')) : '' ?>
             </span>
             <?= Vue::rendre('cours/_retirer-element', ['element' => $renvoi, 'surPage' => $surPage, 'dansUneFenetre' => $dansUneFenetre]) ?>
           </li>
@@ -568,15 +562,15 @@ $avancementFiche = avancement_anneaux(
     <?php endif; ?>
 
     <?php if ($evenementsChoix === []): ?>
-      <p class="champ__aide">Votre calendrier est encore vide.</p>
+      <p class="champ__aide"><?= e(t('fiche.calendrier_vide')) ?></p>
     <?php else: ?>
       <details class="fiche__ajout">
-        <summary>+ Rattacher un évènement</summary>
+        <summary><?= e(t('fiche.rattacher_evenement')) ?></summary>
         <form<?= $surPlace ?> method="post" action="<?= url('cours/' . $cours['id'] . '/revision/elements') ?>">
           <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>"><?= $champPage ?>
           <input type="hidden" name="type" value="evenement">
           <div class="champ">
-            <label for="renvoi-evt">Évènement</label>
+            <label for="renvoi-evt"><?= e(t('fiche.evenement')) ?></label>
             <select id="renvoi-evt" name="cible" required>
               <?php foreach ($evenementsChoix as $evt): ?>
                 <option value="<?= (int) $evt['id'] ?>">
@@ -585,7 +579,7 @@ $avancementFiche = avancement_anneaux(
               <?php endforeach; ?>
             </select>
           </div>
-          <button class="bouton bouton--petit" type="submit">Rattacher</button>
+          <button class="bouton bouton--petit" type="submit"><?= e(t('fiche.rattacher')) ?></button>
         </form>
       </details>
     <?php endif; ?>

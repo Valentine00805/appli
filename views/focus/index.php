@@ -29,7 +29,7 @@ $coches = array_flip(array_map('intval', $coches));
 <?php if ($enCours !== null): ?>
   <div class="carte" style="border-color:var(--accent);margin-bottom:1rem">
     <h2 style="margin-top:0">Une session est ouverte</h2>
-    <p class="discret">Commencée à <?= e(date('H\hi', strtotime((string) $enCours['debut']))) ?>
+    <p class="discret">Commencée à <?= e(heure_courte((int) strtotime((string) $enCours['debut']))) ?>
       <?php if ($enCours['cours_titre'] !== null): ?>sur « <?= e((string) $enCours['cours_titre']) ?> »<?php endif; ?>.</p>
     <p class="actions">
       <a class="bouton" href="<?= url('focus/' . (int) $enCours['id']) ?>">Reprendre</a>
@@ -277,7 +277,7 @@ $coches = array_flip(array_map('intval', $coches));
               <span style="flex:1;min-width:0">
                 <strong><?= e((string) ($s['cours_titre'] ?? $s['sujet'] ?? 'Révision libre')) ?></strong><br>
                 <span class="discret">
-                  <?= e(ucfirst(date_fr((string) $s['debut'], false))) ?> à <?= e(date('H\hi', strtotime((string) $s['debut']))) ?>
+                  <?= e(ucfirst(date_fr((string) $s['debut'], false))) ?> à <?= e(heure_courte((int) strtotime((string) $s['debut']))) ?>
                   <?php if ((int) $s['pauses'] > 0): ?> · <?= (int) $s['pauses'] ?> pause<?= (int) $s['pauses'] > 1 ? 's' : '' ?><?php endif; ?>
                   <?php if ($s['ressenti'] !== null): ?> · <?= Focus::RESSENTIS[$s['ressenti']]['icone'] ?><?php endif; ?>
                 </span>

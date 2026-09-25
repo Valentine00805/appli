@@ -24,12 +24,11 @@ foreach ($images as $image) {
          * Le dire vaut mieux qu'un trou muet.
          */
         $html .= '<p class="document-image__absente">'
-            . ($image['source'] === ''
-                ? 'Une image liée : le document ne la contient pas, elle est restée'
-                  . ' sur l’ordinateur où il a été écrit.'
-                : 'Une image dans un format que le navigateur n’affiche pas ('
-                  . e(strtoupper((string) pathinfo($image['source'], PATHINFO_EXTENSION)))
-                  . '). Elle reste dans le fichier, à ouvrir dans Word.')
+            . e($image['source'] === ''
+                ? t('cours.image_liee')
+                : t('cours.image_format_inconnu', [
+                    'format' => strtoupper((string) pathinfo($image['source'], PATHINFO_EXTENSION)),
+                  ]))
             . '</p>';
         continue;
     }
@@ -37,7 +36,7 @@ foreach ($images as $image) {
         : ' width="' . (int) $image['largeur'] . '" height="' . (int) $image['hauteur'] . '"';
     $html .= '<figure class="document-image"><img src="'
         . e(url('fichiers/' . $fichier['id'] . '/image', ['n' => (int) $image['rang']]))
-        . '" alt="' . e($image['alt'] !== '' ? $image['alt'] : 'Image du document') . '"'
+        . '" alt="' . e($image['alt'] !== '' ? $image['alt'] : t('cours.image_du_document')) . '"'
         . $taille . ' loading="lazy" decoding="async"></figure>';
 }
 
