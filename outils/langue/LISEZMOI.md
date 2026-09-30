@@ -21,10 +21,9 @@ qu'elles répondent dans la bonne langue, puis efface ce compte. Elle contrôle
 aussi que les quatre fichiers de langue ont exactement les mêmes clés et que
 chaque pluriel a ses deux moitiés.
 
-Elle ne peut pas vivre ici : l'antivirus la met en quarantaine dès qu'elle
-s'exécute depuis le dossier du projet — elle ouvre des sessions par HTTP avec
-un mot de passe, ce qu'une heuristique prend pour une attaque. Elle se lance
-donc depuis un dossier tenu à l'écart du projet.
+L'antivirus l'a déjà mise en quarantaine une fois : elle ouvre des sessions par
+HTTP avec un mot de passe, ce qu'une heuristique prend pour une attaque. Si
+elle disparaît du dossier, c'est là qu'il faut la chercher.
 
 **`cles.php`** — la boîte à outils des deux précédents, et de la traduction
 elle-même. `ajouter_cles()` écrit une clé dans les quatre langues d'un coup ;
