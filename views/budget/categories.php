@@ -15,21 +15,21 @@ $carte = static function (array $c) use ($csrf, $palette, $icones): string {
         <div style="flex:1;min-width:0">
           <h3 style="margin-bottom:.15rem;font-size:1.05rem"><?= e($c['nom']) ?></h3>
           <p class="discret" style="margin:0">
-            <?= (int) $c['nb_operations'] ?> opération<?= (int) $c['nb_operations'] > 1 ? 's' : '' ?>
+            <?= e(tn('cat.nb_operations', (int) $c['nb_operations'])) ?>
             <?php if ((int) $c['nb_operations'] > 0): ?>
-              · <?= e(montant_fr($c['total'])) ?> au total
+              <?= e(t('cat.total', ['montant' => montant_fr($c['total'])])) ?>
             <?php endif; ?>
             <?php if ($c['plafond_mensuel'] !== null): ?>
-              · plafond <?= e(montant_fr($c['plafond_mensuel'])) ?>/mois
+              <?= e(t('cat.plafond', ['montant' => montant_fr($c['plafond_mensuel'])])) ?>
             <?php endif; ?>
           </p>
         </div>
 
         <div class="actions">
           <a class="bouton bouton--discret bouton--petit"
-             href="<?= url('budget', ['categorie' => $c['id']]) ?>">Voir</a>
+             href="<?= url('budget', ['categorie' => $c['id']]) ?>"><?= e(t('commun.voir')) ?></a>
           <button class="bouton bouton--secondaire bouton--petit" type="button"
-                  data-bascule="edition-cat-<?= (int) $c['id'] ?>">Modifier</button>
+                  data-bascule="edition-cat-<?= (int) $c['id'] ?>"><?= e(t('evt.modifier')) ?></button>
         </div>
       </div>
 
@@ -40,13 +40,13 @@ $carte = static function (array $c) use ($csrf, $palette, $icones): string {
           <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
 
           <div class="champ">
-            <label for="nom-c-<?= (int) $c['id'] ?>">Nom</label>
+            <label for="nom-c-<?= (int) $c['id'] ?>"><?= e(t('commun.nom')) ?></label>
             <input type="text" id="nom-c-<?= (int) $c['id'] ?>" name="nom" required maxlength="60"
                    value="<?= e($c['nom']) ?>">
           </div>
 
           <div class="champ">
-            <span class="legende">Icône</span>
+            <span class="legende"><?= e(t('commun.icone')) ?></span>
             <div class="choix-icones">
               <?php foreach ($icones as $j => $icone): ?>
                 <?php $id = 'ic-' . $c['id'] . '-' . $j; ?>
@@ -58,7 +58,7 @@ $carte = static function (array $c) use ($csrf, $palette, $icones): string {
           </div>
 
           <div class="champ">
-            <span class="legende">Couleur</span>
+            <span class="legende"><?= e(t('commun.couleur')) ?></span>
             <div class="choix-couleurs">
               <?php foreach ($palette as $j => $couleur): ?>
                 <?php $id = 'cc-' . $c['id'] . '-' . $j; ?>
@@ -71,23 +71,23 @@ $carte = static function (array $c) use ($csrf, $palette, $icones): string {
 
           <?php if ($c['sens'] === 'depense'): ?>
             <div class="champ">
-              <label for="plafond-<?= (int) $c['id'] ?>">Plafond mensuel</label>
+              <label for="plafond-<?= (int) $c['id'] ?>"><?= e(t('cat.plafond_mensuel')) ?></label>
               <input type="text" id="plafond-<?= (int) $c['id'] ?>" name="plafond_mensuel" inputmode="decimal"
-                     placeholder="laisser vide pour aucun"
+                     placeholder="<?= e(t('cat.plafond_vide')) ?>"
                      value="<?= $c['plafond_mensuel'] !== null ? e(montant_fr($c['plafond_mensuel'], false)) : '' ?>">
               <span class="champ__aide">
-                Affiche une jauge et vous signale le dépassement sur la page des opérations.
+                <?= e(t('cat.plafond_aide')) ?>
               </span>
             </div>
           <?php endif; ?>
 
-          <button class="bouton" type="submit">Enregistrer</button>
+          <button class="bouton" type="submit"><?= e(t('commun.enregistrer')) ?></button>
         </form>
 
         <form method="post" action="<?= url('budget/categories/' . $c['id'] . '/supprimer') ?>" style="margin-top:.75rem"
-              data-confirmation="Supprimer cette catégorie ? Les opérations sont conservées, sans catégorie.">
+              data-confirmation="<?= e(t('cat.supprimer_sur')) ?>">
           <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
-          <button class="bouton bouton--danger bouton--petit" type="submit">Supprimer cette catégorie</button>
+          <button class="bouton bouton--danger bouton--petit" type="submit"><?= e(t('cat.supprimer')) ?></button>
         </form>
       </div>
     </section>
@@ -100,21 +100,22 @@ $carte = static function (array $c) use ($csrf, $palette, $icones): string {
 
 <div class="entete-page">
   <div>
-    <h1>Catégories de budget</h1>
-    <p>Elles classent vos opérations et servent aux totaux et aux plafonds.</p>
+    <h1><?= e(t('cat.titre')) ?></h1>
+    <p><?= e(t('cat.sous_titre')) ?></p>
   </div>
   <div class="actions">
-    <a class="bouton bouton--secondaire" href="<?= url('budget') ?>">Voir les opérations</a>
+    <a class="bouton bouton--secondaire" href="<?= url('budget') ?>"><?= e(t('remb.voir_operations')) ?></a>
   </div>
 </div>
 
 <section class="carte" style="margin-bottom:1.5rem;border-color:var(--accent)">
   <div style="display:flex;justify-content:space-between;align-items:baseline;gap:.6rem;flex-wrap:wrap">
-    <h2 style="margin:0">💡 Budget proposé</h2>
+    <h2 style="margin:0"><?= e(t('cat.budget_propose')) ?></h2>
     <?php if ($suggestions['suffisant']): ?>
       <span class="discret">
-        d'après <?= (int) $suggestions['mois_disponibles'] ?> mois de dépenses,
-        de <?= e((string) $suggestions['periode']) ?>
+        <?= e(t('cat.dapres', [
+            'n' => (int) $suggestions['mois_disponibles'], 'periode' => (string) $suggestions['periode'],
+        ])) ?>
       </span>
     <?php endif; ?>
   </div>
@@ -123,13 +124,10 @@ $carte = static function (array $c) use ($csrf, $palette, $icones): string {
     <?php $manque = SuggestionBudget::MOIS_MINIMUM - (int) $suggestions['mois_disponibles']; ?>
     <p class="discret" style="margin:.5rem 0 0">
       <?php if ((int) $suggestions['mois_disponibles'] === 0): ?>
-        Aucune dépense classée sur les mois écoulés. Saisissez vos dépenses en les
-        rangeant par catégorie : au bout de <?= SuggestionBudget::MOIS_MINIMUM ?> mois,
-        une proposition de budget apparaîtra ici.
+        <?= e(t('cat.aucune_depense_classee', ['n' => SuggestionBudget::MOIS_MINIMUM])) ?>
       <?php else: ?>
-        <?= (int) $suggestions['mois_disponibles'] ?> mois de dépenses enregistré<?= (int) $suggestions['mois_disponibles'] > 1 ? 's' : '' ?>.
-        Encore <?= $manque ?> mois avant une proposition — il en faut au moins
-        <?= SuggestionBudget::MOIS_MINIMUM ?> pour dégager une habitude.
+        <?= e(tn('cat.mois_enregistres', (int) $suggestions['mois_disponibles'])) ?>
+        <?= e(t('cat.encore_mois', ['manque' => $manque, 'min' => SuggestionBudget::MOIS_MINIMUM])) ?>
       <?php endif; ?>
     </p>
     <div class="jauge" style="margin-top:.6rem;max-width:300px">
@@ -138,12 +136,9 @@ $carte = static function (array $c) use ($csrf, $palette, $icones): string {
 
   <?php else: ?>
     <p class="discret" style="margin:.4rem 0 1rem">
-      Une fourchette, pas un chiffre : la marge est calculée sur la régularité de
-      chaque poste. Un poste stable donne une fourchette serrée, un poste en dents
-      de scie une fourchette large.
+      <?= e(t('cat.fourchette_aide')) ?>
       <?php if (!$suggestions['fiable']): ?>
-        <strong>À prendre avec des pincettes</strong> : avec moins de
-        <?= SuggestionBudget::MOIS_CONFIANCE ?> mois, l'estimation reste fragile.
+        <?= t('cat.pincettes', ['n' => SuggestionBudget::MOIS_CONFIANCE]) ?>
       <?php endif; ?>
     </p>
 
@@ -151,10 +146,10 @@ $carte = static function (array $c) use ($csrf, $palette, $icones): string {
       <table class="tableau">
         <thead>
           <tr>
-            <th scope="col">Poste</th>
-            <th scope="col" class="nombre">Fourchette</th>
-            <th scope="col" class="nombre">À prévoir</th>
-            <th scope="col">Observé</th>
+            <th scope="col"><?= e(t('cat.col_poste')) ?></th>
+            <th scope="col" class="nombre"><?= e(t('cat.col_fourchette')) ?></th>
+            <th scope="col" class="nombre"><?= e(t('cat.col_a_prevoir')) ?></th>
+            <th scope="col"><?= e(t('cat.col_observe')) ?></th>
             <th scope="col"></th>
           </tr>
         </thead>
@@ -165,26 +160,27 @@ $carte = static function (array $c) use ($csrf, $palette, $icones): string {
                 <span aria-hidden="true"><?= e($s['icone']) ?></span> <?= e($s['nom']) ?>
                 <?php if ($s['regulier']): ?>
                   <span class="pastille" style="background:var(--succes-doux);color:var(--succes)"
-                        title="Dépenses régulières d'un mois à l'autre">régulier</span>
+                        title="<?= e(t('cat.regulier_titre')) ?>"><?= e(t('cat.regulier')) ?></span>
                 <?php endif; ?>
               </th>
               <td class="nombre">
-                <?= e(montant_fr($s['bas'])) ?> <span class="discret">à</span> <?= e(montant_fr($s['haut'])) ?>
+                <?= e(montant_fr($s['bas'])) ?> <span class="discret"><?= e(t('cat.a')) ?></span> <?= e(montant_fr($s['haut'])) ?>
               </td>
               <td class="nombre"><strong><?= e(montant_fr($s['conseille'])) ?></strong></td>
               <td class="discret" style="font-size:.82rem;white-space:nowrap">
-                <?= (int) $s['mois'] ?> mois ·
-                de <?= e(montant_fr($s['mini'])) ?> à <?= e(montant_fr($s['maxi'])) ?>
+                <?= e(t('cat.mois_de_a', [
+                    'n' => (int) $s['mois'], 'mini' => montant_fr($s['mini']), 'maxi' => montant_fr($s['maxi']),
+                ])) ?>
               </td>
               <td>
                 <?php if ($s['plafond'] !== null && abs($s['plafond'] - $s['conseille']) < 0.005): ?>
-                  <span class="pastille" style="background:var(--succes-doux);color:var(--succes)">appliqué</span>
+                  <span class="pastille" style="background:var(--succes-doux);color:var(--succes)"><?= e(t('cat.applique')) ?></span>
                 <?php else: ?>
                   <form method="post" action="<?= url('budget/suggestions/' . $s['id'] . '/appliquer') ?>">
                     <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
                     <button class="bouton bouton--secondaire bouton--petit" type="submit"
-                            title="Fixer le plafond mensuel de cette catégorie">
-                      Utiliser<?= $s['plafond'] !== null ? ' (remplace ' . e(montant_fr($s['plafond'])) . ')' : '' ?>
+                            title="<?= e(t('cat.fixer_plafond_titre')) ?>">
+                      <?= e(t('cat.utiliser')) ?><?= $s['plafond'] !== null ? e(t('cat.utiliser_remplace', ['montant' => montant_fr($s['plafond'])])) : '' ?>
                     </button>
                   </form>
                 <?php endif; ?>
@@ -192,10 +188,10 @@ $carte = static function (array $c) use ($csrf, $palette, $icones): string {
             </tr>
           <?php endforeach; ?>
           <tr style="border-top:2px solid var(--bordure-forte)">
-            <th scope="row">Ensemble des postes</th>
+            <th scope="row"><?= e(t('cat.ensemble')) ?></th>
             <td class="nombre">
               <?= e(montant_fr($suggestions['total_bas'])) ?>
-              <span class="discret">à</span>
+              <span class="discret"><?= e(t('cat.a')) ?></span>
               <?= e(montant_fr($suggestions['total_haut'])) ?>
             </td>
             <td class="nombre"><strong><?= e(montant_fr($suggestions['total_conseille'])) ?></strong></td>
@@ -207,12 +203,12 @@ $carte = static function (array $c) use ($csrf, $palette, $icones): string {
 
     <div class="actions" style="margin-top:1rem">
       <form method="post" action="<?= url('budget/suggestions/appliquer') ?>"
-            data-confirmation="Fixer le plafond mensuel de tous ces postes à la valeur proposée ?">
+            data-confirmation="<?= e(t('cat.appliquer_tout_sur')) ?>">
         <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
-        <button class="bouton" type="submit">Appliquer toutes les propositions</button>
+        <button class="bouton" type="submit"><?= e(t('cat.appliquer_tout')) ?></button>
       </form>
       <span class="discret">
-        Les plafonds restent modifiables un par un, plus bas.
+        <?= e(t('cat.modifiables')) ?>
       </span>
     </div>
   <?php endif; ?>
@@ -220,48 +216,48 @@ $carte = static function (array $c) use ($csrf, $palette, $icones): string {
 
 <div class="colonnes">
   <div class="pile">
-    <h2 style="margin-bottom:0">Dépenses</h2>
+    <h2 style="margin-bottom:0"><?= e(t('bud.depenses')) ?></h2>
     <?php if ($depenses === []): ?>
-      <p class="discret">Aucune catégorie de dépense.</p>
+      <p class="discret"><?= e(t('cat.aucune_depense_cat')) ?></p>
     <?php else: ?>
       <?php foreach ($depenses as $c): ?><?= $carte($c) ?><?php endforeach; ?>
     <?php endif; ?>
 
-    <h2 style="margin:1rem 0 0">Recettes</h2>
+    <h2 style="margin:1rem 0 0"><?= e(t('bud.recettes')) ?></h2>
     <?php if ($recettes === []): ?>
-      <p class="discret">Aucune catégorie de recette.</p>
+      <p class="discret"><?= e(t('cat.aucune_recette_cat')) ?></p>
     <?php else: ?>
       <?php foreach ($recettes as $c): ?><?= $carte($c) ?><?php endforeach; ?>
     <?php endif; ?>
 
     <?php if ($sansCategorie > 0): ?>
       <p class="discret">
-        <?= $sansCategorie ?> opération<?= $sansCategorie > 1 ? 's n\'ont' : ' n\'a' ?> pas de catégorie —
-        <a href="<?= url('budget') ?>">les retrouver dans la liste</a>.
+        <?= e(tn('cat.sans_categorie', $sansCategorie)) ?>
+        <a href="<?= url('budget') ?>"><?= e(t('mat.sans_matiere_lien')) ?></a>.
       </p>
     <?php endif; ?>
   </div>
 
   <div class="carte">
-    <h2>Nouvelle catégorie</h2>
+    <h2><?= e(t('cat.nouvelle')) ?></h2>
     <form method="post" action="<?= url('budget/categories') ?>">
       <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
 
       <fieldset style="margin-bottom:1rem">
-        <legend>Type</legend>
+        <legend><?= e(t('cat.type')) ?></legend>
         <div style="display:flex;gap:1rem">
-          <label class="case"><input type="radio" name="sens" value="depense" checked> Dépense</label>
-          <label class="case"><input type="radio" name="sens" value="recette"> Recette</label>
+          <label class="case"><input type="radio" name="sens" value="depense" checked> <?= e(t('bud.depense')) ?></label>
+          <label class="case"><input type="radio" name="sens" value="recette"> <?= e(t('bud.recette')) ?></label>
         </div>
       </fieldset>
 
       <div class="champ">
-        <label for="nom">Nom</label>
-        <input type="text" id="nom" name="nom" required maxlength="60" placeholder="Cantine, Loisirs…">
+        <label for="nom"><?= e(t('commun.nom')) ?></label>
+        <input type="text" id="nom" name="nom" required maxlength="60" placeholder="<?= e(t('cat.nom_exemple')) ?>">
       </div>
 
       <div class="champ">
-        <span class="legende">Icône</span>
+        <span class="legende"><?= e(t('commun.icone')) ?></span>
         <div class="choix-icones">
           <?php foreach ($icones as $j => $icone): ?>
             <input type="radio" id="nic-<?= $j ?>" name="icone" value="<?= e($icone) ?>"<?= $j === 0 ? ' checked' : '' ?>>
@@ -271,7 +267,7 @@ $carte = static function (array $c) use ($csrf, $palette, $icones): string {
       </div>
 
       <div class="champ">
-        <span class="legende">Couleur</span>
+        <span class="legende"><?= e(t('commun.couleur')) ?></span>
         <div class="choix-couleurs">
           <?php foreach ($palette as $j => $couleur): ?>
             <input type="radio" id="ncc-<?= $j ?>" name="couleur" value="<?= e($couleur) ?>"<?= $j === 0 ? ' checked' : '' ?>>
@@ -281,11 +277,11 @@ $carte = static function (array $c) use ($csrf, $palette, $icones): string {
       </div>
 
       <div class="champ">
-        <label for="plafond_mensuel">Plafond mensuel <span class="discret">(dépenses seulement)</span></label>
-        <input type="text" id="plafond_mensuel" name="plafond_mensuel" inputmode="decimal" placeholder="facultatif">
+        <label for="plafond_mensuel"><?= e(t('cat.plafond_mensuel')) ?> <span class="discret"><?= e(t('cat.depenses_seulement')) ?></span></label>
+        <input type="text" id="plafond_mensuel" name="plafond_mensuel" inputmode="decimal" placeholder="<?= e(t('commun.facultatif_mot')) ?>">
       </div>
 
-      <button class="bouton bouton--bloc" type="submit">Créer la catégorie</button>
+      <button class="bouton bouton--bloc" type="submit"><?= e(t('cat.creer')) ?></button>
     </form>
   </div>
 </div>

@@ -33,54 +33,54 @@ $lien = static fn (string $m): string => url('budget/remboursements',
 
 <div class="entete-page">
   <div>
-    <h1>Remboursements</h1>
-    <p>Ce que vous avez avancé et qui doit vous être rendu en <?= e($titrePeriode) ?>.</p>
+    <h1><?= e(t('remb.titre')) ?></h1>
+    <p><?= e(t('remb.sous_titre', ['mois' => $titrePeriode])) ?></p>
   </div>
   <div class="actions sans-impression">
     <a class="bouton bouton--secondaire bouton--petit"
-       href="<?= $lien($mois->modify('-1 month')->format('Y-m')) ?>" aria-label="Mois précédent">←</a>
+       href="<?= $lien($mois->modify('-1 month')->format('Y-m')) ?>" aria-label="<?= e(t('bud.mois_precedent')) ?>">←</a>
     <?php if ($periode !== $moisCourant): ?>
-      <a class="bouton bouton--secondaire bouton--petit" href="<?= $lien($moisCourant) ?>">Ce mois-ci</a>
+      <a class="bouton bouton--secondaire bouton--petit" href="<?= $lien($moisCourant) ?>"><?= e(t('bud.ce_mois')) ?></a>
     <?php endif; ?>
     <a class="bouton bouton--secondaire bouton--petit"
-       href="<?= $lien($mois->modify('+1 month')->format('Y-m')) ?>" aria-label="Mois suivant">→</a>
-    <a class="bouton" href="<?= url('budget/remboursements/export', $filtres) ?>">📊 Exporter en Excel</a>
-    <button class="bouton bouton--secondaire" type="button" onclick="window.print()">🖨 Imprimer</button>
-    <a class="bouton bouton--secondaire" href="<?= url('budget') ?>">Voir les opérations</a>
+       href="<?= $lien($mois->modify('+1 month')->format('Y-m')) ?>" aria-label="<?= e(t('bud.mois_suivant')) ?>">→</a>
+    <a class="bouton" href="<?= url('budget/remboursements/export', $filtres) ?>"><?= e(t('remb.exporter')) ?></a>
+    <button class="bouton bouton--secondaire" type="button" onclick="window.print()"><?= e(t('remb.imprimer')) ?></button>
+    <a class="bouton bouton--secondaire" href="<?= url('budget') ?>"><?= e(t('remb.voir_operations')) ?></a>
   </div>
 </div>
 
 <div class="grille grille--4" style="margin-bottom:1.5rem">
   <div class="carte stat" style="border-color:var(--accent)">
     <div class="stat__valeur" style="color:var(--accent-fonce)"><?= e(montant_fr($totaux['attente'])) ?></div>
-    <div class="stat__libelle"><strong>reste à réclamer</strong> ce mois-ci</div>
+    <div class="stat__libelle"><?= t('remb.reste_a_reclamer') ?></div>
   </div>
   <div class="carte stat">
     <div class="stat__valeur" style="color:var(--succes)"><?= e(montant_fr($totaux['regle'])) ?></div>
-    <div class="stat__libelle">déjà remboursé</div>
+    <div class="stat__libelle"><?= e(t('remb.deja_rembourse')) ?></div>
   </div>
   <div class="carte stat">
     <div class="stat__valeur"><?= e(montant_fr($totaux['paye'])) ?></div>
-    <div class="stat__libelle">avancé au total</div>
+    <div class="stat__libelle"><?= e(t('remb.avance_total')) ?></div>
   </div>
   <div class="carte stat">
     <div class="stat__valeur"><?= (int) $totaux['nb'] ?></div>
-    <div class="stat__libelle">ligne<?= (int) $totaux['nb'] > 1 ? 's' : '' ?> cochée<?= (int) $totaux['nb'] > 1 ? 's' : '' ?></div>
+    <div class="stat__libelle"><?= e(tn('remb.lignes_cochees', (int) $totaux['nb'])) ?></div>
   </div>
 </div>
 
 <form class="filtres sans-impression" method="get" action="<?= url('budget/remboursements') ?>" data-auto-envoi>
   <div class="champ">
-    <label for="f-mois">Mois</label>
+    <label for="f-mois"><?= e(t('remb.mois')) ?></label>
     <input type="month" id="f-mois" name="mois" value="<?= e($periode) ?>">
   </div>
   <?php if ($personnes !== [] || $groupes !== []): ?>
     <div class="champ">
-      <label for="f-qui">Qui rembourse</label>
+      <label for="f-qui"><?= e(t('remb.qui_rembourse')) ?></label>
       <select id="f-qui" name="qui">
-        <option value="">Tout le monde</option>
+        <option value=""><?= e(t('remb.tout_le_monde')) ?></option>
         <?php if ($groupes !== []): ?>
-          <optgroup label="Groupes">
+          <optgroup label="<?= e(t('remb.groupes')) ?>">
             <?php foreach ($groupes as $g): ?>
               <?php if ($g['membres'] === []) { continue; } ?>
               <option value="g:<?= (int) $g['id'] ?>"<?= $groupe !== null && $groupe['id'] === $g['id'] ? ' selected' : '' ?>>
@@ -90,7 +90,7 @@ $lien = static fn (string $m): string => url('budget/remboursements',
           </optgroup>
         <?php endif; ?>
         <?php if ($personnes !== []): ?>
-          <optgroup label="Personnes">
+          <optgroup label="<?= e(t('remb.personnes')) ?>">
             <?php foreach ($personnes as $p): ?>
               <option value="p:<?= e($p) ?>"<?= $personne === $p ? ' selected' : '' ?>><?= e($p) ?></option>
             <?php endforeach; ?>
@@ -109,56 +109,57 @@ $lien = static fn (string $m): string => url('budget/remboursements',
      */
     ?>
     <p class="champ__aide" style="flex-basis:100%;margin:0">
-      Groupe « <?= e($groupe['nom']) ?> » : <?= e(implode(', ', $groupe['membres'])) ?>.
-      Le règlement, lui, se fait personne par personne.
+      <?= e(t('remb.groupe_aide', [
+          'nom' => $groupe['nom'], 'membres' => implode(', ', $groupe['membres']),
+      ])) ?>
     </p>
   <?php endif; ?>
   <div class="champ">
-    <label for="f-statut">Statut</label>
+    <label for="f-statut"><?= e(t('remb.statut')) ?></label>
     <select id="f-statut" name="statut">
-      <option value="">Tous</option>
+      <option value=""><?= e(t('remb.tous')) ?></option>
       <?php foreach ($statuts as $cle => $libelle): ?>
         <option value="<?= e($cle) ?>"<?= $statut === $cle ? ' selected' : '' ?>><?= e($libelle) ?></option>
       <?php endforeach; ?>
     </select>
   </div>
-  <button class="bouton bouton--secondaire" type="submit">Filtrer</button>
+  <button class="bouton bouton--secondaire" type="submit"><?= e(t('bud.filtrer')) ?></button>
 </form>
 
 <?php if ($reglement !== null): ?>
   <section class="carte" style="margin-bottom:1.25rem;border-color:var(--succes)">
     <div style="display:flex;justify-content:space-between;align-items:baseline;gap:1rem;flex-wrap:wrap">
       <div>
-        <h2 style="margin:0;color:var(--succes)">✅ Mois remboursé</h2>
+        <h2 style="margin:0;color:var(--succes)"><?= e(t('remb.mois_rembourse')) ?></h2>
         <p class="discret" style="margin:.35rem 0 0">
-          <?= e(montant_fr($reglement['montant'])) ?> réglé<?= (float) $reglement['montant'] > 1 ? 's' : '' ?>
-          le <?= e(date_fr((string) $reglement['date_reglement'] . ' 00:00:00', false)) ?>.
+          <?= e(t('remb.regle_le', [
+              'montant' => montant_fr($reglement['montant']),
+              'date' => date_fr((string) $reglement['date_reglement'] . ' 00:00:00', false),
+          ])) ?>
           <?php if ($reglement['operation_id'] !== null): ?>
-            La recette a été ajoutée aux opérations du
+            <?= e(t('remb.recette_ajoutee')) ?>
             <a href="<?= url('budget', ['mois' => substr((string) $reglement['date_recette'], 0, 7)]) ?>">
               <?= e(strtolower(nom_mois((int) substr((string) $reglement['date_recette'], 5, 2)))
                   . ' ' . substr((string) $reglement['date_recette'], 0, 4)) ?></a>.
           <?php else: ?>
-            <span style="color:var(--erreur)">La recette correspondante a été supprimée depuis.</span>
+            <span style="color:var(--erreur)"><?= e(t('remb.recette_supprimee')) ?></span>
           <?php endif; ?>
         </p>
       </div>
       <form method="post" action="<?= url('budget/remboursements/reglements/' . $reglement['id'] . '/annuler') ?>"
             class="sans-impression"
-            data-confirmation="Annuler ce règlement ? Les dépenses redeviendront à réclamer et la recette sera supprimée.">
+            data-confirmation="<?= e(t('remb.annuler_sur')) ?>">
         <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
-        <button class="bouton bouton--secondaire bouton--petit" type="submit">Annuler le règlement</button>
+        <button class="bouton bouton--secondaire bouton--petit" type="submit"><?= e(t('remb.annuler_reglement')) ?></button>
       </form>
     </div>
   </section>
 
 <?php elseif ($totaux['attente'] > 0 && $groupe === null): ?>
   <section class="carte sans-impression" style="margin-bottom:1.25rem;border-color:var(--accent)">
-    <h2 style="margin:0">Ce mois vous a-t-il été remboursé ?</h2>
+    <h2 style="margin:0"><?= e(t('remb.vous_a_t_il')) ?></h2>
     <p class="discret" style="margin:.35rem 0 .9rem">
-      En confirmant, les <?= e(montant_fr($totaux['attente'])) ?> encore à réclamer passent
-      à « remboursé », et <strong>une recette du même montant est ajoutée à vos
-      opérations</strong> — l'argent revient sur le compte.
+      <?= t('remb.confirmer_aide', ['montant' => e(montant_fr($totaux['attente']))]) ?>
     </p>
 
     <form method="post" action="<?= url('budget/remboursements/regler-mois') ?>">
@@ -168,15 +169,15 @@ $lien = static fn (string $m): string => url('budget/remboursements',
 
       <div class="ligne-champs" style="align-items:end">
         <div class="champ">
-          <label for="date_recette">Argent reçu le</label>
+          <label for="date_recette"><?= e(t('remb.argent_recu_le')) ?></label>
           <input type="date" id="date_recette" name="date_recette"
                  value="<?= e($mois->modify('+1 month')->format('Y-m-01')) ?>">
-          <span class="champ__aide">Le 1<sup>er</sup> du mois suivant par défaut.</span>
+          <span class="champ__aide"><?= t('remb.premier_du_mois') ?></span>
         </div>
         <div class="champ">
-          <label for="categorie_recette">Catégorie de la recette</label>
+          <label for="categorie_recette"><?= e(t('remb.categorie_recette')) ?></label>
           <select id="categorie_recette" name="categorie_id">
-            <option value="">— Aucune —</option>
+            <option value=""><?= e(t('bud.aucune_categorie')) ?></option>
             <?php foreach ($recettes as $c): ?>
               <option value="<?= (int) $c['id'] ?>"><?= e($c['icone'] . ' ' . $c['nom']) ?></option>
             <?php endforeach; ?>
@@ -184,7 +185,7 @@ $lien = static fn (string $m): string => url('budget/remboursements',
         </div>
         <div class="champ">
           <button class="bouton" type="submit">
-            ✅ Oui, <?= e(montant_fr($totaux['attente'])) ?> remboursés
+            <?= e(t('remb.oui_rembourses', ['montant' => montant_fr($totaux['attente'])])) ?>
           </button>
         </div>
       </div>
@@ -195,10 +196,10 @@ $lien = static fn (string $m): string => url('budget/remboursements',
 <?php if ($lignes === []): ?>
   <div class="vide">
     <span class="vide__icone">🧾</span>
-    <p>Aucune dépense cochée en <?= e($titrePeriode) ?>.</p>
+    <p><?= e(t('remb.aucune_depense', ['mois' => $titrePeriode])) ?></p>
     <p class="discret">
-      Dans l'onglet <a href="<?= url('budget') ?>">Opérations</a>, cochez 🧾 sur une dépense
-      pour la faire apparaître ici.
+      <?= e(t('remb.aucune_aide_1')) ?> <a href="<?= url('budget') ?>"><?= e(t('bud.onglet.operations')) ?></a>
+      <?= e(t('remb.aucune_aide_2')) ?>
     </p>
   </div>
 <?php else: ?>
@@ -218,7 +219,7 @@ $lien = static fn (string $m): string => url('budget/remboursements',
           <span style="font-variant-numeric:tabular-nums">
             <strong style="font-size:1.05rem"><?= e(montant_fr($rubrique['total'])) ?></strong>
             <?php if (abs($rubrique['total'] - $rubrique['paye']) > 0.005): ?>
-              <span class="discret">sur <?= e(montant_fr($rubrique['paye'])) ?> avancés</span>
+              <span class="discret"><?= e(t('remb.sur_avances', ['montant' => montant_fr($rubrique['paye'])])) ?></span>
             <?php endif; ?>
           </span>
         </div>
@@ -227,12 +228,12 @@ $lien = static fn (string $m): string => url('budget/remboursements',
           <table class="tableau tableau--remb">
             <thead>
               <tr>
-                <th scope="col" class="sans-impression"><span class="sr-only">Sélectionner</span>✓</th>
-                <th scope="col">Date</th>
-                <th scope="col">Libellé</th>
-                <th scope="col" class="nombre">Payé</th>
-                <th scope="col" class="nombre">Réclamé</th>
-                <th scope="col">Statut</th>
+                <th scope="col" class="sans-impression"><span class="sr-only"><?= e(t('remb.selectionner')) ?></span>✓</th>
+                <th scope="col"><?= e(t('remb.col_date')) ?></th>
+                <th scope="col"><?= e(t('remb.col_libelle')) ?></th>
+                <th scope="col" class="nombre"><?= e(t('remb.col_paye')) ?></th>
+                <th scope="col" class="nombre"><?= e(t('remb.col_reclame')) ?></th>
+                <th scope="col"><?= e(t('remb.statut')) ?></th>
                 <th scope="col" class="sans-impression"></th>
               </tr>
             </thead>
@@ -243,7 +244,7 @@ $lien = static fn (string $m): string => url('budget/remboursements',
                   <td class="sans-impression">
                     <?php if ($l['statut_remb'] === 'a_reclamer'): ?>
                       <input type="checkbox" name="ligne[]" value="<?= (int) $l['id'] ?>"
-                             aria-label="Sélectionner <?= e($l['libelle']) ?>">
+                             aria-label="<?= e(t('remb.selectionner_ligne', ['nom' => $l['libelle']])) ?>">
                     <?php endif; ?>
                   </td>
                   <td style="white-space:nowrap"><?= e(date('d/m/Y', strtotime((string) $l['date_operation']))) ?></td>
@@ -257,7 +258,7 @@ $lien = static fn (string $m): string => url('budget/remboursements',
                   <td class="nombre">
                     <strong><?= e(montant_fr($l['montant_reclame'])) ?></strong>
                     <?php if ($partiel): ?>
-                      <span class="discret" title="Part réclamée différente du montant payé">◐</span>
+                      <span class="discret" title="<?= e(t('remb.partiel_titre')) ?>">◐</span>
                     <?php endif; ?>
                   </td>
                   <td>
@@ -267,12 +268,12 @@ $lien = static fn (string $m): string => url('budget/remboursements',
                         default      => 'background:var(--accent-doux);color:var(--accent-fonce)',
                     } ?>"><?= e($statuts[$l['statut_remb']]) ?></span>
                     <?php if ($l['date_remboursement']): ?>
-                      <span class="discret">le <?= e(date('d/m/Y', strtotime((string) $l['date_remboursement']))) ?></span>
+                      <span class="discret"><?= e(t('remb.le_date', ['date' => date('d/m/Y', (int) strtotime((string) $l['date_remboursement']))])) ?></span>
                     <?php endif; ?>
                   </td>
                   <td class="sans-impression">
                     <button class="bouton bouton--discret bouton--petit" type="button"
-                            data-bascule="remb-<?= (int) $l['id'] ?>" title="Modifier cette ligne">✎</button>
+                            data-bascule="remb-<?= (int) $l['id'] ?>" title="<?= e(t('remb.modifier_ligne')) ?>">✎</button>
                   </td>
                 </tr>
 
@@ -280,24 +281,24 @@ $lien = static fn (string $m): string => url('budget/remboursements',
                   <td colspan="7" style="background:var(--fond-doux)">
                     <div class="ligne-champs" style="align-items:end">
                       <div class="champ">
-                        <label for="part-<?= (int) $l['id'] ?>">Part réclamée</label>
+                        <label for="part-<?= (int) $l['id'] ?>"><?= e(t('remb.part_reclamee')) ?></label>
                         <input type="text" id="part-<?= (int) $l['id'] ?>" form="f-<?= (int) $l['id'] ?>"
                                name="part_rembourser" inputmode="decimal"
-                               placeholder="<?= e(montant_fr($l['montant'], false)) ?> (tout)"
+                               placeholder="<?= e(t('remb.tout_suffixe', ['montant' => montant_fr($l['montant'], false)])) ?>"
                                value="<?= $partiel ? e(montant_fr($l['part_rembourser'], false)) : '' ?>">
                         <span class="champ__aide">
-                          Vide = tout. Moitié : <?= e(montant_fr(round((float) $l['montant'] / 2, 2), false)) ?>
+                          <?= e(t('remb.moitie', ['montant' => montant_fr(round((float) $l['montant'] / 2, 2), false)])) ?>
                         </span>
                       </div>
                       <?= Vue::rendre('budget/_qui_rembourse', [
                           'personnes' => $personnes,
                           'valeur'    => $l['rembourse_par'],
-                          'libelle'   => 'Qui rembourse',
+                          'libelle'   => t('remb.qui_rembourse'),
                           'cle'       => '-' . (int) $l['id'],
                           'form'      => 'f-' . (int) $l['id'],
                       ]) ?>
                       <div class="champ">
-                        <label for="st-<?= (int) $l['id'] ?>">Statut</label>
+                        <label for="st-<?= (int) $l['id'] ?>"><?= e(t('remb.statut')) ?></label>
                         <select id="st-<?= (int) $l['id'] ?>" form="f-<?= (int) $l['id'] ?>" name="statut_remb">
                           <?php foreach ($statuts as $cle => $libelle): ?>
                             <option value="<?= e($cle) ?>"<?= $l['statut_remb'] === $cle ? ' selected' : '' ?>>
@@ -307,12 +308,12 @@ $lien = static fn (string $m): string => url('budget/remboursements',
                         </select>
                       </div>
                       <div class="champ">
-                        <label for="dt-<?= (int) $l['id'] ?>">Remboursé le</label>
+                        <label for="dt-<?= (int) $l['id'] ?>"><?= e(t('remb.rembourse_le')) ?></label>
                         <input type="date" id="dt-<?= (int) $l['id'] ?>" form="f-<?= (int) $l['id'] ?>"
                                name="date_remboursement" value="<?= e((string) $l['date_remboursement']) ?>">
                       </div>
                       <div class="champ">
-                        <button class="bouton" type="submit" form="f-<?= (int) $l['id'] ?>">Enregistrer</button>
+                        <button class="bouton" type="submit" form="f-<?= (int) $l['id'] ?>"><?= e(t('commun.enregistrer')) ?></button>
                       </div>
                     </div>
                   </td>
@@ -326,7 +327,7 @@ $lien = static fn (string $m): string => url('budget/remboursements',
 
     <div class="carte" style="margin-bottom:1rem">
       <div style="display:flex;justify-content:space-between;align-items:baseline;gap:1rem;flex-wrap:wrap">
-        <h2 style="margin:0">Total de <?= e($titrePeriode) ?></h2>
+        <h2 style="margin:0"><?= e(t('remb.total_de', ['mois' => $titrePeriode])) ?></h2>
         <strong style="font-size:1.5rem;color:var(--accent-fonce);font-variant-numeric:tabular-nums">
           <?= e(montant_fr($totaux['reclame'])) ?>
         </strong>
@@ -334,17 +335,17 @@ $lien = static fn (string $m): string => url('budget/remboursements',
 
       <?php if ($totaux['hors_total'] > 0): ?>
         <p class="discret" style="margin:.8rem 0 0">
-          <?= e(montant_fr($totaux['hors_total'])) ?> mis de côté en « hors total », non compté ci-dessus.
+          <?= e(t('remb.hors_total_note', ['montant' => montant_fr($totaux['hors_total'])])) ?>
         </p>
       <?php endif; ?>
     </div>
 
     <div class="actions sans-impression">
       <div class="champ" style="margin:0">
-        <label for="date-reglement">Remboursé le</label>
+        <label for="date-reglement"><?= e(t('remb.rembourse_le')) ?></label>
         <input type="date" id="date-reglement" name="date_remboursement" value="<?= e(date('Y-m-d')) ?>">
       </div>
-      <button class="bouton" type="submit">Marquer les lignes cochées comme remboursées</button>
+      <button class="bouton" type="submit"><?= e(t('remb.marquer_cochees')) ?></button>
     </div>
   </form>
 
@@ -363,10 +364,9 @@ $lien = static fn (string $m): string => url('budget/remboursements',
 
 <?php if ($moisRenseignes !== []): ?>
   <section class="carte sans-impression" style="margin-top:1.5rem">
-    <h2>Les autres mois</h2>
+    <h2><?= e(t('remb.autres_mois')) ?></h2>
     <p class="discret" style="margin:.2rem 0 .8rem">
-      Chaque mois se lit séparément : les montants ci-dessous ne s'additionnent pas
-      à celui du mois affiché.
+      <?= e(t('remb.autres_mois_aide')) ?>
     </p>
     <div style="display:flex;gap:.4rem;flex-wrap:wrap">
       <?php foreach ($moisRenseignes as $cle => $infos): ?>
@@ -379,7 +379,7 @@ $lien = static fn (string $m): string => url('budget/remboursements',
     </div>
     <?php if ($aReclamerGlobal > $totaux['attente'] + 0.005): ?>
       <p class="discret" style="margin:.8rem 0 0">
-        Tous mois confondus, il reste <?= e(montant_fr($aReclamerGlobal)) ?> à réclamer.
+        <?= e(t('remb.tous_mois', ['montant' => montant_fr($aReclamerGlobal)])) ?>
       </p>
     <?php endif; ?>
   </section>

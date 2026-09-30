@@ -13,11 +13,14 @@ declare(strict_types=1);
  */
 final class RemboursementsController
 {
-    public const STATUTS = [
-        'a_reclamer' => 'À réclamer',
-        'hors_total' => 'Hors total',
-        'rembourse'  => 'Remboursé',
-    ];
+    public const STATUTS = ['a_reclamer', 'hors_total', 'rembourse'];
+
+    /** Les statuts et leur nom lisible, dans la langue du compte. */
+    public static function statuts(): array
+    {
+        return array_combine(self::STATUTS, array_map(
+            static fn (string $cle): string => t('remb.statut.' . $cle), self::STATUTS));
+    }
 
     public function index(): void
     {
@@ -27,7 +30,7 @@ final class RemboursementsController
         [$debut, $fin, $mois] = $this->mois();
         $portee = $this->portee($userId);
         $personne = $portee['personne'];
-        $statut = array_key_exists($_GET['statut'] ?? '', self::STATUTS) ? (string) $_GET['statut'] : null;
+        $statut = in_array($_GET['statut'] ?? '', self::STATUTS, true) ? (string) $_GET['statut'] : null;
 
         $lignes = $this->lignes($userId, $debut, $fin, $portee['noms'], $statut);
 
@@ -51,7 +54,7 @@ final class RemboursementsController
             'personne'    => $personne,
             'personnes'   => self::personnes($userId),
             'statut'      => $statut,
-            'statuts'     => self::STATUTS,
+            'statuts'     => self::statuts(),
             'aReclamerGlobal' => (float) Database::valeur(
                 "SELECT COALESCE(SUM(COALESCE(part_rembourser, montant)), 0)
                  FROM operations
@@ -74,7 +77,7 @@ final class RemboursementsController
         [$debut, $fin, $mois] = $this->mois();
         $portee = $this->portee($userId);
         $personne = $portee['titre'];
-        $statut = array_key_exists($_GET['statut'] ?? '', self::STATUTS) ? (string) $_GET['statut'] : null;
+        $statut = in_array($_GET['statut'] ?? '', self::STATUTS, true) ? (string) $_GET['statut'] : null;
 
         $lignes = $this->lignes($userId, $debut, $fin, $portee['noms'], $statut);
         if ($lignes === []) {
@@ -112,7 +115,7 @@ final class RemboursementsController
                     $horsTotal
                         ? ['valeur' => '—', 'style' => ClasseurXlsx::DISCRET]
                         : ['valeur' => $l['montant_reclame'], 'type' => 'nombre', 'style' => ClasseurXlsx::MONTANT],
-                    ['valeur' => self::STATUTS[$l['statut_remb']], 'style' => ClasseurXlsx::DISCRET],
+                    ['valeur' => t('remb.statut.' . $l['statut_remb']), 'style' => ClasseurXlsx::DISCRET],
                 ]);
             }
 
@@ -387,7 +390,7 @@ final class RemboursementsController
             redirect('budget/remboursements', $this->parametresRetour());
         }
 
-        $statut = array_key_exists(post('statut_remb'), self::STATUTS) ? post('statut_remb') : 'a_reclamer';
+        $statut = in_array(post('statut_remb'), self::STATUTS, true) ? post('statut_remb') : 'a_reclamer';
         $date = post('date_remboursement');
         $date = preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) === 1 ? $date : null;
 
@@ -480,7 +483,7 @@ final class RemboursementsController
     {
         $rubriques = [];
         foreach ($lignes as $l) {
-            $cle = $l['categorie_nom'] ?? '(sans catégorie)';
+            $cle = $l['categorie_nom'] ?? t('remb.sans_categorie');
             if (!isset($rubriques[$cle])) {
                 $rubriques[$cle] = [
                     'nom'     => $cle,

@@ -4,95 +4,81 @@
 
 <div class="entete-page">
   <div>
-    <h1>Importer un relevé</h1>
-    <p>Vos dépenses du mois sont préremplies à partir du fichier de votre banque.</p>
+    <h1><?= e(t('imp.titre')) ?></h1>
+    <p><?= e(t('imp.sous_titre')) ?></p>
   </div>
   <div class="actions">
-    <a class="bouton bouton--secondaire" href="<?= url('budget') ?>">Voir les opérations</a>
+    <a class="bouton bouton--secondaire" href="<?= url('budget') ?>"><?= e(t('remb.voir_operations')) ?></a>
   </div>
 </div>
 
 <div class="colonnes">
   <div class="carte">
-    <h2>Déposer le fichier</h2>
+    <h2><?= e(t('imp.deposer')) ?></h2>
 
     <form method="post" action="<?= url('budget/import') ?>" enctype="multipart/form-data">
       <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
 
       <div class="champ">
-        <label for="releve">Relevé de compte</label>
+        <label for="releve"><?= e(t('imp.releve')) ?></label>
         <input type="file" id="releve" name="releve"
                accept=".csv,.txt,.tsv,.xlsx,text/csv" required>
         <span class="champ__aide">
-          Un relevé bancaire au format <strong>CSV</strong>, ou un ancien classeur
-          <strong>.xlsx</strong> tenu à la main. 4 Mo maximum.
+          <?= t('imp.releve_aide') ?>
         </span>
       </div>
 
-      <button class="bouton bouton--bloc" type="submit">Analyser le fichier</button>
+      <button class="bouton bouton--bloc" type="submit"><?= e(t('imp.analyser')) ?></button>
       <p class="champ__aide" style="margin-top:.6rem">
-        Rien n'est enregistré à cette étape : vous verrez d'abord un aperçu, que
-        vous pourrez corriger et dont vous choisirez les lignes.
+        <?= e(t('imp.rien_enregistre')) ?>
       </p>
     </form>
 
     <?php if ($dernierImport !== null && $dernierImport['date'] !== null): ?>
       <hr class="separateur">
       <p class="discret" style="margin:0">
-        Dernier import : <?= e(date_fr((string) $dernierImport['date'])) ?>.
-        <?= (int) $dernierImport['nb'] ?> opération<?= (int) $dernierImport['nb'] > 1 ? 's' : '' ?>
-        provienne<?= (int) $dernierImport['nb'] > 1 ? 'nt' : '' ?> d'un relevé au total.
+        <?= e(t('imp.dernier', ['date' => date_fr((string) $dernierImport['date'])])) ?>
+        <?= e(tn('imp.provenance', (int) $dernierImport['nb'])) ?>
       </p>
     <?php endif; ?>
   </div>
 
   <div class="pile">
     <div class="carte">
-      <h2>Un relevé de banque</h2>
+      <h2><?= e(t('imp.releve_banque')) ?></h2>
       <p class="discret" style="margin-bottom:.6rem">
-        Sur le site ou l'application de votre banque, ouvrez l'historique du compte
-        et cherchez « Exporter », « Télécharger les opérations » ou une icône de
-        téléchargement. Choisissez le format <strong>CSV</strong> plutôt qu'Excel
-        ou PDF.
+        <?= t('imp.releve_banque_1') ?>
       </p>
       <p class="discret" style="margin:0">
-        Peu importe l'ordre des colonnes ou le format des dates : l'écran suivant
-        vous montre ce qui a été compris et vous laisse corriger.
+        <?= e(t('imp.releve_banque_2')) ?>
       </p>
     </div>
 
     <div class="carte">
-      <h2>Ce qui est prévu</h2>
+      <h2><?= e(t('imp.prevu')) ?></h2>
       <ul class="discret" style="margin:0;padding-left:1.1rem;display:grid;gap:.35rem">
-        <li>Les dates à la française comme à l'anglaise.</li>
-        <li>Un montant signé, ou deux colonnes débit et crédit.</li>
-        <li>Les accents mal encodés des exports Windows.</li>
-        <li>Les lignes d'en-tête et le préambule de certaines banques.</li>
-        <li>Les doublons, si vous réimportez un relevé qui se chevauche.</li>
+        <li><?= e(t('imp.prevu_1')) ?></li>
+        <li><?= e(t('imp.prevu_2')) ?></li>
+        <li><?= e(t('imp.prevu_3')) ?></li>
+        <li><?= e(t('imp.prevu_4')) ?></li>
+        <li><?= e(t('imp.prevu_5')) ?></li>
       </ul>
     </div>
 
     <div class="carte">
-      <h2>Un ancien classeur</h2>
+      <h2><?= e(t('imp.ancien_classeur')) ?></h2>
       <p class="discret" style="margin-bottom:.6rem">
-        Vos anciens fichiers de comptes au format <strong>.xlsx</strong> se reprennent
-        aussi, avec leur structure : une date, un libellé et un montant dans les trois
-        premières colonnes, et des lignes « Total … » à droite dont sont déduites les
-        rubriques.
+        <?= t('imp.ancien_classeur_1') ?>
       </p>
       <p class="discret" style="margin:0">
-        Les mentions « divisé par 2 » et « pas dans le total » sont reconnues, et le
-        total recalculé est comparé à celui de votre feuille avant validation.
+        <?= e(t('imp.ancien_classeur_2')) ?>
       </p>
     </div>
 
     <div class="carte">
-      <h2>La saisie manuelle reste là</h2>
+      <h2><?= e(t('imp.saisie_manuelle')) ?></h2>
       <p class="discret" style="margin:0">
-        L'import ne remplace rien : vous pouvez continuer à ajouter des opérations
-        à la main depuis l'onglet <a href="<?= url('budget') ?>">Opérations</a>, et
-        <strong>modifier ou supprimer</strong> une ligne importée exactement comme
-        une autre.
+        <?= e(t('imp.saisie_manuelle_1')) ?> <a href="<?= url('budget') ?>"><?= e(t('bud.onglet.operations')) ?></a><?= t('imp.saisie_manuelle_2') ?>
       </p>
     </div>
   </div>

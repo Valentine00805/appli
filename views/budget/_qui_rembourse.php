@@ -21,7 +21,7 @@
  * @var ?string $form     le formulaire visé, quand le champ est posé en dehors
  */
 $valeur = $valeur ?? null;
-$libelle = $libelle ?? 'Par qui';
+$libelle = $libelle ?? t('bud.par_qui');
 $cle = $cle ?? '';
 $form = $form ?? null;
 
@@ -41,16 +41,16 @@ $attributForm = $form === null ? '' : ' form="' . e($form) . '"';
 
   <select id="rembourse_par<?= e($cle) ?>" name="rembourse_par"<?= $attributForm ?>
           data-qui-rembourse="<?= e($cle) ?>">
-    <option value="">— Non précisé —</option>
+    <option value=""><?= e(t('bud.non_precise')) ?></option>
     <?php foreach ($liste as $personne): ?>
       <option value="<?= e($personne) ?>"<?= $personne === $valeur ? ' selected' : '' ?>>
         <?= e($personne) ?>
       </option>
     <?php endforeach; ?>
-    <option value="+">➕ Quelqu'un d'autre…</option>
+    <option value="+"><?= e(t('prev.quelquun_dautre')) ?></option>
   </select>
 
   <input type="text" class="qui-rembourse__autre" data-qui-autre="<?= e($cle) ?>"
          id="rembourse_par_autre<?= e($cle) ?>" name="rembourse_par_autre"<?= $attributForm ?>
-         maxlength="80" placeholder="Son nom" aria-label="Nom d'une autre personne">
+         maxlength="80" placeholder="<?= e(t('prev.son_nom')) ?>" aria-label="<?= e(t('prev.nom_autre')) ?>">
 </div>

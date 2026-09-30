@@ -30,19 +30,19 @@ $plafondHistorique = max(array_merge([1.0], array_map(
 
 <div class="entete-page">
   <div>
-    <h1>Budget</h1>
-    <p>Vos recettes et vos dépenses, mois par mois.</p>
+    <h1><?= e(t('bud.titre')) ?></h1>
+    <p><?= e(t('bud.sous_titre')) ?></p>
   </div>
   <div class="actions">
-    <a class="bouton bouton--secondaire" href="<?= url('budget/import') ?>">📥 Importer un relevé</a>
+    <a class="bouton bouton--secondaire" href="<?= url('budget/import') ?>"><?= e(t('bud.importer')) ?></a>
     <a class="bouton bouton--secondaire bouton--petit" href="<?= $lienMois($precedent) ?>"
-       aria-label="Mois précédent">←</a>
+       aria-label="<?= e(t('bud.mois_precedent')) ?>">←</a>
     <?php if ($mois->format('Y-m') !== $moisCourant): ?>
       <a class="bouton bouton--secondaire bouton--petit"
-         href="<?= url('budget', $filtres + ['mois' => $moisCourant]) ?>">Ce mois-ci</a>
+         href="<?= url('budget', $filtres + ['mois' => $moisCourant]) ?>"><?= e(t('bud.ce_mois')) ?></a>
     <?php endif; ?>
     <a class="bouton bouton--secondaire bouton--petit" href="<?= $lienMois($suivant) ?>"
-       aria-label="Mois suivant">→</a>
+       aria-label="<?= e(t('bud.mois_suivant')) ?>">→</a>
     <h2 class="cal-titre" style="text-transform:capitalize">
       <?= e(strtolower(nom_mois((int) $mois->format('n'))) . ' ' . $mois->format('Y')) ?>
     </h2>
@@ -52,21 +52,21 @@ $plafondHistorique = max(array_merge([1.0], array_map(
 <div class="grille grille--4" style="margin-bottom:1.5rem">
   <div class="carte stat">
     <div class="stat__valeur" style="color:var(--succes)">+ <?= e(montant_fr($totaux['recettes'])) ?></div>
-    <div class="stat__libelle">recettes du mois</div>
+    <div class="stat__libelle"><?= e(t('bud.recettes_mois')) ?></div>
   </div>
   <div class="carte stat">
     <div class="stat__valeur" style="color:var(--erreur)">− <?= e(montant_fr($totaux['depenses'])) ?></div>
-    <div class="stat__libelle">dépenses du mois</div>
+    <div class="stat__libelle"><?= e(t('bud.depenses_mois')) ?></div>
   </div>
   <div class="carte stat">
     <div class="stat__valeur" style="color:<?= $totaux['solde'] >= 0 ? 'var(--succes)' : 'var(--erreur)' ?>">
       <?= $totaux['solde'] >= 0 ? '+ ' : '− ' ?><?= e(montant_fr(abs($totaux['solde']))) ?>
     </div>
-    <div class="stat__libelle">solde</div>
+    <div class="stat__libelle"><?= e(t('bud.solde')) ?></div>
   </div>
   <div class="carte stat">
     <div class="stat__valeur"><?= (int) $totaux['nb'] ?></div>
-    <div class="stat__libelle">opération<?= (int) $totaux['nb'] > 1 ? 's' : '' ?></div>
+    <div class="stat__libelle"><?= e(tn('bud.operations', (int) $totaux['nb'])) ?></div>
   </div>
 </div>
 
@@ -76,25 +76,25 @@ $plafondHistorique = max(array_merge([1.0], array_map(
       <form class="filtres" method="get" action="<?= url('budget') ?>" data-auto-envoi>
         <input type="hidden" name="mois" value="<?= e($mois->format('Y-m')) ?>">
         <div class="champ">
-          <label for="f-sens">Sens</label>
+          <label for="f-sens"><?= e(t('bud.sens')) ?></label>
           <select id="f-sens" name="sens">
-            <option value="">Tout</option>
-            <option value="depense"<?= $sens === 'depense' ? ' selected' : '' ?>>Dépenses</option>
-            <option value="recette"<?= $sens === 'recette' ? ' selected' : '' ?>>Recettes</option>
+            <option value=""><?= e(t('bud.tout')) ?></option>
+            <option value="depense"<?= $sens === 'depense' ? ' selected' : '' ?>><?= e(t('bud.depenses')) ?></option>
+            <option value="recette"<?= $sens === 'recette' ? ' selected' : '' ?>><?= e(t('bud.recettes')) ?></option>
           </select>
         </div>
         <div class="champ">
-          <label for="f-origine">Origine</label>
+          <label for="f-origine"><?= e(t('bud.origine')) ?></label>
           <select id="f-origine" name="origine">
-            <option value="">Toutes</option>
-            <option value="manuelle"<?= $origine === 'manuelle' ? ' selected' : '' ?>>Saisies à la main</option>
-            <option value="import"<?= $origine === 'import' ? ' selected' : '' ?>>Importées</option>
+            <option value=""><?= e(t('bud.toutes')) ?></option>
+            <option value="manuelle"<?= $origine === 'manuelle' ? ' selected' : '' ?>><?= e(t('bud.saisies_main')) ?></option>
+            <option value="import"<?= $origine === 'import' ? ' selected' : '' ?>><?= e(t('bud.importees')) ?></option>
           </select>
         </div>
         <div class="champ">
-          <label for="f-cat">Catégorie</label>
+          <label for="f-cat"><?= e(t('bud.categorie')) ?></label>
           <select id="f-cat" name="categorie">
-            <option value="">Toutes</option>
+            <option value=""><?= e(t('bud.toutes')) ?></option>
             <?php foreach ($categories as $c): ?>
               <option value="<?= (int) $c['id'] ?>"<?= $categorieId === (int) $c['id'] ? ' selected' : '' ?>>
                 <?= e($c['icone'] . ' ' . $c['nom']) ?>
@@ -104,20 +104,20 @@ $plafondHistorique = max(array_merge([1.0], array_map(
         </div>
         <?php if ($filtres !== []): ?>
           <a class="bouton bouton--discret" href="<?= url('budget', ['mois' => $mois->format('Y-m')]) ?>">
-            Réinitialiser
+            <?= e(t('bud.reinitialiser')) ?>
           </a>
         <?php endif; ?>
-        <noscript><button class="bouton bouton--secondaire bouton--petit" type="submit">Filtrer</button></noscript>
+        <noscript><button class="bouton bouton--secondaire bouton--petit" type="submit"><?= e(t('bud.filtrer')) ?></button></noscript>
       </form>
     <?php endif; ?>
 
     <?php if ($operations === []): ?>
       <div class="vide">
         <span class="vide__icone">💶</span>
-        <p>Aucune opération <?= $filtres !== [] ? 'ne correspond à ces filtres' : 'ce mois-ci' ?>.</p>
+        <p><?= e(t($filtres !== [] ? 'bud.aucune_filtres' : 'bud.aucune_mois')) ?></p>
         <?php if ($filtres !== []): ?>
           <a class="bouton bouton--secondaire" href="<?= url('budget', ['mois' => $mois->format('Y-m')]) ?>">
-            Voir tout le mois
+            <?= e(t('bud.voir_tout_mois')) ?>
           </a>
         <?php endif; ?>
       </div>
@@ -143,7 +143,7 @@ $plafondHistorique = max(array_merge([1.0], array_map(
                 <span class="evt-ligne__meta">
                   <?= e(libelle_categorie($op)) ?><?= $op['moyen'] ? ' · ' . e($op['moyen']) : '' ?><?php
                     if (($op['source'] ?? 'manuelle') === 'import') {
-                        echo ' · <span title="Provient d\'un relevé importé">📥 importée</span>';
+                        echo ' · <span title="' . e(t('bud.importee_titre')) . '">📥 ' . e(t('bud.importee')) . '</span>';
                     }
                   ?>
                 </span>
@@ -162,16 +162,16 @@ $plafondHistorique = max(array_merge([1.0], array_map(
                   <input type="hidden" name="retour" value="budget">
                   <input type="hidden" name="mois" value="<?= e($mois->format('Y-m')) ?>">
                   <button class="bouton bouton--discret bouton--petit" type="submit"
-                          title="<?= (int) $op['a_rembourser'] === 1 ? 'Retirer des remboursements' : 'À me faire rembourser' ?>">
+                          title="<?= e(t((int) $op['a_rembourser'] === 1 ? 'bud.retirer_remboursements' : 'bud.a_rembourser')) ?>">
                     <?= (int) $op['a_rembourser'] === 1 ? '🧾' : '<span style="opacity:.35">🧾</span>' ?>
                   </button>
                 </form>
                 <a class="bouton bouton--discret bouton--petit"
-                   href="<?= url('budget/operations/' . $op['id'] . '/modifier') ?>" title="Modifier">✎</a>
+                   href="<?= url('budget/operations/' . $op['id'] . '/modifier') ?>" title="<?= e(t('evt.modifier')) ?>">✎</a>
                 <form method="post" action="<?= url('budget/operations/' . $op['id'] . '/supprimer') ?>"
-                      class="en-ligne" data-confirmation="Supprimer cette opération ?">
+                      class="en-ligne" data-confirmation="<?= e(t('bud.supprimer_operation_sur')) ?>">
                   <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
-                  <button class="bouton bouton--discret bouton--petit" type="submit" title="Supprimer">✕</button>
+                  <button class="bouton bouton--discret bouton--petit" type="submit" title="<?= e(t('commun.supprimer')) ?>">✕</button>
                 </form>
               </span>
             </div>
@@ -182,47 +182,47 @@ $plafondHistorique = max(array_merge([1.0], array_map(
 
   <div class="pile">
     <div class="carte">
-      <h2>Ajouter une opération</h2>
+      <h2><?= e(t('bud.ajouter')) ?></h2>
       <form method="post" action="<?= url('budget/operations') ?>">
         <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
 
         <fieldset style="margin-bottom:1rem">
-          <legend>Sens</legend>
+          <legend><?= e(t('bud.sens')) ?></legend>
           <div style="display:flex;gap:1rem">
-            <label class="case"><input type="radio" name="sens" value="depense" checked> Dépense</label>
-            <label class="case"><input type="radio" name="sens" value="recette"> Recette</label>
+            <label class="case"><input type="radio" name="sens" value="depense" checked> <?= e(t('bud.depense')) ?></label>
+            <label class="case"><input type="radio" name="sens" value="recette"> <?= e(t('bud.recette')) ?></label>
           </div>
         </fieldset>
 
         <div class="champ">
-          <label for="libelle">Intitulé</label>
-          <input type="text" id="libelle" name="libelle" required maxlength="160" placeholder="Courses Lidl">
+          <label for="libelle"><?= e(t('bud.intitule')) ?></label>
+          <input type="text" id="libelle" name="libelle" required maxlength="160" placeholder="<?= e(t('bud.intitule_exemple')) ?>">
         </div>
 
         <div class="ligne-champs">
           <div class="champ">
-            <label for="montant">Montant</label>
+            <label for="montant"><?= e(t('bud.montant')) ?></label>
             <input type="text" id="montant" name="montant" required inputmode="decimal" placeholder="12,50">
           </div>
           <div class="champ">
-            <label for="date_operation">Date</label>
+            <label for="date_operation"><?= e(t('bud.date')) ?></label>
             <input type="date" id="date_operation" name="date_operation" required
                    value="<?= e($mois->format('Y-m') === $moisCourant ? date('Y-m-d') : $mois->format('Y-m-01')) ?>">
           </div>
         </div>
 
         <div class="champ">
-          <label for="categorie_id">Catégorie</label>
+          <label for="categorie_id"><?= e(t('bud.categorie')) ?></label>
           <select id="categorie_id" name="categorie_id">
-            <option value="">— Aucune —</option>
-            <optgroup label="Dépenses">
+            <option value=""><?= e(t('bud.aucune_categorie')) ?></option>
+            <optgroup label="<?= e(t('bud.depenses')) ?>">
               <?php foreach ($categories as $c): ?>
                 <?php if ($c['sens'] === 'depense'): ?>
                   <option value="<?= (int) $c['id'] ?>"><?= e($c['icone'] . ' ' . $c['nom']) ?></option>
                 <?php endif; ?>
               <?php endforeach; ?>
             </optgroup>
-            <optgroup label="Recettes">
+            <optgroup label="<?= e(t('bud.recettes')) ?>">
               <?php foreach ($categories as $c): ?>
                 <?php if ($c['sens'] === 'recette'): ?>
                   <option value="<?= (int) $c['id'] ?>"><?= e($c['icone'] . ' ' . $c['nom']) ?></option>
@@ -231,14 +231,14 @@ $plafondHistorique = max(array_merge([1.0], array_map(
             </optgroup>
           </select>
           <span class="champ__aide">
-            Elle doit correspondre au sens choisi. <a href="<?= url('budget/categories') ?>">Gérer les catégories</a>
+            <?= e(t('bud.categorie_aide')) ?> <a href="<?= url('budget/categories') ?>"><?= e(t('bud.gerer_categories')) ?></a>
           </span>
         </div>
 
         <div class="champ">
-          <label for="moyen">Moyen de paiement</label>
+          <label for="moyen"><?= e(t('bud.moyen')) ?></label>
           <select id="moyen" name="moyen">
-            <option value="">— Non précisé —</option>
+            <option value=""><?= e(t('bud.non_precise')) ?></option>
             <?php foreach ($moyens as $m): ?>
               <option value="<?= e($m) ?>"><?= e($m) ?></option>
             <?php endforeach; ?>
@@ -246,33 +246,33 @@ $plafondHistorique = max(array_merge([1.0], array_map(
         </div>
 
         <fieldset style="margin-bottom:1rem">
-          <legend>Remboursement</legend>
+          <legend><?= e(t('bud.remboursement')) ?></legend>
 
           <label class="case">
             <input type="checkbox" id="a_rembourser" name="a_rembourser" value="1">
-            🧾 À me faire rembourser
+            <?= e(t('bud.a_rembourser_case')) ?>
           </label>
 
           <div id="bloc-remboursement" style="margin-top:.75rem">
             <?= Vue::rendre('budget/_qui_rembourse', ['personnes' => $personnes]) ?>
             <div class="champ" style="margin:0">
-              <label for="part_rembourser">Part à réclamer</label>
+              <label for="part_rembourser"><?= e(t('bud.part_reclamer')) ?></label>
               <input type="text" id="part_rembourser" name="part_rembourser" inputmode="decimal"
-                     placeholder="vide = tout le montant">
+                     placeholder="<?= e(t('bud.part_vide')) ?>">
               <span class="champ__aide">
-                À renseigner seulement si vous ne réclamez qu'une partie, une dépense partagée par exemple.
+                <?= e(t('bud.part_aide')) ?>
               </span>
             </div>
           </div>
         </fieldset>
 
-        <button class="bouton bouton--bloc" type="submit">Enregistrer</button>
+        <button class="bouton bouton--bloc" type="submit"><?= e(t('commun.enregistrer')) ?></button>
       </form>
     </div>
 
     <?php if ($parCategorie !== []): ?>
       <div class="carte">
-        <h2>Dépenses par catégorie</h2>
+        <h2><?= e(t('bud.par_categorie')) ?></h2>
         <div class="pile" style="gap:.7rem">
           <?php foreach ($parCategorie as $c): ?>
             <?php
@@ -292,15 +292,15 @@ $plafondHistorique = max(array_merge([1.0], array_map(
                   <?php endif; ?>
                 </span>
               </div>
-              <div class="jauge" title="<?= $plafond !== null
-                  ? e(round($part) . ' % du plafond')
-                  : e(round($part) . ' % des dépenses du mois') ?>">
+              <div class="jauge" title="<?= e($plafond !== null
+                  ? t('bud.part_plafond', ['n' => round($part)])
+                  : t('bud.part_depenses', ['n' => round($part)])) ?>">
                 <span style="width:<?= number_format($part, 1, '.', '') ?>%;background:<?=
                     $depassement ? 'var(--erreur)' : e($c['couleur']) ?>"></span>
               </div>
               <?php if ($depassement): ?>
                 <span class="discret" style="color:var(--erreur)">
-                  Plafond dépassé de <?= e(montant_fr($total - $plafond)) ?>
+                  <?= e(t('bud.plafond_depasse', ['montant' => montant_fr($total - $plafond)])) ?>
                 </span>
               <?php endif; ?>
             </div>
@@ -310,9 +310,9 @@ $plafondHistorique = max(array_merge([1.0], array_map(
     <?php endif; ?>
 
     <div class="carte">
-      <h2>Les 12 derniers mois</h2>
+      <h2><?= e(t('bud.douze_mois')) ?></h2>
       <div class="histogramme" role="img"
-           aria-label="Recettes et dépenses des douze derniers mois">
+           aria-label="<?= e(t('bud.douze_mois_aria')) ?>">
         <?php foreach ($historique as $h): ?>
           <?php
           $hr = $plafondHistorique > 0 ? ($h['recettes'] / $plafondHistorique) * 100 : 0;
@@ -320,8 +320,11 @@ $plafondHistorique = max(array_merge([1.0], array_map(
           ?>
           <a class="histogramme__mois<?= $h['periode'] === $mois->format('Y-m') ? ' est-actif' : '' ?>"
              href="<?= url('budget', ['mois' => $h['periode']]) ?>"
-             title="<?= e(nom_mois((int) $h['mois']->format('n')) . ' ' . $h['mois']->format('Y')
-                 . ' — recettes ' . montant_fr($h['recettes']) . ', dépenses ' . montant_fr($h['depenses'])) ?>">
+             title="<?= e(t('bud.mois_detail', [
+                 'mois' => nom_mois((int) $h['mois']->format('n')) . ' ' . $h['mois']->format('Y'),
+                 'recettes' => montant_fr($h['recettes']),
+                 'depenses' => montant_fr($h['depenses']),
+             ])) ?>">
             <span class="histogramme__barres">
               <span class="histogramme__recette" style="height:<?= number_format($hr, 1, '.', '') ?>%"></span>
               <span class="histogramme__depense" style="height:<?= number_format($hd, 1, '.', '') ?>%"></span>
@@ -331,8 +334,8 @@ $plafondHistorique = max(array_merge([1.0], array_map(
         <?php endforeach; ?>
       </div>
       <p class="discret" style="margin:.6rem 0 0;font-size:.8rem">
-        <span style="color:var(--succes)">▮</span> recettes
-        <span style="color:var(--erreur);margin-left:.5rem">▮</span> dépenses
+        <span style="color:var(--succes)">▮</span> <?= e(t('bud.recettes')) ?>
+        <span style="color:var(--erreur);margin-left:.5rem">▮</span> <?= e(t('bud.depenses')) ?>
       </p>
     </div>
   </div>

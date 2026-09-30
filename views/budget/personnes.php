@@ -13,10 +13,8 @@ $csrf = Session::jetonCsrf();
 
 <div class="entete-page">
   <div>
-    <h1>👥 Personnes</h1>
-    <p>Celles qui vous remboursent. Les renommer ou les fusionner ici change
-      aussi vos opérations. Un groupe les rassemble pour lire plusieurs comptes
-      d'un coup.</p>
+    <h1><?= e(t('pers.titre')) ?></h1>
+    <p><?= e(t('pers.sous_titre')) ?></p>
   </div>
 </div>
 
@@ -25,8 +23,7 @@ $csrf = Session::jetonCsrf();
     <?php if ($personnes === []): ?>
       <div class="vide">
         <span class="vide__icone">👥</span>
-        <p>Le carnet est vide. Ajoutez une personne, ou cochez
-          « à me faire rembourser » sur une dépense : son nom viendra ici tout seul.</p>
+        <p><?= e(t('pers.carnet_vide')) ?></p>
       </div>
     <?php endif; ?>
 
@@ -41,13 +38,13 @@ $csrf = Session::jetonCsrf();
             <h3 style="margin-bottom:.15rem;font-size:1.05rem"><?= e($p['nom']) ?></h3>
             <p class="discret" style="margin:0">
               <?php if ($nb === 0): ?>
-                Aucune opération à son nom
+                <?= e(t('pers.aucune_operation')) ?>
               <?php else: ?>
-                <?= $nb ?> opération<?= $nb > 1 ? 's' : '' ?>
+                <?= e(tn('cat.nb_operations', $nb)) ?>
                 <?php if ($reste > 0): ?>
-                  · <strong><?= e(montant_fr($reste)) ?></strong> encore à réclamer
+                  <?= t('pers.encore_a_reclamer', ['montant' => e(montant_fr($reste))]) ?>
                 <?php else: ?>
-                  · rien à réclamer
+                  <?= e(t('pers.rien_a_reclamer')) ?>
                 <?php endif; ?>
               <?php endif; ?>
             </p>
@@ -56,10 +53,10 @@ $csrf = Session::jetonCsrf();
           <div class="actions">
             <?php if ($nb > 0): ?>
               <a class="bouton bouton--discret bouton--petit"
-                 href="<?= url('budget/remboursements', ['personne' => $p['nom']]) ?>">Voir</a>
+                 href="<?= url('budget/remboursements', ['personne' => $p['nom']]) ?>"><?= e(t('commun.voir')) ?></a>
             <?php endif; ?>
             <button class="bouton bouton--secondaire bouton--petit" type="button"
-                    data-bascule="edition-pers-<?= (int) $p['id'] ?>">Modifier</button>
+                    data-bascule="edition-pers-<?= (int) $p['id'] ?>"><?= e(t('evt.modifier')) ?></button>
           </div>
         </div>
 
@@ -69,17 +66,16 @@ $csrf = Session::jetonCsrf();
           <form method="post" action="<?= url('budget/personnes/' . $p['id'] . '/renommer') ?>">
             <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
             <div class="champ">
-              <label for="nom-p-<?= (int) $p['id'] ?>">Nom</label>
+              <label for="nom-p-<?= (int) $p['id'] ?>"><?= e(t('commun.nom')) ?></label>
               <input type="text" id="nom-p-<?= (int) $p['id'] ?>" name="nom" required maxlength="80"
                      value="<?= e($p['nom']) ?>">
               <?php if ($nb > 0): ?>
                 <span class="champ__aide">
-                  Le nouveau nom remplacera l'ancien sur
-                  <?= $nb ?> opération<?= $nb > 1 ? 's' : '' ?>.
+                  <?= e(tn('pers.renommer_aide', $nb)) ?>
                 </span>
               <?php endif; ?>
             </div>
-            <button class="bouton bouton--petit" type="submit">Renommer</button>
+            <button class="bouton bouton--petit" type="submit"><?= e(t('pers.renommer')) ?></button>
           </form>
 
           <?php if (count($personnes) > 1): ?>
@@ -94,25 +90,23 @@ $csrf = Session::jetonCsrf();
              */
             ?>
             <form method="post" action="<?= url('budget/personnes/' . $p['id'] . '/fusionner') ?>"
-                  data-confirmation="Fusionner « <?= e($p['nom']) ?> » dans une autre personne ?<?= $nb > 0
-                      ? ' Ses ' . $nb . ' opération' . ($nb > 1 ? 's changeront' : ' changera') . ' de nom.'
-                      : '' ?>">
+                  data-confirmation="<?= e(t('pers.fusionner_sur', ['nom' => $p['nom']])) ?><?= $nb > 0
+                      ? e(tn('pers.fusionner_sur_ops', $nb)) : '' ?>">
               <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
               <div class="champ">
-                <label for="cible-<?= (int) $p['id'] ?>">Fusionner dans</label>
+                <label for="cible-<?= (int) $p['id'] ?>"><?= e(t('pers.fusionner_dans')) ?></label>
                 <select id="cible-<?= (int) $p['id'] ?>" name="cible" required>
-                  <option value="">— Choisir une personne —</option>
+                  <option value=""><?= e(t('pers.choisir')) ?></option>
                   <?php foreach ($personnes as $autre): ?>
                     <?php if ((int) $autre['id'] === (int) $p['id']) { continue; } ?>
                     <option value="<?= (int) $autre['id'] ?>"><?= e($autre['nom']) ?></option>
                   <?php endforeach; ?>
                 </select>
                 <span class="champ__aide">
-                  « <?= e($p['nom']) ?> » disparaîtra du carnet, et tout ce qui la nomme
-                  passera à l'autre.
+                  <?= e(t('pers.fusionner_aide', ['nom' => $p['nom']])) ?>
                 </span>
               </div>
-              <button class="bouton bouton--secondaire bouton--petit" type="submit">Fusionner</button>
+              <button class="bouton bouton--secondaire bouton--petit" type="submit"><?= e(t('pers.fusionner')) ?></button>
             </form>
           <?php endif; ?>
 
@@ -126,12 +120,11 @@ $csrf = Session::jetonCsrf();
            */
           ?>
           <form method="post" action="<?= url('budget/personnes/' . $p['id'] . '/supprimer') ?>"
-                data-confirmation="Retirer « <?= e($p['nom']) ?> » du carnet ?<?= $nb > 0
-                    ? ' Les ' . $nb . ' opération' . ($nb > 1 ? 's' : '') . ' à son nom le garderont.'
-                    : '' ?>">
+                data-confirmation="<?= e(t('pers.retirer_sur', ['nom' => $p['nom']])) ?><?= $nb > 0
+                    ? e(tn('pers.retirer_sur_ops', $nb)) : '' ?>">
             <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
             <button class="bouton bouton--danger bouton--petit" type="submit">
-              Retirer du carnet
+              <?= e(t('pers.retirer')) ?>
             </button>
           </form>
         </div>
@@ -141,18 +134,17 @@ $csrf = Session::jetonCsrf();
 
   <div>
     <div class="carte">
-      <h2>Ajouter une personne</h2>
+      <h2><?= e(t('pers.ajouter_titre')) ?></h2>
       <p class="champ__aide">
-        Utile pour préparer un nom avant la première dépense. Sinon, il s'inscrit
-        tout seul dès que vous enregistrez une dépense à se faire rembourser.
+        <?= e(t('pers.ajouter_aide')) ?>
       </p>
       <form method="post" action="<?= url('budget/personnes') ?>">
         <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
         <div class="champ">
-          <label for="nom">Nom</label>
-          <input type="text" id="nom" name="nom" required maxlength="80" placeholder="Parents">
+          <label for="nom"><?= e(t('commun.nom')) ?></label>
+          <input type="text" id="nom" name="nom" required maxlength="80" placeholder="<?= e(t('pers.nom_exemple')) ?>">
         </div>
-        <button class="bouton bouton--bloc" type="submit">Ajouter</button>
+        <button class="bouton bouton--bloc" type="submit"><?= e(t('pers.ajouter')) ?></button>
       </form>
     </div>
 
@@ -165,13 +157,11 @@ $csrf = Session::jetonCsrf();
      */
     ?>
     <div class="carte">
-      <h2>Groupes</h2>
+      <h2><?= e(t('pers.groupes')) ?></h2>
 
       <?php if ($groupes === []): ?>
         <p class="champ__aide">
-          Aucun groupe. Un groupe rassemble plusieurs personnes du carnet pour
-          voir d'un coup ce qu'elles vous doivent — vos colocataires, votre
-          famille.
+          <?= e(t('pers.aucun_groupe')) ?>
         </p>
       <?php endif; ?>
 
@@ -182,17 +172,17 @@ $csrf = Session::jetonCsrf();
               <strong><?= e($g['nom']) ?></strong><br>
               <span class="discret">
                 <?= $g['membres'] === []
-                    ? 'personne dedans'
+                    ? e(t('pers.personne_dedans'))
                     : e(implode(', ', $g['membres'])) ?>
               </span>
             </div>
             <div class="actions">
               <?php if ($g['membres'] !== []): ?>
                 <a class="bouton bouton--discret bouton--petit"
-                   href="<?= url('budget/remboursements', ['qui' => 'g:' . $g['id']]) ?>">Voir</a>
+                   href="<?= url('budget/remboursements', ['qui' => 'g:' . $g['id']]) ?>"><?= e(t('commun.voir')) ?></a>
               <?php endif; ?>
               <button class="bouton bouton--secondaire bouton--petit" type="button"
-                      data-bascule="edition-grp-<?= (int) $g['id'] ?>">Modifier</button>
+                      data-bascule="edition-grp-<?= (int) $g['id'] ?>"><?= e(t('evt.modifier')) ?></button>
             </div>
           </div>
 
@@ -200,16 +190,16 @@ $csrf = Session::jetonCsrf();
             <form method="post" action="<?= url('budget/groupes/' . $g['id'] . '/modifier') ?>">
               <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
               <div class="champ">
-                <label for="nom-g-<?= (int) $g['id'] ?>">Nom du groupe</label>
+                <label for="nom-g-<?= (int) $g['id'] ?>"><?= e(t('pers.nom_groupe')) ?></label>
                 <input type="text" id="nom-g-<?= (int) $g['id'] ?>" name="nom" required maxlength="80"
                        value="<?= e($g['nom']) ?>">
               </div>
 
               <?php if ($personnes === []): ?>
-                <p class="champ__aide">Le carnet est vide : ajoutez d'abord des personnes.</p>
+                <p class="champ__aide"><?= e(t('pers.carnet_vide_court')) ?></p>
               <?php else: ?>
                 <fieldset class="sources">
-                  <legend>Qui en fait partie</legend>
+                  <legend><?= e(t('pers.qui_en_fait_partie')) ?></legend>
                   <?php foreach ($personnes as $membre): ?>
                     <label class="sources__choix">
                       <input type="checkbox" name="membres[]" value="<?= (int) $membre['id'] ?>"
@@ -221,14 +211,14 @@ $csrf = Session::jetonCsrf();
               <?php endif; ?>
 
               <p class="actions" style="margin-top:.8rem">
-                <button class="bouton bouton--petit" type="submit">Enregistrer</button>
+                <button class="bouton bouton--petit" type="submit"><?= e(t('commun.enregistrer')) ?></button>
               </p>
             </form>
 
             <form method="post" action="<?= url('budget/groupes/' . $g['id'] . '/supprimer') ?>"
-                  data-confirmation="Supprimer le groupe « <?= e($g['nom']) ?> » ? Ses membres restent au carnet.">
+                  data-confirmation="<?= e(t('pers.supprimer_groupe_sur', ['nom' => $g['nom']])) ?>">
               <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
-              <button class="bouton bouton--danger bouton--petit" type="submit">Supprimer le groupe</button>
+              <button class="bouton bouton--danger bouton--petit" type="submit"><?= e(t('pers.supprimer_groupe')) ?></button>
             </form>
           </div>
         </div>
@@ -239,10 +229,10 @@ $csrf = Session::jetonCsrf();
       <form method="post" action="<?= url('budget/groupes') ?>">
         <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
         <div class="champ">
-          <label for="nom-groupe">Nouveau groupe</label>
-          <input type="text" id="nom-groupe" name="nom" required maxlength="80" placeholder="Colocataires">
+          <label for="nom-groupe"><?= e(t('pers.nouveau_groupe')) ?></label>
+          <input type="text" id="nom-groupe" name="nom" required maxlength="80" placeholder="<?= e(t('pers.groupe_exemple')) ?>">
         </div>
-        <button class="bouton bouton--secondaire bouton--bloc" type="submit">Créer le groupe</button>
+        <button class="bouton bouton--secondaire bouton--bloc" type="submit"><?= e(t('pers.creer_groupe')) ?></button>
       </form>
     </div>
 
@@ -255,11 +245,9 @@ $csrf = Session::jetonCsrf();
        */
       ?>
       <div class="carte">
-        <h2>Noms hors carnet</h2>
+        <h2><?= e(t('pers.hors_carnet')) ?></h2>
         <p class="champ__aide">
-          Portés par des opérations, mais absents du carnet : ils ne sont plus
-          proposés quand vous saisissez une dépense. Ajoutez-les ici ; pour les
-          rattacher à quelqu'un du carnet, fusionnez-les ensuite.
+          <?= e(t('pers.hors_carnet_aide')) ?>
         </p>
         <?php foreach ($oublies as $nom): ?>
           <form method="post" action="<?= url('budget/personnes') ?>" class="en-ligne"

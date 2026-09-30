@@ -128,7 +128,7 @@ final class BudgetController
             'categories' => $this->categories($userId),
             'moyens'     => self::MOYENS,
             'personnes'  => RemboursementsController::personnes($userId),
-            'statuts'    => RemboursementsController::STATUTS,
+            'statuts'    => RemboursementsController::statuts(),
         ], "Modifier l'opération");
     }
 
@@ -561,7 +561,7 @@ final class BudgetController
                     : number_format($saisiePart, 2, '.', '');
             }
 
-            if (array_key_exists(post('statut_remb'), RemboursementsController::STATUTS)) {
+            if (in_array(post('statut_remb'), RemboursementsController::STATUTS, true)) {
                 $statut = post('statut_remb');
             }
             if ($statut === 'rembourse') {

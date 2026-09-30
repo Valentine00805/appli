@@ -85,7 +85,7 @@ for ($i = 0; $i <= 3; $i++) {
 
 $dernier = end($points);
 $resume = sprintf(
-    'Solde prévisionnel de %s à %s, de %s à %s.',
+    t('prev.graphique_aria'),
     strtolower(nom_mois((int) $points[0]['mois']->format('n'))) . ' ' . $points[0]['mois']->format('Y'),
     strtolower(nom_mois((int) $dernier['mois']->format('n'))) . ' ' . $dernier['mois']->format('Y'),
     montant_fr(min($valeurs)),
@@ -145,10 +145,10 @@ $resume = sprintf(
   </svg>
 
   <figcaption class="graphique__legende">
-    <span><span class="graphique__cle graphique__cle--plein"></span> réalisé</span>
-    <span><span class="graphique__cle graphique__cle--pointille"></span> prévisionnel</span>
+    <span><span class="graphique__cle graphique__cle--plein"></span> <?= e(t('prev.realise')) ?></span>
+    <span><span class="graphique__cle graphique__cle--pointille"></span> <?= e(t('prev.previsionnel')) ?></span>
     <?php if (min($valeurs) < 0): ?>
-      <span style="color:var(--erreur)">⚠ passage en négatif</span>
+      <span style="color:var(--erreur)"><?= e(t('prev.passage_negatif')) ?></span>
     <?php endif; ?>
   </figcaption>
 </figure>
