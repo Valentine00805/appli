@@ -29,13 +29,16 @@ unset($liste);
 
 <div class="entete-page">
   <div>
-    <p style="margin:0 0 .3rem"><a href="<?= url('alternance/rythme') ?>">← Retour au rythme</a></p>
-    <h1>🎨 Les couleurs de « <?= e($nomFichier) ?> »</h1>
+    <p style="margin:0 0 .3rem"><a href="<?= url('alternance/rythme') ?>"><?= e(t('alt.ip.retour')) ?></a></p>
+    <h1><?= e(t('alt.ip.titre', ['nom' => $nomFichier])) ?></h1>
     <p>
-      <?= count($dates) ?> jour<?= count($dates) > 1 ? 's' : '' ?> lu<?= count($dates) > 1 ? 's' : '' ?>,
-      du <?= e(Alternance::jourCourt($dates[0])) ?> au <?= e(Alternance::jourCourt($dates[count($dates) - 1])) ?>
-      <span class="discret">· <?= $methode === 'dates' ? 'dates écrites dans le tableau' : 'grille recoupée (mois × jour)' ?></span>.
-      Dites ce que chaque couleur veut dire : rien n’est importé avant.
+      <?= e(tn('alt.ip.lus', count($dates))) ?>
+      <?= e(t('alt.ip.du_au', [
+          'debut' => Alternance::jourCourt($dates[0]),
+          'fin' => Alternance::jourCourt($dates[count($dates) - 1]),
+      ])) ?>
+      <span class="discret">· <?= e(t($methode === 'dates' ? 'alt.ip.methode_dates' : 'alt.ip.methode_grille')) ?></span>.
+      <?= e(t('alt.ip.dites')) ?>
     </p>
   </div>
 </div>
@@ -57,13 +60,13 @@ unset($liste);
           <input type="hidden" name="couleurs[]" value="<?= e($couleur) ?>">
           <span class="alternance-legende__pastille"
                 style="background:<?= $couleur === 'sans' ? 'transparent' : e($couleur) ?>"
-                title="<?= $couleur === 'sans' ? 'Aucune couleur de fond' : e($couleur) ?>" aria-hidden="true">
+                title="<?= $couleur === 'sans' ? e(t('alt.ip.sans_fond')) : e($couleur) ?>" aria-hidden="true">
             <?= $couleur === 'sans' ? '—' : '' ?>
           </span>
           <span class="alternance-legende__texte">
-            <strong><?= $couleur === 'sans' ? 'Sans couleur' : e(strtoupper($couleur)) ?></strong><br>
+            <strong><?= $couleur === 'sans' ? e(t('alt.ip.sans_couleur')) : e(strtoupper($couleur)) ?></strong><br>
             <span class="discret">
-              <?= (int) $combien ?> jour<?= $combien > 1 ? 's' : '' ?> ·
+              <?= e(tn('alt.ip.jours', (int) $combien)) ?>
               <?php foreach ($exemples as $rangExemple => $jour): ?>
                 <?= $rangExemple > 0 ? ', ' : '' ?><?= e(Alternance::jourCourt($jour)) ?>
               <?php endforeach; ?>
@@ -72,11 +75,11 @@ unset($liste);
           </span>
           <span class="alternance-legende__choix">
             <label class="sr-only" for="lieu-<?= $numero ?>">
-              Ce que veut dire la couleur <?= e($couleur) ?>
+              <?= e(t('alt.ip.ce_que_veut_dire', ['couleur' => $couleur])) ?>
             </label>
             <select id="lieu-<?= $numero ?>" name="lieux[]">
-              <option value="">Ne pas importer</option>
-              <?php foreach (Alternance::LIEUX as $cle => $l): ?>
+              <option value=""><?= e(t('alt.ip.ne_pas_importer')) ?></option>
+              <?php foreach (Alternance::lieux() as $cle => $l): ?>
                 <option value="<?= e($cle) ?>"<?= $cle === $defaut && $combien === $laPlusVue ? ' selected' : '' ?>>
                   <?= $l['icone'] ?> <?= e($l['nom']) ?>
                 </option>
@@ -88,14 +91,12 @@ unset($liste);
     </ul>
 
     <p class="champ__aide" style="margin-top:.9rem">
-      La couleur la plus fréquente est celle que vous aviez choisie à l’envoi — changez-la si besoin.
-      Les couleurs laissées sur « Ne pas importer » sont oubliées : c’est ce qu’il faut faire des
-      en-têtes et des bandeaux, qui sont colorés eux aussi.
+      <?= e(t('alt.ip.aide')) ?>
     </p>
 
     <p class="actions">
-      <button class="bouton" type="submit">Importer ces périodes</button>
-      <a class="bouton bouton--secondaire" href="<?= url('alternance/rythme') ?>">Annuler</a>
+      <button class="bouton" type="submit"><?= e(t('alt.ip.importer')) ?></button>
+      <a class="bouton bouton--secondaire" href="<?= url('alternance/rythme') ?>"><?= e(t('alt.nt.annuler')) ?></a>
     </p>
   </section>
 </form>

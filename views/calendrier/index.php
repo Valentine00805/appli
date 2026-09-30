@@ -292,7 +292,7 @@ $etiquetteRythme = static function (string $cle, bool $court = false) use ($ryth
     if (!isset($rythme[$cle])) {
         return '';
     }
-    $l = Alternance::LIEUX[$rythme[$cle]['lieu']];
+    $l = Alternance::lieux()[$rythme[$cle]['lieu']];
     $titre = $l['nom'] . ($rythme[$cle]['note'] ? ' · ' . $rythme[$cle]['note'] : '');
 
     return '<span class="rythme rythme--' . e($rythme[$cle]['lieu']) . '" title="' . e($titre) . '">'
@@ -459,7 +459,7 @@ $etiquetteRythme = static function (string $cle, bool $court = false) use ($ryth
             $infobulle = ucfirst(date_fr($cle . ' 00:00:00', false));
             if (isset($rythme[$cle])) {
                 $infobulle .= ' · ' . Alternance::LIEUX[$rythme[$cle]['lieu']]['icone'] . ' '
-                    . Alternance::LIEUX[$rythme[$cle]['lieu']]['nom'];
+                    . Alternance::lieuNom($rythme[$cle]['lieu']);
             }
             foreach (array_slice($duJour, 0, 8) as $evt) {
                 $infobulle .= "\n• " . ($evt['journee_entiere'] ? '' : date('H:i', strtotime((string) $evt['debut'])) . ' ')

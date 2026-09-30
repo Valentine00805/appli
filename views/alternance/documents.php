@@ -13,8 +13,8 @@ $total = array_sum(array_map('count', $parCategorie));
 
 <div class="entete-page">
   <div>
-    <h1>📁 Documents d’alternance</h1>
-    <p>Le contrat, le livret d’apprentissage, les évaluations, le rapport : tout au même endroit.</p>
+    <h1><?= e(t('alt.do.titre')) ?></h1>
+    <p><?= e(t('alt.do.aide')) ?></p>
   </div>
 </div>
 
@@ -23,11 +23,11 @@ $total = array_sum(array_map('count', $parCategorie));
     <?php if ($total === 0): ?>
       <div class="vide">
         <span class="vide__icone">📁</span>
-        <p>Aucun document pour l’instant. Déposez le premier avec « Déposer ».</p>
+        <p><?= e(t('alt.do.aucun')) ?></p>
       </div>
     <?php endif; ?>
 
-    <?php foreach (Alternance::CATEGORIES as $cle => $cat): ?>
+    <?php foreach (Alternance::categories() as $cle => $cat): ?>
       <?php if ($parCategorie[$cle] === []) { continue; } ?>
       <section class="carte">
         <h2><?= $cat['icone'] ?> <?= e($cat['nom']) ?> <span class="discret">(<?= count($parCategorie[$cle]) ?>)</span></h2>
@@ -40,29 +40,29 @@ $total = array_sum(array_map('count', $parCategorie));
                   <?= e($d['nom_origine']) ?>
                 </a><br>
                 <span class="fichier__meta">
-                  <?= e(taille_lisible((int) $d['taille'])) ?> · déposé le <?= e(date_fr((string) $d['created_at'], false)) ?>
+                  <?= e(taille_lisible((int) $d['taille'])) ?> · <?= e(t('alt.do.depose_le', ['date' => date_fr((string) $d['created_at'], false)])) ?>
                 </span>
               </span>
               <span class="fichier__actions">
                 <a class="bouton bouton--discret bouton--petit"
                    href="<?= url('alternance/documents/' . (int) $d['id'], ['telecharger' => 1]) ?>"
-                   title="Télécharger" aria-label="Télécharger <?= e($d['nom_origine']) ?>">⬇</a>
+                   title="<?= e(t('alt.do.telecharger')) ?>" aria-label="<?= e(t('alt.do.telecharger_nom', ['nom' => (string) $d['nom_origine']])) ?>">⬇</a>
                 <form method="post" action="<?= url('alternance/documents/' . (int) $d['id'] . '/categorie') ?>"
                       class="en-ligne alternance-ranger" data-auto-envoi>
                   <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
-                  <label class="sr-only" for="ranger-<?= (int) $d['id'] ?>">Ranger « <?= e($d['nom_origine']) ?> » dans</label>
+                  <label class="sr-only" for="ranger-<?= (int) $d['id'] ?>"><?= e(t('alt.do.ranger_dans_nom', ['nom' => (string) $d['nom_origine']])) ?></label>
                   <select id="ranger-<?= (int) $d['id'] ?>" name="categorie">
-                    <?php foreach (Alternance::CATEGORIES as $autre => $c): ?>
+                    <?php foreach (Alternance::categories() as $autre => $c): ?>
                       <option value="<?= e($autre) ?>"<?= $autre === $cle ? ' selected' : '' ?>><?= e($c['nom']) ?></option>
                     <?php endforeach; ?>
                   </select>
-                  <noscript><button class="bouton bouton--discret bouton--petit" type="submit">Ranger</button></noscript>
+                  <noscript><button class="bouton bouton--discret bouton--petit" type="submit"><?= e(t('alt.do.ranger')) ?></button></noscript>
                 </form>
                 <form method="post" action="<?= url('alternance/documents/' . (int) $d['id'] . '/supprimer') ?>" class="en-ligne"
-                      data-confirmation="Supprimer définitivement « <?= e($d['nom_origine']) ?> » ?">
+                      data-confirmation="<?= e(t('alt.do.supprimer_confirmation', ['nom' => (string) $d['nom_origine']])) ?>">
                   <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
-                  <button class="bouton bouton--discret bouton--petit" type="submit" title="Supprimer"
-                          aria-label="Supprimer <?= e($d['nom_origine']) ?>">✕</button>
+                  <button class="bouton bouton--discret bouton--petit" type="submit" title="<?= e(t('alt.do.supprimer')) ?>"
+                          aria-label="<?= e(t('alt.do.supprimer_nom', ['nom' => (string) $d['nom_origine']])) ?>">✕</button>
                 </form>
               </span>
             </li>
@@ -74,13 +74,13 @@ $total = array_sum(array_map('count', $parCategorie));
 
   <div class="pile">
     <section class="carte">
-      <h2>Déposer</h2>
+      <h2><?= e(t('alt.do.deposer')) ?></h2>
       <form method="post" action="<?= url('alternance/documents') ?>" enctype="multipart/form-data" class="depot" data-depot>
         <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
         <div class="champ">
-          <label for="categorie">Ranger dans</label>
+          <label for="categorie"><?= e(t('alt.do.ranger_dans')) ?></label>
           <select id="categorie" name="categorie">
-            <?php foreach (Alternance::CATEGORIES as $cle => $cat): ?>
+            <?php foreach (Alternance::categories() as $cle => $cat): ?>
               <option value="<?= e($cle) ?>"><?= $cat['icone'] ?> <?= e($cat['nom']) ?></option>
             <?php endforeach; ?>
           </select>
@@ -88,13 +88,12 @@ $total = array_sum(array_map('count', $parCategorie));
         <label class="depot__zone" for="depot-alternance">
           <span class="depot__icone" aria-hidden="true">📎</span>
           <span>
-            <strong>Déposez vos fichiers ici</strong><br>
-            <span class="discret">ou cliquez pour les choisir — PDF, images, Word…
-              <?= e(taille_lisible(Fichiers::tailleMax())) ?> par fichier</span>
+            <strong><?= e(t('alt.do.zone')) ?></strong><br>
+            <span class="discret"><?= e(t('alt.do.zone_aide', ['taille' => taille_lisible(Fichiers::tailleMax())])) ?></span>
           </span>
         </label>
         <input type="file" id="depot-alternance" name="fichiers[]" multiple class="depot__champ" data-depot-champ>
-        <button class="bouton bouton--petit bouton--bloc" type="submit" data-depot-envoi>Déposer</button>
+        <button class="bouton bouton--petit bouton--bloc" type="submit" data-depot-envoi><?= e(t('alt.do.deposer')) ?></button>
       </form>
     </section>
   </div>

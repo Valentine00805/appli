@@ -17,28 +17,27 @@ $ecrite = in_array($cetteSemaine, array_column($pages, 'semaine'), true);
 
 <div class="entete-page">
   <div>
-    <h1>📓 Journal des missions</h1>
-    <p>Chaque semaine, ce que vous avez fait et appris en entreprise. Le jour du
-      livret ou du rapport, tout est déjà là.</p>
+    <h1><?= e(t('alt.jo.titre')) ?></h1>
+    <p><?= e(t('alt.jo.aide')) ?></p>
   </div>
   <span class="alternance-page__actions">
     <?php if ($pages !== []): ?>
-      <a class="bouton bouton--secondaire" href="<?= url('alternance/journal/competences') ?>">🎯 Compétences</a>
+      <a class="bouton bouton--secondaire" href="<?= url('alternance/journal/competences') ?>"><?= e(t('alt.jo.competences')) ?></a>
     <?php endif; ?>
     <a class="bouton" href="<?= url('alternance/journal/semaine', ['semaine' => $cetteSemaine]) ?>" data-fenetre>
-      <?= $ecrite ? 'Compléter cette semaine' : '+ Écrire cette semaine' ?>
+      <?= e(t($ecrite ? 'alt.jo.completer' : 'alt.jo.ecrire')) ?>
     </a>
   </span>
 </div>
 
 <?php if ($combien > 0): ?>
   <form method="get" action="<?= url('alternance/journal') ?>" class="filtres" role="search" style="margin-bottom:1rem">
-    <label class="sr-only" for="q">Chercher dans mon journal</label>
+    <label class="sr-only" for="q"><?= e(t('alt.jo.chercher_label')) ?></label>
     <input type="search" id="q" name="q" value="<?= e($recherche) ?>"
-           placeholder="Chercher une mission, une compétence…">
-    <button class="bouton bouton--secondaire" type="submit">Chercher</button>
+           placeholder="<?= e(t('alt.jo.chercher_exemple')) ?>">
+    <button class="bouton bouton--secondaire" type="submit"><?= e(t('alt.jo.chercher')) ?></button>
     <?php if ($recherche !== ''): ?>
-      <a class="bouton bouton--discret" href="<?= url('alternance/journal') ?>">Tout revoir</a>
+      <a class="bouton bouton--discret" href="<?= url('alternance/journal') ?>"><?= e(t('alt.jo.tout_revoir')) ?></a>
     <?php endif; ?>
   </form>
 <?php endif; ?>
@@ -54,31 +53,30 @@ $ecrite = in_array($cetteSemaine, array_column($pages, 'semaine'), true);
   $derniere = (new DateTimeImmutable((string) $pages[0]['semaine']))->modify('+4 days')->format('Y-m-d');
   ?>
   <details class="carte alternance-export">
-    <summary class="alternance-export__ouvrir">⬇️ Exporter le journal en PDF</summary>
+    <summary class="alternance-export__ouvrir"><?= e(t('alt.jo.exporter')) ?></summary>
     <form method="get" action="<?= url('alternance/journal/pdf') ?>">
       <div class="ligne-champs">
         <div class="champ">
-          <label for="du">Depuis</label>
+          <label for="du"><?= e(t('alt.jo.depuis')) ?></label>
           <input type="date" id="du" name="du" value="<?= e($premiere) ?>">
         </div>
         <div class="champ">
-          <label for="au">Jusqu’au</label>
+          <label for="au"><?= e(t('alt.jo.jusquau')) ?></label>
           <input type="date" id="au" name="au" value="<?= e($derniere) ?>">
         </div>
       </div>
-      <button class="bouton" type="submit">Télécharger le PDF</button>
-      <p class="champ__aide">Une semaine entamée sort en entier. Videz les dates pour tout prendre.
-        Le PDF finit par le récapitulatif de vos compétences, de la plus travaillée à la moins travaillée.</p>
+      <button class="bouton" type="submit"><?= e(t('alt.jo.telecharger')) ?></button>
+      <p class="champ__aide"><?= e(t('alt.jo.export_aide')) ?></p>
     </form>
   </details>
 <?php endif; ?>
 
 <?php if ($aEcrire !== []): ?>
   <div class="carte alternance-rappel">
-    <strong>✍️ <?= count($aEcrire) ?> semaine<?= count($aEcrire) > 1 ? 's' : '' ?> en entreprise sans page :</strong>
+    <strong><?= e(tn('alt.jo.sans_page', count($aEcrire))) ?></strong>
     <?php foreach ($aEcrire as $lundi): ?>
       <a class="pastille" href="<?= url('alternance/journal/semaine', ['semaine' => $lundi]) ?>" data-fenetre>
-        semaine du <?= e(Alternance::jourCourt($lundi)) ?>
+        <?= e(t('alt.jo.semaine_du_court', ['date' => Alternance::jourCourt($lundi)])) ?>
       </a>
     <?php endforeach; ?>
   </div>
@@ -88,29 +86,29 @@ $ecrite = in_array($cetteSemaine, array_column($pages, 'semaine'), true);
   <div class="vide">
     <span class="vide__icone">📓</span>
     <?php if ($recherche !== ''): ?>
-      <p>Aucune semaine ne parle de « <?= e($recherche) ?> ».</p>
-      <p><a class="bouton bouton--secondaire" href="<?= url('alternance/journal') ?>">Revoir tout le journal</a></p>
+      <p><?= e(t('alt.jo.rien_trouve', ['recherche' => $recherche])) ?></p>
+      <p><a class="bouton bouton--secondaire" href="<?= url('alternance/journal') ?>"><?= e(t('alt.jo.revoir_tout')) ?></a></p>
     <?php else: ?>
-      <p>Le journal est vide. Commencez par cette semaine : quelques lignes suffisent.</p>
+      <p><?= e(t('alt.jo.vide')) ?></p>
     <?php endif; ?>
   </div>
 <?php else: ?>
   <?php if ($recherche !== ''): ?>
-    <p class="discret"><?= count($pages) ?> semaine<?= count($pages) > 1 ? 's' : '' ?> sur <?= (int) $combien ?>.</p>
+    <p class="discret"><?= e(tn('alt.jo.combien', count($pages), ['total' => (int) $combien])) ?></p>
   <?php endif; ?>
   <div class="pile">
     <?php foreach ($pages as $p): ?>
       <article class="carte alternance-page">
         <header class="alternance-page__entete">
-          <h2>Semaine du <?= e(Alternance::jourCourt((string) $p['semaine'])) ?></h2>
+          <h2><?= e(t('alt.jo.semaine_du', ['date' => Alternance::jourCourt((string) $p['semaine'])])) ?></h2>
           <span class="alternance-page__actions">
             <a class="bouton bouton--discret bouton--petit"
-               href="<?= url('alternance/journal/semaine', ['semaine' => $p['semaine']]) ?>" data-fenetre>Modifier</a>
+               href="<?= url('alternance/journal/semaine', ['semaine' => $p['semaine']]) ?>" data-fenetre><?= e(t('alt.jo.modifier')) ?></a>
             <form method="post" action="<?= url('alternance/journal/' . (int) $p['id'] . '/supprimer') ?>" class="en-ligne"
-                  data-confirmation="Supprimer la page de la semaine du <?= e(Alternance::jourCourt((string) $p['semaine'])) ?> ?">
+                  data-confirmation="<?= e(t('alt.jo.supprimer_confirmation', ['date' => Alternance::jourCourt((string) $p['semaine'])])) ?>">
               <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
-              <button class="bouton bouton--discret bouton--petit" type="submit" title="Supprimer"
-                      aria-label="Supprimer cette page">✕</button>
+              <button class="bouton bouton--discret bouton--petit" type="submit" title="<?= e(t('alt.jo.supprimer')) ?>"
+                      aria-label="<?= e(t('alt.jo.supprimer_page')) ?>">✕</button>
             </form>
           </span>
         </header>
@@ -120,7 +118,7 @@ $ecrite = in_array($cetteSemaine, array_column($pages, 'semaine'), true);
         <?php $competences = Alternance::competences($p['competences']); ?>
         <?php if ($competences !== []): ?>
           <p class="alternance-competences">
-            <span class="discret">Compétences :</span>
+            <span class="discret"><?= e(t('alt.jo.competences_label')) ?></span>
             <?php foreach ($competences as $c): ?>
               <span class="pastille"><?= e($c) ?></span>
             <?php endforeach; ?>

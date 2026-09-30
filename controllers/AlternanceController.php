@@ -19,7 +19,7 @@ final class AlternanceController
             'avancement' => Alternance::avancementContrat($contrat),
             'auCalendrier' => $this->echeancesPosees($userId, $contrat),
             'taches'     => Alternance::tachesAFaire($userId),
-        ], 'Mon alternance', 'entreprise');
+        ], t('titre.alt_entreprise'), 'entreprise');
     }
 
     public function enregistrerEntreprise(): void
@@ -34,12 +34,12 @@ final class AlternanceController
         $debut = $date('debut');
         $fin = $date('fin');
         if ($debut !== null && $fin !== null && $fin < $debut) {
-            Session::flash('erreur', 'La fin du contrat ne peut pas précéder son début.');
+            Session::flash('erreur', t('alt.msg.fin_avant_debut'));
             redirect('alternance/entreprise');
         }
         $courriel = $texte('tuteur_email', 190);
         if ($courriel !== null && !filter_var($courriel, FILTER_VALIDATE_EMAIL)) {
-            Session::flash('erreur', 'L’adresse électronique du tuteur ne ressemble pas à une adresse.');
+            Session::flash('erreur', t('alt.msg.courriel_invalide'));
             redirect('alternance/entreprise');
         }
 
@@ -65,7 +65,7 @@ final class AlternanceController
             array_merge([$userId], array_values($valeurs))
         );
 
-        Session::flash('succes', 'Fiche enregistrée.');
+        Session::flash('succes', t('alt.msg.fiche_enregistree'));
         redirect('alternance/entreprise');
     }
 
@@ -82,7 +82,7 @@ final class AlternanceController
         $contrat = Alternance::contrat($userId);
 
         $posees = 0;
-        foreach (Alternance::ECHEANCES as $champ => $echeance) {
+        foreach (Alternance::echeances() as $champ => $echeance) {
             $jour = (string) ($contrat[$champ] ?? '');
             if ($jour === '' || $this->echeancePosee($userId, $echeance['titre'], $jour)) {
                 continue;
@@ -95,11 +95,8 @@ final class AlternanceController
             $posees++;
         }
 
-        Session::flash($posees === 0 ? 'erreur' : 'succes', match (true) {
-            $posees === 0 => 'Rien à poser : vos dates sont déjà au calendrier, ou vous n’en avez pas encore donné.',
-            $posees === 1 => 'Une date posée au calendrier.',
-            default       => $posees . ' dates posées au calendrier.',
-        });
+        Session::flash($posees === 0 ? 'erreur' : 'succes',
+            $posees === 0 ? t('alt.msg.rien_a_poser') : tn('alt.msg.dates_posees', $posees));
         redirect('alternance/entreprise');
     }
 
@@ -131,10 +128,10 @@ final class AlternanceController
         }
 
         Session::flash($posees === 0 ? 'erreur' : 'succes', match (true) {
-            $posees === 0 && $depassees > 0 => 'Toutes ces étapes sont déjà passées, ou déjà dans votre liste.',
-            $posees === 0 => 'Donnez d’abord la date de remise du rapport ou de la soutenance.',
-            default => $posees . ' étape' . ($posees > 1 ? 's posées' : ' posée') . ' dans « ' . Alternance::LISTE . ' »'
-                . ($depassees > 0 ? ' (' . $depassees . ' déjà passée' . ($depassees > 1 ? 's' : '') . ').' : '.'),
+            $posees === 0 && $depassees > 0 => t('alt.msg.etapes_passees'),
+            $posees === 0 => t('alt.msg.donnez_date'),
+            default => tn('alt.msg.etapes_posees', $posees, ['liste' => Alternance::LISTE])
+                . ($depassees > 0 ? tn('alt.msg.deja_passees', $depassees) : t('alt.msg.point')),
         });
         redirect('alternance/entreprise');
     }
@@ -143,7 +140,7 @@ final class AlternanceController
     private function echeancesPosees(int $userId, array $contrat): array
     {
         $posees = [];
-        foreach (Alternance::ECHEANCES as $champ => $echeance) {
+        foreach (Alternance::echeances() as $champ => $echeance) {
             $jour = (string) ($contrat[$champ] ?? '');
             $posees[$champ] = $jour !== '' && $this->echeancePosee($userId, $echeance['titre'], $jour);
         }
@@ -188,7 +185,7 @@ final class AlternanceController
             'etiquettes' => Alternance::etiquettesConnues(Auth::id()),
             'combien'   => (int) Database::valeur(
                 'SELECT COUNT(*) FROM alternance_notes WHERE user_id = ?', [Auth::id()]),
-        ], 'Alternance', 'notes');
+        ], t('titre.alt_notes'), 'notes');
     }
 
     /**
@@ -215,18 +212,16 @@ final class AlternanceController
             $titres = Alternance::aFaireDans((string) $note['contenu']);
         }
         if ($titres === []) {
-            Session::flash('erreur', 'Cette note ne contient aucune case à cocher.');
+            Session::flash('erreur', t('alt.msg.pas_de_case'));
             redirect('alternance/notes/' . $id);
         }
 
         $bilan = Alternance::poserTaches($userId, $titres, Alternance::dateValide(post('echeance')));
-        Session::flash($bilan['ajoutees'] === 0 ? 'erreur' : 'succes', match (true) {
-            $bilan['ajoutees'] === 0 => 'Ces tâches sont déjà dans votre liste « ' . Alternance::LISTE . ' ».',
-            $bilan['ajoutees'] === 1 => 'Une tâche ajoutée à « ' . Alternance::LISTE . ' »'
-                . ($bilan['connues'] > 0 ? ' (' . $bilan['connues'] . ' y étaient déjà).' : '.'),
-            default => $bilan['ajoutees'] . ' tâches ajoutées à « ' . Alternance::LISTE . ' »'
-                . ($bilan['connues'] > 0 ? ' (' . $bilan['connues'] . ' y étaient déjà).' : '.'),
-        });
+        Session::flash($bilan['ajoutees'] === 0 ? 'erreur' : 'succes',
+            $bilan['ajoutees'] === 0
+                ? t('alt.msg.taches_deja', ['liste' => Alternance::LISTE])
+                : tn('alt.msg.taches_ajoutees', $bilan['ajoutees'], ['liste' => Alternance::LISTE])
+                    . ($bilan['connues'] > 0 ? tn('alt.msg.y_etaient_deja', $bilan['connues']) : t('alt.msg.point')));
         redirect('alternance/notes/' . $id);
     }
 
@@ -240,7 +235,7 @@ final class AlternanceController
         // Épingler ne change pas la note : sa date de modification ne bouge pas.
         Database::run('UPDATE alternance_notes SET epinglee = ?, updated_at = updated_at WHERE id = ? AND user_id = ?',
             [$epinglee ? 0 : 1, $id, Auth::id()]);
-        Session::flash('succes', $epinglee ? 'Note décrochée.' : 'Note épinglée en haut de la liste.');
+        Session::flash('succes', t($epinglee ? 'alt.msg.note_decrochee' : 'alt.msg.note_epinglee'));
         repartir_vers('alternance');
     }
 
@@ -264,7 +259,7 @@ final class AlternanceController
             return;
         }
         $this->afficher('alternance/note', ['note' => $note, 'aFaire' => $aFaire],
-            $note === null ? 'Nouvelle note' : (string) $note['titre'], 'notes');
+            $note === null ? t('titre.alt_note_nouvelle') : (string) $note['titre'], 'notes');
     }
 
     public function creerNote(): void
@@ -273,12 +268,12 @@ final class AlternanceController
         Session::verifierCsrf();
         [$titre, $contenu, $etiquettes] = $this->lireNote();
         if ($titre === '') {
-            Session::flash('erreur', 'Donnez un titre à la note.');
+            Session::flash('erreur', t('alt.msg.titre_manquant'));
             redirect('alternance/notes/nouvelle');
         }
         Database::run('INSERT INTO alternance_notes (user_id, titre, contenu, etiquettes) VALUES (?, ?, ?, ?)',
             [Auth::id(), $titre, $contenu, $etiquettes]);
-        Session::flash('succes', 'Note « ' . $titre . ' » enregistrée.');
+        Session::flash('succes', t('alt.msg.note_creee', ['titre' => $titre]));
         // Écrite dans la fenêtre : on retrouve la liste, où elle vient d'arriver.
         if (($_POST['fenetre'] ?? '') === '1') {
             redirect('alternance');
@@ -293,12 +288,12 @@ final class AlternanceController
         $this->exigerA('alternance_notes', $id);
         [$titre, $contenu, $etiquettes] = $this->lireNote();
         if ($titre === '') {
-            Session::flash('erreur', 'Donnez un titre à la note.');
+            Session::flash('erreur', t('alt.msg.titre_manquant'));
             redirect('alternance/notes/' . $id);
         }
         Database::run('UPDATE alternance_notes SET titre = ?, contenu = ?, etiquettes = ? WHERE id = ? AND user_id = ?',
             [$titre, $contenu, $etiquettes, $id, Auth::id()]);
-        Session::flash('succes', 'Note enregistrée.');
+        Session::flash('succes', t('alt.msg.note_enregistree'));
         redirect('alternance/notes/' . $id);
     }
 
@@ -308,7 +303,7 @@ final class AlternanceController
         Session::verifierCsrf();
         $this->exigerA('alternance_notes', $id);
         Database::run('DELETE FROM alternance_notes WHERE id = ? AND user_id = ?', [$id, Auth::id()]);
-        Session::flash('succes', 'Note supprimée.');
+        Session::flash('succes', t('alt.msg.note_supprimee'));
         redirect('alternance');
     }
 
@@ -336,7 +331,7 @@ final class AlternanceController
             'bilan'    => Alternance::bilan($userId),
             // Le lien d'abonnement, s'il a été créé : on ne le fabrique pas tout seul.
             'lienIcs'  => $jeton === '' ? '' : Alternance::adresseIcs($jeton),
-        ], 'Rythme d’alternance', 'rythme');
+        ], t('titre.alt_rythme'), 'rythme');
     }
 
     /**
@@ -369,9 +364,7 @@ final class AlternanceController
         $renouveler = Database::valeur('SELECT jeton_ics FROM alternance_contrat WHERE user_id = ?',
             [Auth::id()]) !== null && ($_POST['renouveler'] ?? '') === '1';
         Alternance::jetonIcs(Auth::id(), $renouveler);
-        Session::flash('succes', $renouveler
-            ? 'Nouveau lien : l’ancien ne fonctionne plus. Réabonnez vos agendas.'
-            : 'Lien d’abonnement créé.');
+        Session::flash('succes', t($renouveler ? 'alt.msg.lien_renouvele' : 'alt.msg.lien_cree'));
         redirect('alternance/rythme');
     }
 
@@ -395,7 +388,7 @@ final class AlternanceController
         $depose = $_FILES['planning'] ?? null;
         if (is_array($depose) && (int) ($depose['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK) {
             if ((int) $depose['size'] > 8 * 1024 * 1024) {
-                Session::flash('erreur', 'Ce fichier dépasse 8 Mo : ce n’est sans doute pas un planning.');
+                Session::flash('erreur', t('alt.msg.fichier_trop_gros'));
                 redirect('alternance/rythme');
             }
             $chemin = (string) $depose['tmp_name'];
@@ -408,7 +401,7 @@ final class AlternanceController
             }
         }
         if (trim($contenu) === '') {
-            Session::flash('erreur', 'Donnez un fichier .ics, ou collez un tableau : une ligne par période.');
+            Session::flash('erreur', t('alt.msg.donnez_fichier'));
             redirect('alternance/rythme');
         }
         // Un fichier écrit par un tableur n'est pas toujours en UTF-8.
@@ -418,11 +411,11 @@ final class AlternanceController
 
         $lu = Alternance::lirePlanning($contenu, $defaut);
         if ($lu['periodes'] === []) {
-            Session::flash('erreur', 'Aucune période lisible là-dedans. Un tableau s’écrit « début ; fin ; lieu ».');
+            Session::flash('erreur', t('alt.msg.rien_lisible'));
             redirect('alternance/rythme');
         }
         if (count($lu['periodes']) > 400) {
-            Session::flash('erreur', 'Plus de 400 périodes : ce planning est trop gros pour être importé d’un coup.');
+            Session::flash('erreur', t('alt.msg.trop_de_periodes'));
             redirect('alternance/rythme');
         }
 
@@ -434,11 +427,11 @@ final class AlternanceController
 
         $detail = [];
         foreach ($comptes as $lieu => $combien) {
-            $detail[] = $combien . ' ' . mb_strtolower(Alternance::LIEUX[$lieu]['nom']);
+            $detail[] = $combien . ' ' . mb_strtolower(Alternance::lieuNom($lieu));
         }
-        Session::flash('succes', count($lu['periodes']) . ' période'
-            . (count($lu['periodes']) > 1 ? 's importées' : ' importée') . ' : ' . implode(', ', $detail)
-            . ($lu['ignorees'] > 0 ? ' · ' . $lu['ignorees'] . ' ligne(s) sautée(s), faute de date lisible.' : '.'));
+        Session::flash('succes',
+            tn('alt.msg.importees', count($lu['periodes']), ['detail' => implode(', ', $detail)])
+            . ($lu['ignorees'] > 0 ? t('alt.msg.lignes_sautees', ['n' => $lu['ignorees']]) : t('alt.msg.point')));
         redirect('alternance/rythme');
     }
 
@@ -453,9 +446,7 @@ final class AlternanceController
         $lu = PlanningPdf::lire($chemin, $annee !== null && $annee >= 2000 && $annee <= 2100 ? $annee : null);
 
         if ($lu['jours'] === []) {
-            Session::flash('erreur', $lu['pages'] === 0
-                ? 'Ce PDF ne se laisse pas lire (il est peut-être scanné, c’est-à-dire fait d’images). Collez plutôt un tableau.'
-                : 'Aucune date trouvée dans ce PDF. S’il s’agit d’une grille sans année écrite, donnez l’année ; sinon, collez un tableau.');
+            Session::flash('erreur', t($lu['pages'] === 0 ? 'alt.msg.pdf_illisible' : 'alt.msg.pdf_sans_date'));
             redirect('alternance/rythme');
         }
 
@@ -465,7 +456,7 @@ final class AlternanceController
             'couleurs'   => $lu['couleurs'],
             'methode'    => $lu['methode'],
             'defaut'     => $defaut,
-        ], 'Couleurs du planning', 'rythme');
+        ], t('titre.alt_couleurs'), 'rythme');
     }
 
     /**
@@ -480,7 +471,7 @@ final class AlternanceController
 
         $jours = json_decode(post('jours'), true);
         if (!is_array($jours) || $jours === []) {
-            Session::flash('erreur', 'Ce planning s’est perdu en route : reprenez l’import.');
+            Session::flash('erreur', t('alt.msg.planning_perdu'));
             redirect('alternance/rythme');
         }
 
@@ -494,14 +485,14 @@ final class AlternanceController
             }
         }
         if ($legende === []) {
-            Session::flash('erreur', 'Dites au moins ce qu’une couleur veut dire, sans quoi il n’y a rien à importer.');
+            Session::flash('erreur', t('alt.msg.dites_une_couleur'));
             redirect('alternance/rythme');
         }
 
         $periodes = PlanningPdf::periodes(
             array_map('strval', array_filter($jours, 'is_string')), $legende);
         if ($periodes === []) {
-            Session::flash('erreur', 'Les couleurs choisies ne couvrent aucun jour.');
+            Session::flash('erreur', t('alt.msg.couleurs_vides'));
             redirect('alternance/rythme');
         }
 
@@ -515,11 +506,12 @@ final class AlternanceController
 
         $detail = [];
         foreach ($comptes as $lieu => $combien) {
-            $detail[] = $combien . ' ' . mb_strtolower(Alternance::LIEUX[$lieu]['nom']);
+            $detail[] = $combien . ' ' . mb_strtolower(Alternance::lieuNom($lieu));
         }
-        Session::flash('succes', count($periodes) . ' période' . (count($periodes) > 1 ? 's' : '')
-            . ' (' . $jours . ' jour' . ($jours > 1 ? 's' : '') . ' ouvré' . ($jours > 1 ? 's' : '') . ') : '
-            . implode(', ', $detail) . '.');
+        Session::flash('succes', tn('alt.msg.couleurs_importees', count($periodes), [
+            'jours' => tn('alt.msg.jours_ouvres', $jours),
+            'detail' => implode(', ', $detail),
+        ]));
         redirect('alternance/rythme');
     }
 
@@ -548,11 +540,11 @@ final class AlternanceController
         $note = mb_substr(trim(post('note')), 0, 200) ?: null;
 
         $erreur = match (true) {
-            !isset(Alternance::LIEUX[$lieu]) => 'Choisissez École ou Entreprise.',
-            $debut === null                  => 'La date de début est invalide.',
-            $fin < $debut                    => 'La fin ne peut pas précéder le début.',
+            !isset(Alternance::LIEUX[$lieu]) => t('alt.msg.choisir_lieu'),
+            $debut === null                  => t('alt.msg.debut_invalide'),
+            $fin < $debut                    => t('alt.msg.fin_avant'),
             (new DateTimeImmutable($debut))->diff(new DateTimeImmutable($fin))->days >= Alternance::JOURS_MAX
-                                             => 'Une période ne dépasse pas trois ans.',
+                                             => t('alt.msg.trois_ans'),
             default                          => null,
         };
         if ($erreur !== null) {
@@ -564,13 +556,17 @@ final class AlternanceController
             [$userId, $id ?? 0, $fin, $debut]);
         Alternance::poserPeriode($userId, $lieu, $debut, $fin, $note, $id);
 
-        $texte = ucfirst(Alternance::LIEUX[$lieu]['dans']) . ' '
-            . ($debut === $fin ? 'le ' . Alternance::jourCourt($debut)
-                : 'du ' . Alternance::jourCourt($debut) . ' au ' . Alternance::jourCourt($fin));
+        $texte = $debut === $fin
+            ? t('alt.msg.periode_le', ['lieu' => ucfirst(Alternance::lieuDans($lieu)), 'date' => Alternance::jourCourt($debut)])
+            : t('alt.msg.periode_du_au', [
+                'lieu' => ucfirst(Alternance::lieuDans($lieu)),
+                'debut' => Alternance::jourCourt($debut),
+                'fin' => Alternance::jourCourt($fin),
+            ]);
         // « 23 oct. » porte déjà son point.
         $texte = rtrim($texte, '.') . '.';
         if ($avant > 0) {
-            $texte .= ' Les jours déjà posés sur ces dates ont été remplacés.';
+            $texte .= t('alt.msg.remplaces');
         }
         Session::flash('succes', $texte);
         redirect('alternance/rythme');
@@ -582,7 +578,7 @@ final class AlternanceController
         Session::verifierCsrf();
         $this->exigerA('alternance_periodes', $id);
         Database::run('DELETE FROM alternance_periodes WHERE id = ? AND user_id = ?', [$id, Auth::id()]);
-        Session::flash('succes', 'Période retirée.');
+        Session::flash('succes', t('alt.msg.periode_retiree'));
         redirect('alternance/rythme');
     }
 
@@ -610,7 +606,7 @@ final class AlternanceController
             'recherche' => $recherche,
             'combien'   => (int) Database::valeur(
                 'SELECT COUNT(*) FROM alternance_journal WHERE user_id = ?', [$userId]),
-        ], 'Journal des missions', 'journal');
+        ], t('titre.alt_journal'), 'journal');
     }
 
     /** Ce qu'on a travaillé, toutes semaines confondues. */
@@ -622,7 +618,7 @@ final class AlternanceController
             'competences' => Alternance::bilanCompetences($userId),
             'semaines'    => (int) Database::valeur(
                 'SELECT COUNT(*) FROM alternance_journal WHERE user_id = ?', [$userId]),
-        ], 'Compétences travaillées', 'journal');
+        ], t('titre.alt_competences'), 'journal');
     }
 
     /** La page d'une semaine : celle qui existe, sinon une page blanche. */
@@ -645,7 +641,7 @@ final class AlternanceController
             return;
         }
         $this->afficher('alternance/page_journal', $donnees,
-            'Semaine du ' . Alternance::jourCourt($semaine), 'journal');
+            t('titre.alt_semaine', ['date' => Alternance::jourCourt($semaine)]), 'journal');
     }
 
     public function ecrireJournal(): void
@@ -656,7 +652,7 @@ final class AlternanceController
 
         $date = Alternance::dateValide(post('semaine'));
         if ($date === null) {
-            Session::flash('erreur', 'Choisissez la semaine.');
+            Session::flash('erreur', t('alt.msg.choisir_semaine'));
             redirect('alternance/journal');
         }
         $semaine = Alternance::lundi($date);
@@ -668,7 +664,7 @@ final class AlternanceController
         $competences = implode(', ', Alternance::competences(post('competences')));
         $competences = mb_substr($competences, 0, 500) ?: null;
         if ($missions === null && $competences === null) {
-            Session::flash('erreur', 'Écrivez au moins une mission ou une compétence.');
+            Session::flash('erreur', t('alt.msg.ecrivez_quelque_chose'));
             redirect('alternance/journal/semaine', ['semaine' => $semaine]);
         }
 
@@ -676,8 +672,7 @@ final class AlternanceController
             'SELECT id FROM alternance_journal WHERE user_id = ? AND semaine = ?', [$userId, $semaine]));
         if ($deja !== null && $deja !== $id) {
             // Une page écrite ailleurs entre-temps : on ne l'écrase pas en silence.
-            Session::flash('erreur', 'La semaine du ' . Alternance::jourCourt($semaine)
-                . ' a déjà sa page : la voici. Complétez-la plutôt.');
+            Session::flash('erreur', t('alt.msg.semaine_deja', ['date' => Alternance::jourCourt($semaine)]));
             redirect('alternance/journal/semaine', ['semaine' => $semaine]);
         }
 
@@ -690,7 +685,7 @@ final class AlternanceController
                 'UPDATE alternance_journal SET semaine = ?, missions = ?, competences = ? WHERE id = ? AND user_id = ?',
                 [$semaine, $missions, $competences, $id, $userId]);
         }
-        Session::flash('succes', 'Semaine du ' . Alternance::jourCourt($semaine) . ' enregistrée.');
+        Session::flash('succes', t('alt.msg.semaine_enregistree', ['date' => Alternance::jourCourt($semaine)]));
         redirect('alternance/journal');
     }
 
@@ -719,9 +714,7 @@ final class AlternanceController
         $pages = Database::all(
             'SELECT * FROM alternance_journal WHERE user_id = ?' . $conditions . ' ORDER BY semaine', $valeurs);
         if ($pages === []) {
-            Session::flash('erreur', $du === null && $au === null
-                ? 'Le journal est vide : écrivez une semaine avant de l’exporter.'
-                : 'Aucune semaine écrite sur cette période.');
+            Session::flash('erreur', t($du === null && $au === null ? 'alt.msg.journal_vide' : 'alt.msg.aucune_semaine'));
             redirect('alternance/journal');
         }
 
@@ -740,9 +733,11 @@ final class AlternanceController
                 }
             }
             $semaines[] = [
-                'titre'       => 'Semaine du ' . date_fr($lundi . ' 00:00:00', false)
-                                 . ' au ' . date_fr($vendredi . ' 00:00:00', false),
-                'sous_titre'  => $jours === 0 ? '' : $jours . ' jour' . ($jours > 1 ? 's' : '') . ' en entreprise',
+                'titre'       => t('alt.pdf.semaine_du_au', [
+                    'debut' => date_fr($lundi . ' 00:00:00', false),
+                    'fin' => date_fr($vendredi . ' 00:00:00', false),
+                ]),
+                'sous_titre'  => $jours === 0 ? '' : tn('alt.pj.jours_entreprise', $jours),
                 'missions'    => $page['missions'],
                 'competences' => Alternance::competences($page['competences']),
             ];
@@ -754,18 +749,20 @@ final class AlternanceController
         $qui = array_filter([trim((string) $contrat['entreprise']), trim((string) $contrat['poste'])], 'strlen');
 
         $periode = ($qui === [] ? '' : implode(' · ', $qui) . ' — ')
-            . 'Du ' . date_fr((string) $pages[0]['semaine'] . ' 00:00:00', false) . ' au '
-            . date_fr((new DateTimeImmutable((string) $pages[count($pages) - 1]['semaine']))->modify('+4 days')->format('Y-m-d') . ' 00:00:00', false)
-            . ' · ' . count($semaines) . ' semaine' . (count($semaines) > 1 ? 's' : '');
+            . t('alt.pdf.periode', [
+                'debut' => date_fr((string) $pages[0]['semaine'] . ' 00:00:00', false),
+                'fin' => date_fr((new DateTimeImmutable((string) $pages[count($pages) - 1]['semaine']))->modify('+4 days')->format('Y-m-d') . ' 00:00:00', false),
+                'semaines' => tn('alt.co.semaines', count($semaines)),
+            ]);
 
         try {
             $pdf = ExportPdf::depuisJournal($semaines, $periode);
         } catch (Throwable) {
-            Session::flash('erreur', 'Le journal n’a pas pu être mis en PDF.');
+            Session::flash('erreur', t('alt.msg.pdf_echec'));
             redirect('alternance/journal');
         }
 
-        $nom = 'Journal des missions.pdf';
+        $nom = t('alt.pdf.nom_fichier');
         header('Content-Type: application/pdf');
         header('Content-Length: ' . strlen($pdf));
         header('X-Content-Type-Options: nosniff');
@@ -784,7 +781,7 @@ final class AlternanceController
         Session::verifierCsrf();
         $this->exigerA('alternance_journal', $id);
         Database::run('DELETE FROM alternance_journal WHERE id = ? AND user_id = ?', [$id, Auth::id()]);
-        Session::flash('succes', 'Page du journal supprimée.');
+        Session::flash('succes', t('alt.msg.page_supprimee'));
         redirect('alternance/journal');
     }
 
@@ -800,7 +797,7 @@ final class AlternanceController
             $parCategorie[$doc['categorie']][] = $doc;
         }
         $this->afficher('alternance/documents', ['parCategorie' => $parCategorie],
-            'Documents d’alternance', 'documents');
+            t('titre.alt_documents'), 'documents');
     }
 
     public function deposer(): void
@@ -817,13 +814,14 @@ final class AlternanceController
         $recus = (int) Database::valeur('SELECT COUNT(*) FROM alternance_documents WHERE user_id = ?', [Auth::id()]) - $avant;
 
         if ($recus > 0) {
-            Session::flash('succes', $recus . ' document' . ($recus > 1 ? 's rangés' : ' rangé')
-                . ' dans « ' . Alternance::CATEGORIES[$categorie]['nom'] . ' ».');
+            Session::flash('succes', tn('alt.msg.documents_ranges', $recus, [
+                'rayon' => Alternance::categorieNom($categorie),
+            ]));
         }
         if ($erreurs !== []) {
             Session::flash('erreur', implode(' ', $erreurs));
         } elseif ($recus === 0) {
-            Session::flash('erreur', 'Choisissez au moins un fichier.');
+            Session::flash('erreur', t('alt.msg.choisir_fichier'));
         }
         redirect('alternance/documents');
     }
@@ -847,7 +845,7 @@ final class AlternanceController
         if (isset(Alternance::CATEGORIES[$categorie])) {
             Database::run('UPDATE alternance_documents SET categorie = ? WHERE id = ? AND user_id = ?',
                 [$categorie, $id, Auth::id()]);
-            Session::flash('succes', 'Rangé dans « ' . Alternance::CATEGORIES[$categorie]['nom'] . ' ».');
+            Session::flash('succes', t('alt.msg.range_dans', ['rayon' => Alternance::categorieNom($categorie)]));
         }
         redirect('alternance/documents');
     }
@@ -860,7 +858,7 @@ final class AlternanceController
         if ($nom === null) {
             $this->introuvable();
         }
-        Session::flash('succes', '« ' . $nom . ' » supprimé.');
+        Session::flash('succes', t('alt.msg.document_supprime', ['nom' => $nom]));
         redirect('alternance/documents');
     }
 

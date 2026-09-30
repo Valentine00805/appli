@@ -26,6 +26,10 @@ comptes deviennent amis, créent un groupe, le renomment, se nomment
 administrateurs, et l'on vérifie que les notes de la discussion (« Alma vous a
 ajouté ») suivent la langue. Trois comptes d'essai, effacés à la fin.
 
+**`alternance_langue.php`** — les pages de l'alternance : la fiche, le rythme
+(avec une période posée), les notes et leurs modèles, le journal, les
+documents. Un compte d'essai, effacé à la fin.
+
 **`partages_langue.php`** — l'onglet « Partagés », la fenêtre « Partager », la
 lecture d'un document et son fil de commentaires. Deux comptes et un cours,
 effacés à la fin.

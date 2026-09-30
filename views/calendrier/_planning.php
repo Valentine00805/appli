@@ -43,7 +43,7 @@ $ou = static function (array $evt): string {
       <?= $estAujourdhui ? e(t('planning.aujourdhui')) : e(ucfirst(date_fr($cle . ' 00:00:00', false))) ?>
     </span>
     <?php if (is_array($rythme)): ?>
-      <?php $lieu = Alternance::LIEUX[$rythme['lieu']]; ?>
+      <?php $lieu = Alternance::lieux()[$rythme['lieu']]; ?>
       <a class="rythme rythme--<?= e($rythme['lieu']) ?>" href="<?= url('alternance/rythme') ?>"
          title="<?= e($lieu['nom'] . ($rythme['note'] ? ' · ' . $rythme['note'] : '')) ?>">
         <span aria-hidden="true"><?= $lieu['icone'] ?></span><span class="rythme__nom"> <?= e($lieu['nom']) ?></span>

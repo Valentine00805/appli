@@ -14,19 +14,17 @@ $plusVue = $competences === [] ? 0 : count($competences[0]['semaines']);
 
 <div class="entete-page">
   <div>
-    <p style="margin:0 0 .3rem"><a href="<?= url('alternance/journal') ?>">← Tout le journal</a></p>
-    <h1>🎯 Compétences travaillées</h1>
-    <p>D’après vos <?= (int) $semaines ?> semaine<?= $semaines > 1 ? 's' : '' ?> de journal.
-      Celles du bas sont celles que vous n’avez vues qu’une fois : de quoi savoir quoi demander à votre tuteur.</p>
+    <p style="margin:0 0 .3rem"><a href="<?= url('alternance/journal') ?>"><?= e(t('alt.pj.retour')) ?></a></p>
+    <h1><?= e(t('alt.co.titre')) ?></h1>
+    <p><?= e(tn('alt.co.aide', (int) $semaines)) ?></p>
   </div>
 </div>
 
 <?php if ($competences === []): ?>
   <div class="vide">
     <span class="vide__icone">🎯</span>
-    <p>Aucune compétence notée pour l’instant. Ajoutez-en au bas d’une semaine du journal,
-      séparées par des virgules.</p>
-    <p><a class="bouton bouton--secondaire" href="<?= url('alternance/journal') ?>">Aller au journal</a></p>
+    <p><?= e(t('alt.co.aucune')) ?></p>
+    <p><a class="bouton bouton--secondaire" href="<?= url('alternance/journal') ?>"><?= e(t('alt.co.aller_journal')) ?></a></p>
   </div>
 <?php else: ?>
   <section class="carte">
@@ -38,7 +36,7 @@ $plusVue = $competences === [] ? 0 : count($competences[0]['semaines']);
           <span class="alternance-competence__barre" aria-hidden="true">
             <span style="width:<?= $plusVue === 0 ? 0 : (int) round($n / $plusVue * 100) ?>%"></span>
           </span>
-          <span class="alternance-competence__compte"><?= $n ?> semaine<?= $n > 1 ? 's' : '' ?></span>
+          <span class="alternance-competence__compte"><?= e(tn('alt.co.semaines', $n)) ?></span>
           <span class="alternance-competence__semaines">
             <?php foreach (array_slice($c['semaines'], 0, 6) as $lundi): ?>
               <a class="pastille" href="<?= url('alternance/journal/semaine', ['semaine' => $lundi]) ?>" data-fenetre>

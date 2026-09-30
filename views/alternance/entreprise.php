@@ -12,7 +12,7 @@
 $csrf = Session::jetonCsrf();
 $v = static fn (string $champ): string => (string) ($contrat[$champ] ?? '');
 $aDesDates = false;
-foreach (array_keys(Alternance::ECHEANCES) as $champ) {
+foreach (Alternance::ECHEANCES as $champ) {
     $aDesDates = $aDesDates || $v($champ) !== '';
 }
 ?>
@@ -20,9 +20,8 @@ foreach (array_keys(Alternance::ECHEANCES) as $champ) {
 
 <div class="entete-page">
   <div>
-    <h1>🏢 Mon alternance</h1>
-    <p>L’entreprise, le tuteur et les dates du contrat. De quoi retrouver un
-      numéro sans chercher, et savoir où vous en êtes.</p>
+    <h1><?= e(t('alt.en.titre')) ?></h1>
+    <p><?= e(t('alt.en.aide')) ?></p>
   </div>
 </div>
 
@@ -31,68 +30,68 @@ foreach (array_keys(Alternance::ECHEANCES) as $champ) {
     <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
 
     <section class="carte">
-      <h2>L’entreprise</h2>
+      <h2><?= e(t('alt.en.entreprise')) ?></h2>
       <div class="champ">
-        <label for="entreprise">Nom de l’entreprise</label>
+        <label for="entreprise"><?= e(t('alt.en.nom')) ?></label>
         <input type="text" id="entreprise" name="entreprise" maxlength="150" value="<?= e($v('entreprise')) ?>">
       </div>
       <div class="champ">
-        <label for="poste">Poste occupé</label>
+        <label for="poste"><?= e(t('alt.en.poste')) ?></label>
         <input type="text" id="poste" name="poste" maxlength="150"
-               placeholder="Assistant qualité, développeur…" value="<?= e($v('poste')) ?>">
+               placeholder="<?= e(t('alt.en.poste_exemple')) ?>" value="<?= e($v('poste')) ?>">
       </div>
       <div class="champ">
-        <label for="adresse">Adresse</label>
+        <label for="adresse"><?= e(t('alt.en.adresse')) ?></label>
         <input type="text" id="adresse" name="adresse" maxlength="255" value="<?= e($v('adresse')) ?>">
       </div>
     </section>
 
     <section class="carte">
-      <h2>Mon tuteur</h2>
+      <h2><?= e(t('alt.en.tuteur_titre')) ?></h2>
       <div class="champ">
-        <label for="tuteur">Nom du tuteur ou maître d’apprentissage</label>
+        <label for="tuteur"><?= e(t('alt.en.tuteur')) ?></label>
         <input type="text" id="tuteur" name="tuteur" maxlength="120" value="<?= e($v('tuteur')) ?>">
       </div>
       <div class="ligne-champs">
         <div class="champ">
-          <label for="tuteur_email">Adresse électronique</label>
+          <label for="tuteur_email"><?= e(t('alt.en.courriel')) ?></label>
           <input type="email" id="tuteur_email" name="tuteur_email" maxlength="190" value="<?= e($v('tuteur_email')) ?>">
         </div>
         <div class="champ">
-          <label for="tuteur_tel">Téléphone</label>
+          <label for="tuteur_tel"><?= e(t('alt.en.telephone')) ?></label>
           <input type="tel" id="tuteur_tel" name="tuteur_tel" maxlength="40" value="<?= e($v('tuteur_tel')) ?>">
         </div>
       </div>
       <div class="champ">
-        <label for="referent">Référent à l’école</label>
+        <label for="referent"><?= e(t('alt.en.referent')) ?></label>
         <input type="text" id="referent" name="referent" maxlength="120" value="<?= e($v('referent')) ?>">
       </div>
     </section>
 
     <section class="carte">
-      <h2>Les dates</h2>
+      <h2><?= e(t('alt.en.dates')) ?></h2>
       <div class="ligne-champs">
         <div class="champ">
-          <label for="debut">Début du contrat</label>
+          <label for="debut"><?= e(t('alt.ech.debut.libelle')) ?></label>
           <input type="date" id="debut" name="debut" value="<?= e($v('debut')) ?>">
         </div>
         <div class="champ">
-          <label for="fin">Fin du contrat</label>
+          <label for="fin"><?= e(t('alt.ech.fin.libelle')) ?></label>
           <input type="date" id="fin" name="fin" value="<?= e($v('fin')) ?>">
         </div>
       </div>
       <div class="ligne-champs">
         <div class="champ">
-          <label for="remise_rapport">Remise du rapport</label>
+          <label for="remise_rapport"><?= e(t('alt.ech.remise_rapport.libelle')) ?></label>
           <input type="date" id="remise_rapport" name="remise_rapport" value="<?= e($v('remise_rapport')) ?>">
         </div>
         <div class="champ">
-          <label for="soutenance">Soutenance</label>
+          <label for="soutenance"><?= e(t('alt.ech.soutenance.libelle')) ?></label>
           <input type="date" id="soutenance" name="soutenance" value="<?= e($v('soutenance')) ?>">
         </div>
       </div>
       <p class="actions">
-        <button class="bouton" type="submit">Enregistrer la fiche</button>
+        <button class="bouton" type="submit"><?= e(t('alt.en.enregistrer')) ?></button>
       </p>
     </section>
   </form>
@@ -100,18 +99,17 @@ foreach (array_keys(Alternance::ECHEANCES) as $champ) {
   <div class="pile">
     <?php if ($avancement !== null): ?>
       <section class="carte">
-        <h2>Où j’en suis</h2>
+        <h2><?= e(t('alt.en.ou_jen_suis')) ?></h2>
         <p class="alternance-avancement__chiffre">
-          <strong><?= (int) $avancement['part'] ?> %</strong> du contrat
+          <strong><?= e(t('alt.en.part', ['n' => (int) $avancement['part']])) ?></strong> <?= e(t('alt.en.du_contrat')) ?>
         </p>
         <div class="alternance-avancement" role="img"
-             aria-label="<?= (int) $avancement['part'] ?> % du contrat écoulé">
+             aria-label="<?= e(t('alt.en.part_ecoulee', ['n' => (int) $avancement['part']])) ?>">
           <span style="width:<?= (int) $avancement['part'] ?>%"></span>
         </div>
         <p class="discret" style="margin:.5rem 0 0">
-          <?= (int) $avancement['faits'] ?> jour<?= $avancement['faits'] > 1 ? 's' : '' ?> sur
-          <?= (int) $avancement['total'] ?>, du lundi au vendredi ·
-          <?= max(0, $avancement['total'] - $avancement['faits']) ?> restant<?= $avancement['total'] - $avancement['faits'] > 1 ? 's' : '' ?>
+          <?= e(tn('alt.en.jours_sur', (int) $avancement['faits'], ['total' => (int) $avancement['total']])) ?> ·
+          <?= e(tn('alt.en.restants', max(0, (int) $avancement['total'] - (int) $avancement['faits']))) ?>
         </p>
       </section>
     <?php endif; ?>
@@ -119,7 +117,7 @@ foreach (array_keys(Alternance::ECHEANCES) as $champ) {
     <?php if ($taches !== []): ?>
       <?php // Ce qui reste à faire dans la liste « Alternance », échéances d'abord. ?>
       <section class="carte">
-        <h2>✅ À faire</h2>
+        <h2><?= e(t('alt.en.a_faire')) ?></h2>
         <ul class="alternance-echeances">
           <?php foreach ($taches as $t): ?>
             <li>
@@ -133,40 +131,38 @@ foreach (array_keys(Alternance::ECHEANCES) as $champ) {
           <?php endforeach; ?>
         </ul>
         <p class="champ__aide" style="margin-top:.6rem">
-          <a href="<?= url('taches') ?>">Ouvrir mes listes</a> pour les cocher.
+          <a href="<?= url('taches') ?>"><?= e(t('alt.en.ouvrir_listes')) ?></a> <?= e(t('alt.en.pour_cocher')) ?>
         </p>
       </section>
     <?php endif; ?>
 
     <?php if ($aDesDates): ?>
       <section class="carte">
-        <h2>Dates clés</h2>
+        <h2><?= e(t('alt.en.dates_cles')) ?></h2>
         <ul class="alternance-echeances">
-          <?php foreach (Alternance::ECHEANCES as $champ => $echeance): ?>
+          <?php foreach (Alternance::echeances() as $champ => $echeance): ?>
             <?php if ($v($champ) === '') { continue; } ?>
             <li>
               <span><?= e($echeance['libelle']) ?></span>
               <strong><?= e(Alternance::jourCourt($v($champ))) ?></strong>
               <?php if (!empty($auCalendrier[$champ])): ?>
-                <span class="pastille" title="Déjà au calendrier">📅 posée</span>
+                <span class="pastille" title="<?= e(t('alt.en.deja_calendrier')) ?>"><?= e(t('alt.en.posee')) ?></span>
               <?php endif; ?>
             </li>
           <?php endforeach; ?>
         </ul>
         <form method="post" action="<?= url('alternance/entreprise/calendrier') ?>" style="margin-top:.8rem">
           <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
-          <button class="bouton bouton--secondaire bouton--bloc" type="submit">📅 Poser ces dates au calendrier</button>
-          <p class="champ__aide" style="margin-top:.5rem">Des journées entières, que vous pourrez ouvrir
-            pour leur ajouter un rappel. Une date déjà posée ne l’est pas deux fois.</p>
+          <button class="bouton bouton--secondaire bouton--bloc" type="submit"><?= e(t('alt.en.poser_dates')) ?></button>
+          <p class="champ__aide" style="margin-top:.5rem"><?= e(t('alt.en.poser_aide')) ?></p>
         </form>
 
         <?php if ($v('remise_rapport') !== '' || $v('soutenance') !== ''): ?>
           <?php // Le rapport ne s'écrit pas la veille : on pose les étapes à l'avance. ?>
           <form method="post" action="<?= url('alternance/entreprise/retroplanning') ?>" style="margin-top:.8rem">
             <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
-            <button class="bouton bouton--secondaire bouton--bloc" type="submit">🗓️ Préparer le rapport pas à pas</button>
-            <p class="champ__aide" style="margin-top:.5rem">Plan, brouillon, relecture, impression : les étapes
-              deviennent des tâches datées dans « <?= e(Alternance::LISTE) ?> ». Celles déjà passées sont laissées.</p>
+            <button class="bouton bouton--secondaire bouton--bloc" type="submit"><?= e(t('alt.en.retroplanning')) ?></button>
+            <p class="champ__aide" style="margin-top:.5rem"><?= e(t('alt.en.retroplanning_aide', ['liste' => Alternance::LISTE])) ?></p>
           </form>
         <?php endif; ?>
       </section>
@@ -174,7 +170,7 @@ foreach (array_keys(Alternance::ECHEANCES) as $champ) {
 
     <?php if ($v('tuteur_email') !== '' || $v('tuteur_tel') !== '' || $v('adresse') !== ''): ?>
       <section class="carte">
-        <h2>Joindre</h2>
+        <h2><?= e(t('alt.en.joindre')) ?></h2>
         <ul class="alternance-joindre">
           <?php if ($v('tuteur_email') !== ''): ?>
             <li>✉️ <a href="mailto:<?= e($v('tuteur_email')) ?>"><?= e($v('tuteur_email')) ?></a></li>

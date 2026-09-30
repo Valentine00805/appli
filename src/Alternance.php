@@ -18,35 +18,90 @@ final class Alternance
      * ni l'école ni l'entreprise : les compter avec elles fausserait le bilan.
      */
     public const LIEUX = [
-        'ecole'      => ['icone' => '🏫', 'nom' => 'École',      'dans' => 'à l’école'],
-        'entreprise' => ['icone' => '🏢', 'nom' => 'Entreprise', 'dans' => 'en entreprise'],
-        'conges'     => ['icone' => '🌴', 'nom' => 'Congés',     'dans' => 'en congés'],
-        'ferie'      => ['icone' => '🎌', 'nom' => 'Férié',      'dans' => 'férié'],
-        'absence'    => ['icone' => '🤒', 'nom' => 'Absence',    'dans' => 'absent'],
+        'ecole'      => ['icone' => '🏫'],
+        'entreprise' => ['icone' => '🏢'],
+        'conges'     => ['icone' => '🌴'],
+        'ferie'      => ['icone' => '🎌'],
+        'absence'    => ['icone' => '🤒'],
     ];
 
+    /** Le nom d'un lieu : « École », « Entreprise »… */
+    public static function lieuNom(string $lieu): string
+    {
+        return t('alt.lieu.' . $lieu);
+    }
+
+    /** Le lieu tourné pour une phrase : « à l'école », « en entreprise »… */
+    public static function lieuDans(string $lieu): string
+    {
+        return t('alt.dans.' . $lieu);
+    }
+
+    /**
+     * Les lieux avec leur icône et leur nom, pour une liste ou un menu.
+     *
+     * @return array<string, array{icone: string, nom: string, dans: string}>
+     */
+    public static function lieux(): array
+    {
+        $lieux = [];
+        foreach (self::LIEUX as $cle => $lieu) {
+            $lieux[$cle] = $lieu + ['nom' => self::lieuNom($cle), 'dans' => self::lieuDans($cle)];
+        }
+
+        return $lieux;
+    }
+
     public const CATEGORIES = [
-        'contrat'    => ['icone' => '📝', 'nom' => 'Contrat'],
-        'livret'     => ['icone' => '📘', 'nom' => 'Livret d’apprentissage'],
-        'evaluation' => ['icone' => '⭐', 'nom' => 'Évaluations'],
-        'rapport'    => ['icone' => '📄', 'nom' => 'Rapport'],
-        'autre'      => ['icone' => '📎', 'nom' => 'Autres documents'],
+        'contrat'    => ['icone' => '📝'],
+        'livret'     => ['icone' => '📘'],
+        'evaluation' => ['icone' => '⭐'],
+        'rapport'    => ['icone' => '📄'],
+        'autre'      => ['icone' => '📎'],
     ];
+
+    /** Le nom d'un rayon de documents. */
+    public static function categorieNom(string $categorie): string
+    {
+        return t('alt.cat.' . $categorie);
+    }
+
+    /**
+     * Les rayons avec leur icône et leur nom.
+     *
+     * @return array<string, array{icone: string, nom: string}>
+     */
+    public static function categories(): array
+    {
+        $rayons = [];
+        foreach (self::CATEGORIES as $cle => $rayon) {
+            $rayons[$cle] = $rayon + ['nom' => self::categorieNom($cle)];
+        }
+
+        return $rayons;
+    }
 
     /** Une période ne dépasse pas trois ans : c'est déjà un contrat entier. */
     public const JOURS_MAX = 1100;
 
     /** Les dates du contrat qui méritent d'être posées au calendrier. */
-    public const ECHEANCES = [
-        'debut'          => ['titre' => 'Début du contrat d’alternance', 'libelle' => 'Début du contrat'],
-        'fin'            => ['titre' => 'Fin du contrat d’alternance',   'libelle' => 'Fin du contrat'],
-        'remise_rapport' => ['titre' => 'Remise du rapport d’alternance', 'libelle' => 'Remise du rapport'],
-        'soutenance'     => ['titre' => 'Soutenance d’alternance',        'libelle' => 'Soutenance'],
-    ];
+    public const ECHEANCES = ['debut', 'fin', 'remise_rapport', 'soutenance'];
 
-    private const JOURS_COURTS = ['lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.', 'dim.'];
-    private const MOIS_COURTS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin',
-        'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
+    /**
+     * Les échéances, avec le titre posé au calendrier et le libellé du
+     * formulaire.
+     *
+     * @return array<string, array{titre: string, libelle: string}>
+     */
+    public static function echeances(): array
+    {
+        $dates = [];
+        foreach (self::ECHEANCES as $cle) {
+            $dates[$cle] = ['titre' => t('alt.ech.' . $cle . '.titre'), 'libelle' => t('alt.ech.' . $cle . '.libelle')];
+        }
+
+        return $dates;
+    }
 
     /** Les documents vivent à côté des pièces jointes des cours, pas avec elles. */
     public static function dossier(): string
@@ -61,8 +116,11 @@ final class Alternance
         if ($t === false) {
             return $date;
         }
-        $texte = self::JOURS_COURTS[(int) date('N', $t) - 1] . ' ' . date('j', $t)
-            . ' ' . self::MOIS_COURTS[(int) date('n', $t) - 1];
+        $texte = t('alt.jour_court', [
+            'jour' => t('alt.jour.' . date('N', $t)),
+            'n' => date('j', $t),
+            'mois' => t('alt.mois.' . date('n', $t)),
+        ]);
 
         return date('Y', $t) === date('Y') ? $texte : $texte . ' ' . date('Y', $t);
     }
@@ -481,7 +539,7 @@ final class Alternance
             'REFRESH-INTERVAL;VALUE=DURATION:PT12H', 'X-PUBLISHED-TTL:PT12H'];
 
         foreach (self::periodes($userId) as $p) {
-            $lieu = self::LIEUX[$p['lieu']];
+            $lieu = self::lieux()[$p['lieu']];
             $lignes[] = 'BEGIN:VEVENT';
             $lignes[] = 'UID:alternance-periode-' . (int) $p['id'] . '@mes-cours';
             $lignes[] = 'DTSTAMP:' . gmdate('Ymd\THis\Z');
@@ -594,33 +652,38 @@ final class Alternance
      * pose les titres qu'on oublie sous la dictée d'une réunion, et les cases
      * à cocher qui deviendront des tâches.
      */
-    public const MODELES = [
-        'reunion' => [
-            'nom'   => 'Réunion d’équipe',
-            'titre' => 'Réunion du {date}',
-            'html'  => '<h3>Présents</h3><div>&nbsp;</div><h3>Ce qui a été dit</h3><div>&nbsp;</div>'
-                . '<h3>Décisions</h3><div>&nbsp;</div><h3>À faire</h3><div>[ ] </div>',
-        ],
-        'tuteur' => [
-            'nom'   => 'Point avec mon tuteur',
-            'titre' => 'Point tuteur du {date}',
-            'html'  => '<h3>Ce que j’ai fait depuis la dernière fois</h3><div>&nbsp;</div>'
-                . '<h3>Ce qui m’a bloqué</h3><div>&nbsp;</div><h3>Objectifs jusqu’au prochain point</h3><div>&nbsp;</div>'
-                . '<h3>À faire</h3><div>[ ] </div>',
-        ],
-        'procedure' => [
-            'nom'   => 'Procédure',
-            'titre' => 'Procédure : ',
-            'html'  => '<h3>À quoi ça sert</h3><div>&nbsp;</div><h3>Les étapes</h3>'
-                . '<ol><li>&nbsp;</li><li>&nbsp;</li></ol><h3>Les pièges</h3><div>&nbsp;</div>',
-        ],
-        'mission' => [
-            'nom'   => 'Compte rendu de mission',
-            'titre' => 'Mission : ',
-            'html'  => '<h3>Le besoin</h3><div>&nbsp;</div><h3>Ce que j’ai fait</h3><div>&nbsp;</div>'
-                . '<h3>Résultat</h3><div>&nbsp;</div><h3>Ce que j’en retiens</h3><div>&nbsp;</div>',
-        ],
-    ];
+    public const MODELES = ['reunion', 'tuteur', 'procedure', 'mission'];
+
+    /**
+     * Les modèles, avec leur nom, le titre qu'ils proposent et leur corps.
+     *
+     * @return array<string, array{nom: string, titre: string, html: string}>
+     */
+    public static function modeles(): array
+    {
+        return [
+            'reunion' => [
+                'nom'   => t('alt.modele.reunion.nom'),
+                'titre' => t('alt.modele.reunion.titre'),
+                'html'  => t('alt.modele.reunion.corps') . t('alt.modele.reunion.suite'),
+            ],
+            'tuteur' => [
+                'nom'   => t('alt.modele.tuteur.nom'),
+                'titre' => t('alt.modele.tuteur.titre'),
+                'html'  => t('alt.modele.tuteur.corps') . t('alt.modele.tuteur.suite') . t('alt.modele.tuteur.fin'),
+            ],
+            'procedure' => [
+                'nom'   => t('alt.modele.procedure.nom'),
+                'titre' => t('alt.modele.procedure.titre'),
+                'html'  => t('alt.modele.procedure.html'),
+            ],
+            'mission' => [
+                'nom'   => t('alt.modele.mission.nom'),
+                'titre' => t('alt.modele.mission.titre'),
+                'html'  => t('alt.modele.mission.html'),
+            ],
+        ];
+    }
 
     /**
      * Les étiquettes d'une note, lues comme les compétences du journal :
@@ -669,17 +732,17 @@ final class Alternance
      */
     public const JALONS = [
         'remise_rapport' => [
-            [60, 'Rapport : faire le plan détaillé'],
-            [45, 'Rapport : rassembler les documents et les chiffres'],
-            [30, 'Rapport : écrire le brouillon'],
-            [14, 'Rapport : le faire relire par mon tuteur'],
-            [7,  'Rapport : corriger et mettre en forme'],
-            [3,  'Rapport : imprimer et relier'],
+            [60, 'rapport_plan'],
+            [45, 'rapport_documents'],
+            [30, 'rapport_brouillon'],
+            [14, 'rapport_relire'],
+            [7,  'rapport_corriger'],
+            [3,  'rapport_imprimer'],
         ],
         'soutenance' => [
-            [21, 'Soutenance : préparer le support'],
-            [7,  'Soutenance : répéter à voix haute'],
-            [2,  'Soutenance : vérifier le matériel et le trajet'],
+            [21, 'soutenance_support'],
+            [7,  'soutenance_repeter'],
+            [2,  'soutenance_materiel'],
         ],
     ];
 
@@ -693,10 +756,10 @@ final class Alternance
     {
         $jalons = [];
         $auj = date('Y-m-d');
-        foreach (self::JALONS[$quoi] ?? [] as [$avant, $titre]) {
+        foreach (self::JALONS[$quoi] ?? [] as [$avant, $cle]) {
             $date = (new DateTimeImmutable($jour))->modify('-' . $avant . ' days')->format('Y-m-d');
             if ($date >= $auj) {
-                $jalons[] = ['titre' => $titre, 'echeance' => $date];
+                $jalons[] = ['titre' => t('alt.jalon.' . $cle), 'echeance' => $date];
             }
         }
 

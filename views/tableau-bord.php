@@ -139,14 +139,14 @@
         <?php endif; ?>
 
         <?php if ($maintenant !== null): ?>
-          <?php $lieu = Alternance::LIEUX[$maintenant['lieu']]; ?>
+          <?php $lieu = Alternance::lieux()[$maintenant['lieu']]; ?>
           <p style="margin:0 0 .4rem">
             <?= e(t('accueil.aujourdhui_lieu')) ?> <strong><?= $lieu['icone'] ?> <?= e($lieu['dans']) ?></strong>
             <?= $maintenant['fin'] === date('Y-m-d') ? e(t('accueil.dernier_jour'))
                 : e(t('accueil.jusquau', ['date' => Alternance::jourCourt($maintenant['fin'])])) ?>
           </p>
         <?php elseif ($ensuite !== null): ?>
-          <?php $lieu = Alternance::LIEUX[$ensuite['lieu']]; ?>
+          <?php $lieu = Alternance::lieux()[$ensuite['lieu']]; ?>
           <p style="margin:0 0 .4rem">
             <?= e(t('accueil.ensuite')) ?> <strong><?= $lieu['icone'] ?> <?= e($lieu['dans']) ?></strong>
             <?= e(t('accueil.a_partir_du', ['date' => rtrim(Alternance::jourCourt($ensuite['debut']), '.')])) ?>

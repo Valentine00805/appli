@@ -79,7 +79,7 @@ final class TableauBordController
         $contrat = Alternance::contrat($userId);
         $auj = date('Y-m-d');
         $prochaine = null;
-        foreach (Alternance::ECHEANCES as $champ => $echeance) {
+        foreach (Alternance::echeances() as $champ => $echeance) {
             $jour = (string) ($contrat[$champ] ?? '');
             if ($jour >= $auj && $jour !== '' && ($prochaine === null || $jour < $prochaine['jour'])) {
                 $prochaine = ['jour' => $jour, 'libelle' => $echeance['libelle']];
