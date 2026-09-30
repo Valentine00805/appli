@@ -16,31 +16,31 @@ foreach ($cartes as $c) {
 }
 ?>
 
-<p><a href="<?= url('cartes') ?>">← Cartes</a></p>
+<p><a href="<?= url('cartes') ?>"><?= e(t('crt.retour_cartes')) ?></a></p>
 
 <div class="entete-page">
   <div>
     <h1><?= e($cours['titre']) ?></h1>
     <p class="discret">
       <?php if ($cartes === []): ?>
-        Aucune carte pour l'instant.
+        <?= e(t('crt.aucune')) ?>
       <?php else: ?>
-        <?= count($cartes) ?> carte<?= count($cartes) > 1 ? 's' : '' ?>
-        <?php if ($dues > 0): ?>· <?= $dues ?> à revoir aujourd'hui<?php endif; ?>
+        <?= e(tn('crt.nb', count($cartes))) ?>
+        <?php if ($dues > 0): ?><?= e(t('crt.dues_aujourdhui', ['n' => $dues])) ?><?php endif; ?>
       <?php endif; ?>
     </p>
   </div>
 
   <div class="actions">
-    <a class="bouton bouton--secondaire" href="<?= url('cartes') ?>">Fabriquer des cartes</a>
+    <a class="bouton bouton--secondaire" href="<?= url('cartes') ?>"><?= e(t('crt.fabriquer')) ?></a>
     <?php if ($dues > 0): ?>
-      <a class="bouton" href="<?= url('cartes/seance', ['cours' => $cours['id']]) ?>" data-fenetre>Réviser</a>
+      <a class="bouton" href="<?= url('cartes/seance', ['cours' => $cours['id']]) ?>" data-fenetre><?= e(t('crt.reviser')) ?></a>
     <?php endif; ?>
-    <a class="bouton bouton--secondaire" href="<?= url('cours/' . $cours['id']) ?>">Voir le cours</a>
+    <a class="bouton bouton--secondaire" href="<?= url('cours/' . $cours['id']) ?>"><?= e(t('crt.voir_cours')) ?></a>
   </div>
 </div>
 
 <section class="carte">
-  <h2>Le paquet</h2>
+  <h2><?= e(t('crt.le_paquet')) ?></h2>
   <?= Vue::rendre('cartes/_paquet', ['cours' => $cours, 'cartes' => $cartes]) ?>
 </section>

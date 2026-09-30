@@ -93,7 +93,7 @@ $moi = Auth::id();
 <?php // Recevoir, ou non, les notifications de ce groupe : un choix de chacun. ?>
 <?= Vue::rendre('amis/_notifications_conversation', [
     'action' => url('groupes/' . $id . '/notifications'), 'muette' => $muette, 'coupure' => $coupure,
-    'laquelle' => 'ce groupe', 'dansUneFenetre' => $dansUneFenetre,
+    'laquelle' => t('notif.ce_groupe'), 'dansUneFenetre' => $dansUneFenetre,
 ]) ?>
 
 <?php // Le fond d'écran, commun à tout le groupe : même carte qu'entre deux amis. ?>

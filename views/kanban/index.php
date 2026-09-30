@@ -6,25 +6,25 @@ $total = array_sum(array_map('count', $parColonne));
 
 <div class="entete-page">
   <div>
-    <h1>Tableau</h1>
-    <p>Vos sous-tâches et vos évènements — révisions, devoirs, examens — au même endroit.</p>
+    <h1><?= e(t('kb.titre')) ?></h1>
+    <p><?= e(t('kb.sous_titre')) ?></p>
   </div>
   <div class="actions">
     <?php // Une tâche ou une sous-tâche, créée dans une fenêtre par-dessus le tableau. ?>
-    <a class="bouton bouton--secondaire" href="<?= url('taches/nouvelle', ['retour' => (string) ($_SERVER['REQUEST_URI'] ?? '')]) ?>" data-fenetre>+ Tâche</a>
-    <a class="bouton" href="<?= url('evenements/nouveau') ?>" data-fenetre>+ Évènement</a>
+    <a class="bouton bouton--secondaire" href="<?= url('taches/nouvelle', ['retour' => (string) ($_SERVER['REQUEST_URI'] ?? '')]) ?>" data-fenetre><?= e(t('kb.nouvelle_tache')) ?></a>
+    <a class="bouton" href="<?= url('evenements/nouveau') ?>" data-fenetre><?= e(t('kb.nouvel_evenement')) ?></a>
   </div>
 </div>
 
 <form class="cal-barre tableau-filtres" method="get" action="<?= url('tableau') ?>" data-auto-envoi>
   <div class="actions">
-    <select name="source" aria-label="Ce que le tableau contient">
-      <option value="tout"<?= $source === 'tout' ? ' selected' : '' ?>>Tout</option>
-      <option value="taches"<?= $source === 'taches' ? ' selected' : '' ?>>Sous-tâches seulement</option>
-      <option value="evenements"<?= $source === 'evenements' ? ' selected' : '' ?>>Évènements seulement</option>
+    <select name="source" aria-label="<?= e(t('kb.contenu')) ?>">
+      <option value="tout"<?= $source === 'tout' ? ' selected' : '' ?>><?= e(t('kb.tout')) ?></option>
+      <option value="taches"<?= $source === 'taches' ? ' selected' : '' ?>><?= e(t('kb.taches_seules')) ?></option>
+      <option value="evenements"<?= $source === 'evenements' ? ' selected' : '' ?>><?= e(t('kb.evenements_seuls')) ?></option>
     </select>
-    <select name="matiere" aria-label="Filtrer par matière">
-      <option value="">Toutes les matières</option>
+    <select name="matiere" aria-label="<?= e(t('cal.filtrer_matiere')) ?>">
+      <option value=""><?= e(t('cal.toutes_matieres')) ?></option>
       <?php foreach ($matieres as $m): ?>
         <option value="<?= (int) $m['id'] ?>"<?= $matiereId === (int) $m['id'] ? ' selected' : '' ?>>
           <?= e($m['nom']) ?>
@@ -42,10 +42,10 @@ $total = array_sum(array_map('count', $parColonne));
    */
   ?>
   <?php if ($types !== []): ?>
-    <div class="filtre-types" role="radiogroup" aria-label="Filtrer par type d'évènement">
+    <div class="filtre-types" role="radiogroup" aria-label="<?= e(t('kb.filtrer_type')) ?>">
       <label class="filtre-types__choix">
         <input type="radio" name="type" value=""<?= $typeId === null ? ' checked' : '' ?>>
-        <span class="pastille pastille--muette">Tous les types</span>
+        <span class="pastille pastille--muette"><?= e(t('cal.tous_types')) ?></span>
       </label>
       <?php foreach ($types as $t): ?>
         <label class="filtre-types__choix">
@@ -58,9 +58,9 @@ $total = array_sum(array_map('count', $parColonne));
     </div>
   <?php endif; ?>
   <p class="discret" style="margin:0">
-    <?= $total ?> carte<?= $total > 1 ? 's' : '' ?>
+    <?= e(tn('kb.cartes', $total)) ?>
     <?php if ($matiereId !== null || $typeId !== null): ?>
-      · <a href="<?= url('tableau', ['source' => $source]) ?>">retirer les filtres</a>
+      · <a href="<?= url('tableau', ['source' => $source]) ?>"><?= e(t('kb.retirer_filtres')) ?></a>
     <?php endif; ?>
   </p>
 </form>
@@ -69,8 +69,7 @@ $total = array_sum(array_map('count', $parColonne));
   <div class="vide">
     <span class="vide__icone">🗂️</span>
     <p>
-      Rien à afficher. Ajoutez des sous-tâches depuis « Mes tâches », ou des
-      révisions et des devoirs depuis le calendrier : ils apparaîtront ici.
+      <?= e(t('kb.vide')) ?>
     </p>
   </div>
 <?php else: ?>
@@ -87,7 +86,7 @@ $total = array_sum(array_map('count', $parColonne));
 
       <div class="kanban__pile">
         <?php if ($cartes === []): ?>
-          <p class="kanban__vide">Déposez une carte ici.</p>
+          <p class="kanban__vide"><?= e(t('kb.colonne_vide')) ?></p>
         <?php endif; ?>
 
         <?php foreach ($cartes as $carte): ?>
@@ -116,19 +115,19 @@ $total = array_sum(array_map('count', $parColonne));
             <?php if ($texte !== ''): ?>
               <span class="echeance echeance--<?= e($etat) ?>"><?= e($texte) ?></span>
             <?php else: ?>
-              <span class="echeance">Sans échéance</span>
+              <span class="echeance"><?= e(t('kb.sans_echeance')) ?></span>
             <?php endif; ?>
 
             <div class="kanban-carte__liens">
               <?php if ($carte['cours_id'] > 0): ?>
                 <a class="bouton bouton--secondaire" href="<?= url('cours/' . $carte['cours_id']) ?>"
-                   title="Ouvrir le cours">📘 Cours</a>
+                   title="<?= e(t('kb.ouvrir_cours')) ?>"><?= e(t('cal.cours_bouton')) ?></a>
                 <a class="bouton bouton--secondaire" href="<?= url('revision/' . $carte['cours_id']) ?>"
-                   title="Ouvrir la fiche de révision">📝 Révision</a>
+                   title="<?= e(t('kb.ouvrir_fiche')) ?>"><?= e(t('cal.revision_bouton')) ?></a>
               <?php endif; ?>
               <?php // Un évènement se modifie dans une fenêtre, par-dessus le tableau. ?>
               <a class="bouton bouton--discret bouton--petit" href="<?= e($carte['lien']) ?>"
-                 title="<?= $carte['nature'] === 'tache' ? 'Ouvrir dans Tâches' : 'Modifier l’évènement' ?>"<?= $carte['nature'] === 'tache' ? '' : ' data-fenetre' ?>>
+                 title="<?= e(t($carte['nature'] === 'tache' ? 'kb.ouvrir_taches' : 'kb.modifier_evenement')) ?>"<?= $carte['nature'] === 'tache' ? '' : ' data-fenetre' ?>>
                 <?= $carte['nature'] === 'tache' ? '↗' : '✎' ?>
               </a>
             </div>
@@ -142,11 +141,11 @@ $total = array_sum(array_map('count', $parColonne));
             ?>
             <div class="kanban-note<?= $aUneNote ? ' kanban-note--remplie' : '' ?>">
               <details>
-                <summary title="<?= $aUneNote ? 'Modifier la remarque' : 'Ajouter une remarque' ?>">
+                <summary title="<?= e(t($aUneNote ? 'kb.modifier_remarque' : 'kb.ajouter_remarque')) ?>">
                   <?php if ($aUneNote): ?>
                     <span class="kanban-note__texte">📝 <?= e($carte['note']) ?></span>
                   <?php else: ?>
-                    <span class="kanban-note__ajout">📝 Ajouter une remarque</span>
+                    <span class="kanban-note__ajout"><?= e(t('kb.ajouter_remarque_bouton')) ?></span>
                   <?php endif; ?>
                   <span class="kanban-note__icone" aria-hidden="true"><?= $aUneNote ? '✎' : '+' ?></span>
                 </summary>
@@ -157,10 +156,10 @@ $total = array_sum(array_map('count', $parColonne));
                   <input type="hidden" name="carte" value="<?= (int) $carte['id'] ?>">
                   <input type="hidden" name="nature" value="<?= e($carte['nature']) ?>">
                   <label class="sr-only" for="<?= e($champNote) ?>">
-                    Remarque sur « <?= e($carte['titre']) ?> »
+                    <?= e(t('kb.remarque_sur', ['titre' => $carte['titre']])) ?>
                   </label>
                   <textarea id="<?= e($champNote) ?>" name="note" rows="3" maxlength="500"
-                            placeholder="Revoir la partie 3 avant de rendre…"><?= e($carte['note']) ?></textarea>
+                            placeholder="<?= e(t('kb.remarque_exemple')) ?>"><?= e($carte['note']) ?></textarea>
                   <?php
                   /*
                    * « Annuler » remet le texte tel qu'il était enregistré — un
@@ -169,22 +168,22 @@ $total = array_sum(array_map('count', $parColonne));
                    */
                   ?>
                   <div class="kanban-note__actions">
-                    <button class="bouton bouton--petit bouton--secondaire" type="reset">Annuler</button>
-                    <button class="bouton bouton--petit" type="submit">Enregistrer</button>
+                    <button class="bouton bouton--petit bouton--secondaire" type="reset"><?= e(t('commun.annuler')) ?></button>
+                    <button class="bouton bouton--petit" type="submit"><?= e(t('commun.enregistrer')) ?></button>
                   </div>
                 </form>
               </details>
 
               <?php if ($aUneNote): ?>
                 <form method="post" action="<?= url('tableau/note') ?>" class="kanban-note__supprimer"
-                      data-confirmation="Supprimer cette remarque ?">
+                      data-confirmation="<?= e(t('kb.supprimer_remarque_sur')) ?>">
                   <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
                   <input type="hidden" name="retour" value="<?= e((string) ($_SERVER['REQUEST_URI'] ?? '')) ?>">
                   <input type="hidden" name="carte" value="<?= (int) $carte['id'] ?>">
                   <input type="hidden" name="nature" value="<?= e($carte['nature']) ?>">
                   <input type="hidden" name="note" value="">
-                  <button type="submit" title="Supprimer la remarque"
-                          aria-label="Supprimer la remarque de « <?= e($carte['titre']) ?> »">🗑</button>
+                  <button type="submit" title="<?= e(t('kb.supprimer_remarque')) ?>"
+                          aria-label="<?= e(t('kb.supprimer_remarque_de', ['titre' => $carte['titre']])) ?>">🗑</button>
                 </form>
               <?php endif; ?>
             </div>
@@ -199,7 +198,7 @@ $total = array_sum(array_map('count', $parColonne));
                   <input type="hidden" name="carte" value="<?= (int) $carte['id'] ?>">
                   <input type="hidden" name="nature" value="<?= e($carte['nature']) ?>">
                   <input type="hidden" name="colonne" value="<?= e($vers) ?>">
-                  <button type="submit" title="Déplacer vers « <?= e($autre['titre']) ?> »">
+                  <button type="submit" title="<?= e(t('kb.deplacer_vers', ['titre' => $autre['titre']])) ?>">
                     <?= e($autre['icone']) ?>
                   </button>
                 </form>

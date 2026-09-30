@@ -15,6 +15,12 @@
  * @var ?array $souci     le dernier échec, s'il n'a pas été suivi d'une réussite
  * @var string $retour    l'adresse à déclarer chez Microsoft
  */
+
+// « le 29/09/2026 à 13:54 » : la tournure et l'heure viennent de la langue.
+$quand = static fn (string $datetime): string => t('date.le_a', [
+    'date'  => date('d/m/Y', (int) strtotime($datetime)),
+    'heure' => heure_courte((int) strtotime($datetime)),
+]);
 ?>
 
 <?php
@@ -28,10 +34,10 @@
   <div>
     <p style="margin:0 0 .6rem">
       <a class="bouton" href="<?= url('agenda') ?>"
-         <?= ($dansUneFenetre ?? false) ? 'data-fenetre' : '' ?>>Retour</a>
+         <?= ($dansUneFenetre ?? false) ? 'data-fenetre' : '' ?>><?= e(t('agenda.retour')) ?></a>
     </p>
-    <h1>Calendrier <?= e($f->nom()) ?></h1>
-    <p>Relier votre agenda <?= e($f->nom()) ?> à celui de l'application.</p>
+    <h1><?= e(t('agenda.page_titre', ['nom' => $f->nom()])) ?></h1>
+    <p><?= e(t('agenda.page_sous_titre', ['nom' => $f->nom()])) ?></p>
   </div>
 </div>
 
@@ -60,10 +66,9 @@ $aReautoriser = !($partage ?? true) && $partagesEnAttente > 0 && ($souci ?? null
   ?>
   <div class="vide">
     <span class="vide__icone">📆</span>
-    <p>La liaison avec <?= e($f->nom()) ?> n'est pas encore activée sur cette installation.</p>
+    <p><?= e(t('agenda.pas_activee', ['nom' => $f->nom()])) ?></p>
     <p class="champ__aide">
-      Elle demande une inscription unique chez son fournisseur, faite une fois pour
-      toutes par la personne qui héberge l'application — pas par chacun.
+      <?= e(t('agenda.pas_activee_aide')) ?>
     </p>
   </div>
 <?php else: ?>
@@ -78,31 +83,34 @@ $aReautoriser = !($partage ?? true) && $partagesEnAttente > 0 && ($souci ?? null
       ?>
       <?php if ($souci !== null): ?>
         <p class="outlook-attention">
-          <strong>La dernière synchronisation a échoué</strong>
-          (le <?= e(date('d/m/Y à H:i', strtotime($souci['quand']))) ?>) :
+          <strong><?= e(t('agenda.echec')) ?></strong>
+          (<?= e(t('date.le_a', ['date' => date('d/m/Y', (int) strtotime($souci['quand'])),
+                                'heure' => heure_courte((int) strtotime($souci['quand']))])) ?>) :
           <?= e($souci['quoi']) ?>
         </p>
       <?php endif; ?>
 
       <?php if ($relie): ?>
         <section class="carte">
-          <h2 style="margin-top:0">✅ Votre compte est relié</h2>
+          <h2 style="margin-top:0"><?= e(t('agenda.compte_relie_titre')) ?></h2>
           <p>
-            L'application accède à l'agenda de
-            <strong><?= e((string) ($compte['compte'] ?? 'votre compte')) ?></strong><?php
+            <?= e(t('agenda.acces')) ?>
+            <strong><?= e((string) ($compte['compte'] ?? t('agenda.votre_compte'))) ?></strong><?php
             ?><?= ($compte['calendrier_nom'] ?? '') === ''
-                ? '' : ', calendrier « ' . e((string) $compte['calendrier_nom']) . ' »' ?>.
+                ? '' : e(t('agenda.calendrier_nomme', ['nom' => (string) $compte['calendrier_nom']])) ?>.
           </p>
           <p class="champ__aide">
             <?php if ($derniere === null): ?>
-              Vos évènements ne sont pas encore venus : lancez une première lecture.
+              <?= e(t('agenda.jamais_lu')) ?>
             <?php else: ?>
-              Dernière lecture le <?= e(date('d/m/Y à H:i', strtotime($derniere))) ?>,
-              <?= $combien === 0 ? 'aucun évènement suivi' : $combien . ' évènement' . ($combien > 1 ? 's' : '') . ' suivi' . ($combien > 1 ? 's' : '') ?>.
+              <?= e(t('agenda.derniere_lecture', ['quand' => $quand($derniere)])) ?>
+              <?= e($combien === 0 ? t('agenda.aucun_suivi') : tn('agenda.suivis', $combien)) ?>.
             <?php endif; ?>
             <?php if ($envoiLe !== null): ?>
-              <br>Dernier envoi le <?= e(date('d/m/Y à H:i', strtotime($envoiLe))) ?>,
-              <?= $envoyes === 0 ? 'rien dans ' . $f->nom() : $envoyes . ' élément' . ($envoyes > 1 ? 's' : '') . ' dans « ' . e($destination['nom']) . ' »' ?>.
+              <br><?= e(t('agenda.dernier_envoi', ['quand' => $quand($envoiLe)])) ?>
+              <?= e($envoyes === 0
+                  ? t('agenda.rien_dans', ['nom' => $f->nom()])
+                  : tn('agenda.elements_dans', $envoyes, ['nom' => $destination['nom']])) ?>.
             <?php endif; ?>
           </p>
           <?php
@@ -115,71 +123,46 @@ $aReautoriser = !($partage ?? true) && $partagesEnAttente > 0 && ($souci ?? null
           ?>
           <?php if (!$partage && !$aReautoriser): ?>
             <p class="outlook-attention">
-              <strong>L'autorisation ne couvre pas votre agenda.</strong>
-              Reconnectez-vous, et sur l'écran de consentement
-              <strong>cochez la case des agendas</strong> — elle n'est pas cochée
-              d'avance. Sans elle, l'application peut vous reconnaître mais ne
-              voit aucun rendez-vous.
+              <strong><?= e(t('agenda.portee_refusee')) ?></strong>
+              <?= e(t('agenda.portee_refusee_aide')) ?>
             </p>
             <form method="post" action="<?= url('agenda/' . $f->cle() . '/connexion') ?>"
                   style="margin-bottom:.9rem">
               <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
-              <button class="bouton" type="submit">Reconnecter mon compte</button>
+              <button class="bouton" type="submit"><?= e(t('agenda.reconnecter')) ?></button>
             </form>
           <?php endif; ?>
           <?php if ($aReautoriser): ?>
             <p class="outlook-attention">
-              <strong>Si <?= e($f->nom()) ?> refuse les calendriers partagés, c'est l'autorisation.</strong>
-              Vous suivez <?= $partagesEnAttente ?> calendrier<?= $partagesEnAttente > 1 ? 's' : '' ?>
-              partagé<?= $partagesEnAttente > 1 ? 's' : '' ?> par quelqu'un d'autre, et votre
-              autorisation date d'avant que l'application ne sache les lire.
-              Essayez : selon le compte, cela passe. Si la lecture est refusée,
-              réautorisez l'application — le bouton est plus bas.
+              <strong><?= e(t('agenda.partages_refuses', ['nom' => $f->nom()])) ?></strong>
+              <?= e(tn('agenda.partages_refuses_aide', $partagesEnAttente)) ?>
             </p>
           <?php endif; ?>
           <form method="post" action="<?= url('agenda/' . $f->cle() . '/synchroniser') ?>">
             <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
             <input type="hidden" name="retour" value="<?= e((string) ($_SERVER['REQUEST_URI'] ?? '')) ?>">
             <button class="bouton" type="submit">
-              <?= $derniere === null ? 'Synchroniser mon agenda' : 'Synchroniser maintenant' ?>
+              <?= e(t($derniere === null ? 'agenda.synchroniser_premiere' : 'agenda.synchroniser')) ?>
             </button>
           </form>
           <p class="champ__aide" style="margin-top:.6rem">
-            La synchronisation se fait <strong>toute seule</strong> quand vous
-            ouvrez l'application, si la dernière remonte à plus de cinq
-            minutes. Le bouton reste là pour ne pas attendre, et pour voir le
-            message en cas de refus.
+            <?= t('agenda.auto_aide') ?>
           </p>
           <p class="champ__aide">
-            <strong>De <?= e($f->nom()) ?> vers ici :</strong> les calendriers cochés
-            plus bas, du mois écoulé à l'année à venir, séries récurrentes
-            comprises — et « Mes Cours » lui-même, pour que ce que vous y
-            créez depuis <?= e($f->nom()) ?> arrive jusqu'ici.
+            <?= t('agenda.vers_ici', ['nom' => e($f->nom())]) ?>
           </p>
           <p class="champ__aide">
-            <strong>Ce que vous modifiez ou supprimez ici</strong> l'est aussi
-            dans <?= e($f->nom()) ?>, mais <strong>uniquement dans les agendas
-            dont vous êtes propriétaire</strong> — les vôtres et « Mes Cours ».
-            Venu d'un agenda que quelqu'un vous a partagé, l'évènement se
-            retouche ici sans rien changer chez lui, et la lecture suivante
-            rétablit sa version. L'application n'écrit d'elle-même rien chez
-            les autres.
+            <?= t('agenda.modifs_ici', ['nom' => e($f->nom())]) ?>
           </p>
           <p class="champ__aide">
-            <strong>Une exception, et vous la déclenchez :</strong> chaque évènement
-            peut désigner l'agenda où il part, y compris celui de quelqu'un qui
-            vous a laissé le droit d'y écrire. Ce n'est pas une copie figée —
-            l'évènement y reste le vôtre, et ce que vous en faites ici le suit
-            là-bas.
+            <?= t('agenda.exception') ?>
           </p>
           <p class="champ__aide">
-            <strong>D'ici vers <?= e($f->nom()) ?> :</strong> les échéances de vos
-            tâches non faites, et les évènements qui ne désignent pas d'autre
-            agenda, dans
-            <strong>« <?= e($destination['nom']) ?> »</strong><?php
-            ?><?= $destination['choisi'] ? '' : ', un calendrier que l’application crée chez ' . e($f->nom()) ?>.
-            Elle n'écrit que là. Une tâche cochée quitte l'agenda, un évènement
-            supprimé ici disparaît là-bas.
+            <?= t('agenda.ici_vers', [
+                'nom' => e($f->nom()),
+                'dest' => e($destination['nom']),
+                'cree' => $destination['choisi'] ? '' : e(t('agenda.cree_chez', ['nom' => $f->nom()])),
+            ]) ?>
           </p>
 
           <?php
@@ -196,72 +179,66 @@ $aReautoriser = !($partage ?? true) && $partagesEnAttente > 0 && ($souci ?? null
           <?php if ($ouEcrire !== []): ?>
             <form method="post" action="<?= url('agenda/' . $f->cle() . '/destination') ?>"
                   class="champ" style="max-width:420px"
-                  data-confirmation="Changer d'agenda de destination ? Ce que l'application avait mis dans l'actuel en sera retiré, puis remis dans le nouveau.">
+                  data-confirmation="<?= e(t('agenda.destination_sur')) ?>">
               <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
-              <label for="destination-<?= e($f->cle()) ?>">L'agenda qui reçoit vos évènements</label>
+              <label for="destination-<?= e($f->cle()) ?>"><?= e(t('agenda.destination')) ?></label>
               <select id="destination-<?= e($f->cle()) ?>" name="destination">
                 <option value=""<?= $destination['choisi'] ? '' : ' selected' ?>>
-                  Mes Cours — le calendrier de l'application
+                  <?= e(t('agenda.destination_appli')) ?>
                 </option>
                 <?php foreach ($ouEcrire as $cal): ?>
                   <option value="<?= e($cal['cle']) ?>"<?= $destination['choisi']
                       && $destination['id'] !== null
                       && md5($destination['id']) === $cal['cle'] ? ' selected' : '' ?>>
-                    <?= e($cal['nom']) ?><?= $cal['principal'] ? ' — votre agenda principal' : '' ?>
+                    <?= e($cal['nom']) ?><?= $cal['principal'] ? e(t('agenda.principal_suffixe')) : '' ?>
                   </option>
                 <?php endforeach; ?>
               </select>
               <span class="champ__aide">
-                Seuls vos agendas à vous sont proposés. En désigner un y déverse
-                vos évènements et les échéances de vos tâches : pratique pour un
-                agenda que d'autres consultent, à condition que ce soit bien ce
-                que vous voulez y voir.
+                <?= e(t('agenda.destination_aide')) ?>
               </span>
               <button class="bouton bouton--secondaire bouton--petit" type="submit"
-                      style="margin-top:.5rem">Changer de destination</button>
+                      style="margin-top:.5rem"><?= e(t('agenda.changer_destination')) ?></button>
             </form>
           <?php endif; ?>
           <div class="outlook-defaire">
             <?php if ($combien > 0): ?>
               <form method="post" action="<?= url('agenda/' . $f->cle() . '/retirer') ?>"
-                    data-confirmation="Retirer du calendrier les évènements venus <?= e(de_agenda($f->nom())) ?> ? Ils restent dans votre agenda Microsoft.">
+                    data-confirmation="<?= e(t('agenda.retirer_importes_sur', ['de' => de_agenda($f->nom())])) ?>">
                 <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
                 <button class="bouton bouton--secondaire bouton--petit" type="submit">
-                  Retirer les évènements importés
+                  <?= e(t('agenda.retirer_importes')) ?>
                 </button>
               </form>
             <?php endif; ?>
             <?php if ($envoyes > 0): ?>
               <form method="post" action="<?= url('agenda/' . $f->cle() . '/retirer-envoi') ?>"
-                    data-confirmation="Retirer <?= e(de_agenda($f->nom())) ?> ce que l'application y a mis ? Vos évènements et vos tâches restent ici, intacts.">
+                    data-confirmation="<?= e(t('agenda.retirer_envoi_sur', ['de' => de_agenda($f->nom())])) ?>">
                 <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
                 <button class="bouton bouton--secondaire bouton--petit" type="submit">
-                  Retirer mes évènements <?= e(de_agenda($f->nom())) ?>
+                  <?= e(t('agenda.retirer_envoi', ['de' => de_agenda($f->nom())])) ?>
                 </button>
               </form>
             <?php endif; ?>
             <form method="post" action="<?= url('agenda/' . $f->cle() . '/deconnexion') ?>"
-                  data-confirmation="Délier votre compte <?= e($f->nom()) ?> ? L'application n'accèdera plus à votre agenda, et les évènements importés quitteront le calendrier.">
+                  data-confirmation="<?= e(t('agenda.delier_sur', ['nom' => $f->nom()])) ?>">
               <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
-              <button class="bouton bouton--danger bouton--petit" type="submit">Délier mon compte</button>
+              <button class="bouton bouton--danger bouton--petit" type="submit"><?= e(t('agenda.delier')) ?></button>
             </form>
           </div>
         </section>
       <?php else: ?>
         <section class="carte">
-          <h2 style="margin-top:0">Relier votre compte</h2>
+          <h2 style="margin-top:0"><?= e(t('agenda.relier_titre')) ?></h2>
           <p>
-            Vos rendez-vous et vos cours <?= e($f->nom()) ?> rejoindront le calendrier de
-            l'application, et vos évènements d'ici rejoindront le vôtre.
+            <?= e(t('agenda.relier_aide', ['nom' => $f->nom()])) ?>
           </p>
           <form method="post" action="<?= url('agenda/' . $f->cle() . '/connexion') ?>">
             <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
-            <button class="bouton" type="submit">Connecter mon compte <?= e($f->nom()) ?></button>
+            <button class="bouton" type="submit"><?= e(t('agenda.connecter', ['nom' => $f->nom()])) ?></button>
           </form>
           <p class="champ__aide" style="margin-top:.6rem">
-            <?= e($f->nom()) ?> vous demandera de choisir votre compte et d'accepter
-            l'accès à votre agenda, puis vous ramènera ici. Vous pouvez délier
-            le compte quand vous voulez.
+            <?= e(t('agenda.connecter_aide', ['nom' => $f->nom()])) ?>
           </p>
         </section>
       <?php endif; ?>
@@ -278,27 +255,21 @@ $aReautoriser = !($partage ?? true) && $partagesEnAttente > 0 && ($souci ?? null
        */
       ?>
       <section class="carte" style="margin-top:1rem">
-        <h2 style="margin-top:0">Les calendriers à lire</h2>
+        <h2 style="margin-top:0"><?= e(t('agenda.calendriers_titre')) ?></h2>
 
         <?php if (!$partage): ?>
           <p class="champ__aide" style="margin-top:0">
-            Votre autorisation date d'avant que l'application ne demande une
-            permission pour les calendriers <strong>partagés par quelqu'un
-            d'autre</strong>. Elle n'est pas toujours nécessaire — selon le
-            compte, <?= e($f->nom()) ?> les donne sans rien de plus. Si l'un d'eux vous
-            est refusé, réautorisez : rien n'est perdu, ni votre liaison, ni
-            vos évènements.
+            <?= t('agenda.partage_ancien', ['nom' => e($f->nom())]) ?>
           </p>
           <form method="post" action="<?= url('agenda/' . $f->cle() . '/connexion') ?>" style="margin-bottom:.9rem">
             <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
-            <button class="bouton" type="submit">Réautoriser l'application</button>
+            <button class="bouton" type="submit"><?= e(t('agenda.reautoriser')) ?></button>
           </form>
         <?php endif; ?>
 
         <?php if ($calendriers === []): ?>
           <p class="champ__aide" style="margin-top:0">
-            L'application n'a lu que votre calendrier principal. Demandez à
-            <?= e($f->nom()) ?> la liste complète pour choisir les autres.
+            <?= e(t('agenda.aucun_calendrier', ['nom' => $f->nom()])) ?>
           </p>
         <?php else: ?>
           <form method="post" action="<?= url('agenda/' . $f->cle() . '/suivre') ?>">
@@ -310,39 +281,35 @@ $aReautoriser = !($partage ?? true) && $partagesEnAttente > 0 && ($souci ?? null
                     <input type="checkbox" name="calendriers[]"
                            value="<?= e((string) $cal['empreinte']) ?>"
                            <?= (int) $cal['suivi'] === 1 ? 'checked' : '' ?>>
-                    <span><?= e((string) ($cal['nom'] ?? 'Calendrier')) ?></span>
+                    <span><?= e((string) ($cal['nom'] ?? t('agenda.calendrier'))) ?></span>
                     <?php if ((int) $cal['principal'] === 1): ?>
-                      <em class="discret">principal</em>
+                      <em class="discret"><?= e(t('agenda.principal')) ?></em>
                     <?php elseif ((int) $cal['partage'] === 1): ?>
-                      <em class="discret">partagé par <?= e((string) ($cal['proprietaire'] ?? 'quelqu’un')) ?></em>
+                      <em class="discret"><?= e(t('agenda.partage_par', ['qui' => (string) ($cal['proprietaire'] ?? t('agenda.quelquun'))])) ?></em>
                     <?php endif; ?>
                   </label>
                 </li>
               <?php endforeach; ?>
             </ul>
-            <button class="bouton bouton--petit" type="submit">Enregistrer mon choix</button>
+            <button class="bouton bouton--petit" type="submit"><?= e(t('agenda.enregistrer_choix')) ?></button>
           </form>
         <?php endif; ?>
 
         <form method="post" action="<?= url('agenda/' . $f->cle() . '/calendriers') ?>" style="margin-top:.7rem">
           <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
           <button class="bouton bouton--secondaire bouton--petit" type="submit">
-            <?= $calendriers === [] ? 'Voir mes calendriers' : 'Actualiser la liste' ?>
+            <?= e(t($calendriers === [] ? 'agenda.voir_calendriers' : 'agenda.actualiser')) ?>
           </button>
         </form>
       </section>
 
       <section class="carte" style="margin-top:1rem">
-        <h2 style="margin-top:0">Ce que l'application voit</h2>
+        <h2 style="margin-top:0"><?= e(t('agenda.ce_que_voit')) ?></h2>
         <p class="champ__aide" style="margin-top:0">
-          Votre agenda, et rien d'autre : elle demande la permission de lire et
-          d'écrire vos évènements, votre nom et votre adresse. Ni vos messages,
-          ni vos fichiers, ni vos contacts.
+          <?= e(t('agenda.ce_que_voit_1')) ?>
         </p>
         <p class="champ__aide">
-          L'autorisation obtenue est gardée dans la base de l'application. Elle
-          est <strong>exclue des sauvegardes exportables</strong>, et délier
-          votre compte l'efface.
+          <?= t('agenda.ce_que_voit_2') ?>
         </p>
       </section>
     </div>
@@ -357,55 +324,38 @@ $aReautoriser = !($partage ?? true) && $partagesEnAttente > 0 && ($souci ?? null
       ?>
       <details class="carte">
         <summary style="cursor:pointer;font-weight:650">
-          Pour qui héberge l'application
+          <?= e(t('agenda.pour_hebergeur')) ?>
         </summary>
+        <?php $section = $f->cle() === 'microsoft' ? 'outlook' : $f->cle(); ?>
         <p class="champ__aide">
-          Une seule inscription sert à tout le monde. Elle se règle dans
-          <code>config/parametres.php</code>, section
-          <code><?= e($f->cle() === 'microsoft' ? 'outlook' : $f->cle()) ?></code>,
-          qui ne va pas au dépôt.
+          <?= t('agenda.inscription_unique', ['section' => e($section)]) ?>
         </p>
 
         <?php if ($f->cle() === 'microsoft'): ?>
           <ol class="outlook-marche">
-            <li>Sur <a href="https://entra.microsoft.com" target="_blank" rel="noopener">entra.microsoft.com</a> :
-                <em>Applications</em> › <em>Inscriptions d'applications</em> › <em>Nouvelle inscription</em>.</li>
-            <li>Comptes pris en charge :
-                <em>Comptes dans un annuaire organisationnel et comptes Microsoft personnels</em>.</li>
-            <li>URI de redirection — inscrivez celle-ci, au mot près :
+            <li><?= t('agenda.ms_1') ?></li>
+            <li><?= t('agenda.ms_2') ?></li>
+            <li><?= t('agenda.ms_3') ?>
                 <br><code class="outlook-retour"><?= e($retour) ?></code></li>
-            <li>Plateforme : <strong>Applications mobiles et de bureau</strong> en local, sans secret ;
-                <strong>Web</strong> une fois en ligne, avec un secret client.</li>
-            <li>Reportez l'<strong>ID d'application (client)</strong> dans <code>outlook.client_id</code>.</li>
+            <li><?= t('agenda.ms_4') ?></li>
+            <li><?= t('agenda.ms_5') ?></li>
           </ol>
         <?php else: ?>
           <ol class="outlook-marche">
-            <li>Sur <a href="https://console.cloud.google.com" target="_blank" rel="noopener">console.cloud.google.com</a> :
-                créez un projet, puis activez <em>Google Calendar API</em>.</li>
-            <li><em>Accès aux données</em> : ajoutez la permission
-                <code>https://www.googleapis.com/auth/calendar</code>, et elle seule.</li>
-            <li><em>Audience</em> : ajoutez votre adresse dans <em>Utilisateurs tests</em>,
-                ou publiez l'application — sans quoi Google refuse même votre propre compte.</li>
-            <li><em>Clients</em> : un client OAuth de type <strong>Application Web</strong>, avec
-                cette adresse de redirection, au mot près :
+            <li><?= t('agenda.g_1') ?></li>
+            <li><?= t('agenda.g_2') ?></li>
+            <li><?= t('agenda.g_3') ?></li>
+            <li><?= t('agenda.g_4') ?>
                 <br><code class="outlook-retour"><?= e($retour) ?></code></li>
-            <li>Reportez l'<strong>ID client</strong> et le <strong>secret</strong> dans
-                <code>google.client_id</code> et <code>google.secret</code> —
-                Google exige les deux, même en local.</li>
+            <li><?= t('agenda.g_5') ?></li>
           </ol>
           <p class="champ__aide">
-            Tant que l'application reste « en test » chez Google, l'autorisation
-            expire au bout de sept jours et il faut se reconnecter. La publier —
-            un bouton, sans validation ni attente — supprime ce délai ; l'écran
-            d'avertissement, lui, reste jusqu'à la validation.
+            <?= e(t('agenda.g_test')) ?>
           </p>
         <?php endif; ?>
 
         <p class="champ__aide">
-          En ligne, inscrivez aussi
-          <code><?= e($f->cle() === 'microsoft' ? 'outlook' : $f->cle()) ?>.adresse_retour</code>
-          en clair : ce qu'un navigateur annonce comme hôte ne se croit pas sur
-          parole, et cette adresse doit correspondre à celle déclarée là-bas.
+          <?= t('agenda.en_ligne', ['section' => e($section)]) ?>
         </p>
       </details>
     </div>

@@ -8,8 +8,8 @@ $dernier = count($dossiers) - 1;
 
 <div class="entete-page">
   <div>
-    <h1>Mes dossiers</h1>
-    <p>Un autre rangement que les matières : par semestre, par projet, par archive.</p>
+    <h1><?= e(t('dos.titre')) ?></h1>
+    <p><?= e(t('dos.sous_titre')) ?></p>
   </div>
 </div>
 
@@ -18,7 +18,7 @@ $dernier = count($dossiers) - 1;
     <?php if ($dossiers === []): ?>
       <div class="vide">
         <span class="vide__icone">📁</span>
-        <p>Aucun dossier pour le moment. Créez-en un avec le formulaire ci-contre.</p>
+        <p><?= e(t('dos.aucun')) ?></p>
       </div>
     <?php else: ?>
       <?php
@@ -45,7 +45,7 @@ $dernier = count($dossiers) - 1;
               // si la cible est à l'intérieur. ?>
         <div class="dossier-noeud" data-dossier="<?= (int) $d['id'] ?>">
         <section class="carte dossier-carte"
-                 title="Faites glisser ce dossier sur un autre pour l'y ranger">
+                 title="<?= e(t('dos.glisser_aide')) ?>">
           <div class="matiere-carte">
             <span class="matiere-pastille" style="background:<?= e($d['couleur']) ?>;display:grid;place-items:center;font-size:1.1rem">
               <?= e($d['icone']) ?>
@@ -60,8 +60,8 @@ $dernier = count($dossiers) - 1;
                 <span style="flex:1;min-width:0;text-align:left">
                   <span class="dossier-plier__nom"><?= e($d['nom']) ?></span>
                   <span class="discret" style="display:block;font-size:.84rem">
-                    <?= (int) $d['nb_cours'] ?> cours ·
-                    <?= count($enfants) ?> sous-dossier<?= count($enfants) > 1 ? 's' : '' ?>
+                    <?= e(tn('cours.nb_cours', (int) $d['nb_cours'])) ?> ·
+                    <?= e(tn('dos.sous_dossiers', count($enfants))) ?>
                   </span>
                 </span>
               </button>
@@ -69,7 +69,7 @@ $dernier = count($dossiers) - 1;
               <div style="flex:1;min-width:0">
                 <h2 style="margin-bottom:.15rem"><?= e($d['nom']) ?></h2>
                 <p class="discret" style="margin:0">
-                  <?= (int) $d['nb_cours'] ?> cours
+                  <?= e(tn('cours.nb_cours', (int) $d['nb_cours'])) ?>
                 </p>
               </div>
             <?php endif; ?>
@@ -79,21 +79,21 @@ $dernier = count($dossiers) - 1;
                   <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
                   <input type="hidden" name="sens" value="haut">
                   <button class="bouton bouton--discret bouton--petit" type="submit"
-                          title="Monter"<?= $rangFrere === 0 ? ' disabled' : '' ?>>↑</button>
+                          title="<?= e(t('commun.monter')) ?>"<?= $rangFrere === 0 ? ' disabled' : '' ?>>↑</button>
                 </form>
                 <form method="post" action="<?= url('dossiers/' . $d['id'] . '/deplacer') ?>" class="en-ligne">
                   <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
                   <input type="hidden" name="sens" value="bas">
                   <button class="bouton bouton--discret bouton--petit" type="submit"
-                          title="Descendre"<?= $rangFrere === count($freres) - 1 ? ' disabled' : '' ?>>↓</button>
+                          title="<?= e(t('commun.descendre')) ?>"<?= $rangFrere === count($freres) - 1 ? ' disabled' : '' ?>>↓</button>
                 </form>
               <?php endif; ?>
               <a class="bouton bouton--discret bouton--petit"
-                 href="<?= url('cours', ['dossier' => $d['id']]) ?>">Voir les cours</a>
+                 href="<?= url('cours', ['dossier' => $d['id']]) ?>"><?= e(t('mat.voir_cours')) ?></a>
               <a class="bouton bouton--secondaire bouton--petit bouton-partage"
-                 href="<?= url('partager/dossiers/' . $d['id']) ?>" data-fenetre><?= Partages::icone(15) ?> Partager</a>
+                 href="<?= url('partager/dossiers/' . $d['id']) ?>" data-fenetre><?= Partages::icone(15) ?> <?= e(t('evt.partager')) ?></a>
               <button class="bouton bouton--secondaire bouton--petit" type="button"
-                      data-bascule="edition-<?= (int) $d['id'] ?>">Modifier</button>
+                      data-bascule="edition-<?= (int) $d['id'] ?>"><?= e(t('evt.modifier')) ?></button>
             </div>
           </div>
 
@@ -104,14 +104,14 @@ $dernier = count($dossiers) - 1;
 
               <div class="ligne-champs">
                 <div class="champ">
-                  <label for="nom-<?= (int) $d['id'] ?>">Nom</label>
+                  <label for="nom-<?= (int) $d['id'] ?>"><?= e(t('commun.nom')) ?></label>
                   <input type="text" id="nom-<?= (int) $d['id'] ?>" name="nom" required maxlength="120"
                          value="<?= e($d['nom']) ?>">
                 </div>
                 <div class="champ">
-                  <label for="par-<?= (int) $d['id'] ?>">Rangé dans</label>
+                  <label for="par-<?= (int) $d['id'] ?>"><?= e(t('dos.range_dans')) ?></label>
                   <select id="par-<?= (int) $d['id'] ?>" name="parent_id">
-                    <option value="">— À la racine —</option>
+                    <option value=""><?= e(t('dos.racine')) ?></option>
                     <?php foreach ($dossiers as $autre): ?>
                       <?php // Ni lui-même, ni l'un de ses propres sous-dossiers. ?>
                       <?php if (in_array((int) $autre['id'], $descendants[(int) $d['id']], true)) { continue; } ?>
@@ -125,7 +125,7 @@ $dernier = count($dossiers) - 1;
               </div>
 
               <div class="champ">
-                <span class="legende">Icône</span>
+                <span class="legende"><?= e(t('commun.icone')) ?></span>
                 <div class="choix-icones">
                   <?php foreach ($icones as $i => $icone): ?>
                     <?php $idIcone = 'di-' . $d['id'] . '-' . $i; ?>
@@ -137,7 +137,7 @@ $dernier = count($dossiers) - 1;
               </div>
 
               <div class="champ">
-                <span class="legende">Couleur</span>
+                <span class="legende"><?= e(t('commun.couleur')) ?></span>
                 <div class="choix-couleurs">
                   <?php foreach ($palette as $i => $couleur): ?>
                     <?php $idCouleur = 'dc-' . $d['id'] . '-' . $i; ?>
@@ -149,14 +149,14 @@ $dernier = count($dossiers) - 1;
               </div>
 
               <div class="actions">
-                <button class="bouton" type="submit">Enregistrer</button>
+                <button class="bouton" type="submit"><?= e(t('commun.enregistrer')) ?></button>
               </div>
             </form>
 
             <form method="post" action="<?= url('dossiers/' . $d['id'] . '/supprimer') ?>" style="margin-top:.75rem"
-                  data-confirmation="Supprimer ce dossier ? Ses cours seront conservés sans dossier, et ses sous-dossiers remonteront à la racine.">
+                  data-confirmation="<?= e(t('dos.supprimer_sur')) ?>">
               <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
-              <button class="bouton bouton--danger bouton--petit" type="submit">Supprimer le dossier</button>
+              <button class="bouton bouton--danger bouton--petit" type="submit"><?= e(t('dos.supprimer')) ?></button>
             </form>
           </div>
         </section>
@@ -181,7 +181,7 @@ $dernier = count($dossiers) - 1;
 
       <?php // Déposer ici sort un dossier de son parent. ?>
       <div class="dossier-racine" data-dossier="">
-        ⬆︎ Déposez un dossier ici pour le remettre au premier niveau
+        <?= e(t('dos.racine_depot')) ?>
       </div>
 
       <?php // Le glisser-déposer poste ici le dossier et son parent d'arrivée. ?>
@@ -194,35 +194,35 @@ $dernier = count($dossiers) - 1;
 
     <?php if ($sansDossier > 0): ?>
       <p class="discret">
-        <?= $sansDossier ?> cours <?= $sansDossier > 1 ? 'ne sont' : "n'est" ?> rangé<?= $sansDossier > 1 ? 's' : '' ?>
-        dans aucun dossier — <a href="<?= url('cours') ?>">les retrouver dans la liste</a>.
+        <?= e(tn('dos.sans_dossier', $sansDossier)) ?>
+        <a href="<?= url('cours') ?>"><?= e(t('mat.sans_matiere_lien')) ?></a>.
       </p>
     <?php endif; ?>
   </div>
 
   <div class="carte">
-    <h2>Nouveau dossier</h2>
+    <h2><?= e(t('dos.nouveau')) ?></h2>
     <form method="post" action="<?= url('dossiers') ?>">
       <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
 
       <div class="champ">
-        <label for="nom">Nom</label>
-        <input type="text" id="nom" name="nom" required maxlength="120" placeholder="Semestre 1">
+        <label for="nom"><?= e(t('commun.nom')) ?></label>
+        <input type="text" id="nom" name="nom" required maxlength="120" placeholder="<?= e(t('dos.nom_exemple')) ?>">
       </div>
 
       <div class="champ">
-        <label for="parent_id">Rangé dans</label>
+        <label for="parent_id"><?= e(t('dos.range_dans')) ?></label>
         <select id="parent_id" name="parent_id">
-          <option value="">— À la racine —</option>
+          <option value=""><?= e(t('dos.racine')) ?></option>
           <?php foreach ($dossiers as $d): ?>
             <option value="<?= (int) $d["id"] ?>"><?= e(retrait_dossier($d) . $d["icone"] . " " . $d["nom"]) ?></option>
           <?php endforeach; ?>
         </select>
-        <span class="champ__aide">Laissez vide pour un dossier de premier niveau.</span>
+        <span class="champ__aide"><?= e(t('dos.parent_aide')) ?></span>
       </div>
 
       <div class="champ">
-        <span class="legende">Icône</span>
+        <span class="legende"><?= e(t('commun.icone')) ?></span>
         <div class="choix-icones">
           <?php foreach ($icones as $i => $icone): ?>
             <input type="radio" id="ndi-<?= $i ?>" name="icone" value="<?= e($icone) ?>"<?= $i === 0 ? ' checked' : '' ?>>
@@ -232,7 +232,7 @@ $dernier = count($dossiers) - 1;
       </div>
 
       <div class="champ">
-        <span class="legende">Couleur</span>
+        <span class="legende"><?= e(t('commun.couleur')) ?></span>
         <div class="choix-couleurs">
           <?php foreach ($palette as $i => $couleur): ?>
             <input type="radio" id="ndc-<?= $i ?>" name="couleur" value="<?= e($couleur) ?>"<?= $i === 0 ? ' checked' : '' ?>>
@@ -241,7 +241,7 @@ $dernier = count($dossiers) - 1;
         </div>
       </div>
 
-      <button class="bouton bouton--bloc" type="submit">Créer le dossier</button>
+      <button class="bouton bouton--bloc" type="submit"><?= e(t('dos.creer')) ?></button>
     </form>
   </div>
 </div>

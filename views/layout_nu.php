@@ -19,7 +19,7 @@
     <div class="auth__marque">
       <span aria-hidden="true">📚</span>
       <h1><?= e((string) Config::get('app', 'nom')) ?></h1>
-      <p>Vos cours, vos fichiers et votre planning au même endroit.</p>
+      <p><?= e(t('accueil.pitch')) ?></p>
     </div>
 
     <?php if ($flashs !== []): ?>

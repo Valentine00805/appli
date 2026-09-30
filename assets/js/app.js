@@ -668,15 +668,17 @@
       }
       if (phase) {
         phase.textContent = !etat.tourne
-          ? (etat.travaille > 0 ? 'En pause — reprenez quand vous voulez' : 'Prêt à commencer')
-          : (etat.enPause ? '☕ Pause' : '🎯 Au travail');
+          ? mot(etat.travaille > 0 ? 'focus.en_pause' : 'focus.pret')
+          : mot(etat.enPause ? 'focus.pause' : 'focus.au_travail');
       }
-      if (bascule) { bascule.textContent = etat.tourne ? '⏸ Pause' : '▶️ Démarrer'; }
+      if (bascule) { bascule.textContent = mot(etat.tourne ? 'focus.bouton_pause' : 'focus.bouton_demarrer'); }
       if (compte) {
-        compte.textContent = 'Temps travaillé : ' + Math.floor(etat.travaille / 60) + ' min · '
-          + (etat.pauses === 0 ? 'aucune pause' : etat.pauses + (etat.pauses > 1 ? ' pauses' : ' pause'));
+        compte.textContent = mot('focus.compte', {
+          min: Math.floor(etat.travaille / 60),
+          pauses: etat.pauses === 0 ? mot('focus.aucune_pause') : motN('focus.pauses', etat.pauses)
+        });
       }
-      document.title = (etat.tourne ? enMinutes(Math.max(0, etat.reste)) + ' · ' : '') + 'Session · Mes Cours';
+      document.title = (etat.tourne ? enMinutes(Math.max(0, etat.reste)) + ' · ' : '') + mot('focus.titre_onglet');
       try { localStorage.setItem(cle, JSON.stringify(etat)); } catch (e) {}
     };
 
@@ -710,12 +712,12 @@
         if (etat.enPause) {
           etat.enPause = false;
           etat.reste = travail;
-          prevenir('🎯 On reprend', 'La pause est finie : au travail.');
+          prevenir(mot('focus.on_reprend'), mot('focus.pause_finie'));
         } else {
           etat.enPause = true;
           etat.pauses++;
           etat.reste = repos;
-          prevenir('☕ Pause', Math.floor(etat.travaille / 60) + ' min travaillées. Levez les yeux.');
+          prevenir(mot('focus.pause'), mot('focus.travaillees', { min: Math.floor(etat.travaille / 60) }));
         }
       }
       afficher();
@@ -763,8 +765,9 @@
         if (champSecondes) { champSecondes.value = etat.travaille; }
         if (champPauses) { champPauses.value = etat.pauses; }
         if (texteBilan) {
-          texteBilan.textContent = 'Temps travaillé : ' + Math.floor(etat.travaille / 60) + ' min, '
-            + (etat.pauses === 0 ? 'sans pause.' : etat.pauses + (etat.pauses > 1 ? ' pauses.' : ' pause.'));
+          texteBilan.textContent = etat.pauses === 0
+            ? mot('focus.bilan_sans_pause', { min: Math.floor(etat.travaille / 60) })
+            : motN('focus.bilan', etat.pauses, { min: Math.floor(etat.travaille / 60) });
         }
         if (document.fullscreenElement) { document.exitFullscreen(); }
         if (bilan.showModal) { bilan.showModal(); } else { bloc.querySelector('[data-focus-formulaire]').submit(); }

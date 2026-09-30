@@ -25,14 +25,14 @@ $retour = $cours !== null ? url('cours/' . $cours['id'] . '/cartes') : url('cart
     <?php if ($cours !== null): ?><h1 class="seance__titre-fenetre"><?= e($cours['titre']) ?></h1><?php endif; ?>
   </div>
 <?php else: ?>
-  <p><a href="<?= e($retour) ?>">← <?= $cours !== null ? e($cours['titre']) : 'Cartes' ?></a></p>
+  <p><a href="<?= e($retour) ?>">← <?= $cours !== null ? e($cours['titre']) : e(t('crt.cartes')) ?></a></p>
 <?php endif; ?>
 
 <?php if ($cartes === []): ?>
   <div class="vide">
     <span class="vide__icone">✅</span>
-    <p>Rien à revoir<?= $cours !== null ? ' dans ce cours' : '' ?> pour aujourd'hui.</p>
-    <a class="bouton bouton--secondaire" href="<?= e($retour) ?>"<?= $dansUneFenetre ? ' data-fermer' : '' ?>>Retour</a>
+    <p><?= e(t('crt.rien_a_revoir', ['ou' => $cours !== null ? t('crt.dans_ce_cours') : ''])) ?></p>
+    <a class="bouton bouton--secondaire" href="<?= e($retour) ?>"<?= $dansUneFenetre ? ' data-fermer' : '' ?>><?= e(t('crt.retour')) ?></a>
   </div>
 <?php else: ?>
 

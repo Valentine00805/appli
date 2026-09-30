@@ -55,7 +55,7 @@ final class FocusController
             // et les cartes que ce cours donne à revoir aujourd’hui.
             'apres'     => $apres,
             'apresCours' => $apres === null ? [] : Focus::coursDeLaSession((int) $apres['id']),
-        ], 'Session de révision');
+        ], t('focus.titre_page'));
     }
 
     /** Ouvre la session, puis emmène droit sur l'écran de travail. */
@@ -97,11 +97,11 @@ final class FocusController
              WHERE s.id = ? AND s.user_id = ?', [$id, $userId]);
         if ($session === null) {
             http_response_code(404);
-            Vue::afficher('erreurs/404', [], 'Introuvable');
+            Vue::afficher('erreurs/404', [], t('titre.introuvable'));
             return;
         }
         if ($session['fin'] !== null) {
-            Session::flash('succes', 'Cette session est terminée.');
+            Session::flash('succes', t('flash.focus_deja_finie'));
             redirect('focus');
         }
 
@@ -109,7 +109,7 @@ final class FocusController
             'session' => $session,
             'coursDeLaSession' => Focus::coursDeLaSession($id),
             'pause'   => Focus::RYTHMES[Focus::rythmeValide($session['minutes_voulues'])]['pause'],
-        ], 'Session en cours');
+        ], t('focus.titre_en_cours'));
     }
 
     /**
@@ -132,8 +132,8 @@ final class FocusController
             $secondes = (int) Database::valeur('SELECT secondes FROM sessions_revision WHERE id = ?', [$id]);
             Session::flash($secondes >= Focus::SECONDES_MIN ? 'succes' : 'erreur',
                 $secondes >= Focus::SECONDES_MIN
-                    ? 'Session terminée : ' . Focus::duree($secondes) . ' de révision. Bravo.'
-                    : 'Session trop courte pour être comptée — elle n’apparaîtra pas dans votre suivi.');
+                    ? t('flash.focus_finie', ['duree' => Focus::duree($secondes)])
+                    : t('flash.focus_trop_courte'));
         }
         redirect('focus');
     }
@@ -146,8 +146,8 @@ final class FocusController
 
         $minutes = Focus::changerObjectif(Auth::id(), $_POST['minutes'] ?? 0);
         Session::flash('succes', $minutes === 0
-            ? 'Objectif retiré : le suivi continue, sans but à atteindre.'
-            : 'Objectif de la semaine : ' . Focus::duree($minutes * 60) . ' de révision.');
+            ? t('flash.focus_objectif_retire')
+            : t('flash.focus_objectif', ['duree' => Focus::duree($minutes * 60)]));
         redirect('focus');
     }
 
@@ -169,7 +169,7 @@ final class FocusController
             : array_map(static fn (array $c): int => (int) $c['id'], Focus::coursDeLaSession($sessionId));
         $coursIds = Focus::coursChoisis($userId, $coursIds, []);
         if ($coursIds === []) {
-            Session::flash('erreur', 'Ce cours est introuvable.');
+            Session::flash('erreur', t('flash.focus_cours_introuvable'));
             redirect('focus');
         }
 
@@ -178,9 +178,8 @@ final class FocusController
             $posees += Focus::programmerRevisions($userId, $coursId)['posees'];
         }
         Session::flash($posees === 0 ? 'erreur' : 'succes', $posees === 0
-            ? 'Ces révisions sont déjà dans votre liste « ' . Focus::LISTE . ' ».'
-            : $posees . ' révision' . ($posees > 1 ? 's posées' : ' posée')
-              . ' dans « ' . Focus::LISTE . ' » : demain, dans 3 jours, dans une semaine.');
+            ? t('flash.focus_deja_posees', ['liste' => Focus::LISTE])
+            : tn('flash.focus_posees', $posees, ['liste' => Focus::LISTE]));
         redirect('focus');
     }
 
@@ -199,11 +198,11 @@ final class FocusController
         $evenement = Focus::planifier($userId, $coursIds, post('jour'), post('heure'),
             Focus::rythmeValide($_POST['minutes'] ?? null));
         if ($evenement === null) {
-            Session::flash('erreur', 'Donnez un jour et une heure pour cette session.');
+            Session::flash('erreur', t('flash.focus_jour_heure'));
             redirect('focus');
         }
 
-        Session::flash('succes', 'Session posée au calendrier, avec son rappel un quart d’heure avant.');
+        Session::flash('succes', t('flash.focus_planifiee'));
         redirect('evenements/' . $evenement);
     }
 

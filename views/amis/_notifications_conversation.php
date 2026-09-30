@@ -14,7 +14,7 @@ $dansUneFenetre = $dansUneFenetre ?? false;
 $coupure = $coupure ?? ($muette ? null : false);
 ?>
 <section class="carte profil-ami__section" id="notifications-conversation">
-  <h2 style="margin-top:0"><span data-notifications-icone><?= $muette ? '🔕' : '🔔' ?></span> Notifications</h2>
+  <h2 style="margin-top:0"><span data-notifications-icone><?= $muette ? '🔕' : '🔔' ?></span> <?= e(t('notif.conv_titre')) ?></h2>
   <?php // Le script l'enregistre sans recharger : les réglages autour restent tels quels. ?>
   <form method="post" action="<?= e($action) ?>" data-notifications-conversation>
     <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
@@ -23,23 +23,23 @@ $coupure = $coupure ?? ($muette ? null : false);
     <label class="notifications-choix__ligne">
       <input type="checkbox" name="recevoir" value="1"<?= $muette ? '' : ' checked' ?>>
       <span>
-        <strong>Recevoir les notifications de <?= e($laquelle) ?></strong><br>
+        <strong><?= e(t('notif.conv_recevoir', ['quoi' => $laquelle])) ?></strong><br>
         <span class="discret" data-notifications-etat><?= e($muette
             ? FileNotifications::texteCoupure($coupure === false ? null : $coupure)
-            : 'Un nouveau message ou une réaction à l’un des vôtres vous prévient.') ?></span>
+            : t('notif.conv_active')) ?></span>
       </span>
     </label>
     <?php // Couper pour un temps : les notifications reviennent d'elles-mêmes ensuite. ?>
     <p class="notifications-pendant">
-      <span class="discret">Couper pendant</span>
-      <?php foreach (FileNotifications::DUREES as $cle => $duree): ?>
-        <button class="pastille notifications-pendant__choix" type="submit" name="pendant" value="<?= e($cle) ?>"><?= e($duree['nom']) ?></button>
+      <span class="discret"><?= e(t('notif.couper_pendant')) ?></span>
+      <?php foreach (array_keys(FileNotifications::DUREES) as $cle): ?>
+        <button class="pastille notifications-pendant__choix" type="submit" name="pendant" value="<?= e($cle) ?>"><?= e(FileNotifications::nomDuree((string) $cle)) ?></button>
       <?php endforeach; ?>
     </p>
-    <noscript><button class="bouton bouton--petit" type="submit">Enregistrer</button></noscript>
+    <noscript><button class="bouton bouton--petit" type="submit"><?= e(t('commun.enregistrer')) ?></button></noscript>
     <p class="champ__aide" data-notifications-message aria-live="polite" style="margin:.4rem 0 0"></p>
   </form>
   <p class="champ__aide" style="margin-bottom:0">
-    Pour toutes les conversations à la fois : <a href="<?= url('notifications') ?>"<?= $dansUneFenetre ? ' data-fenetre-dessus' : '' ?>>Régler les notifications</a>.
+    <?= e(t('notif.conv_toutes')) ?> <a href="<?= url('notifications') ?>"<?= $dansUneFenetre ? ' data-fenetre-dessus' : '' ?>><?= e(t('cpt.regler_notifications')) ?></a>.
   </p>
 </section>

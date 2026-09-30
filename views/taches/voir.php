@@ -31,7 +31,7 @@ $ligne = static function (string $etiquette, string $valeur): string {
   <div>
     <?php if (!$dansUneFenetre): ?>
       <p class="discret" style="margin-bottom:.35rem">
-        <a href="<?= url('tableau') ?>">← Tableau</a>
+        <a href="<?= url('tableau') ?>"><?= e(t('tachev.retour_tableau')) ?></a>
       </p>
     <?php endif; ?>
     <h1 style="display:flex;align-items:center;gap:.6rem">
@@ -42,30 +42,30 @@ $ligne = static function (string $etiquette, string $valeur): string {
 
   <div class="actions">
     <?php // La modifier se fait dans sa liste, où sont tous ses réglages. ?>
-    <a class="bouton" href="<?= url('taches', ['liste' => (int) $tache['liste_id']]) ?>">↗ Ouvrir dans Tâches</a>
+    <a class="bouton" href="<?= url('taches', ['liste' => (int) $tache['liste_id']]) ?>"><?= e(t('tachev.ouvrir')) ?></a>
   </div>
 </div>
 
 <div class="pile"<?= $dansUneFenetre ? '' : ' style="max-width:44rem"' ?>>
   <section class="carte fiche">
-    <?= $ligne('Liste', e(((string) $tache['liste_icone'] !== '' ? $tache['liste_icone'] : '📋')
+    <?= $ligne(t('tachev.liste'), e(((string) $tache['liste_icone'] !== '' ? $tache['liste_icone'] : '📋')
         . ' ' . $tache['liste_nom'])) ?>
 
-    <?= $ligne('Échéance', $echeance === ''
-        ? '<span class="discret">Sans échéance</span>'
+    <?= $ligne(t('taches.echeance'), $echeance === ''
+        ? '<span class="discret">' . e(t('tachev.sans_echeance')) . '</span>'
         : e(ucfirst(date_fr($echeance, false)))
           . ' <span class="echeance echeance--' . e(echeance_etat($echeance, $faite)) . '">'
           . e(echeance_libelle($echeance, $faite)) . '</span>') ?>
 
-    <?= $ligne('Au tableau', e($etape['icone'] . ' ' . $etape['titre'])) ?>
+    <?= $ligne(t('tachev.au_tableau'), e($etape['icone'] . ' ' . $etape['titre'])) ?>
 
     <?php if ($faite && $tache['faite_le'] !== null): ?>
-      <?= $ligne('Terminée le', e(date_fr((string) $tache['faite_le']))) ?>
+      <?= $ligne(t('tachev.terminee_le'), e(date_fr((string) $tache['faite_le']))) ?>
     <?php endif; ?>
 
     <?php if ((string) ($tache['note'] ?? '') !== ''): ?>
       <div class="fiche__notes">
-        <span class="fiche__etiquette">Remarque</span>
+        <span class="fiche__etiquette"><?= e(t('tachev.remarque')) ?></span>
         <p><?= e((string) $tache['note']) ?></p>
       </div>
     <?php endif; ?>

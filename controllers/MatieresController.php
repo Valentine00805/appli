@@ -31,7 +31,7 @@ final class MatieresController
                 'SELECT COUNT(*) FROM cours WHERE user_id = ? AND matiere_id IS NULL',
                 [$userId]
             ),
-        ], 'Mes matières');
+        ], t('mat.titre'));
     }
 
     public function creer(): void
@@ -42,11 +42,11 @@ final class MatieresController
 
         $nom = mb_substr(post('nom'), 0, 120);
         if ($nom === '') {
-            Session::flash('erreur', 'Le nom de la matière est obligatoire.');
+            Session::flash('erreur', t('flash.matiere_nom_obligatoire'));
             redirect('organisation/matieres');
         }
         if (Database::valeur('SELECT id FROM matieres WHERE user_id = ? AND nom = ?', [$userId, $nom]) !== null) {
-            Session::flash('erreur', 'Vous avez déjà une matière nommée « ' . $nom .' ».');
+            Session::flash('erreur', t('flash.matiere_deja', ['nom' => $nom]));
             redirect('organisation/matieres');
         }
 
@@ -55,7 +55,7 @@ final class MatieresController
             [$userId, $nom, $this->couleurValide(post('couleur')), mb_substr(post('enseignant'), 0, 120) ?: null]
         );
 
-        Session::flash('succes', 'Matière « ' . $nom . ' » créée.');
+        Session::flash('succes', t('flash.matiere_creee', ['nom' => $nom]));
         redirect('organisation/matieres');
     }
 
@@ -67,13 +67,13 @@ final class MatieresController
 
         if (Database::valeur('SELECT id FROM matieres WHERE id = ? AND user_id = ?', [$id, $userId]) === null) {
             http_response_code(404);
-            Vue::afficher('erreurs/404', [], 'Introuvable');
+            Vue::afficher('erreurs/404', [], t('titre.introuvable'));
             return;
         }
 
         $nom = mb_substr(post('nom'), 0, 120);
         if ($nom === '') {
-            Session::flash('erreur', 'Le nom de la matière est obligatoire.');
+            Session::flash('erreur', t('flash.matiere_nom_obligatoire'));
             redirect('organisation/matieres');
         }
 
@@ -82,7 +82,7 @@ final class MatieresController
             [$userId, $nom, $id]
         );
         if ($doublon !== null) {
-            Session::flash('erreur', 'Une autre matière porte déjà ce nom.');
+            Session::flash('erreur', t('flash.matiere_autre_deja'));
             redirect('organisation/matieres');
         }
 
@@ -91,7 +91,7 @@ final class MatieresController
             [$nom, $this->couleurValide(post('couleur')), mb_substr(post('enseignant'), 0, 120) ?: null, $id, $userId]
         );
 
-        Session::flash('succes', 'Matière mise à jour.');
+        Session::flash('succes', t('flash.matiere_maj'));
         redirect('organisation/matieres');
     }
 
@@ -101,7 +101,7 @@ final class MatieresController
         Session::verifierCsrf();
         // Les cours et évènements liés sont conservés : leur matière passe simplement à NULL.
         Database::run('DELETE FROM matieres WHERE id = ? AND user_id = ?', [$id, Auth::id()]);
-        Session::flash('succes', 'Matière supprimée. Les cours associés ont été conservés.');
+        Session::flash('succes', t('flash.matiere_supprimee'));
         redirect('organisation/matieres');
     }
 

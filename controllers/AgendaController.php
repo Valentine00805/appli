@@ -66,8 +66,7 @@ final class AgendaController
         $f = $this->fournisseur($cle);
 
         if (!LiaisonAgenda::pour($f)->configure()) {
-            Session::flash('erreur', 'La liaison avec ' . $f->nom()
-                . ' n’est pas configurée sur cette installation.');
+            Session::flash('erreur', t('flash.agenda_non_configuree', ['nom' => $f->nom()]));
             redirect('agenda/' . $f->cle());
         }
 
@@ -132,8 +131,7 @@ final class AgendaController
             redirect('agenda/' . $f->cle());
         }
 
-        Session::flash('succes', $combien . ' calendrier' . ($combien > 1 ? 's trouvés' : ' trouvé')
-            . ' sur votre compte. Cochez ceux que l’application doit lire.');
+        Session::flash('succes', tn('flash.agenda_trouves', $combien));
         redirect('agenda/' . $f->cle());
     }
 
@@ -148,9 +146,8 @@ final class AgendaController
         $suivis = SynchroAgenda::pour($f)->choisir(Auth::id(), is_array($coches) ? $coches : []);
 
         Session::flash('succes', $suivis === 0
-            ? 'Aucun calendrier suivi : plus rien ne viendra de ' . $f->nom() . '.'
-            : $suivis . ' calendrier' . ($suivis > 1 ? 's suivis' : ' suivi')
-              . '. Relisez l’agenda pour en voir les évènements.');
+            ? t('flash.agenda_aucun_suivi', ['nom' => $f->nom()])
+            : tn('flash.agenda_suivis', $suivis));
         redirect('agenda/' . $f->cle());
     }
 
@@ -175,7 +172,7 @@ final class AgendaController
             if ($seul || veut_du_json()) {
                 repondre_json(['fait' => false, 'change' => 0]);
             }
-            Session::flash('succes', 'Tout était déjà à jour.');
+            Session::flash('succes', t('flash.agenda_deja_jour'));
             repartir_vers('agenda/' . $f->cle());
         }
 
@@ -209,7 +206,7 @@ final class AgendaController
             if ($seul || veut_du_json()) {
                 repondre_json(['fait' => false, 'change' => 0]);
             }
-            Session::flash('succes', 'Tout était déjà à jour.');
+            Session::flash('succes', t('flash.agenda_deja_jour'));
             repartir_vers('agenda');
         }
 
@@ -296,7 +293,7 @@ final class AgendaController
             Session::flash('erreur', implode(' ', $soucis));
         }
         Session::flash('succes', $phrases === []
-            ? 'Synchronisé : tout était déjà à jour, de part et d’autre.'
+            ? t('flash.agenda_rien_change')
             : implode(' ', $phrases));
 
         repartir_vers($retour);
@@ -333,7 +330,7 @@ final class AgendaController
             return;
         }
 
-        Vue::afficher('agenda/liste', $donnees, 'Mes agendas');
+        Vue::afficher('agenda/liste', $donnees, t('agenda.titre'));
     }
 
     /**
@@ -346,22 +343,22 @@ final class AgendaController
     {
         $partis = [];
         $venus = [];
-        if ($bilan['ajoutes'] > 0)  { $venus[] = $bilan['ajoutes'] . ' ajouté' . ($bilan['ajoutes'] > 1 ? 's' : ''); }
-        if ($bilan['modifies'] > 0) { $venus[] = $bilan['modifies'] . ' mis à jour'; }
-        if ($bilan['retires'] > 0)  { $venus[] = $bilan['retires'] . ' retiré' . ($bilan['retires'] > 1 ? 's' : ''); }
+        if ($bilan['ajoutes'] > 0)  { $venus[] = tn('sync.ajoutes', (int) $bilan['ajoutes']); }
+        if ($bilan['modifies'] > 0) { $venus[] = t('sync.majs', ['n' => (int) $bilan['modifies']]); }
+        if ($bilan['retires'] > 0)  { $venus[] = tn('sync.retires', (int) $bilan['retires']); }
         if (($bilan['effaces'] ?? 0) > 0) {
-            $partis[] = $bilan['effaces'] . ' supprimé' . ($bilan['effaces'] > 1 ? 's' : '');
+            $partis[] = tn('sync.supprimes', (int) $bilan['effaces']);
         }
 
-        if ($envoi['crees'] > 0)   { $partis[] = $envoi['crees'] . ' créé' . ($envoi['crees'] > 1 ? 's' : ''); }
-        if ($envoi['majs'] > 0)    { $partis[] = $envoi['majs'] . ' mis à jour'; }
-        if ($envoi['retires'] > 0) { $partis[] = $envoi['retires'] . ' retiré' . ($envoi['retires'] > 1 ? 's' : ''); }
+        if ($envoi['crees'] > 0)   { $partis[] = tn('sync.crees', (int) $envoi['crees']); }
+        if ($envoi['majs'] > 0)    { $partis[] = t('sync.majs', ['n' => (int) $envoi['majs']]); }
+        if ($envoi['retires'] > 0) { $partis[] = tn('sync.retires', (int) $envoi['retires']); }
 
         $phrases = [];
-        if ($venus !== [])  { $phrases[] = 'venus ' . de_agenda($f->nom()) . ' : ' . implode(', ', $venus); }
-        if ($partis !== []) { $phrases[] = 'partis vers ' . $f->nom() . ' : ' . implode(', ', $partis); }
+        if ($venus !== [])  { $phrases[] = t('sync.venus', ['de' => de_agenda($f->nom()), 'liste' => implode(', ', $venus)]); }
+        if ($partis !== []) { $phrases[] = t('sync.partis', ['nom' => $f->nom(), 'liste' => implode(', ', $partis)]); }
 
-        return $phrases === [] ? '' : 'Synchronisé — ' . implode(' ; ', $phrases) . '.';
+        return $phrases === [] ? '' : t('sync.bilan', ['phrases' => implode(' ; ', $phrases)]);
     }
 
     /** Retire de l'application les évènements venus de cet agenda. */
@@ -373,9 +370,8 @@ final class AgendaController
 
         $retires = SynchroAgenda::pour($f)->toutRetirer(Auth::id());
         Session::flash('succes', $retires === 0
-            ? 'Il n’y avait aucun évènement importé.'
-            : $retires . ' évènement' . ($retires > 1 ? 's importés retirés' : ' importé retiré')
-              . ' du calendrier. Ils restent dans votre agenda ' . $f->nom() . '.');
+            ? t('flash.agenda_aucun_importe')
+            : tn('flash.agenda_importes_retires', $retires, ['nom' => $f->nom()]));
         repartir_vers('agenda/' . $f->cle());
     }
 
@@ -410,16 +406,13 @@ final class AgendaController
              * les mêmes évènements à deux endroits. Le réglage n'a donc pas
              * bougé, et c'est la première chose à dire.
              */
-            Session::flash('erreur', 'La destination n’a pas changé : ' . $e->getMessage());
+            Session::flash('erreur', t('flash.agenda_destination_inchangee', ['souci' => $e->getMessage()]));
             repartir_vers('agenda/' . $f->cle());
         }
 
-        Session::flash('succes', 'Vos évènements iront désormais dans « ' . $fait['nom'] . ' »'
-            . ($fait['retires'] === 0
-                ? '. Ils y arriveront à la prochaine synchronisation.'
-                : ', et ' . $fait['retires'] . ' élément' . ($fait['retires'] > 1 ? 's ont' : ' a')
-                  . ' quitté l’ancien. La synchronisation suivante '
-                  . ($fait['retires'] > 1 ? 'les y remet' : 'l’y remet') . ', tout de suite.'));
+        Session::flash('succes', $fait['retires'] === 0
+            ? t('flash.agenda_destination_vide', ['nom' => $fait['nom']])
+            : tn('flash.agenda_destination_deplace', (int) $fait['retires'], ['nom' => $fait['nom']]));
         repartir_vers('agenda/' . $f->cle());
     }
 
@@ -443,9 +436,8 @@ final class AgendaController
         }
 
         Session::flash('succes', $retires === 0
-            ? 'Il n’y avait rien à retirer ' . de_agenda($f->nom()) . '.'
-            : $retires . ' élément' . ($retires > 1 ? 's ont quitté' : ' a quitté')
-              . ' votre agenda ' . $f->nom() . '. Le calendrier « Mes Cours » y reste, vide.');
+            ? t('flash.agenda_rien_a_retirer', ['de' => de_agenda($f->nom())])
+            : tn('flash.agenda_envoi_retire', $retires, ['nom' => $f->nom()]));
         repartir_vers('agenda/' . $f->cle());
     }
 
@@ -474,14 +466,11 @@ final class AgendaController
         $retires = SynchroAgenda::pour($f)->toutRetirer($userId);
         LiaisonAgenda::pour($f)->delier($userId);
 
-        Session::flash('succes', 'Compte ' . $f->nom()
-            . ' délié. L’application n’accède plus à votre agenda'
-            . ($retires === 0 ? '.' : ', et ' . $retires . ' évènement'
-               . ($retires > 1 ? 's importés ont' : ' importé a') . ' quitté le calendrier.'));
+        Session::flash('succes', $retires === 0
+            ? t('flash.agenda_delie', ['nom' => $f->nom()])
+            : tn('flash.agenda_delie_retires', $retires, ['nom' => $f->nom()]));
         if ($reste) {
-            Session::flash('erreur', 'Ce que l’application avait écrit dans ' . $f->nom()
-                . ' n’a pas pu être repris : supprimez le calendrier « Mes Cours » depuis '
-                . $f->nom() . '.');
+            Session::flash('erreur', t('flash.agenda_reste', ['nom' => $f->nom()]));
         }
         repartir_vers('agenda/' . $f->cle());
     }

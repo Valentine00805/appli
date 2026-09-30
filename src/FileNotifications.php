@@ -28,25 +28,28 @@ final class FileNotifications
      * natures qu'elles couvrent — celles des rappels comme celles de la file.
      */
     public const CATEGORIES = [
-        'calendrier' => ['nom' => 'Calendrier', 'icone' => '📅', 'natures' => ['evenement'],
-            'aide' => 'Les rappels de vos évènements, et des échéances des travaux de groupe.'],
-        'taches'     => ['nom' => 'Tâches', 'icone' => '✅', 'natures' => ['tache', 'liste'],
-            'aide' => 'À 8 h, le jour de l’échéance d’une tâche pas encore faite.'],
-        'messages'   => ['nom' => 'Messages de mes amis', 'icone' => '💬', 'natures' => ['message'],
-            'aide' => 'Dès qu’ils arrivent, à deux ou en groupe.'],
-        'reactions'  => ['nom' => 'Réactions à mes messages', 'icone' => '😊', 'natures' => ['reaction'],
-            'aide' => 'Quand un ami réagit d’un emoji à ce que vous avez écrit.'],
-        'demandes'   => ['nom' => 'Demandes d’ami', 'icone' => '🤝', 'natures' => ['demande', 'acceptation'],
-            'aide' => 'Les demandes reçues, et vos demandes acceptées.'],
-        'groupes'    => ['nom' => 'Discussions de groupe', 'icone' => '👥', 'natures' => ['groupe'],
-            'aide' => 'Une invitation dans un groupe, ou quand on vous y ajoute.'],
-        'partages'   => ['nom' => 'Partages', 'icone' => '📤', 'natures' => ['partage', 'commentaire'],
-            'aide' => 'Un cours, un fichier ou un évènement qu’on vous partage, et leurs commentaires.'],
-        'travaux'    => ['nom' => 'Travaux de groupe', 'icone' => '🧩', 'natures' => ['projet'],
-            'aide' => 'Une invitation, une tâche qu’on vous confie, une nouvelle échéance.'],
-        'journal'    => ['nom' => 'Journal d’alternance', 'icone' => '📓', 'natures' => ['journal'],
-            'aide' => 'Le rappel d’écrire la semaine de votre journal des missions.'],
+        'calendrier' => ['icone' => '📅', 'natures' => ['evenement']],
+        'taches'     => ['icone' => '✅', 'natures' => ['tache', 'liste']],
+        'messages'   => ['icone' => '💬', 'natures' => ['message']],
+        'reactions'  => ['icone' => '😊', 'natures' => ['reaction']],
+        'demandes'   => ['icone' => '🤝', 'natures' => ['demande', 'acceptation']],
+        'groupes'    => ['icone' => '👥', 'natures' => ['groupe']],
+        'partages'   => ['icone' => '📤', 'natures' => ['partage', 'commentaire']],
+        'travaux'    => ['icone' => '🧩', 'natures' => ['projet']],
+        'journal'    => ['icone' => '📓', 'natures' => ['journal']],
     ];
+
+    /** Le nom d'une sorte, dans la langue du compte. */
+    public static function nomCategorie(string $cle): string
+    {
+        return t('notif.cat.' . $cle);
+    }
+
+    /** Ce qu'elle recouvre, en une phrase. */
+    public static function aideCategorie(string $cle): string
+    {
+        return t('notif.cat.' . $cle . '_aide');
+    }
 
     /** La sorte d'une nature (« message » → « messages »), ou null si elle n'en a pas. */
     public static function categorieDe(string $nature): ?string
@@ -62,12 +65,18 @@ final class FileNotifications
 
     /** Pour combien de temps couper : une heure, une nuit, un jour… (en minutes). */
     public const DUREES = [
-        '1h' => ['nom' => '1 heure',   'minutes' => 60],
-        '8h' => ['nom' => '8 heures',  'minutes' => 480],
-        '1j' => ['nom' => '1 jour',    'minutes' => 1440],
-        '3j' => ['nom' => '3 jours',   'minutes' => 4320],
-        '7j' => ['nom' => '1 semaine', 'minutes' => 10080],
+        '1h' => ['minutes' => 60],
+        '8h' => ['minutes' => 480],
+        '1j' => ['minutes' => 1440],
+        '3j' => ['minutes' => 4320],
+        '7j' => ['minutes' => 10080],
     ];
+
+    /** « 8 heures », « 1 semaine » : le temps que dure une coupure. */
+    public static function nomDuree(string $cle): string
+    {
+        return t('notif.duree.' . $cle);
+    }
 
     /** La fin d'une coupure (en UTC) pour cette durée, ou null : jusqu'à ce qu'on la lève. */
     public static function finDans(?string $duree): ?string
@@ -84,17 +93,20 @@ final class FileNotifications
     public static function texteCoupure(?string $jusquaUtc): string
     {
         if ($jusquaUtc === null) {
-            return 'Coupées : rien ne vous prévient, jusqu’à ce que vous recochiez.';
+            return t('notif.coupees_toujours');
         }
         $fin = Amis::local($jusquaUtc);
         $aujourdhui = new DateTimeImmutable('today');
+        $heure = heure_courte($fin->getTimestamp());
         $quand = match ($fin->format('Y-m-d')) {
-            $aujourdhui->format('Y-m-d') => 'jusqu’à ' . $fin->format('H:i'),
-            $aujourdhui->modify('+1 day')->format('Y-m-d') => 'jusqu’à demain ' . $fin->format('H:i'),
-            default => 'jusqu’au ' . date_fr($fin->format('Y-m-d H:i:s'), false) . ', ' . $fin->format('H:i'),
+            $aujourdhui->format('Y-m-d') => t('notif.jusqua_heure', ['heure' => $heure]),
+            $aujourdhui->modify('+1 day')->format('Y-m-d') => t('notif.jusqua_demain', ['heure' => $heure]),
+            default => t('notif.jusquau', [
+                'date' => date_fr($fin->format('Y-m-d H:i:s'), false), 'heure' => $heure,
+            ]),
         };
 
-        return 'Coupées ' . $quand . ' — elles reviendront toutes seules.';
+        return t('notif.coupees_jusqua', ['quand' => $quand]);
     }
 
     /**

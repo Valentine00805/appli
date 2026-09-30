@@ -37,21 +37,13 @@ final class Partages
     /** Ce qu'un droit permet, en un mot. */
     public static function libelleDroit(string $droit): string
     {
-        return match ($droit) {
-            'modification' => 'Modification',
-            'commentaire' => 'Commentaire',
-            default => 'Lecture seule',
-        };
+        return t('partage.droit.' . (in_array($droit, self::DROITS, true) ? $droit : 'lecture'));
     }
 
     /** Ce qu'il permet, en une phrase : pour l'expliquer avant de choisir. */
     public static function expliqueDroit(string $droit): string
     {
-        return match ($droit) {
-            'modification' => 'Écrire dans le document, y joindre des fichiers et en retirer.',
-            'commentaire' => 'Lire, et écrire des commentaires sous le document.',
-            default => 'Ouvrir le document et ses fichiers, sans rien y changer.',
-        };
+        return t('partage.droit.' . (in_array($droit, self::DROITS, true) ? $droit : 'lecture') . '_aide');
     }
 
     /** Un droit reçu d'un formulaire, ou la lecture à défaut. */

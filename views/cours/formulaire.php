@@ -64,7 +64,7 @@ $dossierActif  = $edition ? entier_ou_null($cours['dossier_id']) : entier_ou_nul
               </option>
             <?php endforeach; ?>
           </select>
-          <span class="champ__aide"><a href="<?= url('organisation/matieres') ?>">Gérer mes matières</a></span>
+          <span class="champ__aide"><a href="<?= url('organisation/matieres') ?>"><?= e(t('cours.gerer_matieres')) ?></a></span>
         </div>
 
         <div class="champ">
@@ -78,8 +78,8 @@ $dossierActif  = $edition ? entier_ou_null($cours['dossier_id']) : entier_ou_nul
             <?php endforeach; ?>
           </select>
           <span class="champ__aide">
-            Où ranger ce cours, indépendamment de sa matière —
-            <a href="<?= url('organisation/dossiers') ?>">gérer mes dossiers</a>.
+            <?= e(t('cours.ou_ranger')) ?>
+            <a href="<?= url('organisation/dossiers') ?>"><?= e(t('cours.gerer_dossiers')) ?></a>.
           </span>
         </div>
 

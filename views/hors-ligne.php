@@ -9,20 +9,19 @@
 ?>
 <div class="carte" style="max-width:560px;margin:2rem auto;text-align:center">
   <p style="font-size:2.5rem;margin:0">🔌</p>
-  <h1 style="margin-top:.4rem">Pas de réseau</h1>
-  <p>Cette page n’a pas encore été ouverte sur cet appareil : il n’y en a pas de copie ici.</p>
-  <p class="discret">Ce que vous avez déjà consulté reste lisible, et ce que vous écrivez
-    est gardé puis envoyé dès que la connexion revient.</p>
+  <h1 style="margin-top:.4rem"><?= e(t('horsligne.titre')) ?></h1>
+  <p><?= e(t('horsligne.texte')) ?></p>
+  <p class="discret"><?= e(t('horsligne.aide')) ?></p>
 
   <p class="actions" style="justify-content:center">
-    <button class="bouton" type="button" onclick="location.reload()">Réessayer</button>
-    <a class="bouton bouton--secondaire" href="<?= url('') ?>">Aller à l’accueil</a>
+    <button class="bouton" type="button" onclick="location.reload()"><?= e(t('horsligne.reessayer')) ?></button>
+    <a class="bouton bouton--secondaire" href="<?= url('') ?>"><?= e(t('horsligne.accueil')) ?></a>
   </p>
 
   <ul style="list-style:none;padding:0;margin:1.2rem 0 0;display:flex;gap:.5rem;flex-wrap:wrap;justify-content:center">
-    <li><a class="pastille" href="<?= url('calendrier') ?>">📅 Calendrier</a></li>
-    <li><a class="pastille" href="<?= url('cours') ?>">📘 Mes cours</a></li>
-    <li><a class="pastille" href="<?= url('taches') ?>">✅ Tâches</a></li>
-    <li><a class="pastille" href="<?= url('alternance') ?>">🏢 Alternance</a></li>
+    <li><a class="pastille" href="<?= url('calendrier') ?>"><?= e(t('horsligne.calendrier')) ?></a></li>
+    <li><a class="pastille" href="<?= url('cours') ?>"><?= e(t('horsligne.cours')) ?></a></li>
+    <li><a class="pastille" href="<?= url('taches') ?>"><?= e(t('horsligne.taches')) ?></a></li>
+    <li><a class="pastille" href="<?= url('alternance') ?>"><?= e(t('horsligne.alternance')) ?></a></li>
   </ul>
 </div>

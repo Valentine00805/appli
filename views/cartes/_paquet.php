@@ -15,16 +15,18 @@ $retour = $retour ?? null;
 /** D'où vient une carte, dit en clair. */
 $provenance = static function (array $c): string {
     return match ($c['origine']) {
-        'cours'   => 'du cours',
-        'fiche'   => 'de la fiche',
-        'fichier' => $c['source'] !== '' ? 'de ' . $c['source'] : 'd\'un document',
-        default   => 'écrite à la main',
+        'cours'   => t('crt.venue_cours'),
+        'fiche'   => t('crt.venue_fiche'),
+        'fichier' => $c['source'] !== ''
+            ? t('crt.venue_fichier', ['nom' => $c['source']])
+            : t('crt.venue_document'),
+        default   => t('crt.ecrite_main'),
     };
 };
 ?>
 
 <?php if ($cartes === []): ?>
-  <p class="discret">Vide pour l'instant.</p>
+  <p class="discret"><?= e(t('crt.vide')) ?></p>
 <?php else: ?>
   <ul class="paquet">
     <?php foreach ($cartes as $c): ?>
@@ -32,7 +34,7 @@ $provenance = static function (array $c): string {
         <details>
           <summary>
             <span class="carte-ligne__question"><?= e($c['question']) ?></span>
-            <span class="carte-ligne__boite" title="Boîte <?= (int) $c['boite'] ?> sur 5">
+            <span class="carte-ligne__boite" title="<?= e(t('crt.boite_sur', ['n' => (int) $c['boite']])) ?>">
               <?= str_repeat('●', (int) $c['boite']) ?><span class="discret"><?= str_repeat('○', 5 - (int) $c['boite']) ?></span>
             </span>
           </summary>
@@ -40,30 +42,30 @@ $provenance = static function (array $c): string {
           <form method="post" action="<?= url('cartes/' . $c['id'] . '/modifier') ?>" class="pile carte-ligne__edition">
             <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
             <div class="champ">
-              <label for="q-<?= (int) $c['id'] ?>">Question</label>
+              <label for="q-<?= (int) $c['id'] ?>"><?= e(t('crt.question')) ?></label>
               <input type="text" id="q-<?= (int) $c['id'] ?>" name="question"
                      value="<?= e($c['question']) ?>" maxlength="500">
             </div>
             <div class="champ">
-              <label for="r-<?= (int) $c['id'] ?>">Réponse</label>
+              <label for="r-<?= (int) $c['id'] ?>"><?= e(t('crt.reponse')) ?></label>
               <textarea id="r-<?= (int) $c['id'] ?>" name="reponse" rows="3"><?= e($c['reponse']) ?></textarea>
             </div>
             <p class="champ__aide">
-              Venue <?= e($provenance($c)) ?>.
+              <?= e(t('crt.venue_de', ['source' => $provenance($c)])) ?>
               <?php if ((int) $c['vues'] > 0): ?>
-                Revue <?= (int) $c['vues'] ?> fois, sue <?= (int) $c['reussies'] ?> fois.
+                <?= e(t('crt.revue_sue', ['revue' => (int) $c['vues'], 'sue' => (int) $c['reussies']])) ?>
               <?php endif; ?>
-              Prochaine révision le <?= e(date_fr((string) $c['revoir_le'], false)) ?>.
+              <?= e(t('crt.prochaine_le', ['date' => date_fr((string) $c['revoir_le'], false)])) ?>
             </p>
             <div class="actions">
-              <button class="bouton bouton--secondaire bouton--petit" type="submit">Enregistrer</button>
+              <button class="bouton bouton--secondaire bouton--petit" type="submit"><?= e(t('commun.enregistrer')) ?></button>
             </div>
           </form>
 
           <form method="post" action="<?= url('cartes/' . $c['id'] . '/supprimer') ?>"
-                data-confirmation="Supprimer cette carte ?">
+                data-confirmation="<?= e(t('crt.supprimer_sur')) ?>">
             <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
-            <button class="bouton bouton--discret bouton--petit" type="submit">Supprimer</button>
+            <button class="bouton bouton--discret bouton--petit" type="submit"><?= e(t('commun.supprimer')) ?></button>
           </form>
         </details>
       </li>
@@ -79,22 +81,20 @@ $provenance = static function (array $c): string {
   ?>
   <section class="carte reprise">
     <div>
-      <h3>Reprendre le paquet à zéro</h3>
+      <h3><?= e(t('crt.reprendre_zero')) ?></h3>
       <p class="champ__aide">
-        Les <?= count($cartes) ?> cartes reviennent en boîte 1, toutes à revoir
-        aujourd'hui. Rien n'est supprimé : les questions, les réponses et le
-        nombre de fois où vous les avez sues restent tels quels.
+        <?= e(t('crt.reprendre_aide', ['n' => count($cartes)])) ?>
       </p>
     </div>
     <form method="post" action="<?= url('cours/' . $cours['id'] . '/cartes/rezero') ?>"
-          data-confirmation="Remettre les <?= count($cartes) ?> cartes de ce cours à revoir aujourd'hui ?">
+          data-confirmation="<?= e(t('fiche.rezero_sur', ['n' => count($cartes)])) ?>">
       <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
       <?php if ($retour !== null): ?>
         <input type="hidden" name="retour" value="<?= e($retour) ?>">
       <?php endif; ?>
       <button class="bouton bouton--secondaire" type="submit"
-              title="Ramener toutes les cartes de ce cours en boîte 1">
-        Tout remettre à revoir
+              title="<?= e(t('fiche.rezero_aide')) ?>">
+        <?= e(t('fiche.rezero')) ?>
       </button>
     </form>
   </section>
@@ -108,17 +108,15 @@ $provenance = static function (array $c): string {
   ?>
   <section class="carte zone-danger">
     <div>
-      <h3>Vider le paquet</h3>
+      <h3><?= e(t('crt.vider_paquet')) ?></h3>
       <p class="champ__aide">
-        Les <?= count($cartes) ?> cartes de ce cours seront supprimées, ainsi que
-        votre avancement sur chacune. Le cours, sa fiche et ses documents ne
-        sont pas touchés : vous pourrez en refabriquer des cartes.
+        <?= e(t('crt.vider_aide', ['n' => count($cartes)])) ?>
       </p>
     </div>
     <form method="post" action="<?= url('cours/' . $cours['id'] . '/cartes/vider') ?>"
-          data-confirmation="Supprimer les <?= count($cartes) ?> cartes de ce cours, et votre avancement sur chacune ?">
+          data-confirmation="<?= e(t('crt.vider_sur', ['n' => count($cartes)])) ?>">
       <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
-      <button class="bouton bouton--danger" type="submit">Supprimer les <?= count($cartes) ?> cartes</button>
+      <button class="bouton bouton--danger" type="submit"><?= e(t('crt.supprimer_n', ['n' => count($cartes)])) ?></button>
     </form>
   </section>
 <?php endif; ?>

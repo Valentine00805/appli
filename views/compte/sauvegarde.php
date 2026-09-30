@@ -7,70 +7,64 @@ $aDesDonnees = $resume['lignes'] > 0;
 <div class="entete-page">
   <div>
     <p class="discret" style="margin-bottom:.35rem">
-      <a href="<?= url('compte') ?>">← Mon compte</a>
+      <a href="<?= url('compte') ?>"><?= e(t('notif.retour_compte')) ?></a>
     </p>
-    <h1>Sauvegarde</h1>
-    <p>Une copie de tout ce que contient votre compte, dans un seul fichier.</p>
+    <h1><?= e(t('svg.titre')) ?></h1>
+    <p><?= e(t('svg.sous_titre')) ?></p>
   </div>
 </div>
 
 <div class="colonnes">
   <div class="pile">
     <section class="carte" style="border-color:var(--accent)">
-      <h2>💾 Télécharger ma sauvegarde</h2>
+      <h2><?= e(t('svg.telecharger_titre')) ?></h2>
       <p class="discret" style="margin:.3rem 0 1rem">
-        Un fichier <code>.zip</code> contenant vos données <strong>et</strong> vos pièces
-        jointes. Rangez-le ailleurs que sur cette machine : un espace de stockage
-        en ligne, une clé USB, un disque externe. Une copie posée à côté de
-        l'original ne protège de rien.
+        <?= t('svg.telecharger_aide') ?>
       </p>
 
       <?php if (!$aDesDonnees): ?>
-        <p class="discret">Votre compte est vide : il n'y a rien à sauvegarder pour l'instant.</p>
+        <p class="discret"><?= e(t('svg.vide')) ?></p>
       <?php else: ?>
         <a class="bouton bouton--bloc" href="<?= url('compte/sauvegarde/export') ?>">
-          Télécharger la sauvegarde
+          <?= e(t('svg.telecharger')) ?>
         </a>
         <p class="champ__aide" style="margin-top:.6rem">
-          <?= (int) $resume['lignes'] ?> lignes de données,
-          <?= (int) $resume['fichiers'] ?> pièce<?= (int) $resume['fichiers'] > 1 ? 's' : '' ?> jointe<?= (int) $resume['fichiers'] > 1 ? 's' : '' ?>
+          <?= e(t('svg.lignes', ['n' => (int) $resume['lignes']])) ?>
+          <?= e(tn('svg.pieces', (int) $resume['fichiers'])) ?>
           <?php if ((int) $resume['octets'] > 0): ?>
             (<?= e(taille_lisible((int) $resume['octets'])) ?>)
           <?php endif; ?>.
-          La préparation peut prendre quelques secondes.
+          <?= e(t('svg.preparation')) ?>
         </p>
       <?php endif; ?>
     </section>
 
     <section class="carte">
-      <h2>Restaurer une sauvegarde</h2>
+      <h2><?= e(t('svg.restaurer_titre')) ?></h2>
       <p class="discret" style="margin:.3rem 0 .9rem">
-        À n'utiliser que pour repartir d'une copie : après une réinstallation, un
-        changement d'ordinateur, ou une fausse manœuvre.
+        <?= e(t('svg.restaurer_aide')) ?>
       </p>
 
       <div class="flash flash--erreur" style="margin-bottom:1rem">
-        <strong>La restauration remplace tout.</strong> Les données actuelles de
-        votre compte sont effacées et remplacées par celles de l'archive. Si vous
-        avez le moindre doute, téléchargez d'abord une sauvegarde de l'état actuel.
+        <?= t('svg.avertissement') ?>
       </div>
 
       <form method="post" action="<?= url('compte/sauvegarde/restaurer') ?>" enctype="multipart/form-data"
-            data-confirmation="Remplacer toutes les données de votre compte par le contenu de cette archive ?">
+            data-confirmation="<?= e(t('svg.restaurer_sur')) ?>">
         <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
 
         <div class="champ">
-          <label for="archive">Fichier de sauvegarde</label>
+          <label for="archive"><?= e(t('svg.fichier')) ?></label>
           <input type="file" id="archive" name="archive" accept=".zip,application/zip" required>
-          <span class="champ__aide">L'archive <code>.zip</code> téléchargée depuis cette page.</span>
+          <span class="champ__aide"><?= t('svg.fichier_aide') ?></span>
         </div>
 
         <label class="case" style="margin-bottom:1rem">
           <input type="checkbox" name="confirmation" value="1" required>
-          Je comprends que mes données actuelles seront remplacées.
+          <?= e(t('svg.je_comprends')) ?>
         </label>
 
-        <button class="bouton bouton--danger" type="submit">Restaurer</button>
+        <button class="bouton bouton--danger" type="submit"><?= e(t('svg.restaurer')) ?></button>
       </form>
     </section>
   </div>
@@ -78,7 +72,7 @@ $aDesDonnees = $resume['lignes'] > 0;
   <div class="pile">
     <?php if ($aDesDonnees): ?>
       <div class="carte">
-        <h2>Ce qui est sauvegardé</h2>
+        <h2><?= e(t('svg.ce_qui_est')) ?></h2>
         <table class="tableau">
           <tbody>
             <?php foreach ($resume['detail'] as $table => $n): ?>
@@ -91,31 +85,25 @@ $aDesDonnees = $resume['lignes'] > 0;
           </tbody>
         </table>
         <p class="champ__aide" style="margin-top:.6rem">
-          Vos identifiants de connexion ne sont pas dans l'archive : le mot de
-          passe reste attaché au compte, pas à la sauvegarde.
+          <?= e(t('svg.identifiants')) ?>
         </p>
       </div>
     <?php endif; ?>
 
     <div class="carte">
-      <h2>Pourquoi c'est nécessaire</h2>
+      <h2><?= e(t('svg.pourquoi')) ?></h2>
       <p class="discret" style="margin-bottom:.6rem">
-        Le code de l'application est sur GitHub, mais <strong>vos données n'y sont
-        pas</strong> — et c'est voulu. En cas de panne, vous récupéreriez une
-        application parfaitement fonctionnelle et parfaitement vide.
+        <?= t('svg.pourquoi_1') ?>
       </p>
       <p class="discret" style="margin:0">
-        Cette archive est la seule chose qui contienne vos cours, votre calendrier
-        et vos comptes.
+        <?= e(t('svg.pourquoi_2')) ?>
       </p>
     </div>
 
     <div class="carte">
-      <h2>À quel rythme ?</h2>
+      <h2><?= e(t('svg.rythme')) ?></h2>
       <p class="discret" style="margin:0">
-        Une fois par mois suffit, ou après une grosse saisie. Le geste prend
-        trente secondes, et vous n'y penserez qu'une fois — le jour où vous en
-        aurez besoin.
+        <?= e(t('svg.rythme_aide')) ?>
       </p>
     </div>
   </div>

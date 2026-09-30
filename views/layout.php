@@ -42,7 +42,7 @@ $actif = static function (string $prefixe) use ($route): string {
       <span></span><span></span><span></span>
     </button>
 
-    <nav class="nav" id="navigation" aria-label="Navigation principale">
+    <nav class="nav" id="navigation" aria-label="<?= e(t('nav.principale')) ?>">
       <a href="<?= url('') ?>"<?= $actif('') ?>><?= e(t('nav.accueil')) ?></a>
       <a href="<?= url('calendrier') ?>"<?= $actif('calendrier') ?>><?= e(t('nav.calendrier')) ?></a>
       <a href="<?= url('cours') ?>"<?= $actif('cours') ?>><?= e(t('nav.cours')) ?></a>

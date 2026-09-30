@@ -20,23 +20,20 @@ $garni = static function (?array $cours, string $colonne, string $drapeau): bool
 };
 
 $sources = [
-    'cours'     => ['📘 Le cours', 'son texte',
-                    $garni($cours, 'contenu', 'a_contenu')],
-    'fiche'     => ['📝 La fiche de révision', 'ce que vous en avez écrit',
-                    $garni($cours, 'fiche_revision', 'a_fiche')],
-    'documents' => ['📎 Les documents joints', 'PDF, Word, tableurs, texte',
-                    $cours === null || (int) ($cours['nb_fichiers'] ?? 1) > 0],
+    'cours'     => [$garni($cours, 'contenu', 'a_contenu')],
+    'fiche'     => [$garni($cours, 'fiche_revision', 'a_fiche')],
+    'documents' => [$cours === null || (int) ($cours['nb_fichiers'] ?? 1) > 0],
 ];
 ?>
 <fieldset class="sources">
-  <legend>À partir de</legend>
-  <?php foreach ($sources as $cle => [$libelle, $aide, $possible]): ?>
+  <legend><?= e(t('crt.a_partir_de')) ?></legend>
+  <?php foreach ($sources as $cle => [$possible]): ?>
     <label class="sources__choix<?= $possible ? '' : ' sources__choix--vide' ?>">
       <input type="checkbox" name="sources[]" value="<?= e($cle) ?>"
              <?= $possible ? 'checked' : 'disabled' ?>>
       <span>
-        <?= e($libelle) ?>
-        <span class="discret"><?= $possible ? e($aide) : 'rien à lire' ?></span>
+        <?= e(t('crt.src.' . $cle)) ?>
+        <span class="discret"><?= e($possible ? t('crt.src.' . $cle . '_aide') : t('crt.rien_a_lire')) ?></span>
       </span>
     </label>
   <?php endforeach; ?>

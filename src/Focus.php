@@ -13,20 +13,32 @@ final class Focus
 {
     /** Les rythmes proposés : travail, puis pause. */
     public const RYTHMES = [
-        25 => ['pause' => 5,  'nom' => '25 min de travail, 5 de pause'],
-        50 => ['pause' => 10, 'nom' => '50 min de travail, 10 de pause'],
-        15 => ['pause' => 3,  'nom' => '15 min, pour s’y remettre'],
-        90 => ['pause' => 15, 'nom' => '90 min, pour un gros morceau'],
+        25 => ['pause' => 5],
+        50 => ['pause' => 10],
+        15 => ['pause' => 3],
+        90 => ['pause' => 15],
     ];
+
+    /** Ce qu'on lit dans la liste : « 25 min de travail, 5 de pause ». */
+    public static function nomRythme(int $minutes): string
+    {
+        return t('focus.rythme.' . $minutes);
+    }
 
     /** En deçà, ce n'était pas une session : on ne la compte pas. */
     public const SECONDES_MIN = 60;
 
     public const RESSENTIS = [
-        'bien'  => ['icone' => '😀', 'nom' => 'Ça a bien marché'],
-        'moyen' => ['icone' => '😐', 'nom' => 'Moyen'],
-        'dur'   => ['icone' => '😕', 'nom' => 'Difficile'],
+        'bien'  => ['icone' => '😀'],
+        'moyen' => ['icone' => '😐'],
+        'dur'   => ['icone' => '😕'],
     ];
+
+    /** Ce qu'on lit sous l'émoji : « Ça a bien marché ». */
+    public static function nomRessenti(string $cle): string
+    {
+        return t('focus.ressenti.' . $cle);
+    }
 
     /** Le rythme demandé, ou celui par défaut. */
     public static function rythmeValide(mixed $minutes): int
@@ -122,8 +134,14 @@ final class Focus
     // --- L'objectif de la semaine ----------------------------------------------
 
     /** Les objectifs proposés, en minutes par semaine. */
-    public const OBJECTIFS = [0 => 'Aucun objectif', 60 => '1 h', 120 => '2 h', 180 => '3 h',
+    public const OBJECTIFS = [0 => '', 60 => '1 h', 120 => '2 h', 180 => '3 h',
         300 => '5 h', 420 => '7 h', 600 => '10 h', 900 => '15 h'];
+
+    /** « Aucun objectif », ou la durée telle quelle : une heure se lit partout. */
+    public static function nomObjectif(int $minutes): string
+    {
+        return $minutes === 0 ? t('focus.aucun_objectif') : (self::OBJECTIFS[$minutes] ?? '');
+    }
 
     /** L'objectif hebdomadaire du compte, en minutes. 0 : aucun. */
     public static function objectif(int $userId): int
@@ -412,7 +430,7 @@ final class Focus
              * donnerait une matière gonflée et une autre à zéro.
              */
             'par_matiere' => Database::all(
-                'SELECT COALESCE(m.nom, "Sans matière") AS matiere, COALESCE(m.couleur, "#94a3b8") AS couleur,
+                'SELECT COALESCE(m.nom, ?) AS matiere, COALESCE(m.couleur, "#94a3b8") AS couleur,
                         ROUND(SUM(s.secondes / n.combien)) AS secondes
                  FROM sessions_revision s
                  JOIN (SELECT session_id, COUNT(*) AS combien FROM session_revision_cours GROUP BY session_id) n
@@ -422,7 +440,7 @@ final class Focus
                  LEFT JOIN matieres m ON m.id = c.matiere_id
                  WHERE s.user_id = ? AND s.secondes >= ? AND s.debut >= ?
                  GROUP BY matiere, couleur ORDER BY secondes DESC',
-                [$userId, self::SECONDES_MIN, $lundi]),
+                [t('focus.sans_matiere'), $userId, self::SECONDES_MIN, $lundi]),
         ];
     }
 
@@ -507,7 +525,7 @@ final class Focus
     public static function duree(int $secondes): string
     {
         if ($secondes < 60) {
-            return 'moins d’une minute';
+            return t('focus.moins_une_minute');
         }
         $minutes = intdiv($secondes, 60);
         if ($minutes < 60) {

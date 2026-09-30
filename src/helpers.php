@@ -556,6 +556,14 @@ function asset(string $chemin): string
  */
 function de_agenda(string $nom): string
 {
+    /*
+     * L'élision ne regarde que le français : « d’Outlook », mais « de
+     * Google ». Ailleurs, la préposition ne bouge pas, et c'est le fichier
+     * de langue qui la porte.
+     */
+    if (Langue::courante() !== 'fr') {
+        return t('agenda.de', ['nom' => $nom]);
+    }
     $premiere = mb_strtolower(mb_substr($nom, 0, 1));
 
     return in_array($premiere, ['a', 'e', 'i', 'o', 'u', 'y', 'é', 'è', 'h'], true)

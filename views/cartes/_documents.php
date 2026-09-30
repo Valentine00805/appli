@@ -16,10 +16,10 @@ $parPlace = [0 => [], 1 => []];
 foreach ($documents as $document) {
     $parPlace[(int) $document['pour_fiche'] === 1 ? 1 : 0][] = $document;
 }
-$places = [0 => 'Joints au cours', 1 => 'Joints à la fiche de révision'];
+$places = [0 => t('crt.joints_cours'), 1 => t('crt.joints_fiche')];
 ?>
 <fieldset class="sources documents" data-documents="<?= $coursId ?>" hidden disabled>
-  <legend>Documents de « <?= e($coursTitre) ?> »</legend>
+  <legend><?= e(t('crt.documents_de', ['nom' => $coursTitre])) ?></legend>
 
   <?php
   /*
@@ -31,7 +31,7 @@ $places = [0 => 'Joints au cours', 1 => 'Joints à la fiche de révision'];
   <input type="hidden" name="documents_de[]" value="<?= $coursId ?>">
 
   <?php if ($documents === []): ?>
-    <p class="champ__aide">Rien n'y est joint, ni à sa fiche de révision.</p>
+    <p class="champ__aide"><?= e(t('crt.rien_joint')) ?></p>
   <?php endif; ?>
 
   <?php foreach ($places as $place => $titre): ?>
@@ -55,7 +55,7 @@ $places = [0 => 'Joints au cours', 1 => 'Joints à la fiche de révision'];
           <span aria-hidden="true"><?= Fichiers::icone((string) $document['mime'], $nom) ?></span>
           <?= e($nom) ?>
           <span class="discret">
-            <?= $lisible ? e(taille_lisible((int) $document['taille'])) : 'rien à lire dedans' ?>
+            <?= e($lisible ? taille_lisible((int) $document['taille']) : t('crt.rien_a_lire_dedans')) ?>
           </span>
         </span>
       </label>

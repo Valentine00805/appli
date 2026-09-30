@@ -31,7 +31,7 @@ $paquetSomme = $paquetSomme ?? 0;
 <div class="seance" data-seance data-jeton="<?= e(Session::jetonCsrf()) ?>">
   <div class="seance__entete">
     <p class="seance__compteur" data-seance-compteur>
-      <?= count($cartes) ?> carte<?= count($cartes) > 1 ? 's' : '' ?> à revoir
+      <?= e(tn('crt.a_revoir', count($cartes))) ?>
     </p>
 
     <?php if (count($cartes) > 1): ?>
@@ -42,7 +42,7 @@ $paquetSomme = $paquetSomme ?? 0;
        */
       ?>
       <button class="bouton bouton--discret bouton--petit" type="button" data-melanger>
-        🔀 Mélanger
+        <?= e(t('crt.melanger')) ?>
       </button>
     <?php endif; ?>
 
@@ -56,7 +56,7 @@ $paquetSomme = $paquetSomme ?? 0;
       <?php // Depuis une fiche ouverte en fenêtre, la remise à zéro s'y enregistre. ?>
       <form<?= ($dansUneFenetre ?? false) ? ' data-envoi-fenetre' : '' ?> method="post" action="<?= url('cours/' . $rezeroCours . '/cartes/rezero') ?>"
             class="en-ligne"
-            data-confirmation="Remettre les <?= $rezeroTotal ?> cartes de ce cours à revoir aujourd'hui ? La séance en cours repartira du début.">
+            data-confirmation="<?= e(t('crt.rezero_sur_seance', ['n' => $rezeroTotal])) ?>">
         <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
         <?php if ($rezeroRetour !== null): ?>
           <input type="hidden" name="retour" value="<?= e($rezeroRetour) ?>">
@@ -69,8 +69,8 @@ $paquetSomme = $paquetSomme ?? 0;
          */
         ?>
         <button class="bouton bouton--discret bouton--petit" type="submit"
-                title="Ramener toutes les cartes de ce cours en boîte 1">
-          🔁 Tout remettre à revoir
+                title="<?= e(t('fiche.rezero_aide')) ?>">
+          <?= e(t('crt.tout_remettre')) ?>
         </button>
       </form>
     <?php endif; ?>
@@ -86,12 +86,12 @@ $paquetSomme = $paquetSomme ?? 0;
       <span class="score__part score__part--rate">
         <span aria-hidden="true">✕</span>
         <strong data-score-rate>0</strong>
-        <span class="score__mot">à revoir</span>
+        <span class="score__mot"><?= e(t('crt.compteur_a_revoir')) ?></span>
       </span>
       <span class="score__part score__part--su">
         <strong data-score-su>0</strong>
         <span aria-hidden="true">✓</span>
-        <span class="score__mot">sues</span>
+        <span class="score__mot"><?= e(t('crt.compteur_sues')) ?></span>
       </span>
     </p>
 
@@ -108,9 +108,9 @@ $paquetSomme = $paquetSomme ?? 0;
             data-total="<?= $paquetTotal ?>" data-somme="<?= $paquetSomme ?>">
         <?= Vue::rendre('cours/_anneau', [
             'pourcentage' => avancement_cartes($paquetTotal, $paquetSomme / $paquetTotal),
-            'titre'       => 'Avancement du paquet',
+            'titre'       => t('js.cartes.avancement'),
         ]) ?>
-        <span class="score__mot">du paquet</span>
+        <span class="score__mot"><?= e(t('crt.du_paquet')) ?></span>
       </span>
     <?php endif; ?>
   </div>
@@ -123,8 +123,9 @@ $paquetSomme = $paquetSomme ?? 0;
      */
     ?>
     <p class="champ__aide seance__plafond">
-      Séance de <?= count($cartes) ?> cartes sur les <?= $duesEnTout ?> à revoir.
-      Les <?= $duesEnTout - count($cartes) ?> autres attendront la prochaine séance.
+      <?= e(t('crt.seance_de', [
+          'n' => count($cartes), 'total' => $duesEnTout, 'reste' => $duesEnTout - count($cartes),
+      ])) ?>
     </p>
   <?php endif; ?>
 
@@ -143,20 +144,20 @@ $paquetSomme = $paquetSomme ?? 0;
       <div class="actions seance__actions">
         <?php // Revenir en arrière : caché sur la première carte, où il n'irait nulle part. ?>
         <button class="bouton bouton--discret bouton--petit" type="button"
-                data-precedente title="Revenir à la carte précédente" hidden>◀</button>
+                data-precedente title="<?= e(t('crt.precedente')) ?>" hidden>◀</button>
         <?php // Le même bouton montre et recache : on peut se reprendre avant de trancher. ?>
         <button class="bouton" type="button" data-montrer aria-expanded="false">
-          Voir la réponse
+          <?= e(t('js.cartes.voir_reponse')) ?>
         </button>
-        <button class="bouton bouton--secondaire" type="button" data-verdict="0" hidden>À revoir</button>
-        <button class="bouton" type="button" data-verdict="1" hidden>Je la savais</button>
+        <button class="bouton bouton--secondaire" type="button" data-verdict="0" hidden><?= e(t('crt.a_revoir_bouton')) ?></button>
+        <button class="bouton" type="button" data-verdict="1" hidden><?= e(t('crt.je_savais')) ?></button>
       </div>
     </section>
   <?php endforeach; ?>
 
   <div class="vide seance__fin" data-seance-fin hidden>
     <span class="vide__icone">✅</span>
-    <p data-seance-bilan>Séance terminée.</p>
+    <p data-seance-bilan><?= e(t('crt.seance_terminee')) ?></p>
 
     <?php
     /*
@@ -166,13 +167,13 @@ $paquetSomme = $paquetSomme ?? 0;
      */
     ?>
     <p class="actions seance__fin-actions">
-      <button class="bouton" type="button" data-recommencer>🔄 Recommencer</button>
+      <button class="bouton" type="button" data-recommencer><?= e(t('crt.recommencer')) ?></button>
       <?php if ($retour !== null): ?>
         <?php // Dans une fenêtre, « Retour » la ferme, et la page derrière se met à jour. ?>
-        <a class="bouton bouton--secondaire" href="<?= e($retour) ?>"<?= ($dansUneFenetre ?? false) ? ' data-fermer' : '' ?>>Retour</a>
+        <a class="bouton bouton--secondaire" href="<?= e($retour) ?>"<?= ($dansUneFenetre ?? false) ? ' data-fermer' : '' ?>><?= e(t('crt.retour')) ?></a>
       <?php else: ?>
         <?php // Sur la fiche, on recharge : les compteurs doivent dire le vrai. ?>
-        <button class="bouton bouton--secondaire" type="button" data-fermer-seance>Terminer</button>
+        <button class="bouton bouton--secondaire" type="button" data-fermer-seance><?= e(t('crt.terminer')) ?></button>
       <?php endif; ?>
     </p>
   </div>

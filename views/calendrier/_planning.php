@@ -60,7 +60,7 @@ $ou = static function (array $evt): string {
      */
     ?>
     <div class="jour-planning__bandeau">
-      <span class="jour-planning__etiquette">Journée</span>
+      <span class="jour-planning__etiquette"><?= e(t('cal.journee')) ?></span>
       <div class="jour-planning__toutlejour">
         <?php foreach ($planning['journee'] as $evt): ?>
           <a class="evt<?= empty($evt['termine']) ? '' : ' evt--termine' ?><?php

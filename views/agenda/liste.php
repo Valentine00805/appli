@@ -15,11 +15,11 @@ $relies = array_filter($etats, static fn (array $e): bool => $e['relie']);
   <div>
     <?php if (!$dansUneFenetre): ?>
       <p class="discret" style="margin-bottom:.35rem">
-        <a href="<?= url('calendrier') ?>">← Calendrier</a>
+        <a href="<?= url('calendrier') ?>"><?= e(t('agenda.retour_calendrier')) ?></a>
       </p>
     <?php endif; ?>
-    <h1>Mes agendas</h1>
-    <p>Relier un agenda en ligne au calendrier de l'application — l'un, l'autre, ou les deux.</p>
+    <h1><?= e(t('agenda.titre')) ?></h1>
+    <p><?= e(t('agenda.sous_titre')) ?></p>
   </div>
 
   <?php if ($relies !== []): ?>
@@ -27,7 +27,7 @@ $relies = array_filter($etats, static fn (array $e): bool => $e['relie']);
       <form method="post" action="<?= url('agenda/synchroniser') ?>">
         <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
         <input type="hidden" name="retour" value="<?= e((string) ($_SERVER['REQUEST_URI'] ?? '')) ?>">
-        <button class="bouton" type="submit">↻ Tout synchroniser</button>
+        <button class="bouton" type="submit"><?= e(t('agenda.tout_synchroniser')) ?></button>
       </form>
     </div>
   <?php endif; ?>
@@ -51,23 +51,21 @@ $relies = array_filter($etats, static fn (array $e): bool => $e['relie']);
       <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
       <input type="hidden" name="retour" value="<?= e((string) ($_SERVER['REQUEST_URI'] ?? '')) ?>">
       <div class="champ" style="max-width:22rem;margin:0">
-        <label for="vue-calendrier">La vue du calendrier à l'ouverture</label>
+        <label for="vue-calendrier"><?= e(t('agenda.vue_ouverture')) ?></label>
         <select id="vue-calendrier" name="vue">
-          <?php foreach (['jour' => 'Jour', 'semaine' => 'Semaine',
-                          'mois' => 'Mois', 'annee' => 'Année', 'liste' => 'Liste'] as $cle => $libelle): ?>
+          <?php foreach (['jour', 'semaine', 'mois', 'annee', 'liste'] as $cle): ?>
             <option value="<?= e($cle) ?>"<?= $vue === $cle ? ' selected' : '' ?>>
-              <?= e($libelle) ?>
+              <?= e(t('cal.' . $cle)) ?>
             </option>
           <?php endforeach; ?>
         </select>
         <span class="champ__aide">
-          Ce que vous voyez en arrivant sur le calendrier. Vous pouvez toujours
-          en changer d'un clic sans que ce réglage bouge.
+          <?= e(t('agenda.vue_aide')) ?>
         </span>
       </div>
       <noscript>
         <button class="bouton bouton--secondaire bouton--petit" type="submit"
-                style="margin-top:.5rem">Enregistrer</button>
+                style="margin-top:.5rem"><?= e(t('commun.enregistrer')) ?></button>
       </noscript>
     </form>
   </section>
@@ -78,46 +76,44 @@ $relies = array_filter($etats, static fn (array $e): bool => $e['relie']);
       <div class="agenda-carte__titre">
         <h2><?= e($f->nom()) ?></h2>
         <?php if (!$etat['configure']): ?>
-          <span class="pastille pastille--muette">non activé ici</span>
+          <span class="pastille pastille--muette"><?= e(t('agenda.non_active')) ?></span>
         <?php elseif ($etat['relie']): ?>
-          <span class="pastille pastille--ok">relié</span>
+          <span class="pastille pastille--ok"><?= e(t('agenda.relie')) ?></span>
         <?php else: ?>
-          <span class="pastille pastille--muette">non relié</span>
+          <span class="pastille pastille--muette"><?= e(t('agenda.non_relie')) ?></span>
         <?php endif; ?>
       </div>
 
       <?php if (!$etat['configure']): ?>
         <p class="champ__aide" style="margin-top:0">
-          Cet agenda demande une inscription unique chez son fournisseur, faite
-          une fois pour toutes par la personne qui héberge l'application — pas
-          par chacun.
+          <?= e(t('agenda.non_active_aide')) ?>
         </p>
       <?php elseif ($etat['relie']): ?>
         <p class="champ__aide" style="margin-top:0">
-          <?= $etat['compte'] === '' ? 'Compte relié' : e($etat['compte']) ?>
+          <?= $etat['compte'] === '' ? e(t('agenda.compte_relie')) : e($etat['compte']) ?>
           <?php if ($etat['evenements'] > 0 || $etat['envoyes'] > 0): ?>
-            · <?= (int) $etat['evenements'] ?> évènement<?= $etat['evenements'] > 1 ? 's' : '' ?> venu<?= $etat['evenements'] > 1 ? 's' : '' ?> d'ici
-            · <?= (int) $etat['envoyes'] ?> parti<?= $etat['envoyes'] > 1 ? 's' : '' ?> là-bas
+            · <?= e(tn('agenda.venus', (int) $etat['evenements'])) ?>
+            · <?= e(tn('agenda.partis', (int) $etat['envoyes'])) ?>
           <?php endif; ?>
         </p>
         <?php if ($etat['souci'] !== null): ?>
           <p class="outlook-attention">
-            <strong>La dernière synchronisation a échoué</strong>
-            (le <?= e(date('d/m/Y à H:i', strtotime($etat['souci']['quand']))) ?>) :
+            <strong><?= e(t('agenda.echec')) ?></strong>
+            (<?= e(t('date.le_a', ['date' => date('d/m/Y', (int) strtotime($etat['souci']['quand'])),
+                                  'heure' => heure_courte((int) strtotime($etat['souci']['quand']))])) ?>) :
             <?= e($etat['souci']['quoi']) ?>
           </p>
         <?php endif; ?>
       <?php else: ?>
         <p class="champ__aide" style="margin-top:0">
-          Vos rendez-vous rejoindront le calendrier de l'application, et vos
-          évènements d'ici rejoindront le vôtre.
+          <?= e(t('agenda.non_relie_aide')) ?>
         </p>
       <?php endif; ?>
 
       <a class="bouton <?= $etat['relie'] ? 'bouton--secondaire' : '' ?>"
          href="<?= url('agenda/' . $f->cle()) ?>"
          <?= $dansUneFenetre ? 'data-fenetre' : '' ?>>
-        <?= $etat['relie'] ? 'Réglages' : ($etat['configure'] ? 'Relier mon compte' : 'En savoir plus') ?>
+        <?= e(t($etat['relie'] ? 'agenda.reglages' : ($etat['configure'] ? 'agenda.relier_mon_compte' : 'agenda.en_savoir_plus'))) ?>
       </a>
     </section>
   <?php endforeach; ?>

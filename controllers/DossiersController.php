@@ -391,7 +391,7 @@ final class DossiersController
     private function introuvable(): never
     {
         http_response_code(404);
-        Vue::afficher('erreurs/404', [], 'Introuvable');
+        Vue::afficher('erreurs/404', [], t('titre.introuvable'));
         exit;
     }
 }

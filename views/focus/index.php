@@ -20,23 +20,22 @@ $coches = array_flip(array_map('intval', $coches));
 
 <div class="entete-page">
   <div>
-    <h1>🎯 Session de révision</h1>
-    <p>Un minuteur, un écran sans rien d’autre, et le compte de ce que vous avez
-      vraiment travaillé. Le temps en pause ne compte pas.</p>
+    <h1><?= e(t('focus.titre')) ?></h1>
+    <p><?= e(t('focus.sous_titre')) ?></p>
   </div>
 </div>
 
 <?php if ($enCours !== null): ?>
   <div class="carte" style="border-color:var(--accent);margin-bottom:1rem">
-    <h2 style="margin-top:0">Une session est ouverte</h2>
-    <p class="discret">Commencée à <?= e(heure_courte((int) strtotime((string) $enCours['debut']))) ?>
-      <?php if ($enCours['cours_titre'] !== null): ?>sur « <?= e((string) $enCours['cours_titre']) ?> »<?php endif; ?>.</p>
+    <h2 style="margin-top:0"><?= e(t('focus.session_ouverte')) ?></h2>
+    <p class="discret"><?= e(t('focus.commencee_a', ['heure' => heure_courte((int) strtotime((string) $enCours['debut']))])) ?>
+      <?php if ($enCours['cours_titre'] !== null): ?><?= e(t('focus.sur_cours', ['nom' => (string) $enCours['cours_titre']])) ?><?php endif; ?>.</p>
     <p class="actions">
-      <a class="bouton" href="<?= url('focus/' . (int) $enCours['id']) ?>">Reprendre</a>
+      <a class="bouton" href="<?= url('focus/' . (int) $enCours['id']) ?>"><?= e(t('focus.reprendre')) ?></a>
       <form method="post" action="<?= url('focus/' . (int) $enCours['id'] . '/abandonner') ?>" class="en-ligne"
-            data-confirmation="Abandonner cette session ? Rien ne sera compté.">
+            data-confirmation="<?= e(t('focus.abandonner_sur')) ?>">
         <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
-        <button class="bouton bouton--discret" type="submit">Abandonner</button>
+        <button class="bouton bouton--discret" type="submit"><?= e(t('focus.abandonner')) ?></button>
       </form>
     </p>
   </div>
@@ -57,12 +56,12 @@ $coches = array_flip(array_map('intval', $coches));
   ?>
   <div class="carte" style="border-color:var(--accent);margin-bottom:1rem">
     <h2 style="margin-top:0">
-      <?= $plusieurs
-          ? 'Après vos ' . count($apresCours) . ' cours'
-          : 'Après « ' . e((string) $apresCours[0]['titre']) . ' »' ?>
+      <?= e($plusieurs
+          ? t('focus.apres_plusieurs', ['n' => count($apresCours)])
+          : t('focus.apres_un', ['nom' => (string) $apresCours[0]['titre']])) ?>
     </h2>
     <p class="discret">
-      Vous venez d’y passer <?= e(Focus::duree((int) $apres['secondes'])) ?><?php
+      <?= e(t('focus.venez_passer', ['duree' => Focus::duree((int) $apres['secondes'])])) ?><?php
         ?><?= $plusieurs ? ' : ' . e(implode(', ', array_map(
             static fn (array $c): string => (string) $c['titre'], $apresCours))) : '' ?>.
     </p>
@@ -71,25 +70,24 @@ $coches = array_flip(array_map('intval', $coches));
         <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
         <input type="hidden" name="session_id" value="<?= (int) $apres['id'] ?>">
         <button class="bouton" type="submit">
-          🔁 <?= $plusieurs ? 'Les revoir' : 'Le revoir' ?> demain, dans 3 jours, dans une semaine
+          <?= e(t($plusieurs ? 'focus.espacer_plusieurs' : 'focus.espacer_un')) ?>
         </button>
       </form>
       <?php if ($aRevoir > 0): ?>
         <a class="bouton bouton--secondaire"
            href="<?= url('cartes/seance', $plusieurs ? [] : ['cours' => (int) $apresCours[0]['id']]) ?>">
-          🃏 <?= $aRevoir ?> carte<?= $aRevoir > 1 ? 's' : '' ?> à revoir
+          <?= e(tn('focus.cartes_a_revoir', $aRevoir)) ?>
         </a>
       <?php endif; ?>
     </p>
-    <p class="champ__aide" style="margin-bottom:0">Les révisions posées deviennent des tâches
-      dans « <?= e(Focus::LISTE) ?> », avec leur échéance — elles reviendront donc au rappel du matin.</p>
+    <p class="champ__aide" style="margin-bottom:0"><?= e(t('focus.espacer_aide', ['liste' => Focus::LISTE])) ?></p>
   </div>
 <?php endif; ?>
 
 <div class="colonnes">
   <div class="pile">
     <section class="carte">
-      <h2 style="margin-top:0">Démarrer</h2>
+      <h2 style="margin-top:0"><?= e(t('focus.demarrer')) ?></h2>
       <form method="post" action="<?= url('focus/demarrer') ?>">
         <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
 
@@ -101,19 +99,19 @@ $coches = array_flip(array_map('intval', $coches));
          */
         ?>
         <div class="champ">
-          <span class="legende">Ce que je révise</span>
+          <span class="legende"><?= e(t('focus.ce_que_je_revise')) ?></span>
           <label class="discussions-recherche">
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"
                  stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false">
               <circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>
             </svg>
-            <span class="sr-only">Rechercher un de mes cours</span>
-            <input type="search" placeholder="Rechercher un cours" autocomplete="off"
+            <span class="sr-only"><?= e(t('focus.rechercher_aide')) ?></span>
+            <input type="search" placeholder="<?= e(t('focus.rechercher')) ?>" autocomplete="off"
                    data-filtre-liste="[data-liste-focus-cours]">
           </label>
           <p style="margin:.5rem 0 0">
             <button class="bouton bouton--discret bouton--petit" type="button"
-                    data-cocher-tout="[data-liste-focus-cours]">Tout cocher, ou décocher</button>
+                    data-cocher-tout="[data-liste-focus-cours]"><?= e(t('focus.tout_cocher')) ?></button>
           </p>
           <ul class="groupe-choix__liste partage-liste focus-choix" data-liste-focus-cours>
             <?php foreach ($cours as $c): ?>
@@ -133,14 +131,13 @@ $coches = array_flip(array_map('intval', $coches));
               </li>
             <?php endforeach; ?>
           </ul>
-          <p class="discret" data-filtre-vide hidden style="margin:.4rem 0 0">Aucun cours ne porte ce nom.</p>
-          <span class="champ__aide">Leurs fiches de révision s’ouvriront avec le minuteur.
-            Sans rien cocher, la session compte quand même.</span>
+          <p class="discret" data-filtre-vide hidden style="margin:.4rem 0 0"><?= e(t('focus.aucun_cours')) ?></p>
+          <span class="champ__aide"><?= e(t('focus.cours_aide')) ?></span>
         </div>
 
         <?php if ($dossiers !== []): ?>
           <details class="champ">
-            <summary class="legende" style="cursor:pointer">… ou des dossiers entiers</summary>
+            <summary class="legende" style="cursor:pointer"><?= e(t('focus.ou_dossiers')) ?></summary>
             <ul class="groupe-choix__liste partage-liste focus-choix" style="margin-top:.5rem">
               <?php foreach ($dossiers as $d): ?>
                 <li>
@@ -149,67 +146,65 @@ $coches = array_flip(array_map('intval', $coches));
                     <span aria-hidden="true"><?= e((string) ($d['icone'] ?: '📁')) ?></span>
                     <span class="partage-liste__nom">
                       <?= e((string) $d['nom']) ?>
-                      <span class="discret">· <?= (int) $d['nb_cours'] ?> cours</span>
+                      <span class="discret"><?= e(tn('focus.dossier_cours', (int) $d['nb_cours'])) ?></span>
                     </span>
                   </label>
                 </li>
               <?php endforeach; ?>
             </ul>
-            <span class="champ__aide">Un dossier prend ses cours et ceux de ses sous-dossiers,
-              jusqu’à cinquante en tout.</span>
+            <span class="champ__aide"><?= e(t('focus.dossiers_aide')) ?></span>
           </details>
         <?php endif; ?>
 
         <div class="champ">
-          <label for="sujet">Sur quoi, précisément <span class="discret">(facultatif)</span></label>
-          <input type="text" id="sujet" name="sujet" maxlength="150" placeholder="Chapitre 3, les annales de 2025…">
+          <label for="sujet"><?= e(t('focus.sur_quoi')) ?> <span class="discret"><?= e(t('commun.facultatif')) ?></span></label>
+          <input type="text" id="sujet" name="sujet" maxlength="150" placeholder="<?= e(t('focus.sur_quoi_exemple')) ?>">
         </div>
 
         <div class="champ">
-          <label for="minutes">Rythme</label>
+          <label for="minutes"><?= e(t('focus.rythme')) ?></label>
           <select id="minutes" name="minutes">
-            <?php foreach (Focus::RYTHMES as $minutes => $rythme): ?>
-              <option value="<?= (int) $minutes ?>"<?= (int) $minutes === 25 ? ' selected' : '' ?>><?= e($rythme['nom']) ?></option>
+            <?php foreach (array_keys(Focus::RYTHMES) as $minutes): ?>
+              <option value="<?= (int) $minutes ?>"<?= (int) $minutes === 25 ? ' selected' : '' ?>><?= e(Focus::nomRythme((int) $minutes)) ?></option>
             <?php endforeach; ?>
           </select>
         </div>
 
         <label class="case" style="margin:.2rem 0 .9rem">
           <input type="checkbox" name="ne_pas_deranger" value="1" checked>
-          🔕 Retenir les rappels pendant la session
+          <?= e(t('focus.ne_pas_deranger')) ?>
         </label>
 
-        <button class="bouton bouton--bloc" type="submit">▶️ Commencer</button>
+        <button class="bouton bouton--bloc" type="submit"><?= e(t('focus.commencer')) ?></button>
       </form>
     </section>
 
     <section class="carte">
-      <h2>Planifier une session</h2>
-      <p class="discret" style="margin-top:0">Posée au calendrier, avec un rappel un quart d’heure avant :
-        décider maintenant coûte moins que décider au moment de s’y mettre.</p>
+      <h2><?= e(t('focus.planifier')) ?></h2>
+      <p class="discret" style="margin-top:0"><?= e(t('focus.planifier_aide')) ?></p>
       <form method="post" action="<?= url('focus/planifier') ?>">
         <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
         <div class="ligne-champs">
           <div class="champ">
-            <label for="jour">Quel jour</label>
+            <label for="jour"><?= e(t('focus.quel_jour')) ?></label>
             <input type="date" id="jour" name="jour" required min="<?= e(date('Y-m-d')) ?>"
                    value="<?= e(date('Y-m-d', strtotime('+1 day'))) ?>">
           </div>
           <div class="champ">
-            <label for="heure">À quelle heure</label>
+            <label for="heure"><?= e(t('focus.quelle_heure')) ?></label>
             <input type="time" id="heure" name="heure" required value="18:00">
           </div>
         </div>
         <?php // Les mêmes cases qu'au démarrage : un cours, plusieurs, ou des dossiers. ?>
         <div class="champ">
-          <span class="legende">Sur quels cours</span>
+          <span class="legende"><?= e(t('focus.sur_quels_cours')) ?></span>
           <label class="discussions-recherche">
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"
                  stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false">
               <circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>
             </svg>
-            <span class="sr-only">Rechercher un de mes cours</span>
-            <input type="search" placeholder="Rechercher un cours" autocomplete="off"
+            <span class="sr-only"><?= e(t('focus.rechercher_aide')) ?></span>
+            <input type="search" placeholder="<?= e(t('focus.rechercher')) ?>" autocomplete="off"
                    data-filtre-liste="[data-liste-planif-cours]">
           </label>
           <ul class="groupe-choix__liste partage-liste focus-choix" style="margin-top:.5rem" data-liste-planif-cours>
@@ -230,12 +225,12 @@ $coches = array_flip(array_map('intval', $coches));
               </li>
             <?php endforeach; ?>
           </ul>
-          <p class="discret" data-filtre-vide hidden style="margin:.4rem 0 0">Aucun cours ne porte ce nom.</p>
+          <p class="discret" data-filtre-vide hidden style="margin:.4rem 0 0"><?= e(t('focus.aucun_cours')) ?></p>
         </div>
 
         <?php if ($dossiers !== []): ?>
           <details class="champ">
-            <summary class="legende" style="cursor:pointer">… ou des dossiers entiers</summary>
+            <summary class="legende" style="cursor:pointer"><?= e(t('focus.ou_dossiers')) ?></summary>
             <ul class="groupe-choix__liste partage-liste focus-choix" style="margin-top:.5rem">
               <?php foreach ($dossiers as $d): ?>
                 <li>
@@ -244,7 +239,7 @@ $coches = array_flip(array_map('intval', $coches));
                     <span aria-hidden="true"><?= e((string) ($d['icone'] ?: '📁')) ?></span>
                     <span class="partage-liste__nom">
                       <?= e((string) $d['nom']) ?>
-                      <span class="discret">· <?= (int) $d['nb_cours'] ?> cours</span>
+                      <span class="discret"><?= e(tn('focus.dossier_cours', (int) $d['nb_cours'])) ?></span>
                     </span>
                   </label>
                 </li>
@@ -255,30 +250,30 @@ $coches = array_flip(array_map('intval', $coches));
 
         <div class="ligne-champs">
           <div class="champ">
-            <label for="planif-minutes">Combien de temps</label>
+            <label for="planif-minutes"><?= e(t('focus.combien_temps')) ?></label>
             <select id="planif-minutes" name="minutes">
-              <?php foreach (Focus::RYTHMES as $minutes => $rythme): ?>
+              <?php foreach (array_keys(Focus::RYTHMES) as $minutes): ?>
                 <option value="<?= (int) $minutes ?>"<?= (int) $minutes === 25 ? ' selected' : '' ?>><?= (int) $minutes ?> min</option>
               <?php endforeach; ?>
             </select>
           </div>
         </div>
-        <button class="bouton bouton--secondaire bouton--bloc" type="submit">📅 Poser au calendrier</button>
+        <button class="bouton bouton--secondaire bouton--bloc" type="submit"><?= e(t('focus.poser')) ?></button>
       </form>
     </section>
 
     <?php if ($dernieres !== []): ?>
       <section class="carte">
-        <h2>Dernières sessions</h2>
+        <h2><?= e(t('focus.dernieres')) ?></h2>
         <ul class="focus-liste">
           <?php foreach ($dernieres as $s): ?>
             <li>
               <span class="focus-liste__barre" style="background:<?= e((string) ($s['matiere_couleur'] ?? '#94a3b8')) ?>"></span>
               <span style="flex:1;min-width:0">
-                <strong><?= e((string) ($s['cours_titre'] ?? $s['sujet'] ?? 'Révision libre')) ?></strong><br>
+                <strong><?= e((string) ($s['cours_titre'] ?? $s['sujet'] ?? t('focus.revision_libre'))) ?></strong><br>
                 <span class="discret">
                   <?= e(ucfirst(date_fr((string) $s['debut'], false))) ?> à <?= e(heure_courte((int) strtotime((string) $s['debut']))) ?>
-                  <?php if ((int) $s['pauses'] > 0): ?> · <?= (int) $s['pauses'] ?> pause<?= (int) $s['pauses'] > 1 ? 's' : '' ?><?php endif; ?>
+                  <?php if ((int) $s['pauses'] > 0): ?> · <?= e(tn('focus.pauses', (int) $s['pauses'])) ?><?php endif; ?>
                   <?php if ($s['ressenti'] !== null): ?> · <?= Focus::RESSENTIS[$s['ressenti']]['icone'] ?><?php endif; ?>
                 </span>
               </span>
@@ -292,61 +287,62 @@ $coches = array_flip(array_map('intval', $coches));
 
   <div class="pile">
     <section class="carte">
-      <h2 style="margin-top:0">Où j’en suis</h2>
-      <p class="focus-chiffre"><strong><?= e(Focus::duree((int) $bilan['aujourdhui'])) ?></strong> aujourd’hui</p>
+      <h2 style="margin-top:0"><?= e(t('focus.ou_jen_suis')) ?></h2>
+      <p class="focus-chiffre"><strong><?= e(Focus::duree((int) $bilan['aujourdhui'])) ?></strong> <?= e(t('focus.aujourdhui')) ?></p>
       <p class="discret" style="margin:.2rem 0 0">
-        <?= e(Focus::duree((int) $bilan['semaine'])) ?> cette semaine,
-        en <?= (int) $bilan['sessions'] ?> session<?= (int) $bilan['sessions'] > 1 ? 's' : '' ?>.
+        <?= e(t('focus.cette_semaine', ['duree' => Focus::duree((int) $bilan['semaine'])])) ?>
+        <?= e(tn('focus.en_sessions', (int) $bilan['sessions'])) ?>
       </p>
       <?php if ((int) $bilan['serie'] > 0): ?>
         <p style="margin:.6rem 0 0">
-          🔥 <strong><?= (int) $bilan['serie'] ?> jour<?= (int) $bilan['serie'] > 1 ? 's' : '' ?></strong> d’affilée
+          <?= tn('focus.serie', (int) $bilan['serie']) ?>
           <?php if ((int) $bilan['aujourdhui'] === 0): ?>
-            <span class="discret">— rien encore aujourd’hui, la série tient jusqu’à ce soir.</span>
+            <span class="discret"><?= e(t('focus.serie_tient')) ?></span>
           <?php endif; ?>
         </p>
       <?php endif; ?>
     </section>
 
     <section class="carte">
-      <h2>Objectif de la semaine</h2>
+      <h2><?= e(t('focus.objectif')) ?></h2>
       <?php if ($avancement !== null): ?>
         <p class="focus-chiffre" style="font-size:1.1rem">
-          <strong><?= (int) $avancement['part'] ?> %</strong> de <?= e(Focus::duree($avancement['minutes'] * 60)) ?>
+          <?= t('focus.part_de', ['part' => (int) $avancement['part'], 'duree' => e(Focus::duree($avancement['minutes'] * 60))]) ?>
         </p>
         <div class="alternance-avancement" role="img"
-             aria-label="<?= (int) $avancement['part'] ?> % de l’objectif de la semaine">
+             aria-label="<?= e(t('focus.part_aria', ['part' => (int) $avancement['part']])) ?>">
           <span style="width:<?= (int) $avancement['part'] ?>%"></span>
         </div>
         <p class="discret" style="margin:.5rem 0 .8rem">
           <?php if ($avancement['reste'] === 0): ?>
-            C’est fait pour cette semaine. Tout ce qui suit est du bonus.
+            <?= e(t('focus.objectif_atteint')) ?>
           <?php else: ?>
-            Il reste <?= e(Focus::duree($avancement['reste'] * 60)) ?>,
-            soit environ <?= (int) $avancement['par_jour'] ?> min par jour
-            sur les <?= (int) $avancement['jours'] ?> jour<?= $avancement['jours'] > 1 ? 's' : '' ?> qui restent.
+            <?= e(tn('focus.objectif_reste', (int) $avancement['jours'], [
+                'duree' => Focus::duree($avancement['reste'] * 60),
+                'parjour' => (int) $avancement['par_jour'],
+            ])) ?>
           <?php endif; ?>
         </p>
       <?php else: ?>
-        <p class="discret" style="margin-top:0">Sans objectif, le suivi compte quand même le temps passé.</p>
+        <p class="discret" style="margin-top:0"><?= e(t('focus.sans_objectif')) ?></p>
       <?php endif; ?>
       <form method="post" action="<?= url('focus/objectif') ?>" class="filtres" style="margin:0" data-auto-envoi>
         <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
         <div class="champ" style="flex:1">
-          <label for="objectif">Me fixer</label>
+          <label for="objectif"><?= e(t('focus.me_fixer')) ?></label>
           <select id="objectif" name="minutes">
-            <?php foreach (Focus::OBJECTIFS as $minutes => $nom): ?>
-              <option value="<?= (int) $minutes ?>"<?= (int) $minutes === (int) $objectif ? ' selected' : '' ?>><?= e($nom) ?></option>
+            <?php foreach (array_keys(Focus::OBJECTIFS) as $minutes): ?>
+              <option value="<?= (int) $minutes ?>"<?= (int) $minutes === (int) $objectif ? ' selected' : '' ?>><?= e(Focus::nomObjectif((int) $minutes)) ?></option>
             <?php endforeach; ?>
           </select>
         </div>
-        <noscript><button class="bouton bouton--petit" type="submit">Enregistrer</button></noscript>
+        <noscript><button class="bouton bouton--petit" type="submit"><?= e(t('commun.enregistrer')) ?></button></noscript>
       </form>
     </section>
 
     <?php if ($bilan['par_matiere'] !== []): ?>
       <section class="carte">
-        <h2>Cette semaine, par matière</h2>
+        <h2><?= e(t('focus.par_matiere')) ?></h2>
         <?php $plus = max(array_map(static fn (array $l): int => (int) $l['secondes'], $bilan['par_matiere'])); ?>
         <ul class="focus-matieres">
           <?php foreach ($bilan['par_matiere'] as $ligne): ?>

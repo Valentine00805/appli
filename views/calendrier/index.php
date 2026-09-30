@@ -272,9 +272,7 @@ $puce = static function (array $evt) use ($destination): string {
         <button class="bouton bouton--secondaire bouton--petit" type="submit"><?= e(t('cal.appliquer')) ?></button>
       </noscript>
       <p class="champ__aide cal-volet__note">
-        La couleur d'un agenda ne s'applique qu'aux évènements sans matière ni
-        type : celles-ci gardent la main.
-        Masquer un agenda ne le désynchronise pas et n'efface rien.
+        <?= e(t('cal.agendas_note')) ?>
         <a href="<?= url('agenda') ?>"><?= e(t('cal.choisir_synchro')) ?></a>
       </p>
     </form>
@@ -368,12 +366,12 @@ $etiquetteRythme = static function (string $cle, bool $court = false) use ($ryth
             ?>
             <details class="cal-reste">
               <summary class="cal-reste__bouton">
-                +<?= count($duJour) - 4 ?> autre<?= count($duJour) - 4 > 1 ? 's' : '' ?>
+                <?= e(tn('cal.autres', count($duJour) - 4)) ?>
               </summary>
               <div class="cal-reste__volet">
                 <div class="cal-reste__entete">
                   <strong><?= e(ucfirst(date_fr($cle . ' 00:00:00', false))) ?></strong>
-                  <a href="<?= $lien('jour', $curseur) ?>">Voir la journée</a>
+                  <a href="<?= $lien('jour', $curseur) ?>"><?= e(t('cal.voir_journee')) ?></a>
                 </div>
                 <ul class="cal-reste__liste">
                   <?php foreach ($duJour as $evt): ?>
@@ -437,7 +435,7 @@ $etiquetteRythme = static function (string $cle, bool $court = false) use ($ryth
         <h3 class="cal-annee__titre">
           <a href="<?= $lien('mois', $premier) ?>"><?= e(nom_mois($mois)) ?></a>
           <?php if ($combien > 0): ?>
-            <span class="cal-annee__compte"><?= $combien ?> évènement<?= $combien > 1 ? 's' : '' ?></span>
+            <span class="cal-annee__compte"><?= e(tn('cal.evenements_nombre', $combien)) ?></span>
           <?php endif; ?>
         </h3>
         <div class="cal-annee__grille">
@@ -468,7 +466,7 @@ $etiquetteRythme = static function (string $cle, bool $court = false) use ($ryth
                     . icone_evenement($evt) . ' ' . $evt['titre'];
             }
             if (count($duJour) > 8) {
-                $infobulle .= "\n… et " . (count($duJour) - 8) . ' autre' . (count($duJour) - 8 > 1 ? 's' : '');
+                $infobulle .= "\n" . tn('cal.et_autres', count($duJour) - 8);
             }
             // Une pastille par couleur, pas par évènement : trois cours de maths ne font qu'un point.
             $couleurs = array_slice(array_values(array_unique(array_map('couleur_evenement', $duJour))), 0, 3);
@@ -540,7 +538,7 @@ $etiquetteRythme = static function (string $cle, bool $court = false) use ($ryth
            */
           ?>
           <div class="sem-planning__bandeau">
-            <span class="sem-planning__etiquette">Journée</span>
+            <span class="sem-planning__etiquette"><?= e(t('cal.journee')) ?></span>
             <?php foreach ($planning['jours'] as $unJour): ?>
               <div class="sem-planning__toutlejour">
                 <?php foreach ($unJour['journee'] as $evt): ?>

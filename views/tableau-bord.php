@@ -91,9 +91,9 @@
                 <?php $coursId = (int) ($evt['cours_id'] ?? 0); ?>
                 <?php if ($coursId > 0): ?>
                   <a class="bouton bouton--secondaire" href="<?= url('cours/' . $coursId) ?>"
-                     title="Ouvrir le cours"><?= e(t('accueil.cours')) ?></a>
+                     title="<?= e(t('kb.ouvrir_cours')) ?>"><?= e(t('accueil.cours')) ?></a>
                   <a class="bouton bouton--secondaire" href="<?= url('revision/' . $coursId) ?>"
-                     title="Ouvrir la fiche de révision"><?= e(t('accueil.fiche_revision')) ?></a>
+                     title="<?= e(t('kb.ouvrir_fiche')) ?>"><?= e(t('accueil.fiche_revision')) ?></a>
                 <?php endif; ?>
                 <a class="bouton bouton--discret bouton--petit"
                    href="<?= url('evenements/' . $evt['id'] . '/modifier') ?>" title="<?= e(t('accueil.modifier')) ?>">✎</a>
@@ -141,22 +141,22 @@
         <?php if ($maintenant !== null): ?>
           <?php $lieu = Alternance::LIEUX[$maintenant['lieu']]; ?>
           <p style="margin:0 0 .4rem">
-            Aujourd’hui : <strong><?= $lieu['icone'] ?> <?= e($lieu['dans']) ?></strong>
-            <?= $maintenant['fin'] === date('Y-m-d') ? '(dernier jour)'
-                : 'jusqu’au ' . e(Alternance::jourCourt($maintenant['fin'])) ?>
+            <?= e(t('accueil.aujourdhui_lieu')) ?> <strong><?= $lieu['icone'] ?> <?= e($lieu['dans']) ?></strong>
+            <?= $maintenant['fin'] === date('Y-m-d') ? e(t('accueil.dernier_jour'))
+                : e(t('accueil.jusquau', ['date' => Alternance::jourCourt($maintenant['fin'])])) ?>
           </p>
         <?php elseif ($ensuite !== null): ?>
           <?php $lieu = Alternance::LIEUX[$ensuite['lieu']]; ?>
           <p style="margin:0 0 .4rem">
-            Ensuite : <strong><?= $lieu['icone'] ?> <?= e($lieu['dans']) ?></strong>
-            à partir du <?= e(rtrim(Alternance::jourCourt($ensuite['debut']), '.')) ?>.
+            <?= e(t('accueil.ensuite')) ?> <strong><?= $lieu['icone'] ?> <?= e($lieu['dans']) ?></strong>
+            <?= e(t('accueil.a_partir_du', ['date' => rtrim(Alternance::jourCourt($ensuite['debut']), '.')])) ?>
           </p>
         <?php endif; ?>
 
         <?php if ($alternance['aEcrire'] !== null): ?>
           <p style="margin:0 0 .4rem">
             ✍️ <a href="<?= url('alternance/journal/semaine', ['semaine' => $alternance['aEcrire']]) ?>" data-fenetre>
-              Écrire la semaine du <?= e(Alternance::jourCourt($alternance['aEcrire'])) ?>
+              <?= e(t('accueil.ecrire_semaine', ['date' => Alternance::jourCourt($alternance['aEcrire'])])) ?>
             </a>
           </p>
         <?php endif; ?>
@@ -175,7 +175,7 @@
       <section class="carte">
         <h2><a href="<?= url('travaux') ?>"><?= e(t('accueil.travaux')) ?></a></h2>
         <?php if ($travaux['invitations'] > 0): ?>
-          <p style="margin:0 0 .5rem">✉️ <a href="<?= url('travaux') ?>"><?= (int) $travaux['invitations'] ?> invitation<?= $travaux['invitations'] > 1 ? 's' : '' ?> à un travail de groupe</a></p>
+          <p style="margin:0 0 .5rem">✉️ <a href="<?= url('travaux') ?>"><?= e(tn('accueil.invitations_travaux', (int) $travaux['invitations'])) ?></a></p>
         <?php endif; ?>
         <?php if ($travaux['taches'] !== []): ?>
           <ul class="travaux-mes-taches">

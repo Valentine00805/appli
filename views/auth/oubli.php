@@ -5,26 +5,25 @@
  * @var bool $envoye
  */
 ?>
-<h2 class="auth__titre">Mot de passe oublié</h2>
+<h2 class="auth__titre"><?= e(t('auth.oubli_titre')) ?></h2>
 
 <?php if ($envoye): ?>
   <div class="flash flash--succes" role="status">
-    Si un compte correspond, un e-mail vient de partir avec un lien pour choisir un nouveau mot de passe.
-    Il vaut <?= Reinitialisation::DUREE_MINUTES ?> minutes. Pensez à regarder dans les indésirables.
+    <?= e(t('auth.oubli_envoye', ['n' => Reinitialisation::DUREE_MINUTES])) ?>
   </div>
-  <p class="auth__bas"><a href="<?= url('connexion') ?>">← Retour à la connexion</a></p>
+  <p class="auth__bas"><a href="<?= url('connexion') ?>"><?= e(t('auth.retour_connexion')) ?></a></p>
 <?php else: ?>
   <p class="champ__aide" style="margin-top:0">
-    Indiquez l’adresse e-mail ou le pseudo de votre compte : nous vous enverrons un lien pour choisir un nouveau mot de passe.
+    <?= e(t('auth.oubli_aide')) ?>
   </p>
   <form method="post" action="<?= url('mot-de-passe/oublie') ?>">
     <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
     <div class="champ">
-      <label for="identifiant">Adresse e-mail ou pseudo</label>
+      <label for="identifiant"><?= e(t('auth.identifiant')) ?></label>
       <input type="text" id="identifiant" name="identifiant" required autocomplete="username" autofocus
              autocapitalize="none" spellcheck="false" maxlength="190">
     </div>
-    <button class="bouton bouton--bloc" type="submit">Envoyer le lien</button>
+    <button class="bouton bouton--bloc" type="submit"><?= e(t('auth.envoyer_lien')) ?></button>
   </form>
-  <p class="auth__bas"><a href="<?= url('connexion') ?>">← Retour à la connexion</a></p>
+  <p class="auth__bas"><a href="<?= url('connexion') ?>"><?= e(t('auth.retour_connexion')) ?></a></p>
 <?php endif; ?>

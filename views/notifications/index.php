@@ -20,10 +20,10 @@ $dansUneFenetre = $dansUneFenetre ?? false;
   <div>
     <?php // Dans une fenêtre, « Mon compte » est juste derrière : la croix y ramène. ?>
     <?php if (!$dansUneFenetre): ?>
-      <p class="discret" style="margin-bottom:.35rem"><a href="<?= url('compte') ?>">← Mon compte</a></p>
+      <p class="discret" style="margin-bottom:.35rem"><a href="<?= url('compte') ?>"><?= e(t('notif.retour_compte')) ?></a></p>
     <?php endif; ?>
-    <h1>🔔 Notifications</h1>
-    <p>Des rappels avant vos évènements et le matin de vos échéances — même application fermée.</p>
+    <h1><?= e(t('notif.titre')) ?></h1>
+    <p><?= e(t('notif.sous_titre')) ?></p>
   </div>
 </div>
 
@@ -38,20 +38,19 @@ $dansUneFenetre = $dansUneFenetre ?? false;
              data-desabonner="<?= e(url('notifications/desabonnement')) ?>"
              data-essai="<?= e(url('notifications/essai')) ?>"
              data-jeton="<?= e($csrf) ?>">
-      <h2 style="margin-top:0">Cet appareil</h2>
+      <h2 style="margin-top:0"><?= e(t('notif.cet_appareil')) ?></h2>
       <p class="notifications__etat" data-notifications-etat role="status">
-        <noscript>Les notifications ont besoin de JavaScript pour être activées.</noscript>
-        Vérification…
+        <noscript><?= e(t('notif.js_requis')) ?></noscript>
+        <?= e(t('cpt.verification')) ?>
       </p>
       <p class="actions">
-        <button class="bouton" type="button" data-notifications-activer hidden>Activer les notifications</button>
-        <button class="bouton bouton--secondaire" type="button" data-notifications-essai hidden>Envoyer une notification d’essai</button>
-        <button class="bouton bouton--discret" type="button" data-notifications-desactiver hidden>Désactiver sur cet appareil</button>
+        <button class="bouton" type="button" data-notifications-activer hidden><?= e(t('notif.activer')) ?></button>
+        <button class="bouton bouton--secondaire" type="button" data-notifications-essai hidden><?= e(t('notif.essai')) ?></button>
+        <button class="bouton bouton--discret" type="button" data-notifications-desactiver hidden><?= e(t('notif.desactiver')) ?></button>
       </p>
       <p class="champ__aide" data-notifications-aide hidden></p>
       <p class="champ__aide" style="margin-bottom:0">
-        Un navigateur reçoit les notifications d’un seul compte : celui qui les a activées
-        le dernier. Pour deux comptes, activez-les dans deux navigateurs (ou profils) différents.
+        <?= e(t('notif.un_compte_aide')) ?>
       </p>
     </section>
 
@@ -64,12 +63,12 @@ $dansUneFenetre = $dansUneFenetre ?? false;
      */
     ?>
     <section class="carte">
-      <h2 style="margin-top:0">Ce que je reçois</h2>
+      <h2 style="margin-top:0"><?= e(t('notif.ce_que_je_recois')) ?></h2>
       <form method="post" action="<?= url('notifications/choix') ?>"<?= $dansUneFenetre ? ' data-envoi-fenetre' : '' ?>>
         <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
         <p style="margin:0 0 .6rem">
           <button class="bouton bouton--discret bouton--petit" type="button"
-                  data-cocher-tout="[data-liste-notifications]">Tout cocher, ou décocher</button>
+                  data-cocher-tout="[data-liste-notifications]"><?= e(t('focus.tout_cocher')) ?></button>
         </p>
         <ul class="notifications-choix" data-liste-notifications>
           <?php foreach (FileNotifications::CATEGORIES as $cle => $categorie): ?>
@@ -79,8 +78,8 @@ $dansUneFenetre = $dansUneFenetre ?? false;
                 <input type="checkbox" name="recevoir[]" value="<?= e($cle) ?>"<?= $coupee ? '' : ' checked' ?>>
                 <span aria-hidden="true"><?= $categorie['icone'] ?></span>
                 <span>
-                  <strong><?= e($categorie['nom']) ?></strong><br>
-                  <span class="discret"><?= e($categorie['aide']) ?></span>
+                  <strong><?= e(FileNotifications::nomCategorie((string) $cle)) ?></strong><br>
+                  <span class="discret"><?= e(FileNotifications::aideCategorie((string) $cle)) ?></span>
                   <?php if ($coupee): ?>
                     <br><span class="notifications-choix__coupure">🔕 <?= e(FileNotifications::texteCoupure($fin)) ?></span>
                   <?php endif; ?>
@@ -88,24 +87,23 @@ $dansUneFenetre = $dansUneFenetre ?? false;
               </label>
               <?php // Décochée, pour combien de temps : ensuite, elle revient d'elle-même. ?>
               <label class="notifications-choix__duree">
-                <span class="discret">Coupée :</span>
+                <span class="discret"><?= e(t('notif.coupee_label')) ?></span>
                 <select name="duree[<?= e($cle) ?>]">
                   <?php if ($coupee && $fin !== null): ?>
-                    <option value="garder" selected>comme maintenant</option>
+                    <option value="garder" selected><?= e(t('notif.comme_maintenant')) ?></option>
                   <?php endif; ?>
-                  <option value="toujours"<?= $coupee && $fin === null ? ' selected' : '' ?>>jusqu’à ce que je la recoche</option>
-                  <?php foreach (FileNotifications::DUREES as $d => $duree): ?>
-                    <option value="<?= e($d) ?>">pendant <?= e($duree['nom']) ?></option>
+                  <option value="toujours"<?= $coupee && $fin === null ? ' selected' : '' ?>><?= e(t('notif.jusqua_recoche')) ?></option>
+                  <?php foreach (array_keys(FileNotifications::DUREES) as $d): ?>
+                    <option value="<?= e($d) ?>"><?= e(t('notif.pendant', ['duree' => FileNotifications::nomDuree((string) $d)])) ?></option>
                   <?php endforeach; ?>
                 </select>
               </label>
             </li>
           <?php endforeach; ?>
         </ul>
-        <button class="bouton" type="submit" style="margin-top:.8rem">Enregistrer mon choix</button>
+        <button class="bouton" type="submit" style="margin-top:.8rem"><?= e(t('notif.enregistrer_choix')) ?></button>
         <p class="champ__aide" style="margin-bottom:0">
-          Les rappels du calendrier partent 15 minutes avant par défaut ; chaque évènement règle les siens
-          dans son formulaire. Un évènement « toute la journée » et une tâche sonnent à 8 h.
+          <?= e(t('notif.rappels_aide')) ?>
         </p>
       </form>
     </section>
@@ -113,27 +111,27 @@ $dansUneFenetre = $dansUneFenetre ?? false;
 
   <div class="pile">
     <section class="carte">
-      <h2 style="margin-top:0">Appareils abonnés</h2>
+      <h2 style="margin-top:0"><?= e(t('notif.appareils')) ?></h2>
       <?php if ($appareils === []): ?>
-        <p class="discret">Aucun pour l’instant. Activez les notifications sur chaque appareil où vous voulez les recevoir.</p>
+        <p class="discret"><?= e(t('notif.appareils_aucun')) ?></p>
       <?php else: ?>
         <ul class="liste-fichiers">
           <?php foreach ($appareils as $a): ?>
             <li class="fichier">
               <span class="fichier__icone" aria-hidden="true">📱</span>
               <span style="min-width:0">
-                <span class="fichier__nom"><?= e((string) ($a['appareil'] ?: 'Appareil')) ?></span><br>
+                <span class="fichier__nom"><?= e((string) ($a['appareil'] ?: t('notif.appareil'))) ?></span><br>
                 <span class="fichier__meta">
-                  Abonné le <?= e(date_fr((string) $a['created_at'], false)) ?>
-                  <?= $a['dernier_envoi'] !== null ? '· dernier rappel le ' . e(date_fr((string) $a['dernier_envoi'])) : '' ?>
+                  <?= e(t('notif.abonne_le', ['date' => date_fr((string) $a['created_at'], false)])) ?>
+                  <?= $a['dernier_envoi'] !== null ? e(t('notif.dernier_rappel', ['date' => date_fr((string) $a['dernier_envoi'])])) : '' ?>
                 </span>
               </span>
               <span class="fichier__actions">
                 <form method="post" action="<?= url('notifications/desabonnement') ?>" class="en-ligne"<?= $dansUneFenetre ? ' data-envoi-fenetre' : '' ?>
-                      data-confirmation="Retirer cet appareil ? Il ne recevra plus de rappels.">
+                      data-confirmation="<?= e(t('notif.retirer_sur')) ?>">
                   <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
                   <input type="hidden" name="id" value="<?= (int) $a['id'] ?>">
-                  <button class="bouton bouton--discret bouton--petit" type="submit" title="Retirer">✕</button>
+                  <button class="bouton bouton--discret bouton--petit" type="submit" title="<?= e(t('commun.retirer')) ?>">✕</button>
                 </form>
               </span>
             </li>
@@ -143,14 +141,11 @@ $dansUneFenetre = $dansUneFenetre ?? false;
     </section>
 
     <section class="carte">
-      <h2 style="margin-top:0">Rappels application fermée</h2>
+      <h2 style="margin-top:0"><?= e(t('notif.appli_fermee')) ?></h2>
       <p class="discret" style="margin-top:0">
-        Pour que les rappels partent même quand aucun onglet n’est ouvert, cette adresse doit être
-        appelée chaque minute — par une tâche planifiée sur l’ordinateur qui fait tourner
-        l’application, ou par une tâche « cron » chez l’hébergeur une fois en ligne.
-        Tant qu’un onglet est ouvert, la page s’en charge elle-même.
+        <?= e(t('notif.appli_fermee_aide')) ?>
       </p>
-      <label class="legende" for="adresse-envoi">Adresse d’envoi (gardez-la pour vous)</label>
+      <label class="legende" for="adresse-envoi"><?= e(t('notif.adresse_envoi')) ?></label>
       <input type="text" id="adresse-envoi" readonly value="<?= e($adresseEnvoi) ?>" onclick="this.select()">
     </section>
   </div>

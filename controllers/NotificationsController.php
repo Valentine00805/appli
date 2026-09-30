@@ -49,9 +49,9 @@ final class NotificationsController
         $coupees = FileNotifications::regler(Auth::id(), $cochees, $durees);
         $n = count(FileNotifications::CATEGORIES) - count($coupees);
         Session::flash($n === 0 ? 'erreur' : 'succes', match (true) {
-            $n === 0 => 'Plus aucune notification ne vous arrivera : cochez au moins ce que vous voulez recevoir.',
-            $coupees === [] => 'Vous recevez toutes les notifications.',
-            default => 'Choix enregistré : ' . $n . ' sorte' . ($n > 1 ? 's' : '') . ' de notifications sur ' . count(FileNotifications::CATEGORIES) . '.',
+            $n === 0 => t('flash.notif_aucune'),
+            $coupees === [] => t('flash.notif_toutes'),
+            default => tn('flash.notif_choix', $n, ['total' => count(FileNotifications::CATEGORIES)]),
         });
         redirect('notifications');
     }

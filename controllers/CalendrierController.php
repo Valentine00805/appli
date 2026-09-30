@@ -129,14 +129,9 @@ final class CalendrierController
         Database::run('UPDATE users SET vue_calendrier = ? WHERE id = ?',
             [in_array($voulue, self::VUES, true) ? $voulue : null, Auth::id()]);
 
-        Session::flash('succes', 'Le calendrier s’ouvrira désormais sur '
-            . match ($voulue) {
-                'jour'    => 'la journée',
-                'semaine' => 'la semaine',
-                'annee'   => 'l’année',
-                'liste'   => 'la liste',
-                default   => 'le mois',
-            } . '.');
+        Session::flash('succes', t('flash.vue_calendrier', [
+            'vue' => t('flash.vue.' . (in_array($voulue, ['jour', 'semaine', 'annee', 'liste'], true) ? $voulue : 'mois')),
+        ]));
         repartir_vers('agenda');
     }
 
@@ -254,7 +249,7 @@ final class CalendrierController
         $vises = [];
         foreach (Agenda::ciblesDe($id) as $cible) {
             if ($cible === Agenda::DEFAUT) {
-                $vises[] = 'Mes évènements';
+                $vises[] = t('evt.mes_evenements');
             } elseif (isset($noms[$cible])) {
                 $vises[] = $noms[$cible];
             }
@@ -387,9 +382,10 @@ final class CalendrierController
 
         $combien = $quand === null ? 1 : count($quand['dates']);
         Session::flash('succes', $combien === 1
-            ? 'Événement ajouté au calendrier.'
-            : $combien . ' occurrences ajoutées au calendrier, jusqu’au '
-              . $quand['jusqu_au']->format('d/m/Y') . '.');
+            ? t('flash.evt_ajoute')
+            : t('flash.evt_occurrences_ajoutees', [
+                'n' => $combien, 'date' => $quand['jusqu_au']->format('d/m/Y'),
+              ]));
 
         redirect('calendrier', ['date' => substr($donnees['debut'], 0, 10)]);
     }
@@ -441,7 +437,7 @@ final class CalendrierController
             return null;
         }
         if (!isset(self::RYTHMES[$frequence])) {
-            return 'Cette façon de répéter n’existe pas.';
+            return t('err.rythme_inconnu');
         }
 
         // La durée vient des dates déjà validées, et non d'une seconde lecture
@@ -458,11 +454,11 @@ final class CalendrierController
         if ($combien === null) {
             $borne = (string) ($_POST['repeter_jusqu_au'] ?? '');
             if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $borne) !== 1) {
-                return 'Indiquez jusqu’à quelle date l’évènement se répète.';
+                return t('err.repetition_date');
             }
             $jusqu = (new DateTimeImmutable($borne))->setTime(23, 59, 59);
             if ($jusqu < $premier) {
-                return 'La répétition ne peut pas s’arrêter avant de commencer.';
+                return t('err.repetition_avant');
             }
         } else {
             // Compté en occurrences, l'horizon sert de garde-fou et la date de
@@ -480,7 +476,7 @@ final class CalendrierController
             $dates[] = ['debut' => $quand, 'fin' => $quand->add($duree)];
         }
         if ($dates === []) {
-            return 'Aucune date ne correspond : vérifiez les jours cochés.';
+            return t('err.repetition_aucune_date');
         }
         if ($combien !== null) {
             $jusqu = end($dates)['debut']->setTime(23, 59, 59);
@@ -512,7 +508,7 @@ final class CalendrierController
 
         $combien = (int) $brut;
         if ($combien < 1) {
-            return 'Une répétition compte au moins une occurrence.';
+            return t('err.repetition_une');
         }
 
         return min($combien, self::SERIE_MAX);
@@ -649,7 +645,7 @@ final class CalendrierController
             $frequence = (string) $serie['frequence'];
         }
         if (!isset(self::RYTHMES[$frequence])) {
-            return 'Cette façon de répéter n’existe pas.';
+            return t('err.rythme_inconnu');
         }
 
         $combien = $this->nombreSoumis();
@@ -662,7 +658,7 @@ final class CalendrierController
                 $borne = (string) $serie['jusqu_au'];
             }
             if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $borne) !== 1) {
-                return 'La date de fin de la répétition est illisible.';
+                return t('err.repetition_fin_illisible');
             }
             $jusqu = (new DateTimeImmutable($borne))->setTime(23, 59, 59);
         } else {
@@ -820,9 +816,9 @@ final class CalendrierController
 
             $combien = $this->modifierLaSerie($userId, $serieId, $donnees);
 
-            $dit = $combien . ' occurrence' . ($combien > 1 ? 's mises à jour' : ' mise à jour');
-            if ($refait['ajoutees'] > 0) { $dit .= ', ' . $refait['ajoutees'] . ' ajoutée' . ($refait['ajoutees'] > 1 ? 's' : ''); }
-            if ($refait['retirees'] > 0) { $dit .= ', ' . $refait['retirees'] . ' retirée' . ($refait['retirees'] > 1 ? 's' : ''); }
+            $dit = tn('flash.serie_maj', $combien);
+            if ($refait['ajoutees'] > 0) { $dit .= tn('flash.serie_ajoutees', $refait['ajoutees']); }
+            if ($refait['retirees'] > 0) { $dit .= tn('flash.serie_retirees', $refait['retirees']); }
 
             Session::flash('succes', $dit . '.');
             redirect('calendrier', ['date' => substr($donnees['debut'], 0, 10)]);
@@ -877,12 +873,10 @@ final class CalendrierController
         }
 
         if ($souci !== null) {
-            Session::flash('erreur', 'La modification est enregistrée ici, mais n’a pas pu être '
-                . 'portée dans l’agenda : ' . $souci
-                . ' Elle sera défaite à la prochaine lecture.');
+            Session::flash('erreur', t('flash.agenda_non_porte', ['souci' => $souci]));
         }
 
-        Session::flash('succes', 'Événement mis à jour.');
+        Session::flash('succes', t('flash.evt_maj'));
         redirect('calendrier', ['date' => substr($donnees['debut'], 0, 10)]);
     }
 
@@ -1002,8 +996,7 @@ final class CalendrierController
         $copie = Database::dernierId();
         Agenda::viser($copie, $donnees['agendas']);
 
-        Session::flash('succes', 'Une copie de cet évènement est désormais la vôtre. '
-            . 'L’original reste celui de son agenda : ce que vous en ferez ici ne le touchera pas.');
+        Session::flash('succes', t('flash.evt_copie'));
     }
 
     /**
@@ -1043,7 +1036,7 @@ final class CalendrierController
         if ($serieId === null) {
             Database::run('DELETE FROM evenements WHERE id = ? AND user_id = ?', [$id, $userId]);
             Partages::oublier('evenement', $id);
-            Session::flash('succes', 'Événement supprimé.');
+            Session::flash('succes', t('flash.evt_supprime'));
             redirect('calendrier');
         }
 
@@ -1055,7 +1048,7 @@ final class CalendrierController
         Database::run('DELETE FROM evenements WHERE serie_id = ? AND user_id = ?', [$serieId, $userId]);
         Database::run('DELETE FROM series_evenements WHERE id = ? AND user_id = ?', [$serieId, $userId]);
 
-        Session::flash('succes', $combien . ' occurrence' . ($combien > 1 ? 's supprimées' : ' supprimée') . '.');
+        Session::flash('succes', tn('flash.evt_occurrences_supprimees', $combien));
         redirect('calendrier');
     }
 
@@ -1290,13 +1283,13 @@ final class CalendrierController
                 (string) $liste['echeance'],
                 (int) $liste['total'] > 0 && (int) $liste['reste'] === 0,
                 (int) $liste['id'],
-                'Tâche principale',
+                t('tableau.tache_principale'),
                 (string) $liste['icone'],
                 'taches/listes/' . (int) $liste['id'] . '/cocher',
                 (string) $liste['couleur'],
                 (int) $liste['total'] === 0
-                    ? 'aucune sous-tâche'
-                    : (int) $liste['reste'] . ' sur ' . (int) $liste['total'] . ' à faire'
+                    ? t('tableau.aucune_sous_tache')
+                    : t('tableau.reste_sur', ['n' => (int) $liste['reste'], 'total' => (int) $liste['total']])
             );
         }
 
@@ -1400,11 +1393,11 @@ final class CalendrierController
     {
         if ((int) $donnees['journee_entiere'] === 1) {
             return substr((string) $donnees['debut'], 0, 10) < date('Y-m-d')
-                ? 'Ce jour est déjà passé : un nouvel évènement commence aujourd’hui ou plus tard.'
+                ? t('err.jour_passe')
                 : null;
         }
         return (string) $donnees['debut'] < date('Y-m-d H:i:00')
-            ? 'Cette heure est déjà passée : un nouvel évènement commence maintenant ou plus tard (il est ' . date('H:i') . ').'
+            ? t('err.heure_passee', ['heure' => date('H:i')])
             : null;
     }
 
@@ -1412,7 +1405,7 @@ final class CalendrierController
     {
         $titre = post('titre');
         if ($titre === '') {
-            return 'Le titre de l\'événement est obligatoire.';
+            return t('err.titre_obligatoire');
         }
 
         $typeId = $this->typeValide($userId, $_POST['type_id'] ?? null);
@@ -1435,10 +1428,10 @@ final class CalendrierController
         $tsDebut = strtotime($debut);
         $tsFin = strtotime($fin);
         if ($tsDebut === false || $tsFin === false) {
-            return 'Dates ou heures invalides.';
+            return t('err.dates_invalides');
         }
         if ($tsFin < $tsDebut) {
-            return 'La fin ne peut pas être antérieure au début.';
+            return t('err.fin_avant_debut');
         }
 
         $coursId = entier_ou_null($_POST['cours_id'] ?? null);
@@ -1492,7 +1485,7 @@ final class CalendrierController
     private function introuvable(): never
     {
         http_response_code(404);
-        Vue::afficher('erreurs/404', [], 'Introuvable');
+        Vue::afficher('erreurs/404', [], t('titre.introuvable'));
         exit;
     }
 }

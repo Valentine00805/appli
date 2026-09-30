@@ -154,32 +154,30 @@ $ligne = static function (string $etiquette, string $valeur): string {
             . e((string) ($evenement['agenda_couleur'] ?: '#94a3b8')) . '"></span> '
             . e((string) $evenement['agenda_nom'])
             . ((int) ($evenement['agenda_partage'] ?? 0) === 1
-                ? ' <span class="discret">— agenda partagé</span>' : '')) ?>
+                ? ' <span class="discret">' . e(t('evt.agenda_partage')) . '</span>' : '')) ?>
         <p class="champ__aide" style="margin:.2rem 0 0">
-          Cet évènement appartient à son agenda. Le modifier ici ne le change
-          là-bas que si vous en êtes propriétaire.
+          <?= e(t('evt.vient_de_aide')) ?>
         </p>
       <?php else: ?>
-        <?= $ligne('Part dans', $vises === [] ? 'Mes évènements'
+        <?= $ligne(t('evt.part_dans'), $vises === [] ? e(t('evt.mes_evenements'))
             : e(implode(', ', $vises))) ?>
       <?php endif; ?>
 
       <?php if ($serie !== null): ?>
-        <?= $ligne('Répétition', e(
-            ucfirst((string) $serie['frequence']) . ' · '
-            . (int) $serie['occurrences'] . ' occurrence'
-            . ((int) $serie['occurrences'] > 1 ? 's' : '')
-            . ' jusqu’au ' . date('d/m/Y', strtotime((string) $serie['jusqu_au'])))) ?>
+        <?= $ligne(t('evt.repetition'), e(tn('evt.occurrences', (int) $serie['occurrences'], [
+            'frequence' => ucfirst((string) $serie['frequence']),
+            'date' => date('d/m/Y', (int) strtotime((string) $serie['jusqu_au'])),
+        ]))) ?>
       <?php endif; ?>
 
       <?php if ($copie !== null): ?>
-        <?= $ligne('Copie à moi',
+        <?= $ligne(t('evt.copie_a_moi'),
             '<a href="' . url('evenements/' . (int) $copie['id']) . '">'
             . e((string) $copie['titre']) . '</a>') ?>
       <?php endif; ?>
 
       <?php if ($origine !== null): ?>
-        <?= $ligne('Copié depuis',
+        <?= $ligne(t('evt.copie_depuis'),
             '<a href="' . url('evenements/' . (int) $origine['id']) . '">'
             . e((string) $origine['titre']) . '</a>') ?>
       <?php endif; ?>
@@ -200,7 +198,7 @@ $ligne = static function (string $etiquette, string $valeur): string {
     <section class="carte fiche">
       <?php if ($calendrierVisiblePar !== []): ?>
         <div class="fiche__ligne">
-          <span class="fiche__etiquette">Par mon calendrier</span>
+          <span class="fiche__etiquette"><?= e(t('evt.par_mon_calendrier')) ?></span>
           <span class="fiche__valeur partage-personnes">
             <?php foreach ($calendrierVisiblePar as $p): ?>
               <span class="partage-personne">
@@ -208,31 +206,31 @@ $ligne = static function (string $etiquette, string $valeur): string {
                 <?= e((string) $p['pseudo']) ?>
               </span>
             <?php endforeach; ?>
-            <a href="<?= url('compte') ?>#mon-calendrier">Régler</a>
+            <a href="<?= url('compte') ?>#mon-calendrier"><?= e(t('evt.regler')) ?></a>
           </span>
         </div>
       <?php endif; ?>
       <?php if ($partagePar !== null): ?>
         <div class="fiche__ligne">
-          <span class="fiche__etiquette">Partagé par</span>
+          <span class="fiche__etiquette"><?= e(t('evt.partage_par')) ?></span>
           <span class="fiche__valeur partage-personnes">
             <span class="partage-personne">
               <?= Amis::avatar((int) $partagePar['id'], (string) $partagePar['pseudo'], 'avatar--mini') ?>
               <?= e((string) $partagePar['pseudo']) ?>
             </span>
             <?php if (!empty($origineVisible)): ?>
-              <a href="<?= url('partages/evenements/' . (int) $evenement['partage_de']) ?>" <?= $dansUneFenetre ? 'data-fenetre' : '' ?>>Voir son évènement</a>
+              <a href="<?= url('partages/evenements/' . (int) $evenement['partage_de']) ?>" <?= $dansUneFenetre ? 'data-fenetre' : '' ?>><?= e(t('evt.voir_son_evenement')) ?></a>
             <?php endif; ?>
           </span>
         </div>
         <p class="champ__aide" style="margin:.2rem 0 0">
-          Vous l’avez ajouté à votre calendrier depuis son partage : c’est votre copie, ses changements n’y suivent pas.
+          <?= e(t('evt.copie_aide')) ?>
         </p>
       <?php endif; ?>
 
       <?php if ($partageAvec !== []): ?>
         <div class="fiche__ligne">
-          <span class="fiche__etiquette">Partagé avec</span>
+          <span class="fiche__etiquette"><?= e(t('evt.partage_avec')) ?></span>
           <span class="fiche__valeur partage-personnes">
             <?php foreach ($partageAvec as $p): ?>
               <span class="partage-personne">
@@ -246,12 +244,12 @@ $ligne = static function (string $etiquette, string $valeur): string {
       <?php endif; ?>
 
       <?php if ($lienPartage !== null): ?>
-        <?= $ligne('Lien public', e('Actif · ouvert ' . (int) $lienPartage['vues'] . ' fois')) ?>
+        <?= $ligne(t('evt.lien_public'), e(tn('evt.lien_actif', (int) $lienPartage['vues']))) ?>
       <?php endif; ?>
 
       <?php if ($partageAvec !== [] || $lienPartage !== null): ?>
         <p style="margin:.4rem 0 0">
-          <a href="<?= url('partager/evenements/' . (int) $evenement['id']) ?>" <?= $dansUneFenetre ? 'data-fenetre-dessus' : 'data-fenetre' ?>>Gérer le partage</a>
+          <a href="<?= url('partager/evenements/' . (int) $evenement['id']) ?>" <?= $dansUneFenetre ? 'data-fenetre-dessus' : 'data-fenetre' ?>><?= e(t('evt.gerer_partage')) ?></a>
         </p>
       <?php endif; ?>
     </section>
@@ -262,12 +260,12 @@ $ligne = static function (string $etiquette, string $valeur): string {
       <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
       <input type="hidden" name="retour" value="<?= e('evenements/' . (int) $evenement['id']) ?>">
       <button class="bouton bouton--secondaire" type="submit">
-        <?= (int) $evenement['termine'] === 1 ? '☐ Marquer comme à faire' : '☑ Marquer comme terminé' ?>
+        <?= e(t((int) $evenement['termine'] === 1 ? 'evt.marquer_a_faire' : 'evt.marquer_termine')) ?>
       </button>
     </form>
 
     <form method="post" action="<?= url('evenements/' . (int) $evenement['id'] . '/supprimer') ?>"
-          data-confirmation="Supprimer cet évènement ?">
+          data-confirmation="<?= e(t('evt.supprimer_sur')) ?>">
       <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
       <button class="bouton bouton--danger bouton--petit" type="submit"><?= e(t('evt.supprimer')) ?></button>
     </form>

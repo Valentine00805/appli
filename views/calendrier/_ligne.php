@@ -84,11 +84,11 @@ $estPartage = !empty($evt['est_partage']);
       <?php if ($coursId > 0): ?>
         <a class="bouton bouton--secondaire" href="<?= url('cours/' . $coursId) ?>"
            title="<?= e(t('evt.ouvrir_cours')) ?><?= !empty($evt['cours_titre']) ? ' : ' . e((string) $evt['cours_titre']) : '' ?>">
-          📘 Cours
+          <?= e(t('cal.cours_bouton')) ?>
         </a>
         <a class="bouton bouton--secondaire" href="<?= url('revision/' . $coursId) ?>"
            title="<?= e(t('evt.ouvrir_fiche')) ?>">
-          📝 Révision
+          <?= e(t('cal.revision_bouton')) ?>
         </a>
       <?php endif; ?>
       <a class="bouton bouton--discret bouton--petit" href="<?= url('evenements/' . $evt['id'] . '/modifier') ?>"

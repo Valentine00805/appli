@@ -31,10 +31,10 @@ $versApercu = $dansUneFenetre ? ' data-fenetre' : '';
     ?>
     <p style="margin:0 0 .6rem">
       <a class="bouton" href="<?= url('fichiers/' . $fichier['id'] . '/apercu') ?>"<?= $versApercu ?>
-         title="Revenir à l'aperçu de <?= e((string) $fichier['nom_origine']) ?>">Retour</a>
+         title="<?= e(t('ed.retour_apercu_titre', ['nom' => (string) $fichier['nom_origine']])) ?>"><?= e(t('agenda.retour')) ?></a>
     </p>
-    <h1>Modifier le texte</h1>
-    <p><?= e(ucfirst($format)) ?> · <?= count($paragraphes) ?> paragraphe<?= count($paragraphes) > 1 ? 's' : '' ?></p>
+    <h1><?= e(t('ed.titre')) ?></h1>
+    <p><?= e(ucfirst($format)) ?> · <?= e(tn('ed.paragraphes', count($paragraphes))) ?></p>
   </div>
 </div>
 
@@ -42,23 +42,14 @@ $versApercu = $dansUneFenetre ? ' data-fenetre' : '';
   <div class="vide">
     <span class="vide__icone">⚠️</span>
     <p><?= e($erreur) ?></p>
-    <a class="bouton bouton--secondaire" href="<?= url('fichiers/' . $fichier['id'] . '/apercu') ?>"<?= $versApercu ?>>Revenir à l'aperçu</a>
+    <a class="bouton bouton--secondaire" href="<?= url('fichiers/' . $fichier['id'] . '/apercu') ?>"<?= $versApercu ?>><?= e(t('ed.revenir_apercu')) ?></a>
   </div>
 <?php else: ?>
 
   <div class="flash flash--info" style="margin-bottom:1.25rem">
-    <strong>Le gras, l'italique, le souligné, la taille, la couleur, le
-    surlignage, l'alignement, les titres, les listes et le sommaire se modifient
-    ici.</strong><?php if ($ajoutImages): ?> Les images font partie du texte :
-    glissez-les où vous voulez, même au milieu d'une phrase, et cliquez-en une
-    pour changer sa taille ou mettre le texte à côté d'elle. Le bouton « 🖼 Image » en ajoute une à l'endroit du
-    curseur.<?php else: ?> Les images s'affichent sous leur paragraphe : elles
-    restent à leur place à l'enregistrement, et ne partent qu'avec la corbeille
-    de leur ligne.<?php endif; ?> Le reste de la mise en forme —
-    styles, polices, retraits, tableaux —
-    reste dans le document sans passer par cette page, et n'est donc pas
-    perdu. Une copie du document d'origine est gardée avant la première
-    modification.
+    <?= t('ed.aide_debut') ?>
+    <?= e(t($ajoutImages ? 'ed.aide_images_oui' : 'ed.aide_images_non')) ?>
+    <?= e(t('ed.aide_fin')) ?>
   </div>
 
   <?php
@@ -91,11 +82,11 @@ $versApercu = $dansUneFenetre ? ' data-fenetre' : '';
     ?>
     <div class="barre-outils" data-barre-outils hidden>
       <button type="button" class="barre-outils__bouton" data-commande="bold"
-              title="Gras (Ctrl+B)"><strong>G</strong></button>
+              title="<?= e(t('js.riche.gras')) ?>"><strong>G</strong></button>
       <button type="button" class="barre-outils__bouton" data-commande="italic"
-              title="Italique (Ctrl+I)"><em>I</em></button>
+              title="<?= e(t('js.riche.italique')) ?>"><em>I</em></button>
       <button type="button" class="barre-outils__bouton" data-commande="underline"
-              title="Souligné (Ctrl+U)"><u>S</u></button>
+              title="<?= e(t('js.riche.souligne')) ?>"><u>S</u></button>
       <?php
       /*
        * L'alignement porte sur le paragraphe entier, et non sur ce qui est
@@ -104,20 +95,20 @@ $versApercu = $dansUneFenetre ? ' data-fenetre' : '';
       ?>
       <span class="barre-outils__couleurs">
         <button type="button" class="barre-outils__bouton" data-aligner="gauche"
-                title="Aligner à gauche"><span aria-hidden="true">◧</span>
-          <span class="sr-only">Aligner à gauche</span></button>
+                title="<?= e(t('js.riche.gauche')) ?>"><span aria-hidden="true">◧</span>
+          <span class="sr-only"><?= e(t('js.riche.gauche')) ?></span></button>
         <button type="button" class="barre-outils__bouton" data-aligner="centre"
-                title="Centrer"><span aria-hidden="true">▣</span>
-          <span class="sr-only">Centrer</span></button>
+                title="<?= e(t('js.riche.centrer')) ?>"><span aria-hidden="true">▣</span>
+          <span class="sr-only"><?= e(t('js.riche.centrer')) ?></span></button>
         <button type="button" class="barre-outils__bouton" data-aligner="droite"
-                title="Aligner à droite"><span aria-hidden="true">◨</span>
-          <span class="sr-only">Aligner à droite</span></button>
+                title="<?= e(t('js.riche.droite')) ?>"><span aria-hidden="true">◨</span>
+          <span class="sr-only"><?= e(t('js.riche.droite')) ?></span></button>
         <button type="button" class="barre-outils__bouton" data-liste="puce"
-                title="Mettre ou retirer la puce"><span aria-hidden="true">•—</span>
-          <span class="sr-only">Puce</span></button>
+                title="<?= e(t('ed.puce')) ?>"><span aria-hidden="true">•—</span>
+          <span class="sr-only"><?= e(t('ed.puce_court')) ?></span></button>
         <button type="button" class="barre-outils__bouton" data-liste="numero"
-                title="Mettre ou retirer la numérotation"><span aria-hidden="true">1—</span>
-          <span class="sr-only">Liste numérotée</span></button>
+                title="<?= e(t('ed.numerotation')) ?>"><span aria-hidden="true">1—</span>
+          <span class="sr-only"><?= e(t('js.riche.numerotee')) ?></span></button>
         <?php
         /*
          * La sous-liste : « a. b. c. » sous un « 1. ». La touche de
@@ -126,11 +117,11 @@ $versApercu = $dansUneFenetre ? ' data-fenetre' : '';
          */
         ?>
         <button type="button" class="barre-outils__bouton" data-niveau-liste="1"
-                title="Sous-liste (Tab)"><span aria-hidden="true">⇥</span>
-          <span class="sr-only">Abaisser d'un niveau</span></button>
+                title="<?= e(t('ed.sous_liste')) ?>"><span aria-hidden="true">⇥</span>
+          <span class="sr-only"><?= e(t('js.riche.abaisser_court')) ?></span></button>
         <button type="button" class="barre-outils__bouton" data-niveau-liste="-1"
-                title="Remonter d'un niveau (Maj+Tab)"><span aria-hidden="true">⇤</span>
-          <span class="sr-only">Remonter d'un niveau</span></button>
+                title="<?= e(t('ed.remonter')) ?>"><span aria-hidden="true">⇤</span>
+          <span class="sr-only"><?= e(t('js.riche.remonter_court')) ?></span></button>
       </span>
       <?php
       /*
@@ -141,11 +132,11 @@ $versApercu = $dansUneFenetre ? ' data-fenetre' : '';
       ?>
       <span class="barre-outils__couleurs">
         <button type="button" class="barre-outils__bouton" data-titre="1"
-                title="Mettre ou retirer le Titre 1">T1</button>
+                title="<?= e(t('js.riche.titre1')) ?>">T1</button>
         <button type="button" class="barre-outils__bouton" data-titre="2"
-                title="Mettre ou retirer le Titre 2">T2</button>
+                title="<?= e(t('js.riche.titre2')) ?>">T2</button>
         <button type="button" class="barre-outils__bouton" data-titre="3"
-                title="Mettre ou retirer le Titre 3">T3</button>
+                title="<?= e(t('js.riche.titre3')) ?>">T3</button>
       </span>
       <?php
       /*
@@ -158,20 +149,20 @@ $versApercu = $dansUneFenetre ? ' data-fenetre' : '';
        */
       ?>
       <label class="barre-outils__taille">
-        <span class="discret">Sommaire</span>
-        <select name="sommaire" title="Jusqu'à quel niveau de titre le sommaire descend">
-          <option value="0"<?= $sommaire === 0 ? ' selected' : '' ?>>Aucun</option>
+        <span class="discret"><?= e(t('js.riche.sommaire')) ?></span>
+        <select name="sommaire" title="<?= e(t('js.riche.sommaire_aide')) ?>">
+          <option value="0"<?= $sommaire === 0 ? ' selected' : '' ?>><?= e(t('ed.sommaire_aucun')) ?></option>
           <?php for ($niveau = 1; $niveau <= $titreMax; $niveau++): ?>
             <option value="<?= $niveau ?>"<?= $sommaire === $niveau ? ' selected' : '' ?>>
-              <?= $niveau === 1 ? 'Titres 1' : 'Jusqu\'aux Titres ' . $niveau ?>
+              <?= e($niveau === 1 ? t('ed.sommaire_1') : t('ed.sommaire_n', ['n' => $niveau])) ?>
             </option>
           <?php endfor; ?>
         </select>
       </label>
       <label class="barre-outils__taille">
-        <span class="discret">Taille</span>
+        <span class="discret"><?= e(t('js.riche.taille')) ?></span>
         <select data-taille-texte>
-          <option value="">Celle du document</option>
+          <option value=""><?= e(t('ed.taille_document')) ?></option>
           <?php foreach ($tailles as $taille): ?>
             <option value="<?= (int) $taille ?>"><?= (int) $taille ?> pt</option>
           <?php endforeach; ?>
@@ -186,31 +177,31 @@ $versApercu = $dansUneFenetre ? ' data-fenetre' : '';
        */
       ?>
       <span class="barre-outils__couleurs">
-        <span class="discret">Couleur</span>
+        <span class="discret"><?= e(t('js.riche.couleur')) ?></span>
         <button type="button" class="barre-outils__bouton barre-outils__appliquer"
-                data-couleur-appliquer title="Appliquer cette couleur au texte choisi">
+                data-couleur-appliquer title="<?= e(t('js.riche.couleur_appliquer')) ?>">
           <span aria-hidden="true">A</span>
           <span class="barre-outils__trait"></span>
-          <span class="sr-only">Appliquer la couleur</span>
+          <span class="sr-only"><?= e(t('js.riche.couleur_appliquer_court')) ?></span>
         </button>
         <input type="color" class="barre-outils__couleur" data-couleur-texte
-               value="#000000" title="Choisir une autre couleur"
-               aria-label="Choisir une autre couleur">
+               value="#000000" title="<?= e(t('ed.couleur_autre')) ?>"
+               aria-label="<?= e(t('ed.couleur_autre')) ?>">
         <button type="button" class="barre-outils__bouton" data-couleur-defaut
-                title="Remettre la couleur du document">⌫</button>
+                title="<?= e(t('ed.couleur_document')) ?>">⌫</button>
       </span>
       <span class="barre-outils__couleurs">
-        <span class="discret">Surlignage</span>
+        <span class="discret"><?= e(t('js.riche.surlignage')) ?></span>
         <button type="button" class="barre-outils__bouton barre-outils__surligner"
-                data-fond-appliquer title="Surligner le texte choisi">
+                data-fond-appliquer title="<?= e(t('js.riche.surligner')) ?>">
           <span aria-hidden="true">🖍</span>
-          <span class="sr-only">Surligner</span>
+          <span class="sr-only"><?= e(t('js.riche.surligner_court')) ?></span>
         </button>
         <input type="color" class="barre-outils__couleur" data-fond-texte
-               value="#FFFF00" title="Choisir une autre couleur de surlignage"
-               aria-label="Choisir une autre couleur de surlignage">
+               value="#FFFF00" title="<?= e(t('ed.surlignage_autre')) ?>"
+               aria-label="<?= e(t('ed.surlignage_autre')) ?>">
         <button type="button" class="barre-outils__bouton" data-fond-defaut
-                title="Retirer le surlignage">⌫</button>
+                title="<?= e(t('js.riche.surlignage_retirer')) ?>">⌫</button>
       </span>
       <?php
       /*
@@ -219,7 +210,7 @@ $versApercu = $dansUneFenetre ? ' data-fenetre' : '';
        */
       ?>
       <button type="button" class="barre-outils__bouton" data-saut-ligne
-              title="Aller à la ligne sans changer de paragraphe (Maj+Entrée)">↵</button>
+              title="<?= e(t('js.riche.saut')) ?>">↵</button>
       <?php if ($ajoutImages): ?>
         <?php
         /*
@@ -229,11 +220,11 @@ $versApercu = $dansUneFenetre ? ' data-fenetre' : '';
          */
         ?>
         <button type="button" class="barre-outils__bouton barre-outils__image"
-                data-inserer-image title="Ajouter une image à l'endroit du curseur">
+                data-inserer-image title="<?= e(t('js.riche.image')) ?>">
           <span aria-hidden="true">🖼</span> Image
         </button>
         <input type="file" accept="image/png,image/jpeg,image/gif" hidden data-choisir-image
-               aria-label="Choisir une image à ajouter">
+               aria-label="<?= e(t('js.riche.image_choisir')) ?>">
         <?php
         /*
          * La largeur de l'image choisie. Le groupe n'apparaît que lorsqu'on a
@@ -242,12 +233,12 @@ $versApercu = $dansUneFenetre ? ' data-fenetre' : '';
          */
         ?>
         <span class="barre-outils__couleurs barre-outils__taille-image" data-taille-image hidden>
-          <span class="discret">Largeur</span>
+          <span class="discret"><?= e(t('js.riche.largeur')) ?></span>
           <input type="range" min="3" max="100" step="1" value="100" data-taille-image-curseur
-                 aria-label="Largeur de l'image, en part de la largeur de la page">
+                 aria-label="<?= e(t('ed.image_largeur')) ?>">
           <output data-taille-image-valeur>—</output>
           <button type="button" class="barre-outils__bouton" data-taille-image-origine
-                  title="Revenir à la taille qu'avait l'image à l'ouverture">↺</button>
+                  title="<?= e(t('ed.image_origine')) ?>">↺</button>
         </span>
         <?php
         /*
@@ -257,19 +248,19 @@ $versApercu = $dansUneFenetre ? ' data-fenetre' : '';
          */
         ?>
         <span class="barre-outils__couleurs" data-habillage-image hidden>
-          <span class="discret">Texte</span>
+          <span class="discret"><?= e(t('js.riche.texte')) ?></span>
           <button type="button" class="barre-outils__bouton" data-habillage-choix="ligne"
-                  aria-pressed="false" title="L'image dans la ligne, comme un mot">▭</button>
+                  aria-pressed="false" title="<?= e(t('js.riche.image_ligne')) ?>">▭</button>
           <button type="button" class="barre-outils__bouton" data-habillage-choix="gauche"
-                  aria-pressed="false" title="L'image à gauche, le texte à sa droite">◧≡</button>
+                  aria-pressed="false" title="<?= e(t('js.riche.image_gauche')) ?>">◧≡</button>
           <button type="button" class="barre-outils__bouton" data-habillage-choix="centre"
-                  aria-pressed="false" title="L'image centrée, le texte au-dessus et en dessous">▣</button>
+                  aria-pressed="false" title="<?= e(t('js.riche.image_centre')) ?>">▣</button>
           <button type="button" class="barre-outils__bouton" data-habillage-choix="droite"
-                  aria-pressed="false" title="L'image à droite, le texte à sa gauche">≡◨</button>
+                  aria-pressed="false" title="<?= e(t('js.riche.image_droite')) ?>">≡◨</button>
         </span>
       <?php endif; ?>
       <span class="champ__aide barre-outils__aide">
-        Sélectionnez du texte, puis cliquez sur une commande.
+        <?= e(t('ed.selection_aide')) ?>
       </span>
       <p class="message-erreur barre-outils__souci" data-souci-image role="alert" hidden></p>
     </div>
@@ -299,7 +290,7 @@ $versApercu = $dansUneFenetre ? ' data-fenetre' : '';
             <input type="hidden" name="niveau[]" value="<?= $niveau ?>">
             <input type="hidden" name="titre[]" value="<?= $titre ?>">
             <textarea name="texte[]" rows="1" class="paragraphe__texte"
-                      aria-label="Paragraphe <?= $rang + 1 ?>"><?= e($paragraphe) ?></textarea>
+                      aria-label="<?= e(t('ed.paragraphe_n', ['n' => $rang + 1])) ?>"><?= e($paragraphe) ?></textarea>
             <?php
             $images = $enrichis[$rang]['images'] ?? [];
             // Dans un document Word, les images sont dans le texte même.
@@ -307,11 +298,11 @@ $versApercu = $dansUneFenetre ? ' data-fenetre' : '';
             ?>
             <button type="button" class="bouton bouton--discret bouton--petit"
                     data-supprimer-paragraphe
-                    title="<?= match (true) {
-                        $nbImages === 0 => 'Supprimer ce paragraphe',
-                        $nbImages === 1 => 'Supprimer ce paragraphe, et son image avec lui',
-                        default         => 'Supprimer ce paragraphe, et ses images avec lui',
-                    } ?>">🗑</button>
+                    title="<?= e(match (true) {
+                        $nbImages === 0 => t('ed.supprimer_paragraphe'),
+                        $nbImages === 1 => t('ed.supprimer_paragraphe_image'),
+                        default         => t('ed.supprimer_paragraphe_images'),
+                    }) ?>">🗑</button>
             <?php
             /*
              * Ses images, sous le texte et hors de la zone qu'on modifie : on
@@ -342,7 +333,7 @@ $versApercu = $dansUneFenetre ? ' data-fenetre' : '';
             <input type="hidden" name="niveau[]" value="0">
             <input type="hidden" name="titre[]" value="0">
             <textarea name="texte[]" rows="1" class="paragraphe__texte"
-                      aria-label="Nouveau paragraphe"></textarea>
+                      aria-label="<?= e(t('ed.nouveau_paragraphe')) ?>"></textarea>
           </div>
         <?php endfor; ?>
         <?php if ($ajoutImages): ?>
@@ -355,26 +346,25 @@ $versApercu = $dansUneFenetre ? ' data-fenetre' : '';
             <input type="hidden" name="niveau[]" value="0">
             <input type="hidden" name="titre[]" value="0">
             <textarea name="texte[]" rows="1" class="paragraphe__texte"
-                      aria-label="Légende de l'image ajoutée (facultative)"
-                      placeholder="Légende de l'image (facultative)"></textarea>
+                      aria-label="<?= e(t('ed.legende_aria')) ?>"
+                      placeholder="<?= e(t('ed.legende_placeholder')) ?>"></textarea>
             <input type="file" name="images[sansjs1]" accept="image/png,image/jpeg,image/gif"
-                   aria-label="Image à ajouter à la fin du document">
+                   aria-label="<?= e(t('ed.image_a_ajouter')) ?>">
           </div>
         <?php endif; ?>
       </noscript>
 
       <p class="champ__aide" style="margin-top:.75rem">
-        Entrée crée un nouveau paragraphe ; Maj+Entrée va à la ligne dans le même
-        paragraphe.
+        <?= e(t('ed.entree_aide')) ?>
       </p>
     </div>
 
     <div class="actions" style="margin-top:1rem">
       <button type="button" class="bouton bouton--secondaire" data-ajouter-paragraphe hidden>
-        + Ajouter un paragraphe
+        <?= e(t('ed.ajouter_paragraphe')) ?>
       </button>
-      <button class="bouton" type="submit">Enregistrer le document</button>
-      <a class="bouton bouton--discret" href="<?= url('fichiers/' . $fichier['id'] . '/apercu') ?>"<?= $versApercu ?>>Annuler</a>
+      <button class="bouton" type="submit"><?= e(t('ed.enregistrer')) ?></button>
+      <a class="bouton bouton--discret" href="<?= url('fichiers/' . $fichier['id'] . '/apercu') ?>"<?= $versApercu ?>><?= e(t('commun.annuler')) ?></a>
     </div>
   </form>
 
@@ -388,9 +378,9 @@ $versApercu = $dansUneFenetre ? ' data-fenetre' : '';
       <input type="hidden" name="liste[]" value="">
       <input type="hidden" name="niveau[]" value="0">
       <input type="hidden" name="titre[]" value="0">
-      <textarea name="texte[]" rows="1" class="paragraphe__texte" aria-label="Nouveau paragraphe"></textarea>
+      <textarea name="texte[]" rows="1" class="paragraphe__texte" aria-label="<?= e(t('ed.nouveau_paragraphe')) ?>"></textarea>
       <button type="button" class="bouton bouton--discret bouton--petit"
-              data-supprimer-paragraphe title="Supprimer ce paragraphe">🗑</button>
+              data-supprimer-paragraphe title="<?= e(t('ed.supprimer_paragraphe')) ?>">🗑</button>
     </div>
   </template>
 <?php endif; ?>

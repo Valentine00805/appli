@@ -26,15 +26,15 @@ $parMatiere = $tri === 'matiere';
 $compteurs = static function (array $c): array {
     $lignes = [];
     foreach ([
-        'nb_fichiers'   => ['📎', 'fichier', 'fichiers'],
-        'nb_liens'      => ['🔗', 'lien', 'liens'],
-        'nb_renvois'    => ['📘', 'renvoi', 'renvois'],
-        'nb_evenements' => ['📅', 'échéance', 'échéances'],
-        'nb_cartes'     => ['🃏', 'carte', 'cartes'],
-    ] as $cle => [$icone, $singulier, $pluriel]) {
+        'nb_fichiers'   => 'fichiers',
+        'nb_liens'      => 'liens',
+        'nb_renvois'    => 'renvois',
+        'nb_evenements' => 'echeances',
+        'nb_cartes'     => 'cartes',
+    ] as $cle => $quoi) {
         $n = (int) $c[$cle];
         if ($n > 0) {
-            $lignes[] = $icone . ' ' . $n . ' ' . ($n > 1 ? $pluriel : $singulier);
+            $lignes[] = tn('rev.cpt.' . $quoi, $n);
         }
     }
     return $lignes;
@@ -43,50 +43,49 @@ $compteurs = static function (array $c): array {
 
 <div class="entete-page">
   <div>
-    <h1>📝 Révision</h1>
+    <h1><?= e(t('rev.titre')) ?></h1>
     <p>
       <?php if ($filtreActif): ?>
         <?php
         // La phrase est assemblée ici : un « if » par morceau laisserait une
         // espace avant le point dès qu'un des deux filtres manque.
-        $morceaux = [count($garnies) . ' fiche' . (count($garnies) > 1 ? 's' : '')];
+        $morceaux = [tn('rev.fiches', count($garnies))];
         if ($recherche !== '') {
-            $morceaux[] = 'pour « ' . $recherche . ' »';
+            $morceaux[] = t('rev.pour', ['quoi' => $recherche]);
         }
         if ($matiereChoisie !== null) {
-            $morceaux[] = 'en ' . $matiereChoisie;
+            $morceaux[] = t('rev.en_matiere', ['nom' => $matiereChoisie]);
         }
         ?>
         <?= e(implode(' ', $morceaux)) ?>.
-        <a href="<?= url('revision') ?>">Tout revoir</a>
+        <a href="<?= url('revision') ?>"><?= e(t('rev.tout_revoir')) ?></a>
       <?php elseif ($garnies === []): ?>
-        Vos fiches de révision se retrouveront ici.
+        <?= e(t('rev.vide_accueil')) ?>
       <?php else: ?>
-        <?php $s = count($garnies) > 1 ? 's' : ''; ?>
-        <?= count($garnies) ?> fiche<?= $s ?>,
-        <?= match ($tri) {
-            'recent' => 'de la plus récente à la plus ancienne.',
-            'ancien' => 'de la plus ancienne à la plus récente.',
-            default  => 'regroupée' . $s . ' par matière.',
-        } ?>
+        <?= e(tn('rev.fiches', count($garnies))) ?>,
+        <?= e(match ($tri) {
+            'recent' => t('rev.tri_recent'),
+            'ancien' => t('rev.tri_ancien'),
+            default  => tn('rev.tri_matiere', count($garnies)),
+        }) ?>
       <?php endif; ?>
     </p>
   </div>
   <?php // Réviser pour de bon : une session minutée, sur un écran sans rien d\u2019autre. ?>
-  <a class="bouton" href="<?= url('focus') ?>">🎯 Démarrer une session</a>
+  <a class="bouton" href="<?= url('focus') ?>"><?= e(t('rev.demarrer_session')) ?></a>
 </div>
 
 <form class="filtres" method="get" action="<?= url('revision') ?>" data-auto-envoi>
   <div class="champ">
-    <label for="f-fiche-q">Rechercher</label>
+    <label for="f-fiche-q"><?= e(t('rev.rechercher')) ?></label>
     <input type="search" id="f-fiche-q" name="q" value="<?= e($recherche) ?>"
-           placeholder="texte, lien, fichier…">
+           placeholder="<?= e(t('rev.rechercher_exemple')) ?>">
   </div>
 
   <div class="champ">
-    <label for="f-fiche-matiere">Matière</label>
+    <label for="f-fiche-matiere"><?= e(t('rev.matiere')) ?></label>
     <select id="f-fiche-matiere" name="matiere">
-      <option value="">Toutes</option>
+      <option value=""><?= e(t('rev.toutes')) ?></option>
       <?php foreach ($matieres as $m): ?>
         <option value="<?= (int) $m['id'] ?>"<?= $matiereId === (int) $m['id'] ? ' selected' : '' ?>>
           <?= e($m['nom']) ?>
@@ -96,17 +95,17 @@ $compteurs = static function (array $c): array {
   </div>
 
   <div class="champ">
-    <label for="f-fiche-tri">Trier par</label>
+    <label for="f-fiche-tri"><?= e(t('rev.trier_par')) ?></label>
     <select id="f-fiche-tri" name="tri">
-      <option value="matiere"<?= $tri === 'matiere' ? ' selected' : '' ?>>Matière</option>
-      <option value="recent"<?= $tri === 'recent' ? ' selected' : '' ?>>Modifiée récemment</option>
-      <option value="ancien"<?= $tri === 'ancien' ? ' selected' : '' ?>>Plus ancienne d'abord</option>
+      <option value="matiere"<?= $tri === 'matiere' ? ' selected' : '' ?>><?= e(t('rev.matiere')) ?></option>
+      <option value="recent"<?= $tri === 'recent' ? ' selected' : '' ?>><?= e(t('rev.tri_modifiee')) ?></option>
+      <option value="ancien"<?= $tri === 'ancien' ? ' selected' : '' ?>><?= e(t('rev.tri_plus_ancienne')) ?></option>
     </select>
   </div>
 
-  <button class="bouton bouton--secondaire" type="submit">Filtrer</button>
+  <button class="bouton bouton--secondaire" type="submit"><?= e(t('rev.filtrer')) ?></button>
   <?php if ($filtreActif || $tri !== 'matiere'): ?>
-    <a class="bouton bouton--discret" href="<?= url('revision') ?>">Réinitialiser</a>
+    <a class="bouton bouton--discret" href="<?= url('revision') ?>"><?= e(t('rev.reinitialiser')) ?></a>
   <?php endif; ?>
 </form>
 
@@ -114,19 +113,20 @@ $compteurs = static function (array $c): array {
   <div class="vide">
     <span class="vide__icone">🔍</span>
     <?php if ($recherche !== ''): ?>
-      <p>Rien pour « <?= e($recherche) ?> »<?php if ($matiereChoisie !== null): ?>
-         en <?= e($matiereChoisie) ?><?php endif; ?> — ni dans le texte des fiches,
-         ni dans les titres, les liens ou les noms de fichiers rattachés.</p>
+      <p><?= e(t('rev.rien_pour', [
+          'quoi' => $recherche,
+          'matiere' => $matiereChoisie === null ? '' : t('rev.en_matiere_suffixe', ['nom' => $matiereChoisie]),
+      ])) ?></p>
     <?php else: ?>
-      <p>Aucun cours en <?= e((string) $matiereChoisie) ?>.</p>
+      <p><?= e(t('rev.aucun_cours_en', ['nom' => (string) $matiereChoisie])) ?></p>
     <?php endif; ?>
-    <a class="bouton bouton--secondaire" href="<?= url('revision') ?>">Revoir toutes les fiches</a>
+    <a class="bouton bouton--secondaire" href="<?= url('revision') ?>"><?= e(t('rev.revoir_toutes')) ?></a>
   </div>
 <?php elseif ($garnies === [] && $vides === []): ?>
   <div class="vide">
     <span class="vide__icone">📝</span>
-    <p>Vous n'avez pas encore de cours. Une fiche de révision se rédige depuis un cours.</p>
-    <a class="bouton" href="<?= url('cours/nouveau') ?>" data-fenetre>Créer un cours</a>
+    <p><?= e(t('rev.aucun_cours')) ?></p>
+    <a class="bouton" href="<?= url('cours/nouveau') ?>" data-fenetre><?= e(t('rev.creer_cours')) ?></a>
   </div>
 <?php else: ?>
 
@@ -134,11 +134,9 @@ $compteurs = static function (array $c): array {
     <div class="vide">
       <span class="vide__icone">📝</span>
       <?php if ($filtreActif): ?>
-        <p>Aucune fiche ne correspond. Le ou les cours ci-dessous n'ont pas
-           encore la leur.</p>
+        <p><?= e(t('rev.aucune_correspond')) ?></p>
       <?php else: ?>
-        <p>Aucune fiche pour l'instant. Ouvrez un cours et cliquez sur
-           <strong>📝 Révision</strong> pour commencer la sienne.</p>
+        <p><?= t('rev.aucune_pour_instant') ?></p>
       <?php endif; ?>
     </div>
   <?php else: ?>
@@ -156,7 +154,7 @@ $compteurs = static function (array $c): array {
               <?= e($c['matiere_nom']) ?>
             </span>
           <?php else: ?>
-            <span class="discret">Sans matière</span>
+            <span class="discret"><?= e(t('focus.sans_matiere')) ?></span>
           <?php endif; ?>
         </h2>
         <div class="grille grille--fiches">
@@ -171,9 +169,9 @@ $compteurs = static function (array $c): array {
                 <?= e($c['matiere_nom']) ?>
               </span>
             <?php else: ?>
-              <span class="discret">Sans matière</span>
+              <span class="discret"><?= e(t('focus.sans_matiere')) ?></span>
             <?php endif; ?>
-            <span class="discret">modifiée le <?= e(date_fr((string) $c['modifiee_le'])) ?></span>
+            <span class="discret"><?= e(t('rev.modifiee_le', ['date' => date_fr((string) $c['modifiee_le'])])) ?></span>
           </p>
         <?php endif; ?>
 
@@ -186,11 +184,11 @@ $compteurs = static function (array $c): array {
           <p class="fiche-carte__ecoute">
             <?= Vue::rendre('cours/_anneau', [
                  'pourcentage' => $a['pourcentage'],
-                 'titre'       => 'Écoute de cette fiche',
+                 'titre'       => t('rev.ecoute_titre'),
                ]) ?>
             <span class="discret">
-              <?= $a['total'] ?> élément<?= $a['total'] > 1 ? 's' : '' ?>
-              <?php if ($a['finis'] > 0): ?>· <?= $a['finis'] ?> terminé<?= $a['finis'] > 1 ? 's' : '' ?><?php endif; ?>
+              <?= e(tn('rev.elements', (int) $a['total'])) ?>
+              <?php if ($a['finis'] > 0): ?><?= e(tn('rev.termines', (int) $a['finis'])) ?><?php endif; ?>
             </span>
           </p>
         <?php endif; ?>
@@ -199,16 +197,16 @@ $compteurs = static function (array $c): array {
         <?php if ($texte !== ''): ?>
           <p class="fiche-carte__extrait"><?= surligner(e(extrait_autour($texte, $termes)), $termes) ?></p>
         <?php else: ?>
-          <p class="fiche-carte__extrait discret">Pas de texte — seulement des éléments rattachés.</p>
+          <p class="fiche-carte__extrait discret"><?= e(t('rev.pas_de_texte')) ?></p>
         <?php endif; ?>
 
         <?php if (!empty($c['trouve_ailleurs'])): ?>
-          <p class="fiche-carte__ailleurs">🔍 Trouvé dans un élément rattaché</p>
+          <p class="fiche-carte__ailleurs"><?= e(t('rev.trouve_ailleurs')) ?></p>
         <?php endif; ?>
 
         <?php if ((int) $c['nb_cartes_dues'] > 0): ?>
           <p class="fiche-carte__du">
-            <span class="carte-du">🃏 <?= (int) $c['nb_cartes_dues'] ?> à revoir</span>
+            <span class="carte-du"><?= e(t('rev.a_revoir', ['n' => (int) $c['nb_cartes_dues']])) ?></span>
           </p>
         <?php endif; ?>
 
@@ -239,15 +237,15 @@ $compteurs = static function (array $c): array {
 
   <?php if ($vides !== []): ?>
     <details class="carte" style="margin-top:1.5rem">
-      <summary><strong>Cours sans fiche</strong> <span class="discret">(<?= count($vides) ?>)</span></summary>
+      <summary><strong><?= e(t('rev.cours_sans_fiche')) ?></strong> <span class="discret">(<?= count($vides) ?>)</span></summary>
       <div class="pile" style="margin-top:.85rem">
         <?php foreach ($vides as $c): ?>
           <a class="evt-ligne" href="<?= url('revision/' . $c['id']) ?>" data-fenetre>
             <span>
               <span class="evt-ligne__titre"><?= surligner(e($c['titre']), $termes) ?></span><br>
               <span class="evt-ligne__meta">
-                <?= $c['matiere_nom'] !== null ? e($c['matiere_nom']) : 'Sans matière' ?>
-                · commencer sa fiche
+                <?= $c['matiere_nom'] !== null ? e($c['matiere_nom']) : e(t('focus.sans_matiere')) ?>
+                <?= e(t('rev.commencer_fiche')) ?>
               </span>
             </span>
           </a>

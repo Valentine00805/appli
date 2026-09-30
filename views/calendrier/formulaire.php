@@ -272,11 +272,10 @@ $matiereActive = $edition ? entier_ou_null($evenement['matiere_id']) : null;
         ?>
         <fieldset class="serie-portee">
           <legend>
-            🔁 Série
-            <?= e(['jour' => 'quotidienne', 'semaine' => 'hebdomadaire',
-                   'quinzaine' => 'toutes les deux semaines', 'mois' => 'mensuelle'][$serie['frequence']] ?? '') ?>
-            de <?= (int) $serie['occurrences'] ?> occurrences, jusqu'au
-            <?= e(date('d/m/Y', strtotime((string) $serie['jusqu_au']))) ?>
+            <?= e(tn('evtf.serie_titre', (int) $serie['occurrences'], [
+                'rythme' => t('evtf.serie.' . $serie['frequence']),
+                'date' => date('d/m/Y', (int) strtotime((string) $serie['jusqu_au'])),
+            ])) ?>
           </legend>
           <label class="case">
             <input type="radio" name="portee" value="occurrence" checked>
@@ -287,9 +286,7 @@ $matiereActive = $edition ? entier_ou_null($evenement['matiere_id']) : null;
             <?= e(t('evtf.serie_toutes', ['n' => (int) $serie['occurrences']])) ?>
           </label>
           <span class="champ__aide">
-            Sur toute la série, chaque occurrence garde sa date — sans quoi
-            elles se retrouveraient toutes le même jour. L'heure et la durée,
-            elles, s'appliquent partout.
+            <?= e(t('evtf.serie_dates_aide')) ?>
           </span>
 
           <?php
@@ -304,13 +301,11 @@ $matiereActive = $edition ? entier_ou_null($evenement['matiere_id']) : null;
           ?>
           <div class="ligne-champs" style="margin-top:.7rem">
             <div class="champ">
-              <label for="repetition">Rythme</label>
+              <label for="repetition"><?= e(t('evtf.rythme')) ?></label>
               <select id="repetition" name="repetition">
-                <?php foreach (['jour' => 'Chaque jour', 'semaine' => 'Chaque semaine',
-                                'quinzaine' => 'Toutes les deux semaines',
-                                'mois' => 'Chaque mois'] as $cle => $libelle): ?>
+                <?php foreach (['jour', 'semaine', 'quinzaine', 'mois'] as $cle): ?>
                   <option value="<?= e($cle) ?>"<?= $serie['frequence'] === $cle ? ' selected' : '' ?>>
-                    <?= e($libelle) ?>
+                    <?= e(t('evtf.rythme.' . $cle)) ?>
                   </option>
                 <?php endforeach; ?>
               </select>
@@ -326,9 +321,7 @@ $matiereActive = $edition ? entier_ou_null($evenement['matiere_id']) : null;
                 'serie') ?>
           </div>
           <span class="champ__aide">
-            Changer le rythme ou les jours n'a d'effet que sur toute la série.
-            Les séances qui tombent encore sur une date prévue sont conservées
-            telles quelles ; celles qui ne le sont plus disparaissent.
+            <?= e(t('evtf.serie_rythme_aide')) ?>
           </span>
         </fieldset>
       <?php endif; ?>
@@ -405,13 +398,12 @@ $matiereActive = $edition ? entier_ou_null($evenement['matiere_id']) : null;
       <?php if ($ouEnvoyer !== [] && $venuDAilleurs && $copie !== null): ?>
         <div class="carte">
           <div class="champ">
-            <span class="legende">Cet évènement est celui d'un autre agenda</span>
+            <span class="legende"><?= e(t('evtf.autre_agenda')) ?></span>
             <span class="champ__aide">
-              Vous en avez déjà fait une copie à vous :
+              <?= e(t('evtf.copie_existe')) ?>
               <a href="<?= url('evenements/' . (int) $copie['id'] . '/modifier') ?>">
                 <?= e((string) $copie['titre']) ?></a>.
-              C'est là que les agendas se choisissent — ici, vous ne modifiez
-              que l'original, et il appartient à son agenda.
+              <?= e(t('evtf.copie_existe_suite')) ?>
             </span>
           </div>
         </div>
@@ -419,12 +411,12 @@ $matiereActive = $edition ? entier_ou_null($evenement['matiere_id']) : null;
       <?php elseif ($ouEnvoyer !== [] && $venuDAilleurs): ?>
         <div class="carte">
           <div class="champ">
-            <span class="legende">En faire un évènement à moi</span>
+            <span class="legende"><?= e(t('evtf.en_faire_le_mien')) ?></span>
 
             <label class="case" style="display:block">
               <input type="checkbox" name="agendas[]" value="">
-              Mes évènements
-              <span class="discret">— le calendrier de l'application</span>
+              <?= e(t('evtf.mes_evenements')) ?>
+              <span class="discret"><?= e(t('evtf.calendrier_appli')) ?></span>
             </label>
 
             <?php foreach ($ouEnvoyer as $cal): ?>
@@ -432,16 +424,13 @@ $matiereActive = $edition ? entier_ou_null($evenement['matiere_id']) : null;
                 <input type="checkbox" name="agendas[]" value="<?= e($cal['cle']) ?>">
                 <?= e($cal['nom']) ?>
                 <span class="discret">
-                  (<?= e($cal['agenda']) ?>)<?= $cal['partage'] ? ' — partagé' : '' ?>
+                  (<?= e($cal['agenda']) ?>)<?= $cal['partage'] ? e(t('evtf.partage_suffixe')) : '' ?>
                 </span>
               </label>
             <?php endforeach; ?>
 
             <span class="champ__aide">
-              Cet évènement vient de l'agenda de quelqu'un d'autre. Cocher
-              quelque chose ici en crée une copie qui sera la vôtre, et qui
-              partira dans les agendas cochés. L'original ne bouge pas : ni son
-              contenu, ni sa couleur.
+              <?= e(t('evtf.copie_aide')) ?>
             </span>
           </div>
         </div>
@@ -449,13 +438,13 @@ $matiereActive = $edition ? entier_ou_null($evenement['matiere_id']) : null;
       <?php elseif ($ouEnvoyer !== []): ?>
         <div class="carte">
           <div class="champ">
-            <span class="legende">Agendas où envoyer cet évènement</span>
+            <span class="legende"><?= e(t('evtf.ou_envoyer')) ?></span>
 
             <label class="case" style="display:block">
               <input type="checkbox" name="agendas[]" value=""
                      <?= in_array(Agenda::DEFAUT, $coches, true) ? 'checked' : '' ?>>
-              Mes évènements
-              <span class="discret">— le calendrier de l'application</span>
+              <?= e(t('evtf.mes_evenements')) ?>
+              <span class="discret"><?= e(t('evtf.calendrier_appli')) ?></span>
             </label>
 
             <?php foreach ($ouEnvoyer as $cal): ?>
@@ -464,15 +453,13 @@ $matiereActive = $edition ? entier_ou_null($evenement['matiere_id']) : null;
                        <?= in_array($cal['cle'], $coches, true) ? 'checked' : '' ?>>
                 <?= e($cal['nom']) ?>
                 <span class="discret">
-                  (<?= e($cal['agenda']) ?>)<?= $cal['partage'] ? ' — partagé' : '' ?>
+                  (<?= e($cal['agenda']) ?>)<?= $cal['partage'] ? e(t('evtf.partage_suffixe')) : '' ?>
                 </span>
               </label>
             <?php endforeach; ?>
 
             <span class="champ__aide">
-              Cochez-en autant que vous voulez : l'évènement part dans chacun et
-              y reste modifiable. Aucune case cochée revient à « Mes
-              évènements ».
+              <?= e(t('evtf.ou_envoyer_aide')) ?>
             </span>
           </div>
         </div>

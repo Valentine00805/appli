@@ -10,7 +10,7 @@ $liens = [
     'tags'     => ['libelle' => 'Tags', 'icone' => '#'],
 ];
 ?>
-<nav class="onglets" aria-label="Sections de l'organisation">
+<nav class="onglets" aria-label="<?= e(t('orga.sections')) ?>">
   <?php foreach ($liens as $cle => $lien): ?>
     <a href="<?= url('organisation/' . $cle) ?>"<?= $onglet === $cle ? ' aria-current="page"' : '' ?>>
       <span aria-hidden="true"><?= e($lien['icone']) ?></span> <?= e($lien['libelle']) ?>

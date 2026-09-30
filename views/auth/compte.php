@@ -74,7 +74,7 @@ $themeActuel = Auth::theme($moi);
       <?php endforeach; ?>
     </div>
     <p class="actions" style="margin:.8rem 0 0">
-      <noscript><button class="bouton bouton--petit" type="submit">Enregistrer</button></noscript>
+      <noscript><button class="bouton bouton--petit" type="submit"><?= e(t('commun.enregistrer')) ?></button></noscript>
       <button class="bouton bouton--discret bouton--petit" type="button" data-reglage-annuler><?= e(t('commun.fermer')) ?></button>
     </p>
   </form>
@@ -118,44 +118,43 @@ $langueActuelle = Langue::courante();
 </section>
 
 <section class="carte" style="margin-bottom:1rem" id="pseudo-carte" data-reglage>
-  <h2 style="margin-top:0">🏷️ Mon pseudo</h2>
+  <h2 style="margin-top:0"><?= e(t('cpt.pseudo')) ?></h2>
 
   <div class="reglage-lecture" data-reglage-lecture<?= $enEdition ? ' hidden' : '' ?>>
     <?php if ($pseudoActuel === ''): ?>
-      <p class="discret" style="margin:0">Vous n’avez pas encore de pseudo.</p>
+      <p class="discret" style="margin:0"><?= e(t('cpt.pseudo_aucun')) ?></p>
     <?php else: ?>
       <p class="reglage-lecture__valeur"><?= e($pseudoActuel) ?></p>
     <?php endif; ?>
     <button class="bouton bouton--secondaire" type="button" data-reglage-modifier>
-      <?= $pseudoActuel === '' ? 'Créer mon pseudo' : '✎ Modifier' ?>
+      <?= e($pseudoActuel === '' ? t('cpt.pseudo_creer') : t('commun.modifier')) ?>
     </button>
   </div>
 
   <form method="post" action="<?= url('compte/pseudo') ?>" data-reglage-edition<?= $enEdition ? '' : ' hidden' ?>>
     <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
-    <label class="legende" for="pseudo"><?= $pseudoActuel === '' ? 'Votre pseudo' : 'Nouveau pseudo' ?></label>
+    <label class="legende" for="pseudo"><?= e($pseudoActuel === '' ? t('cpt.pseudo_votre') : t('cpt.pseudo_nouveau')) ?></label>
     <div class="fuseau-choix">
       <input type="text" id="pseudo" name="pseudo" required autocomplete="nickname"
              minlength="<?= Auth::PSEUDO_MIN ?>" maxlength="<?= Auth::PSEUDO_MAX ?>"
-             placeholder="Votre pseudo" data-valeur-actuelle="<?= e($pseudoActuel) ?>"
+             placeholder="<?= e(t('cpt.pseudo_votre')) ?>" data-valeur-actuelle="<?= e($pseudoActuel) ?>"
              value="<?= e($enEdition ? $pseudoSaisi : $pseudoActuel) ?>">
-      <button class="bouton" type="submit">Enregistrer</button>
-      <button class="bouton bouton--discret" type="button" data-reglage-annuler>Annuler</button>
+      <button class="bouton" type="submit"><?= e(t('commun.enregistrer')) ?></button>
+      <button class="bouton bouton--discret" type="button" data-reglage-annuler><?= e(t('commun.annuler')) ?></button>
     </div>
     <p class="champ__aide">
-      De <?= Auth::PSEUDO_MIN ?> à <?= Auth::PSEUDO_MAX ?> caractères : lettres, chiffres, point, tiret et tiret bas, sans espace.
-      Unique : deux comptes ne peuvent pas porter le même.
+      <?= e(t('cpt.pseudo_regles', ['min' => Auth::PSEUDO_MIN, 'max' => Auth::PSEUDO_MAX])) ?>
     </p>
   </form>
 
   <p class="champ__aide" style="margin-bottom:0">
-    Le nom sous lequel l’application vous appelle. Il sert aussi à se connecter, à la place de l’adresse e-mail.
+    <?= e(t('cpt.pseudo_aide')) ?>
   </p>
 </section>
 
 <?php // La photo de profil : essayée dans l'aperçu, envoyée avec « Enregistrer ». ?>
 <section class="carte" style="margin-bottom:1rem" id="photo-profil" data-photo-carte>
-  <h2 style="margin-top:0">📷 Photo de profil</h2>
+  <h2 style="margin-top:0"><?= e(t('cpt.photo')) ?></h2>
   <div class="photo-groupe">
     <span class="photo-groupe__apercu" data-photo-apercu>
       <?= Amis::avatar((int) $moi['id'], Auth::nomAffiche($moi), 'avatar--apercu') ?>
@@ -165,21 +164,20 @@ $langueActuelle = Langue::courante();
         <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
         <input type="file" name="photo" id="photo-profil-fichier" class="sr-only" required
                accept="image/jpeg,image/png,image/gif,image/webp" data-photo-fichier>
-        <label class="bouton bouton--secondaire" for="photo-profil-fichier">📷 <?= ($moi['photo_nom'] ?? null) === null ? 'Choisir une photo' : 'Changer de photo' ?></label>
+        <label class="bouton bouton--secondaire" for="photo-profil-fichier">📷 <?= e(($moi['photo_nom'] ?? null) === null ? t('cpt.photo_choisir') : t('cpt.photo_changer')) ?></label>
         <span class="fond-reglage__nouveau" data-photo-nouveau hidden>
-          <button class="bouton" type="submit">Enregistrer</button>
-          <button class="bouton bouton--discret" type="button" data-photo-annuler>Annuler</button>
+          <button class="bouton" type="submit"><?= e(t('commun.enregistrer')) ?></button>
+          <button class="bouton bouton--discret" type="button" data-photo-annuler><?= e(t('commun.annuler')) ?></button>
         </span>
       </form>
       <?php if (($moi['photo_nom'] ?? null) !== null): ?>
         <form method="post" action="<?= url('compte/photo/retirer') ?>" style="margin-top:.5rem">
           <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
-          <button class="bouton bouton--discret" type="submit">Retirer la photo</button>
+          <button class="bouton bouton--discret" type="submit"><?= e(t('cpt.photo_retirer')) ?></button>
         </form>
       <?php endif; ?>
       <p class="champ__aide" style="margin-bottom:0">
-        Elle remplace votre initiale : en haut de l’application, et là où les autres comptes voient votre pseudo.
-        JPEG, PNG, GIF ou WebP, <?= intdiv(Amis::IMAGE_MAX_OCTETS, 1024 * 1024) ?> Mo au plus.
+        <?= e(t('cpt.photo_aide', ['mo' => intdiv(Amis::IMAGE_MAX_OCTETS, 1024 * 1024)])) ?>
       </p>
     </div>
   </div>
@@ -195,17 +193,17 @@ $langueActuelle = Langue::courante();
  */
 ?>
 <section class="carte" style="margin-bottom:1rem" id="fuseau-carte" data-reglage>
-  <h2 style="margin-top:0">🕑 Fuseau horaire</h2>
+  <h2 style="margin-top:0"><?= e(t('cpt.fuseau')) ?></h2>
 
   <?php // Comme le pseudo : il se lit, et ne se change qu'en passant par « Modifier ». ?>
   <div class="reglage-lecture" data-reglage-lecture>
     <p class="reglage-lecture__valeur"><?= e(str_replace('_', ' ', $fuseau)) ?></p>
-    <button class="bouton bouton--secondaire" type="button" data-reglage-modifier>✎ Modifier</button>
+    <button class="bouton bouton--secondaire" type="button" data-reglage-modifier><?= e(t('commun.modifier')) ?></button>
   </div>
 
   <form method="post" action="<?= url('compte/fuseau') ?>" data-reglage-edition hidden>
     <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
-    <label class="legende" for="fuseau">Nouveau fuseau horaire</label>
+    <label class="legende" for="fuseau"><?= e(t('cpt.fuseau_nouveau')) ?></label>
     <div class="fuseau-choix">
       <select id="fuseau" name="fuseau">
         <?php foreach ($fuseaux as $region => $liste): ?>
@@ -218,21 +216,16 @@ $langueActuelle = Langue::courante();
           </optgroup>
         <?php endforeach; ?>
       </select>
-      <button class="bouton" type="submit">Enregistrer</button>
-      <button class="bouton bouton--discret" type="button" data-reglage-annuler>Annuler</button>
+      <button class="bouton" type="submit"><?= e(t('commun.enregistrer')) ?></button>
+      <button class="bouton bouton--discret" type="button" data-reglage-annuler><?= e(t('commun.annuler')) ?></button>
     </div>
     <p class="champ__aide">
-      Changer de fuseau ne déplace pas ce qui est déjà noté : un cours à 8 h
-      reste à 8 h, simplement lu dans la nouvelle heure. C'est ce qu'on veut en
-      déménageant — moins en corrigeant un mauvais réglage, où il faudra
-      reprendre les horaires à la main.
+      <?= e(t('cpt.fuseau_aide')) ?>
     </p>
   </form>
 
   <p class="champ__aide" style="margin-bottom:0">
-    Il est <strong><?= e(date('H:i')) ?></strong> pour l'application.
-    Vos horaires d'évènements, ici comme dans Outlook, sont lus et écrits dans
-    ce fuseau.
+    <?= t('cpt.fuseau_heure', ['heure' => e(heure_courte(time()))]) ?>
   </p>
 </section>
 
@@ -244,30 +237,28 @@ $langueActuelle = Langue::courante();
 $transcription = (int) ($moi['transcription_vocale'] ?? 1) === 1;
 ?>
 <section class="carte" style="margin-bottom:1rem" id="transcription-carte" data-reglage>
-  <h2 style="margin-top:0"><?= str_replace(['width="14"', 'height="14"'], ['width="22"', 'height="22"'], Amis::micro()) ?> Transcription des messages vocaux</h2>
+  <h2 style="margin-top:0"><?= str_replace(['width="14"', 'height="14"'], ['width="22"', 'height="22"'], Amis::micro()) ?> <?= e(t('cpt.transcription')) ?></h2>
 
   <div class="reglage-lecture" data-reglage-lecture>
-    <p class="reglage-lecture__valeur"><?= $transcription ? '✅ Activée' : '⛔ Coupée' ?></p>
-    <button class="bouton bouton--secondaire" type="button" data-reglage-modifier>✎ Modifier</button>
+    <p class="reglage-lecture__valeur"><?= e($transcription ? t('cpt.activee_puce') : t('cpt.coupee_puce')) ?></p>
+    <button class="bouton bouton--secondaire" type="button" data-reglage-modifier><?= e(t('commun.modifier')) ?></button>
   </div>
 
   <form method="post" action="<?= url('compte/transcription') ?>" data-reglage-edition hidden>
     <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
     <fieldset class="reglage-choix">
-      <legend class="legende">Transcrire mes messages vocaux</legend>
-      <label><input type="radio" name="transcription" value="1"<?= $transcription ? ' checked' : '' ?>> Activée</label>
-      <label><input type="radio" name="transcription" value="0"<?= $transcription ? '' : ' checked' ?>> Coupée</label>
+      <legend class="legende"><?= e(t('cpt.transcription_legende')) ?></legend>
+      <label><input type="radio" name="transcription" value="1"<?= $transcription ? ' checked' : '' ?>> <?= e(t('cpt.activee')) ?></label>
+      <label><input type="radio" name="transcription" value="0"<?= $transcription ? '' : ' checked' ?>> <?= e(t('cpt.coupee')) ?></label>
     </fieldset>
     <div class="actions">
-      <button class="bouton" type="submit">Enregistrer</button>
-      <button class="bouton bouton--discret" type="button" data-reglage-annuler>Annuler</button>
+      <button class="bouton" type="submit"><?= e(t('commun.enregistrer')) ?></button>
+      <button class="bouton bouton--discret" type="button" data-reglage-annuler><?= e(t('commun.annuler')) ?></button>
     </div>
   </form>
 
   <p class="champ__aide" style="margin-bottom:0">
-    Activée, votre navigateur écrit ce que vous dites pendant l’enregistrement, et vos amis lisent le texte sous le vocal.
-    Chrome et Edge envoient pour cela le son à Google ou Microsoft ; Firefox ne sait pas transcrire.
-    Coupée, vos vocaux partent sans texte. Les vocaux déjà envoyés ne changent pas.
+    <?= e(t('cpt.transcription_aide')) ?>
   </p>
 </section>
 
@@ -280,34 +271,33 @@ $calendrierAmis = $calendrierAmis ?? [];
 ?>
 <?php $partagesDansDiscussion = $partagesDansDiscussion ?? true; ?>
 <section class="carte" style="margin-bottom:1rem" id="reception-partages" data-reglage>
-  <h2 style="margin-top:0">🔗 Ce qu’on me partage</h2>
+  <h2 style="margin-top:0"><?= e(t('cpt.partages')) ?></h2>
 
   <div class="reglage-lecture" data-reglage-lecture>
     <p class="reglage-lecture__valeur">
-      <?= $partagesDansDiscussion ? '💬 Dans la discussion et dans « Partagés »' : '📥 Seulement dans « Partagés », avec une notification' ?>
+      <?= e($partagesDansDiscussion ? t('cpt.partages_discussion') : t('cpt.partages_seulement')) ?>
     </p>
-    <button class="bouton bouton--secondaire" type="button" data-reglage-modifier>✎ Modifier</button>
+    <button class="bouton bouton--secondaire" type="button" data-reglage-modifier><?= e(t('commun.modifier')) ?></button>
   </div>
 
   <form method="post" action="<?= url('partages/reception') ?>" data-reglage-edition hidden>
     <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
     <input type="hidden" name="retour" value="<?= e(url('compte') . '#reception-partages') ?>">
     <fieldset class="reglage-choix">
-      <legend class="legende">Quand un ami me partage un document</legend>
+      <legend class="legende"><?= e(t('cpt.partages_legende')) ?></legend>
       <label><input type="radio" name="dans_discussion" value="1"<?= $partagesDansDiscussion ? ' checked' : '' ?>>
-        Il arrive en carte dans notre discussion, et dans « Partagés »</label>
+        <?= e(t('cpt.partages_choix_1')) ?></label>
       <label><input type="radio" name="dans_discussion" value="0"<?= $partagesDansDiscussion ? '' : ' checked' ?>>
-        Il n’arrive que dans « Partagés », avec une notification</label>
+        <?= e(t('cpt.partages_choix_2')) ?></label>
     </fieldset>
     <div class="actions">
-      <button class="bouton" type="submit">Enregistrer</button>
-      <button class="bouton bouton--discret" type="button" data-reglage-annuler>Annuler</button>
+      <button class="bouton" type="submit"><?= e(t('commun.enregistrer')) ?></button>
+      <button class="bouton bouton--discret" type="button" data-reglage-annuler><?= e(t('commun.annuler')) ?></button>
     </div>
   </form>
 
   <p class="champ__aide" style="margin-bottom:0">
-    Dans les deux cas, l’onglet « Partagés » compte ce que vous n’avez pas encore vu, et le mot qui accompagne un partage s’y lit.
-    Un partage fait à un groupe arrive toujours dans le groupe : la discussion est commune à tous ses membres.
+    <?= e(t('cpt.partages_aide')) ?>
   </p>
 </section>
 
@@ -319,13 +309,12 @@ $calendrierAmis = $calendrierAmis ?? [];
 $calendriersAmis = $calendriersAmis ?? [];
 ?>
 <section class="carte" style="margin-bottom:1rem" id="mon-calendrier">
-  <h2 style="margin-top:0">📅 Partager mon calendrier</h2>
+  <h2 style="margin-top:0"><?= e(t('cpt.mon_calendrier')) ?></h2>
   <?php if ($calendriersAmis === []): ?>
-    <p class="discret" style="margin:0">Vous n’avez pas encore d’amis à qui ouvrir votre calendrier.</p>
+    <p class="discret" style="margin:0"><?= e(t('cpt.mon_calendrier_vide')) ?></p>
   <?php else: ?>
     <p class="champ__aide" style="margin-top:0">
-      Ouvert à un ami, votre calendrier paraît dans le sien, en lecture : tous vos évènements, ceux d’aujourd’hui comme ceux que vous ajouterez.
-      Seulement « Mes évènements » — ni vos agendas Outlook et Google, ni ce que d’autres vous ont partagé.
+      <?= e(t('cpt.mon_calendrier_aide')) ?>
     </p>
     <ul class="reglages-amis">
       <?php foreach ($calendriersAmis as $ami): ?>
@@ -333,15 +322,15 @@ $calendriersAmis = $calendriersAmis ?? [];
           <span class="reglages-amis__qui">
             <?= Amis::avatar($ami['id'], $ami['pseudo'], 'avatar--mini') ?>
             <strong><?= e($ami['pseudo']) ?></strong>
-            <?php if ($ami['meMontreLeSien']): ?><span class="discret">· vous montre le sien</span><?php endif; ?>
+            <?php if ($ami['meMontreLeSien']): ?><span class="discret"><?= e(t('cpt.montre_le_sien')) ?></span><?php endif; ?>
           </span>
           <form method="post" action="<?= url('partages/mon-calendrier/' . $ami['id']) ?>" class="en-ligne"
-                <?= $ami['voitLeMien'] ? 'data-confirmation="' . e($ami['pseudo']) . ' ne verra plus votre calendrier. Continuer ?"' : '' ?>>
+                <?= $ami['voitLeMien'] ? 'data-confirmation="' . e(t('cpt.calendrier_retirer_sur', ['qui' => $ami['pseudo']])) . '"' : '' ?>>
             <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
             <input type="hidden" name="retour" value="<?= e(url('compte') . '#mon-calendrier') ?>">
             <input type="hidden" name="partager" value="<?= $ami['voitLeMien'] ? '0' : '1' ?>">
             <button class="interrupteur" type="submit" role="switch" aria-checked="<?= $ami['voitLeMien'] ? 'true' : 'false' ?>">
-              <span class="interrupteur__texte"><?= $ami['voitLeMien'] ? 'Voit mon calendrier' : 'Ne le voit pas' ?></span>
+              <span class="interrupteur__texte"><?= e($ami['voitLeMien'] ? t('cpt.voit_mon_calendrier') : t('cpt.ne_le_voit_pas')) ?></span>
             </button>
           </form>
         </li>
@@ -351,13 +340,12 @@ $calendriersAmis = $calendriersAmis ?? [];
 </section>
 
 <section class="carte" style="margin-bottom:1rem" id="calendrier-amis">
-  <h2 style="margin-top:0">📅 Évènements partagés par mes amis</h2>
+  <h2 style="margin-top:0"><?= e(t('cpt.calendrier_amis')) ?></h2>
   <?php if ($calendrierAmis === []): ?>
-    <p class="discret" style="margin:0">Vous n’avez pas encore d’amis. Quand vous en aurez, vous choisirez ici qui s’affiche dans votre calendrier.</p>
+    <p class="discret" style="margin:0"><?= e(t('cpt.calendrier_amis_vide')) ?></p>
   <?php else: ?>
     <p class="champ__aide" style="margin-top:0">
-      Choisissez, ami par ami, si les évènements qu’il vous partage — un par un, ou tout son calendrier — paraissent d’office dans votre calendrier et sur votre accueil.
-      Ils y restent à jour, et disparaissent si le partage est retiré. Sinon, ils vous attendent dans « Partagés ».
+      <?= e(t('cpt.calendrier_amis_aide')) ?>
     </p>
     <ul class="reglages-amis">
       <?php foreach ($calendrierAmis as $ami): ?>
@@ -365,15 +353,15 @@ $calendriersAmis = $calendriersAmis ?? [];
           <span class="reglages-amis__qui">
             <?= Amis::avatar($ami['id'], $ami['pseudo'], 'avatar--mini') ?>
             <strong><?= e($ami['pseudo']) ?></strong>
-            <span class="discret">· <?= $ami['partages'] === 0 ? 'aucun évènement partagé' : $ami['partages'] . ' évènement' . ($ami['partages'] > 1 ? 's' : '') . ' partagé' . ($ami['partages'] > 1 ? 's' : '') ?></span>
+            <span class="discret">· <?= e($ami['partages'] === 0 ? t('cpt.aucun_partage') : tn('cpt.partages_nb', (int) $ami['partages'])) ?></span>
           </span>
           <form method="post" action="<?= url('partages/calendrier/' . $ami['id']) ?>" class="en-ligne">
             <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
             <input type="hidden" name="retour" value="<?= e(url('compte') . '#calendrier-amis') ?>">
             <input type="hidden" name="afficher" value="<?= $ami['affiche'] ? '0' : '1' ?>">
             <button class="interrupteur" type="submit" role="switch" aria-checked="<?= $ami['affiche'] ? 'true' : 'false' ?>"
-                    title="<?= $ami['affiche'] ? 'Ne plus afficher d’office' : 'Afficher d’office' ?>">
-              <span class="interrupteur__texte"><?= $ami['affiche'] ? 'Dans mon calendrier' : 'Seulement dans « Partagés »' ?></span>
+                    title="<?= e($ami['affiche'] ? t('cpt.ne_plus_afficher') : t('cpt.afficher_office')) ?>">
+              <span class="interrupteur__texte"><?= e($ami['affiche'] ? t('cpt.dans_mon_calendrier') : t('cpt.seulement_partages')) ?></span>
             </button>
           </form>
         </li>
@@ -392,52 +380,51 @@ $calendriersAmis = $calendriersAmis ?? [];
   $motDePasseOuvert = Session::reprendre('mot_de_passe_ouvert') === true;
   ?>
   <div class="carte" id="mot-de-passe-carte" data-reglage>
-    <h2>🔒 Mot de passe</h2>
+    <h2><?= e(t('cpt.mot_de_passe')) ?></h2>
 
     <div class="reglage-lecture" data-reglage-lecture<?= $motDePasseOuvert ? ' hidden' : '' ?>>
-      <p class="reglage-lecture__valeur" aria-label="Mot de passe masqué">••••••••</p>
-      <button class="bouton bouton--secondaire" type="button" data-reglage-modifier>✎ Modifier</button>
+      <p class="reglage-lecture__valeur" aria-label="<?= e(t('cpt.mdp_masque')) ?>">••••••••</p>
+      <button class="bouton bouton--secondaire" type="button" data-reglage-modifier><?= e(t('commun.modifier')) ?></button>
     </div>
 
     <form method="post" action="<?= url('compte/mot-de-passe') ?>" data-reglage-edition<?= $motDePasseOuvert ? '' : ' hidden' ?>>
       <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
 
       <div class="champ">
-        <label for="mot_de_passe_actuel">Mot de passe actuel</label>
+        <label for="mot_de_passe_actuel"><?= e(t('cpt.mdp_actuel')) ?></label>
         <input type="password" id="mot_de_passe_actuel" name="mot_de_passe_actuel" required
                autocomplete="current-password">
       </div>
 
       <div class="ligne-champs">
         <div class="champ">
-          <label for="nouveau_mot_de_passe">Nouveau mot de passe</label>
+          <label for="nouveau_mot_de_passe"><?= e(t('cpt.mdp_nouveau')) ?></label>
           <input type="password" id="nouveau_mot_de_passe" name="nouveau_mot_de_passe" required minlength="8"
                  autocomplete="new-password">
         </div>
         <div class="champ">
-          <label for="nouveau_mot_de_passe_confirmation">Confirmation</label>
+          <label for="nouveau_mot_de_passe_confirmation"><?= e(t('cpt.mdp_confirmation')) ?></label>
           <input type="password" id="nouveau_mot_de_passe_confirmation" name="nouveau_mot_de_passe_confirmation"
                  required minlength="8" autocomplete="new-password">
         </div>
       </div>
 
       <div class="actions">
-        <button class="bouton" type="submit">Enregistrer</button>
-        <button class="bouton bouton--discret" type="button" data-reglage-annuler>Annuler</button>
+        <button class="bouton" type="submit"><?= e(t('commun.enregistrer')) ?></button>
+        <button class="bouton bouton--discret" type="button" data-reglage-annuler><?= e(t('commun.annuler')) ?></button>
       </div>
     </form>
 
-    <p class="champ__aide" style="margin-bottom:0">Huit caractères au moins. Le mot de passe actuel est demandé pour le changer.</p>
+    <p class="champ__aide" style="margin-bottom:0"><?= e(t('cpt.mdp_aide')) ?></p>
   </div>
 
   <div class="pile">
     <div class="carte">
-      <h2>🔔 Notifications</h2>
+      <h2><?= e(t('cpt.notifications')) ?></h2>
       <p class="discret" style="margin-bottom:.8rem">
-        Des rappels avant vos évènements et le matin de vos échéances, sur cet
-        ordinateur ou votre téléphone — même application fermée.
+        <?= e(t('cpt.notifications_aide')) ?>
       </p>
-      <a class="bouton bouton--secondaire bouton--bloc" href="<?= url('notifications') ?>" data-fenetre>Régler les notifications</a>
+      <a class="bouton bouton--secondaire bouton--bloc" href="<?= url('notifications') ?>" data-fenetre><?= e(t('cpt.regler_notifications')) ?></a>
     </div>
 
     <?php
@@ -452,44 +439,38 @@ $calendriersAmis = $calendriersAmis ?? [];
         url('budget'), url('amis'), url('compte'), url('hors-ligne')];
     ?>
     <div class="carte" data-hors-ligne data-pages="<?= e((string) json_encode($aGarder, JSON_UNESCAPED_SLASHES)) ?>">
-      <h2>📴 Hors connexion</h2>
+      <h2><?= e(t('cpt.hors_ligne')) ?></h2>
       <p class="discret" style="margin-bottom:.8rem">
-        Les pages que vous ouvrez sont gardées sur cet appareil : sans réseau,
-        vous les relisez, et ce que vous écrivez repart tout seul au retour de
-        la connexion.
+        <?= e(t('cpt.hors_ligne_aide')) ?>
       </p>
-      <p class="champ__aide" data-hors-ligne-etat aria-live="polite" style="margin-top:0">Vérification…</p>
+      <p class="champ__aide" data-hors-ligne-etat aria-live="polite" style="margin-top:0"><?= e(t('cpt.verification')) ?></p>
       <p class="actions" style="margin-bottom:0">
         <button class="bouton bouton--secondaire bouton--petit" type="button" data-hors-ligne-garder hidden>
-          Préparer mes pages
+          <?= e(t('cpt.preparer')) ?>
         </button>
         <button class="bouton bouton--discret bouton--petit" type="button" data-hors-ligne-oublier hidden>
-          Vider ce qui est gardé
+          <?= e(t('cpt.vider')) ?>
         </button>
       </p>
     </div>
 
     <div class="carte" style="border-color:var(--accent)">
-      <h2>💾 Sauvegarde</h2>
+      <h2><?= e(t('cpt.sauvegarde')) ?></h2>
       <p class="discret" style="margin-bottom:.8rem">
-        Vos données n'existent qu'à un seul endroit. Téléchargez-en une copie et
-        rangez-la ailleurs : c'est la seule chose qui vous protège d'une panne.
+        <?= e(t('cpt.sauvegarde_aide')) ?>
       </p>
       <a class="bouton bouton--bloc" href="<?= url('compte/sauvegarde') ?>">
-        Sauvegarder mes données
+        <?= e(t('cpt.sauvegarder')) ?>
       </a>
     </div>
 
     <div class="carte">
-      <h2>Où sont mes données ?</h2>
+      <h2><?= e(t('cpt.ou_donnees')) ?></h2>
       <p class="discret">
-        Les textes de cours, votre calendrier et vos comptes sont dans la base
-        MySQL <code>mon_appli_cours</code> ; les fichiers joints dans le dossier
-        <code>storage/uploads</code> de l'application.
+        <?= t('cpt.ou_donnees_1') ?>
       </p>
       <p class="discret" style="margin:0">
-        Le code est sur GitHub, mais pas vos données : elles en sont exclues
-        volontairement.
+        <?= e(t('cpt.ou_donnees_2')) ?>
       </p>
     </div>
   </div>

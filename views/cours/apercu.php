@@ -35,11 +35,11 @@ $dansUneFenetre = $dansUneFenetre ?? false;
       <?php // Dans la fenêtre, l'éditeur prend la place de l'aperçu. ?>
       <a class="bouton bouton--secondaire" href="<?= url('fichiers/' . $fichier['id'] . '/modifier') ?>"
          <?= $dansUneFenetre ? 'data-fenetre' : '' ?>>
-        ✎ Modifier le texte
+        <?= e(t('ap.modifier_texte')) ?>
       </a>
     <?php endif; ?>
     <a class="bouton bouton--secondaire bouton-partage" href="<?= url('partager/fichiers/' . $fichier['id']) ?>" <?= $dansUneFenetre ? 'data-fenetre-dessus' : 'data-fenetre' ?>>
-      <?= Partages::icone() ?> Partager
+      <?= Partages::icone() ?> <?= e(t('evt.partager')) ?>
     </a>
     <?php // Télécharger : le fichier d'origine, ou le PDF. ?>
     <?= Vue::rendre('cours/_telecharger', ['fichier' => $fichier]) ?>
@@ -50,21 +50,13 @@ $dansUneFenetre = $dansUneFenetre ?? false;
 <?php if (!in_array($genre, ['pdf', 'image'], true)): ?>
   <div class="flash flash--info" style="margin-bottom:1.25rem">
     <?php if ($genre === 'tableur'): ?>
-      <strong>Aperçu du contenu.</strong> Les formules, les couleurs et les graphiques
-      ne sont pas reproduits : seules les valeurs sont affichées.
-      Téléchargez le fichier pour l'ouvrir tel quel dans Excel ou LibreOffice.
+      <?= t('ap.tableur_aide') ?>
     <?php elseif ($genre === 'brut'): ?>
-      <strong>Contenu du fichier</strong>, tel qu'il est enregistré.
+      <?= t('ap.brut_aide') ?>
     <?php elseif ($enrichis !== []): ?>
-      <strong>Aperçu du document.</strong> Le gras, l'italique, le souligné, la taille,
-      la couleur, le surlignage, l'alignement, les titres, les listes et les images
-      sont rendus ; les tableaux, les en-têtes et la pagination ne le sont pas —
-      un navigateur ne sait pas afficher un <?= e($format) ?>. Téléchargez le fichier
-      pour l'ouvrir tel quel dans Word ou LibreOffice.
+      <?= t('ap.enrichi_aide', ['format' => e($format)]) ?>
     <?php else: ?>
-      <strong>Aperçu du texte.</strong> La mise en forme, les images et la pagination
-      ne sont pas reproduites — un navigateur ne sait pas afficher un <?= e($format) ?>.
-      Téléchargez le fichier pour l'ouvrir tel quel dans Word ou LibreOffice.
+      <?= t('ap.texte_aide', ['format' => e($format)]) ?>
     <?php endif; ?>
   </div>
 <?php endif; ?>
@@ -74,7 +66,7 @@ $dansUneFenetre = $dansUneFenetre ?? false;
     <span class="vide__icone">⚠️</span>
     <p><?= e($erreur) ?></p>
     <a class="bouton bouton--secondaire" href="<?= url('fichiers/' . $fichier['id'], ['telecharger' => 1]) ?>">
-      Télécharger le fichier
+      <?= e(t('commun.telecharger_fichier')) ?>
     </a>
   </div>
 <?php elseif ($genre === 'pdf'): ?>
@@ -84,14 +76,14 @@ $dansUneFenetre = $dansUneFenetre ?? false;
             title="<?= e((string) $fichier['nom_origine']) ?>"></iframe>
   </div>
   <p class="champ__aide" style="margin-top:.6rem">
-    Si le document ne s'affiche pas,
-    <a href="<?= url('fichiers/' . $fichier['id']) ?>" target="_blank" rel="noopener">l'ouvrir dans un onglet</a>.
+    <?= e(t('ap.pdf_repli')) ?>
+    <a href="<?= url('fichiers/' . $fichier['id']) ?>" target="_blank" rel="noopener"><?= e(t('ap.pdf_onglet')) ?></a>.
   </p>
 
 <?php elseif ($genre === 'image'): ?>
   <div class="carte apercu-image">
     <a href="<?= url('fichiers/' . $fichier['id']) ?>" target="_blank" rel="noopener"
-       title="Voir l'image en taille réelle">
+       title="<?= e(t('ap.image_grand')) ?>">
       <img src="<?= url('fichiers/' . $fichier['id']) ?>" alt="<?= e((string) $fichier['nom_origine']) ?>">
     </a>
   </div>
@@ -102,7 +94,7 @@ $dansUneFenetre = $dansUneFenetre ?? false;
   </div>
   <?php if ($tronque): ?>
     <p class="champ__aide" style="margin-top:.6rem">
-      Fichier volumineux : seul le début est affiché. Téléchargez-le pour tout voir.
+      <?= e(t('ap.tronque')) ?>
     </p>
   <?php endif; ?>
 
@@ -110,9 +102,9 @@ $dansUneFenetre = $dansUneFenetre ?? false;
   <?php if ($lignes === []): ?>
     <div class="vide">
       <span class="vide__icone">📊</span>
-      <p>Ce classeur ne contient aucune donnée sur sa première feuille.</p>
+      <p><?= e(t('ap.classeur_vide')) ?></p>
       <a class="bouton bouton--secondaire" href="<?= url('fichiers/' . $fichier['id'], ['telecharger' => 1]) ?>">
-        Télécharger le fichier
+        <?= e(t('commun.telecharger_fichier')) ?>
       </a>
     </div>
   <?php else: ?>
@@ -134,22 +126,20 @@ $dansUneFenetre = $dansUneFenetre ?? false;
       <?php
       $n = count($lignes);
       $suite = match (true) {
-          $total > $limite => ' sur ' . $total . ' — les suivantes ne sont pas montrées ici.'
-                            . ' Téléchargez le fichier pour tout voir.',
-          $format === 'classeur Excel' => ' · première feuille du classeur.',
+          $total > $limite => t('ap.sur_total', ['total' => $total]),
+          $format === t('fmt.xlsx') => t('ap.premiere_feuille'),
           default => '.',
       };
       ?>
-      <?= $n ?> ligne<?= $n > 1 ? 's' : '' ?> affichée<?= $n > 1 ? 's' : '' ?><?= $suite ?>
+      <?= e(tn('ap.lignes', $n)) ?><?= e($suite) ?>
     </p>
   <?php endif; ?>
 <?php elseif ($paragraphes === [] && $enrichis === []): ?>
   <div class="vide">
     <span class="vide__icone">📄</span>
-    <p>Ce document ne contient rien que l'aperçu sache montrer — il est
-       peut-être vide.</p>
+    <p><?= e(t('ap.rien_a_montrer')) ?></p>
     <a class="bouton bouton--secondaire" href="<?= url('fichiers/' . $fichier['id'], ['telecharger' => 1]) ?>">
-      Télécharger le fichier
+      <?= e(t('commun.telecharger_fichier')) ?>
     </a>
   </div>
 <?php else: ?>
@@ -203,7 +193,7 @@ $dansUneFenetre = $dansUneFenetre ?? false;
   <?php if ($sommaire > 0 && $plan !== []): ?>
     <nav class="carte apercu-sommaire" aria-labelledby="apercu-sommaire-titre"
          data-apercu-sommaire>
-      <h2 id="apercu-sommaire-titre" class="apercu-sommaire__titre">Sommaire</h2>
+      <h2 id="apercu-sommaire-titre" class="apercu-sommaire__titre"><?= e(t('ap.sommaire')) ?></h2>
       <ul class="apercu-sommaire__liste">
         <?php foreach ($plan as $rang => $entree): ?>
           <li class="apercu-sommaire__ligne apercu-sommaire__ligne--n<?= $entree['niveau'] ?>">
@@ -324,7 +314,7 @@ $dansUneFenetre = $dansUneFenetre ?? false;
     <?php $nbImages = array_sum(array_map(
         static fn (array $b): int => count($b['images'] ?? []) + (int) ($b['images_texte'] ?? 0),
         $blocs)); ?>
-    <?= count($paragraphes) ?> paragraphe<?= count($paragraphes) > 1 ? 's' : '' ?> lu<?= count($paragraphes) > 1 ? 's' : '' ?><?php
-    ?><?= $nbImages > 0 ? ', ' . $nbImages . ' image' . ($nbImages > 1 ? 's' : '') : '' ?>.
+    <?= e(tn('ap.paragraphes', count($paragraphes))) ?><?php
+    ?><?= $nbImages > 0 ? e(tn('ap.images', $nbImages)) : '' ?>.
   </p>
 <?php endif; ?>

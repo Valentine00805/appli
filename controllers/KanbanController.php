@@ -14,10 +14,10 @@ final class KanbanController
 {
     /** Les quatre colonnes, dans l'ordre d'affichage. */
     public const COLONNES = [
-        'a_faire'    => ['titre' => 'À faire',    'icone' => '📥'],
-        'en_cours'   => ['titre' => 'En cours',   'icone' => '🚧'],
-        'validation' => ['titre' => 'Validation', 'icone' => '🔎'],
-        'termine'    => ['titre' => 'Terminé',    'icone' => '✅'],
+        'a_faire'    => ['icone' => '📥'],
+        'en_cours'   => ['icone' => '🚧'],
+        'validation' => ['icone' => '🔎'],
+        'termine'    => ['icone' => '✅'],
     ];
 
     public function index(): void
@@ -53,7 +53,10 @@ final class KanbanController
 
         Vue::afficher('kanban/index', [
             'parColonne' => $parColonne,
-            'colonnes'   => self::COLONNES,
+            // Le nom d'une colonne vient de la langue ; son icône, de la constante.
+            'colonnes'   => array_combine(array_keys(self::COLONNES), array_map(
+                static fn (string $cle, array $c): array => $c + ['titre' => t('kb.colonne.' . $cle)],
+                array_keys(self::COLONNES), self::COLONNES)),
             'matieres'   => Database::all(
                 'SELECT id, nom FROM matieres WHERE user_id = ? ORDER BY nom',
                 [$userId]
@@ -223,7 +226,7 @@ final class KanbanController
                     ? (string) $e['matiere_couleur']
                     : ((string) ($e['type_couleur'] ?? '') !== '' ? (string) $e['type_couleur'] : '#94a3b8'),
                 'icone'    => (string) ($e['type_icone'] ?? '') !== '' ? (string) $e['type_icone'] : '📌',
-                'origine'  => trim(((string) ($e['type_nom'] ?? 'Évènement'))
+                'origine'  => trim(((string) ($e['type_nom'] ?? t('kb.evenement')))
                     . ((string) ($e['matiere_nom'] ?? '') !== '' ? ' · ' . (string) $e['matiere_nom'] : '')),
                 'note'     => TexteRiche::versTexte($e['description'] ?? ''),
                 'lien'     => url('evenements/' . (int) $e['id'] . '/modifier'),
@@ -270,7 +273,7 @@ final class KanbanController
     private function introuvable(): never
     {
         http_response_code(404);
-        Vue::afficher('erreurs/404', [], 'Introuvable');
+        Vue::afficher('erreurs/404', [], t('titre.introuvable'));
         exit;
     }
 }

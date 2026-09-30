@@ -12,26 +12,15 @@ final class SauvegardeController
         Auth::exiger();
         $userId = Auth::id();
 
+        $tables = ['matieres', 'dossiers', 'tags', 'types_evenement', 'categories_budget',
+            'cours', 'cours_tag', 'fichiers', 'evenements', 'recurrences', 'soldes_saisis',
+            'operations', 'reglements', 'listes_taches', 'taches'];
         Vue::afficher('compte/sauvegarde', [
             'resume' => Sauvegarde::resume($userId),
-            'libelles' => [
-                'matieres'          => 'matières',
-                'dossiers'          => 'dossiers',
-                'tags'              => 'tags',
-                'types_evenement'   => 'types d’évènement',
-                'categories_budget' => 'catégories de budget',
-                'cours'             => 'cours',
-                'cours_tag'         => 'liens cours–tags',
-                'fichiers'          => 'pièces jointes',
-                'evenements'        => 'évènements du calendrier',
-                'recurrences'       => 'charges fixes',
-                'soldes_saisis'     => 'soldes saisis',
-                'operations'        => 'opérations',
-                'reglements'        => 'règlements',
-                'listes_taches'     => 'listes de tâches',
-                'taches'            => 'tâches',
-            ],
-        ], 'Sauvegarde');
+            // Le nom lisible de chaque table vient du fichier de langue.
+            'libelles' => array_combine($tables, array_map(
+                static fn (string $table): string => t('svg.table.' . $table), $tables)),
+        ], t('svg.titre'));
     }
 
     public function exporter(): void

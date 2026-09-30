@@ -43,11 +43,11 @@ final class TypesEvenementController
 
         $nom = mb_substr(post('nom'), 0, 60);
         if ($nom === '') {
-            Session::flash('erreur', 'Le nom du type est obligatoire.');
+            Session::flash('erreur', t('flash.type_nom_obligatoire'));
             redirect('organisation/types');
         }
         if (Database::valeur('SELECT id FROM types_evenement WHERE user_id = ? AND nom = ?', [$userId, $nom]) !== null) {
-            Session::flash('erreur', 'Vous avez déjà un type nommé « ' . $nom . ' ».');
+            Session::flash('erreur', t('flash.type_deja', ['nom' => $nom]));
             redirect('organisation/types');
         }
 
@@ -70,7 +70,7 @@ final class TypesEvenementController
             ]
         );
 
-        Session::flash('succes', 'Type « ' . $nom . ' » créé.');
+        Session::flash('succes', t('flash.type_cree', ['nom' => $nom]));
         redirect('organisation/types');
     }
 
@@ -86,7 +86,7 @@ final class TypesEvenementController
 
         $nom = mb_substr(post('nom'), 0, 60);
         if ($nom === '') {
-            Session::flash('erreur', 'Le nom du type est obligatoire.');
+            Session::flash('erreur', t('flash.type_nom_obligatoire'));
             redirect('organisation/types');
         }
 
@@ -95,7 +95,7 @@ final class TypesEvenementController
             [$userId, $nom, $id]
         );
         if ($doublon !== null) {
-            Session::flash('erreur', 'Un autre type porte déjà ce nom.');
+            Session::flash('erreur', t('flash.type_autre_deja'));
             redirect('organisation/types');
         }
 
@@ -113,7 +113,7 @@ final class TypesEvenementController
             ]
         );
 
-        Session::flash('succes', 'Type mis à jour.');
+        Session::flash('succes', t('flash.type_maj'));
         redirect('organisation/types');
     }
 
@@ -134,14 +134,8 @@ final class TypesEvenementController
         Database::run('DELETE FROM types_evenement WHERE id = ? AND user_id = ?', [$id, $userId]);
 
         Session::flash('succes', $nbEvenements === 0
-            ? 'Type « ' . $type['nom'] . ' » supprimé.'
-            : sprintf(
-                'Type « %s » supprimé. %d évènement%s conservé%s, désormais sans type.',
-                $type['nom'],
-                $nbEvenements,
-                $nbEvenements > 1 ? 's' : '',
-                $nbEvenements > 1 ? 's' : ''
-            ));
+            ? t('flash.type_supprime', ['nom' => $type['nom']])
+            : tn('flash.type_supprime_gardes', $nbEvenements, ['nom' => $type['nom']]));
         redirect('organisation/types');
     }
 
@@ -218,7 +212,7 @@ final class TypesEvenementController
     private function introuvable(): never
     {
         http_response_code(404);
-        Vue::afficher('erreurs/404', [], 'Introuvable');
+        Vue::afficher('erreurs/404', [], t('titre.introuvable'));
         exit;
     }
 }

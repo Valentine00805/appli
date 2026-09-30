@@ -83,7 +83,7 @@ final class ApercuDocument
     {
         $contenu = file_get_contents($chemin, false, null, 0, self::TEXTE_MAX + 1);
         if ($contenu === false) {
-            throw new RuntimeException('Le fichier est illisible.');
+            throw new RuntimeException(t('err.fichier_illisible'));
         }
 
         $tronque = strlen($contenu) > self::TEXTE_MAX;
@@ -142,7 +142,7 @@ final class ApercuDocument
     {
         $flux = fopen($chemin, 'rb');
         if ($flux === false) {
-            throw new RuntimeException('Le fichier est illisible.');
+            throw new RuntimeException(t('err.fichier_illisible'));
         }
 
         try {
@@ -186,19 +186,11 @@ final class ApercuDocument
     /** Nom lisible du format, pour l'expliquer à l'écran. */
     public static function format(string $nomOrigine): string
     {
-        return match (self::extension($nomOrigine)) {
-            'docx'  => 'document Word',
-            'odt'   => 'document LibreOffice',
-            'pptx'  => 'présentation PowerPoint',
-            'odp'   => 'présentation LibreOffice',
-            'xlsx'  => 'classeur Excel',
-            'csv'   => 'fichier CSV',
-            'pdf'   => 'document PDF',
-            'txt'   => 'fichier texte',
-            'md'    => 'fichier Markdown',
+        return t('fmt.' . match (self::extension($nomOrigine)) {
+            'docx', 'odt', 'pptx', 'odp', 'xlsx', 'csv', 'pdf', 'txt', 'md' => self::extension($nomOrigine),
             'png', 'jpg', 'jpeg', 'gif', 'webp' => 'image',
             default => 'document',
-        };
+        });
     }
 
     /**
@@ -211,20 +203,20 @@ final class ApercuDocument
     {
         $ext = self::extension($nomOrigine);
         if (!isset(self::FORMATS[$ext])) {
-            throw new RuntimeException('Ce format ne se prévisualise pas.');
+            throw new RuntimeException(t('err.pas_de_apercu'));
         }
         [$partie, $balises] = self::FORMATS[$ext];
 
         $zip = new ZipArchive();
         if ($zip->open($chemin) !== true) {
-            throw new RuntimeException('Le fichier est illisible : ce n’est pas une archive valide.');
+            throw new RuntimeException(t('err.pas_une_archive'));
         }
 
         try {
             // Une présentation range chaque diapositive dans sa propre partie.
             $parties = $partie !== null ? [$partie] : self::diapositives($zip);
             if ($parties === []) {
-                throw new RuntimeException('Le contenu du document est introuvable dans le fichier.');
+                throw new RuntimeException(t('err.contenu_introuvable'));
             }
 
             $paragraphes = [];

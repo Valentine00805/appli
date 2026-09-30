@@ -25,7 +25,7 @@ final class TagsController
             'tags'      => $tags,
             'tri'       => $tri,
             'inutilises' => count(array_filter($tags, static fn (array $t): bool => (int) $t['nb_cours'] === 0)),
-        ], 'Mes tags');
+        ], t('tags.titre'));
     }
 
     public function creer(): void
@@ -36,7 +36,7 @@ final class TagsController
 
         $noms = $this->decouper(post('nom'));
         if ($noms === []) {
-            Session::flash('erreur', 'Indiquez au moins un nom de tag.');
+            Session::flash('erreur', t('flash.tag_un_nom'));
             redirect('organisation/tags');
         }
 
@@ -52,13 +52,12 @@ final class TagsController
         }
 
         if ($crees > 0) {
-            Session::flash('succes', $crees === 1
-                ? 'Tag créé.'
-                : $crees . ' tags créés.');
+            Session::flash('succes', tn('flash.tags_crees', $crees));
         }
         if ($ignores !== []) {
-            Session::flash('info', 'Déjà existant' . (count($ignores) > 1 ? 's' : '') . ' : '
-                . implode(', ', $ignores) . '.');
+            Session::flash('info', tn('flash.tags_deja', count($ignores), [
+                'liste' => implode(', ', $ignores) . '.',
+            ]));
         }
         redirect('organisation/tags');
     }
@@ -75,7 +74,7 @@ final class TagsController
 
         $nom = $this->nettoyer(post('nom'));
         if ($nom === '') {
-            Session::flash('erreur', 'Le nom du tag est obligatoire.');
+            Session::flash('erreur', t('flash.tag_nom_obligatoire'));
             redirect('organisation/tags');
         }
 
@@ -84,13 +83,12 @@ final class TagsController
             [$userId, $nom, $id]
         );
         if ($doublon !== null) {
-            Session::flash('erreur',
-                'Un autre tag porte déjà ce nom. Utilisez « Fusionner » pour réunir les deux.');
+            Session::flash('erreur', t('flash.tag_autre_deja'));
             redirect('organisation/tags');
         }
 
         Database::run('UPDATE tags SET nom = ? WHERE id = ? AND user_id = ?', [$nom, $id, $userId]);
-        Session::flash('succes', 'Tag renommé en « ' . $nom . ' ».');
+        Session::flash('succes', t('flash.tag_renomme', ['nom' => $nom]));
         redirect('organisation/tags');
     }
 
@@ -111,14 +109,8 @@ final class TagsController
         Database::run('DELETE FROM tags WHERE id = ? AND user_id = ?', [$id, $userId]);
 
         Session::flash('succes', $nbCours === 0
-            ? 'Tag « ' . $tag['nom'] . ' » supprimé.'
-            : sprintf(
-                'Tag « %s » supprimé. Il a été retiré de %d cours, qui %s conservé%s.',
-                $tag['nom'],
-                $nbCours,
-                $nbCours > 1 ? 'sont' : 'est',
-                $nbCours > 1 ? 's' : ''
-            ));
+            ? t('flash.tag_supprime', ['nom' => $tag['nom']])
+            : tn('flash.tag_supprime_cours', $nbCours, ['nom' => $tag['nom']]));
         redirect('organisation/tags');
     }
 
@@ -136,13 +128,13 @@ final class TagsController
 
         $cibleId = entier_ou_null($_POST['cible_id'] ?? null);
         if ($cibleId === null || $cibleId === $id) {
-            Session::flash('erreur', 'Choisissez un autre tag comme destination.');
+            Session::flash('erreur', t('flash.tag_destination'));
             redirect('organisation/tags');
         }
 
         $cible = Database::one('SELECT nom FROM tags WHERE id = ? AND user_id = ?', [$cibleId, $userId]);
         if ($cible === null) {
-            Session::flash('erreur', 'Tag de destination introuvable.');
+            Session::flash('erreur', t('flash.tag_destination_introuvable'));
             redirect('organisation/tags');
         }
 
@@ -154,11 +146,9 @@ final class TagsController
         );
         Database::run('DELETE FROM tags WHERE id = ? AND user_id = ?', [$id, $userId]);
 
-        Session::flash('succes', sprintf(
-            '« %s » a été fusionné dans « %s ».',
-            $source['nom'],
-            $cible['nom']
-        ));
+        Session::flash('succes', t('flash.tag_fusionne', [
+            'de' => $source['nom'], 'vers' => $cible['nom'],
+        ]));
         redirect('organisation/tags');
     }
 
@@ -181,8 +171,8 @@ final class TagsController
         );
 
         Session::flash('succes', $nb === 0
-            ? 'Aucun tag inutilisé à supprimer.'
-            : $nb . ' tag' . ($nb > 1 ? 's inutilisés supprimés.' : ' inutilisé supprimé.'));
+            ? t('flash.tags_aucun_inutilise')
+            : tn('flash.tags_nettoyes', $nb));
         redirect('organisation/tags');
     }
 
@@ -212,7 +202,7 @@ final class TagsController
     private function introuvable(): never
     {
         http_response_code(404);
-        Vue::afficher('erreurs/404', [], 'Introuvable');
+        Vue::afficher('erreurs/404', [], t('titre.introuvable'));
         exit;
     }
 }
