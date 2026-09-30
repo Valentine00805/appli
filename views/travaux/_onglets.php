@@ -8,18 +8,18 @@
  */
 $dansUneFenetre = $dansUneFenetre ?? false;
 $onglets = [
-    'taches'    => ['', '✅', 'Qui fait quoi'],
-    'echeances' => ['/echeances', '📅', 'Échéances'],
-    'fichiers'  => ['/fichiers', '📎', 'Fichiers'],
-    'document'  => ['/document', '📝', 'Document commun'],
-    'membres'   => ['/membres', '👥', 'Membres'],
+    'taches'    => ['', '✅', t('tr.on.qui_fait_quoi')],
+    'echeances' => ['/echeances', '📅', t('tr.on.echeances')],
+    'fichiers'  => ['/fichiers', '📎', t('tr.on.fichiers')],
+    'document'  => ['/document', '📝', t('tr.on.document')],
+    'membres'   => ['/membres', '👥', t('tr.on.membres')],
 ];
 ?>
 <?php // En fenêtre, toute la place : trois colonnes de tâches y tiennent. ?>
 <div class="entete-page"<?= $dansUneFenetre ? ' data-document' : '' ?>>
   <div>
     <?php if (!$dansUneFenetre): ?>
-      <p style="margin:0 0 .3rem"><a href="<?= url('travaux') ?>">← Tous les travaux de groupe</a></p>
+      <p style="margin:0 0 .3rem"><a href="<?= url('travaux') ?>"><?= e(t('tr.on.retour')) ?></a></p>
     <?php endif; ?>
     <h1>👥 <?= e((string) $projet['nom']) ?></h1>
     <?php if ((string) ($projet['description'] ?? '') !== ''): ?>
@@ -27,11 +27,11 @@ $onglets = [
     <?php endif; ?>
   </div>
   <?php if ($projet['conversation_id'] !== null): ?>
-    <a class="bouton bouton--secondaire" href="<?= url('groupes/' . (int) $projet['conversation_id']) ?>">💬 Discussion du groupe</a>
+    <a class="bouton bouton--secondaire" href="<?= url('groupes/' . (int) $projet['conversation_id']) ?>"><?= e(t('tr.on.discussion')) ?></a>
   <?php endif; ?>
 </div>
 
-<nav class="onglets" aria-label="Sections du travail de groupe">
+<nav class="onglets" aria-label="<?= e(t('tr.on.sections')) ?>">
   <?php foreach ($onglets as $cle => [$chemin, $icone, $nom]): ?>
     <a href="<?= url('travaux/' . (int) $projet['id'] . $chemin) ?>"<?= $onglet === $cle ? ' aria-current="page"' : '' ?><?= $dansUneFenetre ? ' data-fenetre' : '' ?>>
       <span aria-hidden="true"><?= $icone ?></span> <?= e($nom) ?>

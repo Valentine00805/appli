@@ -17,7 +17,7 @@ final class TravauxController
             'projets'     => Travaux::mesProjets($moi),
             'invitations' => Travaux::invitations($moi),
             'mesTaches'   => Travaux::mesTaches($moi, 8),
-        ], 'Travaux de groupe');
+        ], t('titre.tr_liste'));
     }
 
     public function creer(): void
@@ -33,7 +33,7 @@ final class TravauxController
         if ($refus !== null) {
             Session::flash('erreur', $refus);
         }
-        Session::flash('succes', 'Travail de groupe créé. Répartissez les premières tâches.');
+        Session::flash('succes', t('tr.fl.cree'));
         redirect('travaux/' . $projet);
     }
 
@@ -44,21 +44,21 @@ final class TravauxController
     public function nouveau(): void
     {
         Auth::exiger();
-        $this->formulaire('travaux/nouveau', ['amis' => Amis::liste(Auth::id())], 'Nouveau travail de groupe');
+        $this->formulaire('travaux/nouveau', ['amis' => Amis::liste(Auth::id())], t('titre.tr_nouveau'));
     }
 
     public function nouvelleTache(int $id): void
     {
         $projet = $this->projet($id);
         $this->formulaire('travaux/nouvelle_tache',
-            ['projet' => $projet, 'membres' => Travaux::membresActifs($id)], 'Nouvelle tâche');
+            ['projet' => $projet, 'membres' => Travaux::membresActifs($id)], t('titre.tr_nouvelle_tache'));
     }
 
     public function nouvelleEcheance(int $id): void
     {
         $projet = $this->projet($id);
         $this->formulaire('travaux/nouvelle_echeance',
-            ['projet' => $projet, 'types' => Travaux::types($id)], 'Nouvelle échéance');
+            ['projet' => $projet, 'types' => Travaux::types($id)], t('titre.tr_nouvelle_echeance'));
     }
 
     private function formulaire(string $vue, array $donnees, string $titre): void
@@ -128,7 +128,7 @@ final class TravauxController
     {
         $this->exigerPost();
         $this->finir(Travaux::modifier(Auth::id(), $id, post('nom'), post('description')),
-            'Projet mis à jour.', 'travaux/' . $id . '/membres');
+            t('tr.fl.mis_a_jour'), 'travaux/' . $id . '/membres');
     }
 
     public function supprimer(int $id): void
@@ -136,10 +136,10 @@ final class TravauxController
         $this->exigerPost();
         $nom = (string) (Travaux::projet($id, Auth::id())['nom'] ?? '');
         if (!Travaux::supprimer(Auth::id(), $id)) {
-            Session::flash('erreur', 'Seuls les administrateurs du projet peuvent le supprimer.');
+            Session::flash('erreur', t('tr.fl.admins_supprimer'));
             redirect('travaux/' . $id . '/membres');
         }
-        Session::flash('succes', '« ' . $nom . ' » supprimé, avec ses fichiers et ses échéances.');
+        Session::flash('succes', t('tr.fl.supprime', ['nom' => $nom]));
         redirect('travaux');
     }
 
@@ -147,10 +147,10 @@ final class TravauxController
     {
         $this->exigerPost();
         if (!Travaux::accepter(Auth::id(), $id)) {
-            Session::flash('erreur', 'Cette invitation n’existe plus.');
+            Session::flash('erreur', t('tr.fl.invitation_partie'));
             redirect('travaux');
         }
-        Session::flash('succes', 'Bienvenue dans le groupe : ses échéances sont dans votre calendrier.');
+        Session::flash('succes', t('tr.fl.bienvenue'));
         redirect('travaux/' . $id);
     }
 
@@ -158,7 +158,7 @@ final class TravauxController
     {
         $this->exigerPost();
         Travaux::refuser(Auth::id(), $id);
-        Session::flash('succes', 'Invitation refusée.');
+        Session::flash('succes', t('tr.fl.refusee'));
         redirect('travaux');
     }
 
@@ -166,7 +166,7 @@ final class TravauxController
     {
         $this->exigerPost();
         if (Travaux::quitter(Auth::id(), $id)) {
-            Session::flash('succes', 'Vous avez quitté le projet ; ses échéances ont quitté votre calendrier.');
+            Session::flash('succes', t('tr.fl.quitte'));
         }
         redirect('travaux');
     }
@@ -175,15 +175,14 @@ final class TravauxController
     {
         $this->exigerPost();
         [$nombre, $refus] = Travaux::inviter(Auth::id(), $id, is_array($_POST['amis'] ?? null) ? $_POST['amis'] : []);
-        $this->finir($refus, $nombre . ' invitation' . ($nombre > 1 ? 's envoyées' : ' envoyée')
-            . ' : le projet s’ouvrira pour eux quand ils accepteront.', 'travaux/' . $id . '/membres');
+        $this->finir($refus, tn('tr.fl.invitations', $nombre), 'travaux/' . $id . '/membres');
     }
 
     public function ajouterSansCompte(int $id): void
     {
         $this->exigerPost();
         $this->finir(Travaux::ajouterSansCompte(Auth::id(), $id, post('nom')),
-            '« ' . trim(post('nom')) . ' » ajouté : confiez-lui des tâches, et donnez-lui le lien public pour suivre le projet.',
+            t('tr.fl.sans_compte_ajoute', ['nom' => trim(post('nom'))]),
             'travaux/' . $id . '/membres');
     }
 
@@ -191,7 +190,7 @@ final class TravauxController
     {
         $this->exigerPost();
         $projet = (int) Database::valeur('SELECT projet_id FROM projet_membres WHERE id = ?', [$id]);
-        $this->finir(Travaux::retirer(Auth::id(), $id), 'Retiré du projet.', 'travaux/' . $projet . '/membres');
+        $this->finir(Travaux::retirer(Auth::id(), $id), t('tr.fl.retire'), 'travaux/' . $projet . '/membres');
     }
 
     public function nommerAdmin(int $id): void
@@ -209,7 +208,7 @@ final class TravauxController
         $this->exigerPost();
         $projet = (int) Database::valeur('SELECT projet_id FROM projet_membres WHERE id = ?', [$id]);
         $this->finir(Travaux::changerRole(Auth::id(), $id, $admin),
-            $admin ? 'Nommé administrateur.' : 'N’est plus administrateur.', 'travaux/' . $projet . '/membres');
+            t($admin ? 'tr.fl.nomme_admin' : 'tr.fl.plus_admin'), 'travaux/' . $projet . '/membres');
     }
 
     // --- Qui fait quoi ---------------------------------------------------------
@@ -223,7 +222,7 @@ final class TravauxController
         if (is_string($resultat)) {
             $this->finir($resultat, '', 'travaux/' . $id . '/taches/nouvelle');
         }
-        $this->finir(null, 'Tâche ajoutée.', 'travaux/' . $id);
+        $this->finir(null, t('tr.fl.tache_ajoutee'), 'travaux/' . $id);
     }
 
     /** Modifier une tâche, dans une fenêtre par-dessus le tableau. */
@@ -235,7 +234,7 @@ final class TravauxController
             'tache' => $tache,
             'projet' => Travaux::projet((int) $tache['projet_id'], Auth::id()),
             'membres' => Travaux::membresActifs((int) $tache['projet_id']),
-        ], 'Modifier la tâche');
+        ], t('titre.tr_modifier_tache'));
     }
 
     public function modifierTache(int $id): void
@@ -265,7 +264,7 @@ final class TravauxController
         $this->exigerPost();
         $tache = Travaux::tache(Auth::id(), $id) ?? $this->introuvable();
         Travaux::prendre(Auth::id(), $id);
-        Session::flash('succes', 'C’est pour vous : « ' . $tache['titre'] . ' ».');
+        Session::flash('succes', t('tr.fl.pour_vous', ['titre' => (string) $tache['titre']]));
         repartir_vers('travaux/' . (int) $tache['projet_id']);
     }
 
@@ -273,7 +272,7 @@ final class TravauxController
     {
         $this->exigerPost();
         $tache = Travaux::supprimerTache(Auth::id(), $id) ?? $this->introuvable();
-        Session::flash('succes', '« ' . $tache['titre'] . ' » supprimée.');
+        Session::flash('succes', t('tr.fl.tache_supprimee', ['titre' => (string) $tache['titre']]));
         redirect('travaux/' . (int) $tache['projet_id']);
     }
 
@@ -288,7 +287,7 @@ final class TravauxController
             $this->finir($donnees, '', 'travaux/' . $id . '/echeances/nouvelle');
         }
         Travaux::poserEcheance(Auth::id(), $id, $donnees);
-        Session::flash('succes', '« ' . $donnees['titre'] . ' » posée dans le calendrier de chaque membre, avec ses rappels.');
+        Session::flash('succes', t('tr.fl.echeance_posee', ['titre' => (string) $donnees['titre']]));
         redirect('travaux/' . $id . '/echeances');
     }
 
@@ -301,7 +300,7 @@ final class TravauxController
             'echeance' => $echeance,
             'projet' => Travaux::projet((int) $echeance['projet_id'], Auth::id()),
             'types' => Travaux::types((int) $echeance['projet_id']),
-        ], 'Modifier l’échéance');
+        ], t('titre.tr_modifier_echeance'));
     }
 
     public function modifierEcheance(int $id): void
@@ -314,7 +313,7 @@ final class TravauxController
             $this->finir($donnees, '', 'travaux/echeances/' . $id . '/modifier');
         }
         Travaux::modifierEcheance($id, $donnees);
-        Session::flash('succes', 'Échéance modifiée, dans le calendrier de chacun aussi.');
+        Session::flash('succes', t('tr.fl.echeance_modifiee'));
         redirect($retour);
     }
 
@@ -323,7 +322,7 @@ final class TravauxController
         $this->exigerPost();
         $echeance = Travaux::echeance(Auth::id(), $id) ?? $this->introuvable();
         Database::run('DELETE FROM projet_echeances WHERE id = ?', [$id]);
-        Session::flash('succes', '« ' . $echeance['titre'] . ' » retirée, du calendrier de chacun aussi.');
+        Session::flash('succes', t('tr.fl.echeance_retiree', ['titre' => (string) $echeance['titre']]));
         redirect('travaux/' . (int) $echeance['projet_id'] . '/echeances');
     }
 
@@ -343,7 +342,7 @@ final class TravauxController
         $this->formulaire('travaux/type', [
             'projet' => $projet, 'type' => null,
             'palette' => TypesEvenementController::PALETTE, 'icones' => Travaux::icones(),
-        ], 'Nouveau type');
+        ], t('titre.tr_nouveau_type'));
     }
 
     /** Modifier un type, en fenêtre. */
@@ -354,7 +353,7 @@ final class TravauxController
         $this->formulaire('travaux/type', [
             'projet' => Travaux::projet((int) $type['projet_id'], Auth::id()), 'type' => $type,
             'palette' => TypesEvenementController::PALETTE, 'icones' => Travaux::icones(),
-        ], 'Modifier le type');
+        ], t('titre.tr_modifier_type'));
     }
 
     public function creerType(int $id): void
@@ -372,7 +371,7 @@ final class TravauxController
         $this->exigerPost();
         $type = Travaux::type(Auth::id(), $id) ?? $this->introuvable();
         $refus = Travaux::enregistrerType((int) $type['projet_id'], $id, $_POST);
-        $this->finir($refus, 'Type mis à jour.',
+        $this->finir($refus, t('tr.fl.type_maj'),
             $refus === null ? 'travaux/' . (int) $type['projet_id'] . '/types' : 'travaux/types/' . $id . '/modifier');
     }
 
@@ -381,8 +380,8 @@ final class TravauxController
         $this->exigerPost();
         $type = Travaux::supprimerType(Auth::id(), $id) ?? $this->introuvable();
         $n = (int) $type['nb_echeances'];
-        $this->finir(null, 'Type « ' . $type['nom'] . ' » supprimé.'
-            . ($n === 0 ? '' : ' ' . $n . ' échéance' . ($n > 1 ? 's gardées' : ' gardée') . ', désormais sans type.'),
+        $this->finir(null, t('tr.fl.type_supprime', ['nom' => (string) $type['nom']])
+            . ($n === 0 ? '' : tn('tr.fl.echeances_gardees', $n)),
             'travaux/' . (int) $type['projet_id'] . '/types');
     }
 
@@ -404,12 +403,12 @@ final class TravauxController
         $erreurs = Travaux::deposer($_FILES['fichiers'] ?? [], Auth::id(), $id);
         $recus = $compter() - $avant;
         if ($recus > 0) {
-            Session::flash('succes', $recus . ' fichier' . ($recus > 1 ? 's déposés' : ' déposé') . ' pour le groupe.');
+            Session::flash('succes', tn('tr.fl.fichiers_deposes', $recus));
         }
         if ($erreurs !== []) {
             Session::flash('erreur', implode(' ', $erreurs));
         } elseif ($recus === 0) {
-            Session::flash('erreur', 'Choisissez au moins un fichier.');
+            Session::flash('erreur', t('tr.fl.choisir_fichier'));
         }
         redirect('travaux/' . $id . '/fichiers');
     }
@@ -427,9 +426,9 @@ final class TravauxController
         $projet = (int) (Travaux::fichier(Auth::id(), $id)['projet_id'] ?? 0);
         $fichier = Travaux::supprimerFichier(Auth::id(), $id);
         if ($fichier === null) {
-            Session::flash('erreur', 'Seuls qui l’a déposé et les administrateurs peuvent retirer ce fichier.');
+            Session::flash('erreur', t('tr.fl.retirer_fichier_interdit'));
         } else {
-            Session::flash('succes', '« ' . $fichier['nom_origine'] . ' » supprimé.');
+            Session::flash('succes', t('tr.fl.fichier_supprime', ['nom' => (string) $fichier['nom_origine']]));
         }
         redirect($projet > 0 ? 'travaux/' . $projet . '/fichiers' : 'travaux');
     }
@@ -444,10 +443,9 @@ final class TravauxController
         if (!Travaux::ecrireDocument(Auth::id(), $id, $contenu, (int) ($_POST['version'] ?? -1))) {
             // Quelqu'un a écrit entre-temps : on garde ce qu'on avait tapé, à côté.
             Session::garder('travaux-document-' . $id, $contenu);
-            Session::flash('erreur', 'Quelqu’un a modifié le document pendant que vous écriviez. '
-                . 'Voici sa version ; la vôtre est gardée juste en dessous, pour reprendre ce qui manque.');
+            Session::flash('erreur', t('tr.fl.document_conflit'));
         } else {
-            Session::flash('succes', 'Document enregistré.');
+            Session::flash('succes', t('tr.fl.document_enregistre'));
         }
         redirect('travaux/' . $id . '/document');
     }
@@ -457,14 +455,14 @@ final class TravauxController
         Auth::exiger();
         $version = Travaux::version(Auth::id(), $id) ?? $this->introuvable();
         $this->formulaire('travaux/version', ['version' => $version,
-            'projet' => Travaux::projet((int) $version['projet_id'], Auth::id())], 'Version du document');
+            'projet' => Travaux::projet((int) $version['projet_id'], Auth::id())], t('titre.tr_version'));
     }
 
     public function restaurer(int $id): void
     {
         $this->exigerPost();
         $projet = Travaux::restaurer(Auth::id(), $id) ?? $this->introuvable();
-        Session::flash('succes', 'Version restaurée. Celle qu’elle remplace reste dans l’historique.');
+        Session::flash('succes', t('tr.fl.version_restauree'));
         redirect('travaux/' . $projet . '/document');
     }
 
@@ -479,29 +477,29 @@ final class TravauxController
             $this->finir($refus, '', 'travaux/' . $id . '/membres');
         }
         $conversation = (int) Database::valeur('SELECT conversation_id FROM projets WHERE id = ?', [$id]);
-        Session::flash('succes', 'La discussion du groupe est prête : tous les membres y sont.');
+        Session::flash('succes', t('tr.fl.discussion_prete'));
         redirect('groupes/' . $conversation);
     }
 
     public function delierDiscussion(int $id): void
     {
         $this->exigerPost();
-        $this->finir(Travaux::delierDiscussion(Auth::id(), $id) ? null : 'Seuls les administrateurs peuvent la délier.',
-            'La discussion n’est plus reliée au projet (elle continue d’exister).', 'travaux/' . $id . '/membres');
+        $this->finir(Travaux::delierDiscussion(Auth::id(), $id) ? null : t('tr.fl.admins_delier'),
+            t('tr.fl.discussion_deliee'), 'travaux/' . $id . '/membres');
     }
 
     public function ouvrirLien(int $id): void
     {
         $this->exigerPost();
-        $this->finir(Travaux::ouvrirLien(Auth::id(), $id) === null ? 'Seuls les administrateurs peuvent ouvrir le lien.' : null,
-            'Lien public créé : qui l’a peut suivre le projet, sans rien modifier.', 'travaux/' . $id . '/membres');
+        $this->finir(Travaux::ouvrirLien(Auth::id(), $id) === null ? t('tr.fl.admins_ouvrir_lien') : null,
+            t('tr.fl.lien_cree'), 'travaux/' . $id . '/membres');
     }
 
     public function fermerLien(int $id): void
     {
         $this->exigerPost();
-        $this->finir(Travaux::fermerLien(Auth::id(), $id) ? null : 'Seuls les administrateurs peuvent fermer le lien.',
-            'Lien désactivé : il ne mène plus nulle part.', 'travaux/' . $id . '/membres');
+        $this->finir(Travaux::fermerLien(Auth::id(), $id) ? null : t('tr.fl.admins_fermer_lien'),
+            t('tr.fl.lien_desactive'), 'travaux/' . $id . '/membres');
     }
 
     /** Le projet vu par le lien public : tout, en lecture seule. */
@@ -511,7 +509,7 @@ final class TravauxController
         $projet = Travaux::parJeton($jeton);
         if ($projet === null) {
             http_response_code(404);
-            Vue::afficherPublic('partages/lien_mort', [], 'Lien introuvable');
+            Vue::afficherPublic('partages/lien_mort', [], t('titre.lien_introuvable'));
             return;
         }
         $id = (int) $projet['id'];
@@ -532,7 +530,7 @@ final class TravauxController
             : Database::one('SELECT * FROM projet_fichiers WHERE id = ? AND projet_id = ?', [$id, (int) $projet['id']]);
         if ($fichier === null) {
             http_response_code(404);
-            Vue::afficherPublic('partages/lien_mort', [], 'Lien introuvable');
+            Vue::afficherPublic('partages/lien_mort', [], t('titre.lien_introuvable'));
             return;
         }
         Fichiers::envoyer($fichier, isset($_GET['telecharger']), Travaux::dossier());

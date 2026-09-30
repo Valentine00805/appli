@@ -21,22 +21,21 @@ $dernier = count($types) - 1;
 <div class="entete-page">
   <div>
     <?php if (!$dansUneFenetre): ?>
-      <p style="margin:0 0 .3rem"><a href="<?= url('travaux/' . (int) $projet['id'] . '/echeances') ?>">← Les échéances</a></p>
+      <p style="margin:0 0 .3rem"><a href="<?= url('travaux/' . (int) $projet['id'] . '/echeances') ?>"><?= e(t('tr.ty.retour_echeances')) ?></a></p>
     <?php endif; ?>
-    <h1 style="margin:0">🏷️ Types d’échéance</h1>
+    <h1 style="margin:0"><?= e(t('tr.ty.titre')) ?></h1>
     <p class="discret" style="margin:.2rem 0 .4rem"><?= e((string) $projet['nom']) ?></p>
-    <p>Ils classent les échéances du groupe. Chacun a son icône, sa couleur, ses rappels et sa place dans le menu —
-      pour tous les membres du projet.</p>
+    <p><?= e(t('tr.ty.aide')) ?></p>
   </div>
 </div>
 
-<p style="margin:0 0 1rem"><a class="bouton bouton--petit" href="<?= url('travaux/' . (int) $projet['id'] . '/types/nouveau') ?>" data-fenetre>+ Nouveau type</a></p>
+<p style="margin:0 0 1rem"><a class="bouton bouton--petit" href="<?= url('travaux/' . (int) $projet['id'] . '/types/nouveau') ?>" data-fenetre><?= e(t('tr.ty.nouveau')) ?></a></p>
 
 <div class="pile"<?= $dansUneFenetre ? '' : ' style="max-width:48rem"' ?>>
   <?php if ($types === []): ?>
     <div class="vide">
       <span class="vide__icone">🏷️</span>
-      <p>Aucun type : les échéances seront « Sans type ». Créez-en un.</p>
+      <p><?= e(t('tr.ty.aucun')) ?></p>
     </div>
   <?php endif; ?>
   <?php foreach ($types as $i => $t): ?>
@@ -49,23 +48,23 @@ $dernier = count($types) - 1;
         <div style="flex:1;min-width:0">
           <h3 style="margin:0 0 .15rem"><?= e((string) $t['nom']) ?></h3>
           <p class="discret" style="margin:0">
-            <?= $n ?> échéance<?= $n > 1 ? 's' : '' ?>
+            <?= e(tn('tr.ty.echeances', $n)) ?>
             <?php $dire = Rappels::dire((string) $t['rappels']); ?>
-            · 🔔 <?= $dire === '' ? 'sans rappel' : e($dire) ?>
+            · 🔔 <?= $dire === '' ? e(t('tr.ty.sans_rappel')) : e($dire) ?>
           </p>
         </div>
         <div class="actions">
           <form method="post"<?= $envoi ?> action="<?= url('travaux/types/' . $id . '/deplacer') ?>" class="en-ligne">
             <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
             <input type="hidden" name="sens" value="haut">
-            <button class="bouton bouton--discret bouton--petit" type="submit" title="Monter"<?= $i === 0 ? ' disabled' : '' ?>>↑</button>
+            <button class="bouton bouton--discret bouton--petit" type="submit" title="<?= e(t('tr.ty.monter')) ?>"<?= $i === 0 ? ' disabled' : '' ?>>↑</button>
           </form>
           <form method="post"<?= $envoi ?> action="<?= url('travaux/types/' . $id . '/deplacer') ?>" class="en-ligne">
             <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
             <input type="hidden" name="sens" value="bas">
-            <button class="bouton bouton--discret bouton--petit" type="submit" title="Descendre"<?= $i === $dernier ? ' disabled' : '' ?>>↓</button>
+            <button class="bouton bouton--discret bouton--petit" type="submit" title="<?= e(t('tr.ty.descendre')) ?>"<?= $i === $dernier ? ' disabled' : '' ?>>↓</button>
           </form>
-          <a class="bouton bouton--secondaire bouton--petit" href="<?= url('travaux/types/' . $id . '/modifier') ?>" data-fenetre>Modifier</a>
+          <a class="bouton bouton--secondaire bouton--petit" href="<?= url('travaux/types/' . $id . '/modifier') ?>" data-fenetre><?= e(t('tr.ty.modifier')) ?></a>
         </div>
       </div>
     </section>

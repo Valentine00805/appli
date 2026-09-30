@@ -13,7 +13,7 @@ $dansUneFenetre = $dansUneFenetre ?? false;
     <?php if (!$dansUneFenetre): ?>
       <p style="margin:0 0 .3rem"><a href="<?= url('travaux/' . (int) $projet['id'] . '/echeances') ?>">← <?= e((string) $projet['nom']) ?></a></p>
     <?php endif; ?>
-    <h1>📅 Nouvelle échéance</h1>
+    <h1><?= e(t('tr.ec.nouvelle_titre')) ?></h1>
     <p><?= e((string) $projet['nom']) ?></p>
   </div>
 </div>
@@ -21,9 +21,9 @@ $dansUneFenetre = $dansUneFenetre ?? false;
 <form method="post" action="<?= url('travaux/' . (int) $projet['id'] . '/echeances') ?>" class="carte travaux-formulaire"<?= $dansUneFenetre ? ' data-envoi-fenetre' : '' ?>>
   <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
   <?= Vue::rendre('travaux/_champs_echeance', ['suffixe' => 'nouvelle', 'e' => null, 'types' => $types]) ?>
-  <p class="champ__aide" style="margin-top:0">Chaque membre la retrouve dans son calendrier, avec les rappels de son type.</p>
+  <p class="champ__aide" style="margin-top:0"><?= e(t('tr.ec.nouvelle_aide')) ?></p>
   <p class="actions">
-    <button class="bouton" type="submit">Poser dans le calendrier du groupe</button>
-    <a class="bouton bouton--secondaire" href="<?= url('travaux/' . (int) $projet['id'] . '/echeances') ?>"<?= $dansUneFenetre ? ' data-fermer' : '' ?>>Annuler</a>
+    <button class="bouton" type="submit"><?= e(t('tr.ec.poser')) ?></button>
+    <a class="bouton bouton--secondaire" href="<?= url('travaux/' . (int) $projet['id'] . '/echeances') ?>"<?= $dansUneFenetre ? ' data-fermer' : '' ?>><?= e(t('tr.ty.annuler')) ?></a>
   </p>
 </form>

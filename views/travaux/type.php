@@ -16,9 +16,9 @@ $retour = url('travaux/' . (int) $projet['id'] . '/types');
 <div class="entete-page" data-large>
   <div>
     <?php if (!$dansUneFenetre): ?>
-      <p style="margin:0 0 .3rem"><a href="<?= $retour ?>">← Types d’échéance</a></p>
+      <p style="margin:0 0 .3rem"><a href="<?= $retour ?>"><?= e(t('tr.ty.retour_types')) ?></a></p>
     <?php endif; ?>
-    <h1><?= $edition ? e((string) $type['icone']) . ' ' . e((string) $type['nom']) : '🏷️ Nouveau type' ?></h1>
+    <h1><?= $edition ? e((string) $type['icone']) . ' ' . e((string) $type['nom']) : e(t('tr.ty.nouveau_type')) ?></h1>
     <p><?= e((string) $projet['nom']) ?></p>
   </div>
 </div>
@@ -31,15 +31,15 @@ $retour = url('travaux/' . (int) $projet['id'] . '/types');
       't' => $type, 'palette' => $palette, 'icones' => $icones,
   ]) ?>
   <p class="actions">
-    <button class="bouton" type="submit"><?= $edition ? 'Enregistrer' : 'Créer le type' ?></button>
-    <a class="bouton bouton--secondaire" href="<?= $retour ?>"<?= $dansUneFenetre ? ' data-fermer' : '' ?>>Annuler</a>
+    <button class="bouton" type="submit"><?= e(t($edition ? 'tr.ty.enregistrer' : 'tr.ty.creer')) ?></button>
+    <a class="bouton bouton--secondaire" href="<?= $retour ?>"<?= $dansUneFenetre ? ' data-fermer' : '' ?>><?= e(t('tr.ty.annuler')) ?></a>
   </p>
 </form>
 
 <?php if ($edition): ?>
   <form method="post"<?= $envoi ?> action="<?= url('travaux/types/' . (int) $type['id'] . '/supprimer') ?>" style="margin-top:.75rem"
-        data-confirmation="Supprimer le type « <?= e((string) $type['nom']) ?> » ? Ses échéances restent, sans type.">
+        data-confirmation="<?= e(t('tr.ty.supprimer_confirmation', ['nom' => (string) $type['nom']])) ?>">
     <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
-    <button class="bouton bouton--danger bouton--petit" type="submit">Supprimer ce type</button>
+    <button class="bouton bouton--danger bouton--petit" type="submit"><?= e(t('tr.ty.supprimer')) ?></button>
   </form>
 <?php endif; ?>

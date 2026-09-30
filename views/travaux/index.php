@@ -10,22 +10,22 @@ $csrf = Session::jetonCsrf();
 ?>
 <div class="entete-page">
   <div>
-    <h1>👥 Travaux de groupe</h1>
-    <p>Qui fait quoi, les fichiers, un document écrit ensemble, et les échéances dans le calendrier de chacun.</p>
+    <h1><?= e(t('tr.li.titre')) ?></h1>
+    <p><?= e(t('tr.li.aide')) ?></p>
   </div>
-  <a class="bouton" href="<?= url('travaux/nouveau') ?>" data-fenetre>+ Nouveau travail de groupe</a>
+  <a class="bouton" href="<?= url('travaux/nouveau') ?>" data-fenetre><?= e(t('tr.li.nouveau')) ?></a>
 </div>
 
 <?php if ($invitations !== []): ?>
   <section class="carte" style="margin-bottom:1.25rem">
-    <h2>✉️ On vous invite</h2>
+    <h2><?= e(t('tr.li.on_vous_invite')) ?></h2>
     <ul class="pile" style="list-style:none;padding:0;margin:0">
       <?php foreach ($invitations as $i): ?>
         <li class="travaux-invitation">
           <span>
             <strong><?= e((string) $i['nom']) ?></strong>
-            <span class="discret">· invité par <?= e((string) ($i['invite_par_nom'] ?? 'un ancien membre')) ?>
-              · <?= (int) $i['nb_membres'] ?> membre<?= (int) $i['nb_membres'] > 1 ? 's' : '' ?></span>
+            <span class="discret"><?= e(t('tr.li.invite_par', ['qui' => (string) ($i['invite_par_nom'] ?? t('tr.li.ancien_membre'))])) ?>
+              · <?= e(tn('tr.li.membres', (int) $i['nb_membres'])) ?></span>
             <?php if ((string) ($i['description'] ?? '') !== ''): ?>
               <br><span class="discret"><?= e(extrait((string) $i['description'], 140)) ?></span>
             <?php endif; ?>
@@ -33,11 +33,11 @@ $csrf = Session::jetonCsrf();
           <span class="en-ligne">
             <form method="post" action="<?= url('travaux/' . (int) $i['id'] . '/rejoindre') ?>" class="en-ligne">
               <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
-              <button class="bouton bouton--petit" type="submit">Rejoindre</button>
+              <button class="bouton bouton--petit" type="submit"><?= e(t('tr.li.rejoindre')) ?></button>
             </form>
             <form method="post" action="<?= url('travaux/' . (int) $i['id'] . '/refuser') ?>" class="en-ligne">
               <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
-              <button class="bouton bouton--discret bouton--petit" type="submit">Refuser</button>
+              <button class="bouton bouton--discret bouton--petit" type="submit"><?= e(t('tr.li.refuser')) ?></button>
             </form>
           </span>
         </li>
@@ -52,8 +52,8 @@ $csrf = Session::jetonCsrf();
     <?php if ($projets === []): ?>
       <div class="vide">
         <span class="vide__icone">👥</span>
-        <p>Aucun travail de groupe pour l’instant. Créez le premier, et invitez-y vos amis.</p>
-        <p><a class="bouton bouton--secondaire" href="<?= url('travaux/nouveau') ?>" data-fenetre>Créer le premier</a></p>
+        <p><?= e(t('tr.li.aucun')) ?></p>
+        <p><a class="bouton bouton--secondaire" href="<?= url('travaux/nouveau') ?>" data-fenetre><?= e(t('tr.li.creer_premier')) ?></a></p>
       </div>
     <?php endif; ?>
 
@@ -63,20 +63,23 @@ $csrf = Session::jetonCsrf();
         <a class="carte travaux-carte" href="<?= url('travaux/' . (int) $p['id']) ?>" data-fenetre>
           <h2 class="travaux-carte__titre"><?= e((string) $p['nom']) ?></h2>
           <p class="discret" style="margin:0">
-            <?= (int) $p['nb_membres'] ?> membre<?= (int) $p['nb_membres'] > 1 ? 's' : '' ?>
-            <?php if ($p['role'] === 'admin'): ?>· administrateur<?php endif; ?>
+            <?= e(tn('tr.li.membres', (int) $p['nb_membres'])) ?>
+            <?php if ($p['role'] === 'admin'): ?><?= e(t('tr.li.administrateur')) ?><?php endif; ?>
           </p>
           <?php if ($avancement !== null): ?>
-            <div class="jauge" title="<?= $avancement ?> % des tâches faites">
+            <div class="jauge" title="<?= e(t('tr.li.part_faite', ['n' => $avancement])) ?>">
               <span style="width:<?= $avancement ?>%;background:var(--accent)"></span>
             </div>
-            <p class="discret" style="margin:0"><?= (int) $p['nb_faites'] ?> / <?= (int) $p['nb_taches'] ?> tâches faites
+            <p class="discret" style="margin:0"><?= e(t('tr.li.taches_faites', [
+                'faites' => (int) $p['nb_faites'],
+                'total' => (int) $p['nb_taches'],
+            ])) ?>
               <?php if ((int) $p['mes_taches'] > 0): ?>
-                · <strong><?= (int) $p['mes_taches'] ?> pour moi</strong>
+                · <strong><?= e(t('tr.li.pour_moi', ['n' => (int) $p['mes_taches']])) ?></strong>
               <?php endif; ?>
             </p>
           <?php else: ?>
-            <p class="discret" style="margin:.6rem 0 0">Pas encore de tâche répartie.</p>
+            <p class="discret" style="margin:.6rem 0 0"><?= e(t('tr.li.pas_de_tache')) ?></p>
           <?php endif; ?>
           <?php if ($p['prochaine'] !== null): ?>
             <p style="margin:.5rem 0 0">📅 <?= e((string) $p['prochaine_titre']) ?>
@@ -90,7 +93,7 @@ $csrf = Session::jetonCsrf();
   <div class="pile">
     <?php if ($mesTaches !== []): ?>
       <section class="carte">
-        <h2>✅ Ce que j’ai à faire</h2>
+        <h2><?= e(t('tr.li.a_faire')) ?></h2>
         <ul class="travaux-mes-taches">
           <?php foreach ($mesTaches as $t): ?>
             <li>

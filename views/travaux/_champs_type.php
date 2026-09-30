@@ -14,12 +14,12 @@ $rappels = Rappels::lire((string) ($t['rappels'] ?? '1440'));
 $choixIcones = in_array($icone, $icones, true) ? $icones : array_merge([$icone], $icones);
 ?>
 <div class="champ">
-  <label for="nom-<?= e($suffixe) ?>">Nom</label>
+  <label for="nom-<?= e($suffixe) ?>"><?= e(t('tr.ty.nom')) ?></label>
   <input type="text" id="nom-<?= e($suffixe) ?>" name="nom" required maxlength="40"
-         value="<?= e((string) ($t['nom'] ?? '')) ?>" placeholder="Projet, oral blanc, partiel…">
+         value="<?= e((string) ($t['nom'] ?? '')) ?>" placeholder="<?= e(t('tr.ty.nom_exemple')) ?>">
 </div>
 <div class="champ">
-  <span class="legende">Icône</span>
+  <span class="legende"><?= e(t('tr.ty.icone')) ?></span>
   <div class="choix-icones">
     <?php foreach ($choixIcones as $j => $i): ?>
       <input type="radio" id="icone-<?= e($suffixe) ?>-<?= $j ?>" name="icone" value="<?= e($i) ?>"<?= $i === $icone ? ' checked' : '' ?>>
@@ -28,7 +28,7 @@ $choixIcones = in_array($icone, $icones, true) ? $icones : array_merge([$icone],
   </div>
 </div>
 <div class="champ">
-  <span class="legende">Couleur</span>
+  <span class="legende"><?= e(t('tr.ty.couleur')) ?></span>
   <div class="choix-couleurs">
     <?php foreach ($palette as $j => $c): ?>
       <input type="radio" id="couleur-<?= e($suffixe) ?>-<?= $j ?>" name="couleur" value="<?= e($c) ?>"<?= $c === $couleur ? ' checked' : '' ?>>
@@ -37,7 +37,7 @@ $choixIcones = in_array($icone, $icones, true) ? $icones : array_merge([$icone],
   </div>
 </div>
 <fieldset class="rappels-choix">
-  <legend>🔔 Rappels</legend>
+  <legend><?= e(t('tr.ty.rappels')) ?></legend>
   <div class="rappels-choix__liste">
     <?php foreach (array_reverse(Rappels::DELAIS_COURTS, true) as $minutes => $court): ?>
       <label class="rappels-choix__option" title="<?= e(Rappels::libelle((int) $minutes)) ?>">
@@ -46,6 +46,5 @@ $choixIcones = in_array($icone, $icones, true) ? $icones : array_merge([$icone],
       </label>
     <?php endforeach; ?>
   </div>
-  <span class="champ__aide">Ceux que prend l’échéance en arrivant dans le calendrier de chaque membre ;
-    chacun peut ensuite changer les siens.</span>
+  <span class="champ__aide"><?= e(t('tr.ty.rappels_aide')) ?></span>
 </fieldset>

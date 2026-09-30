@@ -10,32 +10,32 @@ $dansUneFenetre = $dansUneFenetre ?? false;
 <div class="entete-page">
   <div>
     <?php if (!$dansUneFenetre): ?>
-      <p style="margin:0 0 .3rem"><a href="<?= url('travaux') ?>">← Tous les travaux de groupe</a></p>
+      <p style="margin:0 0 .3rem"><a href="<?= url('travaux') ?>"><?= e(t('tr.on.retour')) ?></a></p>
     <?php endif; ?>
-    <h1>👥 Nouveau travail de groupe</h1>
+    <h1><?= e(t('tr.nv.titre')) ?></h1>
   </div>
 </div>
 
 <form method="post" action="<?= url('travaux') ?>" class="carte travaux-formulaire"<?= $dansUneFenetre ? ' data-envoi-fenetre' : '' ?>>
   <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
   <div class="champ">
-    <label for="nom-projet">Nom</label>
+    <label for="nom-projet"><?= e(t('tr.me.nom')) ?></label>
     <input type="text" id="nom-projet" name="nom" required autofocus maxlength="<?= Travaux::NOM_MAX ?>"
-           placeholder="Exposé d’histoire, projet de fin d’année…">
+           placeholder="<?= e(t('tr.nv.nom_exemple')) ?>">
   </div>
   <div class="champ">
-    <label for="description-projet">Le sujet, les consignes <span class="discret">(facultatif)</span></label>
+    <label for="description-projet"><?= e(t('tr.nv.sujet')) ?> <span class="discret"><?= e(t('tr.nv.facultatif')) ?></span></label>
     <textarea id="description-projet" name="description" rows="3" maxlength="2000"></textarea>
   </div>
   <div class="champ">
-    <span class="legende">Inviter des amis <span class="discret">(ils acceptent ou refusent)</span></span>
+    <span class="legende"><?= e(t('tr.nv.inviter')) ?> <span class="discret"><?= e(t('tr.nv.acceptent')) ?></span></span>
     <?php if ($amis === []): ?>
-      <p class="discret" style="margin:.3rem 0 0">Pas encore d’amis dans l’appli :
-        <a href="<?= url('amis') ?>">en ajouter</a>. Vous pourrez aussi ajouter des personnes sans compte.</p>
+      <p class="discret" style="margin:.3rem 0 0"><?= e(t('tr.nv.pas_damis')) ?>
+        <a href="<?= url('amis') ?>"><?= e(t('tr.me.en_ajouter')) ?></a><?= e(t('tr.nv.pas_damis_suite')) ?></p>
     <?php else: ?>
       <label class="discussions-recherche">
-        <span class="sr-only">Rechercher un ami</span>
-        <input type="search" placeholder="Rechercher un ami" autocomplete="off" data-filtre-liste="[data-liste-amis-projet]">
+        <span class="sr-only"><?= e(t('tr.me.chercher_ami')) ?></span>
+        <input type="search" placeholder="<?= e(t('tr.me.chercher_ami')) ?>" autocomplete="off" data-filtre-liste="[data-liste-amis-projet]">
       </label>
       <ul class="groupe-choix__liste partage-liste" data-liste-amis-projet>
         <?php foreach ($amis as $a): ?>
@@ -48,11 +48,11 @@ $dansUneFenetre = $dansUneFenetre ?? false;
           </li>
         <?php endforeach; ?>
       </ul>
-      <p class="discret" data-filtre-vide hidden style="margin:.4rem 0 0">Aucun ami ne porte ce nom.</p>
+      <p class="discret" data-filtre-vide hidden style="margin:.4rem 0 0"><?= e(t('tr.me.aucun_ami_nom')) ?></p>
     <?php endif; ?>
   </div>
   <p class="actions">
-    <button class="bouton" type="submit">Créer</button>
-    <a class="bouton bouton--secondaire" href="<?= url('travaux') ?>"<?= $dansUneFenetre ? ' data-fermer' : '' ?>>Annuler</a>
+    <button class="bouton" type="submit"><?= e(t('tr.nv.creer')) ?></button>
+    <a class="bouton bouton--secondaire" href="<?= url('travaux') ?>"<?= $dansUneFenetre ? ' data-fermer' : '' ?>><?= e(t('tr.nv.annuler')) ?></a>
   </p>
 </form>

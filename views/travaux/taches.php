@@ -38,8 +38,8 @@ $avancement = Travaux::avancement($total, $faites);
 <div class="<?= $dansUneFenetre ? 'pile' : 'colonnes' ?>">
   <div class="pile">
     <div class="travaux-filtres">
-      <a class="bouton bouton--petit" href="<?= url('travaux/' . (int) $projet['id'] . '/taches/nouvelle') ?>" data-fenetre>+ Nouvelle tâche</a>
-      <?php foreach (['tous' => 'Toutes', 'moi' => 'Les miennes', 'personne' => 'Sans personne'] as $cle => $nom): ?>
+      <a class="bouton bouton--petit" href="<?= url('travaux/' . (int) $projet['id'] . '/taches/nouvelle') ?>" data-fenetre><?= e(t('tr.ta.nouvelle')) ?></a>
+      <?php foreach (['tous' => t('tr.ta.toutes'), 'moi' => t('tr.ta.les_miennes'), 'personne' => t('tr.ta.sans_personne')] as $cle => $nom): ?>
         <a class="pastille<?= $filtre === $cle ? ' pastille--active' : '' ?>"
            href="<?= url('travaux/' . (int) $projet['id'], $cle === 'tous' ? [] : ['voir' => $cle]) ?>"<?= $lien ?>><?= e($nom) ?></a>
       <?php endforeach; ?>
@@ -48,20 +48,20 @@ $avancement = Travaux::avancement($total, $faites);
     <?php if ($total === 0): ?>
       <div class="vide">
         <span class="vide__icone">✅</span>
-        <p>Aucune tâche pour l’instant. Découpez le travail en morceaux, et dites qui fait quoi.</p>
-        <p><a class="bouton bouton--secondaire" href="<?= url('travaux/' . (int) $projet['id'] . '/taches/nouvelle') ?>" data-fenetre>Ajouter la première</a></p>
+        <p><?= e(t('tr.ta.aucune')) ?></p>
+        <p><a class="bouton bouton--secondaire" href="<?= url('travaux/' . (int) $projet['id'] . '/taches/nouvelle') ?>" data-fenetre><?= e(t('tr.ta.ajouter_premiere')) ?></a></p>
       </div>
     <?php endif; ?>
 
     <?php // On saisit une carte et on la dépose dans une autre colonne ; sans script, le menu fait la même chose. ?>
     <div class="kanban travaux-kanban" data-glisser-taches>
-      <?php foreach (Travaux::STATUTS as $statut => $s): ?>
+      <?php foreach (Travaux::statuts() as $statut => $s): ?>
         <section class="kanban__colonne" data-statut="<?= e($statut) ?>">
           <h2 class="kanban__entete"><?= $s['icone'] ?> <?= e($s['nom']) ?>
             <span class="kanban__compteur"><?= count($parStatut[$statut]) ?></span></h2>
           <ul class="kanban__pile" style="list-style:none;padding:0;margin:0">
             <?php if ($parStatut[$statut] === []): ?>
-              <li class="kanban__vide discret">Rien ici.</li>
+              <li class="kanban__vide discret"><?= e(t('tr.ta.rien_ici')) ?></li>
             <?php endif; ?>
             <?php foreach ($parStatut[$statut] as $t): ?>
               <?php $id = (int) $t['id']; $fait = $statut === 'fait'; ?>
@@ -74,9 +74,9 @@ $avancement = Travaux::avancement($total, $faites);
                 <p class="kanban-carte__meta">
                   <?php if ($t['membre_id'] !== null): ?>
                     <span class="pastille<?= (int) $t['membre_id'] === $moi ? ' pastille--active' : '' ?>">
-                      👤 <?= (int) $t['membre_id'] === $moi ? 'Moi' : e((string) $t['membre_nom']) ?></span>
+                      👤 <?= (int) $t['membre_id'] === $moi ? e(t('tr.ta.moi')) : e((string) $t['membre_nom']) ?></span>
                   <?php else: ?>
-                    <span class="pastille pastille--muette">Personne</span>
+                    <span class="pastille pastille--muette"><?= e(t('tr.ta.personne')) ?></span>
                   <?php endif; ?>
                   <?php $texte = echeance_libelle($t['echeance'], $fait); ?>
                   <?php if ($texte !== ''): ?>
@@ -87,24 +87,24 @@ $avancement = Travaux::avancement($total, $faites);
                   <form method="post"<?= $envoi ?> action="<?= url('travaux/taches/' . $id . '/statut') ?>" class="en-ligne" data-auto-envoi>
                     <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
                     <?= $retour ?>
-                    <label class="sr-only" for="statut-<?= $id ?>">Où en est « <?= e((string) $t['titre']) ?> »</label>
+                    <label class="sr-only" for="statut-<?= $id ?>"><?= e(t('tr.ta.ou_en_est', ['titre' => (string) $t['titre']])) ?></label>
                     <select id="statut-<?= $id ?>" name="statut">
-                      <?php foreach (Travaux::STATUTS as $autre => $a): ?>
+                      <?php foreach (Travaux::statuts() as $autre => $a): ?>
                         <option value="<?= e($autre) ?>"<?= $autre === $statut ? ' selected' : '' ?>><?= e($a['nom']) ?></option>
                       <?php endforeach; ?>
                     </select>
-                    <noscript><button class="bouton bouton--discret bouton--petit" type="submit">OK</button></noscript>
+                    <noscript><button class="bouton bouton--discret bouton--petit" type="submit"><?= e(t('tr.ta.ok')) ?></button></noscript>
                   </form>
                   <?php if ($t['membre_id'] === null && !$fait): ?>
                     <form method="post"<?= $envoi ?> action="<?= url('travaux/taches/' . $id . '/prendre') ?>" class="en-ligne">
                       <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
                       <?= $retour ?>
-                      <button class="bouton bouton--secondaire bouton--petit" type="submit">✋ Je m’en occupe</button>
+                      <button class="bouton bouton--secondaire bouton--petit" type="submit"><?= e(t('tr.ta.je_men_occupe')) ?></button>
                     </form>
                   <?php endif; ?>
                   <?php // Par-dessus le tableau ; en se fermant, elle le relit. ?>
                   <a class="bouton bouton--discret bouton--petit" href="<?= url('travaux/taches/' . $id . '/modifier') ?>"
-                     data-fenetre-dessus data-relire-derriere>✎ Modifier</a>
+                     data-fenetre-dessus data-relire-derriere><?= e(t('tr.ta.modifier')) ?></a>
                 </div>
               </li>
             <?php endforeach; ?>
@@ -116,19 +116,24 @@ $avancement = Travaux::avancement($total, $faites);
 
   <div class="pile">
     <section class="carte">
-      <h2>Répartition</h2>
+      <h2><?= e(t('tr.ta.repartition')) ?></h2>
       <?php if ($avancement !== null): ?>
-        <div class="jauge" title="<?= $avancement ?> % des tâches faites">
+        <div class="jauge" title="<?= e(t('tr.li.part_faite', ['n' => $avancement])) ?>">
           <span style="width:<?= $avancement ?>%;background:var(--accent)"></span>
         </div>
-        <p class="discret" style="margin:0 0 .6rem"><?= $faites ?> / <?= $total ?> tâches faites (<?= $avancement ?> %)</p>
+        <p class="discret" style="margin:0 0 .6rem"><?= e(t('tr.ta.faites_sur', [
+            'faites' => $faites, 'total' => $total, 'part' => $avancement,
+        ])) ?></p>
       <?php endif; ?>
       <ul class="travaux-repartition">
         <?php foreach ($membres as $m): ?>
           <li>
-            <span><?= e((string) $m['nom_affiche']) ?><?= (int) $m['id'] === $moi ? ' <span class="discret">(moi)</span>' : '' ?>
-              <?php if ($m['user_id'] === null): ?><span class="discret">· sans compte</span><?php endif; ?></span>
-            <span class="discret"><?= (int) $m['a_faire'] ?> à faire · <?= (int) $m['faites'] ?> faite<?= (int) $m['faites'] > 1 ? 's' : '' ?></span>
+            <span><?= e((string) $m['nom_affiche']) ?><?= (int) $m['id'] === $moi ? ' <span class="discret">' . e(t('tr.ta.moi_court')) . '</span>' : '' ?>
+              <?php if ($m['user_id'] === null): ?><span class="discret"><?= e(t('tr.ta.sans_compte')) ?></span><?php endif; ?></span>
+            <span class="discret"><?= e(t('tr.ta.compte', [
+                'a_faire' => (int) $m['a_faire'],
+                'faites' => tn('tr.me.faites', (int) $m['faites']),
+            ])) ?></span>
           </li>
         <?php endforeach; ?>
       </ul>

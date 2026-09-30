@@ -26,10 +26,31 @@ final class Travaux
     public const VERSIONS_MAX = 30;
 
     public const STATUTS = [
-        'a_faire'  => ['nom' => 'À faire',  'icone' => '⬜'],
-        'en_cours' => ['nom' => 'En cours', 'icone' => '⏳'],
-        'fait'     => ['nom' => 'Fait',     'icone' => '✅'],
+        'a_faire'  => ['icone' => '⬜'],
+        'en_cours' => ['icone' => '⏳'],
+        'fait'     => ['icone' => '✅'],
     ];
+
+    /** Le nom d'un état : « À faire », « En cours », « Fait ». */
+    public static function statutNom(string $statut): string
+    {
+        return t('tr.statut.' . $statut);
+    }
+
+    /**
+     * Les états avec leur icône et leur nom, pour une colonne ou un menu.
+     *
+     * @return array<string, array{icone: string, nom: string}>
+     */
+    public static function statuts(): array
+    {
+        $etats = [];
+        foreach (self::STATUTS as $cle => $etat) {
+            $etats[$cle] = $etat + ['nom' => self::statutNom($cle)];
+        }
+
+        return $etats;
+    }
 
     public static function dossier(): string
     {
@@ -130,7 +151,7 @@ final class Travaux
     {
         $nom = self::nettoyer($nom, self::NOM_MAX);
         if ($nom === '') {
-            return [null, 'Donnez un nom au travail de groupe.'];
+            return [null, t('tr.msg.nom_manquant')];
         }
         Database::run('INSERT INTO projets (nom, description, cree_par) VALUES (?, ?, ?)',
             [$nom, trim($description) === '' ? null : mb_substr(trim($description), 0, 2000), $moi]);
@@ -148,11 +169,11 @@ final class Travaux
     public static function modifier(int $moi, int $projet, string $nom, string $description): ?string
     {
         if (!self::estAdmin($projet, $moi)) {
-            return 'Seuls les administrateurs du projet peuvent le renommer.';
+            return t('tr.msg.admins_renommer');
         }
         $nom = self::nettoyer($nom, self::NOM_MAX);
         if ($nom === '') {
-            return 'Donnez un nom au travail de groupe.';
+            return t('tr.msg.nom_manquant');
         }
         Database::run('UPDATE projets SET nom = ?, description = ? WHERE id = ?',
             [$nom, trim($description) === '' ? null : mb_substr(trim($description), 0, 2000), $projet]);
@@ -178,34 +199,34 @@ final class Travaux
     public static function inviter(int $moi, int $projet, array $ids): array
     {
         if (!self::estAdmin($projet, $moi)) {
-            return [0, 'Seuls les administrateurs du projet peuvent inviter.'];
+            return [0, t('tr.msg.admins_inviter')];
         }
         $ids = array_values(array_unique(array_filter(array_map('intval', $ids),
             static fn (int $id): bool => $id > 0 && $id !== $moi)));
         foreach ($ids as $id) {
             if (!Amis::sontAmis($moi, $id)) {
-                return [0, 'Vous ne pouvez inviter que vos amis.'];
+                return [0, t('tr.msg.amis_seuls')];
             }
         }
         $deja = array_map('intval', array_column(Database::all(
             'SELECT user_id FROM projet_membres WHERE projet_id = ? AND user_id IS NOT NULL', [$projet]), 'user_id'));
         $ids = array_values(array_diff($ids, $deja));
         if ($ids === []) {
-            return [0, 'Choisissez au moins un ami qui n’est pas déjà dans le projet.'];
+            return [0, t('tr.msg.un_ami_hors')];
         }
         if (self::nbMembres($projet) + count($ids) > self::MEMBRES_MAX) {
-            return [0, 'Un travail de groupe réunit ' . self::MEMBRES_MAX . ' personnes au plus.'];
+            return [0, t('tr.msg.complet', ['max' => self::MEMBRES_MAX])];
         }
 
         $nomProjet = (string) Database::valeur('SELECT nom FROM projets WHERE id = ?', [$projet]);
-        $auteur = (string) (Amis::compte($moi)['pseudo'] ?? 'Quelqu’un');
+        $auteur = (string) (Amis::compte($moi)['pseudo'] ?? t('tr.quelquun'));
         foreach ($ids as $id) {
             Database::run(
                 "INSERT INTO projet_membres (projet_id, user_id, role, statut, invite_par) VALUES (?, ?, 'membre', 'invite', ?)",
                 [$projet, $id, $moi]);
             FileNotifications::ajouter($id, 'projet', [
-                'title' => '👥 Travail de groupe',
-                'body'  => $auteur . ' vous invite dans « ' . $nomProjet . ' ».',
+                'title' => t('tr.notif.travail_groupe'),
+                'body'  => t('tr.notif.invitation', ['qui' => $auteur, 'nom' => $nomProjet]),
                 'url'   => url('travaux'),
                 'tag'   => 'projet-invitation-' . $projet,
             ]);
@@ -218,14 +239,14 @@ final class Travaux
     public static function ajouterSansCompte(int $moi, int $projet, string $nom): ?string
     {
         if (!self::estAdmin($projet, $moi)) {
-            return 'Seuls les administrateurs du projet peuvent ajouter des membres.';
+            return t('tr.msg.admins_ajouter');
         }
         $nom = self::nettoyer($nom, 60);
         if ($nom === '') {
-            return 'Donnez le nom de la personne.';
+            return t('tr.msg.nom_personne');
         }
         if (self::nbMembres($projet) >= self::MEMBRES_MAX) {
-            return 'Un travail de groupe réunit ' . self::MEMBRES_MAX . ' personnes au plus.';
+            return t('tr.msg.complet', ['max' => self::MEMBRES_MAX]);
         }
         Database::run(
             "INSERT INTO projet_membres (projet_id, user_id, nom, role, statut, invite_par) VALUES (?, NULL, ?, 'membre', 'membre', ?)",
@@ -314,10 +335,10 @@ final class Travaux
     {
         $membre = Database::one('SELECT * FROM projet_membres WHERE id = ?', [$membreId]);
         if ($membre === null || !self::estAdmin((int) $membre['projet_id'], $moi)) {
-            return 'Seuls les administrateurs du projet peuvent retirer des membres.';
+            return t('tr.msg.admins_retirer');
         }
         if ((int) ($membre['user_id'] ?? 0) === $moi) {
-            return 'Pour partir, quittez le projet.';
+            return t('tr.msg.partir');
         }
         if ($membre['user_id'] !== null) {
             self::retirerCopies((int) $membre['projet_id'], (int) $membre['user_id']);
@@ -332,16 +353,16 @@ final class Travaux
     {
         $membre = Database::one('SELECT * FROM projet_membres WHERE id = ?', [$membreId]);
         if ($membre === null || !self::estAdmin((int) $membre['projet_id'], $moi)) {
-            return 'Seuls les administrateurs du projet peuvent changer les rôles.';
+            return t('tr.msg.admins_roles');
         }
         if ($membre['user_id'] === null || $membre['statut'] !== 'membre') {
-            return 'Seul un membre qui a rejoint le projet peut en être administrateur.';
+            return t('tr.msg.membre_rejoint');
         }
         if (!$admin) {
             $admins = (int) Database::valeur(
                 "SELECT COUNT(*) FROM projet_membres WHERE projet_id = ? AND role = 'admin'", [(int) $membre['projet_id']]);
             if ($admins <= 1 && $membre['role'] === 'admin') {
-                return 'Il faut au moins un administrateur.';
+                return t('tr.msg.un_admin_min');
             }
         }
         Database::run('UPDATE projet_membres SET role = ? WHERE id = ?', [$admin ? 'admin' : 'membre', $membreId]);
@@ -411,7 +432,7 @@ final class Travaux
     {
         $titre = self::nettoyer($titre, 200);
         if ($titre === '') {
-            return 'Donnez un titre à la tâche.';
+            return t('tr.msg.titre_tache');
         }
         $membre = self::membreValide($projet, $membreId);
         $position = (int) Database::valeur('SELECT COALESCE(MAX(position), 0) + 1 FROM projet_taches WHERE projet_id = ?', [$projet]);
@@ -439,11 +460,11 @@ final class Travaux
     {
         $tache = self::tache($moi, $tacheId);
         if ($tache === null) {
-            return 'Cette tâche est introuvable.';
+            return t('tr.msg.tache_introuvable');
         }
         $titre = self::nettoyer($titre, 200);
         if ($titre === '') {
-            return 'Donnez un titre à la tâche.';
+            return t('tr.msg.titre_tache');
         }
         $membre = self::membreValide((int) $tache['projet_id'], $membreId);
         Database::run('UPDATE projet_taches SET titre = ?, membre_id = ?, echeance = ?, note = ? WHERE id = ?',
@@ -504,7 +525,10 @@ final class Travaux
         }
         FileNotifications::ajouter((int) $l['user_id'], 'projet', [
             'title' => '👥 ' . $l['nom'],
-            'body'  => (Amis::compte($moi)['pseudo'] ?? 'Quelqu’un') . ' vous confie « ' . $l['titre'] . ' ».',
+            'body'  => t('tr.notif.tache_confiee', [
+                'qui' => (string) (Amis::compte($moi)['pseudo'] ?? t('tr.quelquun')),
+                'titre' => (string) $l['titre'],
+            ]),
             'url'   => url('travaux/' . (int) $l['projet_id']),
             'tag'   => 'projet-tache-' . $tacheId,
         ]);
@@ -583,11 +607,11 @@ final class Travaux
     {
         $nom = self::nettoyer((string) ($source['nom'] ?? ''), 40);
         if ($nom === '') {
-            return 'Le nom du type est obligatoire.';
+            return t('tr.msg.type_nom');
         }
         if (Database::valeur('SELECT id FROM projet_types WHERE projet_id = ? AND nom = ? AND id <> ?',
                 [$projet, $nom, (int) $typeId]) !== null) {
-            return 'Le projet a déjà un type nommé « ' . $nom . ' ».';
+            return t('tr.msg.type_existe', ['nom' => $nom]);
         }
         $icone = trim((string) ($source['icone'] ?? ''));
         $icone = $icone === '' || mb_strlen($icone) > 4 ? self::ICONE_SANS_TYPE : $icone;
@@ -687,12 +711,12 @@ final class Travaux
         }
         $jour = self::dateValide(trim((string) ($source['jour'] ?? '')));
         if ($jour === null) {
-            return 'Donnez le jour de l’échéance.';
+            return t('tr.msg.jour_echeance');
         }
         $heure = trim((string) ($source['heure'] ?? ''));
         $journee = $heure === '';
         if (!$journee && preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', $heure) !== 1) {
-            return 'L’heure n’est pas valable.';
+            return t('tr.msg.heure_invalide');
         }
         $duree = max(15, min(600, (int) ($source['duree'] ?? 60)));
         $debut = $journee ? $jour . ' 00:00:00' : $jour . ' ' . $heure . ':00';
@@ -720,13 +744,17 @@ final class Travaux
 
         $nom = (string) Database::valeur('SELECT nom FROM projets WHERE id = ?', [$projet]);
         $icone = (string) (Database::valeur('SELECT icone FROM projet_types WHERE id = ?', [(int) $d['type_id']]) ?: self::ICONE_SANS_TYPE);
-        $auteur = (string) (Amis::compte($moi)['pseudo'] ?? 'Quelqu’un');
+        $auteur = (string) (Amis::compte($moi)['pseudo'] ?? t('tr.quelquun'));
         foreach (self::comptes($projet) as $userId) {
             self::copier($id, $userId);
             if ($userId !== $moi) {
                 FileNotifications::ajouter($userId, 'projet', [
                     'title' => $icone . ' ' . $nom,
-                    'body'  => $auteur . ' a posé « ' . $d['titre'] . ' » le ' . date_fr($d['debut'], !$d['journee_entiere']) . '.',
+                    'body'  => t('tr.notif.echeance_posee', [
+                        'qui' => $auteur,
+                        'titre' => (string) $d['titre'],
+                        'date' => date_fr($d['debut'], !$d['journee_entiere']),
+                    ]),
                     'url'   => url('travaux/' . $projet),
                     'tag'   => 'projet-echeance-' . $id,
                 ]);
@@ -987,7 +1015,7 @@ final class Travaux
     {
         $p = self::projet($projet, $moi);
         if ($p === null) {
-            return 'Ce projet est introuvable.';
+            return t('tr.msg.projet_introuvable');
         }
         $comptes = self::comptes($projet);
         if ($conversation === null) {
@@ -997,7 +1025,7 @@ final class Travaux
                 return $refus;
             }
         } elseif (Conversations::membre($conversation, $moi) === null) {
-            return 'Vous ne faites pas partie de cette discussion.';
+            return t('tr.msg.pas_dans_discussion');
         } else {
             foreach ($comptes as $userId) {
                 Conversations::ajouterDepuisProjet($conversation, $userId, $moi);

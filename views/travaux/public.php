@@ -20,22 +20,24 @@ $avancement = Travaux::avancement(count($taches), $faites);
     <?php if ((string) ($projet['description'] ?? '') !== ''): ?>
       <p><?= nl2br(e((string) $projet['description'])) ?></p>
     <?php endif; ?>
-    <p class="discret">Travail de groupe · <?= e(implode(', ', array_map(static fn (array $m): string => (string) $m['nom_affiche'], $membres))) ?></p>
+    <p class="discret"><?= e(t('tr.pu.travail_groupe')) ?> <?= e(implode(', ', array_map(static fn (array $m): string => (string) $m['nom_affiche'], $membres))) ?></p>
   </div>
 </div>
 
 <div class="colonnes">
   <div class="pile">
     <section class="carte">
-      <h2>✅ Qui fait quoi</h2>
+      <h2><?= e(t('tr.pu.qui_fait_quoi')) ?></h2>
       <?php if ($avancement !== null): ?>
-        <div class="jauge" title="<?= $avancement ?> % des tâches faites">
+        <div class="jauge" title="<?= e(t('tr.li.part_faite', ['n' => $avancement])) ?>">
           <span style="width:<?= $avancement ?>%;background:var(--accent)"></span>
         </div>
-        <p class="discret" style="margin:0 0 .6rem"><?= $faites ?> / <?= count($taches) ?> tâches faites</p>
+        <p class="discret" style="margin:0 0 .6rem"><?= e(t('tr.pu.faites_sur', [
+            'faites' => $faites, 'total' => count($taches),
+        ])) ?></p>
       <?php endif; ?>
       <?php if ($taches === []): ?>
-        <p class="discret">Aucune tâche pour l’instant.</p>
+        <p class="discret"><?= e(t('tr.pu.aucune_tache')) ?></p>
       <?php else: ?>
         <ul class="travaux-public-taches">
           <?php foreach ($taches as $t): ?>
@@ -43,7 +45,7 @@ $avancement = Travaux::avancement(count($taches), $faites);
             <li<?= $fait ? ' class="travaux-public-taches--faite"' : '' ?>>
               <span aria-hidden="true"><?= Travaux::STATUTS[$t['statut']]['icone'] ?></span>
               <span style="flex:1;min-width:0"><?= e((string) $t['titre']) ?>
-                <span class="discret">· <?= e((string) ($t['membre_nom'] ?? 'personne')) ?></span></span>
+                <span class="discret">· <?= e((string) ($t['membre_nom'] ?? t('tr.pu.personne'))) ?></span></span>
               <?php $texte = echeance_libelle($t['echeance'], $fait); ?>
               <?php if ($texte !== ''): ?>
                 <span class="echeance echeance--<?= e(echeance_etat($t['echeance'], $fait)) ?>"><?= e($texte) ?></span>
@@ -56,7 +58,7 @@ $avancement = Travaux::avancement(count($taches), $faites);
 
     <?php if ((string) ($projet['document'] ?? '') !== ''): ?>
       <section class="carte">
-        <h2>📝 Document commun</h2>
+        <h2><?= e(t('tr.do.titre')) ?></h2>
         <div class="texte-riche-affiche"><?= TexteRiche::versHtml((string) $projet['document']) ?></div>
       </section>
     <?php endif; ?>
@@ -64,9 +66,9 @@ $avancement = Travaux::avancement(count($taches), $faites);
 
   <div class="pile">
     <section class="carte">
-      <h2>📅 Échéances</h2>
+      <h2><?= e(t('tr.pu.echeances')) ?></h2>
       <?php if ($avenir === []): ?>
-        <p class="discret">Aucune échéance à venir.</p>
+        <p class="discret"><?= e(t('tr.pu.aucune_echeance')) ?></p>
       <?php else: ?>
         <ul class="travaux-echeances">
           <?php foreach ($avenir as $e): ?>
@@ -84,7 +86,7 @@ $avancement = Travaux::avancement(count($taches), $faites);
 
     <?php if ($fichiers !== []): ?>
       <section class="carte">
-        <h2>📎 Fichiers</h2>
+        <h2><?= e(t('tr.pu.fichiers')) ?></h2>
         <ul class="liste-fichiers">
           <?php foreach ($fichiers as $f): ?>
             <li class="fichier">
@@ -96,7 +98,7 @@ $avancement = Travaux::avancement(count($taches), $faites);
               </span>
               <span class="fichier__actions">
                 <a class="bouton bouton--discret bouton--petit" href="<?= url('g/' . $jeton . '/fichiers/' . (int) $f['id'], ['telecharger' => 1]) ?>"
-                   title="Télécharger" aria-label="Télécharger <?= e((string) $f['nom_origine']) ?>">⬇</a>
+                   title="<?= e(t('tr.fi.telecharger')) ?>" aria-label="<?= e(t('tr.fi.telecharger_nom', ['nom' => (string) $f['nom_origine']])) ?>">⬇</a>
               </span>
             </li>
           <?php endforeach; ?>

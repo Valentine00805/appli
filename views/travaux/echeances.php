@@ -27,10 +27,10 @@ $ligne = static function (array $e) use ($csrf, $envoi, $types): string {
         <?php if ($e['type_nom'] !== null): ?>
           <span class="travaux-type" style="--couleur-type:<?= e((string) $e['type_couleur']) ?>"><?= e((string) $e['type_nom']) ?></span>
         <?php endif; ?><br>
-        <?= e(ucfirst(date_fr((string) $e['debut'], !$journee))) ?><?= $journee ? ' — toute la journée' : '' ?>
+        <?= e(ucfirst(date_fr((string) $e['debut'], !$journee))) ?><?= $journee ? e(t('tr.ec.toute_la_journee')) : '' ?>
         <?php if ((string) ($e['lieu'] ?? '') !== ''): ?><span class="discret">· <?= e((string) $e['lieu']) ?></span><?php endif; ?>
         <br><a class="bouton bouton--discret bouton--petit" href="<?= url('travaux/echeances/' . (int) $e['id'] . '/modifier') ?>"
-               data-fenetre-dessus data-relire-derriere style="margin-top:.3rem">✎ Modifier</a>
+               data-fenetre-dessus data-relire-derriere style="margin-top:.3rem"><?= e(t('tr.ec.modifier')) ?></a>
       </span>
     </li>
     <?php return (string) ob_get_clean();
@@ -39,22 +39,22 @@ $ligne = static function (array $e) use ($csrf, $envoi, $types): string {
 <?= Vue::rendre('travaux/_onglets', ['projet' => $projet, 'onglet' => $onglet, 'dansUneFenetre' => $dansUneFenetre]) ?>
 
 <p class="actions" style="margin:0 0 1rem">
-  <a class="bouton bouton--petit" href="<?= url('travaux/' . (int) $projet['id'] . '/echeances/nouvelle') ?>" data-fenetre>+ Nouvelle échéance</a>
-  <a class="bouton bouton--secondaire bouton--petit" href="<?= url('travaux/' . (int) $projet['id'] . '/types') ?>" data-fenetre-dessus data-relire-derriere>🏷️ Types d’échéance</a>
+  <a class="bouton bouton--petit" href="<?= url('travaux/' . (int) $projet['id'] . '/echeances/nouvelle') ?>" data-fenetre><?= e(t('tr.ec.nouvelle')) ?></a>
+  <a class="bouton bouton--secondaire bouton--petit" href="<?= url('travaux/' . (int) $projet['id'] . '/types') ?>" data-fenetre-dessus data-relire-derriere><?= e(t('tr.ty.titre')) ?></a>
 </p>
 
 <div class="pile" style="max-width:48rem">
   <section class="carte">
-    <h2>À venir</h2>
+    <h2><?= e(t('tr.ec.a_venir')) ?></h2>
     <?php if ($avenir === []): ?>
-      <p class="discret">Aucune échéance à venir. Posez la date de rendu : elle arrivera dans le calendrier de chaque membre.</p>
+      <p class="discret"><?= e(t('tr.ec.aucune')) ?></p>
     <?php else: ?>
       <ul class="travaux-echeances"><?php foreach ($avenir as $e) { echo $ligne($e); } ?></ul>
     <?php endif; ?>
   </section>
   <?php if ($passees !== []): ?>
     <details class="carte">
-      <summary><strong>Passées</strong> <span class="discret">(<?= count($passees) ?>)</span></summary>
+      <summary><strong><?= e(t('tr.ec.passees')) ?></strong> <span class="discret">(<?= count($passees) ?>)</span></summary>
       <ul class="travaux-echeances"><?php foreach ($passees as $e) { echo $ligne($e); } ?></ul>
     </details>
   <?php endif; ?>
