@@ -19,14 +19,14 @@ $moi = Auth::id();
 $discussions = [];
 foreach ($amis as $a) {
     $dernier = $a['dernier_id'] !== null ? ($derniers[(int) $a['dernier_id']] ?? null) : null;
-    $apercu = $dernier === null ? 'Dites bonjour 👋'
+    $apercu = $dernier === null ? t('ami.dites_bonjour')
         : (($dernier['evenement'] ?? null) !== null
           ? Amis::texteEvenement((string) $dernier['evenement'], (int) $dernier['expediteur_id'] === $moi, (string) $a['pseudo'])
-        : (($dernier['supprime_le'] ?? null) !== null ? '🚫 Message supprimé'
-        : ((int) $dernier['expediteur_id'] === $moi ? 'Vous : ' : '')
-          . (($dernier['image_nom'] ?? null) !== null ? '📷 Photo' . ((string) $dernier['texte'] !== '' ? ' · ' : '') : '')
+        : (($dernier['supprime_le'] ?? null) !== null ? t('ami.message_supprime')
+        : ((int) $dernier['expediteur_id'] === $moi ? t('ami.vous_deux_points') : '')
+          . (($dernier['image_nom'] ?? null) !== null ? t('ami.photo') . ((string) $dernier['texte'] !== '' ? ' · ' : '') : '')
           . (($dernier['fichier_origine'] ?? null) !== null ? '📎 ' . $dernier['fichier_origine'] . ((string) $dernier['texte'] !== '' ? ' · ' : '') : '')
-          . (($dernier['audio_nom'] ?? null) !== null ? '🎤 Message vocal' . ((string) $dernier['texte'] !== '' ? ' · ' : '') : '')
+          . (($dernier['audio_nom'] ?? null) !== null ? t('ami.message_vocal') . ((string) $dernier['texte'] !== '' ? ' · ' : '') : '')
           . (($dernier['partage_type'] ?? null) !== null ? '🔗 ' . Partages::libelle((string) $dernier['partage_type']) . ((string) $dernier['texte'] !== '' ? ' · ' : '') : '')
           . preg_replace('/\s+/u', ' ', (string) $dernier['texte'])));
     $discussions[] = [
@@ -61,7 +61,7 @@ foreach ($groupes as $g) {
 usort($discussions, static fn (array $x, array $y): int => [$y['tri'], $x['nom']] <=> [$x['tri'], $y['nom']]);
 ?>
 <?php if ($discussions === []): ?>
-  <p class="discret" style="margin:0">Pas encore d’amis. Cherchez un pseudo pour envoyer une demande.</p>
+  <p class="discret" style="margin:0"><?= e(t('ami.pas_encore_amis')) ?></p>
 <?php else: ?>
   <ul class="amis-liste" data-liste-discussions>
     <?php foreach ($discussions as $d): ?>
@@ -84,7 +84,7 @@ usort($discussions, static fn (array $x, array $y): int => [$y['tri'], $x['nom']
               <?php // Un message vocal : le micro dessiné, comme sur le bouton d'enregistrement. ?>
               <span class="ami__apercu"><?= str_replace(e('🎤 '), Amis::micro() . ' ', e(mb_strimwidth($d['apercu'], 0, 80, '…'))) ?></span>
               <?php if ($d['non_lus'] > 0): ?>
-                <span class="compteur" title="<?= $d['non_lus'] ?> message<?= $d['non_lus'] > 1 ? 's' : '' ?> non lu<?= $d['non_lus'] > 1 ? 's' : '' ?>"><?= $d['non_lus'] > 99 ? '99+' : $d['non_lus'] ?></span>
+                <span class="compteur" title="<?= e(tn('ami.non_lus', (int) $d['non_lus'])) ?>"><?= $d['non_lus'] > 99 ? '99+' : $d['non_lus'] ?></span>
               <?php endif; ?>
             </span>
           </span>
@@ -92,5 +92,5 @@ usort($discussions, static fn (array $x, array $y): int => [$y['tri'], $x['nom']
       </li>
     <?php endforeach; ?>
   </ul>
-  <p class="discret" data-filtre-vide hidden style="margin:.5rem .6rem 0">Aucune discussion ne correspond.</p>
+  <p class="discret" data-filtre-vide hidden style="margin:.5rem .6rem 0"><?= e(t('ami.aucune_discussion')) ?></p>
 <?php endif; ?>

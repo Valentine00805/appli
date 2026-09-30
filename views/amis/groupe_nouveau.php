@@ -10,28 +10,28 @@ $dansUneFenetre = $dansUneFenetre ?? false;
 ?>
 <div class="entete-page"<?= $dansUneFenetre ? ' data-large' : '' ?>>
   <div>
-    <h1 style="margin:0">👥 Nouveau groupe</h1>
-    <p class="discret" style="margin:.15rem 0 0">Une discussion à plusieurs, avec vos amis.</p>
+    <h1 style="margin:0"><?= e(t('grp.nouveau_titre')) ?></h1>
+    <p class="discret" style="margin:.15rem 0 0"><?= e(t('grp.sous_titre')) ?></p>
   </div>
 </div>
 
 <?php if (!$aUnPseudo): ?>
   <div class="flash flash--info">
-    Choisissez d’abord un pseudo : c’est lui que verront les membres du groupe.
-    <a href="<?= url('compte') ?>">Choisir mon pseudo</a>
+    <?= e(t('grp.pseudo_dabord')) ?>
+    <a href="<?= url('compte') ?>"><?= e(t('ami.choisir_pseudo')) ?></a>
   </div>
 <?php elseif ($amis === []): ?>
-  <p class="discret">Il vous faut au moins un ami pour créer un groupe. Cherchez un pseudo sur la page « Amis ».</p>
+  <p class="discret"><?= e(t('grp.un_ami_minimum')) ?></p>
 <?php else: ?>
   <form method="post" action="<?= url('groupes') ?>" class="carte groupe-formulaire">
     <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
     <div class="champ">
-      <label for="groupe-nom">Nom du groupe</label>
+      <label for="groupe-nom"><?= e(t('grp.nom')) ?></label>
       <input type="text" id="groupe-nom" name="nom" required maxlength="<?= Conversations::NOM_MAX ?>"
-             placeholder="Ex. : Révisions de maths" autocomplete="off">
+             placeholder="<?= e(t('grp.nom_exemple')) ?>" autocomplete="off">
     </div>
     <fieldset class="groupe-choix">
-      <legend class="legende">Amis à ajouter</legend>
+      <legend class="legende"><?= e(t('grp.amis_a_ajouter')) ?></legend>
       <ul class="groupe-choix__liste">
         <?php foreach ($amis as $a): ?>
           <li>
@@ -43,10 +43,10 @@ $dansUneFenetre = $dansUneFenetre ?? false;
           </li>
         <?php endforeach; ?>
       </ul>
-      <p class="champ__aide">Au moins un ami, <?= Conversations::MEMBRES_MAX - 1 ?> au plus. Vous en serez l’administrateur.</p>
+      <p class="champ__aide"><?= e(t('grp.au_moins_un', ['max' => Conversations::MEMBRES_MAX - 1])) ?></p>
     </fieldset>
     <div class="actions">
-      <button class="bouton" type="submit">Créer le groupe</button>
+      <button class="bouton" type="submit"><?= e(t('grp.creer')) ?></button>
     </div>
   </form>
 <?php endif; ?>

@@ -28,12 +28,12 @@ $pseudo = (string) $ami['pseudo'];
     <?= Amis::avatar((int) $ami['id'], $pseudo, 'avatar--grand') ?>
     <div>
       <?php if (!$dansUneFenetre): ?>
-        <p class="discret" style="margin:0 0 .2rem"><a href="<?= url('amis/' . (int) $ami['id']) ?>">← Retour à la discussion</a></p>
+        <p class="discret" style="margin:0 0 .2rem"><a href="<?= url('amis/' . (int) $ami['id']) ?>"><?= e(t('prf.retour_discussion')) ?></a></p>
       <?php endif; ?>
       <h1 style="margin:0"><?= e($pseudo) ?></h1>
       <p class="discret" style="margin:.15rem 0 0">
-        <?php if ($amisDepuis !== null): ?>Amis depuis le <?= e($amisDepuis) ?> · <?php endif; ?>
-        <?= $messages ?> message<?= $messages > 1 ? 's' : '' ?> échangé<?= $messages > 1 ? 's' : '' ?>
+        <?php if ($amisDepuis !== null): ?><?= e(t('prf.amis_depuis', ['date' => $amisDepuis])) ?> <?php endif; ?>
+        <?= e(tn('prf.messages', $messages)) ?>
       </p>
     </div>
   </div>
@@ -52,54 +52,56 @@ $pseudo = (string) $ami['pseudo'];
  */
 ?>
 <section class="carte profil-ami__section" id="fond-discussion">
-  <h2 style="margin-top:0">🖼️ Fond d’écran de la conversation</h2>
+  <h2 style="margin-top:0"><?= e(t('prf.fond')) ?></h2>
   <div class="fond-reglage">
     <div class="fond-reglage__apercu<?= $adresseFond === null ? ' fond-reglage__apercu--vide' : '' ?>" data-fond-apercu
          <?= $adresseFond !== null ? 'style="background-image: url(&quot;' . e($adresseFond) . '&quot;)"' : '' ?>>
-      <span class="fond-reglage__bulle">Bonjour !</span>
-      <span class="fond-reglage__bulle fond-reglage__bulle--moi">Coucou 👋</span>
+      <span class="fond-reglage__bulle"><?= e(t('prf.bulle_1')) ?></span>
+      <span class="fond-reglage__bulle fond-reglage__bulle--moi"><?= e(t('prf.bulle_2')) ?></span>
     </div>
     <div class="fond-reglage__infos">
       <p class="discret" style="margin:0 0 .75rem" data-fond-etat>
         <?php if ($fond === null): ?>
-          Aucun fond pour l’instant.
+          <?= e(t('prf.aucun_fond')) ?>
         <?php else: ?>
-          Choisi par <?= (int) ($fond['choisi_par'] ?? 0) === Auth::id() ? 'vous' : e($pseudo) ?>
-          le <?= e(date_fr(Amis::local((string) $fond['choisi_le'])->format('Y-m-d H:i:s'), false)) ?>.
+          <?= e(t('prf.choisi_par', [
+              'qui' => (int) ($fond['choisi_par'] ?? 0) === Auth::id() ? t('prf.vous') : $pseudo,
+              'date' => date_fr(Amis::local((string) $fond['choisi_le'])->format('Y-m-d H:i:s'), false),
+          ])) ?>
         <?php endif; ?>
-        <?= e($pseudo) ?> le voit aussi.
+        <?= e(t('prf.le_voit_aussi', ['qui' => $pseudo])) ?>
       </p>
       <form method="post" action="<?= url('amis/' . (int) $ami['id'] . '/fond') ?>" enctype="multipart/form-data" class="fond-reglage__choix" data-fond-formulaire>
         <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
         <input type="file" name="fond" id="fond-fichier" class="sr-only" required
                accept="image/jpeg,image/png,image/gif,image/webp" data-fond-fichier>
-        <label class="bouton bouton--secondaire" for="fond-fichier">🖼️ <?= $fond === null ? 'Choisir une image' : 'Changer d’image' ?></label>
+        <label class="bouton bouton--secondaire" for="fond-fichier">🖼️ <?= e(t($fond === null ? 'prf.choisir_image' : 'prf.changer_image')) ?></label>
         <span class="fond-reglage__nouveau" data-fond-nouveau hidden>
-          <button class="bouton" type="submit">Enregistrer</button>
-          <button class="bouton bouton--discret" type="button" data-fond-annuler>Annuler</button>
+          <button class="bouton" type="submit"><?= e(t('commun.enregistrer')) ?></button>
+          <button class="bouton bouton--discret" type="button" data-fond-annuler><?= e(t('commun.annuler')) ?></button>
         </span>
       </form>
       <?php if ($fond !== null): ?>
         <form method="post" action="<?= url('amis/' . (int) $ami['id'] . '/fond/retirer') ?>" style="margin-top:.5rem" data-fond-retirer>
           <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
-          <button class="bouton bouton--discret" type="submit">Retirer le fond</button>
+          <button class="bouton bouton--discret" type="submit"><?= e(t('prf.retirer_fond')) ?></button>
         </form>
       <?php endif; ?>
-      <p class="champ__aide" style="margin-bottom:0">JPEG, PNG, GIF ou WebP, <?= intdiv(Amis::IMAGE_MAX_OCTETS, 1024 * 1024) ?> Mo au plus.</p>
+      <p class="champ__aide" style="margin-bottom:0"><?= e(t('prf.fond_formats', ['mo' => intdiv(Amis::IMAGE_MAX_OCTETS, 1024 * 1024)])) ?></p>
     </div>
   </div>
 </section>
 
 <section class="carte profil-ami__section">
-  <h2 style="margin-top:0">📷 Photos <span class="discret profil-ami__nombre"><?= count($photos) ?></span></h2>
+  <h2 style="margin-top:0"><?= e(t('prf.photos')) ?> <span class="discret profil-ami__nombre"><?= count($photos) ?></span></h2>
   <?php if ($photos === []): ?>
-    <p class="discret" style="margin:0">Aucune photo échangée pour l’instant.</p>
+    <p class="discret" style="margin:0"><?= e(t('prf.aucune_photo')) ?></p>
   <?php else: ?>
     <div class="profil-ami__photos">
       <?php foreach ($photos as $p): ?>
         <a class="profil-ami__photo" href="<?= e($p['url']) ?>" target="_blank" rel="noopener" data-visionneuse
-           title="<?= e(($p['moi'] ? 'Envoyée par vous' : 'Envoyée par ' . $pseudo) . ' · ' . $p['date']) ?>">
-          <img src="<?= e($p['url']) ?>" alt="Photo du <?= e($p['date']) ?>" loading="lazy">
+           title="<?= e(($p['moi'] ? t('prf.envoyee_par_vous') : t('prf.envoyee_par', ['qui' => $pseudo])) . ' · ' . $p['date']) ?>">
+          <img src="<?= e($p['url']) ?>" alt="<?= e(t('prf.photo_du', ['date' => $p['date']])) ?>" loading="lazy">
         </a>
       <?php endforeach; ?>
     </div>
@@ -107,9 +109,9 @@ $pseudo = (string) $ami['pseudo'];
 </section>
 
 <section class="carte profil-ami__section">
-  <h2 style="margin-top:0">📎 Fichiers <span class="discret profil-ami__nombre"><?= count($fichiersPartages) ?></span></h2>
+  <h2 style="margin-top:0"><?= e(t('prf.fichiers')) ?> <span class="discret profil-ami__nombre"><?= count($fichiersPartages) ?></span></h2>
   <?php if ($fichiersPartages === []): ?>
-    <p class="discret" style="margin:0">Aucun fichier échangé pour l’instant.</p>
+    <p class="discret" style="margin:0"><?= e(t('prf.aucun_fichier')) ?></p>
   <?php else: ?>
     <ul class="profil-ami__fichiers">
       <?php foreach ($fichiersPartages as $f): ?>
@@ -118,11 +120,11 @@ $pseudo = (string) $ami['pseudo'];
           <span class="profil-ami__fichier-infos">
             <a class="bulle__fichier-nom" href="<?= e($f['url']) ?>" target="_blank" rel="noopener"><?= e($f['nom']) ?></a>
             <span class="discret" style="font-size:.78rem">
-              <?= e($f['taille']) ?> · <?= $f['moi'] ? 'envoyé par vous' : 'envoyé par ' . e($pseudo) ?> · <?= e($f['date']) ?>
+              <?= e($f['taille']) ?> · <?= e($f['moi'] ? t('prf.envoye_par_vous') : t('prf.envoye_par', ['qui' => $pseudo])) ?> · <?= e($f['date']) ?>
             </span>
           </span>
           <a class="bouton bouton--secondaire bouton--petit" href="<?= e($f['telecharger']) ?>"
-             aria-label="Télécharger <?= e($f['nom']) ?>" title="Télécharger">⬇</a>
+             aria-label="<?= e(t('prf.telecharger_nom', ['nom' => $f['nom']])) ?>" title="<?= e(t('commun.telecharger')) ?>">⬇</a>
         </li>
       <?php endforeach; ?>
     </ul>
@@ -138,11 +140,11 @@ $entreNous = $entreNous ?? ['recus' => [], 'envoyes' => []];
 $nbPartages = count($entreNous['recus']) + count($entreNous['envoyes']);
 ?>
 <section class="carte profil-ami__section" id="partages-entre-nous">
-  <h2 style="margin-top:0"><?= Partages::icone(20) ?> Partages <span class="discret profil-ami__nombre"><?= $nbPartages ?></span></h2>
+  <h2 style="margin-top:0"><?= Partages::icone(20) ?> <?= e(t('prf.partages')) ?> <span class="discret profil-ami__nombre"><?= $nbPartages ?></span></h2>
   <?php if ($nbPartages === 0): ?>
-    <p class="discret" style="margin:0">Rien de partagé entre vous pour l’instant.</p>
+    <p class="discret" style="margin:0"><?= e(t('prf.rien_partage')) ?></p>
   <?php else: ?>
-    <?php foreach (['recus' => 'Partagé par ' . $pseudo, 'envoyes' => 'Partagé par vous'] as $sensPartage => $titreSens): ?>
+    <?php foreach (['recus' => t('prf.partage_par', ['qui' => $pseudo]), 'envoyes' => t('prf.partage_par_vous')] as $sensPartage => $titreSens): ?>
       <?php if ($entreNous[$sensPartage] === []) { continue; } ?>
       <h3 class="groupe-sous-titre"><?= e($titreSens) ?> <span class="discret">(<?= count($entreNous[$sensPartage]) ?>)</span></h3>
       <ul class="partage-lignes">
@@ -166,8 +168,8 @@ $nbPartages = count($entreNous['recus']) + count($entreNous['envoyes']);
                 ? 'partager/' . Partages::mot($p['type']) . '/' . (int) $p['id'] . '/acces/' . (int) $ami['id'] . '/retirer'
                 : 'partages/' . Partages::mot($p['type']) . '/' . (int) $p['id'] . '/oublier';
             $garde = $aMoi
-                ? e($pseudo) . ' n’aura plus accès à « ' . e($p['titre']) . ' ». Continuer ?'
-                : 'Retirer « ' . e($p['titre']) . ' » de vos partages ? Il faudra que ' . e($pseudo) . ' vous le partage de nouveau pour le revoir.';
+                ? e(t('prf.retirer_acces_sur', ['qui' => $pseudo, 'titre' => $p['titre']]))
+                : e(t('prf.oublier_sur', ['titre' => $p['titre'], 'qui' => $pseudo]));
             ?>
             <?php if ($aMoi): ?>
               <?php // Le droit de mon ami se change ici, comme dans la fenêtre « Partager ». ?>
@@ -175,21 +177,21 @@ $nbPartages = count($entreNous['recus']) + count($entreNous['envoyes']);
                     action="<?= url('partager/' . Partages::mot($p['type']) . '/' . (int) $p['id'] . '/acces/' . (int) $ami['id'] . '/droit') ?>">
                 <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
                 <input type="hidden" name="profil" value="<?= (int) $ami['id'] ?>">
-                <label class="sr-only" for="droit-<?= e($p['type']) ?>-<?= (int) $p['id'] ?>">Ce que <?= e($pseudo) ?> peut faire de « <?= e($p['titre']) ?> »</label>
+                <label class="sr-only" for="droit-<?= e($p['type']) ?>-<?= (int) $p['id'] ?>"><?= e(t('prf.ce_que_peut_faire', ['qui' => $pseudo, 'titre' => $p['titre']])) ?></label>
                 <select id="droit-<?= e($p['type']) ?>-<?= (int) $p['id'] ?>" name="droit">
                   <?php foreach (Partages::DROITS as $unDroit): ?>
                     <?php if (in_array($p['type'], ['fichier', 'evenement'], true) && $unDroit === 'modification') { continue; } ?>
                     <option value="<?= e($unDroit) ?>"<?= $p['droit'] === $unDroit ? ' selected' : '' ?>><?= e(Partages::libelleDroit($unDroit)) ?></option>
                   <?php endforeach; ?>
                 </select>
-                <button class="bouton bouton--discret bouton--petit" type="submit">Changer</button>
+                <button class="bouton bouton--discret bouton--petit" type="submit"><?= e(t('prf.changer')) ?></button>
               </form>
             <?php endif; ?>
             <form method="post" action="<?= url($actionRetrait) ?>" data-envoi-fenetre data-confirmation="<?= $garde ?>">
               <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
               <input type="hidden" name="profil" value="<?= (int) $ami['id'] ?>">
               <button class="bouton bouton--discret bouton--petit" type="submit">
-                <?= $aMoi ? 'Retirer l’accès' : 'Retirer de ma liste' ?>
+                <?= e(t($aMoi ? 'prf.retirer_acces' : 'prf.retirer_liste')) ?>
               </button>
             </form>
           </li>
@@ -200,34 +202,32 @@ $nbPartages = count($entreNous['recus']) + count($entreNous['envoyes']);
 </section>
 
 <section class="carte profil-ami__section profil-ami__danger">
-  <button class="bouton bouton--danger" type="button" data-ouvrir-dialogue="confirmer-retrait-ami">Retirer <?= e($pseudo) ?> de mes amis</button>
-  <button class="bouton bouton--danger" type="button" data-ouvrir-dialogue="confirmer-blocage-ami">🚫 Bloquer <?= e($pseudo) ?></button>
+  <button class="bouton bouton--danger" type="button" data-ouvrir-dialogue="confirmer-retrait-ami"><?= e(t('prf.retirer_ami', ['qui' => $pseudo])) ?></button>
+  <button class="bouton bouton--danger" type="button" data-ouvrir-dialogue="confirmer-blocage-ami"><?= e(t('prf.bloquer', ['qui' => $pseudo])) ?></button>
 </section>
 
 <dialog class="confirmation" id="confirmer-retrait-ami" data-confirmation-dialogue aria-labelledby="titre-retrait-ami">
-  <button class="fenetre__fermer" type="button" data-fermer-dialogue aria-label="Fermer">✕</button>
-  <h2 class="confirmation__titre" id="titre-retrait-ami">Retirer <?= e($pseudo) ?> de vos amis ?</h2>
+  <button class="fenetre__fermer" type="button" data-fermer-dialogue aria-label="<?= e(t('prf.fermer')) ?>">✕</button>
+  <h2 class="confirmation__titre" id="titre-retrait-ami"><?= e(t('prf.retrait_titre', ['qui' => $pseudo])) ?></h2>
   <p class="confirmation__texte">
-    Vous ne pourrez plus vous écrire, ni voir les photos et fichiers échangés.
-    Vos messages sont gardés : ils reviendront si vous redevenez amis.
+    <?= e(t('prf.retrait_texte')) ?>
   </p>
   <form method="post" action="<?= url('amis/' . (int) $ami['id'] . '/retirer') ?>" class="confirmation__choix">
     <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
-    <button class="bouton bouton--danger" type="submit">Oui, retirer <?= e($pseudo) ?></button>
-    <button class="bouton bouton--discret" type="button" data-fermer-dialogue>Annuler</button>
+    <button class="bouton bouton--danger" type="submit"><?= e(t('prf.oui_retirer', ['qui' => $pseudo])) ?></button>
+    <button class="bouton bouton--discret" type="button" data-fermer-dialogue><?= e(t('commun.annuler')) ?></button>
   </form>
 </dialog>
 
 <dialog class="confirmation" id="confirmer-blocage-ami" data-confirmation-dialogue aria-labelledby="titre-blocage-ami">
-  <button class="fenetre__fermer" type="button" data-fermer-dialogue aria-label="Fermer">✕</button>
-  <h2 class="confirmation__titre" id="titre-blocage-ami">🚫 Bloquer <?= e($pseudo) ?> ?</h2>
+  <button class="fenetre__fermer" type="button" data-fermer-dialogue aria-label="<?= e(t('prf.fermer')) ?>">✕</button>
+  <h2 class="confirmation__titre" id="titre-blocage-ami"><?= e(t('prf.blocage_titre', ['qui' => $pseudo])) ?></h2>
   <p class="confirmation__texte">
-    Vous ne serez plus amis. <?= e($pseudo) ?> ne pourra plus vous trouver par votre pseudo, ni vous écrire,
-    ni vous redemander en ami — sans qu’on le lui dise. Vous pourrez le débloquer depuis la page « Amis ».
+    <?= e(t('prf.blocage_texte', ['qui' => $pseudo])) ?>
   </p>
   <form method="post" action="<?= url('amis/' . (int) $ami['id'] . '/bloquer') ?>" class="confirmation__choix">
     <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
-    <button class="bouton bouton--danger" type="submit">Oui, bloquer <?= e($pseudo) ?></button>
-    <button class="bouton bouton--discret" type="button" data-fermer-dialogue>Annuler</button>
+    <button class="bouton bouton--danger" type="submit"><?= e(t('prf.oui_bloquer', ['qui' => $pseudo])) ?></button>
+    <button class="bouton bouton--discret" type="button" data-fermer-dialogue><?= e(t('commun.annuler')) ?></button>
   </form>
 </dialog>

@@ -1412,20 +1412,20 @@ final class Conversations
     public static function apercu(?array $dernier, int $moi): string
     {
         if ($dernier === null) {
-            return 'Dites bonjour 👋';
+            return t('ami.dites_bonjour');
         }
         if ($dernier['evenement'] !== null) {
             return self::texteEvenement($dernier, $moi);
         }
         if ($dernier['supprime_le'] !== null) {
-            return '🚫 Message supprimé';
+            return t('ami.message_supprime');
         }
         $auteur = $dernier['expediteur_id'] === null ? null : (int) $dernier['expediteur_id'];
-        $qui = $auteur === $moi ? 'Vous' : (string) (Amis::compte((int) $auteur)['pseudo'] ?? 'Un ancien membre');
+        $qui = $auteur === $moi ? t('ami.vous') : (string) (Amis::compte((int) $auteur)['pseudo'] ?? t('ami.ancien_membre'));
         $texte = trim((string) preg_replace('/\s+/u', ' ', (string) $dernier['texte']));
-        $piece = $dernier['image_nom'] !== null ? '📷 Photo'
+        $piece = $dernier['image_nom'] !== null ? t('ami.photo')
             : ($dernier['fichier_origine'] !== null ? '📎 ' . $dernier['fichier_origine']
-            : ($dernier['audio_nom'] !== null ? '🎤 Message vocal'
+            : ($dernier['audio_nom'] !== null ? t('ami.message_vocal')
             : ($dernier['partage_type'] !== null ? '🔗 ' . Partages::libelle((string) $dernier['partage_type']) : '')));
 
         return $qui . ' : ' . ($texte === '' ? $piece : ($piece === '' ? $texte : $piece . ' · ' . $texte));

@@ -26,22 +26,22 @@ if ($enGroupe) {
     $base = 'groupes/' . $groupeActif;
     $baseMessages = 'groupes/messages';
     $titre = (string) $groupe['nom'];
-    $aide = $nombreMembres . ' membres · réglages, photos et fichiers';
+    $aide = t('chat.membres_reglages', ['n' => $nombreMembres]);
     $lienInfo = url($base . '/reglages');
-    $libelleInfo = '⚙️ Réglages';
+    $libelleInfo = t('chat.reglages');
     $initiale = '👥';
-    $destinataire = 'au groupe';
+    $destinataire = t('chat.au_groupe');
 } else {
     $actif = (int) $ami['id'];
     $groupeActif = null;
     $base = 'amis/' . $actif;
     $baseMessages = 'amis/messages';
     $titre = (string) $ami['pseudo'];
-    $aide = 'Profil, photos et fichiers';
+    $aide = t('chat.profil_aide');
     $lienInfo = url($base . '/profil');
-    $libelleInfo = 'ℹ️ Profil';
+    $libelleInfo = t('chat.profil');
     $initiale = mb_strtoupper(mb_substr($titre, 0, 1));
-    $destinataire = 'à ' . $titre;
+    $destinataire = t('chat.a_qui', ['qui' => $titre]);
 }
 $dernierId = $messages === [] ? 0 : (int) end($messages)['id'];
 $dernierMien = 0;
@@ -51,7 +51,7 @@ foreach ($messages as $m) {
 ?>
 
 <div class="chat">
-  <aside class="carte chat__amis" aria-label="Mes discussions">
+  <aside class="carte chat__amis" aria-label="<?= e(t('chat.mes_discussions')) ?>">
     <?php require __DIR__ . '/_entete_discussions.php'; ?>
     <?php require __DIR__ . '/_liste.php'; ?>
   </aside>
@@ -76,9 +76,9 @@ foreach ($messages as $m) {
            data-transcription="<?= (int) (Auth::utilisateur()['transcription_vocale'] ?? 1) ?>"
            data-vu="<?= (int) $vuJusqua ?>">
     <header class="chat__entete">
-      <a class="chat__retour" href="<?= url('amis') ?>" aria-label="Retour aux amis">←</a>
+      <a class="chat__retour" href="<?= url('amis') ?>" aria-label="<?= e(t('chat.retour_amis')) ?>">←</a>
       <?php // Le profil de l'ami, ou les réglages du groupe, en fenêtre. ?>
-      <a class="chat__profil" href="<?= e($lienInfo) ?>" data-fenetre title="<?= $enGroupe ? 'Réglages du groupe' : 'Voir le profil' ?>">
+      <a class="chat__profil" href="<?= e($lienInfo) ?>" data-fenetre title="<?= e(t($enGroupe ? 'chat.reglages_groupe' : 'chat.voir_profil')) ?>">
         <?php if ($enGroupe): ?>
           <?= Conversations::avatar($groupeActif, $groupe['photo_nom']) ?>
         <?php else: ?>
@@ -91,25 +91,25 @@ foreach ($messages as $m) {
       </a>
       <?php // Chercher dans la conversation : le champ s'ouvre sous le bouton, un résultat ramène au message. ?>
       <button class="bouton bouton--secondaire bouton--petit chat__recherche-bouton" type="button" data-recherche-bouton
-              aria-expanded="false" aria-controls="chat-recherche" title="Rechercher dans la conversation" aria-label="Rechercher dans la conversation">🔎</button>
+              aria-expanded="false" aria-controls="chat-recherche" title="<?= e(t('chat.rechercher')) ?>" aria-label="<?= e(t('chat.rechercher')) ?>">🔎</button>
       <?php // Les messages épinglés : la liste s'ouvre sous le bouton, un clic ramène au message. ?>
       <button class="bouton bouton--secondaire bouton--petit chat__epingles-bouton" type="button" data-epingles-bouton
-              aria-expanded="false" aria-controls="chat-epingles" title="Messages épinglés">
+              aria-expanded="false" aria-controls="chat-epingles" title="<?= e(t('chat.epingles_bouton')) ?>">
         📌 <span class="chat__epingles-nombre" data-epingles-nombre><?= count($epingles) ?></span>
       </button>
       <a class="bouton bouton--secondaire bouton--petit chat__profil-bouton" href="<?= e($lienInfo) ?>" data-fenetre><?= e($libelleInfo) ?></a>
     </header>
 
     <div class="epingles recherche-chat" id="chat-recherche" data-recherche-panneau hidden role="search">
-      <label class="sr-only" for="chat-recherche-champ">Rechercher dans la conversation</label>
+      <label class="sr-only" for="chat-recherche-champ"><?= e(t('chat.rechercher')) ?></label>
       <input type="search" id="chat-recherche-champ" class="recherche-chat__champ" data-recherche-champ
-             placeholder="Rechercher un message…" autocomplete="off" maxlength="100">
-      <p class="epingles__titre recherche-chat__etat" data-recherche-etat aria-live="polite">Tapez au moins deux caractères.</p>
+             placeholder="<?= e(t('chat.rechercher_message')) ?>" autocomplete="off" maxlength="100">
+      <p class="epingles__titre recherche-chat__etat" data-recherche-etat aria-live="polite"><?= e(t('chat.deux_caracteres')) ?></p>
       <ul class="epingles__liste" data-recherche-liste></ul>
     </div>
 
     <div class="epingles" id="chat-epingles" data-epingles-panneau hidden>
-      <p class="epingles__titre">📌 Messages épinglés</p>
+      <p class="epingles__titre"><?= e(t('chat.epingles_titre')) ?></p>
       <ul class="epingles__liste" data-epingles-liste>
         <?php foreach ($epingles as $ep): ?>
           <li class="epingles__ligne">
@@ -118,12 +118,12 @@ foreach ($messages as $m) {
               <span class="epingles__extrait"><?= Amis::extraitHtml($ep['extrait']) ?></span>
             </button>
             <button type="button" class="epingles__retirer" data-desepingler="<?= $ep['id'] ?>"
-                    title="Retirer des messages épinglés" aria-label="Retirer des messages épinglés"><?= Amis::poubelle() ?></button>
+                    title="<?= e(t('chat.desepingler')) ?>" aria-label="<?= e(t('chat.desepingler')) ?>"><?= Amis::poubelle() ?></button>
           </li>
         <?php endforeach; ?>
       </ul>
       <p class="epingles__vide" data-epingles-vide<?= $epingles === [] ? '' : ' hidden' ?>>
-        Aucun message épinglé. Cliquez sur un message, puis « Épingler ».
+        <?= e(t('chat.aucun_epingle')) ?>
       </p>
     </div>
 
@@ -131,7 +131,7 @@ foreach ($messages as $m) {
     <div class="chat__messages<?= $adresseFond !== null ? ' chat__messages--fond' : '' ?>" data-chat-messages aria-live="polite"
          data-fond="<?= e((string) $adresseFond) ?>"<?= $adresseFond !== null ? ' style="--fond-discussion: url(&quot;' . e($adresseFond) . '&quot;)"' : '' ?>>
       <?php if ($messages === []): ?>
-        <p class="chat__vide" data-chat-vide>Aucun message pour l’instant. Écrivez le premier !</p>
+        <p class="chat__vide" data-chat-vide><?= e(t('chat.aucun_message')) ?></p>
       <?php endif; ?>
       <?php $jour = null; $auteurPrecedent = null; ?>
       <?php foreach ($messages as $m): ?>
@@ -165,7 +165,7 @@ foreach ($messages as $m) {
             </a>
           <?php endif; ?>
           <?php if ($m['supprime']): ?>
-            <p class="bulle__texte">🚫 Message supprimé</p>
+            <p class="bulle__texte"><?= e(t('js.chat.message_supprime')) ?></p>
           <?php endif; ?>
           <?php if ($m['partage'] !== null): ?>
             <?php // Un cours ou un fichier partagé : une carte qui l'ouvre, en lecture. ?>
@@ -180,21 +180,21 @@ foreach ($messages as $m) {
           <?php endif; ?>
           <?php if ($m['image'] !== null): ?>
             <a class="bulle__image" href="<?= e($m['image']) ?>" target="_blank" rel="noopener" data-visionneuse>
-              <img src="<?= e($m['image']) ?>" alt="Photo"
+              <img src="<?= e($m['image']) ?>" alt="<?= e(t('chat.photo')) ?>"
                    <?= $m['largeur'] > 0 ? 'width="' . $m['largeur'] . '" height="' . $m['hauteur'] . '"' : '' ?>>
             </a>
           <?php endif; ?>
           <?php if ($m['vocal'] !== null): ?>
             <?php // Un message vocal : un lecteur compact, que le script anime. ?>
             <div class="bulle__vocal" data-vocal data-duree="<?= $m['vocal']['duree'] ?>">
-              <button type="button" class="bulle__vocal-lecture" data-vocal-lecture aria-label="Écouter le message vocal">▶</button>
+              <button type="button" class="bulle__vocal-lecture" data-vocal-lecture aria-label="<?= e(t('chat.ecouter_vocal')) ?>">▶</button>
               <span class="bulle__vocal-piste" data-vocal-piste><span class="bulle__vocal-avance" data-vocal-avance></span></span>
               <span class="bulle__vocal-temps" data-vocal-temps><?= e($m['vocal']['duree_texte']) ?></span>
               <audio preload="none" src="<?= e($m['vocal']['url']) ?>"></audio>
             </div>
             <?php if ($m['vocal']['transcription'] !== null): ?>
               <details class="bulle__transcription">
-                <summary>Transcription</summary>
+                <summary><?= e(t('js.chat.transcription')) ?></summary>
                 <p><?= e($m['vocal']['transcription']) ?></p>
               </details>
             <?php endif; ?>
@@ -207,13 +207,13 @@ foreach ($messages as $m) {
                 <span class="bulle__fichier-taille"><?= e($m['fichier']['taille']) ?></span>
               </span>
               <a class="bulle__fichier-telecharger" href="<?= e($m['fichier']['telecharger']) ?>"
-                 title="Télécharger" aria-label="Télécharger <?= e($m['fichier']['nom']) ?>">⬇</a>
+                 title="<?= e(t('commun.telecharger')) ?>" aria-label="<?= e(t('prf.telecharger_nom', ['nom' => $m['fichier']['nom']])) ?>">⬇</a>
             </div>
           <?php endif; ?>
           <?php if ($m['texte'] !== ''): ?>
             <p class="bulle__texte"><?= nl2br(e($m['texte'])) ?></p>
           <?php endif; ?>
-          <span class="bulle__heure"><span class="bulle__epingle" title="Épinglé" aria-label="Épinglé">📌 </span><?php if ($m['modifie']): ?><span class="bulle__modifie">modifié · </span><?php endif; ?><?= e($m['heure']) ?></span>
+          <span class="bulle__heure"><span class="bulle__epingle" title="<?= e(t('chat.epingle')) ?>" aria-label="<?= e(t('chat.epingle')) ?>">📌 </span><?php if ($m['modifie']): ?><span class="bulle__modifie"><?= e(t('js.chat.modifie')) ?></span><?php endif; ?><?= e($m['heure']) ?></span>
           <?php // Les réactions : un clic sur l'une pose ou retire la sienne. ?>
           <?php if ($m['reactions'] !== []): ?>
             <div class="bulle__reactions">
@@ -226,17 +226,17 @@ foreach ($messages as $m) {
         </div>
         <?php // « Vu » sous mon dernier message, s'il a été lu — pas sous la réponse qui l'a suivi. ?>
         <?php if ($m['id'] === $dernierMien): ?>
-          <p class="chat__vu" data-chat-vu<?= $vuJusqua >= $dernierMien ? '' : ' hidden' ?>><?= $enGroupe ? 'Vu par tous' : 'Vu' ?></p>
+          <p class="chat__vu" data-chat-vu<?= $vuJusqua >= $dernierMien ? '' : ' hidden' ?>><?= e(t($enGroupe ? 'js.chat.vu_tous' : 'js.chat.vu')) ?></p>
         <?php endif; ?>
       <?php endforeach; ?>
       <?php if ($dernierMien === 0): ?>
-        <p class="chat__vu" data-chat-vu hidden><?= $enGroupe ? 'Vu par tous' : 'Vu' ?></p>
+        <p class="chat__vu" data-chat-vu hidden><?= e(t($enGroupe ? 'js.chat.vu_tous' : 'js.chat.vu')) ?></p>
       <?php endif; ?>
     </div>
 
     <?php // Remonté dans la conversation : la flèche ramène en bas, et compte les messages arrivés entre-temps. ?>
     <button type="button" class="chat__en-bas" data-aller-en-bas hidden
-            title="Revenir en bas de la conversation" aria-label="Revenir en bas de la conversation">
+            title="<?= e(t('chat.revenir_en_bas')) ?>" aria-label="<?= e(t('chat.revenir_en_bas')) ?>">
       <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 5v14"/><path d="M6 13l6 6 6-6"/></svg>
       <span class="chat__en-bas-nombre" data-en-bas-nombre hidden></span>
     </button>
@@ -247,17 +247,17 @@ foreach ($messages as $m) {
         <strong data-contexte-titre></strong>
         <span class="chat__contexte-extrait" data-contexte-extrait></span>
       </span>
-      <button class="chat__contexte-annuler" type="button" data-contexte-annuler aria-label="Annuler" title="Annuler">✕</button>
+      <button class="chat__contexte-annuler" type="button" data-contexte-annuler aria-label="<?= e(t('commun.annuler')) ?>" title="<?= e(t('commun.annuler')) ?>">✕</button>
     </div>
 
     <?php // Pendant un enregistrement vocal, cette barre prend la place de la saisie. ?>
     <div class="chat__enregistrement" data-vocal-barre hidden>
       <span class="chat__enregistrement-point" aria-hidden="true"></span>
-      <span class="chat__enregistrement-texte">Enregistrement… <strong data-vocal-chrono>0:00</strong>
+      <span class="chat__enregistrement-texte"><?= e(t('js.chat.enregistrement')) ?> <strong data-vocal-chrono>0:00</strong>
         <span class="chat__enregistrement-transcription" data-vocal-transcription hidden></span>
       </span>
-      <button class="bouton bouton--discret" type="button" data-vocal-annuler>✕ Annuler</button>
-      <button class="bouton" type="button" data-vocal-envoyer>Envoyer</button>
+      <button class="bouton bouton--discret" type="button" data-vocal-annuler><?= e(t('js.chat.annuler_croix')) ?></button>
+      <button class="bouton" type="button" data-vocal-envoyer><?= e(t('js.chat.envoyer')) ?></button>
     </div>
 
     <?php // Les photos et fichiers choisis, en attente d'envoi : le script les montre ici. ?>
@@ -268,28 +268,28 @@ foreach ($messages as $m) {
           data-extensions="<?= e(implode(',', Amis::extensionsFichiers())) ?>"
           data-fichier-max="<?= Amis::fichierMax() ?>">
       <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
-      <label class="sr-only" for="chat-texte">Message <?= e($destinataire) ?></label>
+      <label class="sr-only" for="chat-texte"><?= e(t('chat.message_a', ['qui' => $destinataire])) ?></label>
       <textarea id="chat-texte" name="texte" rows="1" maxlength="<?= Amis::MESSAGE_MAX ?>" required
-                placeholder="Écrire <?= e($destinataire) ?>…" autofocus></textarea>
+                placeholder="<?= e(t('chat.ecrire_a', ['qui' => $destinataire])) ?>" autofocus></textarea>
       <?php // Joindre des photos ou des fichiers : le bouton ouvre le choix de fichiers, gardé caché. ?>
       <input type="file" name="fichier" multiple
              accept="<?= e(implode(',', array_map(static fn (string $x): string => '.' . $x, Amis::extensionsFichiers()))) ?>"
              class="sr-only" id="chat-image" data-chat-image>
-      <label class="chat__emoji-bouton chat__image-bouton" for="chat-image" title="Joindre une photo ou un fichier" data-chat-image-bouton>
-        <span aria-hidden="true">📎</span><span class="sr-only">Joindre une photo ou un fichier</span>
+      <label class="chat__emoji-bouton chat__image-bouton" for="chat-image" title="<?= e(t('chat.joindre')) ?>" data-chat-image-bouton>
+        <span aria-hidden="true">📎</span><span class="sr-only"><?= e(t('chat.joindre')) ?></span>
       </label>
       <?php // Un message vocal : le bouton n'apparaît que si le navigateur sait enregistrer. ?>
       <button class="chat__emoji-bouton chat__vocal-bouton" type="button" data-vocal-bouton hidden
-              title="Enregistrer un message vocal" aria-label="Enregistrer un message vocal">
+              title="<?= e(t('chat.vocal_bouton')) ?>" aria-label="<?= e(t('chat.vocal_bouton')) ?>">
         <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
           <rect x="9" y="3" width="6" height="12" rx="3" fill="currentColor"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0"/><path d="M12 17.5V21"/>
         </svg>
       </button>
       <?php // Le choix des emojis : le panneau est rempli par le script, qui seul peut les insérer. ?>
       <button class="chat__emoji-bouton" type="button" data-emoji-bouton hidden
-              aria-label="Insérer un emoji" title="Emojis" aria-expanded="false" aria-controls="chat-emojis">😊</button>
-      <button class="bouton" type="submit">Envoyer</button>
-      <div class="emojis" id="chat-emojis" data-emoji-panneau role="dialog" aria-label="Emojis" hidden></div>
+              aria-label="<?= e(t('chat.inserer_emoji')) ?>" title="<?= e(t('chat.emojis')) ?>" aria-expanded="false" aria-controls="chat-emojis">😊</button>
+      <button class="bouton" type="submit"><?= e(t('js.chat.envoyer')) ?></button>
+      <div class="emojis" id="chat-emojis" data-emoji-panneau role="dialog" aria-label="<?= e(t('chat.emojis')) ?>" hidden></div>
     </form>
     <p class="chat__erreur" data-chat-erreur role="alert" hidden></p>
   </section>

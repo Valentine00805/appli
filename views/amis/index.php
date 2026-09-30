@@ -29,16 +29,16 @@ $geste = static function (string $action, int $compte, string $libelle, string $
 
 <div class="entete-page">
   <div>
-    <h1>💬 Amis</h1>
-    <p>Retrouvez d’autres comptes par leur pseudo, et discutez avec vos amis.
-      <a href="<?= url('notifications') ?>" data-fenetre>🔔 Être prévenu des messages</a></p>
+    <h1><?= e(t('ami.titre')) ?></h1>
+    <p><?= e(t('ami.sous_titre')) ?>
+      <a href="<?= url('notifications') ?>" data-fenetre><?= e(t('ami.etre_prevenu')) ?></a></p>
   </div>
 </div>
 
 <?php if (!$aUnPseudo): ?>
   <div class="flash flash--info" style="margin-bottom:1rem">
-    Vous n’avez pas encore de pseudo : personne ne peut vous trouver.
-    <a href="<?= url('compte') ?>">Choisir mon pseudo</a>
+    <?= e(t('ami.pas_de_pseudo')) ?>
+    <a href="<?= url('compte') ?>"><?= e(t('ami.choisir_pseudo')) ?></a>
   </div>
 <?php endif; ?>
 
@@ -50,20 +50,20 @@ $geste = static function (string $action, int $compte, string $libelle, string $
 
   <div class="pile" id="demandes">
     <section class="carte">
-      <h2 style="margin-top:0">🔎 Chercher un pseudo</h2>
+      <h2 style="margin-top:0"><?= e(t('ami.chercher_pseudo')) ?></h2>
       <form method="get" action="<?= url('amis') ?>" class="fuseau-choix" role="search">
-        <label class="sr-only" for="pseudo-recherche">Pseudo</label>
+        <label class="sr-only" for="pseudo-recherche"><?= e(t('ami.pseudo')) ?></label>
         <input type="search" id="pseudo-recherche" name="pseudo" value="<?= e($recherche) ?>"
-               placeholder="Pseudo d’un ami" minlength="2" maxlength="<?= Auth::PSEUDO_MAX ?>"
+               placeholder="<?= e(t('ami.pseudo_exemple')) ?>" minlength="2" maxlength="<?= Auth::PSEUDO_MAX ?>"
                autocomplete="off" autocapitalize="none" spellcheck="false" style="flex:1 1 12rem">
-        <button class="bouton" type="submit">Chercher</button>
+        <button class="bouton" type="submit"><?= e(t('ami.chercher')) ?></button>
       </form>
 
       <?php if ($recherche !== ''): ?>
         <?php if (mb_strlen($recherche) < 2): ?>
-          <p class="champ__aide">Tapez au moins deux caractères.</p>
+          <p class="champ__aide"><?= e(t('ami.deux_caracteres')) ?></p>
         <?php elseif ($resultats === []): ?>
-          <p class="discret" style="margin:.75rem 0 0">Aucun pseudo ne contient « <?= e($recherche) ?> ».</p>
+          <p class="discret" style="margin:.75rem 0 0"><?= e(t('ami.aucun_pseudo', ['quoi' => $recherche])) ?></p>
         <?php else: ?>
           <ul class="amis-resultats">
             <?php foreach ($resultats as $r): ?>
@@ -72,16 +72,16 @@ $geste = static function (string $action, int $compte, string $libelle, string $
                 <span class="amis-resultat__pseudo"><?= e($r['pseudo']) ?></span>
                 <span class="actions">
                   <?php if ($r['etat'] === 'bloque'): ?>
-                    <span class="pastille">Bloqué</span>
-                    <?= $geste('debloquer', $r['id'], 'Débloquer', 'bouton--discret') ?>
+                    <span class="pastille"><?= e(t('ami.bloque')) ?></span>
+                    <?= $geste('debloquer', $r['id'], t('ami.debloquer'), 'bouton--discret') ?>
                   <?php elseif ($r['etat'] === 'ami'): ?>
-                    <a class="bouton bouton--petit bouton--secondaire" href="<?= url('amis/' . $r['id']) ?>">💬 Discuter</a>
+                    <a class="bouton bouton--petit bouton--secondaire" href="<?= url('amis/' . $r['id']) ?>"><?= e(t('ami.discuter')) ?></a>
                   <?php elseif ($r['etat'] === 'envoyee'): ?>
-                    <span class="pastille">Demande envoyée</span>
+                    <span class="pastille"><?= e(t('ami.demande_envoyee')) ?></span>
                   <?php elseif ($r['etat'] === 'recue'): ?>
-                    <?= $geste('accepter', $r['id'], 'Accepter', '') ?>
+                    <?= $geste('accepter', $r['id'], t('ami.accepter'), '') ?>
                   <?php else: ?>
-                    <?= $geste('demande', $r['id'], '+ Ajouter en ami', '') ?>
+                    <?= $geste('demande', $r['id'], t('ami.ajouter'), '') ?>
                   <?php endif; ?>
                 </span>
               </li>
@@ -93,16 +93,16 @@ $geste = static function (string $action, int $compte, string $libelle, string $
 
     <?php if ($bloques !== []): ?>
       <section class="carte">
-        <h2 style="margin-top:0">🚫 Comptes bloqués</h2>
-        <p class="champ__aide" style="margin-top:0">Ils ne peuvent ni vous trouver, ni vous écrire, ni vous demander en ami.</p>
+        <h2 style="margin-top:0"><?= e(t('ami.bloques_titre')) ?></h2>
+        <p class="champ__aide" style="margin-top:0"><?= e(t('ami.bloques_aide')) ?></p>
         <ul class="amis-resultats">
           <?php foreach ($bloques as $b): ?>
             <li class="amis-resultat">
               <?= Amis::avatar((int) $b['id'], (string) $b['pseudo']) ?>
               <span class="amis-resultat__pseudo"><?= e((string) $b['pseudo']) ?></span>
               <span class="actions">
-                <?= $geste('debloquer', (int) $b['id'], 'Débloquer', 'bouton--secondaire',
-                    'Débloquer ' . $b['pseudo'] . ' ? Il pourra de nouveau vous trouver et vous demander en ami.') ?>
+                <?= $geste('debloquer', (int) $b['id'], t('ami.debloquer'), 'bouton--secondaire',
+                    t('ami.debloquer_sur', ['nom' => $b['pseudo']])) ?>
               </span>
             </li>
           <?php endforeach; ?>
@@ -113,21 +113,21 @@ $geste = static function (string $action, int $compte, string $libelle, string $
     <?php if ($invitationsGroupes !== []): ?>
       <?php // Les invitations dans un groupe : on n'y entre qu'en acceptant. ?>
       <section class="carte" id="invitations-groupes">
-        <h2 style="margin-top:0">✉️ Invitations à des groupes <span class="compteur"><?= count($invitationsGroupes) ?></span></h2>
+        <h2 style="margin-top:0"><?= e(t('ami.invitations_groupes')) ?> <span class="compteur"><?= count($invitationsGroupes) ?></span></h2>
         <ul class="amis-resultats">
           <?php foreach ($invitationsGroupes as $inv): ?>
             <li class="amis-resultat">
               <?= Conversations::avatar((int) $inv['id'], $inv['photo_nom']) ?>
               <span class="amis-resultat__pseudo"><?= e((string) $inv['nom']) ?>
-                <span class="discret" style="font-size:.8rem;font-weight:400">· <?= (int) $inv['membres'] ?> membres<?= $inv['par'] !== '' ? ' · invité par ' . e((string) $inv['par']) : '' ?></span></span>
+                <span class="discret" style="font-size:.8rem;font-weight:400"><?= e(tn('ami.membres', (int) $inv['membres'])) ?><?= $inv['par'] !== '' ? e(t('ami.invite_par', ['qui' => (string) $inv['par']])) : '' ?></span></span>
               <span class="actions">
                 <form method="post" action="<?= url('groupes/' . (int) $inv['id'] . '/rejoindre') ?>">
                   <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
-                  <button class="bouton bouton--petit" type="submit">Rejoindre</button>
+                  <button class="bouton bouton--petit" type="submit"><?= e(t('ami.rejoindre')) ?></button>
                 </form>
                 <form method="post" action="<?= url('groupes/' . (int) $inv['id'] . '/refuser') ?>">
                   <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
-                  <button class="bouton bouton--petit bouton--discret" type="submit">Refuser</button>
+                  <button class="bouton bouton--petit bouton--discret" type="submit"><?= e(t('ami.refuser')) ?></button>
                 </form>
               </span>
             </li>
@@ -138,15 +138,15 @@ $geste = static function (string $action, int $compte, string $libelle, string $
 
     <?php if ($recues !== []): ?>
       <section class="carte">
-        <h2 style="margin-top:0">Demandes reçues <span class="compteur"><?= count($recues) ?></span></h2>
+        <h2 style="margin-top:0"><?= e(t('ami.demandes_recues')) ?> <span class="compteur"><?= count($recues) ?></span></h2>
         <ul class="amis-resultats">
           <?php foreach ($recues as $d): ?>
             <li class="amis-resultat">
               <?= Amis::avatar((int) $d['id'], (string) $d['pseudo']) ?>
               <span class="amis-resultat__pseudo"><?= e((string) $d['pseudo']) ?></span>
               <span class="actions">
-                <?= $geste('accepter', (int) $d['id'], 'Accepter', '') ?>
-                <?= $geste('retirer', (int) $d['id'], 'Refuser', 'bouton--discret') ?>
+                <?= $geste('accepter', (int) $d['id'], t('ami.accepter'), '') ?>
+                <?= $geste('retirer', (int) $d['id'], t('ami.refuser'), 'bouton--discret') ?>
               </span>
             </li>
           <?php endforeach; ?>
@@ -156,15 +156,15 @@ $geste = static function (string $action, int $compte, string $libelle, string $
 
     <?php if ($envoyees !== []): ?>
       <section class="carte">
-        <h2 style="margin-top:0">Demandes envoyées</h2>
+        <h2 style="margin-top:0"><?= e(t('ami.demandes_envoyees')) ?></h2>
         <ul class="amis-resultats">
           <?php foreach ($envoyees as $d): ?>
             <li class="amis-resultat">
               <?= Amis::avatar((int) $d['id'], (string) $d['pseudo']) ?>
               <span class="amis-resultat__pseudo"><?= e((string) $d['pseudo']) ?>
-                <span class="discret" style="font-size:.8rem;font-weight:400">· en attente</span></span>
+                <span class="discret" style="font-size:.8rem;font-weight:400"><?= e(t('ami.en_attente')) ?></span></span>
               <span class="actions">
-                <?= $geste('retirer', (int) $d['id'], 'Annuler', 'bouton--discret') ?>
+                <?= $geste('retirer', (int) $d['id'], t('ami.annuler'), 'bouton--discret') ?>
               </span>
             </li>
           <?php endforeach; ?>
