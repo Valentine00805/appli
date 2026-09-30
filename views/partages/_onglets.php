@@ -7,11 +7,11 @@
  * @var int $nbEnvoyes
  */
 $liens = [
-    'recus' => ['libelle' => 'Partagés avec moi', 'icone' => '📥', 'url' => url('partages'), 'nb' => $nbRecus],
-    'envoyes' => ['libelle' => 'Ce que je partage', 'icone' => '📤', 'url' => url('partages/envoyes'), 'nb' => $nbEnvoyes],
+    'recus' => ['libelle' => t('pt.recus_titre'), 'icone' => '📥', 'url' => url('partages'), 'nb' => $nbRecus],
+    'envoyes' => ['libelle' => t('pt.envoyes_titre'), 'icone' => '📤', 'url' => url('partages/envoyes'), 'nb' => $nbEnvoyes],
 ];
 ?>
-<nav class="onglets" aria-label="Sens du partage">
+<nav class="onglets" aria-label="<?= e(t('pt.sens_du_partage')) ?>">
   <?php foreach ($liens as $cle => $lien): ?>
     <a href="<?= e((string) $lien['url']) ?>"<?= $vue === $cle ? ' aria-current="page"' : '' ?>>
       <span aria-hidden="true"><?= e($lien['icone']) ?></span> <?= e($lien['libelle']) ?>

@@ -14,9 +14,9 @@
   <div>
     <h1><?= Partages::icone(22) ?> <?= e((string) $lot['titre']) ?></h1>
     <p class="discret">
-      Partagé par <strong><?= e((string) ($lot['proprietaire'] !== '' ? $lot['proprietaire'] : 'un compte Mes Cours')) ?></strong>
-      · <?= count($documents) ?> document<?= count($documents) > 1 ? 's' : '' ?>
-      · lecture seule
+      <?= e(t('pt.partage_par_qui')) ?> <strong><?= e((string) ($lot['proprietaire'] !== '' ? $lot['proprietaire'] : t('pt.un_compte'))) ?></strong>
+      · <?= e(tn('pt.combien_document', count($documents))) ?>
+      · <?= e(t('pt.lecture_seule')) ?>
     </p>
   </div>
 </div>
@@ -24,7 +24,7 @@
 <?php if ($documents === []): ?>
   <section class="carte vide">
     <span class="vide__icone">🔗</span>
-    <p>Ces documents ne sont plus disponibles.</p>
+    <p><?= e(t('pt.lot_vide')) ?></p>
   </section>
 <?php else: ?>
   <section class="carte">
@@ -46,7 +46,6 @@
 <?php endif; ?>
 
 <p class="discret partage-invitation">
-  Ces documents viennent de <strong>Mes Cours</strong>. Avec un compte, ce qu’on vous partage
-  se retrouve dans votre onglet « Partagés », et vous pouvez en faire vos propres copies.
-  <a href="<?= url('connexion') ?>">Se connecter</a>
+  <?= e(t('pt.lot_invitation', ['appli' => (string) Config::get('app', 'nom')])) ?>
+  <a href="<?= url('connexion') ?>"><?= e(t('pt.se_connecter')) ?></a>
 </p>

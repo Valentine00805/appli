@@ -65,14 +65,7 @@ final class Partages
     /** Ce que c'est, en quelques mots : « Cours partagé »… */
     public static function libelle(string $type): string
     {
-        return match ($type) {
-            'cours' => 'Cours partagé',
-            'fiche' => 'Fiche partagée',
-            'dossier' => 'Dossier partagé',
-            'evenement' => 'Évènement partagé',
-            'lot' => 'Lien de plusieurs documents',
-            default => 'Fichier partagé',
-        };
+        return t('pt.libelle_' . (in_array($type, ['cours', 'fiche', 'dossier', 'evenement', 'lot'], true) ? $type : 'fichier'));
     }
 
     /** L'adresse d'un type : « cours », « fiches », « dossiers » ou « fichiers ». */
@@ -279,10 +272,10 @@ final class Partages
                 'INSERT IGNORE INTO partages_calendrier (user_id, ami_id, created_at) VALUES (?, ?, UTC_TIMESTAMP())',
                 [$ami, $moi]
             );
-            $pseudo = (string) (Amis::compte($moi)['pseudo'] ?? 'Un ami');
+            $pseudo = (string) (Amis::compte($moi)['pseudo'] ?? t('pt.un_ami'));
             $n = FileNotifications::ajouter($ami, 'partage', [
                 'title' => '📅 ' . $pseudo,
-                'body' => $pseudo . ' vous partage tout son calendrier : ses évènements paraissent dans le vôtre.',
+                'body' => t('pt.calendrier_corps', ['qui' => $pseudo]),
                 'url' => url('calendrier'),
                 'tag' => 'calendrier-' . $moi,
             ]);
@@ -513,11 +506,11 @@ final class Partages
     {
         $cible = self::mienne($type, $id, $moi);
         if ($cible === null) {
-            return [0, 'Ce document est introuvable.', []];
+            return [0, t('pt.doc_introuvable'), []];
         }
         $texte = trim(str_replace(["\r\n", "\r"], "\n", $texte));
         if (mb_strlen($texte) > Amis::MESSAGE_MAX) {
-            return [0, 'Le message ne peut pas dépasser ' . Amis::MESSAGE_MAX . ' caractères.', []];
+            return [0, t('pt.message_long', ['max' => Amis::MESSAGE_MAX]), []];
         }
         [$amis, $groupes, $refus] = self::destinatairesChoisis($moi, $amis, $groupes);
         if ($refus !== null) {
@@ -526,14 +519,15 @@ final class Partages
 
         $atteints = [];
         $notifications = [];
-        $pseudo = (string) (Amis::compte($moi)['pseudo'] ?? 'Un ami');
-        $quoi = match ($type) { 'cours' => 'le cours', 'fiche' => 'la fiche de révision', 'dossier' => 'le dossier', default => 'le fichier' }
-            . ' « ' . mb_strimwidth((string) ($cible['titre_cours'] ?? $cible['titre']), 0, 80, '…') . ' »';
+        $pseudo = (string) (Amis::compte($moi)['pseudo'] ?? t('pt.un_ami'));
+        $quoi = t('pt.quoi_' . (in_array($type, ['cours', 'fiche', 'dossier'], true) ? $type : 'fichier'), [
+            'titre' => mb_strimwidth((string) ($cible['titre_cours'] ?? $cible['titre']), 0, 80, '…'),
+        ]);
 
         foreach ($amis as $a) {
             self::donnerAcces($moi, $a, $type, $id, $droit, $texte);
             $atteints[$a] = true;
-            $annonce = '🔗 ' . $pseudo . ' a partagé ' . $quoi . ($texte === '' ? '' : ' · ' . $texte);
+            $annonce = t('pt.a_partage', ['qui' => $pseudo, 'quoi' => $quoi]) . ($texte === '' ? '' : ' · ' . $texte);
             if (self::dansLaDiscussion($a)) {
                 Database::run(
                     'INSERT INTO messages (expediteur_id, destinataire_id, texte, partage_type, partage_id, created_at) VALUES (?, ?, ?, ?, ?, UTC_TIMESTAMP())',
@@ -579,19 +573,19 @@ final class Partages
         $amis = array_values(array_unique(array_filter(array_map('intval', $amis), static fn (int $a): bool => $a > 0 && $a !== $moi)));
         $groupes = array_values(array_unique(array_filter(array_map('intval', $groupes), static fn (int $g): bool => $g > 0)));
         if ($amis === [] && $groupes === []) {
-            return [[], [], 'Choisissez au moins un ami ou un groupe.'];
+            return [[], [], t('pt.un_destinataire')];
         }
         if (count($amis) + count($groupes) > self::ENVOI_MAX) {
-            return [[], [], 'Pas plus de ' . self::ENVOI_MAX . ' destinataires à la fois.'];
+            return [[], [], t('pt.trop_destinataires', ['max' => self::ENVOI_MAX])];
         }
         foreach ($amis as $a) {
             if (!Amis::sontAmis($moi, $a)) {
-                return [[], [], 'Vous ne pouvez partager qu’avec vos amis.'];
+                return [[], [], t('pt.amis_seuls')];
             }
         }
         foreach ($groupes as $g) {
             if (Conversations::membre($g, $moi) === null) {
-                return [[], [], 'Vous ne faites pas partie de ce groupe.'];
+                return [[], [], t('pt.pas_membre')];
             }
         }
 
@@ -610,7 +604,7 @@ final class Partages
     {
         $texte = trim(str_replace(["\r\n", "\r"], "\n", $texte));
         if (mb_strlen($texte) > Amis::MESSAGE_MAX) {
-            return ['', 0, 'Le message ne peut pas dépasser ' . Amis::MESSAGE_MAX . ' caractères.', []];
+            return ['', 0, t('pt.message_long', ['max' => Amis::MESSAGE_MAX]), []];
         }
         $comptes = [];
         foreach (self::TYPES as $type) {
@@ -621,10 +615,10 @@ final class Partages
         }
         $total = array_sum(array_map('count', $comptes));
         if ($total === 0) {
-            return ['', 0, 'Choisissez au moins un document à partager.', []];
+            return ['', 0, t('pt.un_document'), []];
         }
         if ($total > self::LOT_MAX) {
-            return ['', 0, 'Pas plus de ' . self::LOT_MAX . ' documents à la fois.', []];
+            return ['', 0, t('pt.trop_documents', ['max' => self::LOT_MAX]), []];
         }
         // Les documents, dans l'ordre où ils paraissent, et tous à moi.
         $documents = [];
@@ -632,7 +626,7 @@ final class Partages
             foreach ($ids as $i) {
                 $cible = self::mienne($type, $i, $moi);
                 if ($cible === null) {
-                    return ['', 0, 'Un des documents choisis est introuvable.', []];
+                    return ['', 0, t('pt.doc_choisi_introuvable'), []];
                 }
                 $documents[] = ['type' => $type, 'id' => (int) $cible['id'], 'titre' => (string) $cible['titre']];
             }
@@ -644,9 +638,11 @@ final class Partages
 
         $atteints = [];
         $notifications = [];
-        $pseudo = (string) (Amis::compte($moi)['pseudo'] ?? 'Un ami');
-        $combien = self::combien(array_map('count', $comptes))
-            . ' (dont « ' . mb_strimwidth($documents[0]['titre'], 0, 60, '…') . ' »)';
+        $pseudo = (string) (Amis::compte($moi)['pseudo'] ?? t('pt.un_ami'));
+        $combien = t('pt.dont', [
+            'combien' => self::combien(array_map('count', $comptes)),
+            'titre' => mb_strimwidth($documents[0]['titre'], 0, 60, '…'),
+        ]);
 
         foreach ($amis as $a) {
             $carte = self::dansLaDiscussion($a);
@@ -660,7 +656,7 @@ final class Partages
                 }
             }
             $atteints[$a] = true;
-            $annonce = '🔗 ' . $pseudo . ' a partagé ' . $combien . ($texte === '' ? '' : ' · ' . $texte);
+            $annonce = t('pt.a_partage', ['qui' => $pseudo, 'quoi' => $combien]) . ($texte === '' ? '' : ' · ' . $texte);
             $n = $carte ? Amis::notifier($moi, $a, $annonce) : self::notifierOnglet($a, $pseudo, $annonce);
             if ($n !== null) {
                 $notifications[] = $n;
@@ -686,7 +682,8 @@ final class Partages
                     [$dernier, $g, $moi]
                 );
             }
-            array_push($notifications, ...Conversations::notifier($moi, $g, '🔗 a partagé ' . $combien . ($texte === '' ? '' : ' · ' . $texte)));
+            array_push($notifications, ...Conversations::notifier($moi, $g,
+                t('pt.a_partage_groupe', ['quoi' => $combien]) . ($texte === '' ? '' : ' · ' . $texte)));
         }
 
         return [self::combien(array_map('count', $comptes)), count($atteints), null, $notifications];
@@ -705,15 +702,10 @@ final class Partages
             if ($nb !== $total) {
                 continue;
             }
-            return $total . ' ' . match ($type) {
-                'cours' => 'cours',
-                'fiche' => 'fiche' . ($total > 1 ? 's' : '') . ' de révision',
-                'dossier' => 'dossier' . ($total > 1 ? 's' : ''),
-                default => 'fichier' . ($total > 1 ? 's' : ''),
-            };
+            return tn('pt.combien_' . (in_array($type, ['cours', 'fiche', 'dossier'], true) ? $type : 'fichier'), $total);
         }
 
-        return $total . ' documents';
+        return tn('pt.combien_document', $total);
     }
 
     private static function donnerAcces(int $moi, int $destinataire, string $type, int $id, string $droit = 'lecture', string $message = ''): void
@@ -938,7 +930,7 @@ final class Partages
     /** « 3 cours », « aucun cours ». */
     public static function compteCours(int $nb): string
     {
-        return $nb === 0 ? 'aucun cours' : $nb . ' cours';
+        return $nb === 0 ? t('pt.aucun_cours') : tn('pt.combien_cours', $nb);
     }
 
     /**
@@ -1128,19 +1120,19 @@ final class Partages
                 if ($i > 0 && self::mienne($type, $i, $moi) !== null) {
                     $documents[] = [$type, $i];
                 } elseif ($i > 0) {
-                    return [null, 'Un des documents choisis est introuvable.'];
+                    return [null, t('pt.doc_choisi_introuvable')];
                 }
             }
         }
         if ($documents === []) {
-            return [null, 'Choisissez au moins un document à partager.'];
+            return [null, t('pt.un_document')];
         }
         if (count($documents) > self::LOT_MAX) {
-            return [null, 'Pas plus de ' . self::LOT_MAX . ' documents à la fois.'];
+            return [null, t('pt.trop_documents', ['max' => self::LOT_MAX])];
         }
         $nom = trim($nom);
         if ($nom === '') {
-            $nom = 'Ma sélection du ' . date_fr(date('Y-m-d H:i:s'), false);
+            $nom = t('pt.selection_du', ['date' => date_fr(date('Y-m-d H:i:s'), false)]);
         }
         Database::run(
             'INSERT INTO lots_partage (user_id, nom, created_at) VALUES (?, ?, UTC_TIMESTAMP())',
@@ -1360,14 +1352,14 @@ final class Partages
     public static function commenter(int $moi, string $type, int $id, string $texte, ?int $reponseA = null): ?string
     {
         if (!self::permet(self::droit($type, $id, $moi), 'commentaire')) {
-            return 'Vous ne pouvez pas commenter ce document.';
+            return t('pt.commenter_interdit');
         }
         $texte = trim(str_replace(["\r\n", "\r"], "\n", $texte));
         if ($texte === '') {
-            return 'Écrivez d’abord votre commentaire.';
+            return t('pt.commentaire_vide');
         }
         if (mb_strlen($texte) > Amis::MESSAGE_MAX) {
-            return 'Le commentaire ne peut pas dépasser ' . Amis::MESSAGE_MAX . ' caractères.';
+            return t('pt.commentaire_long', ['max' => Amis::MESSAGE_MAX]);
         }
         // Une réponse vise un commentaire de ce document ; répondre à une
         // réponse la range sous le même commentaire, sur un seul niveau.
@@ -1378,7 +1370,7 @@ final class Partages
                 [$reponseA, $type, $id]
             );
             if ($parent === null) {
-                return 'Ce commentaire n’existe plus.';
+                return t('pt.commentaire_parti');
             }
         }
         $racine = $parent === null ? null : (int) ($parent['reponse_a'] ?? $parent['id']);
@@ -1390,15 +1382,15 @@ final class Partages
         // Le propriétaire est prévenu, et celui à qui l'on répond ; les autres
         // liront en rouvrant le document. Un clic ouvre le fil des commentaires.
         $cible = self::cible($type, $id);
-        $pseudo = (string) (Amis::compte($moi)['pseudo'] ?? 'Un ami');
+        $pseudo = (string) (Amis::compte($moi)['pseudo'] ?? t('pt.un_ami'));
         $titre = mb_strimwidth((string) ($cible['titre'] ?? ''), 0, 60, '…');
         $fil = url('partages/' . self::mot($type) . '/' . $id . '/commentaires');
         $prevenir = [];
         if ($cible !== null && (int) $cible['user_id'] !== $moi) {
-            $prevenir[(int) $cible['user_id']] = 'a commenté « ' . $titre . ' »';
+            $prevenir[(int) $cible['user_id']] = t('pt.a_commente', ['titre' => $titre]);
         }
         if ($parent !== null && (int) $parent['user_id'] !== $moi) {
-            $prevenir[(int) $parent['user_id']] = 'vous a répondu sur « ' . $titre . ' »';
+            $prevenir[(int) $parent['user_id']] = t('pt.a_repondu', ['titre' => $titre]);
         }
         foreach ($prevenir as $qui => $annonce) {
             $n = FileNotifications::ajouter($qui, 'commentaire', [
@@ -1447,10 +1439,10 @@ final class Partages
     public static function ecrire(int $moi, string $type, int $id, string $texte): ?string
     {
         if (!in_array($type, ['cours', 'fiche'], true)) {
-            return 'Ce document ne s’écrit pas.';
+            return t('pt.pas_ecrivable');
         }
         if (!self::permet(self::droit($type, $id, $moi), 'modification')) {
-            return 'Vous ne pouvez pas modifier ce document.';
+            return t('pt.modifier_interdit');
         }
         $texte = TexteRiche::depuisFormulaire($texte);
         $avant = (string) Database::valeur(
@@ -1466,12 +1458,15 @@ final class Partages
         if ($texte !== $avant) {
             $cible = self::cible($type, $id);
             self::noter($moi, $type, $id, 'texte', ['avant' => $avant, 'apres' => $texte]);
-            self::prevenir($moi, $type, $id, '✏️', match (true) {
-                $texte === '' => 'a vidé le texte',
-                $avant === '' => 'a écrit le texte',
-                default => 'a modifié le texte',
-            } . ($type === 'cours' ? ' du cours « ' : ' de la fiche « ')
-                . mb_strimwidth((string) ($cible['titre_cours'] ?? $cible['titre'] ?? ''), 0, 60, '…') . ' »',
+            $geste = match (true) {
+                $texte === '' => 'texte_vide',
+                $avant === '' => 'texte_ecrit',
+                default => 'texte_modifie',
+            };
+            self::prevenir($moi, $type, $id, '✏️',
+                t('pt.' . $geste . '_' . ($type === 'cours' ? 'cours' : 'fiche'), [
+                    'titre' => mb_strimwidth((string) ($cible['titre_cours'] ?? $cible['titre'] ?? ''), 0, 60, '…'),
+                ]),
                 self::adresseHistorique($type, $id));
         }
 
@@ -1489,7 +1484,7 @@ final class Partages
         if ($cible === null || (int) $cible['user_id'] === $moi) {
             return;
         }
-        $pseudo = (string) (Amis::compte($moi)['pseudo'] ?? 'Un ami');
+        $pseudo = (string) (Amis::compte($moi)['pseudo'] ?? t('pt.un_ami'));
         $n = FileNotifications::ajouter((int) $cible['user_id'], 'partage', [
             'title' => $icone . ' ' . $pseudo,
             'body' => mb_strimwidth($pseudo . ' ' . $quoi, 0, 200, '…'),
@@ -1516,11 +1511,11 @@ final class Partages
     {
         if (!in_array($type, ['cours', 'fiche'], true)
             || !self::permet(self::droit($type, $id, $moi), 'modification')) {
-            return [0, ['Vous ne pouvez pas modifier ce document.']];
+            return [0, [t('pt.modifier_interdit')]];
         }
         $cible = self::cible($type, $id);
         if ($cible === null) {
-            return [0, ['Ce document est introuvable.']];
+            return [0, [t('pt.doc_introuvable')]];
         }
         $avant = (int) Database::valeur('SELECT COUNT(*) FROM fichiers WHERE cours_id = ?', [$id]);
         $erreurs = Fichiers::enregistrer($envoi, $id, (int) $cible['user_id'], $type === 'fiche');
@@ -1542,11 +1537,13 @@ final class Partages
                 'SELECT nom_origine FROM fichiers WHERE cours_id = ? ORDER BY id DESC LIMIT ' . min($ajoutes, 3),
                 [$id]
             ), 'nom_origine');
-            self::prevenir($moi, $type, $id, '📎', 'a ajouté ' . ($ajoutes === 1 ? 'le fichier' : $ajoutes . ' fichiers')
-                . ' ' . implode(', ', array_map(static fn (string $n): string => '« ' . $n . ' »', array_reverse($noms)))
-                . ($ajoutes > 3 ? '…' : '')
-                . ($type === 'cours' ? ' au cours « ' : ' à la fiche « ')
-                . mb_strimwidth((string) ($cible['titre_cours'] ?? $cible['titre']), 0, 60, '…') . ' »',
+            self::prevenir($moi, $type, $id, '📎',
+                t('pt.fichiers_ajoutes_' . ($type === 'cours' ? 'cours' : 'fiche'), [
+                    'quoi' => $ajoutes === 1 ? t('pt.le_fichier') : t('pt.n_fichiers', ['n' => $ajoutes]),
+                    'noms' => implode(', ', array_map(static fn (string $n): string => '« ' . $n . ' »', array_reverse($noms)))
+                        . ($ajoutes > 3 ? '…' : ''),
+                    'titre' => mb_strimwidth((string) ($cible['titre_cours'] ?? $cible['titre']), 0, 60, '…'),
+                ]),
                 self::adresseHistorique($type, $id));
         }
 
@@ -1581,9 +1578,11 @@ final class Partages
         }
         self::oublier('fichier', $fichierId);
         $document = self::cible($type, $coursId);
-        self::prevenir($moi, $type, $coursId, '🗑️', 'a retiré le fichier « ' . $fichier['nom_origine'] . ' »'
-            . ($type === 'cours' ? ' du cours « ' : ' de la fiche « ')
-            . mb_strimwidth((string) ($document['titre_cours'] ?? $document['titre'] ?? ''), 0, 60, '…') . ' »',
+        self::prevenir($moi, $type, $coursId, '🗑️',
+            t('pt.fichier_retire_' . ($type === 'cours' ? 'cours' : 'fiche'), [
+                'nom' => (string) $fichier['nom_origine'],
+                'titre' => mb_strimwidth((string) ($document['titre_cours'] ?? $document['titre'] ?? ''), 0, 60, '…'),
+            ]),
             self::adresseHistorique($type, $coursId));
 
         return [$type, $coursId];
@@ -1833,9 +1832,9 @@ final class Partages
                 // Ce qui est à l'auteur — sa matière, son cours — ne le regarde que lui.
                 'matiere_id' => null, 'matiere_nom' => null, 'matiere_couleur' => null,
                 'cours_id' => null, 'cours_titre' => null, 'serie_id' => null,
-                'type_nom' => 'Partagé par ' . $l['partage_par_pseudo'],
+                'type_nom' => t('pt.partage_par', ['qui' => (string) $l['partage_par_pseudo']]),
                 'type_icone' => '🔗',
-                'agenda_nom' => 'Partagé par ' . $l['partage_par_pseudo'],
+                'agenda_nom' => t('pt.partage_par', ['qui' => (string) $l['partage_par_pseudo']]),
                 'agenda_couleur' => self::COULEUR_PARTAGE,
                 'est_echeance' => 0,
                 'outlook_calendrier' => null,

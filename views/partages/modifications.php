@@ -50,9 +50,9 @@ $rendreDifference = static function (array $difference): void {
         if ($p['etat'] === 'egal') {
             echo '<p>' . e((string) $p['texte']) . '</p>';
         } elseif ($p['etat'] === 'ajout') {
-            echo '<p class="difference__ajout"><span class="sr-only">Ajouté : </span>' . e((string) $p['texte']) . '</p>';
+            echo '<p class="difference__ajout"><span class="sr-only">' . e(t('pt.ajoute_deux_points')) . '</span>' . e((string) $p['texte']) . '</p>';
         } elseif ($p['etat'] === 'retrait') {
-            echo '<p class="difference__retrait"><span class="sr-only">Retiré : </span>' . e((string) $p['texte']) . '</p>';
+            echo '<p class="difference__retrait"><span class="sr-only">' . e(t('pt.retire_deux_points')) . '</span>' . e((string) $p['texte']) . '</p>';
         } else {
             echo '<p>';
             foreach ($p['morceaux'] as [$etat, $texte]) {
@@ -69,45 +69,41 @@ $rendreDifference = static function (array $difference): void {
 ?>
 <div class="entete-page"<?= $dansUneFenetre ? ' data-large' : '' ?>>
   <div>
-    <h1 style="margin:0">🕘 Modifications <span class="discret">(<?= count($modifications) ?>)</span></h1>
-    <p class="discret" style="margin:.15rem 0 0"><?= $type === 'fiche' ? '📝 Fiche — ' : '📘 ' ?><?= e($titre) ?></p>
+    <h1 style="margin:0"><?= e(t('pt.mods_titre')) ?> <span class="discret">(<?= count($modifications) ?>)</span></h1>
+    <p class="discret" style="margin:.15rem 0 0"><?= $type === 'fiche' ? e(t('pt.mods_fiche')) : '📘 ' ?><?= e($titre) ?></p>
   </div>
 </div>
 
 <?php if ($modifications === []): ?>
   <section class="carte vide">
     <span class="vide__icone">🕘</span>
-    <p>Rien n’a encore changé dans ce document depuis qu’il est partagé.</p>
+    <p><?= e(t('pt.mods_vide')) ?></p>
   </section>
 <?php else: ?>
   <section class="carte">
     <p class="difference__legende">
-      <span class="difference__ajout">ajouté</span>
-      <span class="difference__retrait">retiré</span>
+      <span class="difference__ajout"><?= e(t('pt.legende_ajoute')) ?></span>
+      <span class="difference__retrait"><?= e(t('pt.legende_retire')) ?></span>
     </p>
     <ul class="historique">
       <?php foreach ($modifications as $m): ?>
         <li>
           <div class="historique__qui">
             <?= Amis::avatar((int) $m['user_id'], (string) $m['pseudo'], 'avatar--mini') ?>
-            <strong><?= e((string) $m['pseudo']) ?></strong><?= (int) $m['user_id'] === Auth::id() ? ' <span class="discret">(vous)</span>' : '' ?>
+            <strong><?= e((string) $m['pseudo']) ?></strong><?= (int) $m['user_id'] === Auth::id() ? ' <span class="discret">' . e(t('pt.vous')) . '</span>' : '' ?>
             <span class="discret">
-              <?= match ((string) $m['nature']) {
-                  'texte' => 'a modifié le texte',
-                  'ajout' => 'a ajouté un fichier',
-                  default => 'a retiré un fichier',
-              } ?>
+              <?= e(t('pt.mod_' . (in_array((string) $m['nature'], ['texte', 'ajout'], true) ? (string) $m['nature'] : 'retrait'))) ?>
               · <?= e(date_fr(Amis::local((string) $m['created_at'])->format('Y-m-d H:i:s'))) ?>
             </span>
             <?php if ((int) $m['annulee'] === 1 || (int) $m['restaure'] === 1): ?>
-              <span class="pastille">Annulée</span>
+              <span class="pastille"><?= e(t('pt.annulee')) ?></span>
             <?php endif; ?>
           </div>
 
           <?php if ($m['nature'] === 'texte'): ?>
             <div class="difference">
               <?php if ($m['difference'] === []): ?>
-                <p class="discret">Seule la mise en forme a changé.</p>
+                <p class="discret"><?= e(t('pt.mise_en_forme')) ?></p>
               <?php else: ?>
                 <?php $rendreDifference($m['difference']); ?>
               <?php endif; ?>
@@ -115,14 +111,12 @@ $rendreDifference = static function (array $difference): void {
             <?php if ($peutAnnuler && (int) $m['annulee'] === 0): ?>
               <?php
               // Revenir en arrière efface aussi ce qui a changé depuis : on le dit.
-              $garde = $m['change_depuis']
-                  ? 'Le texte a changé depuis cette modification. Revenir au texte d’avant effacera aussi les changements suivants. Continuer ?'
-                  : 'Revenir au texte d’avant cette modification ?';
+              $garde = t($m['change_depuis'] ? 'pt.annuler_garde_depuis' : 'pt.annuler_garde');
               ?>
               <form method="post" action="<?= url('partages/modifications/' . (int) $m['id'] . '/annuler') ?>"<?= $dansUneFenetre ? ' data-envoi-fenetre' : '' ?>
                     data-confirmation="<?= e($garde) ?>" style="margin-top:.4rem">
                 <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
-                <button class="bouton bouton--secondaire bouton--petit" type="submit">↶ Annuler cette modification</button>
+                <button class="bouton bouton--secondaire bouton--petit" type="submit"><?= e(t('pt.annuler_mod')) ?></button>
               </form>
             <?php endif; ?>
 
@@ -132,16 +126,16 @@ $rendreDifference = static function (array $difference): void {
               <span class="discret">· <?= e(taille_lisible((int) $m['taille'])) ?></span>
               <?php if ($m['fichier_existe'] !== null): ?>
                 · <a href="<?= url($chezMoi ? 'fichiers/' . (int) $m['fichier_id'] : 'partages/fichiers/' . (int) $m['fichier_id'] . '/contenu') ?>"
-                     target="_blank" rel="noopener">Ouvrir</a>
+                     target="_blank" rel="noopener"><?= e(t('pt.ouvrir')) ?></a>
               <?php else: ?>
-                <span class="discret">· retiré depuis</span>
+                <span class="discret"><?= e(t('pt.retire_depuis')) ?></span>
               <?php endif; ?>
             </p>
             <?php if ($peutAnnuler && (int) $m['annulee'] === 0 && $m['fichier_existe'] !== null): ?>
               <form method="post" action="<?= url('partages/modifications/' . (int) $m['id'] . '/annuler') ?>"<?= $dansUneFenetre ? ' data-envoi-fenetre' : '' ?>
-                    data-confirmation="Retirer « <?= e((string) $m['nom_origine']) ?> » de ce document ? Il sera supprimé." style="margin-top:.4rem">
+                    data-confirmation="<?= e(t('pt.annuler_retirer_garde', ['nom' => (string) $m['nom_origine']])) ?>" style="margin-top:.4rem">
                 <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
-                <button class="bouton bouton--secondaire bouton--petit" type="submit">↶ Annuler : retirer ce fichier</button>
+                <button class="bouton bouton--secondaire bouton--petit" type="submit"><?= e(t('pt.annuler_retirer')) ?></button>
               </form>
             <?php endif; ?>
 
@@ -151,17 +145,17 @@ $rendreDifference = static function (array $difference): void {
               <span class="discret">· <?= e(taille_lisible((int) $m['taille'])) ?></span>
             </p>
             <?php if ((int) $m['restaure'] === 1): ?>
-              <p class="discret" style="margin:.3rem 0 0">Remis à sa place.</p>
+              <p class="discret" style="margin:.3rem 0 0"><?= e(t('pt.remis')) ?></p>
             <?php elseif ($m['nom_stocke'] === null): ?>
-              <p class="discret" style="margin:.3rem 0 0">Supprimé par son propriétaire : il ne se remet pas.</p>
+              <p class="discret" style="margin:.3rem 0 0"><?= e(t('pt.supprime_proprietaire')) ?></p>
             <?php elseif ($peutAnnuler): ?>
               <?php // Il n'a pas été effacé : on l'ouvre, et on le remet si l'on veut. ?>
               <div class="actions" style="justify-content:flex-start;margin-top:.4rem">
                 <a class="bouton bouton--secondaire bouton--petit" href="<?= url('partages/modifications/' . (int) $m['id'] . '/fichier') ?>"
-                   target="_blank" rel="noopener">Ouvrir</a>
+                   target="_blank" rel="noopener"><?= e(t('pt.ouvrir')) ?></a>
                 <form method="post" action="<?= url('partages/modifications/' . (int) $m['id'] . '/annuler') ?>"<?= $dansUneFenetre ? ' data-envoi-fenetre' : '' ?>>
                   <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
-                  <button class="bouton bouton--petit" type="submit">↶ Annuler : remettre le fichier</button>
+                  <button class="bouton bouton--petit" type="submit"><?= e(t('pt.annuler_remettre')) ?></button>
                 </form>
               </div>
             <?php endif; ?>

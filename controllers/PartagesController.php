@@ -46,7 +46,7 @@ final class PartagesController
             'vue' => $vue,
             'recus' => $recus,
             'envoyes' => Partages::envoyes($moi),
-        ], $vue === 'recus' ? 'Partagés avec moi' : 'Ce que je partage');
+        ], t($vue === 'recus' ? 'pt.recus_titre' : 'pt.envoyes_titre'));
     }
 
     /** La fenêtre « Partager plusieurs documents » : on coche des cours, des fichiers et des dossiers, puis des amis. */
@@ -93,7 +93,7 @@ final class PartagesController
             Vue::fragment('partages/plusieurs', $donnees + ['dansUneFenetre' => true]);
             return;
         }
-        Vue::afficher('partages/plusieurs', $donnees, 'Partager plusieurs documents');
+        Vue::afficher('partages/plusieurs', $donnees, t('titre.partager_plusieurs'));
     }
 
     /** L'envoi du lot : un accès et une carte par document. */
@@ -118,10 +118,8 @@ final class PartagesController
         if ($refus !== null) {
             Session::flash('erreur', $refus);
         } else {
-            // « 1 cours partagé », « 2 fiches de révision partagées ».
-            $accord = 'partagé' . (str_contains($partis, 'fiche') ? 'e' : '') . (str_starts_with($partis, '1 ') ? '' : 's');
-            Session::flash('succes', $partis . ' ' . $accord
-                . ' avec ' . $nombre . ' personne' . ($nombre > 1 ? 's' : '') . ' : les cartes sont parties dans vos discussions.');
+            // La phrase accorde sur le nombre de personnes ; le lot, lui, se dit déjà tout seul.
+            Session::flash('succes', tn('pt.flash_lot', $nombre, ['combien' => $partis]));
         }
         $this->retourPuisEnvoyer('partager/plusieurs', $notifications);
     }
@@ -140,8 +138,9 @@ final class PartagesController
         if ($refus !== null) {
             Session::flash('erreur', $refus);
         } else {
-            Session::flash('succes', 'Lien créé pour ' . count($lot['documents']) . ' document'
-                . (count($lot['documents']) > 1 ? 's' : '') . ' : copiez-le et donnez-le à qui vous voulez.');
+            Session::flash('succes', t('pt.flash_lien_lot', [
+                'combien' => tn('pt.combien_document', count($lot['documents'])),
+            ]));
         }
         redirect('partager/plusieurs');
     }
@@ -154,8 +153,7 @@ final class PartagesController
         $defait = Partages::supprimerLot(Auth::id(), $id);
         Session::flash(
             $defait ? 'succes' : 'erreur',
-            $defait ? 'Lien désactivé : l’adresse ne mène plus à rien, même si elle a circulé. Vos documents, eux, sont intacts.'
-                : 'Ce lien n’existe plus.'
+            t($defait ? 'pt.flash_lot_desactive' : 'pt.flash_lot_parti')
         );
         redirect('partager/plusieurs');
     }
@@ -186,7 +184,7 @@ final class PartagesController
             Vue::fragment('partages/partager', $donnees);
             return;
         }
-        Vue::afficher('partages/partager', $donnees, 'Partager');
+        Vue::afficher('partages/partager', $donnees, t('titre.partager'));
     }
 
     public function envoyer(string $mot, int $id): void
@@ -204,7 +202,7 @@ final class PartagesController
         if ($refus !== null) {
             Session::flash('erreur', $refus);
         } else {
-            Session::flash('succes', 'Partagé avec ' . $nombre . ' personne' . ($nombre > 1 ? 's' : '') . ' : une carte est partie dans vos discussions.');
+            Session::flash('succes', tn('pt.flash_un', $nombre));
         }
         $this->retourPuisEnvoyer('partager/' . $mot . '/' . $id, $notifications);
     }
@@ -215,9 +213,9 @@ final class PartagesController
         Session::verifierCsrf();
         $pseudo = (string) (Amis::compte($destinataire)['pseudo'] ?? '');
         if (Partages::retirerAcces(Auth::id(), self::type($mot), $id, $destinataire)) {
-            Session::flash('succes', $pseudo . ' n’y a plus accès.');
+            Session::flash('succes', t('pt.flash_plus_acces', ['qui' => $pseudo]));
         } else {
-            Session::flash('erreur', 'Ce partage n’existe plus.');
+            Session::flash('erreur', t('pt.flash_partage_parti'));
         }
         self::retourProfil();
         redirect('partager/' . $mot . '/' . $id);
@@ -243,9 +241,12 @@ final class PartagesController
         $droit = Partages::droitValide($_POST['droit'] ?? null);
         $pseudo = (string) (Amis::compte($destinataire)['pseudo'] ?? '');
         if (Partages::changerDroit(Auth::id(), self::type($mot), $id, $destinataire, $droit)) {
-            Session::flash('succes', $pseudo . ' : ' . mb_strtolower(Partages::libelleDroit($droit)) . '.');
+            Session::flash('succes', t('pt.flash_droit', [
+                'qui' => $pseudo,
+                'droit' => mb_strtolower(Partages::libelleDroit($droit)),
+            ]));
         } else {
-            Session::flash('erreur', 'Ce partage n’existe plus.');
+            Session::flash('erreur', t('pt.flash_partage_parti'));
         }
         self::retourProfil();
         redirect('partager/' . $mot . '/' . $id);
@@ -259,7 +260,7 @@ final class PartagesController
         if ($lien === null) {
             self::introuvable();
         }
-        Session::flash('succes', 'Lien créé : toute personne qui l’a peut voir et télécharger ce document, sans compte.');
+        Session::flash('succes', t('pt.flash_lien_cree'));
         redirect('partager/' . $mot . '/' . $id);
     }
 
@@ -269,7 +270,7 @@ final class PartagesController
         Session::verifierCsrf();
         Session::flash(
             Partages::desactiverLien(Auth::id(), self::type($mot), $id) ? 'succes' : 'info',
-            'Lien désactivé : l’adresse ne mène plus à rien, même si elle a circulé.'
+            t('pt.flash_lien_desactive')
         );
         redirect('partager/' . $mot . '/' . $id);
     }
@@ -294,7 +295,7 @@ final class PartagesController
             });
         }
         if ($cible === null || !Partages::peutVoir($type, $id, $moi)) {
-            Session::flash('erreur', 'Ce document n’est pas, ou plus, partagé avec vous.');
+            Session::flash('erreur', t('pt.flash_pas_partage'));
             redirect('partages');
         }
         // L'ouvrir, c'est l'avoir vu : l'onglet ne le compte plus.
@@ -326,7 +327,10 @@ final class PartagesController
             $dossierId = Partages::dossierPartage($id, $moi);
             if ($dossierId !== null) {
                 $dossier = Partages::cible('dossier', $dossierId);
-                $donnees['retour'] = ['url' => url('partages/dossiers/' . $dossierId), 'texte' => '← ' . (string) ($dossier['titre'] ?? 'Dossier partagé')];
+                $donnees['retour'] = [
+                    'url' => url('partages/dossiers/' . $dossierId),
+                    'texte' => t('pt.retour_dossier', ['titre' => (string) ($dossier['titre'] ?? t('pt.libelle_dossier'))]),
+                ];
             }
         }
         if (Vue::enFenetre()) {
@@ -344,7 +348,8 @@ final class PartagesController
         $type = self::type($mot);
         $reponseA = entier_ou_null($_POST['reponse_a'] ?? null);
         $refus = Partages::commenter(Auth::id(), $type, $id, (string) ($_POST['texte'] ?? ''), $reponseA);
-        Session::flash($refus === null ? 'succes' : 'erreur', $refus ?? ($reponseA === null ? 'Commentaire ajouté.' : 'Réponse ajoutée.'));
+        Session::flash($refus === null ? 'succes' : 'erreur',
+            $refus ?? t($reponseA === null ? 'pt.flash_commentaire_ajoute' : 'pt.flash_reponse_ajoutee'));
         $this->retourDocument($type, $id);
     }
 
@@ -371,7 +376,7 @@ final class PartagesController
             Vue::fragment('partages/commentaires', $donnees + ['dansUneFenetre' => true]);
             return;
         }
-        Vue::afficher('partages/commentaires', $donnees, 'Commentaires');
+        Vue::afficher('partages/commentaires', $donnees, t('titre.commentaires'));
     }
 
     /**
@@ -401,7 +406,7 @@ final class PartagesController
             Vue::fragment('partages/modifications', $donnees + ['dansUneFenetre' => true]);
             return;
         }
-        Vue::afficher('partages/modifications', $donnees, 'Modifications');
+        Vue::afficher('partages/modifications', $donnees, t('titre.modifications'));
     }
 
     /** Ouvre un fichier qu'un ami a retiré : son propriétaire seul le peut. */
@@ -438,7 +443,7 @@ final class PartagesController
         if ($ou === null) {
             self::introuvable();
         }
-        Session::flash('succes', 'Fichier remis à sa place.');
+        Session::flash('succes', t('pt.flash_fichier_remis'));
         redirect('partages/' . Partages::mot($ou[0]) . '/' . $ou[1] . '/modifications');
     }
 
@@ -463,7 +468,7 @@ final class PartagesController
         if ($ou === null) {
             self::introuvable();
         }
-        Session::flash('succes', 'Commentaire retiré.');
+        Session::flash('succes', t('pt.flash_commentaire_retire'));
         $this->retourDocument($ou[0], $ou[1]);
     }
 
@@ -474,7 +479,7 @@ final class PartagesController
         Session::verifierCsrf();
         $type = self::type($mot);
         $refus = Partages::ecrire(Auth::id(), $type, $id, (string) ($_POST['contenu'] ?? ''));
-        Session::flash($refus === null ? 'succes' : 'erreur', $refus ?? 'Enregistré.');
+        Session::flash($refus === null ? 'succes' : 'erreur', $refus ?? t('pt.flash_enregistre'));
         $this->retourDocument($type, $id);
     }
 
@@ -485,7 +490,7 @@ final class PartagesController
         Session::verifierCsrf();
         $type = self::type($mot);
         if (!isset($_FILES['fichiers']) || !is_array($_FILES['fichiers']['name'] ?? null)) {
-            Session::flash('erreur', 'Aucun fichier reçu.');
+            Session::flash('erreur', t('pt.flash_aucun_fichier'));
             $this->retourDocument($type, $id);
         }
         [$ajoutes, $erreurs] = Partages::joindre(Auth::id(), $type, $id, $_FILES['fichiers']);
@@ -493,9 +498,9 @@ final class PartagesController
             Session::flash('erreur', $erreur);
         }
         if ($ajoutes > 0) {
-            Session::flash('succes', $ajoutes . ' fichier' . ($ajoutes > 1 ? 's joints' : ' joint') . '.');
+            Session::flash('succes', tn('pt.flash_joints', $ajoutes));
         } elseif ($erreurs === []) {
-            Session::flash('erreur', 'Aucun fichier reçu.');
+            Session::flash('erreur', t('pt.flash_aucun_fichier'));
         }
         $this->retourDocument($type, $id);
     }
@@ -509,7 +514,7 @@ final class PartagesController
         if ($ou === null) {
             self::introuvable();
         }
-        Session::flash('succes', 'Fichier retiré.');
+        Session::flash('succes', t('pt.flash_fichier_retire'));
         $this->retourDocument($ou[0], $ou[1]);
     }
 
@@ -570,9 +575,8 @@ final class PartagesController
         if (!Partages::reglerAffichage(Auth::id(), $ami, $afficher)) {
             self::introuvable();
         }
-        Session::flash('succes', $afficher
-            ? 'Les évènements que ' . $compte['pseudo'] . ' vous partage s’affichent désormais dans votre calendrier.'
-            : 'Les évènements que ' . $compte['pseudo'] . ' vous partage ne s’affichent plus d’office : ils restent dans « Partagés ».');
+        Session::flash('succes', t($afficher ? 'pt.flash_calendrier_oui' : 'pt.flash_calendrier_non',
+            ['qui' => (string) $compte['pseudo']]));
         repartir_vers('compte');
     }
 
@@ -655,7 +659,7 @@ final class PartagesController
         Auth::exiger();
         Session::verifierCsrf();
         Partages::oublierRecu(Auth::id(), self::type($mot), $id);
-        Session::flash('succes', 'Retiré de vos documents partagés.');
+        Session::flash('succes', t('pt.flash_oublie'));
         self::retourProfil();
         redirect('partages');
     }
@@ -667,7 +671,7 @@ final class PartagesController
         header('X-Robots-Tag: noindex, nofollow');
         if ($trouve === null) {
             http_response_code(404);
-            Vue::afficherPublic('partages/lien_mort', [], 'Lien introuvable');
+            Vue::afficherPublic('partages/lien_mort', [], t('titre.lien_introuvable'));
             return;
         }
         Partages::compterVue((int) $trouve['lien']['id']);
@@ -710,7 +714,7 @@ final class PartagesController
         $cible = Partages::cible($type, $id);
         if ($trouve === null || $cible === null || !Partages::visiblePar($trouve['lien'], $type, $id)) {
             http_response_code(404);
-            Vue::afficherPublic('partages/lien_mort', [], 'Lien introuvable');
+            Vue::afficherPublic('partages/lien_mort', [], t('titre.lien_introuvable'));
             return;
         }
         Vue::afficherPublic('partages/lire', [

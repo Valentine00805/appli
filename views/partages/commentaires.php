@@ -24,7 +24,7 @@ foreach ($commentaires as $c) {
 ?>
 <div class="entete-page">
   <div>
-    <h1 style="margin:0">💬 Commentaires <span class="discret">(<?= $nb ?>)</span></h1>
+    <h1 style="margin:0"><?= e(t('pt.commentaires')) ?> <span class="discret">(<?= $nb ?>)</span></h1>
     <p class="discret" style="margin:.15rem 0 0"><?= e($icone) ?> <?= e((string) $cible['titre']) ?></p>
   </div>
 </div>

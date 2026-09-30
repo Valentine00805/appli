@@ -31,38 +31,38 @@ $unCommentaire = static function (array $c, bool $estReponse) use ($csrf, $moi, 
         <?= $champDepuis ?>
         <button class="bouton bouton--discret bouton--petit bouton-jaime" type="submit"
                 aria-pressed="<?= $c['moi_jaime'] ? 'true' : 'false' ?>"
-                title="<?= $c['moi_jaime'] ? 'Je n’aime plus' : 'J’aime' ?>">
+                title="<?= e(t($c['moi_jaime'] ? 'pt.jaime_plus' : 'pt.jaime')) ?>">
           <?= $c['moi_jaime'] ? '♥' : '♡' ?><?= $c['nb_jaime'] > 0 ? ' ' . (int) $c['nb_jaime'] : '' ?>
-          <span class="sr-only"><?= $c['moi_jaime'] ? 'Je n’aime plus' : 'J’aime' ?></span>
+          <span class="sr-only"><?= e(t($c['moi_jaime'] ? 'pt.jaime_plus' : 'pt.jaime')) ?></span>
         </button>
       </form>
       <?php if ((int) $c['user_id'] === $moi || $chezMoi): ?>
         <form method="post" action="<?= url('partages/commentaires/' . (int) $c['id'] . '/retirer') ?>"<?= $surPlace ?>
-              data-confirmation="<?= $estReponse ? 'Retirer cette réponse ?' : 'Retirer ce commentaire et ses réponses ?' ?>">
+              data-confirmation="<?= e(t($estReponse ? 'pt.retirer_reponse' : 'pt.retirer_commentaire')) ?>">
           <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
           <?= $champDepuis ?>
-          <button class="bouton bouton--discret bouton--petit" type="submit">Retirer</button>
+          <button class="bouton bouton--discret bouton--petit" type="submit"><?= e(t('pt.retirer')) ?></button>
         </form>
       <?php endif; ?>
     </div>
     <?php // Répondre : un champ qui s'ouvre sous le commentaire, sans script. ?>
     <details class="partage-commentaires__repondre">
-      <summary>Répondre</summary>
+      <summary><?= e(t('pt.repondre')) ?></summary>
       <form method="post" action="<?= url($base . '/commentaires') ?>"<?= $surPlace ?>>
         <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
         <input type="hidden" name="reponse_a" value="<?= (int) $c['id'] ?>">
         <?= $champDepuis ?>
-        <label class="sr-only" for="reponse-<?= (int) $c['id'] ?>">Répondre à <?= e((string) $c['pseudo']) ?></label>
+        <label class="sr-only" for="reponse-<?= (int) $c['id'] ?>"><?= e(t('pt.repondre_a', ['qui' => (string) $c['pseudo']])) ?></label>
         <textarea id="reponse-<?= (int) $c['id'] ?>" class="champ-commentaire" name="texte" rows="2" maxlength="<?= Amis::MESSAGE_MAX ?>"
-                  placeholder="Répondre à <?= e((string) $c['pseudo']) ?>…"></textarea>
-        <button class="bouton bouton--petit" type="submit">Répondre</button>
+                  placeholder="<?= e(t('pt.repondre_a_points', ['qui' => (string) $c['pseudo']])) ?>"></textarea>
+        <button class="bouton bouton--petit" type="submit"><?= e(t('pt.repondre')) ?></button>
       </form>
     </details>
     <?php
 };
 ?>
 <?php if ($commentaires === []): ?>
-  <p class="discret" style="margin:0 0 .6rem">Aucun commentaire pour l’instant.</p>
+  <p class="discret" style="margin:0 0 .6rem"><?= e(t('pt.aucun_commentaire')) ?></p>
 <?php else: ?>
   <ul class="partage-commentaires">
     <?php foreach ($commentaires as $c): ?>
@@ -84,9 +84,9 @@ $unCommentaire = static function (array $c, bool $estReponse) use ($csrf, $moi, 
   <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
   <?php if ($depuis !== ''): ?><input type="hidden" name="depuis" value="<?= e($depuis) ?>"><?php endif; ?>
   <div class="champ">
-    <label class="sr-only" for="nouveau-commentaire">Votre commentaire</label>
+    <label class="sr-only" for="nouveau-commentaire"><?= e(t('pt.votre_commentaire')) ?></label>
     <textarea id="nouveau-commentaire" class="champ-commentaire" name="texte" rows="2" maxlength="<?= Amis::MESSAGE_MAX ?>"
-              placeholder="Une remarque, une question…"></textarea>
+              placeholder="<?= e(t('pt.commentaire_exemple')) ?>"></textarea>
   </div>
-  <button class="bouton bouton--petit" type="submit">Commenter</button>
+  <button class="bouton bouton--petit" type="submit"><?= e(t('pt.commenter')) ?></button>
 </form>

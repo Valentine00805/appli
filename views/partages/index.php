@@ -15,12 +15,12 @@ $lesRecus = $vue === 'recus';
 ?>
 <div class="entete-page">
   <div>
-    <h1><?= Partages::icone(22) ?> <?= $lesRecus ? 'Partagés avec moi' : 'Ce que je partage' ?></h1>
+    <h1><?= Partages::icone(22) ?> <?= e(t($lesRecus ? 'pt.recus_titre' : 'pt.envoyes_titre')) ?></h1>
     <p>
       <?php if ($lesRecus): ?>
-        <?= $recus === [] ? 'Rien pour l’instant' : count($recus) . ' document' . (count($recus) > 1 ? 's' : '') . ' en lecture, toujours à jour' ?>
+        <?= e($recus === [] ? t('pt.rien_pour_instant') : tn('pt.recus_compte', count($recus))) ?>
       <?php else: ?>
-        <?= $envoyes === [] ? 'Rien pour l’instant' : count($envoyes) . ' document' . (count($envoyes) > 1 ? 's' : '') . ' ouverts à d’autres' ?>
+        <?= e($envoyes === [] ? t('pt.rien_pour_instant') : tn('pt.envoyes_compte', count($envoyes))) ?>
       <?php endif; ?>
     </p>
   </div>
@@ -28,7 +28,7 @@ $lesRecus = $vue === 'recus';
   <?php if (!$lesRecus): ?>
     <div class="actions">
       <a class="bouton bouton-partage" href="<?= url('partager/plusieurs') ?>"
-         data-fenetre title="Partager plusieurs cours ou fichiers en un envoi"><?= Partages::icone() ?> Partager plusieurs</a>
+         data-fenetre title="<?= e(t('pt.plusieurs_titre_aide')) ?>"><?= Partages::icone() ?> <?= e(t('pt.plusieurs_titre')) ?></a>
     </div>
   <?php endif; ?>
 </div>
@@ -40,10 +40,9 @@ $lesRecus = $vue === 'recus';
   <?php if ($recus === []): ?>
     <div class="carte vide">
       <span class="vide__icone">📥</span>
-      <p>Personne ne vous a encore partagé de document.</p>
+      <p><?= e(t('pt.aucun_recu')) ?></p>
       <p class="discret">
-        Un ami qui partage un cours, une fiche de révision, un dossier ou un fichier le fait
-        paraître ici — et, si vous le voulez, en carte dans votre discussion.
+        <?= e(t('pt.aucun_recu_aide')) ?>
       </p>
     </div>
   <?php else: ?>
@@ -52,8 +51,8 @@ $lesRecus = $vue === 'recus';
         <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false">
           <circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>
         </svg>
-        <span class="sr-only">Rechercher un document partagé</span>
-        <input type="search" placeholder="Rechercher" autocomplete="off" data-filtre-liste="[data-liste-partages]">
+        <span class="sr-only"><?= e(t('pt.chercher_partage')) ?></span>
+        <input type="search" placeholder="<?= e(t('pt.chercher')) ?>" autocomplete="off" data-filtre-liste="[data-liste-partages]">
       </label>
 
       <ul class="partage-lignes" data-liste-partages>
@@ -64,7 +63,7 @@ $lesRecus = $vue === 'recus';
               <span class="partage-ligne__texte">
                 <span class="partage-ligne__titre">
                   <?= e($p['titre']) ?>
-                  <?php if (!empty($p['nouveau'])): ?><span class="pastille pastille--nouveau">Nouveau</span><?php endif; ?>
+                  <?php if (!empty($p['nouveau'])): ?><span class="pastille pastille--nouveau"><?= e(t('pt.nouveau')) ?></span><?php endif; ?>
                 </span>
                 <span class="partage-ligne__detail">
                   <?= e(Partages::libelle($p['type'])) ?>
@@ -80,14 +79,14 @@ $lesRecus = $vue === 'recus';
               </span>
             </a>
             <form method="post" action="<?= url('partages/' . Partages::mot($p['type']) . '/' . (int) $p['id'] . '/oublier') ?>"
-                  data-confirmation="Retirer « <?= e($p['titre']) ?> » de votre liste ? Il faudra qu’on vous le partage de nouveau pour le revoir.">
+                  data-confirmation="<?= e(t('pt.oublier_un_confirmation', ['titre' => $p['titre']])) ?>">
               <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
-              <button class="bouton bouton--discret bouton--petit" type="submit">Retirer</button>
+              <button class="bouton bouton--discret bouton--petit" type="submit"><?= e(t('pt.retirer')) ?></button>
             </form>
           </li>
         <?php endforeach; ?>
       </ul>
-      <p class="discret" data-filtre-vide hidden style="margin:.6rem 0 0">Aucun document ne porte ce nom.</p>
+      <p class="discret" data-filtre-vide hidden style="margin:.6rem 0 0"><?= e(t('pt.aucun_doc_nom')) ?></p>
     </section>
   <?php endif; ?>
 
@@ -97,11 +96,9 @@ $lesRecus = $vue === 'recus';
   <?php if ($envoyes === []): ?>
     <div class="carte vide">
       <span class="vide__icone">📤</span>
-      <p>Vous ne partagez rien pour l’instant.</p>
+      <p><?= e(t('pt.rien_partage')) ?></p>
       <p class="discret">
-        Le bouton « Partager » est sur la page d’un cours, d’une fiche de révision,
-        d’un dossier et de chaque fichier joint. Vous choisissez alors des amis, un groupe,
-        ou un lien public pour ceux qui n’ont pas de compte.
+        <?= e(t('pt.rien_partage_aide')) ?>
       </p>
     </div>
   <?php else: ?>
@@ -110,8 +107,8 @@ $lesRecus = $vue === 'recus';
         <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false">
           <circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>
         </svg>
-        <span class="sr-only">Rechercher un de mes partages</span>
-        <input type="search" placeholder="Rechercher" autocomplete="off" data-filtre-liste="[data-liste-envoyes]">
+        <span class="sr-only"><?= e(t('pt.chercher_mes_partages')) ?></span>
+        <input type="search" placeholder="<?= e(t('pt.chercher')) ?>" autocomplete="off" data-filtre-liste="[data-liste-envoyes]">
       </label>
 
       <ul class="partage-lignes" data-liste-envoyes>
@@ -123,16 +120,16 @@ $lesRecus = $vue === 'recus';
                 <span class="partage-ligne__titre"><?= e($p['titre']) ?></span>
                 <span class="partage-ligne__detail">
                   <?= e(Partages::libelle($p['type'])) ?>
-                  · <?= $p['destinataires'] === 0 ? 'aucun ami' : $p['destinataires'] . ' ami' . ($p['destinataires'] > 1 ? 's' : '') ?>
-                  <?php if ($p['lien']): ?> · lien public (<?= (int) $p['vues'] ?> ouverture<?= (int) $p['vues'] > 1 ? 's' : '' ?>)<?php endif; ?>
+                  · <?= e($p['destinataires'] === 0 ? t('pt.aucun_ami') : tn('pt.amis_nb', (int) $p['destinataires'])) ?>
+                  <?php if ($p['lien']): ?> · <?= e(tn('pt.lien_public_vues', (int) $p['vues'])) ?><?php endif; ?>
                 </span>
               </span>
             </a>
-            <span class="discret" style="font-size:.85rem">Gérer</span>
+            <span class="discret" style="font-size:.85rem"><?= e(t('pt.gerer')) ?></span>
           </li>
         <?php endforeach; ?>
       </ul>
-      <p class="discret" data-filtre-vide hidden style="margin:.6rem 0 0">Aucun document ne porte ce nom.</p>
+      <p class="discret" data-filtre-vide hidden style="margin:.6rem 0 0"><?= e(t('pt.aucun_doc_nom')) ?></p>
     </section>
   <?php endif; ?>
 
