@@ -82,21 +82,21 @@ final class Amis
     {
         $code = (int) ($fichier['error'] ?? UPLOAD_ERR_NO_FILE);
         if ($code !== UPLOAD_ERR_OK) {
-            return 'Le message vocal n’a pas pu être envoyé : ' . Fichiers::messageErreur($code);
+            return t('msg.vocal_echec_code', ['raison' => Fichiers::messageErreur($code)]);
         }
         $tmp = (string) ($fichier['tmp_name'] ?? '');
         if (!is_uploaded_file($tmp)) {
-            return 'Le message vocal n’a pas pu être envoyé.';
+            return t('msg.vocal_echec');
         }
         $taille = (int) filesize($tmp);
         if ($taille < 100) {
-            return 'Le message vocal est vide.';
+            return t('msg.vocal_vide');
         }
         if ($taille > self::VOCAL_MAX_OCTETS) {
-            return 'Ce message vocal est trop long.';
+            return t('msg.vocal_long');
         }
         if ($duree < 1 || $duree > self::VOCAL_MAX_SECONDES) {
-            return 'Un message vocal dure de 1 seconde à ' . intdiv(self::VOCAL_MAX_SECONDES, 60) . ' minutes.';
+            return t('msg.vocal_duree', ['max' => intdiv(self::VOCAL_MAX_SECONDES, 60)]);
         }
 
         $debut = (string) file_get_contents($tmp, false, null, 0, 16);
@@ -107,16 +107,16 @@ final class Amis
             default => null,
         };
         if ($extension === null) {
-            return 'Ce fichier n’est pas un enregistrement audio.';
+            return t('msg.vocal_pas_audio');
         }
 
         $dossier = self::dossierImages();
         if (!is_dir($dossier) && !mkdir($dossier, 0775, true) && !is_dir($dossier)) {
-            return 'Impossible de ranger le message vocal sur le serveur.';
+            return t('msg.vocal_rangement');
         }
         $nom = bin2hex(random_bytes(16)) . '.' . $extension;
         if (!move_uploaded_file($tmp, $dossier . DIRECTORY_SEPARATOR . $nom)) {
-            return 'Impossible de ranger le message vocal sur le serveur.';
+            return t('msg.vocal_rangement');
         }
 
         return ['nom' => $nom, 'duree' => $duree];
@@ -234,7 +234,7 @@ final class Amis
     public static function changerPhoto(int $moi, ?array $image): ?string
     {
         if ($image === null || ($image['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) {
-            return 'Choisissez une image.';
+            return t('msg.choisir_image');
         }
         $rangee = self::rangerImage($image);
         if (is_string($rangee)) {
@@ -296,10 +296,10 @@ final class Amis
     public static function changerFond(int $moi, int $autre, ?array $image): ?string
     {
         if (!self::sontAmis($moi, $autre)) {
-            return 'Vous ne pouvez régler que les conversations avec vos amis.';
+            return t('msg.fond_amis_seuls');
         }
         if ($image === null || ($image['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) {
-            return 'Choisissez une image.';
+            return t('msg.choisir_image');
         }
         $rangee = self::rangerImage($image);
         if (is_string($rangee)) {
@@ -343,12 +343,12 @@ final class Amis
     /** Le texte d'une note, du point de vue de qui la lit. */
     public static function texteEvenement(string $evenement, bool $parMoi, string $pseudo): string
     {
-        $qui = $parMoi ? 'Vous avez' : $pseudo . ' a';
+        $qui = $parMoi ? t('msg.evt_vous_avez') : t('msg.evt_a', ['qui' => $pseudo]);
 
         return match ($evenement) {
-            'fond' => '🖼️ ' . $qui . ' changé le fond d’écran',
-            'fond_retire' => '🖼️ ' . $qui . ' retiré le fond d’écran',
-            default => $qui . ' modifié la conversation',
+            'fond' => t('msg.evt_fond', ['qui' => $qui]),
+            'fond_retire' => t('msg.evt_fond_retire', ['qui' => $qui]),
+            default => t('msg.evt_autre', ['qui' => $qui]),
         };
     }
 
@@ -644,23 +644,23 @@ final class Amis
         $avecFichier = $fichier !== null && ($fichier['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE;
         $avecVocal = $vocal !== null && ($vocal['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE;
         if ($texte === '' && !$avecImage && !$avecFichier && !$avecVocal) {
-            return [null, 'Le message est vide.'];
+            return [null, t('msg.vide')];
         }
         if ((int) $avecImage + (int) $avecFichier + (int) $avecVocal > 1) {
-            return [null, 'Une seule pièce jointe par message.'];
+            return [null, t('msg.une_piece')];
         }
         if (mb_strlen($texte) > self::MESSAGE_MAX) {
-            return [null, 'Un message ne peut pas dépasser ' . self::MESSAGE_MAX . ' caractères.'];
+            return [null, t('msg.trop_long', ['max' => self::MESSAGE_MAX])];
         }
         if (!self::sontAmis($moi, $autre)) {
-            return [null, 'Vous ne pouvez écrire qu’à vos amis.'];
+            return [null, t('msg.amis_seuls')];
         }
         $recents = (int) Database::valeur(
             'SELECT COUNT(*) FROM messages WHERE expediteur_id = ? AND created_at >= UTC_TIMESTAMP() - INTERVAL 1 MINUTE',
             [$moi]
         );
         if ($recents >= self::MESSAGES_PAR_MINUTE) {
-            return [null, 'Trop de messages d’un coup : patientez un instant.'];
+            return [null, t('msg.trop_vite')];
         }
 
         // La pièce jointe en dernier : on ne range rien sur le disque pour un message refusé.
@@ -726,36 +726,36 @@ final class Amis
     {
         $code = (int) ($fichier['error'] ?? UPLOAD_ERR_NO_FILE);
         if ($code !== UPLOAD_ERR_OK) {
-            return 'L’image n’a pas pu être envoyée : ' . Fichiers::messageErreur($code);
+            return t('msg.image_echec_code', ['raison' => Fichiers::messageErreur($code)]);
         }
         $tmp = (string) ($fichier['tmp_name'] ?? '');
         if (!is_uploaded_file($tmp)) {
-            return 'L’image n’a pas pu être envoyée.';
+            return t('msg.image_echec');
         }
         if ((int) filesize($tmp) > self::IMAGE_MAX_OCTETS) {
-            return 'Cette image est trop lourde : ' . intdiv(self::IMAGE_MAX_OCTETS, 1024 * 1024) . ' Mo au plus.';
+            return t('msg.image_lourde', ['mo' => intdiv(self::IMAGE_MAX_OCTETS, 1024 * 1024)]);
         }
 
         $infos = @getimagesize($tmp);
         if ($infos === false || !isset(self::IMAGE_TYPES[$infos[2]])) {
-            return 'Ce fichier n’est pas une image acceptée (JPEG, PNG, GIF ou WebP).';
+            return t('msg.image_format');
         }
         [$largeur, $hauteur, $type] = $infos;
         if ($largeur < 1 || $hauteur < 1 || $largeur * $hauteur > self::IMAGE_PIXELS_MAX) {
-            return 'Cette image est trop grande pour être envoyée.';
+            return t('msg.image_grande');
         }
         [$mime, $extension] = self::IMAGE_TYPES[$type];
 
         $dossier = self::dossierImages();
         if (!is_dir($dossier) && !mkdir($dossier, 0775, true) && !is_dir($dossier)) {
-            return 'Impossible de ranger l’image sur le serveur.';
+            return t('msg.image_rangement');
         }
         $nom = bin2hex(random_bytes(16)) . '.' . $extension;
         $destination = $dossier . DIRECTORY_SEPARATOR . $nom;
 
         if ($type === IMAGETYPE_GIF) {
             if (!move_uploaded_file($tmp, $destination)) {
-                return 'Impossible de ranger l’image sur le serveur.';
+                return t('msg.image_rangement');
             }
             return ['nom' => $nom, 'mime' => $mime, 'largeur' => min($largeur, 65535), 'hauteur' => min($hauteur, 65535)];
         }
@@ -770,7 +770,7 @@ final class Amis
                 IMAGETYPE_WEBP => @imagecreatefromwebp($tmp),
             };
             if ($source === false) {
-                return 'Cette image est illisible.';
+                return t('msg.image_illisible');
             }
 
             if ($type === IMAGETYPE_JPEG && function_exists('exif_read_data')) {
@@ -801,7 +801,7 @@ final class Amis
             imagedestroy($finale);
             if (!$ecrit) {
                 @unlink($destination);
-                return 'Impossible de ranger l’image sur le serveur.';
+                return t('msg.image_rangement');
             }
 
             return ['nom' => $nom, 'mime' => $mime, 'largeur' => $l, 'hauteur' => $h];
@@ -825,25 +825,25 @@ final class Amis
     {
         $code = (int) ($fichier['error'] ?? UPLOAD_ERR_NO_FILE);
         if ($code !== UPLOAD_ERR_OK) {
-            return 'Le fichier n’a pas pu être envoyé : ' . Fichiers::messageErreur($code);
+            return t('msg.fichier_echec_code', ['raison' => Fichiers::messageErreur($code)]);
         }
         $tmp = (string) ($fichier['tmp_name'] ?? '');
         if (!is_uploaded_file($tmp)) {
-            return 'Le fichier n’a pas pu être envoyé.';
+            return t('msg.fichier_echec');
         }
         $taille = (int) filesize($tmp);
         if ($taille > self::fichierMax()) {
-            return 'Ce fichier est trop lourd : ' . intdiv(self::fichierMax(), 1024 * 1024) . ' Mo au plus.';
+            return t('msg.fichier_lourd', ['mo' => intdiv(self::fichierMax(), 1024 * 1024)]);
         }
         if ($taille === 0) {
-            return 'Ce fichier est vide.';
+            return t('msg.fichier_vide');
         }
 
         // Le nom d'origine, débarrassé de tout chemin et des caractères invisibles.
         $origine = trim((string) preg_replace('/[\x00-\x1F\x7F]/u', '', basename(str_replace('\\', '/', (string) ($fichier['name'] ?? '')))));
         $extension = strtolower(pathinfo($origine, PATHINFO_EXTENSION));
         if ($extension === '' || !in_array($extension, self::extensionsFichiers(), true)) {
-            return 'Ce type de fichier n’est pas accepté.';
+            return t('msg.fichier_type');
         }
         if (mb_strlen($origine) > 255) {
             $origine = mb_substr(pathinfo($origine, PATHINFO_FILENAME), 0, 240) . '.' . $extension;
@@ -851,7 +851,7 @@ final class Amis
 
         $dossier = self::dossierImages();
         if (!is_dir($dossier) && !mkdir($dossier, 0775, true) && !is_dir($dossier)) {
-            return 'Impossible de ranger le fichier sur le serveur.';
+            return t('msg.fichier_rangement');
         }
         // Un texte reste un texte, même s'il contient des balises : il s'ouvrira en texte brut, jamais en page.
         $mime = in_array($extension, ['txt', 'md', 'csv'], true)
@@ -859,7 +859,7 @@ final class Amis
             : (Fichiers::detecterMime($tmp) ?: 'application/octet-stream');
         $nom = bin2hex(random_bytes(16)) . '.' . $extension;
         if (!move_uploaded_file($tmp, $dossier . DIRECTORY_SEPARATOR . $nom)) {
-            return 'Impossible de ranger le fichier sur le serveur.';
+            return t('msg.fichier_rangement');
         }
 
         return ['nom' => $nom, 'origine' => $origine, 'mime' => mb_substr($mime, 0, 120), 'taille' => $taille];
@@ -1011,39 +1011,39 @@ final class Amis
             [$messageId, $moi]
         );
         if ($message === null || !self::sontAmis($moi, (int) $message['destinataire_id'])) {
-            return [false, 'Seul qui a écrit un message peut le modifier.'];
+            return [false, t('msg.modifier_auteur')];
         }
         if ($message['supprime_le'] !== null) {
-            return [false, 'Un message supprimé ne peut plus être modifié.'];
+            return [false, t('msg.modifier_supprime')];
         }
         if (mb_strlen($texte) > self::MESSAGE_MAX) {
-            return [false, 'Un message ne peut pas dépasser ' . self::MESSAGE_MAX . ' caractères.'];
+            return [false, t('msg.trop_long', ['max' => self::MESSAGE_MAX])];
         }
         if ($texte === '' && $message['image_nom'] === null && $message['fichier_nom'] === null && $message['audio_nom'] === null
             && $message['partage_type'] === null) {
-            return [false, 'Le message ne peut pas être vide : pour l’enlever, supprimez-le.'];
+            return [false, t('msg.modifier_vide')];
         }
         if ($texte !== (string) $message['texte']) {
             Database::run('UPDATE messages SET texte = ?, modifie_le = UTC_TIMESTAMP() WHERE id = ?', [$texte, $messageId]);
         }
 
-        return [true, 'Message modifié.'];
+        return [true, t('msg.modifie')];
     }
 
     /** De quoi reconnaître un message cité : le début de son texte, ou sa pièce jointe. */
     public static function extrait(array $cite): string
     {
         if ((int) ($cite['r_masque'] ?? 0) === 1) {
-            return 'Message supprimé';
+            return t('msg.supprime_nu');
         }
         if (($cite['r_supprime'] ?? null) !== null) {
-            return '🚫 Message supprimé';
+            return t('js.chat.message_supprime');
         }
         $texte = trim((string) preg_replace('/\s+/u', ' ', (string) ($cite['r_texte'] ?? '')));
-        $piece = ($cite['r_image'] ?? null) !== null ? '📷 Photo'
+        $piece = ($cite['r_image'] ?? null) !== null ? t('msg.piece_photo')
             : (($cite['r_fichier'] ?? null) !== null ? '📎 ' . $cite['r_fichier']
-            : (($cite['r_audio'] ?? null) !== null ? '🎤 Message vocal'
-            : (($cite['r_partage'] ?? null) !== null ? '🔗 Document partagé' : '')));
+            : (($cite['r_audio'] ?? null) !== null ? t('msg.piece_vocal')
+            : (($cite['r_partage'] ?? null) !== null ? t('msg.piece_partage') : '')));
 
         return mb_strimwidth($texte === '' ? $piece : ($piece === '' ? $texte : $piece . ' · ' . $texte), 0, 120, '…');
     }
@@ -1174,18 +1174,18 @@ final class Amis
             [$messageId, $moi, $moi]
         );
         if ($message === null) {
-            return [false, 'Ce message est introuvable.', [], null];
+            return [false, t('msg.introuvable'), [], null];
         }
         $auteur = (int) $message['expediteur_id'];
         $autre = $auteur === $moi ? (int) $message['destinataire_id'] : $auteur;
         if (!self::sontAmis($moi, $autre)) {
-            return [false, 'Ce message est introuvable.', [], null];
+            return [false, t('msg.introuvable'), [], null];
         }
         if ($message['supprime_le'] !== null) {
-            return [false, 'On ne réagit pas à un message supprimé.', [], null];
+            return [false, t('msg.reaction_supprime'), [], null];
         }
         if ($emoji !== '' && !self::emojiValide($emoji)) {
-            return [false, 'Une réaction, c’est un emoji.', [], null];
+            return [false, t('msg.reaction_emoji'), [], null];
         }
 
         $actuelle = Database::valeur('SELECT emoji FROM reactions WHERE message_id = ? AND user_id = ?', [$messageId, $moi]);
@@ -1222,7 +1222,7 @@ final class Amis
             }
         }
 
-        return [true, $pose ? 'Réaction ajoutée.' : 'Réaction retirée.', self::reactionsDe([$messageId], $moi, $autre)[$messageId] ?? [], $notification];
+        return [true, t($pose ? 'msg.reaction_ajoutee' : 'msg.reaction_retiree'), self::reactionsDe([$messageId], $moi, $autre)[$messageId] ?? [], $notification];
     }
 
     /**
@@ -1251,7 +1251,7 @@ final class Amis
             $parMessage[$m][$e]['nombre']++;
             if ((int) $l['user_id'] === $moi) {
                 $parMessage[$m][$e]['moi'] = true;
-                array_unshift($parMessage[$m][$e]['qui'], 'Vous');
+                array_unshift($parMessage[$m][$e]['qui'], t('msg.vous'));
             } else {
                 $parMessage[$m][$e]['qui'][] = $pseudoAutre;
             }
@@ -1323,8 +1323,8 @@ final class Amis
 
             return [
                 'id' => (int) $l['id'],
-                'auteur' => (int) $l['expediteur_id'] === $moi ? 'Vous' : $pseudo,
-                'quand' => ($jour === 'Aujourd’hui' ? '' : $jour . ' · ') . $moment->format('H:i'),
+                'auteur' => (int) $l['expediteur_id'] === $moi ? t('msg.vous') : $pseudo,
+                'quand' => (self::cEstAujourdhui($moment) ? '' : $jour . ' · ') . heure_courte($moment->getTimestamp()),
                 'piece' => $nomFichier !== '' ? '📎 ' : ($l['image_nom'] !== null ? '📷 ' : ''),
             ] + self::decouper($source, $recherche);
         }, $lignes);
@@ -1390,7 +1390,7 @@ final class Amis
         $autre = $message === null ? null
             : ((int) $message['expediteur_id'] === $moi ? (int) $message['destinataire_id'] : (int) $message['expediteur_id']);
         if ($autre === null || !self::sontAmis($moi, $autre)) {
-            return [false, 'Ce message est introuvable.', null];
+            return [false, t('msg.introuvable'), null];
         }
         if ($epingler) {
             Database::run('INSERT IGNORE INTO epingles (user_id, message_id, created_at) VALUES (?, ?, UTC_TIMESTAMP())', [$moi, $messageId]);
@@ -1398,7 +1398,7 @@ final class Amis
             Database::run('DELETE FROM epingles WHERE user_id = ? AND message_id = ?', [$moi, $messageId]);
         }
 
-        return [true, $epingler ? 'Message épinglé.' : 'Épingle retirée.', $autre];
+        return [true, t($epingler ? 'msg.epingle' : 'msg.epingle_retire'), $autre];
     }
 
     /**
@@ -1427,9 +1427,9 @@ final class Amis
 
             return [
                 'id' => (int) $l['id'],
-                'auteur' => (int) $l['expediteur_id'] === $moi ? 'Vous' : $pseudo,
+                'auteur' => (int) $l['expediteur_id'] === $moi ? t('msg.vous') : $pseudo,
                 'extrait' => self::extrait($l),
-                'quand' => ($jour === 'Aujourd’hui' ? '' : $jour . ' · ') . $moment->format('H:i'),
+                'quand' => (self::cEstAujourdhui($moment) ? '' : $jour . ' · ') . heure_courte($moment->getTimestamp()),
             ];
         }, $lignes);
     }
@@ -1645,7 +1645,7 @@ final class Amis
             'partage' => Partages::carte($message['partage_type'] ?? null, isset($message['partage_id']) ? (int) $message['partage_id'] : null, $moi),
             'reponse' => ($message['r_expediteur'] ?? null) === null ? null : [
                 'id' => (int) $message['reponse_a'],
-                'auteur' => (int) $message['r_expediteur'] === $moi ? 'Vous'
+                'auteur' => (int) $message['r_expediteur'] === $moi ? t('msg.vous')
                     : (string) (self::compte((int) $message['r_expediteur'])['pseudo'] ?? ''),
                 'extrait' => self::extrait($message),
             ],
@@ -1683,17 +1683,23 @@ final class Amis
             ->setTimezone(new DateTimeZone(date_default_timezone_get()));
     }
 
-    /** « Aujourd'hui », « Hier », ou la date. */
+    /** « Aujourd'hui », « Hier », ou la date, dans la langue choisie. */
     public static function jour(DateTimeImmutable $moment): string
     {
         $aujourdhui = new DateTimeImmutable('today');
         $jour = $moment->setTime(0, 0);
 
         return match (true) {
-            $jour == $aujourdhui => 'Aujourd’hui',
-            $jour == $aujourdhui->modify('-1 day') => 'Hier',
+            $jour == $aujourdhui => t('date.aujourdhui'),
+            $jour == $aujourdhui->modify('-1 day') => t('date.hier'),
             default => ucfirst(date_fr($moment->format('Y-m-d H:i:s'), false)),
         };
+    }
+
+    /** Vrai si ce moment tombe aujourd'hui. */
+    public static function cEstAujourdhui(DateTimeImmutable $moment): bool
+    {
+        return $moment->setTime(0, 0) == new DateTimeImmutable('today');
     }
 
     /** L'heure d'un dernier message, pour la liste : « 14:05 », « Hier », « 3 sept. ». */
@@ -1702,6 +1708,6 @@ final class Amis
         $moment = self::local($utc);
         $jour = self::jour($moment);
 
-        return $jour === 'Aujourd’hui' ? $moment->format('H:i') : $jour;
+        return self::cEstAujourdhui($moment) ? heure_courte($moment->getTimestamp()) : $jour;
     }
 }

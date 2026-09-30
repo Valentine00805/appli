@@ -79,10 +79,10 @@ final class Conversations
     private static function problemeNom(string $nom): ?string
     {
         if ($nom === '') {
-            return 'Donnez un nom au groupe.';
+            return t('grp.nom_vide');
         }
         if (mb_strlen($nom) > self::NOM_MAX) {
-            return 'Le nom du groupe tient en ' . self::NOM_MAX . ' caractères.';
+            return t('grp.nom_long', ['max' => self::NOM_MAX]);
         }
 
         return null;
@@ -99,7 +99,7 @@ final class Conversations
         $ids = array_values(array_unique(array_filter(array_map('intval', $ids), static fn (int $id): bool => $id > 0 && $id !== $moi)));
         foreach ($ids as $id) {
             if (!Amis::sontAmis($moi, $id)) {
-                return [[], 'Vous ne pouvez ajouter que vos amis.'];
+                return [[], t('grp.amis_seuls')];
             }
         }
 
@@ -114,7 +114,7 @@ final class Conversations
     public static function creer(int $moi, string $nom, array $ids): array
     {
         if ((string) (Amis::compte($moi)['pseudo'] ?? '') === '') {
-            return [null, 'Choisissez d’abord un pseudo dans « Mon compte » : c’est lui que verront les membres.'];
+            return [null, t('grp.pseudo_avant')];
         }
         $nom = self::nettoyerNom($nom);
         if (($probleme = self::problemeNom($nom)) !== null) {
@@ -125,10 +125,10 @@ final class Conversations
             return [null, $refus];
         }
         if ($ids === []) {
-            return [null, 'Choisissez au moins un ami.'];
+            return [null, t('grp.un_ami')];
         }
         if (count($ids) + 1 > self::MEMBRES_MAX) {
-            return [null, 'Un groupe réunit ' . self::MEMBRES_MAX . ' personnes au plus.'];
+            return [null, t('grp.complet_max', ['max' => self::MEMBRES_MAX])];
         }
 
         Database::run('INSERT INTO conversations (nom, cree_par, created_at) VALUES (?, ?, UTC_TIMESTAMP())', [$nom, $moi]);
@@ -157,7 +157,7 @@ final class Conversations
     public static function ajouter(int $moi, int $conversation, array $ids): array
     {
         if (!self::estAdmin($conversation, $moi)) {
-            return [[], 'Seuls les administrateurs du groupe peuvent ajouter des membres.'];
+            return [[], t('grp.admins_ajout')];
         }
         [$ids, $refus] = self::amisChoisis($moi, $ids);
         if ($refus !== null) {
@@ -168,10 +168,10 @@ final class Conversations
         ), 'user_id'));
         $ids = array_values(array_diff($ids, $deja));
         if ($ids === []) {
-            return [[], 'Choisissez au moins un ami qui n’est pas déjà dans le groupe.'];
+            return [[], t('grp.un_ami_hors')];
         }
         if (count($deja) + count($ids) > self::MEMBRES_MAX) {
-            return [[], 'Un groupe réunit ' . self::MEMBRES_MAX . ' personnes au plus.'];
+            return [[], t('grp.complet_max', ['max' => self::MEMBRES_MAX])];
         }
 
         $dernier = (int) Database::valeur('SELECT COALESCE(MAX(id), 0) FROM conversation_messages WHERE conversation_id = ?', [$conversation]);
@@ -197,11 +197,11 @@ final class Conversations
     public static function creerPourProjet(int $moi, string $nom, array $ids): array
     {
         if ((string) (Amis::compte($moi)['pseudo'] ?? '') === '') {
-            return [null, 'Choisissez d’abord un pseudo dans « Mon compte » : c’est lui que verront les membres.'];
+            return [null, t('grp.pseudo_avant')];
         }
         $nom = mb_substr(self::nettoyerNom($nom), 0, self::NOM_MAX);
         if ($nom === '') {
-            return [null, 'Donnez un nom au groupe.'];
+            return [null, t('grp.nom_vide')];
         }
         $ids = array_slice(array_values(array_unique(array_filter(array_map('intval', $ids),
             static fn (int $id): bool => $id > 0 && $id !== $moi))), 0, self::MEMBRES_MAX - 1);
@@ -256,13 +256,13 @@ final class Conversations
     public static function retirer(int $moi, int $conversation, int $cible): ?string
     {
         if (!self::estAdmin($conversation, $moi)) {
-            return 'Seuls les administrateurs du groupe peuvent retirer des membres.';
+            return t('grp.admins_retrait');
         }
         if ($cible === $moi) {
-            return 'Pour partir, quittez le groupe.';
+            return t('grp.partir');
         }
         if (self::membre($conversation, $cible) === null) {
-            return 'Ce compte ne fait pas partie du groupe.';
+            return t('grp.pas_membre');
         }
         self::oublier($conversation, $cible);
         self::noter($conversation, $moi, 'retrait', $cible);
@@ -274,14 +274,14 @@ final class Conversations
     public static function nommerAdmin(int $moi, int $conversation, int $cible): ?string
     {
         if (!self::estAdmin($conversation, $moi)) {
-            return 'Seuls les administrateurs du groupe peuvent en nommer d’autres.';
+            return t('grp.admins_nommer');
         }
         $membre = self::membre($conversation, $cible);
         if ($membre === null) {
-            return 'Ce compte ne fait pas partie du groupe.';
+            return t('grp.pas_membre');
         }
         if ($membre['role'] === 'admin') {
-            return 'Ce membre est déjà administrateur.';
+            return t('grp.deja_admin');
         }
         Database::run("UPDATE conversation_membres SET role = 'admin' WHERE conversation_id = ? AND user_id = ?", [$conversation, $cible]);
         self::noter($conversation, $moi, 'admin', $cible);
@@ -297,18 +297,18 @@ final class Conversations
     public static function retirerAdmin(int $moi, int $conversation, int $cible): ?string
     {
         if (!self::estAdmin($conversation, $moi)) {
-            return 'Seuls les administrateurs du groupe peuvent retirer ce rôle.';
+            return t('grp.admins_role');
         }
         $membre = self::membre($conversation, $cible);
         if ($membre === null) {
-            return 'Ce compte ne fait pas partie du groupe.';
+            return t('grp.pas_membre');
         }
         if ($membre['role'] !== 'admin') {
-            return 'Ce membre n’est pas administrateur.';
+            return t('grp.pas_admin');
         }
         $admins = (int) Database::valeur("SELECT COUNT(*) FROM conversation_membres WHERE conversation_id = ? AND role = 'admin'", [$conversation]);
         if ($admins < 2) {
-            return 'Le groupe doit garder au moins un administrateur : nommez-en un autre d’abord.';
+            return t('grp.un_admin_min');
         }
         Database::run("UPDATE conversation_membres SET role = 'membre' WHERE conversation_id = ? AND user_id = ?", [$conversation, $cible]);
         self::noter($conversation, $moi, 'admin_retire', $cible);
@@ -355,31 +355,31 @@ final class Conversations
     public static function inviter(int $moi, int $conversation, int $cible): array
     {
         if (!self::estAdmin($conversation, $moi)) {
-            return [null, 'Seuls les administrateurs du groupe peuvent ajouter des membres.'];
+            return [null, t('grp.admins_ajout')];
         }
         $compte = Amis::compte($cible);
         if ($compte === null || $cible === $moi || Amis::aBloque($cible, $moi)) {
-            return [null, 'Ce compte est introuvable.'];
+            return [null, t('grp.compte_introuvable')];
         }
         if (Amis::aBloque($moi, $cible)) {
-            return [null, 'Vous avez bloqué ' . $compte['pseudo'] . ' : débloquez-le d’abord.'];
+            return [null, t('grp.bloque_dabord', ['qui' => $compte['pseudo']])];
         }
         if (self::membre($conversation, $cible) !== null) {
-            return [null, $compte['pseudo'] . ' fait déjà partie du groupe.'];
+            return [null, t('grp.deja_membre', ['qui' => $compte['pseudo']])];
         }
         if (Amis::sontAmis($moi, $cible)) {
             [, $refus] = self::ajouter($moi, $conversation, [$cible]);
             return $refus === null ? ['ajoute', null] : [null, $refus];
         }
         if (Database::valeur('SELECT 1 FROM conversation_invitations WHERE conversation_id = ? AND user_id = ?', [$conversation, $cible]) !== null) {
-            return [null, $compte['pseudo'] . ' est déjà invité.'];
+            return [null, t('grp.deja_invite', ['qui' => $compte['pseudo']])];
         }
         $places = (int) Database::valeur(
             'SELECT (SELECT COUNT(*) FROM conversation_membres WHERE conversation_id = ?) + (SELECT COUNT(*) FROM conversation_invitations WHERE conversation_id = ?)',
             [$conversation, $conversation]
         );
         if ($places >= self::MEMBRES_MAX) {
-            return [null, 'Un groupe réunit ' . self::MEMBRES_MAX . ' personnes au plus, invitations comprises.'];
+            return [null, t('grp.complet_max_inv', ['max' => self::MEMBRES_MAX])];
         }
         Database::run(
             'INSERT INTO conversation_invitations (conversation_id, user_id, invite_par, created_at) VALUES (?, ?, ?, UTC_TIMESTAMP())',
@@ -422,10 +422,10 @@ final class Conversations
     public static function annulerInvitation(int $moi, int $conversation, int $cible): ?string
     {
         if (!self::estAdmin($conversation, $moi)) {
-            return 'Seuls les administrateurs du groupe peuvent annuler une invitation.';
+            return t('grp.admins_invitation');
         }
         if (Database::run('DELETE FROM conversation_invitations WHERE conversation_id = ? AND user_id = ?', [$conversation, $cible])->rowCount() === 0) {
-            return 'Cette invitation n’existe plus.';
+            return t('grp.invitation_partie');
         }
 
         return null;
@@ -439,14 +439,14 @@ final class Conversations
     {
         $invitation = Database::one('SELECT * FROM conversation_invitations WHERE conversation_id = ? AND user_id = ?', [$conversation, $moi]);
         if ($invitation === null) {
-            return 'Cette invitation n’existe plus.';
+            return t('grp.invitation_partie');
         }
         Database::run('DELETE FROM conversation_invitations WHERE conversation_id = ? AND user_id = ?', [$conversation, $moi]);
         if (!$accepter || self::membre($conversation, $moi) !== null) {
             return null;
         }
         if ((int) Database::valeur('SELECT COUNT(*) FROM conversation_membres WHERE conversation_id = ?', [$conversation]) >= self::MEMBRES_MAX) {
-            return 'Ce groupe est complet.';
+            return t('grp.complet');
         }
         $dernier = (int) Database::valeur('SELECT COALESCE(MAX(id), 0) FROM conversation_messages WHERE conversation_id = ?', [$conversation]);
         Database::run(
@@ -463,8 +463,11 @@ final class Conversations
     public static function notifierInvitation(int $auteur, int $conversation, int $cible): ?int
     {
         return FileNotifications::ajouter($cible, 'groupe', [
-            'title' => '✉️ Invitation dans un groupe',
-            'body' => (Amis::compte($auteur)['pseudo'] ?? 'Quelqu’un') . ' vous invite dans « ' . self::nom($conversation) . ' ».',
+            'title' => t('grp.notif_invitation_titre'),
+            'body' => t('grp.notif_invitation_corps', [
+                'qui' => (string) (Amis::compte($auteur)['pseudo'] ?? t('grp.quelquun')),
+                'nom' => self::nom($conversation),
+            ]),
             'url' => url('amis'),
             'tag' => 'invitation-groupe-' . $conversation,
         ]);
@@ -546,7 +549,7 @@ final class Conversations
     {
         $groupe = self::conversation($conversation, $moi);
         if ($groupe === null) {
-            return 'Ce groupe est introuvable.';
+            return t('grp.introuvable');
         }
         $nom = self::nettoyerNom($nom);
         if (($probleme = self::problemeNom($nom)) !== null) {
@@ -595,10 +598,10 @@ final class Conversations
     {
         $groupe = self::conversation($conversation, $moi);
         if ($groupe === null) {
-            return 'Ce groupe est introuvable.';
+            return t('grp.introuvable');
         }
         if ($image === null || ($image['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) {
-            return 'Choisissez une image.';
+            return t('msg.choisir_image');
         }
         $rangee = Amis::rangerImage($image);
         if (is_string($rangee)) {
@@ -636,10 +639,10 @@ final class Conversations
     {
         $groupe = self::conversation($conversation, $moi);
         if ($groupe === null) {
-            return 'Ce groupe est introuvable.';
+            return t('grp.introuvable');
         }
         if ($image === null || ($image['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) {
-            return 'Choisissez une image.';
+            return t('msg.choisir_image');
         }
         $rangee = Amis::rangerImage($image);
         if (is_string($rangee)) {
@@ -685,38 +688,40 @@ final class Conversations
     /** Le texte d'une note, du point de vue de qui la lit. */
     public static function texteEvenement(array $message, int $moi): string
     {
-        $pseudo = static fn (?int $id): string => $id === null ? 'Un ancien membre' : (string) (Amis::compte($id)['pseudo'] ?? 'Un ancien membre');
+        $pseudo = static fn (?int $id): string => $id === null
+            ? t('grpevt.ancien_membre')
+            : (string) (Amis::compte($id)['pseudo'] ?? t('grpevt.ancien_membre'));
         $auteur = $message['expediteur_id'] === null ? null : (int) $message['expediteur_id'];
         $cible = $message['evenement_cible'] === null ? null : (int) $message['evenement_cible'];
-        $qui = $auteur === $moi ? 'Vous avez' : $pseudo($auteur) . ' a';
-        $quiCible = $cible === $moi ? 'vous' : $pseudo($cible);
+        // « Vous avez » ou « Alma a » : le début de la phrase, que la langue accorde.
+        $qui = $auteur === $moi ? t('msg.evt_vous_avez') : t('msg.evt_a', ['qui' => $pseudo($auteur)]);
         $texte = (string) ($message['evenement_texte'] ?? '');
-        // « Alma vous a ajouté » plutôt que « Alma a ajouté vous ».
-        $geste = static fn (string $participe, string $suite = ''): string => $cible === $moi && $auteur !== $moi
-            ? $pseudo($auteur) . ' vous a ' . $participe . $suite
-            : $qui . ' ' . $participe . ' ' . $quiCible . $suite;
+        // « Alma vous a ajouté » plutôt que « Alma a ajouté vous » : une clé à part quand c'est moi la cible.
+        $geste = static fn (string $cle): string => $cible === $moi && $auteur !== $moi
+            ? t('grpevt.' . $cle . '_me', ['auteur' => $pseudo($auteur)])
+            : t('grpevt.' . $cle, ['qui' => $qui, 'cible' => $pseudo($cible)]);
 
         return match ((string) $message['evenement']) {
-            'creation' => '👥 ' . $qui . ' créé le groupe « ' . $texte . ' »',
-            'ajout' => '➕ ' . $geste('ajouté'),
-            'retrait' => '➖ ' . $geste('retiré'),
-            'depart' => '🚪 ' . ($auteur === $moi ? 'Vous avez' : $pseudo($auteur) . ' a') . ' quitté le groupe',
-            'nom' => '✏️ ' . $qui . ' renommé le groupe « ' . $texte . ' »',
+            'creation' => t('grpevt.creation', ['qui' => $qui, 'nom' => $texte]),
+            'ajout' => $geste('ajout'),
+            'retrait' => $geste('retrait'),
+            'depart' => t('grpevt.depart', ['qui' => $qui]),
+            'nom' => t('grpevt.nom', ['qui' => $qui, 'nom' => $texte]),
             'admin' => $auteur === null
-                ? '⭐ ' . ($cible === $moi ? 'Vous êtes' : $quiCible . ' est') . ' maintenant administrateur'
-                : '⭐ ' . $geste('nommé', ' administrateur'),
+                ? ($cible === $moi ? t('grpevt.admin_auto_vous') : t('grpevt.admin_auto', ['cible' => $pseudo($cible)]))
+                : $geste('admin'),
             'admin_retire' => $auteur === $cible
-                ? '⭐ ' . ($auteur === $moi ? 'Vous n’êtes' : $pseudo($auteur) . ' n’est') . ' plus administrateur'
-                : '⭐ ' . ($cible === $moi
-                    ? $pseudo($auteur) . ' vous a retiré le rôle d’administrateur'
-                    : $qui . ' retiré le rôle d’administrateur à ' . $quiCible),
-            'invitation' => '✉️ ' . $geste('invité'),
-            'rejoint' => '➕ ' . ($auteur === $moi ? 'Vous avez' : $pseudo($auteur) . ' a') . ' rejoint le groupe',
-            'fond' => '🖼️ ' . $qui . ' changé le fond d’écran',
-            'fond_retire' => '🖼️ ' . $qui . ' retiré le fond d’écran',
-            'photo' => '📷 ' . $qui . ' changé la photo du groupe',
-            'photo_retiree' => '📷 ' . $qui . ' retiré la photo du groupe',
-            default => $qui . ' modifié le groupe',
+                ? ($auteur === $moi ? t('grpevt.admin_retire_soi_vous') : t('grpevt.admin_retire_soi', ['cible' => $pseudo($auteur)]))
+                : ($cible === $moi
+                    ? t('grpevt.admin_retire_me', ['auteur' => $pseudo($auteur)])
+                    : t('grpevt.admin_retire', ['qui' => $qui, 'cible' => $pseudo($cible)])),
+            'invitation' => $geste('invitation'),
+            'rejoint' => t('grpevt.rejoint', ['qui' => $qui]),
+            'fond' => t('grpevt.fond', ['qui' => $qui]),
+            'fond_retire' => t('grpevt.fond_retire', ['qui' => $qui]),
+            'photo' => t('grpevt.photo', ['qui' => $qui]),
+            'photo_retiree' => t('grpevt.photo_retiree', ['qui' => $qui]),
+            default => t('grpevt.autre', ['qui' => $qui]),
         };
     }
 
@@ -788,23 +793,23 @@ final class Conversations
         $avecFichier = $present($fichier);
         $avecVocal = $present($vocal);
         if ($texte === '' && !$avecImage && !$avecFichier && !$avecVocal) {
-            return [null, 'Le message est vide.'];
+            return [null, t('msg.vide')];
         }
         if ((int) $avecImage + (int) $avecFichier + (int) $avecVocal > 1) {
-            return [null, 'Une seule pièce jointe par message.'];
+            return [null, t('msg.une_piece')];
         }
         if (mb_strlen($texte) > Amis::MESSAGE_MAX) {
-            return [null, 'Un message ne peut pas dépasser ' . Amis::MESSAGE_MAX . ' caractères.'];
+            return [null, t('msg.trop_long', ['max' => Amis::MESSAGE_MAX])];
         }
         if (self::membre($conversation, $moi) === null) {
-            return [null, 'Vous ne faites pas partie de ce groupe.'];
+            return [null, t('grp.pas_membre_vous')];
         }
         $recents = (int) Database::valeur(
             'SELECT COUNT(*) FROM conversation_messages WHERE expediteur_id = ? AND evenement IS NULL AND created_at >= UTC_TIMESTAMP() - INTERVAL 1 MINUTE',
             [$moi]
         );
         if ($recents >= Amis::MESSAGES_PAR_MINUTE) {
-            return [null, 'Trop de messages d’un coup : patientez un instant.'];
+            return [null, t('msg.trop_vite')];
         }
 
         $rangee = $avecImage ? Amis::rangerImage($image) : null;
@@ -975,17 +980,17 @@ final class Conversations
         $texte = trim(str_replace(["\r\n", "\r"], "\n", $texte));
         $message = self::message($moi, $messageId);
         if ($message === null || (int) $message['expediteur_id'] !== $moi) {
-            return [false, 'Seul qui a écrit un message peut le modifier.'];
+            return [false, t('msg.modifier_auteur')];
         }
         if ($message['supprime_le'] !== null) {
-            return [false, 'Un message supprimé ne peut plus être modifié.'];
+            return [false, t('msg.modifier_supprime')];
         }
         if (mb_strlen($texte) > Amis::MESSAGE_MAX) {
-            return [false, 'Un message ne peut pas dépasser ' . Amis::MESSAGE_MAX . ' caractères.'];
+            return [false, t('msg.trop_long', ['max' => Amis::MESSAGE_MAX])];
         }
         if ($texte === '' && $message['image_nom'] === null && $message['fichier_nom'] === null && $message['audio_nom'] === null
             && $message['partage_type'] === null) {
-            return [false, 'Le message ne peut pas être vide : pour l’enlever, supprimez-le.'];
+            return [false, t('msg.modifier_vide')];
         }
         if ($texte !== (string) $message['texte']) {
             Database::run('UPDATE conversation_messages SET texte = ?, modifie_le = UTC_TIMESTAMP() WHERE id = ?', [$texte, $messageId]);
@@ -1041,13 +1046,13 @@ final class Conversations
         $emoji = trim($emoji);
         $message = self::message($moi, $messageId);
         if ($message === null) {
-            return [false, 'Ce message est introuvable.', [], null];
+            return [false, t('msg.introuvable'), [], null];
         }
         if ($message['supprime_le'] !== null) {
-            return [false, 'On ne réagit pas à un message supprimé.', [], null];
+            return [false, t('msg.reaction_supprime'), [], null];
         }
         if ($emoji !== '' && !Amis::emojiValide($emoji)) {
-            return [false, 'Une réaction, c’est un emoji.', [], null];
+            return [false, t('msg.reaction_emoji'), [], null];
         }
 
         $actuelle = Database::valeur('SELECT emoji FROM conversation_reactions WHERE message_id = ? AND user_id = ?', [$messageId, $moi]);
@@ -1074,14 +1079,18 @@ final class Conversations
                 'r_audio' => $message['audio_nom'], 'r_supprime' => null, 'r_masque' => 0,
             ]);
             $notification = FileNotifications::ajouter($auteur, 'reaction', [
-                'title' => $emoji . ' ' . (Amis::compte($moi)['pseudo'] ?? 'Un membre') . ' a réagi · ' . self::nom($conversation),
-                'body' => 'À votre message : « ' . $extrait . ' »',
+                'title' => t('grp.notif_reaction_titre', [
+                    'emoji' => $emoji,
+                    'qui' => (string) (Amis::compte($moi)['pseudo'] ?? t('grp.un_membre')),
+                    'groupe' => self::nom($conversation),
+                ]),
+                'body' => t('grp.notif_reaction_corps', ['extrait' => $extrait]),
                 'url' => url('groupes/' . $conversation),
                 'tag' => 'reaction-groupe-' . $conversation,
             ]);
         }
 
-        return [true, $pose ? 'Réaction ajoutée.' : 'Réaction retirée.', self::reactionsDe([$messageId], $moi)[$messageId] ?? [], $notification];
+        return [true, t($pose ? 'msg.reaction_ajoutee' : 'msg.reaction_retiree'), self::reactionsDe([$messageId], $moi)[$messageId] ?? [], $notification];
     }
 
     private static function nom(int $conversation): string
@@ -1188,7 +1197,7 @@ final class Conversations
     {
         $message = self::message($moi, $messageId);
         if ($message === null) {
-            return [false, 'Ce message est introuvable.', null];
+            return [false, t('msg.introuvable'), null];
         }
         if ($epingler) {
             Database::run('INSERT IGNORE INTO conversation_epingles (user_id, message_id, created_at) VALUES (?, ?, UTC_TIMESTAMP())', [$moi, $messageId]);
@@ -1292,9 +1301,9 @@ final class Conversations
             $apercu = '📎 ' . $nomFichier . ($apercu === '' ? '' : ' · ' . $apercu);
         }
         if ($dureeVocal !== null) {
-            $apercu = '🎤 Message vocal (' . Amis::duree($dureeVocal) . ')' . ($apercu === '' ? '' : ' · ' . $apercu);
+            $apercu = t('msg.piece_vocal_duree', ['duree' => Amis::duree($dureeVocal)]) . ($apercu === '' ? '' : ' · ' . $apercu);
         }
-        $pseudo = (string) (Amis::compte($expediteur)['pseudo'] ?? 'Un membre');
+        $pseudo = (string) (Amis::compte($expediteur)['pseudo'] ?? t('grp.un_membre'));
         $nom = self::nom($conversation);
 
         $ids = [];
@@ -1325,13 +1334,13 @@ final class Conversations
      */
     public static function notifierAjout(int $auteur, int $conversation, array $ids): array
     {
-        $pseudo = (string) (Amis::compte($auteur)['pseudo'] ?? 'Un ami');
+        $pseudo = (string) (Amis::compte($auteur)['pseudo'] ?? t('grpevt.un_ami'));
         $nom = self::nom($conversation);
         $notifications = [];
         foreach ($ids as $id) {
             $n = FileNotifications::ajouter((int) $id, 'groupe', [
                 'title' => '👥 ' . $nom,
-                'body' => $pseudo . ' vous a ajouté au groupe.',
+                'body' => t('grp.notif_ajout', ['qui' => $pseudo]),
                 'url' => url('groupes/' . $conversation),
                 'tag' => 'groupe-' . $conversation,
             ]);
@@ -1399,10 +1408,12 @@ final class Conversations
         $affiche = Amis::pourAffichage($sansNote, $moi, 'groupes');
         $auteur = $message['expediteur_id'] === null ? null : (int) $message['expediteur_id'];
         $affiche['auteur_id'] = $auteur;
-        $affiche['auteur'] = $auteur === null ? 'Un ancien membre' : (string) (Amis::compte($auteur)['pseudo'] ?? 'Un ancien membre');
+        $affiche['auteur'] = $auteur === null
+            ? t('grpevt.ancien_membre')
+            : (string) (Amis::compte($auteur)['pseudo'] ?? t('grpevt.ancien_membre'));
         $affiche['evenement'] = $evenement === null ? null : self::texteEvenement($message, $moi);
         if ($affiche['reponse'] !== null && $affiche['reponse']['auteur'] === '') {
-            $affiche['reponse']['auteur'] = 'Un ancien membre';
+            $affiche['reponse']['auteur'] = t('grpevt.ancien_membre');
         }
 
         return $affiche;
