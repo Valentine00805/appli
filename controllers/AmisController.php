@@ -24,7 +24,7 @@ final class AmisController
             'aUnPseudo' => (string) (Auth::utilisateur()['pseudo'] ?? '') !== '',
             'bloques' => Amis::bloques($moi),
             'invitationsGroupes' => Conversations::mesInvitations($moi),
-        ] + ConversationsController::liste($moi), 'Amis');
+        ] + ConversationsController::liste($moi), t('titre.amis'));
     }
 
     /** Envoie une demande d'ami (ou accepte celle que l'autre avait faite). */
@@ -125,7 +125,7 @@ final class AmisController
             'epingles' => Amis::epingles($moi, $id),
             'adresseFond' => Amis::adresseFond($moi, $id),
             'cible' => $cible,
-        ] + ConversationsController::liste($moi), 'Discussion avec ' . $ami['pseudo']);
+        ] + ConversationsController::liste($moi), t('titre.discussion_avec', ['qui' => (string) $ami['pseudo']]));
     }
 
     /** Bloque un compte, depuis son profil. */
@@ -215,7 +215,7 @@ final class AmisController
             Vue::fragment('amis/profil', $donnees);
             return;
         }
-        Vue::afficher('amis/profil', $donnees, $ami['pseudo'] . ' · Profil');
+        Vue::afficher('amis/profil', $donnees, t('titre.profil_de', ['qui' => (string) $ami['pseudo']]));
     }
 
     /** Les nouveaux messages d'une conversation, pour la page ouverte. */

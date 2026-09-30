@@ -9,3 +9,4 @@
 !/storage/messages/.gitignore
 /storage/alternance/*
 !/storage/alternance/.gitignore
+/outils/langue/ck_*.txt

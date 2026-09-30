@@ -21,9 +21,21 @@ qu'elles répondent dans la bonne langue, puis efface ce compte. Elle contrôle
 aussi que les quatre fichiers de langue ont exactement les mêmes clés et que
 chaque pluriel a ses deux moitiés.
 
-L'antivirus l'a déjà mise en quarantaine une fois : elle ouvre des sessions par
-HTTP avec un mot de passe, ce qu'une heuristique prend pour une attaque. Si
-elle disparaît du dossier, c'est là qu'il faut la chercher.
+**`amis_langue.php`** — la même chose pour les amis et les groupes : deux
+comptes deviennent amis, créent un groupe, le renomment, se nomment
+administrateurs, et l'on vérifie que les notes de la discussion (« Alma vous a
+ajouté ») suivent la langue. Trois comptes d'essai, effacés à la fin.
+
+**`partages_langue.php`** — l'onglet « Partagés », la fenêtre « Partager », la
+lecture d'un document et son fil de commentaires. Deux comptes et un cours,
+effacés à la fin.
+
+**`scan_js.php`** — le français qui reste dans `assets/js/app.js`, en sautant
+les commentaires, les sélecteurs et les adresses.
+
+**`verif_cles_js.php`** — le pont entre le script et les fichiers de langue :
+chaque `mot('x')` d'`app.js` doit trouver une clé `js.x`, et aucune clé `js.`
+ne doit partir dans les pages sans que personne ne l'appelle.
 
 **`cles.php`** — la boîte à outils des deux précédents, et de la traduction
 elle-même. `ajouter_cles()` écrit une clé dans les quatre langues d'un coup ;
@@ -37,6 +49,30 @@ de commande vient d'ouvrir.
 
 **`scan2.php`** — repère le français restant dans des fichiers précis, avec plus
 de détail que `reste.php`.
+
+## L'antivirus, et où lancer les suites
+
+Les suites qui ouvrent des sessions par HTTP avec un mot de passe passent pour
+une attaque aux yeux d'une heuristique : Norton les met en quarantaine, parfois
+**pendant qu'elles tournent**. Le script meurt alors en plein milieu, son
+ménage de fin ne se fait pas, et des comptes d'essai restent en base.
+
+Ce qu'on a observé, le 30 septembre 2026 :
+
+- lancées depuis le dossier du projet, `amis_langue.php` et
+  `partages_langue.php` ont été supprimées en cours d'exécution ;
+- lancées depuis un dossier hors du projet, les mêmes ont tourné jusqu'au bout ;
+- après une quarantaine, Windows garde le **nom** du fichier bloqué : on ne peut
+  plus rien écrire à cette place, il faut en changer.
+
+Donc : garder ces deux suites ici pour les lire, mais les **lancer depuis une
+copie hors du projet**. `verif_langue.php`, elle, passe depuis le projet.
+
+Si une suite s'arrête au milieu, vérifier ce qui reste :
+
+    SELECT id, email FROM users WHERE email LIKE '%exemple-test.fr';
+
+puis effacer chaque compte par son adresse, un par un.
 
 ## Les garde-fous
 

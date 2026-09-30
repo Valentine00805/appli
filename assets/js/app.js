@@ -26,6 +26,18 @@
     avec.n = n;
     return mot(cle + (seul ? '.un' : '.plusieurs'), avec);
   };
+  /*
+   * De quoi écrire du texte dans du HTML, et dater dans la bonne langue.
+   * Le serveur a déjà posé la langue sur la page ; « fr » suffit à Intl.
+   */
+  var echapperHtml = function (texte) {
+    var boite = document.createElement('div');
+    boite.textContent = texte;
+    return boite.innerHTML;
+  };
+  var langueLocale = function () {
+    return document.documentElement.lang || MOTS['_langue'] || 'fr';
+  };
 
   /*
    * Remonter en haut, et voir d'un coup d'œil où l'on en est.
@@ -391,7 +403,7 @@
         if (heureDebut && heureDebut.value !== avant) {
           evenement.preventDefault();
           evenement.stopImmediatePropagation();
-          heureDebut.setCustomValidity('Cette heure vient de passer : le début a été avancé à ' + heureDebut.value + '.');
+          heureDebut.setCustomValidity(mot('evt.heure_passee', { heure: heureDebut.value }));
           heureDebut.reportValidity();
           heureDebut.addEventListener('input', function () { heureDebut.setCustomValidity(''); }, { once: true });
           setTimeout(function () { heureDebut.setCustomValidity(''); }, 4000);
@@ -433,11 +445,11 @@
       document.body.appendChild(bandeau);
     }
     bandeau.classList.toggle('hors-ligne-bandeau--attente', !horsLigne && enAttente > 0);
-    bandeau.textContent = (horsLigne ? '🔌 Hors connexion — vous relisez ce qui est gardé ici. ' : '🔄 ')
+    bandeau.textContent = (horsLigne ? mot('hl.bandeau_hors_ligne') : '🔄 ')
       + (enAttente > 0
-        ? enAttente + (enAttente > 1 ? ' envois en attente' : ' envoi en attente')
-          + (horsLigne ? ', ils repartiront tout seuls.' : ' : envoi en cours…')
-        : 'Ce que vous écrivez sera gardé et repartira au retour du réseau.');
+        ? motN('hl.en_attente', enAttente)
+          + mot(horsLigne ? 'hl.repartiront' : 'hl.envoi_en_cours')
+        : mot('hl.garde_et_repart'));
   };
 
   /** Un envoi qui n'est pas parti : gardé tel quel, pour plus tard. */
@@ -519,7 +531,7 @@
     evenement.stopPropagation();
 
     if ((formulaire.enctype || '').indexOf('multipart') === 0) {
-      direEnHaut('Hors connexion : un fichier ne peut pas être envoyé maintenant. Réessayez au retour du réseau.', 'erreur');
+      direEnHaut(mot('hl.fichier_impossible'), 'erreur');
       return;
     }
 
@@ -530,12 +542,12 @@
       if (typeof valeur === 'string') { champs[nom] = valeur; } else { lisible = false; }
     });
     if (!lisible) {
-      direEnHaut('Hors connexion : cet envoi contient un fichier, il faudra le refaire avec le réseau.', 'erreur');
+      direEnHaut(mot('hl.envoi_avec_fichier'), 'erreur');
       return;
     }
 
     mettreEnFile(formulaire.action, champs, formulaire.getAttribute('data-brouillon') || '');
-    direEnHaut('Hors connexion : c’est gardé sur cet appareil, et cela repartira tout seul dès le retour du réseau.', 'succes');
+    direEnHaut(mot('hl.garde_sur_appareil'), 'succes');
   }, true);
 
   window.addEventListener('online', function () { majBandeau(); viderLaFile(); });
@@ -559,8 +571,7 @@
     var dire = function (texte) { if (etat) { etat.textContent = texte; } };
 
     if (!('serviceWorker' in navigator) || !window.isSecureContext) {
-      dire('Ce navigateur ne sait pas garder l’application hors connexion. '
-        + 'Sur un site en https, ou en localhost, il le saurait.');
+      dire(mot('hl.pas_possible'));
       return;
     }
 
@@ -573,18 +584,16 @@
     navigator.serviceWorker.addEventListener('message', function (evenement) {
       var reponse = evenement.data || {};
       if (reponse.quoi === 'combien') {
-        dire(reponse.pages > 0
-          ? reponse.pages + (reponse.pages > 1 ? ' pages gardées' : ' page gardée') + ' sur cet appareil.'
-          : 'Rien de gardé pour l’instant.');
+        dire(reponse.pages > 0 ? motN('hl.pages_gardees', reponse.pages) : mot('hl.rien_garde'));
         if (oublier) { oublier.hidden = reponse.pages === 0; }
       }
       if (reponse.quoi === 'gardees') {
-        dire('C’est prêt : ces pages s’ouvriront sans réseau.');
-        if (garder) { garder.disabled = false; garder.textContent = 'Préparer mes pages'; }
+        dire(mot('hl.pret'));
+        if (garder) { garder.disabled = false; garder.textContent = mot('hl.preparer'); }
         parler({ quoi: 'combien' });
       }
       if (reponse.quoi === 'oubliees') {
-        dire('Rien de gardé pour l’instant.');
+        dire(mot('hl.rien_garde'));
         if (oublier) { oublier.hidden = true; }
       }
     });
@@ -592,7 +601,7 @@
     parler({ quoi: 'combien' }).then(function () {
       if (garder) { garder.hidden = false; }
     }).catch(function () {
-      dire('L’application n’est pas encore installée sur cet appareil : rechargez la page une fois.');
+      dire(mot('hl.pas_installee'));
     });
 
     if (garder) {
@@ -600,18 +609,18 @@
         var pages = [];
         try { pages = JSON.parse(carte.getAttribute('data-pages') || '[]'); } catch (e) {}
         garder.disabled = true;
-        garder.textContent = 'Préparation…';
-        dire('Préparation en cours : les pages sont chargées une à une.');
+        garder.textContent = mot('hl.preparation');
+        dire(mot('hl.preparation_en_cours'));
         parler({ quoi: 'garder', pages: pages }).catch(function () {
           garder.disabled = false;
-          garder.textContent = 'Préparer mes pages';
-          dire('La préparation n’a pas abouti : réessayez avec du réseau.');
+          garder.textContent = mot('hl.preparer');
+          dire(mot('hl.preparation_echec'));
         });
       });
     }
     if (oublier) {
       oublier.addEventListener('click', function () {
-        if (!window.confirm('Vider ce qui est gardé ici ? Sans réseau, plus rien ne s’ouvrira tant que vous n’aurez pas rouvert les pages.')) { return; }
+        if (!window.confirm(mot('hl.vider_garde'))) { return; }
         parler({ quoi: 'oublier' });
       });
     }
@@ -750,7 +759,7 @@
         if (bloc.requestFullscreen) { bloc.requestFullscreen().catch(function () {}); }
       });
       document.addEventListener('fullscreenchange', function () {
-        pleinEcran.textContent = document.fullscreenElement ? '⛶ Quitter le plein écran' : '⛶ Plein écran';
+        pleinEcran.textContent = mot(document.fullscreenElement ? 'focus.quitter_plein_ecran' : 'focus.plein_ecran');
       });
     }
 
@@ -868,10 +877,12 @@
           var quand = new Date(garde.quand);
           var rappel = document.createElement('div');
           rappel.className = 'brouillon-rappel';
-          rappel.innerHTML = '<span>📝 Un brouillon non envoyé, gardé ici le '
-            + quand.toLocaleString('fr-FR', { dateStyle: 'long', timeStyle: 'short' })
-            + '.</span> <button class="bouton bouton--petit" type="button" data-brouillon-reprendre>Reprendre</button>'
-            + ' <button class="bouton bouton--discret bouton--petit" type="button" data-brouillon-jeter>Jeter</button>';
+          rappel.innerHTML = '<span>' + echapperHtml(mot('brouillon.rappel', {
+            quand: quand.toLocaleString(langueLocale(), { dateStyle: 'long', timeStyle: 'short' })
+          })) + '</span> <button class="bouton bouton--petit" type="button" data-brouillon-reprendre>'
+            + echapperHtml(mot('brouillon.reprendre')) + '</button>'
+            + ' <button class="bouton bouton--discret bouton--petit" type="button" data-brouillon-jeter>'
+            + echapperHtml(mot('brouillon.jeter')) + '</button>';
           formulaire.insertBefore(rappel, formulaire.firstChild);
           rappel.addEventListener('click', function (e) {
             var bouton = e.target.closest('button');
@@ -921,7 +932,7 @@
           })
           .catch(function () {
             garder();
-            dire('Pas de réseau : votre texte est gardé ici. Il repartira tout seul dès que la connexion revient.', true);
+            dire(mot('brouillon.pas_de_reseau'), true);
             window.addEventListener('online', function () { envoyer(donnees); }, { once: true });
           });
       };
@@ -959,7 +970,7 @@
     var vide = edition ? edition.textContent.trim() === '' : zone.value.trim() === '';
     if (!vide) {
       choix.value = '';
-      window.alert('Cette note contient déjà du texte : le modèle ne l’a pas remplacé.');
+      window.alert(mot('modele.deja_du_texte'));
       return;
     }
     if (edition) {
@@ -1032,7 +1043,7 @@
      */
     var peutQuitter = function () {
       if (corps.querySelector('form[data-modifie]') === null) { return true; }
-      return window.confirm('Fermer sans enregistrer ? Les modifications du document seront perdues.');
+      return window.confirm(mot('fenetre.quitter_sans_enregistrer'));
     };
     /*
      * Le chemin parcouru dans la fenêtre : un cours, puis l'aperçu d'un de ses
@@ -1649,11 +1660,11 @@
       };
 
       if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
-        dire('Ce navigateur ne sait pas recevoir de notifications. Sur iPhone, ajoutez d’abord l’application à l’écran d’accueil (Partager → Sur l’écran d’accueil), puis ouvrez-la depuis là.');
+        dire(mot('notif.pas_possible'));
         return;
       }
       if (!window.isSecureContext) {
-        dire('Les notifications demandent une adresse sécurisée : https, ou localhost sur cet ordinateur.');
+        dire(mot('notif.adresse_securisee'));
         return;
       }
 
@@ -1662,7 +1673,7 @@
       var verifier = function () {
         return enregistrement.then(function (reg) { return reg.pushManager.getSubscription(); }).then(function (abonnement) {
           if (Notification.permission === 'denied') {
-            dire('Les notifications sont bloquées pour ce site. Autorisez-les dans les réglages du site (le cadenas à gauche de l’adresse), puis rechargez la page.');
+            dire(mot('notif.bloquees'));
             montrer(false);
             activer.hidden = true;
             return;
@@ -1670,14 +1681,14 @@
           if (abonnement && Notification.permission === 'granted') {
             // Le serveur a pu l'oublier (appareil retiré ailleurs) : on le lui redit.
             poster(d.abonner, champs(abonnement));
-            dire('✅ Activées sur cet appareil : vous recevrez les rappels ici.');
+            dire(mot('notif.activees'));
             montrer(true);
           } else {
-            dire('Désactivées sur cet appareil.');
+            dire(mot('notif.desactivees'));
             montrer(false);
           }
         }).catch(function (e) {
-          dire('Le service des notifications n’a pas pu démarrer sur ce navigateur : ' + e.message);
+          dire(mot('notif.service_echec', { raison: e.message }));
           montrer(false);
           activer.hidden = true;
         });
@@ -1700,11 +1711,11 @@
             })
             .then(function (abonnement) { return poster(d.abonner, champs(abonnement)); })
             .then(function (reponse) {
-              if (!reponse.fait) { throw new Error(reponse.message || 'refus du serveur'); }
+              if (!reponse.fait) { throw new Error(reponse.message || mot('notif.refus_serveur')); }
               relire();
             });
         }).catch(function (e) {
-          dire('L’activation a échoué : ' + e.message);
+          dire(mot('notif.activation_echec', { raison: e.message }));
         }).then(function () { activer.disabled = false; });
       });
 
@@ -1712,10 +1723,10 @@
         essai.disabled = true;
         poster(d.essai, {}).then(function (reponse) {
           aide.hidden = false;
-          aide.textContent = reponse.message + (reponse.fait ? ' Elle devrait apparaître dans quelques secondes.' : '');
+          aide.textContent = reponse.message + (reponse.fait ? mot('notif.essai_bientot') : '');
         }).catch(function () {
           aide.hidden = false;
-          aide.textContent = 'L’essai n’a pas pu partir.';
+          aide.textContent = mot('notif.essai_echec');
         }).then(function () { essai.disabled = false; });
       });
 
@@ -2017,7 +2028,7 @@
        * fenêtres de l'application, elle ne se ferme que par ses boutons.
        */
       var marquerSupprime = function (id) {
-        fil.querySelectorAll('[data-extrait-de="' + id + '"]').forEach(function (e) { e.textContent = '🚫 Message supprimé'; });
+        fil.querySelectorAll('[data-extrait-de="' + id + '"]').forEach(function (e) { e.textContent = mot('chat.message_supprime'); });
         var bulle = fil.querySelector('[data-message="' + id + '"]');
         if (!bulle || bulle.classList.contains('bulle--supprime')) { return; }
         bulle.classList.add('bulle--supprime');
@@ -2027,7 +2038,7 @@
         bulle.querySelectorAll('.bulle__image, .bulle__fichier, .bulle__partage, .bulle__vocal, .bulle__transcription, .bulle__texte, .bulle__citation, .bulle__modifie, .bulle__reactions').forEach(function (e) { e.remove(); });
         var efface = document.createElement('p');
         efface.className = 'bulle__texte';
-        efface.textContent = '🚫 Message supprimé';
+        efface.textContent = mot('chat.message_supprime');
         bulle.insertBefore(efface, bulle.querySelector('.bulle__heure'));
         if (mode && String(mode.id) === String(id)) { sortirMode(); }
       };
@@ -2046,12 +2057,12 @@
 
       var question = document.createElement('dialog');
       question.className = 'question-suppression';
-      question.innerHTML = '<h2 class="question-suppression__titre">Supprimer ce message ?</h2>'
+      question.innerHTML = '<h2 class="question-suppression__titre">' + echapperHtml(mot('chat.supprimer_titre')) + '</h2>'
         + '<p class="question-suppression__aide" data-aide></p>'
         + '<div class="question-suppression__choix">'
-        + '<button type="button" class="bouton bouton--danger" data-portee="tous">Supprimer pour tout le monde</button>'
-        + '<button type="button" class="bouton bouton--secondaire" data-portee="moi">Supprimer pour moi</button>'
-        + '<button type="button" class="bouton bouton--discret" data-portee="">Annuler</button>'
+        + '<button type="button" class="bouton bouton--danger" data-portee="tous">' + echapperHtml(mot('chat.supprimer_tous')) + '</button>'
+        + '<button type="button" class="bouton bouton--secondaire" data-portee="moi">' + echapperHtml(mot('chat.supprimer_moi')) + '</button>'
+        + '<button type="button" class="bouton bouton--discret" data-portee="">' + echapperHtml(mot('chat.annuler')) + '</button>'
         + '</div>'
         + '<p class="question-suppression__erreur" data-erreur hidden></p>';
       document.body.appendChild(question);
@@ -2063,10 +2074,9 @@
         var mien = bulle.classList.contains('bulle--moi');
         var dejaEfface = bulle.classList.contains('bulle--supprime');
         question.querySelector('[data-portee="tous"]').hidden = !mien || dejaEfface;
-        question.querySelector('[data-aide]').textContent = !mien
-          ? 'Il disparaîtra de votre conversation. Votre ami, lui, le verra toujours : seul qui l’a écrit peut le supprimer pour tout le monde.'
-          : (dejaEfface ? 'Il disparaîtra de votre conversation.'
-            : '« Pour moi » le retire de votre conversation seulement. « Pour tout le monde » l’efface des deux côtés, pièce jointe comprise : il restera « Message supprimé ».');
+        question.querySelector('[data-aide]').textContent = mot(!mien
+          ? 'chat.aide_pas_mien'
+          : (dejaEfface ? 'chat.aide_deja_efface' : 'chat.aide_mien'));
         question.querySelector('[data-erreur]').hidden = true;
         question.showModal();
         question.querySelector(mien && !dejaEfface ? '[data-portee="tous"]' : '[data-portee="moi"]').focus();
@@ -2089,14 +2099,17 @@
       var rapides = (chat.getAttribute('data-reactions-rapides') || '👍 ❤️ 😂 😮 😢 🙏').split(' ');
       menu.innerHTML = '<div class="menu-message__reactions" data-menu-reactions>'
         + rapides.map(function (e) {
-          return '<button type="button" class="menu-message__reaction" data-reagir-emoji="' + e + '" aria-label="Réagir ' + e + '">' + e + '</button>';
+          return '<button type="button" class="menu-message__reaction" data-reagir-emoji="' + e + '" aria-label="'
+            + echapperHtml(mot('chat.reagir_emoji', { emoji: e })) + '">' + e + '</button>';
         }).join('')
-        + '<button type="button" class="menu-message__reaction menu-message__plus" data-action="plus-reactions" aria-label="Choisir un autre emoji" title="Autre emoji">➕</button>'
+        + '<button type="button" class="menu-message__reaction menu-message__plus" data-action="plus-reactions" aria-label="'
+        + echapperHtml(mot('chat.autre_emoji')) + '" title="' + echapperHtml(mot('chat.autre_emoji_court')) + '">➕</button>'
         + '</div>'
-        + '<button type="button" role="menuitem" data-action="repondre">↩ Répondre</button>'
-        + '<button type="button" role="menuitem" data-action="modifier">✏️ Modifier</button>'
-        + '<button type="button" role="menuitem" data-action="epingler">📌 Épingler</button>'
-        + '<button type="button" role="menuitem" data-action="supprimer" class="menu-message__danger">🗑 Supprimer</button>';
+        + '<button type="button" role="menuitem" data-action="repondre">' + echapperHtml(mot('chat.repondre')) + '</button>'
+        + '<button type="button" role="menuitem" data-action="modifier">' + echapperHtml(mot('chat.modifier')) + '</button>'
+        + '<button type="button" role="menuitem" data-action="epingler">' + echapperHtml(mot('chat.epingler')) + '</button>'
+        + '<button type="button" role="menuitem" data-action="supprimer" class="menu-message__danger">'
+        + echapperHtml(mot('chat.supprimer')) + '</button>';
       document.body.appendChild(menu);
       var bulleDuMenu = null;
 
@@ -2111,7 +2124,7 @@
         var mien = bulle.classList.contains('bulle--moi');
         var efface = bulle.classList.contains('bulle--supprime');
         menu.querySelector('[data-action="repondre"]').hidden = efface;
-        menu.querySelector('[data-action="epingler"]').textContent = bulle.classList.contains('bulle--epingle') ? '📌 Désépingler' : '📌 Épingler';
+        menu.querySelector('[data-action="epingler"]').textContent = mot(bulle.classList.contains('bulle--epingle') ? 'chat.desepingler' : 'chat.epingler');
         menu.querySelector('[data-menu-reactions]').hidden = efface;
         // La réaction déjà posée est allumée : la reprendre l'enlève.
         var miennes = bulle.querySelector('.reaction--moi');
@@ -2254,12 +2267,12 @@
         return p ? p.textContent.replace(/\r/g, '') : '';
       };
       var extraitDe = function (bulle) {
-        if (bulle.classList.contains('bulle--supprime')) { return '🚫 Message supprimé'; }
+        if (bulle.classList.contains('bulle--supprime')) { return mot('chat.message_supprime'); }
         var texte = texteDe(bulle).replace(/\s+/g, ' ').trim();
         var nomFichier = bulle.querySelector('.bulle__fichier-nom');
-        var piece = bulle.querySelector('.bulle__image') ? '📷 Photo' : (nomFichier ? '📎 ' + nomFichier.textContent
-          : (bulle.querySelector('.bulle__vocal') ? '🎤 Message vocal'
-          : (bulle.querySelector('.bulle__partage') ? '🔗 Document partagé' : '')));
+        var piece = bulle.querySelector('.bulle__image') ? mot('chat.piece_photo') : (nomFichier ? '📎 ' + nomFichier.textContent
+          : (bulle.querySelector('.bulle__vocal') ? mot('chat.piece_vocal')
+          : (bulle.querySelector('.bulle__partage') ? mot('chat.piece_partage') : '')));
         var extrait = texte === '' ? piece : (piece === '' ? texte : piece + ' · ' + texte);
         return extrait.length > 120 ? extrait.slice(0, 119) + '…' : extrait;
       };
@@ -2295,8 +2308,10 @@
         mode = { type: type, id: bulle.getAttribute('data-message'), bulle: bulle };
         var mien = bulle.classList.contains('bulle--moi');
         contexte.querySelector('[data-contexte-titre]').textContent = type === 'reponse'
-          ? '↩ Réponse à ' + (mien ? 'vous-même' : (bulle.getAttribute('data-auteur') || chat.getAttribute('data-ami')))
-          : '✏️ Modifier le message';
+          ? mot('chat.reponse_a', {
+            qui: mien ? mot('chat.vous_meme') : (bulle.getAttribute('data-auteur') || chat.getAttribute('data-ami'))
+          })
+          : mot('chat.modifier_message');
         poserExtrait(contexte.querySelector('[data-contexte-extrait]'), extraitDe(bulle));
         contexte.classList.toggle('chat__contexte--modifier', type === 'modifier');
         contexte.hidden = false;
@@ -2361,12 +2376,12 @@
           method: 'POST', body: donnees, credentials: 'same-origin', headers: { Accept: 'application/json' }
         }).then(function (r) { return r.json(); })
           .then(function (reponse) {
-            if (!reponse.fait) { throw new Error(reponse.message || 'La réaction n’a pas pu être enregistrée.'); }
+            if (!reponse.fait) { throw new Error(reponse.message || mot('chat.reaction_echec')); }
             var enBasAvant = presqueEnBas();
             dessinerReactions(bulle, reponse.reactions);
             if (enBasAvant) { enBas(); }
           })
-          .catch(function (e) { montrerErreur(e.message || 'La réaction n’a pas pu être enregistrée.'); });
+          .catch(function (e) { montrerErreur(e.message || mot('chat.reaction_echec')); });
       };
       fil.addEventListener('click', function (evenement) {
         var pastille = evenement.target.closest('[data-reaction]');
@@ -2437,8 +2452,8 @@
           retirer.type = 'button';
           retirer.className = 'epingles__retirer';
           retirer.setAttribute('data-desepingler', String(ep.id));
-          retirer.title = 'Retirer des messages épinglés';
-          retirer.setAttribute('aria-label', 'Retirer des messages épinglés');
+          retirer.title = mot('chat.desepingler_titre');
+          retirer.setAttribute('aria-label', mot('chat.desepingler_titre'));
           retirer.appendChild(dessinPoubelle.cloneNode(true));
           li.appendChild(retirer);
           ul.appendChild(li);
@@ -2455,12 +2470,12 @@
           method: 'POST', body: donnees, credentials: 'same-origin', headers: { Accept: 'application/json' }
         }).then(function (r) { return r.json(); })
           .then(function (reponse) {
-            if (!reponse.fait) { throw new Error(reponse.message || 'L’épingle n’a pas pu être posée.'); }
+            if (!reponse.fait) { throw new Error(reponse.message || mot('chat.epingle_echec')); }
             var bulle = fil.querySelector('[data-message="' + id + '"]');
             if (bulle) { bulle.classList.toggle('bulle--epingle', reponse.epingle); }
             dessinerEpingles(reponse.epingles || []);
           })
-          .catch(function (e) { montrerErreur(e.message || 'L’épingle n’a pas pu être posée.'); });
+          .catch(function (e) { montrerErreur(e.message || mot('chat.epingle_echec')); });
       };
       var epingler = function (bulle, voulu) { epinglerId(bulle.getAttribute('data-message'), voulu); };
       boutonEpingles.addEventListener('click', function () {
@@ -2527,9 +2542,9 @@
         listeRecherche.textContent = '';
         var resultats = reponse.resultats || [];
         etatRecherche.textContent = resultats.length === 0
-          ? 'Aucun message ne contient « ' + recherche + ' ».'
-          : reponse.total + ' message' + (reponse.total > 1 ? 's' : '') + ' trouvé' + (reponse.total > 1 ? 's' : '')
-            + (reponse.total > resultats.length ? ' — les ' + resultats.length + ' plus récents :' : '');
+          ? mot('chat.recherche_rien', { recherche: recherche })
+          : motN('chat.recherche_trouves', reponse.total)
+            + (reponse.total > resultats.length ? mot('chat.recherche_recents', { n: resultats.length }) : '');
         resultats.forEach(function (r) {
           var li = document.createElement('li');
           var b = document.createElement('button');
@@ -2564,10 +2579,10 @@
         clearTimeout(minuterieRecherche);
         if (recherche.length < 2) {
           listeRecherche.textContent = '';
-          etatRecherche.textContent = 'Tapez au moins deux caractères.';
+          etatRecherche.textContent = mot('chat.recherche_deux_caracteres');
           return;
         }
-        etatRecherche.textContent = 'Recherche…';
+        etatRecherche.textContent = mot('chat.recherche_en_cours');
         // Une frappe rapide ne lance qu'une recherche, et seule la dernière réponse compte.
         minuterieRecherche = setTimeout(function () {
           var numero = ++numeroRecherche;
@@ -2579,7 +2594,7 @@
               if (!reponse.fait) { throw new Error(reponse.message || ''); }
               dessinerResultats(reponse, recherche);
             })
-            .catch(function (e) { if (numero === numeroRecherche) { etatRecherche.textContent = e.message || 'La recherche n’a pas abouti.'; } });
+            .catch(function (e) { if (numero === numeroRecherche) { etatRecherche.textContent = e.message || mot('chat.recherche_echec'); } });
         }, 250);
       };
       champRecherche.addEventListener('input', lancerRecherche);
@@ -2639,7 +2654,7 @@
         if (modifie && heure && !heure.querySelector('.bulle__modifie')) {
           var marque = document.createElement('span');
           marque.className = 'bulle__modifie';
-          marque.textContent = 'modifié · ';
+          marque.textContent = mot('chat.modifie');
           heure.insertBefore(marque, heure.firstChild);
         }
         var id = bulle.getAttribute('data-message');
@@ -2662,14 +2677,14 @@
           method: 'POST', body: donnees, credentials: 'same-origin', headers: { Accept: 'application/json' }
         }).then(function (r) { return r.json(); })
           .then(function (reponse) {
-            if (!reponse.fait) { throw new Error(reponse.message || 'Le message n’a pas pu être supprimé.'); }
+            if (!reponse.fait) { throw new Error(reponse.message || mot('chat.suppression_echec')); }
             if (portee === 'tous') { marquerSupprime(id); } else { retirerBulle(id); }
             question.close();
             aSupprimer = null;
           })
           .catch(function (e) {
             var zone = question.querySelector('[data-erreur]');
-            zone.textContent = e.message || 'Le message n’a pas pu être supprimé.';
+            zone.textContent = e.message || mot('chat.suppression_echec');
             zone.hidden = false;
           })
           .then(function () { question.querySelectorAll('button').forEach(function (b) { b.disabled = false; }); });
@@ -2747,7 +2762,7 @@
         if (message.supprime) {
           var efface = document.createElement('p');
           efface.className = 'bulle__texte';
-          efface.textContent = '🚫 Message supprimé';
+          efface.textContent = mot('chat.message_supprime');
           bulle.appendChild(efface);
         }
         if (message.image) {
@@ -2797,7 +2812,7 @@
           lecture.type = 'button';
           lecture.className = 'bulle__vocal-lecture';
           lecture.setAttribute('data-vocal-lecture', '');
-          lecture.setAttribute('aria-label', 'Écouter le message vocal');
+          lecture.setAttribute('aria-label', mot('chat.ecouter_vocal'));
           lecture.textContent = '▶';
           var piste = document.createElement('span');
           piste.className = 'bulle__vocal-piste';
@@ -2853,8 +2868,8 @@
           var telecharger = document.createElement('a');
           telecharger.className = 'bulle__fichier-telecharger';
           telecharger.href = message.fichier.telecharger;
-          telecharger.title = 'Télécharger';
-          telecharger.setAttribute('aria-label', 'Télécharger ' + message.fichier.nom);
+          telecharger.title = mot('chat.telecharger');
+          telecharger.setAttribute('aria-label', mot('chat.telecharger_nom', { nom: message.fichier.nom }));
           telecharger.textContent = '⬇';
           carte.appendChild(icone);
           carte.appendChild(infos);
@@ -2872,15 +2887,15 @@
         heure.textContent = message.heure;
         var marqueEpingle = document.createElement('span');
         marqueEpingle.className = 'bulle__epingle';
-        marqueEpingle.title = 'Épinglé';
-        marqueEpingle.setAttribute('aria-label', 'Épinglé');
+        marqueEpingle.title = mot('chat.epingle_marque');
+        marqueEpingle.setAttribute('aria-label', mot('chat.epingle_marque'));
         marqueEpingle.textContent = '📌 ';
         heure.insertBefore(marqueEpingle, heure.firstChild);
         if (message.epingle) { bulle.classList.add('bulle--epingle'); }
         if (message.modifie) {
           var marque = document.createElement('span');
           marque.className = 'bulle__modifie';
-          marque.textContent = 'modifié · ';
+          marque.textContent = mot('chat.modifie');
           heure.insertBefore(marque, heure.firstChild);
         }
         bulle.appendChild(heure);
@@ -2987,7 +3002,7 @@
       var IMAGES_MAX = 10;
       var EXTENSIONS = (formulaire.getAttribute('data-extensions') || '').split(',');
       var FICHIER_MAX = Number(formulaire.getAttribute('data-fichier-max')) || 50 * 1024 * 1024;
-      var enMo = function (octets) { return Math.round(octets / 1048576) + ' Mo'; };
+      var enMo = function (octets) { return Math.round(octets / 1048576); };
       var poidsLisible = function (octets) {
         if (octets < 1024) { return octets + ' o'; }
         if (octets < 1048576) { return Math.round(octets / 1024) + ' Ko'; }
@@ -3041,15 +3056,15 @@
       var ajouterImages = function (liste) {
         var refus = '';
         Array.prototype.forEach.call(liste, function (fichier) {
-          if (enAttente.length >= IMAGES_MAX) { refus = 'Dix pièces jointes au plus à la fois.'; return; }
+          if (enAttente.length >= IMAGES_MAX) { refus = mot('chat.dix_pieces'); return; }
           var estImage = TYPES_IMAGES.indexOf(fichier.type) !== -1 && fichier.size <= IMAGE_MAX;
           if (!estImage) {
             var extension = (fichier.name.split('.').pop() || '').toLowerCase();
             if (fichier.name.indexOf('.') === -1 || EXTENSIONS.indexOf(extension) === -1) {
-              refus = '« ' + fichier.name + ' » : ce type de fichier n’est pas accepté.'; return;
+              refus = mot('chat.type_refuse', { nom: fichier.name }); return;
             }
-            if (fichier.size > FICHIER_MAX) { refus = '« ' + fichier.name + ' » est trop lourd : ' + enMo(FICHIER_MAX) + ' au plus.'; return; }
-            if (fichier.size === 0) { refus = '« ' + fichier.name + ' » est vide.'; return; }
+            if (fichier.size > FICHIER_MAX) { refus = mot('chat.trop_lourd', { nom: fichier.name, mo: enMo(FICHIER_MAX) }); return; }
+            if (fichier.size === 0) { refus = mot('chat.fichier_vide', { nom: fichier.name }); return; }
           }
           enAttente.push({ fichier: fichier, image: estImage, adresse: estImage ? URL.createObjectURL(fichier) : null });
         });
@@ -3111,7 +3126,7 @@
           temps.textContent = formatDuree(duree - audio.currentTime);
         });
         audio.addEventListener('play', function () { bouton.textContent = '⏸'; bouton.setAttribute('aria-label', 'Mettre en pause'); lecteur.classList.add('bulle__vocal--joue'); });
-        audio.addEventListener('pause', function () { bouton.textContent = '▶'; bouton.setAttribute('aria-label', 'Écouter le message vocal'); lecteur.classList.remove('bulle__vocal--joue'); });
+        audio.addEventListener('pause', function () { bouton.textContent = '▶'; bouton.setAttribute('aria-label', mot('chat.ecouter_vocal')); lecteur.classList.remove('bulle__vocal--joue'); });
         audio.addEventListener('ended', function () {
           avance.style.width = '0';
           temps.textContent = formatDuree(dureeDe(lecteur, audio));
@@ -3263,7 +3278,7 @@
               var ecoute = finirEcoute();
               terminerEnregistrement();
               if (!envoyer) { return; }
-              if (duree < 1 || !morceaux.length) { montrerErreur('Message vocal trop court : maintenez l’enregistrement au moins une seconde.'); return; }
+              if (duree < 1 || !morceaux.length) { montrerErreur(mot('chat.vocal_court')); return; }
               var extension = type.indexOf('ogg') !== -1 ? 'ogg' : (type.indexOf('mp4') !== -1 ? 'm4a' : 'webm');
               var donnees = new FormData();
               donnees.append('_csrf', chat.getAttribute('data-jeton'));
@@ -3279,11 +3294,11 @@
                 });
               }).then(function (r) { return r.json(); })
                 .then(function (reponse) {
-                  if (!reponse.fait) { throw new Error(reponse.message || 'Le message vocal n’est pas parti.'); }
+                  if (!reponse.fait) { throw new Error(reponse.message || mot('chat.vocal_pas_parti')); }
                   if (mode && mode.type === 'reponse') { sortirMode(); }
                   return relever().then(enBas);
                 })
-                .catch(function (e) { montrerErreur(e.message || 'Le message vocal n’est pas parti.'); })
+                .catch(function (e) { montrerErreur(e.message || mot('chat.vocal_pas_parti')); })
                 .then(function () { bouton.disabled = false; });
             });
             enregistreur.start(250);
@@ -3299,7 +3314,7 @@
               if (ecoule >= VOCAL_MAX) { arreter(true); }
             }, 250);
           }).catch(function () {
-            montrerErreur('Le micro n’est pas accessible : autorisez-le pour ce site (le cadenas à gauche de l’adresse), puis réessayez.');
+            montrerErreur(mot('chat.micro_refuse'));
           });
         });
         barreVocal.querySelector('[data-vocal-annuler]').addEventListener('click', function () { arreter(false); });
@@ -3318,9 +3333,9 @@
         return fetch(chat.getAttribute('data-envoyer'), {
           method: 'POST', body: donnees, credentials: 'same-origin', headers: { Accept: 'application/json' }
         }).then(function (r) {
-          return r.json().catch(function () { throw new Error('Le message n’est pas parti. Réessayez.'); });
+          return r.json().catch(function () { throw new Error(mot('chat.envoi_echec_reessayer')); });
         }).then(function (reponse) {
-          if (!reponse.fait) { throw new Error(reponse.message || 'Le message n’est pas parti.'); }
+          if (!reponse.fait) { throw new Error(reponse.message || mot('chat.envoi_echec')); }
         });
       };
 
@@ -3329,10 +3344,10 @@
         var texte = champ.value.trim();
 
         if (mode && mode.type === 'modifier') {
-          if (enAttente.length) { montrerErreur('Terminez la modification avant d’envoyer des pièces jointes.'); return; }
+          if (enAttente.length) { montrerErreur(mot('chat.modifier_dabord')); return; }
           var enModification = mode;
           if (!texte && !enModification.bulle.hasAttribute('data-piece')) {
-            montrerErreur('Le message ne peut pas être vide : pour l’enlever, supprimez-le.');
+            montrerErreur(mot('chat.vide_supprimez'));
             return;
           }
           montrerErreur('');
@@ -3344,11 +3359,11 @@
             method: 'POST', body: envoi, credentials: 'same-origin', headers: { Accept: 'application/json' }
           }).then(function (r) { return r.json(); })
             .then(function (reponse) {
-              if (!reponse.fait) { throw new Error(reponse.message || 'Le message n’a pas pu être modifié.'); }
+              if (!reponse.fait) { throw new Error(reponse.message || mot('chat.modification_echec')); }
               appliquerTexte(enModification.bulle, texte, texte !== texteDe(enModification.bulle).trim() || enModification.bulle.querySelector('.bulle__modifie') !== null);
               sortirMode();
             })
-            .catch(function (e) { montrerErreur(e.message || 'Le message n’a pas pu être modifié.'); })
+            .catch(function (e) { montrerErreur(e.message || mot('chat.modification_echec')); })
             .then(function () { bouton.disabled = false; champ.focus(); });
           return;
         }
@@ -3380,7 +3395,7 @@
         });
 
         suite.then(function () { ajuster(); return relever().then(enBas); })
-          .catch(function (e) { montrerErreur(e.message || 'Le message n’est pas parti. Réessayez.'); relever(); })
+          .catch(function (e) { montrerErreur(e.message || mot('chat.envoi_echec_reessayer')); relever(); })
           .then(function () { bouton.disabled = false; bouton.textContent = libelle; champ.focus(); });
       });
 
@@ -3390,8 +3405,10 @@
        */
       var visionneuse = document.createElement('dialog');
       visionneuse.className = 'visionneuse';
-      visionneuse.innerHTML = '<button class="fenetre__fermer" type="button" aria-label="Fermer">✕</button>'
-        + '<img alt="Photo"><a class="bouton bouton--secondaire bouton--petit visionneuse__ouvrir" target="_blank" rel="noopener">Ouvrir en grand</a>';
+      visionneuse.innerHTML = '<button class="fenetre__fermer" type="button" aria-label="' + echapperHtml(mot('chat.fermer')) + '">✕</button>'
+        + '<img alt="' + echapperHtml(mot('chat.photo')) + '">'
+        + '<a class="bouton bouton--secondaire bouton--petit visionneuse__ouvrir" target="_blank" rel="noopener">'
+        + echapperHtml(mot('chat.ouvrir_en_grand')) + '</a>';
       document.body.appendChild(visionneuse);
       visionneuse.querySelector('.fenetre__fermer').addEventListener('click', function () { visionneuse.close(); });
       visionneuse.addEventListener('cancel', function (evenement) { evenement.preventDefault(); });
@@ -3431,14 +3448,14 @@
       var panneauEmoji = formulaire.querySelector('[data-emoji-panneau]');
       if (boutonEmoji && panneauEmoji) {
         var EMOJIS = [
-          ['😀', 'Visages', '😀 😃 😄 😁 😆 😅 🤣 😂 🙂 😉 😊 😇 🥰 😍 🤩 😘 😗 😚 😋 😛 😜 🤪 😝 🤗 🤭 🤫 🤔 🤐 🤨 😐 😑 😶 😏 😒 🙄 😬 😌 😔 😪 🤤 😴 😷 🤒 🤕 🤢 🤮 🥵 🥶 🥴 😵 🤯 🤠 🥳 😎 🤓 🧐 😕 😟 🙁 😮 😯 😲 😳 🥺 😦 😧 😨 😰 😥 😢 😭 😱 😖 😣 😞 😓 😩 😫 🥱 😤 😡 😠 🤬 😈 💀 💩 🤡 👻 👽 🤖'],
-          ['👍', 'Gestes', '👍 👎 👌 🤌 ✌️ 🤞 🤟 🤘 🤙 👈 👉 👆 👇 ☝️ ✋ 🤚 🖐️ 🖖 👋 🤏 💪 🙏 🤝 👏 🙌 👐 🤲 ✍️ 💅 🤳 👀 👁️ 🧠 🫶 🙋 🙆 🙅 🤷 🤦 🙇 💁 🧑‍🎓 👩‍🎓 👨‍🎓 🧑‍🏫 🏃 💃 🕺'],
-          ['❤️', 'Cœurs', '❤️ 🧡 💛 💚 💙 💜 🖤 🤍 🤎 💔 ❣️ 💕 💞 💓 💗 💖 💘 💝 💟 ♥️ 😻 💌 💋 🌹 💐'],
-          ['🐶', 'Nature', '🐶 🐱 🐭 🐹 🐰 🦊 🐻 🐼 🐨 🐯 🦁 🐮 🐷 🐸 🐵 🐔 🐧 🐦 🐤 🦆 🦉 🐴 🦄 🐝 🦋 🐌 🐞 🐢 🐍 🐙 🐬 🐳 🦈 🌸 🌼 🌻 🌺 🌷 🌱 🌲 🌳 🍀 🍁 🍂 🌈 ☀️ 🌤️ ⛅ 🌧️ ⛈️ ❄️ ☃️ 🔥 💧 🌊 ⭐ 🌟 🌙'],
-          ['🍕', 'Nourriture', '🍎 🍐 🍊 🍋 🍌 🍉 🍇 🍓 🍒 🍑 🥭 🍍 🥥 🥝 🍅 🥑 🥕 🌽 🥐 🥖 🧀 🥚 🍳 🥞 🧇 🥓 🍔 🍟 🍕 🌭 🥪 🌮 🌯 🥗 🍝 🍜 🍣 🍱 🍩 🍪 🎂 🍰 🧁 🍫 🍬 🍭 🍿 ☕ 🍵 🧃 🥤 🧋 🍺 🍷 🥂'],
-          ['⚽', 'Activités', '⚽ 🏀 🏈 ⚾ 🎾 🏐 🏉 🎱 🏓 🏸 🥊 ⛸️ 🎿 🏂 🏋️ 🚴 🏊 🧘 🎮 🕹️ 🎲 🧩 ♟️ 🎯 🎳 🎨 🎭 🎤 🎧 🎸 🎹 🥁 🎬 📷 🎉 🎊 🎈 🎁 🏆 🥇 🥈 🥉 🏅 ✈️ 🚗 🚌 🚆 🚲 🏠 🏫 🏖️ ⛰️ 🗺️'],
-          ['📚', 'École', '📚 📖 📝 ✏️ 🖊️ 🖍️ 📒 📓 📔 📕 📗 📘 📙 📄 📃 📑 🗂️ 📁 📂 📅 📆 🗓️ 📌 📍 📎 🖇️ 📏 📐 ✂️ 🧮 🔬 🔭 🧪 🧬 💻 🖥️ ⌨️ 🖱️ 📱 ☎️ 🔋 💡 🔦 ⏰ ⏳ ⌛ 🎒 🎓 🏫 💯 ✅ ❌ ❓ ❗ ⚠️'],
-          ['✨', 'Symboles', '✨ 💫 💥 💢 💦 💨 🕳️ 💬 💭 🗯️ 💤 ✔️ ☑️ ➕ ➖ ✖️ ➗ 🟰 ♾️ ‼️ ⁉️ 🔝 🆗 🆕 🆒 🔴 🟠 🟡 🟢 🔵 🟣 ⚫ ⚪ 🟥 🟧 🟨 🟩 🟦 🟪 ⬛ ⬜ 🔶 🔷 ➡️ ⬅️ ⬆️ ⬇️ 🔁 🔄 ⏩ ⏪ 🎵 🎶 💲 💰 🔒 🔓 🔑 🚀']
+          ['😀', 'emoji.visages', '😀 😃 😄 😁 😆 😅 🤣 😂 🙂 😉 😊 😇 🥰 😍 🤩 😘 😗 😚 😋 😛 😜 🤪 😝 🤗 🤭 🤫 🤔 🤐 🤨 😐 😑 😶 😏 😒 🙄 😬 😌 😔 😪 🤤 😴 😷 🤒 🤕 🤢 🤮 🥵 🥶 🥴 😵 🤯 🤠 🥳 😎 🤓 🧐 😕 😟 🙁 😮 😯 😲 😳 🥺 😦 😧 😨 😰 😥 😢 😭 😱 😖 😣 😞 😓 😩 😫 🥱 😤 😡 😠 🤬 😈 💀 💩 🤡 👻 👽 🤖'],
+          ['👍', 'emoji.gestes', '👍 👎 👌 🤌 ✌️ 🤞 🤟 🤘 🤙 👈 👉 👆 👇 ☝️ ✋ 🤚 🖐️ 🖖 👋 🤏 💪 🙏 🤝 👏 🙌 👐 🤲 ✍️ 💅 🤳 👀 👁️ 🧠 🫶 🙋 🙆 🙅 🤷 🤦 🙇 💁 🧑‍🎓 👩‍🎓 👨‍🎓 🧑‍🏫 🏃 💃 🕺'],
+          ['❤️', 'emoji.coeurs', '❤️ 🧡 💛 💚 💙 💜 🖤 🤍 🤎 💔 ❣️ 💕 💞 💓 💗 💖 💘 💝 💟 ♥️ 😻 💌 💋 🌹 💐'],
+          ['🐶', 'emoji.nature', '🐶 🐱 🐭 🐹 🐰 🦊 🐻 🐼 🐨 🐯 🦁 🐮 🐷 🐸 🐵 🐔 🐧 🐦 🐤 🦆 🦉 🐴 🦄 🐝 🦋 🐌 🐞 🐢 🐍 🐙 🐬 🐳 🦈 🌸 🌼 🌻 🌺 🌷 🌱 🌲 🌳 🍀 🍁 🍂 🌈 ☀️ 🌤️ ⛅ 🌧️ ⛈️ ❄️ ☃️ 🔥 💧 🌊 ⭐ 🌟 🌙'],
+          ['🍕', 'emoji.nourriture', '🍎 🍐 🍊 🍋 🍌 🍉 🍇 🍓 🍒 🍑 🥭 🍍 🥥 🥝 🍅 🥑 🥕 🌽 🥐 🥖 🧀 🥚 🍳 🥞 🧇 🥓 🍔 🍟 🍕 🌭 🥪 🌮 🌯 🥗 🍝 🍜 🍣 🍱 🍩 🍪 🎂 🍰 🧁 🍫 🍬 🍭 🍿 ☕ 🍵 🧃 🥤 🧋 🍺 🍷 🥂'],
+          ['⚽', 'emoji.activites', '⚽ 🏀 🏈 ⚾ 🎾 🏐 🏉 🎱 🏓 🏸 🥊 ⛸️ 🎿 🏂 🏋️ 🚴 🏊 🧘 🎮 🕹️ 🎲 🧩 ♟️ 🎯 🎳 🎨 🎭 🎤 🎧 🎸 🎹 🥁 🎬 📷 🎉 🎊 🎈 🎁 🏆 🥇 🥈 🥉 🏅 ✈️ 🚗 🚌 🚆 🚲 🏠 🏫 🏖️ ⛰️ 🗺️'],
+          ['📚', 'emoji.ecole', '📚 📖 📝 ✏️ 🖊️ 🖍️ 📒 📓 📔 📕 📗 📘 📙 📄 📃 📑 🗂️ 📁 📂 📅 📆 🗓️ 📌 📍 📎 🖇️ 📏 📐 ✂️ 🧮 🔬 🔭 🧪 🧬 💻 🖥️ ⌨️ 🖱️ 📱 ☎️ 🔋 💡 🔦 ⏰ ⏳ ⌛ 🎒 🎓 🏫 💯 ✅ ❌ ❓ ❗ ⚠️'],
+          ['✨', 'emoji.symboles', '✨ 💫 💥 💢 💦 💨 🕳️ 💬 💭 🗯️ 💤 ✔️ ☑️ ➕ ➖ ✖️ ➗ 🟰 ♾️ ‼️ ⁉️ 🔝 🆗 🆕 🆒 🔴 🟠 🟡 🟢 🔵 🟣 ⚫ ⚪ 🟥 🟧 🟨 🟩 🟦 🟪 ⬛ ⬜ 🔶 🔷 ➡️ ⬅️ ⬆️ ⬇️ 🔁 🔄 ⏩ ⏪ 🎵 🎶 💲 💰 🔒 🔓 🔑 🚀']
         ];
         var CLE_RECENTS = 'mesCoursEmojisRecents';
         var lireRecents = function () {
@@ -3465,12 +3482,12 @@
 
         var montrer = function (rang) {
           var liste = rang < 0 ? lireRecents() : EMOJIS[rang][2].split(' ');
-          titre.textContent = rang < 0 ? 'Récents' : EMOJIS[rang][1];
+          titre.textContent = mot(rang < 0 ? 'emoji.recents' : EMOJIS[rang][1]);
           grille.textContent = '';
           if (!liste.length) {
             var vide = document.createElement('p');
             vide.className = 'emojis__vide';
-            vide.textContent = 'Les emojis que vous utiliserez apparaîtront ici.';
+            vide.textContent = mot('emoji.aucun_recent');
             grille.appendChild(vide);
           }
           liste.forEach(function (emoji) {
@@ -3488,14 +3505,14 @@
           grille.scrollTop = 0;
         };
 
-        [['🕘', 'Récents', -1]].concat(EMOJIS.map(function (c, i) { return [c[0], c[1], i]; })).forEach(function (o) {
+        [['🕘', 'emoji.recents', -1]].concat(EMOJIS.map(function (c, i) { return [c[0], c[1], i]; })).forEach(function (o) {
           var onglet = document.createElement('button');
           onglet.type = 'button';
           onglet.className = 'emojis__onglet';
           onglet.setAttribute('role', 'tab');
           onglet.setAttribute('data-rang', String(o[2]));
-          onglet.title = o[1];
-          onglet.setAttribute('aria-label', o[1]);
+          onglet.title = mot(o[1]);
+          onglet.setAttribute('aria-label', mot(o[1]));
           onglet.textContent = o[0];
           onglets.appendChild(onglet);
         });
@@ -3614,15 +3631,15 @@
     var secours = function () {
       champ.focus();
       champ.select();
-      try { document.execCommand('copy'); dire('Lien copié.'); } catch (e) { dire('Sélectionné : copiez-le avec Ctrl+C.'); }
+      try { document.execCommand('copy'); dire(mot('lien.copie')); } catch (e) { dire(mot('lien.selectionne')); }
     };
     if (navigator.clipboard && window.isSecureContext) {
-      navigator.clipboard.writeText(champ.value).then(function () { dire('Lien copié.'); }, secours);
+      navigator.clipboard.writeText(champ.value).then(function () { dire(mot('lien.copie')); }, secours);
     } else {
       secours();
     }
-    bouton.textContent = 'Copié ✓';
-    setTimeout(function () { bouton.textContent = 'Copier'; }, 2000);
+    bouton.textContent = mot('lien.copie_court');
+    setTimeout(function () { bouton.textContent = mot('lien.copier'); }, 2000);
   });
   var montrerPartageNatif = function (racine) {
     if (!navigator.share) { return; }
@@ -3697,7 +3714,7 @@
     var pseudo = champ.value.trim();
     if (pseudo.length < 2) {
       liste.textContent = '';
-      etat.textContent = 'Vos amis sont ajoutés tout de suite ; les autres reçoivent une invitation, qu’ils acceptent ou non.';
+      etat.textContent = mot('grp.ajouter_aide');
       return;
     }
     rechercheGroupe.minuterie = setTimeout(function () {
@@ -3710,7 +3727,7 @@
           if (!reponse.fait) { throw new Error(reponse.message || ''); }
           var resultats = reponse.resultats || [];
           liste.textContent = '';
-          etat.textContent = resultats.length ? '' : 'Aucun pseudo ne contient « ' + pseudo + ' ».';
+          etat.textContent = resultats.length ? '' : mot('grp.aucun_pseudo', { pseudo: pseudo });
           resultats.forEach(function (r) {
             var li = document.createElement('li');
             li.className = 'amis-resultat';
@@ -3730,7 +3747,7 @@
             nom.textContent = r.pseudo;
             var actions = document.createElement('span');
             actions.className = 'actions';
-            var pastilles = { membre: 'Déjà membre', invite: 'Invité', bloque: 'Bloqué' };
+            var pastilles = { membre: mot('grp.deja_membre'), invite: mot('grp.invite'), bloque: mot('grp.bloque') };
             if (pastilles[r.etat]) {
               var pastille = document.createElement('span');
               pastille.className = 'pastille';
@@ -3761,7 +3778,7 @@
           });
         })
         .catch(function (e) {
-          if (numero === rechercheGroupe.numero) { etat.textContent = e.message || 'La recherche n’a pas abouti. Réessayez.'; }
+          if (numero === rechercheGroupe.numero) { etat.textContent = e.message || mot('grp.recherche_echec'); }
         });
     }, 250);
   });
@@ -4136,11 +4153,11 @@
         formulaire.querySelector('input[type="checkbox"][name="recevoir"]').checked = !reponse.muette;
         carte.querySelector("[data-notifications-icone]").textContent = reponse.muette ? "🔕" : "🔔";
         carte.querySelector("[data-notifications-etat]").textContent = reponse.etat;
-        if (message) { message.textContent = reponse.muette ? "Notifications coupées." : "Notifications rétablies."; }
+        if (message) { message.textContent = mot(reponse.muette ? 'notif.coupees' : 'notif.retablies'); }
       })
       .catch(function () {
         annuler();
-        if (message) { message.textContent = "Pas enregistré : vérifiez votre connexion, puis réessayez."; }
+        if (message) { message.textContent = mot('notif.pas_enregistre'); }
       });
   };
 
@@ -4317,13 +4334,12 @@
     };
 
     var resumer = function (total, ecartes) {
-      var mots = total.cours + (total.cours > 1 ? " cours créés" : " cours créé");
+      var mots = motN('imp.cours_crees', total.cours);
       if (total.dossiers > 0) {
-        mots += " dans " + total.dossiers
-          + (total.dossiers > 1 ? " nouveaux dossiers" : " nouveau dossier");
+        mots += motN('imp.dans_dossiers', total.dossiers);
       }
       if (ecartes > 0) {
-        mots += " · " + ecartes + (ecartes > 1 ? " fichiers écartés" : " fichier écarté");
+        mots += motN('imp.ecartes', ecartes);
       }
       dire(mots + ".");
 
@@ -4349,7 +4365,7 @@
       var ecartes = 0;
       var faits = 0;
       champImport.disabled = true;
-      dire("Import en cours…");
+      dire(mot('imp.en_cours'));
 
       var suite = Promise.resolve();
       paquets.forEach(function (paquet) {
@@ -4363,7 +4379,7 @@
               ecartes += (reponse.erreurs || []).length;
             }
             faits += paquet.length;
-            dire("Import en cours… " + faits + " fichiers sur " + fichiers.length);
+            dire(mot('imp.avancement', { faits: faits, total: fichiers.length }));
           });
         });
       });
@@ -4439,7 +4455,7 @@
         bouton.setAttribute("aria-expanded", plie ? "false" : "true");
         bouton.textContent = plie ? "▸" : "▾";
         bouton.setAttribute("aria-label",
-          (plie ? "Déplier « " : "Replier « ") + (rang.getAttribute("data-nom") || "") + " »");
+          mot(plie ? 'kb.deplier' : 'kb.replier', { nom: rang.getAttribute("data-nom") || "" }));
       });
     };
 
@@ -5574,13 +5590,12 @@
 
           if (formatsImage.indexOf(fichier.type) < 0) {
             champ.value = "";
-            direSouci("« " + fichier.name + " » n'est pas une image PNG, JPEG ou GIF — les formats que Word ouvre partout.");
+            direSouci(mot('riche.image_mauvais_format', { nom: fichier.name }));
             return;
           }
           if (poidsMax > 0 && poidsEnAttente() + fichier.size > poidsMax) {
             champ.value = "";
-            direSouci("« " + fichier.name + " » est trop lourde : le serveur accepte " + enMo(poidsMax)
-              + " par enregistrement. Enregistrez d'abord, puis ajoutez la suite.");
+            direSouci(mot('riche.image_trop_lourde', { nom: fichier.name, mo: enMo(poidsMax) }));
             return;
           }
 
@@ -5631,7 +5646,7 @@
           neuf.accept = formatsImage.join(",");
           neuf.hidden = true;
           neuf.setAttribute("data-choisir-image", "");
-          neuf.setAttribute("aria-label", "Choisir une image à ajouter");
+          neuf.setAttribute("aria-label", mot('riche.image_choisir'));
           neuf.addEventListener("change", poserLImage);
           boutonImage.parentNode.insertBefore(neuf, boutonImage.nextSibling);
           choixImage = neuf;
@@ -6074,9 +6089,10 @@
         var ecrireDicte = function (phrase) {
           var commande = phrase.toLowerCase().replace(/[.,;:!?]/g, '').trim();
           remettreSelection();
-          if (commande === 'à la ligne' || commande === 'a la ligne' || commande === 'nouvelle ligne') {
+          var estUne = function (cle) { return commande === mot(cle).toLowerCase(); };
+          if (estUne('dictee.a_la_ligne') || estUne('dictee.a_la_ligne_bis') || estUne('dictee.nouvelle_ligne')) {
             if (!document.execCommand('insertLineBreak')) { document.execCommand('insertHTML', false, '<br>'); }
-          } else if (commande === 'nouveau paragraphe') {
+          } else if (estUne('dictee.nouveau_paragraphe')) {
             document.execCommand('insertParagraph');
           } else {
             document.execCommand('insertText', false, phrase + ' ');
@@ -6104,7 +6120,7 @@
               if (!bout) { continue; }
               if (e.results[i].isFinal) { ecrireDicte(bout); } else { encours += ' ' + bout; }
             }
-            direDictee(encours.trim() ? '🎤 ' + encours.trim() + '…' : '🎤 J’écoute…', true);
+            direDictee(encours.trim() ? mot('dictee.en_cours', { texte: encours.trim() }) : mot('dictee.jecoute'), true);
           });
           r.addEventListener('end', function () {
             // Un silence l'arrête : on repart, tant qu'on n'a pas dit stop.
@@ -6122,7 +6138,7 @@
           dicteeVoulue = true;
           boutonDicter.setAttribute('aria-pressed', 'true');
           boutonDicter.classList.add('barre-outils__dicter--ecoute');
-          direDictee('🎤 J’écoute…', true);
+          direDictee(mot('dictee.jecoute'), true);
           try { r.start(); } catch (e) { arreterDictee(mot('dictee.echec')); }
         };
 
@@ -6172,7 +6188,7 @@
           recopier();
         }
         if (bouton.hasAttribute('data-riche-dicter') && typeof lancerDictee === 'function') {
-          if (dicteeVoulue) { arreterDictee('Dictée arrêtée.'); } else { lancerDictee(); }
+          if (dicteeVoulue) { arreterDictee(mot('dictee.arretee_bouton')); } else { lancerDictee(); }
         }
         if (bouton.hasAttribute('data-riche-image')) { barre.querySelector('[data-riche-fichier]').click(); }
         if (bouton.hasAttribute('data-riche-largeur-origine') && imageChoisie) {
@@ -6776,7 +6792,7 @@
 
       var reste = cartesSeance.length - rang;
       if (compteur) {
-        compteur.textContent = reste + " carte" + (reste > 1 ? "s" : "") + " à revoir";
+        compteur.textContent = motN('cartes.a_revoir', reste);
       }
       // Brasser une seule carte n'a pas de sens.
       if (melanger) { melanger.disabled = reste < 2; }

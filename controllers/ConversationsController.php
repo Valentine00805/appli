@@ -20,7 +20,7 @@ final class ConversationsController
             Vue::fragment('amis/nouvelle_discussion', ['amis' => $amis]);
             return;
         }
-        Vue::afficher('amis/nouvelle_discussion', ['amis' => $amis], 'Nouveau message');
+        Vue::afficher('amis/nouvelle_discussion', ['amis' => $amis], t('titre.nouveau_message'));
     }
 
     /** Le formulaire de création, en fenêtre : un nom, et des amis à cocher. */
@@ -35,7 +35,7 @@ final class ConversationsController
             Vue::fragment('amis/groupe_nouveau', $donnees);
             return;
         }
-        Vue::afficher('amis/groupe_nouveau', $donnees, 'Nouveau groupe');
+        Vue::afficher('amis/groupe_nouveau', $donnees, t('titre.nouveau_groupe'));
     }
 
     public function creer(): void
@@ -130,7 +130,7 @@ final class ConversationsController
             Vue::fragment('amis/groupe_reglages', $donnees);
             return;
         }
-        Vue::afficher('amis/groupe_reglages', $donnees, $groupe['nom'] . ' · Réglages');
+        Vue::afficher('amis/groupe_reglages', $donnees, t('titre.reglages_de', ['nom' => (string) $groupe['nom']]));
     }
 
     /** Les nouveaux messages, pour la page ouverte. */
