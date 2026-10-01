@@ -137,11 +137,11 @@ final class DossiersController
 
         $nom = mb_substr(post('nom'), 0, 120);
         if ($nom === '') {
-            Session::flash('erreur', 'Donnez un nom à votre dossier.');
+            Session::flash('erreur', t('dos.fl.nom_manquant'));
             repartir_vers('organisation/dossiers');
         }
         if (Database::valeur('SELECT id FROM dossiers WHERE user_id = ? AND nom = ?', [$userId, $nom]) !== null) {
-            Session::flash('erreur', 'Vous avez déjà un dossier nommé « ' . $nom . ' ».');
+            Session::flash('erreur', t('dos.fl.deja', ['nom' => $nom]));
             repartir_vers('organisation/dossiers');
         }
 
@@ -161,7 +161,7 @@ final class DossiersController
              $this->iconeValide(post('icone')), $rang]
         );
 
-        Session::flash('succes', 'Dossier « ' . $nom . ' » créé.');
+        Session::flash('succes', t('dos.fl.cree', ['nom' => $nom]));
         // Créer depuis la colonne des cours ne doit pas déporter ailleurs.
         repartir_vers('organisation/dossiers');
     }
@@ -180,7 +180,7 @@ final class DossiersController
 
         $nom = mb_substr(post('nom'), 0, 120);
         if ($nom === '') {
-            Session::flash('erreur', 'Le nom du dossier est obligatoire.');
+            Session::flash('erreur', t('dos.fl.nom_obligatoire'));
             redirect('organisation/dossiers');
         }
         $doublon = Database::valeur(
@@ -188,7 +188,7 @@ final class DossiersController
             [$userId, $nom, $id]
         );
         if ($doublon !== null) {
-            Session::flash('erreur', 'Un autre dossier porte déjà ce nom.');
+            Session::flash('erreur', t('dos.fl.autre'));
             redirect('organisation/dossiers');
         }
 
@@ -196,7 +196,7 @@ final class DossiersController
         // propres sous-dossiers : l'arborescence se refermerait sur elle-même.
         $parent = self::valide($userId, $_POST['parent_id'] ?? null);
         if ($parent !== null && in_array($parent, self::avecDescendants($userId, $id), true)) {
-            Session::flash('erreur', 'Un dossier ne peut pas être rangé dans lui-même ou dans un de ses sous-dossiers.');
+            Session::flash('erreur', t('dos.fl.boucle'));
             redirect('organisation/dossiers');
         }
 
@@ -213,14 +213,14 @@ final class DossiersController
         $renomme = (string) $avant['nom'] !== $nom;
         $deplace = ($avant['parent_id'] === null ? null : (int) $avant['parent_id']) !== $parent;
         $ou = $parent === null
-            ? 'à la racine'
-            : 'dans « ' . (string) Database::valeur('SELECT nom FROM dossiers WHERE id = ?', [$parent]) . ' »';
+            ? t('dos.fl.racine')
+            : t('dos.fl.dans', ['nom' => (string) Database::valeur('SELECT nom FROM dossiers WHERE id = ?', [$parent])]);
 
         Session::flash('succes', match (true) {
-            $renomme && $deplace => 'Dossier « ' . $nom . ' » renommé et rangé ' . $ou . '.',
-            $deplace             => 'Dossier « ' . $nom . ' » rangé ' . $ou . '.',
-            $renomme             => 'Dossier « ' . $nom . ' » renommé.',
-            default              => 'Dossier « ' . $nom . ' » inchangé.',
+            $renomme && $deplace => t('dos.fl.renomme_range', ['nom' => $nom, 'ou' => $ou]),
+            $deplace             => t('dos.fl.range', ['nom' => $nom, 'ou' => $ou]),
+            $renomme             => t('dos.fl.renomme', ['nom' => $nom]),
+            default              => t('dos.fl.inchange', ['nom' => $nom]),
         });
         // Modifier depuis la colonne des cours ne doit pas déporter ailleurs.
         repartir_vers('organisation/dossiers');
@@ -250,15 +250,17 @@ final class DossiersController
 
         $details = [];
         if ($nb > 0) {
-            $details[] = 'ses ' . $nb . ' cours ' . ($nb > 1 ? 'sont conservés' : 'est conservé') . ', sans dossier';
+            $details[] = tn('dos.fl.cours_gardes', $nb);
         }
         if ($nbEnfants > 0) {
-            $details[] = 'ses ' . $nbEnfants . ' sous-dossier' . ($nbEnfants > 1 ? 's remontent' : ' remonte')
-                . ' à la racine';
+            $details[] = tn('dos.fl.enfants', $nbEnfants);
         }
 
-        Session::flash('succes', 'Dossier « ' . $dossier['nom'] . ' » supprimé'
-            . ($details === [] ? '.' : ' : ' . implode(', ', $details) . '.'));
+        Session::flash('succes', $details === []
+            ? t('dos.fl.supprime', ['nom' => (string) $dossier['nom']])
+            : t('dos.fl.supprime_details', [
+                'nom' => (string) $dossier['nom'], 'details' => implode(', ', $details),
+            ]));
         // Supprimer depuis la colonne des cours ne doit pas déporter ailleurs.
         repartir_vers('organisation/dossiers');
     }
@@ -283,7 +285,7 @@ final class DossiersController
 
         // Même garde-fou que dans le formulaire : on ne referme pas la branche.
         if ($parent !== null && in_array($parent, self::avecDescendants($userId, $id), true)) {
-            Session::flash('erreur', 'Un dossier ne peut pas être rangé dans lui-même ou dans un de ses sous-dossiers.');
+            Session::flash('erreur', t('dos.fl.boucle'));
             redirect('organisation/dossiers');
         }
 

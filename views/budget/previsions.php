@@ -371,8 +371,8 @@ $aVenirIds = array_map(static fn (array $r): int => (int) $r['id'], $aVenir);
           <label for="moyen"><?= e(t('bud.moyen')) ?></label>
           <select id="moyen" name="moyen">
             <option value=""><?= e(t('bud.non_precise')) ?></option>
-            <?php foreach ($moyens as $m): ?>
-              <option value="<?= e($m) ?>"<?= $m === 'Prélèvement' ? ' selected' : '' ?>><?= e($m) ?></option>
+            <?php foreach ($moyens as $cle => $m): ?>
+              <option value="<?= e($cle) ?>"<?= $cle === 'prelevement' ? ' selected' : '' ?>><?= e($m) ?></option>
             <?php endforeach; ?>
           </select>
         </div>

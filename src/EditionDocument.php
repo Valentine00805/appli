@@ -525,7 +525,7 @@ final class EditionDocument
             // Un XML n'accepte que de l'UTF-8. Mieux vaut refuser d'écrire que
             // de glisser des caractères abîmés dans le document de quelqu'un.
             if (!mb_check_encoding($entree['texte'], 'UTF-8')) {
-                throw new RuntimeException('Le texte envoyé n’est pas dans un encodage valide.');
+                throw new RuntimeException(t('ed.encodage'));
             }
         }
 
@@ -595,7 +595,7 @@ final class EditionDocument
             }
         }
         if ($avecImages && (!$word || !self::imagesAjoutables($nomOrigine))) {
-            throw new RuntimeException('une image ne s’ajoute pour l’instant qu’à un document Word (.docx).');
+            throw new RuntimeException(t('ed.image_docx'));
         }
         $largeurUtile = $avecImages ? self::largeurUtileWord($doc) : 0;
         $dessin = $avecImages ? self::dernierDessinWord($doc) : 0;
@@ -607,7 +607,7 @@ final class EditionDocument
          * ensuite prendre la place des repères.
          */
         if ($ajouts !== [] && (!$word || !self::imagesAjoutables($nomOrigine))) {
-            throw new RuntimeException('une image ne s’ajoute pour l’instant qu’à un document Word (.docx).');
+            throw new RuntimeException(t('ed.image_docx'));
         }
         $parRang = [];
         $porteurs = [];
@@ -765,7 +765,7 @@ final class EditionDocument
 
         $xml = $doc->saveXML();
         if ($xml === false) {
-            throw new RuntimeException('Le document n’a pas pu être réécrit.');
+            throw new RuntimeException(t('ed.reecriture'));
         }
 
         $parties[(string) $format['partie']] = $xml;
@@ -783,13 +783,13 @@ final class EditionDocument
     {
         $temporaire = $chemin . '.edition';
         if (!copy($chemin, $temporaire)) {
-            throw new RuntimeException('Impossible de préparer l’enregistrement du document.');
+            throw new RuntimeException(t('ed.preparation'));
         }
 
         try {
             $zip = new ZipArchive();
             if ($zip->open($temporaire) !== true) {
-                throw new RuntimeException('Le fichier est illisible : ce n’est pas une archive valide.');
+                throw new RuntimeException(t('ed.archive_invalide'));
             }
             $ajoute = true;
             foreach ($parties as $nom => $xml) {
@@ -797,7 +797,7 @@ final class EditionDocument
             }
             $ferme = $zip->close();
             if (!$ajoute || !$ferme) {
-                throw new RuntimeException('Le document n’a pas pu être réécrit.');
+                throw new RuntimeException(t('ed.reecriture'));
             }
 
             // Relecture de contrôle : une archive cassée ne doit jamais
@@ -807,7 +807,7 @@ final class EditionDocument
             self::garderOriginal($chemin);
 
             if (!rename($temporaire, $chemin)) {
-                throw new RuntimeException('Impossible de remplacer le document sur le disque.');
+                throw new RuntimeException(t('ed.remplacement'));
             }
         } catch (Throwable $e) {
             if (is_file($temporaire)) {
@@ -1347,19 +1347,19 @@ final class EditionDocument
     {
         $ext = self::extension($nomOrigine);
         if (!isset(self::FORMATS[$ext])) {
-            throw new RuntimeException('Ce format ne se modifie pas dans l’application.');
+            throw new RuntimeException(t('ed.format_fige'));
         }
         $format = self::FORMATS[$ext];
 
         $zip = new ZipArchive();
         if ($zip->open($chemin, ZipArchive::RDONLY) !== true) {
-            throw new RuntimeException('Le fichier est illisible : ce n’est pas une archive valide.');
+            throw new RuntimeException(t('ed.archive_invalide'));
         }
         $xml = $zip->getFromName((string) $format['partie']);
         $zip->close();
 
         if ($xml === false) {
-            throw new RuntimeException('Le contenu du document est introuvable dans le fichier.');
+            throw new RuntimeException(t('ed.contenu_absent'));
         }
 
         $avant = libxml_use_internal_errors(true);
@@ -1371,13 +1371,13 @@ final class EditionDocument
         libxml_use_internal_errors($avant);
 
         if (!$ok) {
-            throw new RuntimeException('Le contenu du document est illisible.');
+            throw new RuntimeException(t('ed.contenu_illisible'));
         }
 
         [$nsCorps, $nomCorps] = $format['corps'];
         $corps = $doc->getElementsByTagNameNS($nsCorps, $nomCorps)->item(0);
         if (!$corps instanceof DOMElement) {
-            throw new RuntimeException('Le corps du document est introuvable.');
+            throw new RuntimeException(t('ed.corps_absent'));
         }
 
         /*
@@ -3016,7 +3016,7 @@ final class EditionDocument
     ): DOMElement {
         $extension = (string) $image['extension'];
         if (!isset(self::IMAGES_INSERABLES[$extension])) {
-            throw new RuntimeException('ce format d’image ne s’ajoute pas à un document Word.');
+            throw new RuntimeException(t('ed.image_format'));
         }
 
         // Le nom vient du contenu : la même image ajoutée deux fois ne pèse
@@ -3064,7 +3064,7 @@ final class EditionDocument
         $fragment = self::analyser($xml);
         $noeud = $fragment?->documentElement === null ? false : $doc->importNode($fragment->documentElement, true);
         if (!$noeud instanceof DOMElement) {
-            throw new RuntimeException('l’image n’a pas pu être placée dans le document.');
+            throw new RuntimeException(t('ed.image_placee'));
         }
 
         return $noeud;
@@ -3749,7 +3749,7 @@ final class EditionDocument
         $types = $parties[self::PART_TYPES] ?? self::partie($chemin, self::PART_TYPES);
         $doc = $types === null ? null : self::analyser($types);
         if ($doc === null || $doc->documentElement === null) {
-            throw new RuntimeException('le document ne dit pas quels fichiers il contient : l’image n’a pas pu y être ajoutée.');
+            throw new RuntimeException(t('ed.image_inventaire'));
         }
 
         foreach ($doc->getElementsByTagNameNS(self::NS_TYPES, 'Default') as $entree) {
@@ -3769,7 +3769,7 @@ final class EditionDocument
 
         $ecrit = $doc->saveXML();
         if ($ecrit === false) {
-            throw new RuntimeException('l’image n’a pas pu être déclarée dans le document.');
+            throw new RuntimeException(t('ed.image_declaree'));
         }
         $parties[self::PART_TYPES] = $ecrit;
     }
@@ -3787,7 +3787,7 @@ final class EditionDocument
              . '<Relationships xmlns="' . self::NS_RELS . '"/>';
         $doc = self::analyser($rels);
         if ($doc === null || $doc->documentElement === null) {
-            throw new RuntimeException('les liens du document sont illisibles : l’image n’a pas pu y être ajoutée.');
+            throw new RuntimeException(t('ed.image_liens'));
         }
 
         $pris = [];
@@ -3814,7 +3814,7 @@ final class EditionDocument
 
         $ecrit = $doc->saveXML();
         if ($ecrit === false) {
-            throw new RuntimeException('l’image n’a pas pu être reliée au document.');
+            throw new RuntimeException(t('ed.image_reliee'));
         }
         $parties[self::PART_RELS] = $ecrit;
 

@@ -43,6 +43,12 @@ projet d'essai, effacés à la fin.
 les cours, les tâches, les cartes, le carnet des remboursements. Un compte
 d'essai, effacé à la fin.
 
+**`budget_langue.php`** — le budget et ses moyens de paiement, une
+opération, les catégories, les prévisions, l'import et les dossiers. Il
+vérifie aussi qu'un moyen de paiement part en base sous sa clé (« carte »)
+pendant que l'écran affiche son nom traduit. Un compte d'essai, effacé à la
+fin.
+
 **`scan_js.php`** — le français qui reste dans `assets/js/app.js`, en sautant
 les commentaires, les sélecteurs et les adresses.
 

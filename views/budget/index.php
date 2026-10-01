@@ -141,7 +141,7 @@ $plafondHistorique = max(array_merge([1.0], array_map(
               <span style="min-width:0;flex:1">
                 <span class="evt-ligne__titre"><?= e($op['libelle']) ?></span><br>
                 <span class="evt-ligne__meta">
-                  <?= e(libelle_categorie($op)) ?><?= $op['moyen'] ? ' · ' . e($op['moyen']) : '' ?><?php
+                  <?= e(libelle_categorie($op)) ?><?= $op['moyen'] ? ' · ' . e(BudgetController::moyenNom((string) $op['moyen'])) : '' ?><?php
                     if (($op['source'] ?? 'manuelle') === 'import') {
                         echo ' · <span title="' . e(t('bud.importee_titre')) . '">📥 ' . e(t('bud.importee')) . '</span>';
                     }
@@ -239,8 +239,8 @@ $plafondHistorique = max(array_merge([1.0], array_map(
           <label for="moyen"><?= e(t('bud.moyen')) ?></label>
           <select id="moyen" name="moyen">
             <option value=""><?= e(t('bud.non_precise')) ?></option>
-            <?php foreach ($moyens as $m): ?>
-              <option value="<?= e($m) ?>"><?= e($m) ?></option>
+            <?php foreach ($moyens as $cle => $m): ?>
+              <option value="<?= e($cle) ?>"><?= e($m) ?></option>
             <?php endforeach; ?>
           </select>
         </div>

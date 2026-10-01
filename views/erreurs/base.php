@@ -1,3 +1,16 @@
+<?php
+/*
+ * La seule page de l'application qui reste en français, et qui doit le rester.
+ *
+ * Elle paraît quand la base est injoignable. Or t() demande la langue du
+ * compte à Langue::courante(), qui la lit dans « users » — c'est-à-dire dans
+ * la base dont cette page annonce qu'on ne l'atteint pas. L'appel rouvrirait
+ * la connexion qui vient d'échouer, et l'écran resterait blanc.
+ *
+ * Qui la voit n'a de toute façon pas encore d'application qui tourne : c'est
+ * un message d'installation, pas un message d'usage.
+ */
+?>
 <!doctype html>
 <html lang="fr">
 <head>

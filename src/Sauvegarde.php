@@ -92,7 +92,7 @@ final class Sauvegarde
     {
         $utilisateur = Database::one('SELECT nom, pseudo, email, created_at FROM users WHERE id = ?', [$userId]);
         if ($utilisateur === null) {
-            throw new RuntimeException('Compte introuvable.');
+            throw new RuntimeException(t('sv.compte_introuvable'));
         }
 
         $donnees = [
@@ -109,12 +109,12 @@ final class Sauvegarde
 
         $archive = tempnam(sys_get_temp_dir(), 'sauvegarde');
         if ($archive === false) {
-            throw new RuntimeException('Impossible de préparer l\'archive.');
+            throw new RuntimeException(t('sv.preparer_archive'));
         }
 
         $zip = new ZipArchive();
         if ($zip->open($archive, ZipArchive::OVERWRITE) !== true) {
-            throw new RuntimeException('Impossible de créer l\'archive.');
+            throw new RuntimeException(t('sv.creer_archive'));
         }
 
         $zip->addFromString(self::FICHIER_DONNEES, (string) json_encode(
@@ -185,26 +185,21 @@ final class Sauvegarde
     {
         $zip = new ZipArchive();
         if ($zip->open($archive) !== true) {
-            throw new RuntimeException('Ce fichier n\'est pas une archive lisible.');
+            throw new RuntimeException(t('sv.pas_une_archive'));
         }
 
         try {
             $brut = $zip->getFromName(self::FICHIER_DONNEES);
             if ($brut === false) {
-                throw new RuntimeException(
-                    'Archive incomplète : le fichier « ' . self::FICHIER_DONNEES . ' » est absent. '
-                    . 'Est-ce bien une sauvegarde produite par l\'application ?'
-                );
+                throw new RuntimeException(t('sv.archive_incomplete', ['fichier' => self::FICHIER_DONNEES]));
             }
 
             $donnees = json_decode($brut, true);
             if (!is_array($donnees) || !isset($donnees['tables']) || !is_array($donnees['tables'])) {
-                throw new RuntimeException('Le contenu de l\'archive est illisible.');
+                throw new RuntimeException(t('sv.contenu_illisible'));
             }
             if ((int) ($donnees['format'] ?? 0) !== self::FORMAT) {
-                throw new RuntimeException(
-                    'Cette sauvegarde a été produite par une autre version de l\'application.'
-                );
+                throw new RuntimeException(t('sv.autre_version'));
             }
 
             // Vérification complète avant de toucher à quoi que ce soit.
@@ -213,7 +208,7 @@ final class Sauvegarde
                     $donnees['tables'][$table] = [];
                 }
                 if (!isset($donnees['tables'][$table]) || !is_array($donnees['tables'][$table])) {
-                    throw new RuntimeException('Table manquante dans l\'archive : ' . $table . '.');
+                    throw new RuntimeException(t('sv.table_manquante', ['table' => $table]));
                 }
             }
 
@@ -253,9 +248,7 @@ final class Sauvegarde
                 $pdo->commit();
             } catch (Throwable $e) {
                 $pdo->rollBack();
-                throw new RuntimeException(
-                    'La restauration a échoué, rien n\'a été modifié : ' . $e->getMessage()
-                );
+                throw new RuntimeException(t('sv.restauration_echec', ['raison' => $e->getMessage()]));
             }
 
             $fichiers = 0;
@@ -489,30 +482,34 @@ final class Sauvegarde
             $lignes += count($table);
         }
 
+        $qui = $donnees['compte']['nom']
+            . ((string) ($donnees['compte']['pseudo'] ?? '') !== '' ? ' (' . $donnees['compte']['pseudo'] . ')' : '')
+            . ' <' . $donnees['compte']['email'] . '>';
+
         return implode("\n", [
-            'SAUVEGARDE — ' . $donnees['application'],
+            t('sv.me.titre', ['appli' => $donnees['application']]),
             str_repeat('=', 40),
             '',
-            'Compte  : ' . $donnees['compte']['nom']
-                . ((string) ($donnees['compte']['pseudo'] ?? '') !== '' ? ' (' . $donnees['compte']['pseudo'] . ')' : '')
-                . ' <' . $donnees['compte']['email'] . '>',
-            'Exporté : ' . date('d/m/Y à H\hi'),
-            'Contenu : ' . $lignes . ' lignes de données et '
-                . count($donnees['tables']['fichiers']) . ' pièce(s) jointe(s).',
+            t('sv.me.compte', ['qui' => $qui]),
+            t('sv.me.exporte', ['date' => date_fr(date('Y-m-d H:i:s'))]),
+            t('sv.me.contenu', [
+                'lignes' => $lignes,
+                'fichiers' => count($donnees['tables']['fichiers']),
+            ]),
             '',
-            'CE QUE CONTIENT CETTE ARCHIVE',
-            '  donnees.json  toutes vos données : cours, calendrier, budget, remboursements.',
-            '  fichiers/     vos pièces jointes, sous leur nom de stockage.',
+            t('sv.me.ce_que'),
+            t('sv.me.donnees'),
+            t('sv.me.fichiers'),
             '',
-            'COMMENT LA RESTAURER',
-            '  Dans l\'application : Mon compte > Sauvegarde > Restaurer,',
-            '  puis déposez ce fichier .zip.',
-            '  Attention : la restauration remplace toutes les données du compte.',
+            t('sv.me.comment'),
+            t('sv.me.comment_1'),
+            t('sv.me.comment_2'),
+            t('sv.me.comment_3'),
             '',
-            'OÙ LA RANGER',
-            '  Ailleurs que sur l\'ordinateur ou le serveur qui héberge l\'application :',
-            '  un espace de stockage en ligne, une clé USB, un disque externe.',
-            '  Une sauvegarde rangée au même endroit que l\'original ne sert à rien.',
+            t('sv.me.ou'),
+            t('sv.me.ou_1'),
+            t('sv.me.ou_2'),
+            t('sv.me.ou_3'),
             '',
         ]);
     }

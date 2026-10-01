@@ -233,8 +233,8 @@ final class RemboursementsController
 
         Database::run(
             "INSERT INTO operations (user_id, categorie_id, libelle, montant, sens, date_operation, moyen)
-             VALUES (?, ?, ?, ?, 'recette', ?, ?)",
-            [$userId, $categorieId, $intitule, number_format($montant, 2, '.', ''), $date, t('remb.virement')]
+             VALUES (?, ?, ?, ?, 'recette', ?, 'virement')",
+            [$userId, $categorieId, $intitule, number_format($montant, 2, '.', ''), $date]
         );
         $operationId = Database::dernierId();
 

@@ -12,7 +12,27 @@ final class BudgetController
     public const ICONES = ['🛒', '🚌', '🏠', '🎉', '✏️', '💊', '📱', '💶', '🍽️', '👕',
         '🎓', '💼', '👪', '💰', '🎁', '⚽', '📚', '☕', '🚗', '✈️', '🐾', '🔧'];
 
-    public const MOYENS = ['Carte', 'Espèces', 'Virement', 'Prélèvement', 'Chèque'];
+    /**
+     * Comment on a payé. Ce sont des clés, pas des libellés : la valeur part
+     * en base et doit rester la même quelle que soit la langue du compte.
+     */
+    public const MOYENS = ['carte', 'especes', 'virement', 'prelevement', 'cheque'];
+
+    /** Le nom d'un moyen de paiement. Un ancien libellé se rend tel quel. */
+    public static function moyenNom(string $moyen): string
+    {
+        return in_array($moyen, self::MOYENS, true) ? t('bud.moyen.' . $moyen) : $moyen;
+    }
+
+    /**
+     * Les moyens de paiement, clé => nom, pour un menu déroulant.
+     *
+     * @return array<string, string>
+     */
+    public static function moyens(): array
+    {
+        return array_combine(self::MOYENS, array_map(self::moyenNom(...), self::MOYENS));
+    }
 
     // --- Vue principale : le mois -------------------------------------------
 
@@ -59,7 +79,7 @@ final class BudgetController
             'categorieId' => $categorieId,
             'sens'        => $sens,
             'origine'     => $origine,
-            'moyens'      => self::MOYENS,
+            'moyens'      => self::moyens(),
             'personnes'   => RemboursementsController::personnes($userId),
             'historique'  => $this->douzeDerniersMois($userId, $mois),
         ], 'Budget — ' . nom_mois((int) $mois->format('n')) . ' ' . $mois->format('Y'));
@@ -105,11 +125,10 @@ final class BudgetController
         // formulaire refusé ne doit pas y laisser de trace.
         RemboursementsController::retenirPersonne($userId, $donnees['rembourse_par']);
 
-        Session::flash('succes', sprintf(
-            '%s de %s enregistrée.',
-            $donnees['sens'] === 'recette' ? 'Recette' : 'Dépense',
-            montant_fr($donnees['montant'])
-        ));
+        Session::flash('succes', t('bud.fl.enregistree', [
+            'quoi' => t($donnees['sens'] === 'recette' ? 'bud.fl.recette' : 'bud.fl.depense'),
+            'montant' => montant_fr($donnees['montant']),
+        ]));
         redirect('budget', ['mois' => substr($donnees['date_operation'], 0, 7)]);
     }
 
@@ -126,10 +145,10 @@ final class BudgetController
         Vue::afficher('budget/formulaire', [
             'operation'  => $operation,
             'categories' => $this->categories($userId),
-            'moyens'     => self::MOYENS,
+            'moyens'     => self::moyens(),
             'personnes'  => RemboursementsController::personnes($userId),
             'statuts'    => RemboursementsController::statuts(),
-        ], "Modifier l'opération");
+        ], t('titre.bud_modifier'));
     }
 
     public function modifier(int $id): void
@@ -173,7 +192,7 @@ final class BudgetController
 
         RemboursementsController::retenirPersonne($userId, $donnees['rembourse_par']);
 
-        Session::flash('succes', 'Opération mise à jour.');
+        Session::flash('succes', t('bud.fl.operation_maj'));
         redirect('budget', ['mois' => substr($donnees['date_operation'], 0, 7)]);
     }
 
@@ -192,7 +211,7 @@ final class BudgetController
         }
 
         Database::run('DELETE FROM operations WHERE id = ? AND user_id = ?', [$id, $userId]);
-        Session::flash('succes', 'Opération « ' . $operation['libelle'] . ' » supprimée.');
+        Session::flash('succes', t('bud.fl.operation_supprimee', ['libelle' => (string) $operation['libelle']]));
         redirect('budget', ['mois' => substr((string) $operation['date_operation'], 0, 7)]);
     }
 
@@ -223,7 +242,7 @@ final class BudgetController
                 [$userId]
             ),
             'suggestions' => SuggestionBudget::calculer($userId),
-        ], 'Catégories de budget');
+        ], t('titre.bud_categories'));
     }
 
     public function categorieCreer(): void
@@ -236,14 +255,14 @@ final class BudgetController
         $sens = post('sens') === 'recette' ? 'recette' : 'depense';
 
         if ($nom === '') {
-            Session::flash('erreur', 'Le nom de la catégorie est obligatoire.');
+            Session::flash('erreur', t('bud.fl.nom_categorie'));
             redirect('budget/categories');
         }
         if (Database::valeur(
             'SELECT id FROM categories_budget WHERE user_id = ? AND nom = ? AND sens = ?',
             [$userId, $nom, $sens]
         ) !== null) {
-            Session::flash('erreur', 'Vous avez déjà une catégorie « ' . $nom . ' » de ce type.');
+            Session::flash('erreur', t('bud.fl.categorie_existe', ['nom' => $nom]));
             redirect('budget/categories');
         }
 
@@ -266,7 +285,7 @@ final class BudgetController
             ]
         );
 
-        Session::flash('succes', 'Catégorie « ' . $nom . ' » créée.');
+        Session::flash('succes', t('bud.fl.categorie_creee', ['nom' => $nom]));
         redirect('budget/categories');
     }
 
@@ -286,7 +305,7 @@ final class BudgetController
 
         $nom = mb_substr(post('nom'), 0, 60);
         if ($nom === '') {
-            Session::flash('erreur', 'Le nom de la catégorie est obligatoire.');
+            Session::flash('erreur', t('bud.fl.nom_categorie'));
             redirect('budget/categories');
         }
 
@@ -295,7 +314,7 @@ final class BudgetController
             [$userId, $nom, $categorie['sens'], $id]
         );
         if ($doublon !== null) {
-            Session::flash('erreur', 'Une autre catégorie de ce type porte déjà ce nom.');
+            Session::flash('erreur', t('bud.fl.autre_categorie'));
             redirect('budget/categories');
         }
 
@@ -312,7 +331,7 @@ final class BudgetController
             ]
         );
 
-        Session::flash('succes', 'Catégorie mise à jour.');
+        Session::flash('succes', t('bud.fl.categorie_maj'));
         redirect('budget/categories');
     }
 
@@ -332,7 +351,7 @@ final class BudgetController
             ));
 
         if ($retenues === []) {
-            Session::flash('erreur', 'Aucune proposition disponible pour cette catégorie.');
+            Session::flash('erreur', t('bud.fl.aucune_proposition'));
             redirect('budget/categories');
         }
 
@@ -346,8 +365,11 @@ final class BudgetController
         }
 
         Session::flash('succes', $nb === 1
-            ? 'Plafond de « ' . $retenues[0]['nom'] . ' » fixé à ' . montant_fr($retenues[0]['conseille']) . '.'
-            : $nb . ' plafonds fixés à partir des propositions.');
+            ? t('bud.fl.plafond_fixe', [
+                'nom' => (string) $retenues[0]['nom'],
+                'montant' => montant_fr($retenues[0]['conseille']),
+            ])
+            : t('bud.fl.plafonds_fixes', ['n' => $nb]));
         redirect('budget/categories');
     }
 
@@ -368,14 +390,8 @@ final class BudgetController
         Database::run('DELETE FROM categories_budget WHERE id = ? AND user_id = ?', [$id, $userId]);
 
         Session::flash('succes', $nb === 0
-            ? 'Catégorie « ' . $categorie['nom'] . ' » supprimée.'
-            : sprintf(
-                'Catégorie « %s » supprimée. %d opération%s conservée%s, désormais sans catégorie.',
-                $categorie['nom'],
-                $nb,
-                $nb > 1 ? 's' : '',
-                $nb > 1 ? 's' : ''
-            ));
+            ? t('bud.fl.categorie_supprimee', ['nom' => (string) $categorie['nom']])
+            : tn('bud.fl.categorie_supprimee_ops', $nb, ['nom' => (string) $categorie['nom']]));
         redirect('budget/categories');
     }
 
@@ -501,23 +517,23 @@ final class BudgetController
     {
         $libelle = post('libelle');
         if ($libelle === '') {
-            return 'Indiquez à quoi correspond cette opération.';
+            return t('bud.fl.libelle_manquant');
         }
 
         $montant = montant_depuis_saisie(post('montant'));
         if ($montant === null) {
-            return 'Le montant est invalide. Exemples acceptés : 12,50 ou 12.50.';
+            return t('bud.fl.montant_invalide');
         }
         if ($montant <= 0) {
-            return 'Le montant doit être supérieur à zéro.';
+            return t('bud.fl.montant_zero');
         }
         if ($montant > 99999999.99) {
-            return 'Le montant est trop élevé.';
+            return t('bud.fl.montant_eleve');
         }
 
         $date = post('date_operation');
         if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) !== 1 || strtotime($date) === false) {
-            return 'La date est invalide.';
+            return t('bud.fl.date_invalide');
         }
 
         $sens = post('sens') === 'recette' ? 'recette' : 'depense';
@@ -552,8 +568,7 @@ final class BudgetController
             $saisiePart = montant_depuis_saisie(post('part_rembourser'));
             if ($saisiePart !== null) {
                 if ($saisiePart <= 0 || $saisiePart > $montant + 0.001) {
-                    return 'La part à se faire rembourser doit être comprise entre 0 et '
-                        . montant_fr($montant) . '.';
+                    return t('bud.fl.part_invalide', ['montant' => montant_fr($montant)]);
                 }
                 // Réclamer exactement ce qui a été payé revient à ne rien préciser.
                 $part = abs($saisiePart - $montant) < 0.005

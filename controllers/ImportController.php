@@ -26,7 +26,7 @@ final class ImportController
                  FROM operations WHERE user_id = ? AND source = 'import'",
                 [Auth::id()]
             ),
-        ], 'Importer un relevé');
+        ], t('titre.imp_releve'));
     }
 
     /** Première étape : on lit le fichier et on montre ce qu'on a compris. */
@@ -38,22 +38,21 @@ final class ImportController
 
         $fichier = $_FILES['releve'] ?? null;
         if (!is_array($fichier) || ($fichier['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) {
-            Session::flash('erreur', 'Choisissez un fichier à importer.');
+            Session::flash('erreur', t('imp.fl.choisir'));
             redirect('budget/import');
         }
         if ($fichier['error'] !== UPLOAD_ERR_OK) {
-            Session::flash('erreur', 'Le transfert du fichier a échoué. Vérifiez sa taille.');
+            Session::flash('erreur', t('imp.fl.transfert'));
             redirect('budget/import');
         }
         if ($fichier['size'] > self::TAILLE_MAX) {
-            Session::flash('erreur', 'Fichier trop volumineux (maximum ' . taille_lisible(self::TAILLE_MAX) . ').');
+            Session::flash('erreur', t('imp.fl.trop_gros', ['taille' => taille_lisible(self::TAILLE_MAX)]));
             redirect('budget/import');
         }
 
         $extension = strtolower(pathinfo((string) $fichier['name'], PATHINFO_EXTENSION));
         if (!in_array($extension, self::EXTENSIONS, true)) {
-            Session::flash('erreur',
-                'Format non reconnu. Déposez un relevé en CSV, ou un ancien classeur au format .xlsx.');
+            Session::flash('erreur', t('imp.fl.format'));
             redirect('budget/import');
         }
 
@@ -63,14 +62,13 @@ final class ImportController
 
         $contenu = file_get_contents((string) $fichier['tmp_name']);
         if ($contenu === false || trim($contenu) === '') {
-            Session::flash('erreur', 'Le fichier est vide ou illisible.');
+            Session::flash('erreur', t('imp.fl.vide'));
             redirect('budget/import');
         }
 
         $analyse = ReleveCsv::analyser($contenu);
         if ($analyse['lignes'] === []) {
-            Session::flash('erreur',
-                'Aucune ligne exploitable trouvée. Le fichier est-il bien un relevé au format CSV ?');
+            Session::flash('erreur', t('imp.fl.aucune_ligne'));
             redirect('budget/import');
         }
 
@@ -101,9 +99,7 @@ final class ImportController
         }
 
         if ($analyse['operations'] === []) {
-            Session::flash('erreur',
-                'Aucune dépense reconnue. La feuille doit comporter une date, un libellé et un montant '
-                . 'dans les trois premières colonnes.');
+            Session::flash('erreur', t('imp.fl.aucune_depense'));
             redirect('budget/import');
         }
 
@@ -181,7 +177,7 @@ final class ImportController
             'ignorees'   => (int) $releve['ignorees'],
             'doublons'   => count(array_filter($lignes, static fn (array $l): bool => $l['doublon'])),
             'personnes'  => RemboursementsController::personnes($userId),
-        ], 'Aperçu du classeur');
+        ], t('titre.imp_classeur'));
         exit;
     }
 
@@ -217,7 +213,7 @@ final class ImportController
 
         $releve = $_SESSION['_import'] ?? null;
         if (!is_array($releve)) {
-            Session::flash('info', 'Commencez par déposer un fichier.');
+            Session::flash('info', t('imp.fl.deposer_dabord'));
             redirect('budget/import');
         }
 
@@ -270,7 +266,7 @@ final class ImportController
             'valides'    => count(array_filter($lignes, static fn (array $l): bool => $l['valide'] && !$l['doublon'])),
             'doublons'   => count(array_filter($lignes, static fn (array $l): bool => $l['doublon'])),
             'invalides'  => count(array_filter($lignes, static fn (array $l): bool => !$l['valide'])),
-        ], 'Aperçu de l\'import');
+        ], t('titre.imp_apercu'));
     }
 
     /** Troisième étape : création des opérations retenues. */
@@ -282,13 +278,13 @@ final class ImportController
 
         $releve = $_SESSION['_import'] ?? null;
         if (!is_array($releve)) {
-            Session::flash('erreur', 'La session d\'import a expiré. Redéposez le fichier.');
+            Session::flash('erreur', t('imp.fl.expiree'));
             redirect('budget/import');
         }
 
         $retenues = array_map('intval', (array) ($_POST['ligne'] ?? []));
         if ($retenues === []) {
-            Session::flash('erreur', 'Aucune ligne sélectionnée.');
+            Session::flash('erreur', t('imp.fl.aucune_selection'));
             redirect('budget/import/apercu');
         }
 
@@ -347,14 +343,9 @@ final class ImportController
 
         unset($_SESSION['_import']);
 
-        Session::flash('succes', sprintf(
-            '%d opération%s importée%s.%s',
-            $importees,
-            $importees > 1 ? 's' : '',
-            $importees > 1 ? 's' : '',
-            $ignorees > 0 ? ' ' . $ignorees . ' ligne' . ($ignorees > 1 ? 's ignorées' : ' ignorée')
-                . ' (doublon ou données incomplètes).' : ''
-        ));
+        Session::flash('succes', tn('imp.fl.importees', $importees, [
+            'suite' => $ignorees > 0 ? tn('imp.fl.ignorees', $ignorees) : '',
+        ]));
 
         // On atterrit sur le mois de la première opération importée.
         $premiere = null;
@@ -444,14 +435,10 @@ final class ImportController
             RemboursementsController::retenirPersonne($userId, $personne);
         }
 
-        Session::flash('succes', sprintf(
-            '%d dépense%s reprise%s du classeur.%s%s',
-            $importees,
-            $importees > 1 ? 's' : '',
-            $importees > 1 ? 's' : '',
-            $creees !== [] ? ' ' . count($creees) . ' catégorie' . (count($creees) > 1 ? 's créées' : ' créée') . '.' : '',
-            $ignorees > 0 ? ' ' . $ignorees . ' ligne' . ($ignorees > 1 ? 's ignorées' : ' ignorée') . '.' : ''
-        ));
+        Session::flash('succes', tn('imp.fl.reprises', $importees, [
+            'cat' => $creees !== [] ? tn('imp.fl.categories_creees', count($creees)) : '',
+            'ign' => $ignorees > 0 ? tn('imp.fl.ignorees_simples', $ignorees) : '',
+        ]));
         redirect('budget/remboursements');
     }
 
@@ -482,7 +469,7 @@ final class ImportController
         Auth::exiger();
         Session::verifierCsrf();
         unset($_SESSION['_import']);
-        Session::flash('info', 'Import abandonné. Rien n\'a été enregistré.');
+        Session::flash('info', t('imp.fl.abandonne'));
         redirect('budget/import');
     }
 

@@ -43,8 +43,11 @@ final class PrevisionsController
                 'SELECT * FROM categories_budget WHERE user_id = ? ORDER BY sens DESC, position, nom',
                 [$userId]
             ),
-            'moyens'        => BudgetController::MOYENS,
-        ], 'Prévisions — ' . nom_mois((int) $mois->format('n')) . ' ' . $mois->format('Y'));
+            'moyens'        => BudgetController::moyens(),
+        ], t('titre.prev_mois', [
+            'mois' => nom_mois((int) $mois->format('n')),
+            'annee' => $mois->format('Y'),
+        ]));
     }
 
     // --- Solde de départ -----------------------------------------------------
@@ -63,7 +66,7 @@ final class PrevisionsController
 
         $montant = montant_depuis_saisie(post('montant'));
         if ($montant === null) {
-            Session::flash('erreur', 'Le solde est invalide. Exemples acceptés : 1250,40 ou -80.');
+            Session::flash('erreur', t('prev.fl.solde_invalide'));
             redirect('budget/previsions', ['mois' => $periode]);
         }
 
@@ -73,7 +76,7 @@ final class PrevisionsController
             [$userId, $periode, number_format($montant, 2, '.', ''), mb_substr(post('note'), 0, 160) ?: null]
         );
 
-        Session::flash('succes', 'Solde de départ fixé à ' . montant_fr($montant) . '.');
+        Session::flash('succes', t('prev.fl.solde_fixe', ['montant' => montant_fr($montant)]));
         redirect('budget/previsions', ['mois' => $periode]);
     }
 
@@ -89,7 +92,7 @@ final class PrevisionsController
         }
 
         Database::run('DELETE FROM soldes_saisis WHERE user_id = ? AND periode = ?', [$userId, $periode]);
-        Session::flash('succes', 'Solde saisi supprimé : ce mois repart du solde reporté.');
+        Session::flash('succes', t('prev.fl.solde_supprime'));
         redirect('budget/previsions', ['mois' => $periode]);
     }
 
@@ -121,12 +124,11 @@ final class PrevisionsController
             ]
         );
 
-        Session::flash('succes', sprintf(
-            '%s « %s » de %s ajoutée au prévisionnel.',
-            $donnees['sens'] === 'recette' ? 'Recette régulière' : 'Charge fixe',
-            $donnees['libelle'],
-            montant_fr($donnees['montant'])
-        ));
+        Session::flash('succes', t('prev.fl.ajoutee', [
+            'quoi' => t($donnees['sens'] === 'recette' ? 'prev.fl.recette_reguliere' : 'prev.fl.charge_fixe'),
+            'libelle' => (string) $donnees['libelle'],
+            'montant' => montant_fr($donnees['montant']),
+        ]));
         redirect('budget/previsions', ['mois' => $this->periodeValide(post('periode')) ?? date('Y-m')]);
     }
 
@@ -163,7 +165,7 @@ final class PrevisionsController
             ]
         );
 
-        Session::flash('succes', 'Ligne mise à jour.');
+        Session::flash('succes', t('prev.fl.ligne_maj'));
         redirect('budget/previsions', ['mois' => $this->periodeValide(post('periode')) ?? date('Y-m')]);
     }
 
@@ -180,7 +182,7 @@ final class PrevisionsController
 
         // Les opérations déjà créées à partir d'elle sont conservées.
         Database::run('DELETE FROM recurrences WHERE id = ? AND user_id = ?', [$id, $userId]);
-        Session::flash('succes', '« ' . $rec['libelle'] . ' » retirée du prévisionnel. Les opérations déjà saisies sont conservées.');
+        Session::flash('succes', t('prev.fl.retiree', ['libelle' => (string) $rec['libelle']]));
         redirect('budget/previsions', ['mois' => $this->periodeValide(post('periode')) ?? date('Y-m')]);
     }
 

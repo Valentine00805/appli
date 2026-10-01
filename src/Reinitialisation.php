@@ -50,8 +50,8 @@ final class Reinitialisation
         $identifiant = trim($identifiant);
         $ip = LimiteurConnexion::adresse();
         $compte = $identifiant === '' ? null : (str_contains($identifiant, '@')
-            ? Database::one('SELECT id, email, pseudo, nom FROM users WHERE email = ?', [mb_strtolower($identifiant)])
-            : Database::one('SELECT id, email, pseudo, nom FROM users WHERE pseudo = ?', [$identifiant]));
+            ? Database::one('SELECT id, email, pseudo, nom, langue FROM users WHERE email = ?', [mb_strtolower($identifiant)])
+            : Database::one('SELECT id, email, pseudo, nom, langue FROM users WHERE pseudo = ?', [$identifiant]));
 
         $parAdresse = (int) Database::valeur(
             'SELECT COUNT(*) FROM reinitialisations_mdp WHERE ip = ? AND cree_le >= UTC_TIMESTAMP() - INTERVAL 1 HOUR', [$ip]
@@ -82,22 +82,34 @@ final class Reinitialisation
 
         $lien = $site . url('mot-de-passe/nouveau', ['jeton' => $jeton]);
         $nomApp = (string) Config::get('app', 'nom');
-        $salut = 'Bonjour ' . ((string) ($compte['pseudo'] ?: $compte['nom'])) . ',';
+        /*
+         * Qui demande n'est pas connecté : la langue de la page est celle du
+         * visiteur, pas celle du compte. On écrit l'e-mail dans la sienne.
+         */
+        $avant = Langue::courante();
+        Langue::imposer((string) ($compte['langue'] ?? Langue::PAR_DEFAUT));
+
+        $salut = t('mdp.courriel.salut', ['qui' => (string) ($compte['pseudo'] ?: $compte['nom'])]);
+        $demande = t('mdp.courriel.demande', ['appli' => $nomApp]);
+        $pasVous = t('mdp.courriel.pas_vous');
         $texte = $salut . "\n\n"
-            . "Vous avez demandé à réinitialiser votre mot de passe sur $nomApp.\n"
-            . "Pour en choisir un nouveau, ouvrez ce lien (valable " . self::DUREE_MINUTES . " minutes, une seule fois) :\n\n"
+            . $demande . "\n"
+            . t('mdp.courriel.ouvrez', ['min' => self::DUREE_MINUTES]) . "\n\n"
             . $lien . "\n\n"
-            . "Si vous n’êtes pas à l’origine de cette demande, ignorez cet e-mail : votre mot de passe ne change pas.\n";
+            . $pasVous . "\n";
         $html = '<div style="font-family:Arial,sans-serif;font-size:15px;color:#1c2033;max-width:520px">'
             . '<p>' . e($salut) . '</p>'
-            . '<p>Vous avez demandé à réinitialiser votre mot de passe sur <strong>' . e($nomApp) . '</strong>.</p>'
-            . '<p><a href="' . e($lien) . '" style="display:inline-block;padding:10px 18px;background:#4f46e5;color:#fff;border-radius:8px;text-decoration:none;font-weight:bold">Choisir un nouveau mot de passe</a></p>'
-            . '<p style="color:#5b6177;font-size:13px">Ce lien vaut ' . self::DUREE_MINUTES . ' minutes, une seule fois. S’il ne s’ouvre pas, copiez cette adresse :<br>'
+            . '<p>' . e($demande) . '</p>'
+            . '<p><a href="' . e($lien) . '" style="display:inline-block;padding:10px 18px;background:#4f46e5;color:#fff;border-radius:8px;text-decoration:none;font-weight:bold">'
+            . e(t('mdp.courriel.bouton')) . '</a></p>'
+            . '<p style="color:#5b6177;font-size:13px">' . e(t('mdp.courriel.vaut', ['min' => self::DUREE_MINUTES])) . '<br>'
             . '<span style="word-break:break-all">' . e($lien) . '</span></p>'
-            . '<p style="color:#5b6177;font-size:13px">Si vous n’êtes pas à l’origine de cette demande, ignorez cet e-mail : votre mot de passe ne change pas.</p>'
+            . '<p style="color:#5b6177;font-size:13px">' . e($pasVous) . '</p>'
             . '</div>';
+        $sujet = t('mdp.courriel.sujet', ['appli' => $nomApp]);
+        Langue::imposer($avant);
 
-        if (!Courriel::envoyer((string) $compte['email'], 'Réinitialiser votre mot de passe — ' . $nomApp, $texte, $html)) {
+        if (!Courriel::envoyer((string) $compte['email'], $sujet, $texte, $html)) {
             error_log('Réinitialisation : l’e-mail n’a pas pu partir pour le compte ' . (int) $compte['id'] . '.');
         }
     }
@@ -126,17 +138,17 @@ final class Reinitialisation
     {
         $demande = self::trouver($jeton);
         if ($demande === null) {
-            return 'Ce lien n’est plus valable. Faites une nouvelle demande.';
+            return t('mdp.lien_perime');
         }
         if (strlen($nouveau) < 8) {
-            return 'Le mot de passe doit faire au moins 8 caractères.';
+            return t('auth.fl.mdp_court');
         }
         if ($nouveau !== $confirmation) {
-            return 'La confirmation ne correspond pas.';
+            return t('auth.fl.confirmation');
         }
         // Réservé d'abord : deux envois simultanés du même lien n'aboutissent pas deux fois.
         if (Database::run('UPDATE reinitialisations_mdp SET utilise_le = UTC_TIMESTAMP() WHERE id = ? AND utilise_le IS NULL', [(int) $demande['id']])->rowCount() === 0) {
-            return 'Ce lien n’est plus valable. Faites une nouvelle demande.';
+            return t('mdp.lien_perime');
         }
         $userId = (int) $demande['user_id'];
         Database::run('UPDATE users SET password_hash = ? WHERE id = ?', [password_hash($nouveau, PASSWORD_DEFAULT), $userId]);

@@ -91,8 +91,8 @@ $retour = url('budget', ['mois' => substr((string) $operation['date_operation'],
           <label for="moyen"><?= e(t('bud.moyen')) ?></label>
           <select id="moyen" name="moyen">
             <option value=""><?= e(t('bud.non_precise')) ?></option>
-            <?php foreach ($moyens as $m): ?>
-              <option value="<?= e($m) ?>"<?= $operation['moyen'] === $m ? ' selected' : '' ?>><?= e($m) ?></option>
+            <?php foreach ($moyens as $cle => $m): ?>
+              <option value="<?= e($cle) ?>"<?= $operation['moyen'] === $cle ? ' selected' : '' ?>><?= e($m) ?></option>
             <?php endforeach; ?>
           </select>
         </div>
