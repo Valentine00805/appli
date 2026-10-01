@@ -61,7 +61,10 @@ final class RemboursementsController
                  WHERE user_id = ? AND a_rembourser = 1 AND statut_remb = 'a_reclamer'",
                 [$userId]
             ),
-        ], 'Remboursements — ' . nom_mois((int) $mois->format('n')) . ' ' . $mois->format('Y'));
+        ], t('titre.remb_mois', [
+            'mois' => nom_mois((int) $mois->format('n')),
+            'annee' => $mois->format('Y'),
+        ]));
     }
 
     /**
@@ -81,7 +84,7 @@ final class RemboursementsController
 
         $lignes = $this->lignes($userId, $debut, $fin, $portee['noms'], $statut);
         if ($lignes === []) {
-            Session::flash('erreur', 'Rien à exporter pour ce mois.');
+            Session::flash('erreur', t('remb.xl.rien'));
             redirect('budget/remboursements', $this->parametresRetour());
         }
 
@@ -89,21 +92,22 @@ final class RemboursementsController
         $totaux = $this->totaux($lignes);
         $intitulePeriode = strtolower(nom_mois((int) $mois->format('n'))) . ' ' . $mois->format('Y');
 
-        $classeur = new ClasseurXlsx('Remboursements');
+        $classeur = new ClasseurXlsx(t('remb.xl.classeur'));
         $classeur->largeurs([13, 44, 14, 14, 15]);
 
-        $titre = $personne !== '' ? 'Compte pour ' . $personne : 'Dépenses à rembourser';
-        $classeur->ligne([['valeur' => $titre . ' — ' . $intitulePeriode, 'style' => ClasseurXlsx::TITRE]]);
-        $classeur->ligne([['valeur' => 'Édité le ' . date('d/m/Y'), 'style' => ClasseurXlsx::DISCRET]]);
+        $titre = $personne !== '' ? t('remb.xl.compte_pour', ['qui' => $personne]) : t('remb.xl.a_rembourser');
+        $classeur->ligne([['valeur' => t('remb.xl.titre', ['titre' => $titre, 'periode' => $intitulePeriode]),
+            'style' => ClasseurXlsx::TITRE]]);
+        $classeur->ligne([['valeur' => t('remb.xl.edite_le', ['date' => date('d/m/Y')]), 'style' => ClasseurXlsx::DISCRET]]);
         $classeur->ligne();
 
         foreach ($rubriques as $rubrique) {
             $classeur->ligne([
-                ['valeur' => 'Date',     'style' => ClasseurXlsx::ENTETE],
-                ['valeur' => $rubrique['nom'], 'style' => ClasseurXlsx::ENTETE],
-                ['valeur' => 'Payé',     'style' => ClasseurXlsx::ENTETE],
-                ['valeur' => 'Réclamé',  'style' => ClasseurXlsx::ENTETE],
-                ['valeur' => 'Statut',   'style' => ClasseurXlsx::ENTETE],
+                ['valeur' => t('remb.xl.date'),    'style' => ClasseurXlsx::ENTETE],
+                ['valeur' => $rubrique['nom'],     'style' => ClasseurXlsx::ENTETE],
+                ['valeur' => t('remb.xl.paye'),    'style' => ClasseurXlsx::ENTETE],
+                ['valeur' => t('remb.xl.reclame'), 'style' => ClasseurXlsx::ENTETE],
+                ['valeur' => t('remb.xl.statut'),  'style' => ClasseurXlsx::ENTETE],
             ]);
 
             foreach ($rubrique['lignes'] as $l) {
@@ -121,7 +125,7 @@ final class RemboursementsController
 
             $classeur->ligne([
                 ['valeur' => '', 'style' => ClasseurXlsx::TOTAL],
-                ['valeur' => 'Total ' . mb_strtolower($rubrique['nom']), 'style' => ClasseurXlsx::TOTAL],
+                ['valeur' => t('remb.xl.total_de', ['rubrique' => mb_strtolower($rubrique['nom'])]), 'style' => ClasseurXlsx::TOTAL],
                 ['valeur' => $rubrique['paye'], 'type' => 'nombre', 'style' => ClasseurXlsx::TOTAL_MONTANT],
                 ['valeur' => $rubrique['total'], 'type' => 'nombre', 'style' => ClasseurXlsx::TOTAL_MONTANT],
                 ['valeur' => '', 'style' => ClasseurXlsx::TOTAL],
@@ -131,7 +135,7 @@ final class RemboursementsController
 
         $classeur->ligne([
             ['valeur' => '', 'style' => ClasseurXlsx::TOTAL],
-            ['valeur' => 'TOTAL ' . mb_strtoupper($intitulePeriode), 'style' => ClasseurXlsx::TOTAL],
+            ['valeur' => t('remb.xl.total_periode', ['periode' => mb_strtoupper($intitulePeriode)]), 'style' => ClasseurXlsx::TOTAL],
             ['valeur' => $totaux['paye'], 'type' => 'nombre', 'style' => ClasseurXlsx::TOTAL_MONTANT],
             ['valeur' => $totaux['reclame'], 'type' => 'nombre', 'style' => ClasseurXlsx::TOTAL_MONTANT],
             ['valeur' => '', 'style' => ClasseurXlsx::TOTAL],
@@ -141,7 +145,7 @@ final class RemboursementsController
             $classeur->ligne();
             $classeur->ligne([
                 '',
-                ['valeur' => 'Pas dans le total', 'style' => ClasseurXlsx::GRAS],
+                ['valeur' => t('remb.xl.hors_total'), 'style' => ClasseurXlsx::GRAS],
                 '',
                 ['valeur' => $totaux['hors_total'], 'type' => 'nombre', 'style' => ClasseurXlsx::MONTANT_GRAS],
             ]);
@@ -151,20 +155,22 @@ final class RemboursementsController
             $classeur->ligne();
             $classeur->ligne([
                 '',
-                ['valeur' => 'Dont déjà remboursé', 'style' => ClasseurXlsx::DISCRET],
+                ['valeur' => t('remb.xl.deja_rembourse'), 'style' => ClasseurXlsx::DISCRET],
                 '',
                 ['valeur' => $totaux['regle'], 'type' => 'nombre', 'style' => ClasseurXlsx::MONTANT],
             ]);
             $classeur->ligne([
                 '',
-                ['valeur' => 'Reste à rembourser', 'style' => ClasseurXlsx::GRAS],
+                ['valeur' => t('remb.xl.reste'), 'style' => ClasseurXlsx::GRAS],
                 '',
                 ['valeur' => $totaux['attente'], 'type' => 'nombre', 'style' => ClasseurXlsx::MONTANT_GRAS],
             ]);
         }
 
-        $nom = ($personne !== '' ? 'Compte pour ' . $personne : 'Remboursements')
-            . ' ' . $intitulePeriode . '.xlsx';
+        $nom = t('remb.xl.nom_fichier', [
+            'titre' => $personne !== '' ? t('remb.xl.compte_pour', ['qui' => $personne]) : t('remb.xl.classeur'),
+            'periode' => $intitulePeriode,
+        ]);
         $classeur->telecharger($nom);
     }
 
@@ -181,7 +187,7 @@ final class RemboursementsController
 
         $periode = $this->periodeValide(post('periode'));
         if ($periode === null) {
-            Session::flash('erreur', 'Mois invalide.');
+            Session::flash('erreur', t('remb.mois_invalide'));
             redirect('budget/remboursements');
         }
 
@@ -189,13 +195,13 @@ final class RemboursementsController
         $retour = array_filter(['mois' => $periode, 'personne' => $personne ?: null]);
 
         if ($this->reglementDuMois($userId, $periode, $personne) !== null) {
-            Session::flash('info', 'Ce mois était déjà réglé.');
+            Session::flash('info', t('remb.deja_regle'));
             redirect('budget/remboursements', $retour);
         }
 
         $lignes = $this->lignesAReclamer($userId, $periode, $personne);
         if ($lignes === []) {
-            Session::flash('erreur', 'Aucune dépense à réclamer pour ce mois.');
+            Session::flash('erreur', t('remb.rien_a_reclamer'));
             redirect('budget/remboursements', $retour);
         }
 
@@ -219,17 +225,16 @@ final class RemboursementsController
             $categorieId = null;
         }
 
-        $intitule = sprintf(
-            'Remboursement %s %s%s',
-            strtolower(nom_mois((int) substr($periode, 5, 2))),
-            substr($periode, 0, 4),
-            $personne !== '' ? ' — ' . $personne : ''
-        );
+        $intitule = t('remb.intitule', [
+            'mois' => mb_strtolower(nom_mois((int) substr($periode, 5, 2))),
+            'annee' => substr($periode, 0, 4),
+            'qui' => $personne !== '' ? t('remb.intitule_qui', ['qui' => $personne]) : '',
+        ]);
 
         Database::run(
             "INSERT INTO operations (user_id, categorie_id, libelle, montant, sens, date_operation, moyen)
-             VALUES (?, ?, ?, ?, 'recette', ?, 'Virement')",
-            [$userId, $categorieId, $intitule, number_format($montant, 2, '.', ''), $date]
+             VALUES (?, ?, ?, ?, 'recette', ?, ?)",
+            [$userId, $categorieId, $intitule, number_format($montant, 2, '.', ''), $date, t('remb.virement')]
         );
         $operationId = Database::dernierId();
 
@@ -254,12 +259,11 @@ final class RemboursementsController
             ]
         );
 
-        Session::flash('succes', sprintf(
-            '%s réglés pour %s. La recette a été ajoutée aux opérations du %s.',
-            montant_fr($montant),
-            strtolower(nom_mois((int) substr($periode, 5, 2))) . ' ' . substr($periode, 0, 4),
-            date_fr($date . ' 00:00:00', false)
-        ));
+        Session::flash('succes', t('remb.regles', [
+            'montant' => montant_fr($montant),
+            'periode' => mb_strtolower(nom_mois((int) substr($periode, 5, 2))) . ' ' . substr($periode, 0, 4),
+            'date' => date_fr($date . ' 00:00:00', false),
+        ]));
         redirect('budget/remboursements', $retour);
     }
 
@@ -297,7 +301,7 @@ final class RemboursementsController
 
         Database::run('DELETE FROM reglements WHERE id = ? AND user_id = ?', [$id, $userId]);
 
-        Session::flash('succes', 'Règlement annulé : les dépenses sont de nouveau à réclamer.');
+        Session::flash('succes', t('remb.reglement_annule'));
         redirect('budget/remboursements', array_filter([
             'mois'     => $reglement['periode'],
             'personne' => $reglement['personne'],
@@ -362,9 +366,8 @@ final class RemboursementsController
             [$nouvel, $nouvel, $nouvel, $this->personneParDefaut($userId), $id, $userId]
         );
 
-        Session::flash('succes', $nouvel === 1
-            ? '« ' . $operation['libelle'] .' » ajoutée aux remboursements.'
-            : '« ' . $operation['libelle'] . ' » retirée des remboursements.');
+        Session::flash('succes', t($nouvel === 1 ? 'remb.ligne_ajoutee' : 'remb.ligne_retiree',
+            ['libelle' => (string) $operation['libelle']]));
 
         $retour = (string) ($_POST['retour'] ?? 'budget');
         redirect(ltrim($retour, '/') ?: 'budget', $this->parametresRetour());
@@ -384,9 +387,7 @@ final class RemboursementsController
 
         $part = montant_depuis_saisie(post('part_rembourser'));
         if ($part !== null && ($part <= 0 || $part > (float) $operation['montant'] + 0.001)) {
-            Session::flash('erreur',
-                'La part réclamée doit être comprise entre 0 et le montant payé ('
-                . montant_fr($operation['montant']) . ').');
+            Session::flash('erreur', t('remb.part_invalide', ['montant' => montant_fr($operation['montant'])]));
             redirect('budget/remboursements', $this->parametresRetour());
         }
 
@@ -410,7 +411,7 @@ final class RemboursementsController
         );
         self::retenirPersonne($userId, $qui);
 
-        Session::flash('succes', 'Ligne mise à jour.');
+        Session::flash('succes', t('remb.ligne_maj'));
         redirect('budget/remboursements', $this->parametresRetour());
     }
 
@@ -423,7 +424,7 @@ final class RemboursementsController
 
         $ids = array_map('intval', (array) ($_POST['ligne'] ?? []));
         if ($ids === []) {
-            Session::flash('erreur', 'Aucune ligne sélectionnée.');
+            Session::flash('erreur', t('remb.aucune_ligne'));
             redirect('budget/remboursements', $this->parametresRetour());
         }
 
@@ -439,9 +440,7 @@ final class RemboursementsController
         );
 
         $nb = $stmt->rowCount();
-        Session::flash('succes', $nb === 0
-            ? 'Aucune ligne modifiée.'
-            : $nb . ' ligne' . ($nb > 1 ? 's marquées remboursées' : ' marquée remboursée') . '.');
+        Session::flash('succes', $nb === 0 ? t('remb.aucune_modifiee') : tn('remb.marquees', $nb));
         redirect('budget/remboursements', $this->parametresRetour());
     }
 
@@ -604,7 +603,7 @@ final class RemboursementsController
                 [$userId]
             ), 'rembourse_par'),
             'groupes' => $this->groupes($userId),
-        ], 'Personnes et groupes');
+        ], t('titre.remb_personnes'));
     }
 
     /** Ajoute une personne au carnet, sans attendre une dépense. */
@@ -616,17 +615,17 @@ final class RemboursementsController
 
         $nom = mb_substr(trim(post('nom')), 0, 80);
         if ($nom === '') {
-            Session::flash('erreur', 'Écrivez un nom.');
+            Session::flash('erreur', t('remb.ecrivez_nom'));
             redirect('budget/personnes');
         }
 
         if ($this->personneNommee($userId, $nom) !== null) {
-            Session::flash('erreur', '« ' . $nom . ' » est déjà au carnet.');
+            Session::flash('erreur', t('remb.deja_au_carnet', ['nom' => $nom]));
             redirect('budget/personnes');
         }
 
         Database::run('INSERT INTO personnes (user_id, nom) VALUES (?, ?)', [$userId, $nom]);
-        Session::flash('succes', '« ' . $nom . ' » ajoutée.');
+        Session::flash('succes', t('remb.personne_ajoutee', ['nom' => $nom]));
         redirect('budget/personnes');
     }
 
@@ -649,20 +648,19 @@ final class RemboursementsController
 
         $nom = mb_substr(trim(post('nom')), 0, 80);
         if ($nom === '') {
-            Session::flash('erreur', 'Écrivez un nom.');
+            Session::flash('erreur', t('remb.ecrivez_nom'));
             redirect('budget/personnes');
         }
 
         $ancien = (string) $personne['nom'];
         $homonyme = $this->personneNommee($userId, $nom);
         if ($homonyme !== null && (int) $homonyme['id'] !== $id) {
-            Session::flash('erreur', '« ' . $nom . ' » est déjà au carnet. Pour n\'en faire '
-                . 'qu\'une seule personne, utilisez « Fusionner ».');
+            Session::flash('erreur', t('remb.deja_au_carnet_fusion', ['nom' => $nom]));
             redirect('budget/personnes');
         }
 
         if ($ancien === $nom) {
-            Session::flash('info', 'Rien à changer.');
+            Session::flash('info', t('remb.rien_a_changer'));
             redirect('budget/personnes');
         }
 
@@ -673,9 +671,8 @@ final class RemboursementsController
          */
         $collisions = $this->moisDejaRegles($userId, $ancien, $nom);
         if ($collisions !== []) {
-            Session::flash('erreur', 'Impossible : ' . $this->direLesMois($collisions)
-                . ' déjà réglé' . (count($collisions) > 1 ? 's' : '')
-                . ' sous les deux noms. Annulez l\'un des règlements, puis recommencez.');
+            Session::flash('erreur', tn('remb.collision_renommer', count($collisions),
+                ['mois' => $this->direLesMois($collisions)]));
             redirect('budget/personnes');
         }
 
@@ -683,8 +680,9 @@ final class RemboursementsController
             Database::run('UPDATE personnes SET nom = ? WHERE id = ? AND user_id = ?', [$nom, $id, $userId]);
         });
 
-        Session::flash('succes', '« ' . $ancien . ' » renommée « ' . $nom . ' »'
-            . $this->direLeReport($reportees) . '.');
+        Session::flash('succes', t('remb.renommee', [
+            'ancien' => $ancien, 'nom' => $nom, 'report' => $this->direLeReport($reportees),
+        ]));
         redirect('budget/personnes');
     }
 
@@ -710,7 +708,7 @@ final class RemboursementsController
             $this->introuvable();
         }
         if ((int) $source['id'] === (int) $cible['id']) {
-            Session::flash('erreur', 'Choisissez une autre personne.');
+            Session::flash('erreur', t('remb.autre_personne'));
             redirect('budget/personnes');
         }
 
@@ -719,10 +717,8 @@ final class RemboursementsController
 
         $collisions = $this->moisDejaRegles($userId, $partant, $restant);
         if ($collisions !== []) {
-            Session::flash('erreur', 'Impossible : ' . $this->direLesMois($collisions)
-                . ' déjà réglé' . (count($collisions) > 1 ? 's' : '')
-                . ' pour les deux, chacun avec sa recette en retour. Annulez l\'un des '
-                . 'règlements, puis recommencez.');
+            Session::flash('erreur', tn('remb.collision_fusion', count($collisions),
+                ['mois' => $this->direLesMois($collisions)]));
             redirect('budget/personnes');
         }
 
@@ -730,8 +726,9 @@ final class RemboursementsController
             Database::run('DELETE FROM personnes WHERE id = ? AND user_id = ?', [$id, $userId]);
         });
 
-        Session::flash('succes', '« ' . $partant . ' » fusionnée dans « ' . $restant . ' »'
-            . $this->direLeReport($reportees) . '.');
+        Session::flash('succes', t('remb.fusionnee', [
+            'partant' => $partant, 'restant' => $restant, 'report' => $this->direLeReport($reportees),
+        ]));
         redirect('budget/personnes');
     }
 
@@ -796,11 +793,11 @@ final class RemboursementsController
         );
 
         if (count($noms) === 1) {
-            return $noms[0] . ' est';
+            return $noms[0];
         }
         $dernier = array_pop($noms);
 
-        return implode(', ', $noms) . ' et ' . $dernier . ' sont';
+        return implode(', ', $noms) . ' ' . t('remb.et') . ' ' . $dernier;
     }
 
     /**
@@ -819,18 +816,13 @@ final class RemboursementsController
 
         $bouts = [];
         if ($ops > 0) {
-            $bouts[] = $ops . ' opération' . ($ops > 1 ? 's' : '');
+            $bouts[] = tn('remb.report_operations', $ops);
         }
         if ($regs > 0) {
-            $bouts[] = $regs . ' règlement' . ($regs > 1 ? 's' : '');
+            $bouts[] = tn('remb.report_reglements', $regs);
         }
 
-        $participe = $regs > 0 ? 'reporté' : 'reportée';
-        if ($ops + $regs > 1) {
-            $participe .= 's';
-        }
-
-        return ' : ' . implode(' et ', $bouts) . ' ' . $participe;
+        return tn('remb.report', $ops + $regs, ['quoi' => implode(' ' . t('remb.et') . ' ', $bouts)]);
     }
 
     /**
@@ -858,12 +850,8 @@ final class RemboursementsController
 
         Database::run('DELETE FROM personnes WHERE id = ? AND user_id = ?', [$id, $userId]);
 
-        Session::flash('succes', '« ' . $personne['nom'] . ' » retirée du carnet.'
-            . ($nommees > 0
-                ? ' Les ' . $nommees . ' opération' . ($nommees > 1 ? 's' : '')
-                    . ' qui la nomme' . ($nommees > 1 ? 'nt' : '') . ' gardent ce nom.'
-                    . ' Pour les rattacher à quelqu\'un d\'autre, il fallait fusionner.'
-                : ''));
+        Session::flash('succes', t('remb.personne_retiree', ['nom' => (string) $personne['nom']])
+            . ($nommees > 0 ? tn('remb.nommees', $nommees) : ''));
         redirect('budget/personnes');
     }
 
@@ -962,16 +950,16 @@ final class RemboursementsController
 
         $nom = mb_substr(trim(post('nom')), 0, 80);
         if ($nom === '') {
-            Session::flash('erreur', 'Écrivez un nom de groupe.');
+            Session::flash('erreur', t('remb.nom_groupe'));
             redirect('budget/personnes');
         }
         if (Database::valeur('SELECT id FROM groupes WHERE user_id = ? AND nom = ?', [$userId, $nom]) !== null) {
-            Session::flash('erreur', 'Le groupe « ' . $nom . ' » existe déjà.');
+            Session::flash('erreur', t('remb.groupe_existe', ['nom' => $nom]));
             redirect('budget/personnes');
         }
 
         Database::run('INSERT INTO groupes (user_id, nom) VALUES (?, ?)', [$userId, $nom]);
-        Session::flash('succes', 'Groupe « ' . $nom . ' » créé. Cochez qui en fait partie.');
+        Session::flash('succes', t('remb.groupe_cree', ['nom' => $nom]));
         redirect('budget/personnes');
     }
 
@@ -989,12 +977,12 @@ final class RemboursementsController
 
         $nom = mb_substr(trim(post('nom')), 0, 80);
         if ($nom === '') {
-            Session::flash('erreur', 'Écrivez un nom de groupe.');
+            Session::flash('erreur', t('remb.nom_groupe'));
             redirect('budget/personnes');
         }
         $homonyme = Database::valeur('SELECT id FROM groupes WHERE user_id = ? AND nom = ?', [$userId, $nom]);
         if ($homonyme !== null && (int) $homonyme !== $id) {
-            Session::flash('erreur', 'Le groupe « ' . $nom . ' » existe déjà.');
+            Session::flash('erreur', t('remb.groupe_existe', ['nom' => $nom]));
             redirect('budget/personnes');
         }
 
@@ -1033,10 +1021,9 @@ final class RemboursementsController
             throw $e;
         }
 
-        Session::flash('succes', 'Groupe « ' . $nom . ' » : '
-            . (count($membres) === 0
-                ? 'plus personne dedans.'
-                : count($membres) . ' personne' . (count($membres) > 1 ? 's' : '') . ' dedans.'));
+        Session::flash('succes', count($membres) === 0
+            ? t('remb.groupe_vide', ['nom' => $nom])
+            : tn('remb.groupe_membres', count($membres), ['nom' => $nom]));
         redirect('budget/personnes');
     }
 
@@ -1058,8 +1045,7 @@ final class RemboursementsController
         }
 
         Database::run('DELETE FROM groupes WHERE id = ? AND user_id = ?', [$id, $userId]);
-        Session::flash('succes', 'Groupe « ' . $groupe['nom'] . ' » supprimé. '
-            . 'Ses membres restent au carnet.');
+        Session::flash('succes', t('remb.groupe_supprime', ['nom' => (string) $groupe['nom']]));
         redirect('budget/personnes');
     }
 

@@ -1917,7 +1917,7 @@ final class Partages
             }
             return self::restaurerFichier($moi, $modificationId) === null
                 ? null
-                : [$type, $id, 'Fichier remis à sa place.'];
+                : [$type, $id, t('pt.ann.fichier_remis')];
         }
         if ($ligne['nature'] === 'texte') {
             $avant = (string) $ligne['avant'];
@@ -1925,7 +1925,7 @@ final class Partages
                 'UPDATE cours SET ' . ($type === 'cours' ? 'contenu' : 'fiche_revision') . ' = ? WHERE id = ? AND user_id = ?',
                 [$avant === '' ? null : $avant, $id, $proprietaire]
             );
-            $fait = 'Le texte est revenu à ce qu’il était avant cette modification.';
+            $fait = t('pt.ann.texte_revenu');
         } else {
             // Le fichier ajouté, s'il est encore là, quitte le document.
             $fichier = Database::one(
@@ -1933,8 +1933,8 @@ final class Partages
                 [(int) $ligne['fichier_id'], $id]
             );
             $fait = $fichier === null
-                ? 'Ce fichier n’y était déjà plus.'
-                : (Fichiers::supprimer((int) $fichier['id'], $proprietaire) ? 'Fichier retiré.' : 'Ce fichier n’y était déjà plus.');
+                ? t('pt.ann.fichier_parti')
+                : t(Fichiers::supprimer((int) $fichier['id'], $proprietaire) ? 'pt.ann.fichier_retire' : 'pt.ann.fichier_parti');
         }
         Database::run('UPDATE modifications_partage SET annulee = 1 WHERE id = ?', [$modificationId]);
         self::prevenirAnnulation($moi, $ligne);
@@ -1957,34 +1957,35 @@ final class Partages
             return;
         }
         $proprietaire = (int) $document['user_id'];
-        $titre = '« ' . mb_strimwidth((string) ($document['titre_cours'] ?? $document['titre'] ?? ''), 0, 60, '…') . ' »';
-        $du = ($type === 'cours' ? 'du cours ' : 'de la fiche ') . $titre;
-        $au = ($type === 'cours' ? 'au cours ' : 'à la fiche ') . $titre;
-        $fichier = '« ' . $ligne['nom_origine'] . ' »';
-        $pseudo = (string) (Amis::compte($moi)['pseudo'] ?? 'Quelqu’un');
-        $pseudoAuteur = (string) (Amis::compte($auteur)['pseudo'] ?? 'un ami');
+        $titre = mb_strimwidth((string) ($document['titre_cours'] ?? $document['titre'] ?? ''), 0, 60, '…');
+        $du = t($type === 'cours' ? 'pt.ann.du_cours' : 'pt.ann.de_la_fiche', ['titre' => $titre]);
+        $au = t($type === 'cours' ? 'pt.ann.au_cours' : 'pt.ann.a_la_fiche', ['titre' => $titre]);
+        $fichier = (string) $ligne['nom_origine'];
+        $pseudo = (string) (Amis::compte($moi)['pseudo'] ?? t('pt.quelquun'));
+        $pseudoAuteur = (string) (Amis::compte($auteur)['pseudo'] ?? t('pt.un_ami_defaut'));
 
         // Qui l'apprend, et comment on le lui dit : « votre » modification pour
         // son auteur, « sa » ou « celle de … » pour le propriétaire.
         $destinataires = [];
         if ($auteur !== $moi) {
             $destinataires[$auteur] = match ((string) $ligne['nature']) {
-                'texte' => 'a annulé votre modification du texte ' . $du,
-                'ajout' => 'a retiré le fichier ' . $fichier . ' que vous aviez ajouté ' . $au,
-                default => 'a remis le fichier ' . $fichier . ' que vous aviez retiré ' . $du,
+                'texte' => t('pt.ann.texte_vous', ['doc' => $du]),
+                'ajout' => t('pt.ann.ajout_vous', ['fichier' => $fichier, 'doc' => $au]),
+                default => t('pt.ann.retrait_vous', ['fichier' => $fichier, 'doc' => $du]),
             };
         }
         if ($proprietaire !== $moi && $proprietaire !== $auteur) {
-            $de = $auteur === $moi ? 'sa' : 'la';
-            $qui = $auteur === $moi ? '' : ' de ' . $pseudoAuteur;
+            $sien = $auteur === $moi;
             $destinataires[$proprietaire] = match ((string) $ligne['nature']) {
-                'texte' => 'a annulé ' . $de . ' modification' . $qui . ' du texte ' . $du,
-                'ajout' => $auteur === $moi
-                    ? 'a annulé son ajout du fichier ' . $fichier . ' ' . $au
-                    : 'a retiré le fichier ' . $fichier . ' ajouté par ' . $pseudoAuteur . ' ' . $au,
-                default => $auteur === $moi
-                    ? 'a annulé son retrait du fichier ' . $fichier . ' ' . $du
-                    : 'a remis le fichier ' . $fichier . ' retiré par ' . $pseudoAuteur . ' ' . $du,
+                'texte' => $sien
+                    ? t('pt.ann.texte_sienne', ['doc' => $du])
+                    : t('pt.ann.texte_autre', ['qui' => $pseudoAuteur, 'doc' => $du]),
+                'ajout' => $sien
+                    ? t('pt.ann.ajout_sien', ['fichier' => $fichier, 'doc' => $au])
+                    : t('pt.ann.ajout_autre', ['fichier' => $fichier, 'qui' => $pseudoAuteur, 'doc' => $au]),
+                default => $sien
+                    ? t('pt.ann.retrait_sien', ['fichier' => $fichier, 'doc' => $du])
+                    : t('pt.ann.retrait_autre', ['fichier' => $fichier, 'qui' => $pseudoAuteur, 'doc' => $du]),
             };
         }
         foreach ($destinataires as $qui => $quoi) {
@@ -2056,14 +2057,11 @@ final class Partages
         // Le propriétaire sait qu'on a fait sa propre copie de son document.
         if ($refus === null && $ou !== null) {
             $cible = self::cible($type, $id);
-            $titre = '« ' . mb_strimwidth((string) ($cible['titre_cours'] ?? $cible['titre'] ?? ''), 0, 60, '…') . ' »';
-            self::prevenir($moi, $type, $id, '📥', match ($type) {
-                'cours' => 'a copié le cours ' . $titre . ' dans ses cours',
-                'fiche' => 'a copié la fiche ' . $titre . ' dans ses cours',
-                'dossier' => 'a copié le dossier ' . $titre . ' dans ses dossiers',
-                'evenement' => 'a ajouté l’évènement ' . $titre . ' à son calendrier',
-                default => 'a copié le fichier ' . $titre . ' dans un de ses cours',
-            }, match ($type) {
+            $titre = mb_strimwidth((string) ($cible['titre_cours'] ?? $cible['titre'] ?? ''), 0, 60, '…');
+            self::prevenir($moi, $type, $id, '📥',
+                t('pt.copie.' . (in_array($type, ['cours', 'fiche', 'dossier', 'evenement'], true) ? $type : 'fichier'),
+                    ['titre' => $titre]),
+                match ($type) {
                 'dossier' => url('cours', ['dossier' => $id]),
                 'evenement' => url('evenements/' . $id),
                 'fichier' => url('cours/' . (int) ($cible['cours_id'] ?? 0)),
@@ -2078,7 +2076,7 @@ final class Partages
     private static function faireCopie(int $moi, string $type, int $id, ?int $coursCible): array
     {
         if (!self::peutVoir($type, $id, $moi)) {
-            return [null, 'Ce document n’est plus partagé avec vous.'];
+            return [null, t('pt.copie.plus_partage')];
         }
         $cible = self::cible($type, $id);
         $dossier = (string) Config::get('app', 'dossier_uploads');
@@ -2104,7 +2102,7 @@ final class Partages
                 $total += count($groupe['cours']);
             }
             if ($total > self::COPIE_MAX) {
-                return [null, 'Ce dossier contient plus de ' . self::COPIE_MAX . ' cours : copiez-les un par un.'];
+                return [null, t('pt.copie.dossier_gros', ['max' => self::COPIE_MAX])];
             }
             $nouveaux = [];
             foreach ($groupes as $groupe) {
@@ -2132,7 +2130,7 @@ final class Partages
                 [$moi, (string) $cible['titre'], (string) $cible['debut'], (string) $cible['fin']]
             );
             if ($deja !== null) {
-                return [null, 'Cet évènement est déjà dans votre calendrier.'];
+                return [null, t('pt.copie.evenement_deja')];
             }
             Database::run(
                 'INSERT INTO evenements (user_id, partage_par, partage_de, titre, description, lieu, debut, fin, journee_entiere)
@@ -2167,10 +2165,10 @@ final class Partages
         }
 
         if ($coursCible === null || Database::valeur('SELECT 1 FROM cours WHERE id = ? AND user_id = ?', [$coursCible, $moi]) === null) {
-            return [null, 'Choisissez un de vos cours pour y ranger le fichier.'];
+            return [null, t('pt.copie.choisir_cours')];
         }
         if (!self::copierFichier($cible, $moi, $coursCible, $dossier)) {
-            return [null, 'Le fichier n’a pas pu être copié.'];
+            return [null, t('pt.copie.echec')];
         }
 
         return [$coursCible, null];
@@ -2237,7 +2235,8 @@ final class Partages
         }
         $cible = self::cible($type, $id);
         if ($cible === null) {
-            return ['type' => $type, 'titre' => 'Document supprimé', 'icone' => '🚫', 'detail' => 'Il n’est plus disponible.', 'url' => null];
+            return ['type' => $type, 'titre' => t('pt.carte.supprime'), 'icone' => '🚫',
+                'detail' => t('pt.carte.plus_disponible'), 'url' => null];
         }
         $visible = self::peutVoir($type, $id, $moi);
 
@@ -2251,13 +2250,15 @@ final class Partages
                 'evenement' => '📅',
                 default => Fichiers::icone((string) $cible['mime'], (string) $cible['nom_origine']),
             },
-            'detail' => !$visible ? 'Le partage a été retiré.'
+            'detail' => !$visible ? t('pt.carte.partage_retire')
                 : match ($type) {
-                    'fichier' => 'Fichier · ' . taille_lisible((int) $cible['taille']),
-                    'dossier' => 'Dossier · ' . self::compteCours((int) $cible['nb_cours']),
-                    'evenement' => 'Évènement · ' . date_fr((string) $cible['debut'], (int) $cible['journee_entiere'] !== 1),
-                    default => ($type === 'cours' ? 'Cours' : 'Fiche de révision')
-                        . ((int) $cible['nb_fichiers'] > 0 ? ' · ' . (int) $cible['nb_fichiers'] . ' fichier' . ((int) $cible['nb_fichiers'] > 1 ? 's' : '') : ''),
+                    'fichier' => t('pt.carte.fichier', ['taille' => taille_lisible((int) $cible['taille'])]),
+                    'dossier' => t('pt.carte.dossier', ['combien' => self::compteCours((int) $cible['nb_cours'])]),
+                    'evenement' => t('pt.carte.evenement', [
+                        'date' => date_fr((string) $cible['debut'], (int) $cible['journee_entiere'] !== 1),
+                    ]),
+                    default => t($type === 'cours' ? 'pt.carte.cours' : 'pt.carte.fiche')
+                        . ((int) $cible['nb_fichiers'] > 0 ? tn('pt.carte.fichiers', (int) $cible['nb_fichiers']) : ''),
                 },
             'url' => $visible ? self::adresse($type, $id) : null,
         ];

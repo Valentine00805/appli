@@ -39,13 +39,13 @@ final class AmisController
         $resultat = Amis::demander($moi, $autre);
         $pseudo = $compte === null ? '' : (string) $compte['pseudo'];
         match ($resultat) {
-            'envoyee' => Session::flash('succes', 'Demande envoyée à ' . $pseudo . '.'),
-            'acceptee' => Session::flash('succes', $pseudo . ' vous l’avait déjà demandé : vous êtes maintenant amis.'),
-            'deja' => Session::flash('info', 'Une demande est déjà en cours avec ' . $pseudo . ', ou vous êtes déjà amis.'),
-            'trop' => Session::flash('erreur', 'Vous avez déjà ' . Amis::DEMANDES_MAX . ' demandes en attente : attendez des réponses.'),
-            'sans_pseudo' => Session::flash('erreur', 'Choisissez d’abord un pseudo dans « Mon compte » : c’est lui que verra la personne.'),
-            'bloque' => Session::flash('erreur', 'Vous avez bloqué ' . $pseudo . ' : débloquez-le d’abord.'),
-            default => Session::flash('erreur', 'Ce compte est introuvable.'),
+            'envoyee' => Session::flash('succes', t('ami.fl.demande_envoyee', ['qui' => $pseudo])),
+            'acceptee' => Session::flash('succes', t('ami.fl.deja_demande', ['qui' => $pseudo])),
+            'deja' => Session::flash('info', t('ami.fl.deja_en_cours', ['qui' => $pseudo])),
+            'trop' => Session::flash('erreur', t('ami.fl.trop_de_demandes', ['max' => Amis::DEMANDES_MAX])),
+            'sans_pseudo' => Session::flash('erreur', t('ami.fl.sans_pseudo')),
+            'bloque' => Session::flash('erreur', t('ami.fl.bloque_dabord', ['qui' => $pseudo])),
+            default => Session::flash('erreur', t('ami.fl.compte_introuvable')),
         };
 
         // Prévenir l'autre : d'une demande, ou — demandes croisées — de l'acceptation.
@@ -66,10 +66,10 @@ final class AmisController
 
         $aEnvoyer = null;
         if ($compte !== null && Amis::accepter(Auth::id(), $id)) {
-            Session::flash('succes', 'Vous êtes maintenant amis avec ' . $compte['pseudo'] . '.');
+            Session::flash('succes', t('ami.fl.maintenant_amis', ['qui' => (string) $compte['pseudo']]));
             $aEnvoyer = Amis::notifierAcceptation(Auth::id(), $id);
         } else {
-            Session::flash('erreur', 'Cette demande n’existe plus.');
+            Session::flash('erreur', t('ami.fl.demande_partie'));
         }
         $this->retour($aEnvoyer);
     }
@@ -84,16 +84,16 @@ final class AmisController
         $relation = Amis::relation($moi, $id);
 
         if ($compte === null || $relation === null) {
-            Session::flash('erreur', 'Il n’y a rien à retirer.');
+            Session::flash('erreur', t('ami.fl.rien_a_retirer'));
             $this->retour();
         }
 
         Amis::defaire($moi, $id);
         $pseudo = (string) $compte['pseudo'];
         Session::flash('succes', match (true) {
-            $relation['statut'] === 'acceptee' => $pseudo . ' ne fait plus partie de vos amis.',
-            (int) $relation['demandeur_id'] === $moi => 'Demande à ' . $pseudo . ' annulée.',
-            default => 'Demande de ' . $pseudo . ' refusée.',
+            $relation['statut'] === 'acceptee' => t('ami.fl.plus_ami', ['qui' => $pseudo]),
+            (int) $relation['demandeur_id'] === $moi => t('ami.fl.demande_annulee', ['qui' => $pseudo]),
+            default => t('ami.fl.demande_refusee', ['qui' => $pseudo]),
         });
         redirect('amis');
     }
@@ -106,7 +106,7 @@ final class AmisController
         $ami = Amis::compte($id);
 
         if ($ami === null || !Amis::sontAmis($moi, $id)) {
-            Session::flash('erreur', 'Vous ne pouvez discuter qu’avec vos amis.');
+            Session::flash('erreur', t('ami.fl.discuter_amis'));
             redirect('amis');
         }
 
@@ -136,9 +136,9 @@ final class AmisController
         $compte = Amis::compte($id);
 
         if ($compte !== null && Amis::bloquer(Auth::id(), $id)) {
-            Session::flash('succes', $compte['pseudo'] . ' est bloqué : il ne peut plus vous trouver, vous écrire ni vous demander en ami.');
+            Session::flash('succes', t('ami.fl.bloque', ['qui' => (string) $compte['pseudo']]));
         } else {
-            Session::flash('erreur', 'Ce compte est introuvable.');
+            Session::flash('erreur', t('ami.fl.compte_introuvable'));
         }
         redirect('amis');
     }
@@ -151,9 +151,9 @@ final class AmisController
         $compte = Amis::compte($id);
 
         if ($compte !== null && Amis::debloquer(Auth::id(), $id)) {
-            Session::flash('succes', $compte['pseudo'] . ' est débloqué. Vous pouvez de nouveau le demander en ami.');
+            Session::flash('succes', t('ami.fl.debloque', ['qui' => (string) $compte['pseudo']]));
         } else {
-            Session::flash('erreur', 'Ce compte n’était pas bloqué.');
+            Session::flash('erreur', t('ami.fl.pas_bloque'));
         }
         $this->retour();
     }
@@ -174,13 +174,13 @@ final class AmisController
         Amis::rendreMuette(Auth::id(), $id, $muette, $jusqua);
         Session::flash('succes', $muette
             ? '🔕 ' . FileNotifications::texteCoupure($jusqua)
-            : '🔔 Notifications rétablies pour cette conversation.');
+            : t('ami.fl.notifications_retablies'));
         // Le script de la carte n'attend que la réponse : il met la carte à jour lui-même.
         if (veut_du_json()) {
             Session::flashs();
             repondre_json(['muette' => $muette, 'etat' => $muette
                 ? FileNotifications::texteCoupure($jusqua)
-                : 'Un nouveau message ou une réaction à l’un des vôtres vous prévient.']);
+                : t('ami.fl.notif_etat')]);
         }
         redirect('amis/' . $id . '/profil');
     }
@@ -191,7 +191,7 @@ final class AmisController
         $moi = Auth::id();
         $ami = Amis::compte($id);
         if ($ami === null || !Amis::sontAmis($moi, $id)) {
-            Session::flash('erreur', 'Ce profil n’est visible que de ses amis.');
+            Session::flash('erreur', t('ami.fl.profil_amis'));
             redirect('amis');
         }
 
@@ -228,7 +228,7 @@ final class AmisController
 
         if (!Amis::sontAmis($moi, $id)) {
             http_response_code(403);
-            repondre_json(['fait' => false, 'message' => 'Vous n’êtes plus amis.']);
+            repondre_json(['fait' => false, 'message' => t('ami.fl.plus_amis')]);
         }
 
         // Onglet visible : la discussion est sous les yeux, ses messages n'ont pas à être notifiés.
@@ -287,7 +287,7 @@ final class AmisController
             Session::flash('erreur', $refus);
             redirect(Amis::sontAmis(Auth::id(), $id) ? 'amis/' . $id : 'amis');
         }
-        Session::flash('succes', 'Fond d’écran changé : vous le voyez tous les deux.');
+        Session::flash('succes', t('ami.fl.fond_change'));
         redirect('amis/' . $id);
     }
 
@@ -297,13 +297,11 @@ final class AmisController
         Auth::exiger();
         Session::verifierCsrf();
         if (!Amis::sontAmis(Auth::id(), $id)) {
-            Session::flash('erreur', 'Vous ne pouvez régler que les conversations avec vos amis.');
+            Session::flash('erreur', t('ami.fl.fond_amis'));
             redirect('amis');
         }
         $retire = Amis::retirerFond(Auth::id(), $id);
-        Session::flash($retire ? 'succes' : 'info', $retire
-            ? 'Fond d’écran retiré, pour vous deux.'
-            : 'Cette conversation n’avait pas de fond d’écran.');
+        Session::flash($retire ? 'succes' : 'info', t($retire ? 'ami.fl.fond_retire' : 'ami.fl.fond_absent'));
         redirect('amis/' . $id);
     }
 
@@ -315,7 +313,7 @@ final class AmisController
         session_write_close();
         if (!Amis::sontAmis($moi, $id)) {
             http_response_code(403);
-            repondre_json(['fait' => false, 'message' => 'Vous n’êtes plus amis.']);
+            repondre_json(['fait' => false, 'message' => t('ami.fl.plus_amis')]);
         }
         repondre_json(['fait' => true] + Amis::rechercher($moi, $id, (string) ($_GET['q'] ?? '')));
     }
@@ -380,9 +378,9 @@ final class AmisController
         $portee = ($_POST['portee'] ?? '') === 'tous' ? 'tous' : 'moi';
         $resultat = Amis::supprimerMessage(Auth::id(), $id, $portee);
         $message = match ($resultat) {
-            'fait' => $portee === 'tous' ? 'Message supprimé pour tout le monde.' : 'Message supprimé de votre conversation.',
-            'interdit' => 'Seul qui a écrit un message peut le supprimer pour tout le monde.',
-            default => 'Ce message est introuvable.',
+            'fait' => t($portee === 'tous' ? 'ami.fl.supprime_tous' : 'ami.fl.supprime_moi'),
+            'interdit' => t('ami.fl.supprime_interdit'),
+            default => t('msg.introuvable'),
         };
 
         if (veut_du_json()) {

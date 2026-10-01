@@ -190,7 +190,7 @@ final class CoursController
         // Partagé, le cours garde la trace de ce qui change, même chez soi.
         Partages::suivreTexte($userId, 'cours', $id, $avant, $contenu);
 
-        Session::flash('succes', $contenu === '' ? 'Contenu du cours vidé.' : 'Contenu du cours enregistré.');
+        Session::flash('succes', t($contenu === '' ? 'cours.fl.contenu_vide' : 'cours.fl.contenu_enregistre'));
         redirect('cours/' . $id, ($_POST['revision'] ?? '') === '1' ? ['revision' => 1] : []);
     }
 
@@ -596,7 +596,7 @@ final class CoursController
         }
 
         if (!isset($_FILES['fichiers']) || !is_array($_FILES['fichiers']['name'] ?? null)) {
-            Session::flash('erreur', 'Aucun fichier reçu.');
+            Session::flash('erreur', t('cours.fl.aucun_fichier'));
             $this->retourFiche($id);
         }
 
@@ -614,9 +614,7 @@ final class CoursController
             Session::flash('erreur', $erreur);
         }
         if ($ajoutes > 0) {
-            Session::flash('succes', $ajoutes === 1
-                ? 'Fichier ajouté à la fiche.'
-                : $ajoutes . ' fichiers ajoutés à la fiche.');
+            Session::flash('succes', tn('cours.fl.fiche_fichiers', $ajoutes));
         }
         $this->retourFiche($id);
     }
@@ -639,10 +637,10 @@ final class CoursController
             'lien'      => $this->ajouterLien($id, $userId, $libelle),
             'cours'     => $this->ajouterRenvoi($id, $userId, 'cible_cours_id', 'cours', $libelle),
             'evenement' => $this->ajouterRenvoi($id, $userId, 'cible_evenement_id', 'evenements', $libelle),
-            default     => 'Type d’élément inconnu.',
+            default     => t('cours.fl.type_inconnu'),
         };
 
-        Session::flash($erreur === null ? 'succes' : 'erreur', $erreur ?? 'Élément ajouté à la fiche.');
+        Session::flash($erreur === null ? 'succes' : 'erreur', $erreur ?? t('cours.fl.element_ajoute'));
         $this->retourFiche($id);
     }
 
@@ -661,7 +659,7 @@ final class CoursController
         }
 
         Database::run('DELETE FROM fiche_elements WHERE id = ? AND user_id = ?', [$id, $userId]);
-        Session::flash('succes', 'Élément retiré de la fiche.');
+        Session::flash('succes', t('cours.fl.element_retire'));
         $this->retourFiche((int) $coursId);
     }
 
@@ -985,7 +983,7 @@ final class CoursController
         $noms = $_FILES['fichiers']['name'] ?? null;
 
         if (!is_array($noms) || $noms === []) {
-            Session::flash('erreur', 'Aucun fichier reçu.');
+            Session::flash('erreur', t('cours.fl.aucun_fichier'));
             repartir_vers('cours');
         }
 
@@ -1026,15 +1024,11 @@ final class CoursController
         }
 
         if ($crees > 0) {
-            $ou = $dossier === null
-                ? ''
-                : ' dans « ' . Database::valeur(
-                    'SELECT nom FROM dossiers WHERE id = ? AND user_id = ?',
-                    [$dossier, $userId]
-                ) . ' »';
-            Session::flash('succes', $crees === 1
-                ? 'Un cours créé' . $ou . ', avec son fichier.'
-                : $crees . ' cours créés' . $ou . ', un par fichier.');
+            $ou = $dossier === null ? '' : t('cours.fl.dans_dossier', ['nom' => (string) Database::valeur(
+                'SELECT nom FROM dossiers WHERE id = ? AND user_id = ?',
+                [$dossier, $userId]
+            )]);
+            Session::flash('succes', tn('cours.fl.import', $crees, ['ou' => $ou]));
         }
 
         repartir_vers('cours');
@@ -1055,7 +1049,7 @@ final class CoursController
         }
 
         if (!isset($_FILES['fichiers']) || !is_array($_FILES['fichiers']['name'] ?? null)) {
-            Session::flash('erreur', 'Aucun fichier reçu.');
+            Session::flash('erreur', t('cours.fl.aucun_fichier'));
             redirect('cours/' . $id);
         }
 
@@ -1070,7 +1064,7 @@ final class CoursController
         if ($ajoutes > 0) {
             Session::flash('succes', $ajoutes . ' fichier' . ($ajoutes > 1 ? 's joints' : ' joint') . '.');
         } elseif ($erreurs === []) {
-            Session::flash('erreur', 'Aucun fichier reçu.');
+            Session::flash('erreur', t('cours.fl.aucun_fichier'));
         }
 
         redirect('cours/' . $id);
@@ -1107,8 +1101,8 @@ final class CoursController
             ? null
             : Database::valeur('SELECT nom FROM dossiers WHERE id = ? AND user_id = ?', [$dossier, $userId]);
         Session::flash('succes', $dossier === null
-            ? '« ' . $cours['titre'] . ' » ne fait plus partie d’un dossier.'
-            : '« ' . $cours['titre'] . ' » rangé dans « ' . $nom . ' ».');
+            ? t('cours.fl.sans_dossier', ['titre' => (string) $cours['titre']])
+            : t('cours.fl.range_dans', ['titre' => (string) $cours['titre'], 'nom' => (string) $nom]));
 
         repartir_vers('cours');
     }
@@ -1123,7 +1117,7 @@ final class CoursController
 
         $titre = post('titre');
         if ($titre === '') {
-            Session::flash('erreur', 'Le titre est obligatoire.');
+            Session::flash('erreur', t('cours.fl.titre_obligatoire'));
             redirect('cours/nouveau');
         }
 
@@ -1158,7 +1152,7 @@ final class CoursController
 
         $titre = post('titre');
         if ($titre === '') {
-            Session::flash('erreur', 'Le titre est obligatoire.');
+            Session::flash('erreur', t('cours.fl.titre_obligatoire'));
             redirect('cours/' . $id . '/modifier');
         }
 
@@ -1180,7 +1174,7 @@ final class CoursController
         $this->synchroniserTags($userId, $id, post('tags'));
         $this->traiterFichiers($id, $userId);
 
-        Session::flash('succes', 'Cours mis à jour.');
+        Session::flash('succes', t('cours.fl.mis_a_jour'));
         redirect('cours/' . $id);
     }
 
@@ -1233,7 +1227,7 @@ final class CoursController
         try {
             $pdf = ExportPdf::fabriquer($this->cheminDe($fichier), (string) $fichier['nom_origine']);
         } catch (Throwable) {
-            Session::flash('erreur', 'Ce document n’a pas pu être mis en PDF. Le fichier d’origine reste téléchargeable.');
+            Session::flash('erreur', t('cours.fl.pdf_document'));
             redirect('fichiers/' . $id . '/apercu');
         }
 
@@ -1272,11 +1266,11 @@ final class CoursController
         try {
             $pdf = ExportPdf::depuisCours($cours);
         } catch (Throwable) {
-            Session::flash('erreur', 'Le contenu de ce cours n’a pas pu être mis en PDF.');
+            Session::flash('erreur', t('cours.fl.pdf_cours'));
             redirect('cours/' . $id);
         }
 
-        $nom = trim((string) preg_replace('/[\\\\\/:*?"<>|]+/', ' ', (string) $cours['titre'])) ?: 'cours';
+        $nom = trim((string) preg_replace('/[\\\\\/:*?"<>|]+/', ' ', (string) $cours['titre'])) ?: t('cours.fl.pdf_nom_cours');
         $nom .= '.pdf';
         header('Content-Type: application/pdf');
         header('Content-Length: ' . strlen($pdf));
@@ -1312,11 +1306,11 @@ final class CoursController
         try {
             $pdf = ExportPdf::depuisFiche($cours, $this->fichiersDeFiche($id, $userId), $this->elementsDeFiche($id, $userId));
         } catch (Throwable) {
-            Session::flash('erreur', 'Cette fiche de révision n’a pas pu être mise en PDF.');
+            Session::flash('erreur', t('cours.fl.pdf_fiche'));
             redirect('revision/' . $id);
         }
 
-        $this->envoyerPdf($pdf, 'Fiche — ' . $cours['titre']);
+        $this->envoyerPdf($pdf, t('cours.fl.pdf_nom_fiche', ['titre' => (string) $cours['titre']]));
     }
 
     /** Un PDF en pièce jointe, sous un nom lisible. */
@@ -1468,7 +1462,7 @@ final class CoursController
         $entrees = $this->imagesSoumises($id, $this->paragraphesSoumis(), $nom);
         $ajouts = $this->imagesDansLeTexte($id, $entrees, $nom);
         if ($entrees === []) {
-            Session::flash('erreur', 'Un document ne peut pas être entièrement vidé : gardez au moins une ligne.');
+            Session::flash('erreur', t('cours.fl.doc_vide'));
             $this->repartirEdition('fichiers/' . $id . '/modifier');
         }
 
@@ -1487,7 +1481,7 @@ final class CoursController
             EditionDocument::enregistrer($chemin, $nom, $entrees, ($_POST['riche'] ?? '') === '1',
                 $profondeur, $ajouts, ($_POST['images_en_ligne'] ?? '') === '1');
         } catch (Throwable $e) {
-            Session::flash('erreur', 'Le document n’a pas été modifié : ' . $e->getMessage());
+            Session::flash('erreur', t('cours.fl.doc_refuse', ['raison' => $e->getMessage()]));
             $this->repartirEdition('fichiers/' . $id . '/modifier');
         }
 
@@ -1694,7 +1688,7 @@ final class CoursController
     {
         $url = trim((string) ($_POST['url'] ?? ''));
         if ($url === '') {
-            return 'Il manque l’adresse du lien.';
+            return t('cours.fl.lien_adresse');
         }
         /*
          * Seuls http et https sont acceptés. Un « javascript: » ou un « data: »
@@ -1702,10 +1696,10 @@ final class CoursController
          * d'entrée classique d'un script injecté.
          */
         if (!preg_match('#^https?://#i', $url) || filter_var($url, FILTER_VALIDATE_URL) === false) {
-            return 'Adresse invalide : elle doit commencer par http:// ou https://.';
+            return t('cours.fl.lien_invalide');
         }
         if (mb_strlen($url) > 2048) {
-            return 'Adresse trop longue.';
+            return t('cours.fl.lien_long');
         }
 
         // Sans intitulé, le nom du site fait l'affaire.
@@ -1736,13 +1730,13 @@ final class CoursController
     ): ?string {
         $cible = entier_ou_null($_POST['cible'] ?? null);
         if ($cible === null) {
-            return 'Aucun élément choisi.';
+            return t('cours.fl.aucun_element');
         }
         if ($table === 'cours' && $cible === $coursId) {
-            return 'Un cours ne peut pas renvoyer à lui-même.';
+            return t('cours.fl.renvoi_soi');
         }
         if (Database::valeur("SELECT id FROM `$table` WHERE id = ? AND user_id = ?", [$cible, $userId]) === null) {
-            return 'Élément introuvable.';
+            return t('cours.fl.element_introuvable');
         }
 
         $type = $table === 'cours' ? 'cours' : 'evenement';
@@ -1751,7 +1745,7 @@ final class CoursController
             [$coursId, $userId, $cible]
         );
         if ($deja !== null) {
-            return 'Cet élément est déjà dans la fiche.';
+            return t('cours.fl.element_deja');
         }
 
         Database::run(
@@ -1824,7 +1818,7 @@ final class CoursController
             return [];
         }
         if (!EditionDocument::imagesAjoutables($nom)) {
-            $this->refuserImage($id, 'une image ne s’ajoute pour l’instant qu’à un document Word (.docx).');
+            $this->refuserImage($id, t('cours.fl.image_docx'));
         }
 
         $fichiers = (array) ($_FILES['images'] ?? []);
@@ -1879,7 +1873,7 @@ final class CoursController
             }
 
             if (!EditionDocument::imagesAjoutables($nom)) {
-                $this->refuserImage($id, 'une image ne s’ajoute pour l’instant qu’à un document Word (.docx).');
+                $this->refuserImage($id, t('cours.fl.image_docx'));
             }
             $image = $this->imageEnvoyee((array) $fichiers, $cle, $erreur);
             if (is_string($image)) {
@@ -1948,7 +1942,7 @@ final class CoursController
     /** Refuse l'enregistrement entier, en disant pourquoi. */
     private function refuserImage(int $id, string $raison): never
     {
-        Session::flash('erreur', 'Le document n’a pas été modifié : ' . $raison);
+        Session::flash('erreur', t('cours.fl.doc_refuse', ['raison' => $raison]));
         $this->repartirEdition('fichiers/' . $id . '/modifier');
     }
 
