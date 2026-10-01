@@ -382,7 +382,7 @@ $etiquetteRythme = static function (string $cle, bool $court = false) use ($ryth
                               style="background:<?= e(couleur_evenement($evt)) ?>"></span>
                         <span class="cal-reste__heure">
                           <?= $evt['journee_entiere']
-                              ? (empty($evt['est_tache']) ? 'Journée' : 'Échéance')
+                              ? e(t(empty($evt['est_tache']) ? 'cal.journee' : 'cal.echeance'))
                               : e(date('H:i', strtotime((string) $evt['debut']))) ?>
                         </span>
                         <span class="cal-reste__titre">

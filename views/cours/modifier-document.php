@@ -221,7 +221,7 @@ $versApercu = $dansUneFenetre ? ' data-fenetre' : '';
         ?>
         <button type="button" class="barre-outils__bouton barre-outils__image"
                 data-inserer-image title="<?= e(t('js.riche.image')) ?>">
-          <span aria-hidden="true">🖼</span> Image
+          <span aria-hidden="true">🖼</span> <?= e(t('ed.image_bouton')) ?>
         </button>
         <input type="file" accept="image/png,image/jpeg,image/gif" hidden data-choisir-image
                aria-label="<?= e(t('js.riche.image_choisir')) ?>">

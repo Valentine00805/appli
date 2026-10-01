@@ -272,13 +272,17 @@ final class Partages
                 'INSERT IGNORE INTO partages_calendrier (user_id, ami_id, created_at) VALUES (?, ?, UTC_TIMESTAMP())',
                 [$ami, $moi]
             );
-            $pseudo = (string) (Amis::compte($moi)['pseudo'] ?? t('pt.un_ami'));
-            $n = FileNotifications::ajouter($ami, 'partage', [
-                'title' => '📅 ' . $pseudo,
-                'body' => t('pt.calendrier_corps', ['qui' => $pseudo]),
-                'url' => url('calendrier'),
-                'tag' => 'calendrier-' . $moi,
-            ]);
+            $pseudoBrut = Amis::compte($moi)['pseudo'] ?? null;
+            $n = FileNotifications::ajouter($ami, 'partage', function () use ($pseudoBrut, $moi): array {
+                $pseudo = (string) ($pseudoBrut ?? t('pt.un_ami'));
+
+                return [
+                    'title' => '📅 ' . $pseudo,
+                    'body' => t('pt.calendrier_corps', ['qui' => $pseudo]),
+                    'url' => url('calendrier'),
+                    'tag' => 'calendrier-' . $moi,
+                ];
+            });
             if ($n !== null) {
                 FileNotifications::envoyer($n);
             }
@@ -733,7 +737,7 @@ final class Partages
     /** La notification d'un partage qui n'arrive que dans l'onglet : un clic l'ouvre. */
     private static function notifierOnglet(int $destinataire, string $pseudo, string $annonce): ?int
     {
-        return FileNotifications::ajouter($destinataire, 'partage', [
+        return FileNotifications::ajouter($destinataire, 'partage', fn (): array => [
             'title' => '🔗 ' . $pseudo,
             'body' => mb_strimwidth((string) preg_replace('/^🔗\s*/u', '', $annonce), 0, 200, '…'),
             'url' => url('partages'),
@@ -1387,15 +1391,18 @@ final class Partages
         $fil = url('partages/' . self::mot($type) . '/' . $id . '/commentaires');
         $prevenir = [];
         if ($cible !== null && (int) $cible['user_id'] !== $moi) {
-            $prevenir[(int) $cible['user_id']] = t('pt.a_commente', ['titre' => $titre]);
+            $prevenir[(int) $cible['user_id']] = 'pt.a_commente';
         }
         if ($parent !== null && (int) $parent['user_id'] !== $moi) {
-            $prevenir[(int) $parent['user_id']] = t('pt.a_repondu', ['titre' => $titre]);
+            $prevenir[(int) $parent['user_id']] = 'pt.a_repondu';
         }
         foreach ($prevenir as $qui => $annonce) {
-            $n = FileNotifications::ajouter($qui, 'commentaire', [
+            $n = FileNotifications::ajouter($qui, 'commentaire', fn (): array => [
                 'title' => '💬 ' . $pseudo,
-                'body' => mb_strimwidth($pseudo . ' ' . $annonce . ' · ' . $texte, 0, 200, '…'),
+                'body' => mb_strimwidth(
+                    $pseudo . ' ' . t($annonce, ['titre' => $titre]) . ' · ' . $texte,
+                    0, 200, '…'
+                ),
                 'url' => $fil,
                 'tag' => 'commentaire-' . $type . '-' . $id,
             ]);
@@ -1464,7 +1471,7 @@ final class Partages
                 default => 'texte_modifie',
             };
             self::prevenir($moi, $type, $id, '✏️',
-                t('pt.' . $geste . '_' . ($type === 'cours' ? 'cours' : 'fiche'), [
+                fn (): string => t('pt.' . $geste . '_' . ($type === 'cours' ? 'cours' : 'fiche'), [
                     'titre' => mb_strimwidth((string) ($cible['titre_cours'] ?? $cible['titre'] ?? ''), 0, 60, '…'),
                 ]),
                 self::adresseHistorique($type, $id));
@@ -1478,24 +1485,30 @@ final class Partages
      * clic sur la notification ouvre le document chez lui ; une notification
      * sur le même document remplace la précédente plutôt que de s'empiler.
      */
-    private static function prevenir(int $moi, string $type, int $id, string $icone, string $quoi, ?string $adresse = null): void
+    private static function prevenir(int $moi, string $type, int $id, string $icone, callable $quoi, ?string $adresse = null): void
     {
         $cible = self::cible($type, $id);
         if ($cible === null || (int) $cible['user_id'] === $moi) {
             return;
         }
-        $pseudo = (string) (Amis::compte($moi)['pseudo'] ?? t('pt.un_ami'));
-        $n = FileNotifications::ajouter((int) $cible['user_id'], 'partage', [
-            'title' => $icone . ' ' . $pseudo,
-            'body' => mb_strimwidth($pseudo . ' ' . $quoi, 0, 200, '…'),
-            'url' => $adresse ?? match ($type) {
-                'cours' => url('cours/' . $id),
-                'fiche' => url('revision/' . $id),
-                'evenement' => url('evenements/' . $id),
-                default => url('partages/envoyes'),
-            },
-            'tag' => 'partage-' . $type . '-' . $id,
-        ]);
+        $pseudoBrut = Amis::compte($moi)['pseudo'] ?? null;
+        $n = FileNotifications::ajouter((int) $cible['user_id'], 'partage', function () use (
+            $pseudoBrut, $quoi, $icone, $type, $id, $adresse
+        ): array {
+            $pseudo = (string) ($pseudoBrut ?? t('pt.un_ami'));
+
+            return [
+                'title' => $icone . ' ' . $pseudo,
+                'body' => mb_strimwidth($pseudo . ' ' . $quoi(), 0, 200, '…'),
+                'url' => $adresse ?? match ($type) {
+                    'cours' => url('cours/' . $id),
+                    'fiche' => url('revision/' . $id),
+                    'evenement' => url('evenements/' . $id),
+                    default => url('partages/envoyes'),
+                },
+                'tag' => 'partage-' . $type . '-' . $id,
+            ];
+        });
         if ($n !== null) {
             FileNotifications::envoyer($n);
         }
@@ -1538,7 +1551,7 @@ final class Partages
                 [$id]
             ), 'nom_origine');
             self::prevenir($moi, $type, $id, '📎',
-                t('pt.fichiers_ajoutes_' . ($type === 'cours' ? 'cours' : 'fiche'), [
+                fn (): string => t('pt.fichiers_ajoutes_' . ($type === 'cours' ? 'cours' : 'fiche'), [
                     'quoi' => $ajoutes === 1 ? t('pt.le_fichier') : t('pt.n_fichiers', ['n' => $ajoutes]),
                     'noms' => implode(', ', array_map(static fn (string $n): string => '« ' . $n . ' »', array_reverse($noms)))
                         . ($ajoutes > 3 ? '…' : ''),
@@ -1579,7 +1592,7 @@ final class Partages
         self::oublier('fichier', $fichierId);
         $document = self::cible($type, $coursId);
         self::prevenir($moi, $type, $coursId, '🗑️',
-            t('pt.fichier_retire_' . ($type === 'cours' ? 'cours' : 'fiche'), [
+            fn (): string => t('pt.fichier_retire_' . ($type === 'cours' ? 'cours' : 'fiche'), [
                 'nom' => (string) $fichier['nom_origine'],
                 'titre' => mb_strimwidth((string) ($document['titre_cours'] ?? $document['titre'] ?? ''), 0, 60, '…'),
             ]),
@@ -1958,43 +1971,49 @@ final class Partages
         }
         $proprietaire = (int) $document['user_id'];
         $titre = mb_strimwidth((string) ($document['titre_cours'] ?? $document['titre'] ?? ''), 0, 60, '…');
-        $du = t($type === 'cours' ? 'pt.ann.du_cours' : 'pt.ann.de_la_fiche', ['titre' => $titre]);
-        $au = t($type === 'cours' ? 'pt.ann.au_cours' : 'pt.ann.a_la_fiche', ['titre' => $titre]);
+        $du = fn (): string => t($type === 'cours' ? 'pt.ann.du_cours' : 'pt.ann.de_la_fiche', ['titre' => $titre]);
+        $au = fn (): string => t($type === 'cours' ? 'pt.ann.au_cours' : 'pt.ann.a_la_fiche', ['titre' => $titre]);
         $fichier = (string) $ligne['nom_origine'];
-        $pseudo = (string) (Amis::compte($moi)['pseudo'] ?? t('pt.quelquun'));
-        $pseudoAuteur = (string) (Amis::compte($auteur)['pseudo'] ?? t('pt.un_ami_defaut'));
+        $monPseudo = Amis::compte($moi)['pseudo'] ?? null;
+        $pseudoAuteur = fn (): string => (string) (Amis::compte($auteur)['pseudo'] ?? t('pt.un_ami_defaut'));
 
         // Qui l'apprend, et comment on le lui dit : « votre » modification pour
         // son auteur, « sa » ou « celle de … » pour le propriétaire.
         $destinataires = [];
         if ($auteur !== $moi) {
-            $destinataires[$auteur] = match ((string) $ligne['nature']) {
-                'texte' => t('pt.ann.texte_vous', ['doc' => $du]),
-                'ajout' => t('pt.ann.ajout_vous', ['fichier' => $fichier, 'doc' => $au]),
-                default => t('pt.ann.retrait_vous', ['fichier' => $fichier, 'doc' => $du]),
+            $destinataires[$auteur] = fn (): string => match ((string) $ligne['nature']) {
+                'texte' => t('pt.ann.texte_vous', ['doc' => $du()]),
+                'ajout' => t('pt.ann.ajout_vous', ['fichier' => $fichier, 'doc' => $au()]),
+                default => t('pt.ann.retrait_vous', ['fichier' => $fichier, 'doc' => $du()]),
             };
         }
         if ($proprietaire !== $moi && $proprietaire !== $auteur) {
             $sien = $auteur === $moi;
-            $destinataires[$proprietaire] = match ((string) $ligne['nature']) {
+            $destinataires[$proprietaire] = fn (): string => match ((string) $ligne['nature']) {
                 'texte' => $sien
-                    ? t('pt.ann.texte_sienne', ['doc' => $du])
-                    : t('pt.ann.texte_autre', ['qui' => $pseudoAuteur, 'doc' => $du]),
+                    ? t('pt.ann.texte_sienne', ['doc' => $du()])
+                    : t('pt.ann.texte_autre', ['qui' => $pseudoAuteur(), 'doc' => $du()]),
                 'ajout' => $sien
-                    ? t('pt.ann.ajout_sien', ['fichier' => $fichier, 'doc' => $au])
-                    : t('pt.ann.ajout_autre', ['fichier' => $fichier, 'qui' => $pseudoAuteur, 'doc' => $au]),
+                    ? t('pt.ann.ajout_sien', ['fichier' => $fichier, 'doc' => $au()])
+                    : t('pt.ann.ajout_autre', ['fichier' => $fichier, 'qui' => $pseudoAuteur(), 'doc' => $au()]),
                 default => $sien
-                    ? t('pt.ann.retrait_sien', ['fichier' => $fichier, 'doc' => $du])
-                    : t('pt.ann.retrait_autre', ['fichier' => $fichier, 'qui' => $pseudoAuteur, 'doc' => $du]),
+                    ? t('pt.ann.retrait_sien', ['fichier' => $fichier, 'doc' => $du()])
+                    : t('pt.ann.retrait_autre', ['fichier' => $fichier, 'qui' => $pseudoAuteur(), 'doc' => $du()]),
             };
         }
         foreach ($destinataires as $qui => $quoi) {
-            $n = FileNotifications::ajouter($qui, 'partage', [
-                'title' => '↶ ' . $pseudo,
-                'body' => mb_strimwidth($pseudo . ' ' . $quoi, 0, 200, '…'),
-                'url' => self::adresseHistorique($type, $id),
-                'tag' => 'annulation-' . $type . '-' . $id,
-            ]);
+            $n = FileNotifications::ajouter($qui, 'partage', function () use (
+                $monPseudo, $quoi, $type, $id
+            ): array {
+                $pseudo = (string) ($monPseudo ?? t('pt.quelquun'));
+
+                return [
+                    'title' => '↶ ' . $pseudo,
+                    'body' => mb_strimwidth($pseudo . ' ' . $quoi(), 0, 200, '…'),
+                    'url' => self::adresseHistorique($type, $id),
+                    'tag' => 'annulation-' . $type . '-' . $id,
+                ];
+            });
             if ($n !== null) {
                 FileNotifications::envoyer($n);
             }
@@ -2059,7 +2078,7 @@ final class Partages
             $cible = self::cible($type, $id);
             $titre = mb_strimwidth((string) ($cible['titre_cours'] ?? $cible['titre'] ?? ''), 0, 60, '…');
             self::prevenir($moi, $type, $id, '📥',
-                t('pt.copie.' . (in_array($type, ['cours', 'fiche', 'dossier', 'evenement'], true) ? $type : 'fichier'),
+                fn (): string => t('pt.copie.' . (in_array($type, ['cours', 'fiche', 'dossier', 'evenement'], true) ? $type : 'fichier'),
                     ['titre' => $titre]),
                 match ($type) {
                 'dossier' => url('cours', ['dossier' => $id]),

@@ -34,7 +34,7 @@ final class Session
         $envoye = $_POST['_csrf'] ?? '';
         if (!is_string($envoye) || !hash_equals(self::jetonCsrf(), $envoye)) {
             http_response_code(400);
-            exit('Session expirée ou jeton invalide. Revenez en arrière et réessayez.');
+            exit(t('corps.jeton_invalide'));
         }
     }
 

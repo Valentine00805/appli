@@ -87,11 +87,7 @@ final class FournisseurGoogle extends Fournisseur
          * l'inutilité que trois clics plus loin.
          */
         if ($agenda['code'] >= 400) {
-            throw new RuntimeException(
-                'Google a refusé l’accès à votre agenda. Sur l’écran de '
-                . 'consentement, cochez la case « Consulter, modifier, partager et '
-                . 'supprimer définitivement tous les agendas », puis recommencez : '
-                . 'elle n’est pas cochée d’avance.');
+            throw new RuntimeException(t('ag.google_droits'));
         }
 
         return [
@@ -218,7 +214,7 @@ final class FournisseurGoogle extends Fournisseur
         $texte = trim((string) ($brut['description'] ?? ''));
 
         return [
-            'titre'           => mb_substr($titre === '' ? '(sans titre)' : $titre, 0, 200),
+            'titre'           => mb_substr($titre === '' ? t('ag.sans_titre') : $titre, 0, 200),
             'description'     => $texte === '' ? null : mb_substr($texte, 0, 2000),
             'lieu'            => $lieu === '' ? null : mb_substr($lieu, 0, 160),
             'debut'           => $debut->format('Y-m-d H:i:s'),
@@ -264,7 +260,7 @@ final class FournisseurGoogle extends Fournisseur
         string $fuseau
     ): array {
         $corps = [
-            'summary'     => mb_substr($titre === '' ? '(sans titre)' : $titre, 0, 250),
+            'summary'     => mb_substr($titre === '' ? t('ag.sans_titre') : $titre, 0, 250),
             'description' => mb_substr($texte, 0, 4000),
         ];
 

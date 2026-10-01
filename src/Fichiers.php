@@ -45,7 +45,7 @@ final class Fichiers
         $extensions = (array) Config::get('app', 'extensions_autorisees');
 
         if (!is_dir($dossier) && !mkdir($dossier, 0775, true) && !is_dir($dossier)) {
-            return ['Impossible de créer le dossier de stockage des fichiers.'];
+            return [t('fic.dossier')];
         }
 
         $nombre = count($fichiers['name'] ?? []);
@@ -69,17 +69,15 @@ final class Fichiers
 
             $taille = (int) ($fichiers['size'][$i] ?? 0);
             if ($taille > $tailleMax) {
-                $erreurs[] = sprintf(
-                    '« %s » dépasse la taille maximale (%s).',
-                    $nomOrigine,
-                    taille_lisible($tailleMax)
-                );
+                $erreurs[] = t('fic.trop_lourd', [
+                    'nom' => $nomOrigine, 'taille' => taille_lisible($tailleMax),
+                ]);
                 continue;
             }
 
             $ext = strtolower(pathinfo($nomOrigine, PATHINFO_EXTENSION));
             if ($ext === '' || !in_array($ext, $extensions, true)) {
-                $erreurs[] = sprintf('« %s » : type de fichier non autorisé.', $nomOrigine);
+                $erreurs[] = t('fic.type_refuse', ['nom' => $nomOrigine]);
                 continue;
             }
 
@@ -88,7 +86,7 @@ final class Fichiers
             $destination = $dossier . DIRECTORY_SEPARATOR . $nomStocke;
 
             if (!move_uploaded_file($tmp, $destination)) {
-                $erreurs[] = sprintf('« %s » : échec de l\'enregistrement sur le disque.', $nomOrigine);
+                $erreurs[] = t('fic.echec_disque', ['nom' => $nomOrigine]);
                 continue;
             }
 
@@ -168,7 +166,7 @@ final class Fichiers
         $chemin = ($dossier ?? Config::get('app', 'dossier_uploads')) . DIRECTORY_SEPARATOR . basename((string) $fichier['nom_stocke']);
         if (!is_file($chemin)) {
             http_response_code(404);
-            exit('Fichier introuvable sur le disque.');
+            exit(t('fic.introuvable_disque'));
         }
 
         $mime = $fichier['mime'];
@@ -455,12 +453,12 @@ final class Fichiers
     public static function messageErreur(int $code): string
     {
         return match ($code) {
-            UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE => 'fichier trop volumineux pour le serveur (voir upload_max_filesize dans php.ini).',
-            UPLOAD_ERR_PARTIAL   => 'transfert interrompu.',
-            UPLOAD_ERR_NO_TMP_DIR => 'dossier temporaire manquant sur le serveur.',
-            UPLOAD_ERR_CANT_WRITE => 'écriture impossible sur le disque.',
-            UPLOAD_ERR_EXTENSION => 'transfert bloqué par une extension PHP.',
-            default              => 'erreur inconnue.',
+            UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE => t('fic.err.ini_size'),
+            UPLOAD_ERR_PARTIAL   => t('fic.err.partial'),
+            UPLOAD_ERR_NO_TMP_DIR => t('fic.err.no_tmp_dir'),
+            UPLOAD_ERR_CANT_WRITE => t('fic.err.cant_write'),
+            UPLOAD_ERR_EXTENSION => t('fic.err.extension'),
+            default              => t('fic.err.inconnue'),
         };
     }
 }

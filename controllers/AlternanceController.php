@@ -344,7 +344,7 @@ final class AlternanceController
         $userId = Alternance::parJetonIcs($jeton);
         if ($userId === null) {
             http_response_code(404);
-            exit('Lien inconnu.');
+            exit(t('corps.lien_inconnu'));
         }
 
         $ics = Alternance::icsRythme($userId);

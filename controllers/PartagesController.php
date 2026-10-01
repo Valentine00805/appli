@@ -546,9 +546,8 @@ final class PartagesController
         if (!Partages::partagerCalendrier(Auth::id(), $ami, $partager)) {
             self::introuvable();
         }
-        Session::flash('succes', $partager
-            ? $compte['pseudo'] . ' voit désormais tout votre calendrier, en lecture.'
-            : $compte['pseudo'] . ' ne voit plus votre calendrier.');
+        Session::flash('succes', t($partager ? 'pt.fl.calendrier_partage' : 'pt.fl.calendrier_retire',
+            ['qui' => (string) $compte['pseudo']]));
         repartir_vers('compte');
     }
 
@@ -559,9 +558,7 @@ final class PartagesController
         Session::verifierCsrf();
         $dansLaDiscussion = ($_POST['dans_discussion'] ?? '') === '1';
         Partages::reglerReception(Auth::id(), $dansLaDiscussion);
-        Session::flash('succes', $dansLaDiscussion
-            ? 'Ce qu’on vous partage arrivera aussi en carte dans vos discussions.'
-            : 'Ce qu’on vous partage n’arrivera plus que dans l’onglet « Partagés », avec une notification.');
+        Session::flash('succes', t($dansLaDiscussion ? 'pt.fl.reception_discussion' : 'pt.fl.reception_onglet'));
         repartir_vers('compte');
     }
 
@@ -599,7 +596,7 @@ final class PartagesController
         $evenement = $mot === 'evenements' ? Partages::cible('evenement', $id) : null;
         if ($trouve === null || $evenement === null || !Partages::visiblePar($trouve['lien'], 'evenement', $id)) {
             http_response_code(404);
-            exit('Évènement introuvable.');
+            exit(t('pt.fl.evenement_introuvable'));
         }
         $this->envoyerIcs($evenement);
     }
@@ -638,13 +635,8 @@ final class PartagesController
             Session::flash('erreur', $refus);
             redirect('partages/' . $mot . '/' . $id);
         }
-        Session::flash('succes', match ($type) {
-            'cours' => 'Cours copié dans vos cours : cette copie est à vous, modifiable.',
-            'fiche' => 'Fiche copiée : un nouveau cours à vous, dont c’est la fiche de révision.',
-            'dossier' => 'Dossier copié dans vos dossiers : ces copies sont à vous, modifiables.',
-            'evenement' => 'Évènement ajouté à votre calendrier : il est à vous, modifiable.',
-            default => 'Fichier copié dans votre cours.',
-        });
+        Session::flash('succes',
+            t('pt.fl.copie_' . (in_array($type, ['cours', 'fiche', 'dossier', 'evenement'], true) ? $type : 'fichier')));
         if ($type === 'dossier') {
             redirect('cours', ['dossier' => $cours]);
         }
@@ -744,7 +736,7 @@ final class PartagesController
         $fichier = Partages::cible('fichier', $id);
         if ($trouve === null || $fichier === null || !Partages::visiblePar($trouve['lien'], 'fichier', $id)) {
             http_response_code(404);
-            exit('Fichier introuvable.');
+            exit(t('corps.fichier_introuvable'));
         }
         Fichiers::envoyer($fichier, isset($_GET['telecharger']));
     }

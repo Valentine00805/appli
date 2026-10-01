@@ -34,7 +34,7 @@ final class SauvegardeController
         try {
             Sauvegarde::telecharger($userId);
         } catch (Throwable $e) {
-            Session::flash('erreur', 'La sauvegarde a échoué : ' . $e->getMessage());
+            Session::flash('erreur', t('sv.fl.echec', ['raison' => $e->getMessage()]));
             redirect('compte/sauvegarde');
         }
     }
@@ -46,26 +46,25 @@ final class SauvegardeController
         $userId = Auth::id();
 
         if (!isset($_POST['confirmation'])) {
-            Session::flash('erreur', 'Cochez la case de confirmation : la restauration remplace vos données.');
+            Session::flash('erreur', t('sv.fl.confirmation'));
             redirect('compte/sauvegarde');
         }
 
         $fichier = $_FILES['archive'] ?? null;
         if (!is_array($fichier) || ($fichier['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) {
-            Session::flash('erreur', 'Choisissez le fichier de sauvegarde à restaurer.');
+            Session::flash('erreur', t('sv.fl.choisir'));
             redirect('compte/sauvegarde');
         }
         if ($fichier['error'] !== UPLOAD_ERR_OK) {
-            Session::flash('erreur',
-                'Le transfert a échoué. Une archive volumineuse peut dépasser la limite du serveur.');
+            Session::flash('erreur', t('sv.fl.transfert'));
             redirect('compte/sauvegarde');
         }
         if ($fichier['size'] > self::TAILLE_MAX) {
-            Session::flash('erreur', 'Archive trop volumineuse (maximum ' . taille_lisible(self::TAILLE_MAX) . ').');
+            Session::flash('erreur', t('sv.fl.trop_gros', ['taille' => taille_lisible(self::TAILLE_MAX)]));
             redirect('compte/sauvegarde');
         }
         if (strtolower(pathinfo((string) $fichier['name'], PATHINFO_EXTENSION)) !== 'zip') {
-            Session::flash('erreur', 'Le fichier attendu est l’archive .zip produite par la sauvegarde.');
+            Session::flash('erreur', t('sv.fl.zip_attendu'));
             redirect('compte/sauvegarde');
         }
 
@@ -78,14 +77,10 @@ final class SauvegardeController
             redirect('compte/sauvegarde');
         }
 
-        Session::flash('succes', sprintf(
-            'Restauration terminée : %d ligne%s et %d pièce%s jointe%s.',
-            $bilan['lignes'],
-            $bilan['lignes'] > 1 ? 's' : '',
-            $bilan['fichiers'],
-            $bilan['fichiers'] > 1 ? 's' : '',
-            $bilan['fichiers'] > 1 ? 's' : ''
-        ));
+        Session::flash('succes', t('sv.fl.terminee', [
+            'lignes' => tn('sv.fl.lignes', (int) $bilan['lignes']),
+            'fichiers' => tn('sv.fl.pieces', (int) $bilan['fichiers']),
+        ]));
         redirect('compte/sauvegarde');
     }
 }

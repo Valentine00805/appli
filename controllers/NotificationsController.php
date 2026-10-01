@@ -270,7 +270,7 @@ JS;
         if (!WebPush::serviceConnu($pointFinal)
             || strlen($publique) !== 65 || $publique[0] !== "\x04" || strlen($secret) !== 16) {
             http_response_code(422);
-            repondre_json(['fait' => false, 'message' => 'Cet abonnement est illisible.']);
+            repondre_json(['fait' => false, 'message' => t('notif.abonnement_illisible')]);
         }
 
         // Une même adresse ne vaut qu'un abonnement : l'appareil change de compte, il suit.
@@ -304,7 +304,7 @@ JS;
         if (veut_du_json()) {
             repondre_json(['fait' => true]);
         }
-        Session::flash('succes', 'Appareil retiré : il ne recevra plus de rappels.');
+        Session::flash('succes', t('notif.appareil_retire'));
         redirect('notifications');
     }
 
@@ -315,17 +315,16 @@ JS;
         Session::verifierCsrf();
 
         $bilan = Rappels::envoyerAuCompte(Auth::id(), [
-            'title' => '🔔 Les rappels fonctionnent',
-            'body' => 'Mes Cours pourra vous prévenir avant vos évènements et le matin de vos échéances.',
+            'title' => t('notif.essai_titre'),
+            'body' => t('notif.essai_corps', ['appli' => (string) Config::get('app', 'nom')]),
             'url' => url('notifications'),
             'tag' => 'essai',
         ]);
 
         $message = match (true) {
-            $bilan['envoyes'] > 0 => 'Notification d’essai envoyée à ' . $bilan['envoyes'] . ' appareil'
-                . ($bilan['envoyes'] > 1 ? 's' : '') . '.',
-            $bilan['retires'] > 0 => 'Cet appareil n’était plus abonné : réactivez les notifications.',
-            default => 'La notification n’a pas pu partir. Vérifiez la connexion à Internet, puis réessayez.',
+            $bilan['envoyes'] > 0 => tn('notif.essai_envoyee', $bilan['envoyes']),
+            $bilan['retires'] > 0 => t('notif.plus_abonne'),
+            default => t('notif.pas_partie'),
         };
 
         if (veut_du_json()) {

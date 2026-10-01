@@ -3391,20 +3391,20 @@ final class EditionDocument
     private static function sorteDObjet(DOMElement $unite): string
     {
         if ($unite->localName === 'object') {
-            return 'objet inséré';
+            return t('ed.objet.insere');
         }
         $donnees = $unite->getElementsByTagNameNS(self::NS_A, 'graphicData')->item(0);
         $uri = $donnees instanceof DOMElement ? $donnees->getAttribute('uri') : '';
 
-        return match (true) {
+        return t('ed.objet.' . match (true) {
             str_ends_with($uri, '/wordprocessingShape')  => 'forme',
-            str_ends_with($uri, '/wordprocessingGroup')  => 'groupe de formes',
-            str_ends_with($uri, '/wordprocessingCanvas') => 'zone de dessin',
+            str_ends_with($uri, '/wordprocessingGroup')  => 'groupe',
+            str_ends_with($uri, '/wordprocessingCanvas') => 'dessin',
             str_ends_with($uri, '/chart')                => 'graphique',
-            str_ends_with($uri, '/diagram')              => 'SmartArt',
+            str_ends_with($uri, '/diagram')              => 'smartart',
             $unite->localName === 'pict'                 => 'forme',
-            default                                      => 'objet',
-        };
+            default                                      => 'autre',
+        });
     }
 
     /**
@@ -3454,19 +3454,17 @@ final class EditionDocument
                 // n'a rien à gagner à le rester dans une page.
                 . ' alt="' . $e($dessin['alt'] !== ''
                     ? trim((string) preg_replace('/\s+/u', ' ', (string) $dessin['alt']))
-                    : 'Image du document') . '"'
+                    : t('ed.image_du_document')) . '"'
                 . $taille . ' loading="lazy" decoding="async">';
         }
 
         $etiquette = match (true) {
-            $image === null                  => (string) ($dessin['sorte'] ?? 'objet'),
-            ($dessin['source'] ?? '') === '' => 'image liée',
+            $image === null                  => (string) ($dessin['sorte'] ?? t('ed.objet.autre')),
+            ($dessin['source'] ?? '') === '' => t('ed.image_liee'),
             default                          => 'image ' . strtoupper(
                 (string) pathinfo((string) $dessin['source'], PATHINFO_EXTENSION)),
         };
-        $explication = $image === null
-            ? 'Un élément que l’éditeur ne sait pas montrer. Il reste tel quel dans le fichier ; on peut le déplacer ou le supprimer.'
-            : 'Une image que le navigateur ne peut pas afficher. Elle reste dans le fichier ; on peut la déplacer ou la supprimer.';
+        $explication = t($image === null ? 'ed.objet_sans_apercu' : 'ed.image_sans_apercu');
 
         return '<span class="riche-image-absente" contenteditable="false" data-dessin="' . $rang . '"'
             . ' title="' . $e($explication) . '">' . ($image === null ? '◆ ' : '🖼 ')
@@ -4010,7 +4008,7 @@ final class EditionDocument
         }
         if ($lignes === []) {
             $vide = $doc->createElementNS(self::NS_W, 'w:p');
-            $ecrire($vide, 'Aucun titre dans ce document.');
+            $ecrire($vide, t('ed.sommaire_vide'));
             $lignes[] = $vide;
         }
 
@@ -4093,7 +4091,7 @@ final class EditionDocument
         }
         if ($plan === []) {
             $ligne = $doc->createElementNS(self::NS_TEXT, 'text:p');
-            $ligne->appendChild($doc->createTextNode('Aucun titre dans ce document.'));
+            $ligne->appendChild($doc->createTextNode(t('ed.sommaire_vide')));
             $corps->appendChild($ligne);
         }
         $sommaire->appendChild($corps);

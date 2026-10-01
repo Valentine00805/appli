@@ -200,13 +200,13 @@ final class PrevisionsController
         }
 
         if ($this->dejaPointee($userId, $id, $periode)) {
-            Session::flash('info', '« ' . $rec['libelle'] . ' » était déjà saisie pour ce mois.');
+            Session::flash('info', t('prv.deja_saisie', ['libelle' => (string) $rec['libelle']]));
             redirect('budget/previsions', ['mois' => $periode]);
         }
 
         $this->creerOperationDepuisRecurrence($userId, $rec, $periode);
 
-        Session::flash('succes', '« ' . $rec['libelle'] . ' » ajoutée aux opérations du mois.');
+        Session::flash('succes', t('prv.ajoutee', ['libelle' => (string) $rec['libelle']]));
         redirect('budget/previsions', ['mois' => $periode]);
     }
 
@@ -227,8 +227,8 @@ final class PrevisionsController
         }
 
         Session::flash('succes', $nb === 0
-            ? 'Toutes les lignes fixes étaient déjà saisies pour ce mois.'
-            : $nb . ' ligne' . ($nb > 1 ? 's ajoutées' : ' ajoutée') . ' aux opérations du mois.');
+            ? t('prv.toutes_deja_saisies')
+            : tn('prv.lignes_ajoutees', $nb));
         redirect('budget/previsions', ['mois' => $periode]);
     }
 
@@ -468,15 +468,15 @@ final class PrevisionsController
     {
         $libelle = post('libelle');
         if ($libelle === '') {
-            return 'Indiquez le nom de la charge ou du revenu.';
+            return t('prv.nom_requis');
         }
 
         $montant = montant_depuis_saisie(post('montant'));
         if ($montant === null || $montant <= 0) {
-            return 'Le montant doit être un nombre supérieur à zéro.';
+            return t('prv.montant_positif');
         }
         if ($montant > 99999999.99) {
-            return 'Le montant est trop élevé.';
+            return t('prv.montant_trop_eleve');
         }
 
         $jour = entier_ou_null($_POST['jour_du_mois'] ?? null) ?? 1;

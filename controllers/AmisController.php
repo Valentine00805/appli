@@ -262,7 +262,7 @@ final class AmisController
 
         if ($chemin === null || !is_file($chemin) || !in_array($fond['image_mime'], array_column(Amis::IMAGE_TYPES, 0), true)) {
             http_response_code(404);
-            exit('Fond introuvable.');
+            exit(t('corps.fond_introuvable'));
         }
 
         header('Content-Type: ' . $fond['image_mime']);
@@ -471,7 +471,7 @@ final class AmisController
         $message = Amis::fichier(Auth::id(), $id);
         if ($message === null) {
             http_response_code(404);
-            exit('Fichier introuvable.');
+            exit(t('corps.fichier_introuvable'));
         }
 
         // Même envoi que les pièces jointes des cours : seuls les types sûrs s'ouvrent dans le navigateur.
@@ -490,7 +490,7 @@ final class AmisController
         $message = Amis::vocal(Auth::id(), $id);
         if ($message === null) {
             http_response_code(404);
-            exit('Message vocal introuvable.');
+            exit(t('corps.vocal_introuvable'));
         }
         $extension = pathinfo((string) $message['audio_nom'], PATHINFO_EXTENSION);
         Fichiers::envoyer([
@@ -510,7 +510,7 @@ final class AmisController
 
         if ($chemin === null || !is_file($chemin) || !in_array($message['image_mime'], array_column(Amis::IMAGE_TYPES, 0), true)) {
             http_response_code(404);
-            exit('Image introuvable.');
+            exit(t('corps.image_introuvable'));
         }
 
         header('Content-Type: ' . $message['image_mime']);

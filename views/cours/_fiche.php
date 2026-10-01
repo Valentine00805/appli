@@ -477,7 +477,7 @@ $avancementFiche = avancement_anneaux(
         <input type="hidden" name="type" value="lien">
         <div class="champ">
           <label for="lien-url"><?= e(t('fiche.adresse')) ?></label>
-          <input type="url" id="lien-url" name="url" required placeholder="https://…">
+          <input type="url" id="lien-url" name="url" required placeholder="<?= e(t('fiche.url_exemple')) ?>">
         </div>
         <div class="champ">
           <label for="lien-libelle"><?= e(t('fiche.intitule')) ?> <span class="discret"><?= e(t('commun.facultatif')) ?></span></label>

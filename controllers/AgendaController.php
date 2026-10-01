@@ -89,14 +89,16 @@ final class AgendaController
 
         $refus = (string) ($_GET['error_description'] ?? $_GET['error'] ?? '');
         if ($refus !== '') {
-            Session::flash('erreur', $f->nom() . ' a refusé : ' . mb_substr($refus, 0, 200));
+            Session::flash('erreur', t('ag.fl.refus', [
+                'qui' => $f->nom(), 'raison' => mb_substr($refus, 0, 200),
+            ]));
             redirect('agenda/' . $f->cle());
         }
 
         $code = (string) ($_GET['code'] ?? '');
         $etat = (string) ($_GET['state'] ?? '');
         if ($code === '') {
-            Session::flash('erreur', $f->nom() . ' n’a renvoyé aucun code d’autorisation.');
+            Session::flash('erreur', t('ag.fl.pas_de_code', ['qui' => $f->nom()]));
             redirect('agenda/' . $f->cle());
         }
 
@@ -112,8 +114,9 @@ final class AgendaController
         }
 
         $compte = LiaisonAgenda::pour($f)->compte(Auth::id());
-        Session::flash('succes', 'Compte ' . $f->nom() . ' relié'
-            . (($compte['compte'] ?? '') === '' ? '.' : ' : ' . $compte['compte'] . '.'));
+        Session::flash('succes', ($compte['compte'] ?? '') === ''
+            ? t('ag.fl.relie', ['qui' => $f->nom()])
+            : t('ag.fl.relie_nom', ['qui' => $f->nom(), 'compte' => (string) $compte['compte']]));
         redirect('agenda/' . $f->cle());
     }
 

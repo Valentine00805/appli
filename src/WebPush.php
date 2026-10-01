@@ -125,7 +125,7 @@ final class WebPush
 
         $secretEcdh = openssl_pkey_derive(self::clePublique($publiqueNavigateur), $ephemere, 32);
         if ($secretEcdh === false) {
-            throw new RuntimeException('La clé de cet appareil est illisible.');
+            throw new RuntimeException(t('push.cle_illisible'));
         }
 
         // Le secret du message, mêlé au secret d'authentification de l'abonnement.
@@ -142,7 +142,7 @@ final class WebPush
         $etiquette = '';
         $chiffre = openssl_encrypt($texte . "\x02", 'aes-128-gcm', $cek, OPENSSL_RAW_DATA, $nonce, $etiquette, '', 16);
         if ($chiffre === false) {
-            throw new RuntimeException('Le chiffrement du message a échoué.');
+            throw new RuntimeException(t('push.chiffrement_rate'));
         }
 
         return $sel . pack('N', 4096) . chr(strlen($publiqueServeur)) . $publiqueServeur . $chiffre . $etiquette;
@@ -198,7 +198,9 @@ final class WebPush
         $options = ['private_key_type' => OPENSSL_KEYTYPE_EC, 'curve_name' => 'prime256v1'];
         $cle = @openssl_pkey_new($options) ?: openssl_pkey_new($options + ['config' => self::configuration()]);
         if ($cle === false) {
-            throw new RuntimeException('Impossible de créer une clé : ' . (string) openssl_error_string());
+            throw new RuntimeException(t('push.cle_impossible', [
+                'raison' => (string) openssl_error_string(),
+            ]));
         }
 
         return $cle;
@@ -232,14 +234,14 @@ final class WebPush
     private static function clePublique(string $point): OpenSSLAsymmetricKey
     {
         if (strlen($point) !== 65 || $point[0] !== "\x04") {
-            throw new RuntimeException('La clé de cet appareil est illisible.');
+            throw new RuntimeException(t('push.cle_illisible'));
         }
         $pem = "-----BEGIN PUBLIC KEY-----\n"
             . chunk_split(base64_encode(hex2bin(self::PREFIXE_PUBLIQUE) . $point), 64, "\n")
             . "-----END PUBLIC KEY-----\n";
         $cle = openssl_pkey_get_public($pem);
         if ($cle === false) {
-            throw new RuntimeException('La clé de cet appareil est illisible.');
+            throw new RuntimeException(t('push.cle_illisible'));
         }
 
         return $cle;

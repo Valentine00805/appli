@@ -185,7 +185,7 @@ final class FileNotifications
      * @return ?int l'identifiant en file, ou null si le compte n'a pas d'appareil,
      *              ou s'il a choisi de ne pas recevoir cette sorte de notification
      */
-    public static function ajouter(int $userId, string $nature, array $message): ?int
+    public static function ajouter(int $userId, string $nature, array|callable $message): ?int
     {
         $appareils = (int) Database::valeur('SELECT COUNT(*) FROM abonnements_push WHERE user_id = ?', [$userId]);
         if ($appareils === 0) {
@@ -194,6 +194,13 @@ final class FileNotifications
         // Une sorte de notification qu'on a choisi de ne pas recevoir ne part pas.
         if (self::estCoupee($userId, $nature)) {
             return null;
+        }
+        /*
+         * Le texte va être lu par quelqu'un d'autre : une fonction le fabrique
+         * dans la langue de ce compte-là, et non dans celle de qui l'a déclenché.
+         */
+        if (!is_array($message)) {
+            $message = Langue::pourLeCompte($userId, $message);
         }
 
         Database::run(

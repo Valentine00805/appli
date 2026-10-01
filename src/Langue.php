@@ -45,6 +45,25 @@ final class Langue
         self::$courante = isset(self::LANGUES[$langue]) ? $langue : self::PAR_DEFAUT;
     }
 
+    /**
+     * Fabrique quelque chose dans la langue d'un autre compte.
+     *
+     * Une notification, un e-mail : le texte part vers quelqu'un d'autre, et
+     * c'est sa langue qui compte, pas celle de qui déclenche l'envoi. La
+     * langue d'avant revient ensuite, même si la fabrication a échoué.
+     */
+    public static function pourLeCompte(int $userId, callable $quoi): mixed
+    {
+        $avant = self::$courante;
+        $dite = Database::valeur('SELECT langue FROM users WHERE id = ?', [$userId]);
+        self::imposer((string) ($dite ?? self::PAR_DEFAUT));
+        try {
+            return $quoi();
+        } finally {
+            self::$courante = $avant;
+        }
+    }
+
     /** @return array<string, string|array> les phrases d'une langue */
     private static function phrases(string $langue): array
     {

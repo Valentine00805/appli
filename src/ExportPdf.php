@@ -103,7 +103,7 @@ final class ExportPdf
 
         return self::publier(
             ['titre' => (string) $cours['titre'], 'sous_titre' => trim((string) ($cours['matiere_nom'] ?? ''))],
-            $blocs, $profondeur, 'Ce cours n’a pas encore de contenu écrit.', (string) $cours['titre']
+            $blocs, $profondeur, t('pdf.cours_vide'), (string) $cours['titre']
         );
     }
 
@@ -146,18 +146,18 @@ final class ExportPdf
 
         if (count($semaines) > 1 && $combien !== []) {
             uasort($combien, static fn (array $a, array $b): int => [$b['n'], mb_strtolower($a['nom'])] <=> [$a['n'], mb_strtolower($b['nom'])]);
-            $blocs[] = ['html' => 'Compétences travaillées', 'titre' => 2];
+            $blocs[] = ['html' => t('pdf.competences'), 'titre' => 2];
             foreach ($combien as $c) {
-                $blocs[] = ['html' => $e($c['nom']) . ' ' . $gris('— ' . $c['n'] . ' semaine' . ($c['n'] > 1 ? 's' : '')),
+                $blocs[] = ['html' => $e($c['nom']) . ' ' . $gris(tn('pdf.semaines', (int) $c['n'])),
                             'liste' => 'puce'];
             }
         }
 
         return self::publier(
-            ['titre' => 'Journal des missions', 'sous_titre' => $sousTitre],
+            ['titre' => t('pdf.journal'), 'sous_titre' => $sousTitre],
             // Un sommaire dès que le journal compte assez de semaines pour
             // qu'on y cherche la sienne.
-            $blocs, count($semaines) >= 3 ? 2 : 0, 'Le journal est vide.', 'Journal des missions'
+            $blocs, count($semaines) >= 3 ? 2 : 0, t('pdf.journal_vide'), t('pdf.journal')
         );
     }
 
@@ -187,35 +187,38 @@ final class ExportPdf
             }
         };
 
-        $rayon('Fichiers et images', array_map(static fn (array $f): string =>
+        $rayon(t('pdf.fichiers_images'), array_map(static fn (array $f): string =>
             $e((string) $f['nom_origine']) . ' ' . $gris('(' . $e(taille_lisible((int) $f['taille'])) . ')'), $fichiers));
 
         $parType = ['lien' => [], 'cours' => [], 'evenement' => []];
         foreach ($elements as $element) {
             $parType[$element['type']][] = $element;
         }
-        $rayon('Liens', array_map(static fn (array $l): string =>
+        $rayon(t('pdf.liens'), array_map(static fn (array $l): string =>
             '<b>' . $e((string) ($l['libelle'] ?: $l['url'])) . '</b> '
             . '<span data-couleur="2563eb">' . $e((string) $l['url']) . '</span>', $parType['lien']));
-        $rayon('Autres cours', array_map(static fn (array $c): string =>
+        $rayon(t('pdf.autres_cours'), array_map(static fn (array $c): string =>
             $e((string) $c['cours_titre']) . ((string) ($c['libelle'] ?? '') !== '' ? ' ' . $gris('— ' . $e((string) $c['libelle'])) : ''),
             $parType['cours']));
-        $rayon('Au calendrier', array_map(static fn (array $v): string =>
+        $rayon(t('pdf.au_calendrier'), array_map(static fn (array $v): string =>
             $e((string) $v['evenement_titre']) . ' '
             . $gris('— ' . $e(date_fr((string) $v['evenement_debut'], (int) $v['journee_entiere'] === 0))
-                . ((int) $v['termine'] === 1 ? ' · terminé' : '')),
+                . ((int) $v['termine'] === 1 ? t('pdf.termine') : '')),
             $parType['evenement']));
 
         if ($rayons !== []) {
-            $blocs[] = ['html' => 'Éléments rattachés', 'titre' => 2];
+            $blocs[] = ['html' => t('pdf.elements'), 'titre' => 2];
             array_push($blocs, ...$rayons);
         }
 
         $matiere = trim((string) ($cours['matiere_nom'] ?? ''));
 
         return self::publier(
-            ['titre' => (string) $cours['titre'], 'sous_titre' => 'Fiche de révision' . ($matiere === '' ? '' : ' · ' . $matiere)],
-            $blocs, $profondeur, 'Cette fiche de révision est vide.', 'Fiche — ' . $cours['titre']
+            [
+                'titre' => (string) $cours['titre'],
+                'sous_titre' => $matiere === '' ? t('pdf.fiche') : t('pdf.fiche_matiere', ['matiere' => $matiere]),
+            ],
+            $blocs, $profondeur, t('pdf.fiche_vide'), t('pdf.fiche_nom', ['titre' => (string) $cours['titre']])
         );
     }
 

@@ -462,7 +462,7 @@ final class Conversations
     /** Prévient qui vient d'être invité. */
     public static function notifierInvitation(int $auteur, int $conversation, int $cible): ?int
     {
-        return FileNotifications::ajouter($cible, 'groupe', [
+        return FileNotifications::ajouter($cible, 'groupe', fn (): array => [
             'title' => t('grp.notif_invitation_titre'),
             'body' => t('grp.notif_invitation_corps', [
                 'qui' => (string) (Amis::compte($auteur)['pseudo'] ?? t('grp.quelquun')),
@@ -996,7 +996,7 @@ final class Conversations
             Database::run('UPDATE conversation_messages SET texte = ?, modifie_le = UTC_TIMESTAMP() WHERE id = ?', [$texte, $messageId]);
         }
 
-        return [true, 'Message modifié.'];
+        return [true, t('msg.modifie')];
     }
 
     /**
@@ -1078,7 +1078,7 @@ final class Conversations
                 'r_texte' => $message['texte'], 'r_image' => $message['image_nom'], 'r_fichier' => $message['fichier_origine'],
                 'r_audio' => $message['audio_nom'], 'r_supprime' => null, 'r_masque' => 0,
             ]);
-            $notification = FileNotifications::ajouter($auteur, 'reaction', [
+            $notification = FileNotifications::ajouter($auteur, 'reaction', fn (): array => [
                 'title' => t('grp.notif_reaction_titre', [
                     'emoji' => $emoji,
                     'qui' => (string) (Amis::compte($moi)['pseudo'] ?? t('grp.un_membre')),
@@ -1205,7 +1205,8 @@ final class Conversations
             Database::run('DELETE FROM conversation_epingles WHERE user_id = ? AND message_id = ?', [$moi, $messageId]);
         }
 
-        return [true, $epingler ? 'Message épinglé.' : 'Épingle retirée.', (int) $message['conversation_id']];
+        return [true, t($epingler ? 'msg.epingle' : 'msg.epingle_retire'),
+            (int) $message['conversation_id']];
     }
 
     /** Mes messages épinglés dans la conversation, de la dernière épingle à la plus ancienne. */
@@ -1303,7 +1304,7 @@ final class Conversations
         if ($dureeVocal !== null) {
             $apercu = t('msg.piece_vocal_duree', ['duree' => Amis::duree($dureeVocal)]) . ($apercu === '' ? '' : ' · ' . $apercu);
         }
-        $pseudo = (string) (Amis::compte($expediteur)['pseudo'] ?? t('grp.un_membre'));
+        $pseudoBrut = Amis::compte($expediteur)['pseudo'] ?? null;
         $nom = self::nom($conversation);
 
         $ids = [];
@@ -1313,9 +1314,12 @@ final class Conversations
             if (!self::absent($conversation, $membre)) {
                 continue;
             }
-            $id = FileNotifications::ajouter($membre, 'message', [
+            $id = FileNotifications::ajouter($membre, 'message', fn (): array => [
                 'title' => '👥 ' . $nom,
-                'body' => mb_strimwidth($pseudo . ' : ' . $apercu, 0, Amis::APERCU_NOTIFICATION, '…'),
+                'body' => mb_strimwidth(
+                    ((string) ($pseudoBrut ?? t('grp.un_membre'))) . ' : ' . $apercu,
+                    0, Amis::APERCU_NOTIFICATION, '…'
+                ),
                 'url' => url('groupes/' . $conversation),
                 'tag' => 'groupe-' . $conversation,
             ]);
@@ -1334,13 +1338,15 @@ final class Conversations
      */
     public static function notifierAjout(int $auteur, int $conversation, array $ids): array
     {
-        $pseudo = (string) (Amis::compte($auteur)['pseudo'] ?? t('grpevt.un_ami'));
+        $pseudoBrut = Amis::compte($auteur)['pseudo'] ?? null;
         $nom = self::nom($conversation);
         $notifications = [];
         foreach ($ids as $id) {
-            $n = FileNotifications::ajouter((int) $id, 'groupe', [
+            $n = FileNotifications::ajouter((int) $id, 'groupe', fn (): array => [
                 'title' => '👥 ' . $nom,
-                'body' => t('grp.notif_ajout', ['qui' => $pseudo]),
+                'body' => t('grp.notif_ajout', [
+                    'qui' => (string) ($pseudoBrut ?? t('grpevt.un_ami')),
+                ]),
                 'url' => url('groupes/' . $conversation),
                 'tag' => 'groupe-' . $conversation,
             ]);

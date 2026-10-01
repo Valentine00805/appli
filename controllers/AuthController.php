@@ -167,7 +167,7 @@ final class AuthController
         if (Auth::connecte()) {
             redirect('compte');
         }
-        Vue::afficherNu('auth/oubli', ['envoye' => false], 'Mot de passe oublié');
+        Vue::afficherNu('auth/oubli', ['envoye' => false], t('auth.oubli_titre'));
     }
 
     public function demanderReinitialisation(): void
@@ -175,7 +175,7 @@ final class AuthController
         Session::verifierCsrf();
         Reinitialisation::demander(post('identifiant'));
         // La même réponse, que le compte existe ou non.
-        Vue::afficherNu('auth/oubli', ['envoye' => true], 'Mot de passe oublié');
+        Vue::afficherNu('auth/oubli', ['envoye' => true], t('auth.oubli_titre'));
     }
 
     /** Le lien reçu par e-mail : choisir un nouveau mot de passe. */
@@ -350,7 +350,7 @@ final class AuthController
             : Amis::dossierImages() . DIRECTORY_SEPARATOR . basename((string) $compte['photo_nom']);
         if ($chemin === null || !is_file($chemin) || !in_array($compte['photo_mime'], array_column(Amis::IMAGE_TYPES, 0), true)) {
             http_response_code(404);
-            exit('Photo introuvable.');
+            exit(t('corps.photo_introuvable'));
         }
         header('Content-Type: ' . $compte['photo_mime']);
         header('Content-Length: ' . (string) filesize($chemin));
@@ -369,7 +369,7 @@ final class AuthController
         Session::verifierCsrf();
         $image = isset($_FILES['photo']) && is_array($_FILES['photo']) && !is_array($_FILES['photo']['name'] ?? null) ? $_FILES['photo'] : null;
         $refus = Amis::changerPhoto(Auth::id(), $image);
-        Session::flash($refus === null ? 'succes' : 'erreur', $refus ?? 'Photo de profil enregistrée.');
+        Session::flash($refus === null ? 'succes' : 'erreur', $refus ?? t('auth.fl.photo_enregistree'));
         redirect('compte');
     }
 
@@ -494,10 +494,10 @@ final class AuthController
     private function creerMatieresParDefaut(int $userId): void
     {
         $defauts = [
-            ['Mathématiques', '#4f46e5'],
-            ['Français', '#db2777'],
-            ['Histoire-Géographie', '#ca8a04'],
-            ['Sciences', '#059669'],
+            [t('mat.defaut.maths'), '#4f46e5'],
+            [t('mat.defaut.langue'), '#db2777'],
+            [t('mat.defaut.histoire_geo'), '#ca8a04'],
+            [t('mat.defaut.sciences'), '#059669'],
         ];
         foreach ($defauts as [$nom, $couleur]) {
             Database::run(

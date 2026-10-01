@@ -23,33 +23,17 @@ declare(strict_types=1);
  */
 final class Rappels
 {
-    /** Les délais proposés dans le formulaire d'un évènement, en minutes. */
-    public const DELAIS = [
-        0    => 'À l’heure de l’évènement',
-        5    => '5 minutes avant',
-        10   => '10 minutes avant',
-        15   => '15 minutes avant',
-        30   => '30 minutes avant',
-        60   => '1 heure avant',
-        120  => '2 heures avant',
-        1440 => '1 jour avant',
-        2880 => '2 jours avant',
-        10080 => '1 semaine avant',
-    ];
+    /*
+     * Les délais proposés dans le formulaire d'un évènement, en minutes.
+     *
+     * Seules les clés comptent : ce qu'on en dit vient de libelle() et de
+     * court(), qui vont le chercher dans la langue du compte.
+     */
+    public const DELAIS = [0 => true, 5 => true, 10 => true, 15 => true, 30 => true,
+        60 => true, 120 => true, 1440 => true, 2880 => true, 10080 => true];
 
-    /** Les mêmes, en court, pour les pastilles du formulaire. */
-    public const DELAIS_COURTS = [
-        0    => 'À l’heure',
-        5    => '5 min',
-        10   => '10 min',
-        15   => '15 min',
-        30   => '30 min',
-        60   => '1 h',
-        120  => '2 h',
-        1440 => '1 jour',
-        2880 => '2 jours',
-        10080 => '1 semaine',
-    ];
+    /** Les mêmes, pour les pastilles du formulaire. */
+    public const DELAIS_COURTS = self::DELAIS;
 
     /**
      * Les délais d'un évènement, lus depuis la base : « 1440,15 ».
@@ -308,8 +292,10 @@ final class Rappels
                     'nature' => 'tache', 'objet_id' => (int) $tache['id'],
                     'moment' => $matin->format('Y-m-d H:i:s'),
                     'message' => [
-                        'title' => '✅ À faire aujourd’hui : ' . $tache['titre'],
-                        'body' => 'Échéance aujourd’hui · ' . trim(($tache['liste_icone'] ?? '') . ' ' . $tache['liste_nom']),
+                        'title' => t('rappel.tache_aujourdhui', ['titre' => (string) $tache['titre']]),
+                        'body' => t('rappel.echeance_aujourdhui', [
+                            'liste' => trim(($tache['liste_icone'] ?? '') . ' ' . $tache['liste_nom']),
+                        ]),
                         'url' => url('taches', ['liste' => (int) $tache['liste_id']]),
                         'tag' => 'tache-' . (int) $tache['id'],
                     ],
@@ -330,9 +316,11 @@ final class Rappels
                     'nature' => 'liste', 'objet_id' => (int) $liste['id'],
                     'moment' => $matin->format('Y-m-d H:i:s'),
                     'message' => [
-                        'title' => trim(($liste['icone'] ?: '📋') . ' Échéance aujourd’hui : ' . $liste['nom']),
-                        'body' => $reste === 0 ? 'Tâche principale à terminer aujourd’hui'
-                            : $reste . ' sous-tâche' . ($reste > 1 ? 's' : '') . ' encore à faire',
+                        'title' => trim(($liste['icone'] ?: '📋') . ' '
+                            . t('rappel.liste_aujourdhui', ['nom' => (string) $liste['nom']])),
+                        'body' => $reste === 0
+                            ? t('rappel.liste_a_terminer')
+                            : tn('rappel.sous_taches', $reste),
                         'url' => url('taches', ['liste' => (int) $liste['id']]),
                         'tag' => 'liste-' . (int) $liste['id'],
                     ],
@@ -383,9 +371,8 @@ final class Rappels
             'objet_id' => (int) $maintenant->format('oW'),
             'moment' => $vendredi->format('Y-m-d H:i:s'),
             'message' => [
-                'title' => '📓 Votre semaine d’alternance',
-                'body' => $combien . ' jour' . ($combien > 1 ? 's' : '') . ' en entreprise cette semaine : '
-                    . 'notez vos missions tant que c’est frais.',
+                'title' => t('rappel.journal_titre'),
+                'body' => tn('rappel.journal_corps', $combien),
                 'url' => url('alternance/journal/semaine', ['semaine' => $lundi]),
                 'tag' => 'journal-' . $lundi,
             ],
@@ -397,32 +384,38 @@ final class Rappels
     {
         $jours = (int) $maintenant->setTime(0, 0)->diff($debut->setTime(0, 0))->format('%r%a');
         $jour = match ($jours) {
-            0 => 'Aujourd’hui',
-            1 => 'Demain',
-            2 => 'Après-demain',
+            0 => t('date.aujourdhui'),
+            1 => t('date.demain'),
+            2 => t('rappel.apres_demain'),
             default => ucfirst(date_fr($debut->format('Y-m-d'), false)),
         };
 
         if ($journee) {
-            return $jour . ', toute la journée';
+            return t('rappel.toute_la_journee', ['jour' => $jour]);
         }
 
-        $horaire = $debut->format('H:i') . ($fin !== null && $fin > $debut && $fin->format('Y-m-d') === $debut->format('Y-m-d')
-            ? ' – ' . $fin->format('H:i') : '');
+        $horaire = heure_courte($debut->getTimestamp())
+            . ($fin !== null && $fin > $debut && $fin->format('Y-m-d') === $debut->format('Y-m-d')
+                ? ' – ' . heure_courte($fin->getTimestamp()) : '');
         $minutes = (int) floor(($debut->getTimestamp() - $maintenant->getTimestamp()) / 60);
 
         if ($minutes <= 0) {
-            return 'Maintenant · ' . $horaire;
+            return t('rappel.maintenant', ['horaire' => $horaire]);
         }
         if ($minutes < 60) {
-            return 'Dans ' . $minutes . ' min · ' . $horaire;
+            return t('rappel.dans_minutes', ['n' => $minutes, 'horaire' => $horaire]);
         }
         if ($jours === 0) {
             $h = intdiv($minutes, 60);
             $m = $minutes % 60;
-            return 'Dans ' . $h . ' h' . ($m > 0 ? ' ' . str_pad((string) $m, 2, '0', STR_PAD_LEFT) : '') . ' · ' . $horaire;
+
+            return t('rappel.dans_heures', [
+                'h' => $h,
+                'min' => $m > 0 ? ' ' . str_pad((string) $m, 2, '0', STR_PAD_LEFT) : '',
+                'horaire' => $horaire,
+            ]);
         }
 
-        return $jour . ' à ' . $horaire;
+        return t('rappel.jour_a', ['jour' => $jour, 'horaire' => $horaire]);
     }
 }

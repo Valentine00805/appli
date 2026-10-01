@@ -290,8 +290,11 @@ final class EnvoiAgenda
         if ($cree['code'] >= 400 || !isset($cree['corps']['id'])) {
             $dit = (string) ($cree['corps']['error']['message'] ?? '');
 
-            throw new RuntimeException($this->f->nom() . ' a refusé de créer le calendrier « '
-                . self::CALENDRIER . ' »' . ($dit === '' ? '.' : ' : ' . mb_substr($dit, 0, 200)));
+            throw new RuntimeException(t('ag.refus_creer', [
+                'qui' => $this->f->nom(),
+                'nom' => self::CALENDRIER,
+                'dit' => $dit === '' ? t('ag.point') : t('ag.deux_points', ['dit' => mb_substr($dit, 0, 200)]),
+            ]));
         }
 
         return $this->retenirLeCalendrier($userId, (string) $cree['corps']['id']);
@@ -363,8 +366,7 @@ final class EnvoiAgenda
                 [$userId, $this->f->cle(), $empreinte]
             );
             if ($cible === null) {
-                throw new RuntimeException('Cet agenda n’est pas un des vôtres, ou '
-                    . $this->f->nom() . ' n’y autorise pas l’écriture.');
+                throw new RuntimeException(t('ag.pas_a_vous', ['qui' => $this->f->nom()]));
             }
         }
 
@@ -610,7 +612,7 @@ final class EnvoiAgenda
 
         return $this->corps(
             self::MARQUE_TACHE . (string) $tache['titre'],
-            'Échéance d’une tâche de la liste « ' . (string) $tache['liste_nom'] . ' ».'
+            t('ag.echeance_tache', ['liste' => (string) $tache['liste_nom']])
                 . ($note === '' ? '' : "\n\n" . $note),
             '',
             $jour->setTime(0, 0),
@@ -659,7 +661,7 @@ final class EnvoiAgenda
             $this->f->cheminDeCreation($calendrier),
             $quoi['corps']
         );
-        $this->verifier($reponse, 'créer un évènement');
+        $this->verifier($reponse, 'creer');
 
         Database::run(
             'INSERT INTO agenda_envois
@@ -693,7 +695,7 @@ final class EnvoiAgenda
 
             return;
         }
-        $this->verifier($reponse, 'mettre à jour un évènement');
+        $this->verifier($reponse, 'modifier');
 
         Database::run(
             'UPDATE agenda_envois SET empreinte = ?, maj_le = NOW()
@@ -715,11 +717,14 @@ final class EnvoiAgenda
         if ($reponse['code'] === 404 || $reponse['code'] === 410) {
             return;
         }
-        $this->verifier($reponse, 'supprimer un évènement');
+        $this->verifier($reponse, 'supprimer');
     }
 
-    /** @throws RuntimeException si le fournisseur a refusé */
-    private function verifier(array $reponse, string $quoi): void
+    /**
+     * @param string $geste « creer », « modifier » ou « supprimer »
+     * @throws RuntimeException si le fournisseur a refusé
+     */
+    private function verifier(array $reponse, string $geste): void
     {
         if ($reponse['code'] < 400) {
             return;
@@ -727,7 +732,10 @@ final class EnvoiAgenda
 
         $dit = (string) ($reponse['corps']['error']['message'] ?? '');
 
-        throw new RuntimeException($this->f->nom() . ' a refusé de ' . $quoi
-            . ($dit === '' ? '.' : ' : ' . mb_substr($dit, 0, 200)));
+        throw new RuntimeException(t('ag.refus_geste', [
+            'qui' => $this->f->nom(),
+            'geste' => t('ag.geste.' . $geste),
+            'dit' => $dit === '' ? t('ag.point') : t('ag.deux_points', ['dit' => mb_substr($dit, 0, 200)]),
+        ]));
     }
 }

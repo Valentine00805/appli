@@ -854,7 +854,7 @@ final class Alternance
     {
         $dossier = self::dossier();
         if (!is_dir($dossier) && !mkdir($dossier, 0775, true) && !is_dir($dossier)) {
-            return ['Impossible de créer le dossier de stockage des documents.'];
+            return [t('alt.dossier_impossible')];
         }
 
         return Fichiers::recevoir($fichiers, $dossier,

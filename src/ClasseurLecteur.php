@@ -25,19 +25,19 @@ final class ClasseurLecteur
     {
         $zip = new ZipArchive();
         if ($zip->open($chemin) !== true) {
-            throw new RuntimeException('Ce fichier n\'est pas un classeur Excel lisible.');
+            throw new RuntimeException(t('xls.pas_un_classeur'));
         }
 
         try {
             $chaines = self::chainesPartagees($zip);
             $feuille = self::premiereFeuille($zip);
             if ($feuille === null) {
-                throw new RuntimeException('Aucune feuille trouvée dans le classeur.');
+                throw new RuntimeException(t('xls.aucune_feuille'));
             }
 
             $doc = @simplexml_load_string($feuille);
             if ($doc === false) {
-                throw new RuntimeException('La feuille du classeur est illisible.');
+                throw new RuntimeException(t('xls.feuille_illisible'));
             }
 
             $lignes = [];

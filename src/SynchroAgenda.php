@@ -389,7 +389,7 @@ final class SynchroAgenda
         }
 
         if ($trouves === []) {
-            throw new RuntimeException($this->f->nom() . ' n’a donné aucun calendrier.');
+            throw new RuntimeException(t('ag.aucun_calendrier', ['qui' => $this->f->nom()]));
         }
 
         /*
@@ -608,17 +608,18 @@ final class SynchroAgenda
             $reponse = $this->lien()->appeler($userId, 'GET', $chemin, null, $entetes);
 
             if ($reponse['code'] === 403) {
-                throw new RuntimeException(
-                    $this->f->nom() . ' refuse l’accès à ' . $nom . '. Si c’est un calendrier '
-                    . 'partagé par quelqu’un d’autre, réautorisez l’application : '
-                    . 'la permission qui les ouvre est plus récente que votre liaison.'
-                );
+                throw new RuntimeException(t('ag.acces_refuse', [
+                    'qui' => $this->f->nom(), 'nom' => $nom,
+                ]));
             }
             if ($reponse['code'] >= 400) {
                 $dit = (string) ($reponse['corps']['error']['message'] ?? '');
 
-                throw new RuntimeException($this->f->nom() . ' a refusé de donner ' . $nom
-                    . ($dit === '' ? '.' : ' : ' . mb_substr($dit, 0, 200)));
+                throw new RuntimeException(t('ag.refus_donner', [
+                    'qui' => $this->f->nom(),
+                    'nom' => $nom,
+                    'dit' => $dit === '' ? t('ag.point') : t('ag.deux_points', ['dit' => mb_substr($dit, 0, 200)]),
+                ]));
             }
 
             foreach ($this->f->elements($reponse['corps']) as $evenement) {
@@ -760,8 +761,10 @@ final class SynchroAgenda
 
         $dit = (string) ($reponse['corps']['error']['message'] ?? '');
 
-        throw new RuntimeException($this->f->nom() . ' a refusé de supprimer un évènement'
-            . ($dit === '' ? '.' : ' : ' . mb_substr($dit, 0, 200)));
+        throw new RuntimeException(t('ag.refus_supprimer', [
+            'qui' => $this->f->nom(),
+            'dit' => $dit === '' ? t('ag.point') : t('ag.deux_points', ['dit' => mb_substr($dit, 0, 200)]),
+        ]));
     }
 
     /**
@@ -815,8 +818,10 @@ final class SynchroAgenda
         if ($reponse['code'] >= 400) {
             $dit = (string) ($reponse['corps']['error']['message'] ?? '');
 
-            return $this->f->nom() . ' a refusé la modification'
-                . ($dit === '' ? '.' : ' : ' . mb_substr($dit, 0, 200));
+            return t('ag.refus_modifier', [
+                'qui' => $this->f->nom(),
+                'dit' => $dit === '' ? t('ag.point') : t('ag.deux_points', ['dit' => mb_substr($dit, 0, 200)]),
+            ]);
         }
 
         /*

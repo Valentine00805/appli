@@ -73,15 +73,15 @@ final class Auth
     {
         $longueur = mb_strlen($pseudo);
         if ($longueur < self::PSEUDO_MIN || $longueur > self::PSEUDO_MAX) {
-            return 'Le pseudo doit faire de ' . self::PSEUDO_MIN . ' à ' . self::PSEUDO_MAX . ' caractères.';
+            return t('auth.pseudo_longueur', ['min' => self::PSEUDO_MIN, 'max' => self::PSEUDO_MAX]);
         }
         if (!preg_match('/^[\p{L}\p{N}][\p{L}\p{N}_.\-]*$/u', $pseudo)) {
-            return 'Le pseudo ne peut contenir que des lettres, des chiffres, « . », « - » et « _ », sans espace.';
+            return t('auth.pseudo_caracteres');
         }
         $pris = Database::valeur('SELECT id FROM users WHERE pseudo = ?' . ($sauf === null ? '' : ' AND id <> ?'),
             $sauf === null ? [$pseudo] : [$pseudo, $sauf]);
         if ($pris !== null) {
-            return 'Ce pseudo est déjà pris.';
+            return t('auth.pseudo_pris_simple');
         }
 
         return null;
@@ -130,10 +130,9 @@ final class Auth
 
     /** Les apparences possibles, et ce qu'on en dit. */
     public const THEMES = [
-        'auto'   => ['nom' => 'Comme mon appareil', 'icone' => '🌗',
-                     'aide' => 'Claire le jour, sombre le soir : l’application suit le réglage de votre téléphone ou de votre ordinateur.'],
-        'clair'  => ['nom' => 'Claire',  'icone' => '☀️', 'aide' => 'Toujours claire, quel que soit l’appareil.'],
-        'sombre' => ['nom' => 'Sombre',  'icone' => '🌙', 'aide' => 'Toujours sombre — reposante le soir, et plus douce sur un écran OLED.'],
+        'auto'   => ['icone' => '🌗'],
+        'clair'  => ['icone' => '☀️'],
+        'sombre' => ['icone' => '🌙'],
     ];
 
     /** L'apparence choisie : « auto » tant qu'on n'a rien choisi. */
@@ -156,7 +155,7 @@ final class Auth
     {
         if (!self::connecte()) {
             $_SESSION['_apres_connexion'] = $_SERVER['REQUEST_URI'] ?? null;
-            Session::flash('info', 'Connectez-vous pour accéder à cette page.');
+            Session::flash('info', t('auth.connectez_vous'));
             redirect('connexion');
         }
     }

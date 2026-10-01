@@ -1213,9 +1213,12 @@ final class Amis
                     'r_texte' => $message['texte'], 'r_image' => $message['image_nom'],
                     'r_fichier' => $message['fichier_origine'], 'r_supprime' => null, 'r_masque' => 0,
                 ]);
-                $notification = FileNotifications::ajouter($auteur, 'reaction', [
-                    'title' => $emoji . ' ' . (self::compte($moi)['pseudo'] ?? 'Un ami') . ' a réagi',
-                    'body' => 'À votre message : « ' . $extrait . ' »',
+                $notification = FileNotifications::ajouter($auteur, 'reaction', fn (): array => [
+                    'title' => t('ami.notif.reaction_titre', [
+                        'emoji' => $emoji,
+                        'qui' => (string) (self::compte($moi)['pseudo'] ?? t('ami.notif.un_ami')),
+                    ]),
+                    'body' => t('ami.notif.reaction_corps', ['extrait' => $extrait]),
                     'url' => url('amis/' . $moi),
                     'tag' => 'reaction-' . $moi,
                 ]);
@@ -1521,22 +1524,28 @@ final class Amis
         }
 
         $compte = self::compte($expediteur);
-        $apercu = trim((string) preg_replace('/\s+/u', ' ', $texte));
-        if ($avecImage) {
-            $apercu = '📷 Photo' . ($apercu === '' ? '' : ' · ' . $apercu);
-        }
-        if ($nomFichier !== null) {
-            $apercu = '📎 ' . $nomFichier . ($apercu === '' ? '' : ' · ' . $apercu);
-        }
-        if ($dureeVocal !== null) {
-            $apercu = '🎤 Message vocal (' . self::duree($dureeVocal) . ')' . ($apercu === '' ? '' : ' · ' . $apercu);
-        }
-        $id = FileNotifications::ajouter($destinataire, 'message', [
-            'title' => '💬 ' . ($compte['pseudo'] ?? 'Nouveau message'),
-            'body' => mb_strimwidth($apercu, 0, self::APERCU_NOTIFICATION, '…'),
-            'url' => url('amis/' . $expediteur),
-            'tag' => 'message-' . $expediteur,
-        ]);
+        $id = FileNotifications::ajouter($destinataire, 'message', function () use (
+            $compte, $texte, $avecImage, $nomFichier, $dureeVocal, $expediteur
+        ): array {
+            $apercu = trim((string) preg_replace('/\s+/u', ' ', $texte));
+            if ($avecImage) {
+                $apercu = t('msg.piece_photo') . ($apercu === '' ? '' : ' · ' . $apercu);
+            }
+            if ($nomFichier !== null) {
+                $apercu = '📎 ' . $nomFichier . ($apercu === '' ? '' : ' · ' . $apercu);
+            }
+            if ($dureeVocal !== null) {
+                $apercu = t('msg.piece_vocal_duree', ['duree' => self::duree($dureeVocal)])
+                    . ($apercu === '' ? '' : ' · ' . $apercu);
+            }
+
+            return [
+                'title' => '💬 ' . ($compte['pseudo'] ?? t('ami.notif.nouveau_message')),
+                'body' => mb_strimwidth($apercu, 0, self::APERCU_NOTIFICATION, '…'),
+                'url' => url('amis/' . $expediteur),
+                'tag' => 'message-' . $expediteur,
+            ];
+        });
         if ($id !== null) {
             Database::run(
                 'INSERT INTO discussions_etat (user_id, ami_id, notifie_le) VALUES (?, ?, UTC_TIMESTAMP())
@@ -1551,11 +1560,11 @@ final class Amis
     /** Met en file la notification d'une demande d'ami reçue. */
     public static function notifierDemande(int $demandeur, int $destinataire): ?int
     {
-        $pseudo = (string) (self::compte($demandeur)['pseudo'] ?? 'Quelqu’un');
-
-        return FileNotifications::ajouter($destinataire, 'demande', [
-            'title' => '👋 Nouvelle demande d’ami',
-            'body' => $pseudo . ' veut vous ajouter en ami.',
+        return FileNotifications::ajouter($destinataire, 'demande', fn (): array => [
+            'title' => t('ami.notif.demande_titre'),
+            'body' => t('ami.notif.demande_corps', [
+                'qui' => (string) (self::compte($demandeur)['pseudo'] ?? t('ami.notif.quelquun')),
+            ]),
             'url' => url('amis'),
             'tag' => 'demande-' . $demandeur,
         ]);
@@ -1564,11 +1573,11 @@ final class Amis
     /** Met en file, pour qui avait demandé, la notification d'une demande acceptée. */
     public static function notifierAcceptation(int $accepteur, int $demandeur): ?int
     {
-        $pseudo = (string) (self::compte($accepteur)['pseudo'] ?? 'Votre ami');
-
-        return FileNotifications::ajouter($demandeur, 'acceptation', [
-            'title' => '🤝 Demande acceptée',
-            'body' => $pseudo . ' a accepté votre demande : vous pouvez discuter.',
+        return FileNotifications::ajouter($demandeur, 'acceptation', fn (): array => [
+            'title' => t('ami.notif.acceptation_titre'),
+            'body' => t('ami.notif.acceptation_corps', [
+                'qui' => (string) (self::compte($accepteur)['pseudo'] ?? t('ami.notif.votre_ami')),
+            ]),
             'url' => url('amis/' . $accepteur),
             'tag' => 'acceptation-' . $accepteur,
         ]);

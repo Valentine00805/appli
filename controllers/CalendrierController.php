@@ -503,7 +503,7 @@ final class CalendrierController
 
         $brut = trim((string) ($_POST['repeter_nombre'] ?? ''));
         if (preg_match('/^\d+$/', $brut) !== 1) {
-            return 'Indiquez combien de fois l’évènement se répète.';
+            return t('err.repetition_nombre');
         }
 
         $combien = (int) $brut;

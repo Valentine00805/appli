@@ -168,15 +168,13 @@ final class LiaisonAgenda
         $verificateur = Session::reprendre($this->f->cle() . '_verificateur');
 
         if (!is_string($attendu) || $attendu === '' || !hash_equals($attendu, $etat)) {
-            return 'La réponse de ' . $this->f->nom()
-                . ' ne correspond pas à la demande envoyée. Recommencez.';
+            return t('ag.reponse_inattendue', ['qui' => $this->f->nom()]);
         }
         if (!is_string($verificateur) || $verificateur === '') {
-            return 'La demande a expiré avant le retour de ' . $this->f->nom() . '. Recommencez.';
+            return t('ag.demande_expiree', ['qui' => $this->f->nom()]);
         }
         if (!$this->configure()) {
-            return 'La liaison avec ' . $this->f->nom()
-                . ' n’est pas configurée sur cette installation.';
+            return t('ag.pas_configuree', ['qui' => $this->f->nom()]);
         }
 
         $reponse = $this->demanderDesJetons([
@@ -206,8 +204,7 @@ final class LiaisonAgenda
     {
         $compte = $this->compte($userId);
         if ($compte === null || (string) $compte['renouvellement'] === '') {
-            throw new RuntimeException(
-                'Le compte ' . $this->f->nom() . ' n’est pas relié.');
+            throw new RuntimeException(t('ag.pas_relie', ['qui' => $this->f->nom()]));
         }
 
         $expire = $compte['expire_le'] === null ? 0 : (int) strtotime((string) $compte['expire_le']);
@@ -220,8 +217,9 @@ final class LiaisonAgenda
             'refresh_token' => (string) $compte['renouvellement'],
         ]);
         if (is_string($reponse)) {
-            throw new RuntimeException(
-                'La liaison avec ' . $this->f->nom() . ' a été rompue : ' . $reponse);
+            throw new RuntimeException(t('ag.liaison_rompue', [
+                'qui' => $this->f->nom(), 'raison' => $reponse,
+            ]));
         }
         $this->garderLesJetons($userId, $reponse);
 
@@ -288,7 +286,7 @@ final class LiaisonAgenda
         if ($secret !== '') {
             $champs['client_secret'] = $secret;
         } elseif ($this->f->secretObligatoire()) {
-            return $this->f->nom() . ' exige un secret client, absent de la configuration.';
+            return t('ag.secret_absent', ['qui' => $this->f->nom()]);
         }
 
         $reponse = self::requete(
@@ -382,7 +380,7 @@ final class LiaisonAgenda
         curl_close($ch);
 
         if ($recu === false) {
-            throw new RuntimeException('L’agenda n’a pas répondu : ' . $panne);
+            throw new RuntimeException(t('ag.pas_de_reponse', ['raison' => $panne]));
         }
 
         $decode = json_decode((string) $recu, true);

@@ -385,7 +385,7 @@ final class ConversationsController
         $chemin = $photo === null ? null : Amis::dossierImages() . DIRECTORY_SEPARATOR . basename((string) $photo['photo_nom']);
         if ($chemin === null || !is_file($chemin) || !in_array($photo['photo_mime'], array_column(Amis::IMAGE_TYPES, 0), true)) {
             http_response_code(404);
-            exit('Photo introuvable.');
+            exit(t('corps.photo_introuvable'));
         }
         $this->image($chemin, (string) $photo['photo_mime'], 'photo-groupe');
     }
@@ -396,7 +396,7 @@ final class ConversationsController
         Session::verifierCsrf();
         $image = isset($_FILES['photo']) && is_array($_FILES['photo']) && !is_array($_FILES['photo']['name'] ?? null) ? $_FILES['photo'] : null;
         $refus = Conversations::changerPhoto(Auth::id(), $id, $image);
-        Session::flash($refus === null ? 'succes' : 'erreur', $refus ?? 'Photo du groupe changée.');
+        Session::flash($refus === null ? 'succes' : 'erreur', $refus ?? t('grp.fl.photo_changee'));
         $this->retour($id);
     }
 
@@ -405,7 +405,8 @@ final class ConversationsController
         Auth::exiger();
         Session::verifierCsrf();
         $retiree = Conversations::retirerPhoto(Auth::id(), $id);
-        Session::flash($retiree ? 'succes' : 'info', $retiree ? 'Photo du groupe retirée.' : 'Ce groupe n’avait pas de photo.');
+        Session::flash($retiree ? 'succes' : 'info',
+            $retiree ? t('grp.fl.photo_retiree') : t('grp.fl.photo_absente'));
         $this->retour($id);
     }
 
@@ -418,7 +419,7 @@ final class ConversationsController
             : Amis::dossierImages() . DIRECTORY_SEPARATOR . basename((string) $groupe['fond_nom']);
         if ($chemin === null || !is_file($chemin) || !in_array($groupe['fond_mime'], array_column(Amis::IMAGE_TYPES, 0), true)) {
             http_response_code(404);
-            exit('Fond introuvable.');
+            exit(t('corps.fond_introuvable'));
         }
         $this->image($chemin, (string) $groupe['fond_mime'], 'fond');
     }
@@ -429,7 +430,7 @@ final class ConversationsController
         Session::verifierCsrf();
         $image = isset($_FILES['fond']) && is_array($_FILES['fond']) && !is_array($_FILES['fond']['name'] ?? null) ? $_FILES['fond'] : null;
         $refus = Conversations::changerFond(Auth::id(), $id, $image);
-        Session::flash($refus === null ? 'succes' : 'erreur', $refus ?? 'Fond d’écran changé : tout le groupe le voit.');
+        Session::flash($refus === null ? 'succes' : 'erreur', $refus ?? t('grp.fl.fond_change'));
         $this->retour($id);
     }
 
@@ -438,7 +439,8 @@ final class ConversationsController
         Auth::exiger();
         Session::verifierCsrf();
         $retire = Conversations::retirerFond(Auth::id(), $id);
-        Session::flash($retire ? 'succes' : 'info', $retire ? 'Fond d’écran retiré, pour tout le groupe.' : 'Ce groupe n’avait pas de fond d’écran.');
+        Session::flash($retire ? 'succes' : 'info',
+            $retire ? t('grp.fl.fond_retire') : t('grp.fl.fond_absent'));
         $this->retour($id);
     }
 
@@ -492,9 +494,9 @@ final class ConversationsController
             http_response_code($resultat === 'interdit' ? 403 : 404);
         }
         repondre_json(['fait' => $resultat === 'fait', 'message' => match ($resultat) {
-            'fait' => $portee === 'tous' ? 'Message supprimé pour tout le monde.' : 'Message supprimé de votre conversation.',
-            'interdit' => 'Seul qui a écrit un message peut le supprimer pour tout le monde.',
-            default => 'Ce message est introuvable.',
+            'fait' => t($portee === 'tous' ? 'ami.fl.supprime_tous' : 'ami.fl.supprime_moi'),
+            'interdit' => t('ami.fl.supprime_interdit'),
+            default => t('msg.introuvable'),
         }]);
     }
 
@@ -506,7 +508,7 @@ final class ConversationsController
         $chemin = $message === null ? null : Amis::dossierImages() . DIRECTORY_SEPARATOR . basename((string) $message['image_nom']);
         if ($chemin === null || !is_file($chemin) || !in_array($message['image_mime'], array_column(Amis::IMAGE_TYPES, 0), true)) {
             http_response_code(404);
-            exit('Image introuvable.');
+            exit(t('corps.image_introuvable'));
         }
         $this->image($chemin, (string) $message['image_mime'], 'photo-' . $id);
     }
@@ -518,7 +520,7 @@ final class ConversationsController
         $message = Conversations::piece(Auth::id(), $id, 'fichier_nom');
         if ($message === null) {
             http_response_code(404);
-            exit('Fichier introuvable.');
+            exit(t('corps.fichier_introuvable'));
         }
         Fichiers::envoyer([
             'nom_stocke' => (string) $message['fichier_nom'],
@@ -534,7 +536,7 @@ final class ConversationsController
         $message = Conversations::piece(Auth::id(), $id, 'audio_nom');
         if ($message === null) {
             http_response_code(404);
-            exit('Message vocal introuvable.');
+            exit(t('corps.vocal_introuvable'));
         }
         $extension = pathinfo((string) $message['audio_nom'], PATHINFO_EXTENSION);
         Fichiers::envoyer([

@@ -219,14 +219,16 @@ final class Travaux
         }
 
         $nomProjet = (string) Database::valeur('SELECT nom FROM projets WHERE id = ?', [$projet]);
-        $auteur = (string) (Amis::compte($moi)['pseudo'] ?? t('tr.quelquun'));
+        $auteur = Amis::compte($moi)['pseudo'] ?? null;
         foreach ($ids as $id) {
             Database::run(
                 "INSERT INTO projet_membres (projet_id, user_id, role, statut, invite_par) VALUES (?, ?, 'membre', 'invite', ?)",
                 [$projet, $id, $moi]);
-            FileNotifications::ajouter($id, 'projet', [
+            FileNotifications::ajouter($id, 'projet', fn (): array => [
                 'title' => t('tr.notif.travail_groupe'),
-                'body'  => t('tr.notif.invitation', ['qui' => $auteur, 'nom' => $nomProjet]),
+                'body'  => t('tr.notif.invitation', [
+                    'qui' => (string) ($auteur ?? t('tr.quelquun')), 'nom' => $nomProjet,
+                ]),
                 'url'   => url('travaux'),
                 'tag'   => 'projet-invitation-' . $projet,
             ]);
@@ -523,7 +525,7 @@ final class Travaux
         if ($l === null || $l['user_id'] === null || (int) $l['user_id'] === $moi) {
             return;
         }
-        FileNotifications::ajouter((int) $l['user_id'], 'projet', [
+        FileNotifications::ajouter((int) $l['user_id'], 'projet', fn (): array => [
             'title' => '👥 ' . $l['nom'],
             'body'  => t('tr.notif.tache_confiee', [
                 'qui' => (string) (Amis::compte($moi)['pseudo'] ?? t('tr.quelquun')),
@@ -744,14 +746,14 @@ final class Travaux
 
         $nom = (string) Database::valeur('SELECT nom FROM projets WHERE id = ?', [$projet]);
         $icone = (string) (Database::valeur('SELECT icone FROM projet_types WHERE id = ?', [(int) $d['type_id']]) ?: self::ICONE_SANS_TYPE);
-        $auteur = (string) (Amis::compte($moi)['pseudo'] ?? t('tr.quelquun'));
+        $auteur = Amis::compte($moi)['pseudo'] ?? null;
         foreach (self::comptes($projet) as $userId) {
             self::copier($id, $userId);
             if ($userId !== $moi) {
-                FileNotifications::ajouter($userId, 'projet', [
+                FileNotifications::ajouter($userId, 'projet', fn (): array => [
                     'title' => $icone . ' ' . $nom,
                     'body'  => t('tr.notif.echeance_posee', [
-                        'qui' => $auteur,
+                        'qui' => (string) ($auteur ?? t('tr.quelquun')),
                         'titre' => (string) $d['titre'],
                         'date' => date_fr($d['debut'], !$d['journee_entiere']),
                     ]),

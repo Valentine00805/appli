@@ -21,10 +21,19 @@ qu'elles répondent dans la bonne langue, puis efface ce compte. Elle contrôle
 aussi que les quatre fichiers de langue ont exactement les mêmes clés et que
 chaque pluriel a ses deux moitiés.
 
-**`amis_langue.php`** — la même chose pour les amis et les groupes : deux
-comptes deviennent amis, créent un groupe, le renomment, se nomment
-administrateurs, et l'on vérifie que les notes de la discussion (« Alma vous a
-ajouté ») suivent la langue. Trois comptes d'essai, effacés à la fin.
+**`amis.php`** (hors du projet, voir plus bas) — la même chose pour les amis et
+les groupes : deux comptes deviennent amis, créent un groupe, le renomment, se
+nomment administrateurs, et l'on vérifie que les notes de la discussion
+(« Alma vous a ajouté ») suivent la langue. Trois comptes d'essai, effacés à
+la fin.
+
+**`notifs.php`** (hors du projet, voir plus bas) — les notifications. Trois
+comptes, trois langues, et l'on vérifie que chacun lit la sienne : une demande
+d'ami, une acceptation, un message et ses pièces jointes, puis un ajout à un
+groupe qui prévient l'anglais et l'allemand dans la même boucle. Elle vérifie
+aussi que la langue de qui déclenche l'envoi est rendue intacte. Elle charge
+les classes de l'application plutôt que de passer par le serveur : ce qu'on
+mesure est ce que la file écrit en base.
 
 **`alternance_langue.php`** — les pages de l'alternance : la fiche, le rythme
 (avec une période posée), les notes et leurs modèles, le journal, les
@@ -39,11 +48,11 @@ quoi » et ses trois colonnes, une tâche, les échéances et leurs types, les
 fichiers, le document commun, les membres et le lien public. Un compte et un
 projet d'essai, effacés à la fin.
 
-**`controleurs_langue.php`** — les messages des contrôleurs : mon compte,
+**`pages_langue.php`** — les messages des contrôleurs : mon compte,
 les cours, les tâches, les cartes, le carnet des remboursements. Un compte
 d'essai, effacé à la fin.
 
-**`budget_langue.php`** — le budget et ses moyens de paiement, une
+**`argent_langue.php`** — le budget et ses moyens de paiement, une
 opération, les catégories, les prévisions, l'import et les dossiers. Il
 vérifie aussi qu'un moyen de paiement part en base sous sa clé (« carte »)
 pendant que l'écran affiche son nom traduit. Un compte d'essai, effacé à la
@@ -76,16 +85,25 @@ une attaque aux yeux d'une heuristique : Norton les met en quarantaine, parfois
 **pendant qu'elles tournent**. Le script meurt alors en plein milieu, son
 ménage de fin ne se fait pas, et des comptes d'essai restent en base.
 
-Ce qu'on a observé, le 30 septembre 2026 :
+Ce qu'on a observé, le 30 septembre et le 1er octobre 2026 :
 
 - lancées depuis le dossier du projet, `amis_langue.php` et
   `partages_langue.php` ont été supprimées en cours d'exécution ;
 - lancées depuis un dossier hors du projet, les mêmes ont tourné jusqu'au bout ;
 - après une quarantaine, Windows garde le **nom** du fichier bloqué : on ne peut
-  plus rien écrire à cette place, il faut en changer.
+  plus rien écrire à cette place, il faut en changer. C'est pourquoi
+  `controleurs_langue.php` et `budget_langue.php` s'appellent désormais
+  `pages_langue.php` et `argent_langue.php` ;
+- deux suites se font supprimer **où qu'on les mette dans le projet**, même
+  sous un nouveau nom : celle des amis et celle des notifications. Elles ne
+  vivent plus ici du tout. Leur copie de travail est hors du projet, avec
+  `base.php` et `cles.php` à côté, et c'est de là qu'on les lance.
 
-Donc : garder ces deux suites ici pour les lire, mais les **lancer depuis une
-copie hors du projet**. `verif_langue.php`, elle, passe depuis le projet.
+Donc : lancer les suites **depuis un dossier hors du projet**, en y copiant ce
+dont elles ont besoin. `verif_langue.php`, elle, passe depuis le projet.
+
+Le vrai remède serait une exclusion Norton sur `C:\wamp64\www\mon_appli\appli`.
+C'est un réglage du poste, pas du code : il demande l'accord de qui s'en sert.
 
 Si une suite s'arrête au milieu, vérifier ce qui reste :
 
