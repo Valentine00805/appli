@@ -39,6 +39,10 @@ quoi » et ses trois colonnes, une tâche, les échéances et leurs types, les
 fichiers, le document commun, les membres et le lien public. Un compte et un
 projet d'essai, effacés à la fin.
 
+**`controleurs_langue.php`** — les messages des contrôleurs : mon compte,
+les cours, les tâches, les cartes, le carnet des remboursements. Un compte
+d'essai, effacé à la fin.
+
 **`scan_js.php`** — le français qui reste dans `assets/js/app.js`, en sautant
 les commentaires, les sélecteurs et les adresses.
 

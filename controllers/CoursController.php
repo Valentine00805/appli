@@ -216,7 +216,7 @@ final class CoursController
         );
         Partages::suivreTexte($userId, 'fiche', $id, $avant, $fiche);
 
-        Session::flash('succes', $fiche === '' ? 'Fiche de révision vidée.' : 'Fiche de révision enregistrée.');
+        Session::flash('succes', t($fiche === '' ? 'cours.fl.fiche_vide' : 'cours.fl.fiche_enregistree'));
         $this->retourFiche($id);
     }
 
@@ -383,7 +383,7 @@ final class CoursController
             'matieres'  => $matieres,
             'matiereId' => $matiereId,
             'tri'       => $tri,
-        ], $recherche === '' ? 'Révision' : 'Révision — ' . $recherche);
+        ], $recherche === '' ? t('titre.revision') : t('titre.revision_recherche', ['q' => $recherche]));
     }
 
     /**
@@ -1136,7 +1136,7 @@ final class CoursController
         $this->synchroniserTags($userId, $coursId, post('tags'));
         $this->traiterFichiers($coursId, $userId);
 
-        Session::flash('succes', 'Cours enregistré.');
+        Session::flash('succes', t('cours.fl.cours_enregistre'));
         redirect('cours/' . $coursId);
     }
 
@@ -1192,7 +1192,7 @@ final class CoursController
         Partages::oublier('cours', $id);
         Partages::oublier('fiche', $id);
 
-        Session::flash('succes', 'Cours supprimé.');
+        Session::flash('succes', t('cours.fl.cours_supprime'));
         redirect('cours');
     }
 
@@ -1492,7 +1492,7 @@ final class CoursController
             [(int) filesize($chemin), $id, Auth::id()]
         );
 
-        Session::flash('succes', 'Document enregistré.');
+        Session::flash('succes', t('cours.fl.document_enregistre'));
         $this->repartirEdition('fichiers/' . $id . '/apercu');
     }
 
@@ -1511,7 +1511,7 @@ final class CoursController
         if ($fichier !== null) {
             Partages::suivreRetrait($userId, $fichier);
         }
-        Session::flash('succes', 'Fichier supprimé.');
+        Session::flash('succes', t('cours.fl.fichier_supprime'));
         // Retiré depuis une fiche affichée seule : c'est là qu'on revient.
         if (($_POST['page'] ?? '') === 'fiche') {
             redirect('revision/' . (int) $coursId);

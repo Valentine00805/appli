@@ -49,7 +49,7 @@ final class ConversationsController
             Session::flash('erreur', $refus);
             redirect('amis');
         }
-        Session::flash('succes', 'Groupe créé.');
+        Session::flash('succes', t('grp.fl.cree'));
         $notifications = Conversations::notifierAjout($moi, $conversation, array_map('intval', array_column(
             Database::all('SELECT user_id FROM conversation_membres WHERE conversation_id = ? AND user_id <> ?', [$conversation, $moi]), 'user_id'
         )));
@@ -63,7 +63,7 @@ final class ConversationsController
         $moi = Auth::id();
         $groupe = Conversations::conversation($id, $moi);
         if ($groupe === null) {
-            Session::flash('erreur', 'Ce groupe est introuvable, ou vous n’en faites plus partie.');
+            Session::flash('erreur', t('grp.fl.introuvable'));
             redirect('amis');
         }
 
@@ -105,7 +105,7 @@ final class ConversationsController
         $moi = Auth::id();
         $groupe = Conversations::conversation($id, $moi);
         if ($groupe === null) {
-            Session::flash('erreur', 'Ce groupe est introuvable, ou vous n’en faites plus partie.');
+            Session::flash('erreur', t('grp.fl.introuvable'));
             redirect('amis');
         }
         $membres = Conversations::membres($id);
@@ -142,7 +142,7 @@ final class ConversationsController
         $groupe = Conversations::conversation($id, $moi);
         if ($groupe === null) {
             http_response_code(403);
-            repondre_json(['fait' => false, 'message' => 'Vous ne faites plus partie de ce groupe.']);
+            repondre_json(['fait' => false, 'message' => t('grp.fl.plus_membre')]);
         }
         if (($_GET['visible'] ?? '') === '1') {
             Conversations::regarder($moi, $id);
@@ -210,7 +210,7 @@ final class ConversationsController
         session_write_close();
         if (Conversations::membre($id, $moi) === null) {
             http_response_code(403);
-            repondre_json(['fait' => false, 'message' => 'Vous ne faites plus partie de ce groupe.']);
+            repondre_json(['fait' => false, 'message' => t('grp.fl.plus_membre')]);
         }
         repondre_json(['fait' => true] + Conversations::rechercher($moi, $id, (string) ($_GET['q'] ?? '')));
     }
@@ -220,7 +220,7 @@ final class ConversationsController
         Auth::exiger();
         Session::verifierCsrf();
         $refus = Conversations::renommer(Auth::id(), $id, (string) ($_POST['nom'] ?? ''));
-        Session::flash($refus === null ? 'succes' : 'erreur', $refus ?? 'Groupe renommé.');
+        Session::flash($refus === null ? 'succes' : 'erreur', $refus ?? t('grp.fl.renomme'));
         $this->retour($id);
     }
 
@@ -238,13 +238,13 @@ final class ConversationsController
         }
         Session::flash('succes', $muette
             ? '🔕 ' . FileNotifications::texteCoupure($jusqua)
-            : '🔔 Notifications rétablies pour ce groupe.');
+            : t('grp.fl.notifications_retablies'));
         // Le script de la carte n'attend que la réponse : il met la carte à jour lui-même.
         if (veut_du_json()) {
             Session::flashs();
             repondre_json(['muette' => $muette, 'etat' => $muette
                 ? FileNotifications::texteCoupure($jusqua)
-                : 'Un nouveau message ou une réaction à l’un des vôtres vous prévient.']);
+                : t('ami.fl.notif_etat')]);
         }
         redirect('groupes/' . $id . '/reglages');
     }
@@ -259,7 +259,7 @@ final class ConversationsController
             Session::flash('erreur', $refus);
             $this->retour($id);
         }
-        Session::flash('succes', count($ajoutes) > 1 ? count($ajoutes) . ' membres ajoutés.' : 'Membre ajouté.');
+        Session::flash('succes', tn('grp.fl.membres_ajoutes', count($ajoutes)));
         $this->redirigerPuisEnvoyer(url('groupes/' . $id), Conversations::notifierAjout($moi, $id, $ajoutes));
     }
 
@@ -279,7 +279,7 @@ final class ConversationsController
         Session::verifierCsrf();
         $pseudo = (string) (Amis::compte($membre)['pseudo'] ?? '');
         $refus = Conversations::nommerAdmin(Auth::id(), $id, $membre);
-        Session::flash($refus === null ? 'succes' : 'erreur', $refus ?? $pseudo . ' est maintenant administrateur.');
+        Session::flash($refus === null ? 'succes' : 'erreur', $refus ?? t('grp.fl.nomme_admin', ['qui' => $pseudo]));
         $this->retour($id);
     }
 
@@ -291,8 +291,8 @@ final class ConversationsController
         $pseudo = (string) (Amis::compte($membre)['pseudo'] ?? '');
         $refus = Conversations::retirerAdmin($moi, $id, $membre);
         Session::flash($refus === null ? 'succes' : 'erreur', $refus ?? ($membre === $moi
-            ? 'Vous n’êtes plus administrateur du groupe.'
-            : $pseudo . ' n’est plus administrateur.'));
+            ? t('grp.fl.vous_plus_admin')
+            : t('grp.fl.plus_admin', ['qui' => $pseudo])));
         $this->retour($id);
     }
 
@@ -304,7 +304,7 @@ final class ConversationsController
         session_write_close();
         if (!Conversations::estAdmin($id, $moi)) {
             http_response_code(403);
-            repondre_json(['fait' => false, 'message' => 'Seuls les administrateurs du groupe peuvent ajouter des membres.']);
+            repondre_json(['fait' => false, 'message' => t('grp.admins_ajout')]);
         }
         repondre_json(['fait' => true, 'resultats' => Conversations::chercher($moi, $id, (string) ($_GET['pseudo'] ?? ''))]);
     }
@@ -323,10 +323,10 @@ final class ConversationsController
             $this->retour($id);
         }
         if ($resultat === 'ajoute') {
-            Session::flash('succes', $pseudo . ' a été ajouté au groupe.');
+            Session::flash('succes', t('grp.fl.ajoute_au_groupe', ['qui' => $pseudo]));
             $this->redirigerPuisEnvoyer(url('groupes/' . $id), Conversations::notifierAjout($moi, $id, [$cible]));
         }
-        Session::flash('succes', 'Invitation envoyée à ' . $pseudo . ' : il rejoindra le groupe s’il l’accepte.');
+        Session::flash('succes', t('grp.fl.invitation_envoyee', ['qui' => $pseudo]));
         $notification = Conversations::notifierInvitation($moi, $id, $cible);
         $this->redirigerPuisEnvoyer(url('groupes/' . $id), $notification === null ? [] : [$notification]);
     }
@@ -351,7 +351,7 @@ final class ConversationsController
             Session::flash('erreur', $refus);
             redirect('amis');
         }
-        Session::flash('succes', 'Vous avez rejoint le groupe.');
+        Session::flash('succes', t('grp.fl.rejoint'));
         redirect('groupes/' . $id);
     }
 
@@ -360,7 +360,7 @@ final class ConversationsController
         Auth::exiger();
         Session::verifierCsrf();
         $refus = Conversations::repondreInvitation(Auth::id(), $id, false);
-        Session::flash($refus === null ? 'succes' : 'erreur', $refus ?? 'Invitation refusée.');
+        Session::flash($refus === null ? 'succes' : 'erreur', $refus ?? t('grp.fl.invitation_refusee'));
         redirect('amis');
     }
 
@@ -370,9 +370,9 @@ final class ConversationsController
         Session::verifierCsrf();
         $nom = (string) (Conversations::conversation($id, Auth::id())['nom'] ?? '');
         if (Conversations::quitter(Auth::id(), $id)) {
-            Session::flash('succes', 'Vous avez quitté le groupe « ' . $nom . ' ».');
+            Session::flash('succes', t('grp.fl.quitte', ['nom' => $nom]));
         } else {
-            Session::flash('erreur', 'Vous ne faites pas partie de ce groupe.');
+            Session::flash('erreur', t('grp.fl.pas_dans_groupe'));
         }
         redirect('amis');
     }

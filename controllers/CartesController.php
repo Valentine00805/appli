@@ -196,20 +196,18 @@ final class CartesController
 
         if ($propositions === []) {
             Session::flash('erreur', match (true) {
-                $sansSource === count($ids) => 'Aucun document coché : il n\'y a rien à relire.',
-                count($ids) > 1 => 'Aucune nouvelle carte dans ' . $this->nommerLesSources($relus)
-                    . ', pour aucun des ' . count($ids) . ' cours choisis.',
-                default => 'Aucune nouvelle carte dans ' . $this->nommerLesSources($relus)
-                    . ' : ce qui était repérable est déjà dans le paquet.',
+                $sansSource === count($ids) => t('crt.fl.rien_coche'),
+                count($ids) > 1 => t('crt.fl.rien_de_neuf_plusieurs', [
+                    'sources' => $this->nommerLesSources($relus), 'n' => count($ids),
+                ]),
+                default => t('crt.fl.rien_de_neuf', ['sources' => $this->nommerLesSources($relus)]),
             });
         }
 
         $this->signalerLesMuets($muets);
 
         if ($laissees > 0) {
-            Session::flash('erreur', $laissees . ' propositions laissées de côté : une fournée '
-                . 'en compte au plus ' . self::PROPOSITIONS_MAX
-                . '. Relancez après avoir trié celles-ci.');
+            Session::flash('erreur', t('crt.fl.laissees', ['n' => $laissees, 'max' => self::PROPOSITIONS_MAX]));
         }
 
         if ($propositions === []) {
@@ -239,7 +237,7 @@ final class CartesController
         }
 
         if ($ids === []) {
-            Session::flash('erreur', 'Choisissez au moins un cours.');
+            Session::flash('erreur', t('crt.fl.un_cours'));
             redirect('cartes');
         }
 
@@ -301,7 +299,7 @@ final class CartesController
     {
         $id = entier_ou_null($_POST['cours'] ?? null);
         if ($id === null) {
-            Session::flash('erreur', 'Choisissez un cours.');
+            Session::flash('erreur', t('crt.fl.un_seul_cours'));
             redirect('cartes');
         }
         $this->cours($id, $userId);
@@ -363,19 +361,19 @@ final class CartesController
         $noms = [];
         foreach ($sources as $source) {
             $noms[] = match ($source) {
-                'cours'     => 'le texte du cours',
-                'fiche'     => 'la fiche de révision',
-                'documents' => 'les documents joints',
+                'cours'     => t('crt.src.cours'),
+                'fiche'     => t('crt.src.fiche'),
+                'documents' => t('crt.src.documents'),
                 default     => $source,
             };
         }
 
         if (count($noms) <= 1) {
-            return $noms[0] ?? 'ce qui a été choisi';
+            return $noms[0] ?? t('crt.src.choisi');
         }
         $dernier = array_pop($noms);
 
-        return implode(', ', $noms) . ' ni ' . $dernier;
+        return implode(', ', $noms) . ' ' . t('crt.src.ni') . ' ' . $dernier;
     }
 
     /**
@@ -461,9 +459,7 @@ final class CartesController
             return;
         }
 
-        Session::flash('erreur', count($muets) > 1
-            ? 'Aucun texte lisible dans ' . implode(', ', $muets) . ' : ces PDF sont sans doute des scans, c\'est-à-dire des images.'
-            : 'Aucun texte lisible dans ' . $muets[0] . ' : ce PDF est sans doute un scan, c\'est-à-dire une image.');
+        Session::flash('erreur', tn('crt.fl.muets', count($muets), ['noms' => implode(', ', $muets)]));
     }
 
     /** Retient les propositions cochées. */
@@ -523,17 +519,15 @@ final class CartesController
             }
         }
 
-        $ou = count($paquets) > 1 ? ' aux ' . count($paquets) . ' paquets.' : ' au paquet.';
+        $ou = count($paquets) > 1 ? t('crt.fl.aux_paquets', ['n' => count($paquets)]) : t('crt.fl.au_paquet');
         Session::flash($ajoutees > 0 ? 'succes' : 'erreur', match (true) {
-            $ajoutees > 1  => $ajoutees . ' cartes ajoutées' . $ou,
-            $ajoutees === 1 => 'Carte ajoutée au paquet.',
-            default        => 'Aucune carte retenue.',
+            $ajoutees > 1  => t('crt.fl.ajoutees', ['n' => $ajoutees, 'ou' => $ou]),
+            $ajoutees === 1 => t('crt.fl.une_ajoutee'),
+            default        => t('crt.fl.aucune_retenue'),
         });
 
         if ($sansReponse > 0) {
-            Session::flash('erreur', $sansReponse > 1
-                ? $sansReponse . ' cartes laissées de côté : leur réponse était vide.'
-                : 'Une carte laissée de côté : sa réponse était vide.');
+            Session::flash('erreur', tn('crt.fl.sans_reponse', $sansReponse));
         }
 
         redirect('cartes');
@@ -551,11 +545,11 @@ final class CartesController
         $reponse = trim(post('reponse'));
 
         if ($question === '' || $reponse === '') {
-            Session::flash('erreur', 'Une carte a besoin d\'une question et d\'une réponse.');
+            Session::flash('erreur', t('crt.fl.besoin_question'));
         } elseif ($this->ajouter($id, $userId, $question, $reponse, 'main')) {
-            Session::flash('succes', 'Carte ajoutée.');
+            Session::flash('succes', t('crt.fl.carte_ajoutee'));
         } else {
-            Session::flash('erreur', 'Cette question est déjà dans le paquet.');
+            Session::flash('erreur', t('crt.fl.question_deja'));
         }
 
         redirect('cartes');
@@ -615,7 +609,7 @@ final class CartesController
         $reponse = trim(post('reponse'));
 
         if ($question === '' || $reponse === '') {
-            Session::flash('erreur', 'Une carte a besoin d\'une question et d\'une réponse.');
+            Session::flash('erreur', t('crt.fl.besoin_question'));
             redirect('cours/' . $carte['cours_id'] . '/cartes');
         }
 
@@ -624,12 +618,12 @@ final class CartesController
                 'UPDATE cartes SET question = ?, reponse = ?, empreinte = ? WHERE id = ? AND user_id = ?',
                 [mb_substr($question, 0, 500), $reponse, GenerateurCartes::empreinte($question), $id, $userId]
             );
-            Session::flash('succes', 'Carte modifiée.');
+            Session::flash('succes', t('crt.fl.carte_modifiee'));
         } catch (PDOException $e) {
             if ($e->getCode() !== '23000') {
                 throw $e;
             }
-            Session::flash('erreur', 'Une autre carte pose déjà cette question.');
+            Session::flash('erreur', t('crt.fl.question_autre'));
         }
 
         redirect('cours/' . $carte['cours_id'] . '/cartes');
@@ -643,7 +637,7 @@ final class CartesController
         $carte = $this->carte($id, $userId);
 
         Database::run('DELETE FROM cartes WHERE id = ? AND user_id = ?', [$id, $userId]);
-        Session::flash('succes', 'Carte supprimée.');
+        Session::flash('succes', t('crt.fl.carte_supprimee'));
         redirect('cours/' . $carte['cours_id'] . '/cartes');
     }
 
@@ -670,7 +664,7 @@ final class CartesController
         );
 
         if ($aBouger === 0) {
-            Session::flash('erreur', 'Ce paquet est déjà au début : rien à remettre à zéro.');
+            Session::flash('erreur', t('crt.fl.deja_au_debut'));
             $this->retourPaquet($id);
         }
 
@@ -686,9 +680,7 @@ final class CartesController
             [$id, $userId]
         );
 
-        Session::flash('succes', $total > 1
-            ? 'Les ' . $total . ' cartes de « ' . $cours['titre'] . ' » sont de nouveau à revoir aujourd\'hui.'
-            : 'La carte de « ' . $cours['titre'] . ' » est de nouveau à revoir aujourd\'hui.');
+        Session::flash('succes', tn('crt.fl.remises', $total, ['titre' => (string) $cours['titre']]));
         $this->retourPaquet($id);
     }
 
@@ -739,15 +731,13 @@ final class CartesController
         );
 
         if ($combien === 0) {
-            Session::flash('erreur', 'Ce paquet est déjà vide.');
+            Session::flash('erreur', t('crt.fl.paquet_vide'));
             redirect('cours/' . $id . '/cartes');
         }
 
         Database::run('DELETE FROM cartes WHERE cours_id = ? AND user_id = ?', [$id, $userId]);
 
-        Session::flash('succes', $combien > 1
-            ? 'Les ' . $combien . ' cartes de « ' . $cours['titre'] . ' » ont été supprimées.'
-            : 'La carte de « ' . $cours['titre'] . ' » a été supprimée.');
+        Session::flash('succes', tn('crt.fl.supprimees', $combien, ['titre' => (string) $cours['titre']]));
         redirect('cartes');
     }
 
@@ -809,7 +799,9 @@ final class CartesController
             return;
         }
 
-        Vue::afficher('cartes/seance', $donnees, $cours !== null ? 'Réviser — ' . $cours['titre'] : 'Réviser');
+        Vue::afficher('cartes/seance', $donnees, $cours !== null
+            ? t('titre.reviser_cours', ['titre' => (string) $cours['titre']])
+            : t('titre.reviser'));
     }
 
     /**

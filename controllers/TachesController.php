@@ -103,11 +103,11 @@ final class TachesController
 
         $nom = mb_substr(post('nom'), 0, 120);
         if ($nom === '') {
-            Session::flash('erreur', 'Donnez un nom à votre liste.');
+            Session::flash('erreur', t('tache.fl.nom_liste'));
             $this->apresEchec();
         }
         if (Database::valeur('SELECT id FROM listes_taches WHERE user_id = ? AND nom = ?', [$userId, $nom]) !== null) {
-            Session::flash('erreur', 'Vous avez déjà une liste nommée « ' . $nom . ' ».');
+            Session::flash('erreur', t('tache.fl.liste_existe', ['nom' => $nom]));
             $this->apresEchec();
         }
 
@@ -125,7 +125,7 @@ final class TachesController
         );
         $nouvelleListe = Database::dernierId();
 
-        Session::flash('succes', 'Liste « ' . $nom . ' » créée.');
+        Session::flash('succes', t('tache.fl.liste_creee', ['nom' => $nom]));
         $this->apresCreation();
         // La nouvelle liste s'ouvre aussitôt dans le volet.
         redirect('taches', ['liste' => $nouvelleListe]);
@@ -143,7 +143,7 @@ final class TachesController
 
         $nom = mb_substr(post('nom'), 0, 120);
         if ($nom === '') {
-            Session::flash('erreur', 'Le nom de la liste est obligatoire.');
+            Session::flash('erreur', t('tache.fl.nom_obligatoire'));
             redirect('taches');
         }
         $doublon = Database::valeur(
@@ -151,7 +151,7 @@ final class TachesController
             [$userId, $nom, $id]
         );
         if ($doublon !== null) {
-            Session::flash('erreur', 'Une autre liste porte déjà ce nom.');
+            Session::flash('erreur', t('tache.fl.autre_liste'));
             redirect('taches');
         }
 
@@ -168,7 +168,7 @@ final class TachesController
              $echeance, $id, $userId]
         );
 
-        Session::flash('succes', 'Liste mise à jour.');
+        Session::flash('succes', t('tache.fl.liste_maj'));
         redirect('taches', ['liste' => $id]);
     }
 
@@ -189,8 +189,8 @@ final class TachesController
         Database::run('DELETE FROM listes_taches WHERE id = ? AND user_id = ?', [$id, $userId]);
 
         Session::flash('succes', $nb === 0
-            ? 'Liste « ' . $liste['nom'] . ' » supprimée.'
-            : 'Liste « ' . $liste['nom'] . ' » supprimée, avec ses ' . $nb . ' tâche' . ($nb > 1 ? 's' : '') . '.');
+            ? t('tache.fl.liste_supprimee', ['nom' => (string) $liste['nom']])
+            : tn('tache.fl.liste_supprimee_avec', $nb, ['nom' => (string) $liste['nom']]));
         redirect('taches');
     }
 
@@ -305,7 +305,7 @@ final class TachesController
         );
 
         if ($total === 0) {
-            Session::flash('info', 'Cette liste est vide : ajoutez-y une tâche avant de la terminer.');
+            Session::flash('info', t('tache.fl.liste_vide'));
             $this->repartirVers('taches', $this->filtreCourant());
         }
 
@@ -342,9 +342,7 @@ final class TachesController
             [$id, $userId]
         )->rowCount();
 
-        Session::flash('succes', $nb === 0
-            ? 'Aucune tâche terminée à retirer.'
-            : $nb . ' tâche' . ($nb > 1 ? 's' : '') . ' terminée' . ($nb > 1 ? 's' : '') . ' retirée' . ($nb > 1 ? 's' : '') . '.');
+        Session::flash('succes', $nb === 0 ? t('tache.fl.rien_a_retirer') : tn('tache.fl.retirees', $nb));
         redirect('taches');
     }
 
@@ -352,10 +350,10 @@ final class TachesController
 
     /** Ce qu'on peut demander à une tâche de refaire, et comment le dire. */
     public const RECURRENCES = [
-        'jour'      => ['libelle' => 'Chaque jour',        'pas' => '+1 day'],
-        'semaine'   => ['libelle' => 'Chaque semaine',     'pas' => '+1 week'],
-        'quinzaine' => ['libelle' => 'Toutes les 2 semaines', 'pas' => '+2 weeks'],
-        'mois'      => ['libelle' => 'Chaque mois',        'pas' => '+1 month'],
+        'jour'      => ['pas' => '+1 day'],
+        'semaine'   => ['pas' => '+1 week'],
+        'quinzaine' => ['pas' => '+2 weeks'],
+        'mois'      => ['pas' => '+1 month'],
     ];
 
     /** La répétition demandée, ou null — un mot inconnu ne répète rien. */
@@ -394,7 +392,7 @@ final class TachesController
         // La sous-tâche ne dépasse pas l'échéance de sa liste : au-delà, la
         // répétition s'arrête d'elle-même plutôt que de la faire déborder.
         if ($this->souciDeSousTache((int) $tache['user_id'], (int) $tache['liste_id'], $suivante->format('Y-m-d')) !== null) {
-            Session::flash('succes', 'Dernière fois : la suivante dépasserait l’échéance de la tâche principale.');
+            Session::flash('succes', t('tache.fl.derniere_fois'));
             return;
         }
 
@@ -403,7 +401,7 @@ final class TachesController
             [(int) $tache['user_id'], (int) $tache['liste_id'], (string) $tache['titre'],
              $suivante->format('Y-m-d'), $recurrence, $this->rangSuivant((int) $tache['user_id'], (int) $tache['liste_id'])]
         );
-        Session::flash('succes', 'C’est fait. La prochaine est posée au ' . date_fr($suivante->format('Y-m-d'), false) . '.');
+        Session::flash('succes', t('tache.fl.prochaine_posee', ['date' => date_fr($suivante->format('Y-m-d'), false)]));
     }
 
     public function creer(): void
@@ -414,13 +412,13 @@ final class TachesController
 
         $listeId = $this->listeValide($userId, $_POST['liste_id'] ?? null);
         if ($listeId === null) {
-            Session::flash('erreur', 'Choisissez la liste dans laquelle ranger cette tâche.');
+            Session::flash('erreur', t('tache.fl.choisir_liste'));
             $this->apresEchec();
         }
 
         $titre = mb_substr(post('titre'), 0, 200);
         if ($titre === '') {
-            Session::flash('erreur', 'Écrivez ce qu’il y a à faire.');
+            Session::flash('erreur', t('tache.fl.ecrivez'));
             $this->apresEchec();
         }
 
@@ -439,7 +437,7 @@ final class TachesController
 
         // Revenu au tableau, rien ne montre la liste où elle est rangée : on le dit.
         if ($this->depuisNouvelle()) {
-            Session::flash('succes', 'Sous-tâche « ' . $titre . ' » ajoutée.');
+            Session::flash('succes', t('tache.fl.sous_tache_ajoutee', ['titre' => $titre]));
         }
         $this->apresCreation();
         // Le volet reste ouvert sur la liste où l'on vient d'écrire.
@@ -458,14 +456,14 @@ final class TachesController
 
         $titre = mb_substr(post('titre'), 0, 200);
         if ($titre === '') {
-            Session::flash('erreur', 'Le libellé de la tâche ne peut pas être vide.');
+            Session::flash('erreur', t('tache.fl.libelle_vide'));
             redirect('taches');
         }
 
         // La liste peut changer : déplacer une tâche d'une liste à l'autre.
         $listeId = $this->listeValide($userId, $_POST['liste_id'] ?? null);
         if ($listeId === null) {
-            Session::flash('erreur', 'Liste de destination introuvable.');
+            Session::flash('erreur', t('tache.fl.liste_introuvable'));
             redirect('taches');
         }
 
@@ -489,7 +487,7 @@ final class TachesController
             [$titre, $echeance, $this->recurrenceValide($_POST['recurrence'] ?? null), $listeId, $rang, $id, $userId]
         );
 
-        Session::flash('succes', 'Tâche mise à jour.');
+        Session::flash('succes', t('tache.fl.tache_maj'));
         // On rouvre la liste d'arrivée : c'est là que la tâche se trouve désormais.
         redirect('taches', ['liste' => $listeId]);
     }
@@ -562,7 +560,7 @@ final class TachesController
 
         $cible = $this->listeValide($userId, $_POST['cible'] ?? null);
         if ($cible === null) {
-            Session::flash('erreur', 'Liste de destination introuvable.');
+            Session::flash('erreur', t('tache.fl.liste_introuvable'));
             redirect('taches', $this->filtreCourant());
         }
 
@@ -570,7 +568,7 @@ final class TachesController
         // faut-il que la nouvelle la couvre.
         $souci = $this->souciDeSousTache($userId, $cible, $tache['echeance']);
         if ($souci !== null) {
-            Session::flash('erreur', '« ' . $tache['titre'] . ' » n’a pas bougé. ' . $souci);
+            Session::flash('erreur', t('tache.fl.pas_bouge', ['titre' => (string) $tache['titre'], 'souci' => $souci]));
             redirect('taches', $this->filtreCourant());
         }
 
@@ -581,7 +579,9 @@ final class TachesController
                 [$cible, $this->rangSuivant($userId, $cible), $tache['id'], $userId]
             );
             $nom = Database::valeur('SELECT nom FROM listes_taches WHERE id = ? AND user_id = ?', [$cible, $userId]);
-            Session::flash('succes', '« ' . $tache['titre'] . ' » déplacée vers « ' . $nom . ' ».');
+            Session::flash('succes', t('tache.fl.deplacee', [
+                'titre' => (string) $tache['titre'], 'nom' => (string) $nom,
+            ]));
         }
 
         redirect('taches', $this->filtreCourant());
@@ -626,7 +626,7 @@ final class TachesController
         Session::verifierCsrf();
 
         Database::run('DELETE FROM taches WHERE id = ? AND user_id = ?', [$id, Auth::id()]);
-        Session::flash('succes', 'Tâche supprimée.');
+        Session::flash('succes', t('tache.fl.supprimee'));
         redirect('taches', $this->filtreCourant());
     }
 
@@ -874,9 +874,10 @@ final class TachesController
             return null;
         }
 
-        return 'Une sous-tâche ne peut pas être due après sa tâche principale : « '
-            . $liste['nom'] . ' » est due le ' . date_fr((string) $liste['echeance'], false)
-            . '. Choisissez cette date au plus tard, ou repoussez d’abord la tâche principale.';
+        return t('tache.fl.souci_sous_tache', [
+            'nom' => (string) $liste['nom'],
+            'date' => date_fr((string) $liste['echeance'], false),
+        ]);
     }
 
     /**
@@ -900,14 +901,10 @@ final class TachesController
         $nb = count($tardives);
         $derniere = $tardives[0];
 
-        return 'Une tâche principale ne peut pas être due avant ses sous-tâches : '
-            . ($nb === 1
-                ? '« ' . $derniere['titre'] . ' » est due le '
-                    . date_fr((string) $derniere['echeance'], false)
-                : $nb . ' sous-tâches sont dues plus tard, la dernière (« '
-                    . $derniere['titre'] . ' ») le '
-                    . date_fr((string) $derniere['echeance'], false))
-            . '. Changez d’abord leur date, ou choisissez une échéance plus tardive.';
+        return tn('tache.fl.souci_principale', $nb, [
+            'titre' => (string) $derniere['titre'],
+            'date' => date_fr((string) $derniere['echeance'], false),
+        ]);
     }
 
     private function couleurValide(string $couleur): string

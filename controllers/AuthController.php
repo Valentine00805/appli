@@ -13,7 +13,7 @@ final class AuthController
         Vue::afficherNu('auth/inscription', [
             'erreurs' => [],
             'codeExige' => $this->codeInscription() !== '',
-        ], 'Inscription');
+        ], t('titre.inscription'));
     }
 
     public function inscrire(): void
@@ -44,27 +44,27 @@ final class AuthController
         }
 
         if (mb_strlen($nom) < 2) {
-            $erreurs['nom'] = 'Indiquez un nom d’au moins 2 caractères.';
+            $erreurs['nom'] = t('auth.fl.nom_court');
         }
         if (($probleme = Auth::problemePseudo($pseudo)) !== null) {
             $erreurs['pseudo'] = $probleme;
         }
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            $erreurs['email'] = 'Adresse e-mail invalide.';
+            $erreurs['email'] = t('auth.fl.email_invalide');
         } elseif (Database::valeur('SELECT id FROM users WHERE email = ?', [$email]) !== null) {
-            $erreurs['email'] = 'Cette adresse est déjà utilisée.';
+            $erreurs['email'] = t('auth.fl.email_prise');
         }
         if (strlen($mdp) < 8) {
-            $erreurs['mot_de_passe'] = 'Le mot de passe doit faire au moins 8 caractères.';
+            $erreurs['mot_de_passe'] = t('auth.fl.mdp_court');
         } elseif ($mdp !== $mdp2) {
-            $erreurs['mot_de_passe_confirmation'] = 'Les deux mots de passe ne correspondent pas.';
+            $erreurs['mot_de_passe_confirmation'] = t('auth.fl.mdp_different');
         }
 
         if ($erreurs !== []) {
             Vue::afficherNu('auth/inscription', [
                 'erreurs' => $erreurs,
                 'codeExige' => $code !== '',
-            ], 'Inscription');
+            ], t('titre.inscription'));
             return;
         }
 
@@ -79,9 +79,9 @@ final class AuthController
                 throw $e;
             }
             Vue::afficherNu('auth/inscription', [
-                'erreurs' => ['pseudo' => 'Ce pseudo vient d’être pris. Choisissez-en un autre.'],
+                'erreurs' => ['pseudo' => t('auth.fl.pseudo_pris')],
                 'codeExige' => $code !== '',
-            ], 'Inscription');
+            ], t('titre.inscription'));
             return;
         }
         $userId = Database::dernierId();
@@ -90,7 +90,7 @@ final class AuthController
         BudgetController::creerCategoriesParDefaut($userId);
 
         Auth::connecter($userId);
-        Session::flash('succes', 'Bienvenue ' . $pseudo . ' ! Votre espace est prêt.');
+        Session::flash('succes', t('auth.fl.bienvenue', ['qui' => $pseudo]));
         redirect('');
     }
 
@@ -99,7 +99,7 @@ final class AuthController
         if (Auth::connecte()) {
             redirect('');
         }
-        Vue::afficherNu('auth/connexion', ['erreurs' => []], 'Connexion');
+        Vue::afficherNu('auth/connexion', ['erreurs' => []], t('titre.connexion'));
     }
 
     public function connecter(): void
@@ -127,7 +127,7 @@ final class AuthController
         if ($attente !== null) {
             Vue::afficherNu('auth/connexion', [
                 'erreurs' => ['global' => LimiteurConnexion::message($attente)],
-            ], 'Connexion');
+            ], t('titre.connexion'));
             return;
         }
 
@@ -137,8 +137,8 @@ final class AuthController
             // Message volontairement générique : on n'indique pas si le compte existe.
             usleep(300000);
             Vue::afficherNu('auth/connexion', [
-                'erreurs' => ['global' => 'Identifiant ou mot de passe incorrect.'],
-            ], 'Connexion');
+                'erreurs' => ['global' => t('auth.fl.identifiants')],
+            ], t('titre.connexion'));
             return;
         }
 
@@ -152,7 +152,7 @@ final class AuthController
 
         $destination = $_SESSION['_apres_connexion'] ?? null;
         Auth::connecter((int) $utilisateur['id']);
-        Session::flash('succes', 'Content de vous revoir, ' . Auth::nomAffiche($utilisateur) . '.');
+        Session::flash('succes', t('auth.fl.content_revoir', ['qui' => Auth::nomAffiche($utilisateur)]));
 
         if (is_string($destination) && $destination !== '') {
             header('Location: ' . $destination);
@@ -210,7 +210,7 @@ final class AuthController
             Auth::deconnecter();
             Session::demarrer();
         }
-        Session::flash('succes', 'Mot de passe changé. Connectez-vous avec le nouveau.');
+        Session::flash('succes', t('auth.fl.mdp_change'));
         redirect('connexion');
     }
 
@@ -219,7 +219,7 @@ final class AuthController
         Session::verifierCsrf();
         Auth::deconnecter();
         Session::demarrer();
-        Session::flash('info', 'Vous êtes déconnecté.');
+        Session::flash('info', t('auth.fl.deconnecte'));
         redirect('connexion');
     }
 
@@ -242,7 +242,7 @@ final class AuthController
             'partagesDansDiscussion' => Partages::dansLaDiscussion($userId),
             'calendriersAmis' => Partages::calendriersAvecMesAmis($userId),
             'fuseaux' => self::fuseauxParRegion(),
-        ], 'Mon compte');
+        ], t('titre.mon_compte'));
     }
 
     /** Choisit ou change son pseudo. */
@@ -254,7 +254,7 @@ final class AuthController
 
         $pseudo = post('pseudo');
         if ($pseudo === (string) (Auth::utilisateur()['pseudo'] ?? '')) {
-            Session::flash('info', 'Votre pseudo reste « ' . $pseudo . ' ».');
+            Session::flash('info', t('auth.fl.pseudo_inchange', ['pseudo' => $pseudo]));
             redirect('compte');
         }
         if (($probleme = Auth::problemePseudo($pseudo, $userId)) !== null) {
@@ -269,12 +269,12 @@ final class AuthController
             if ($e->getCode() !== '23000') {
                 throw $e;
             }
-            Session::flash('erreur', 'Ce pseudo vient d’être pris. Choisissez-en un autre.');
+            Session::flash('erreur', t('auth.fl.pseudo_pris'));
             Session::garder('pseudo_saisi', $pseudo);
             redirect('compte');
         }
 
-        Session::flash('succes', 'Pseudo enregistré : vous êtes désormais « ' . $pseudo . ' ».');
+        Session::flash('succes', t('auth.fl.pseudo_enregistre', ['pseudo' => $pseudo]));
         redirect('compte');
     }
 
@@ -323,15 +323,17 @@ final class AuthController
 
         $fuseau = trim((string) ($_POST['fuseau'] ?? ''));
         if (!Auth::fuseauValide($fuseau)) {
-            Session::flash('erreur', 'Ce fuseau horaire n’existe pas.');
+            Session::flash('erreur', t('auth.fl.fuseau_inconnu'));
             redirect('compte');
         }
 
         Database::run('UPDATE users SET fuseau = ? WHERE id = ?', [$fuseau, Auth::id()]);
         date_default_timezone_set($fuseau);
 
-        Session::flash('succes', 'Fuseau horaire réglé sur ' . str_replace('_', ' ', $fuseau)
-            . ' — il est ' . date('H:i') . ' chez vous.');
+        Session::flash('succes', t('auth.fl.fuseau_regle', [
+            'fuseau' => str_replace('_', ' ', $fuseau),
+            'heure' => heure_courte(time()),
+        ]));
         redirect('compte');
     }
 
@@ -376,7 +378,7 @@ final class AuthController
         Auth::exiger();
         Session::verifierCsrf();
         $retiree = Amis::retirerPhoto(Auth::id());
-        Session::flash($retiree ? 'succes' : 'info', $retiree ? 'Photo de profil retirée.' : 'Vous n’aviez pas de photo de profil.');
+        Session::flash($retiree ? 'succes' : 'info', t($retiree ? 'auth.fl.photo_retiree' : 'auth.fl.pas_de_photo'));
         redirect('compte');
     }
 
@@ -388,14 +390,12 @@ final class AuthController
 
         $choix = (string) ($_POST['transcription'] ?? '');
         if ($choix !== '0' && $choix !== '1') {
-            Session::flash('erreur', 'Choisissez « Activée » ou « Coupée ».');
+            Session::flash('erreur', t('auth.fl.transcription_choix'));
             redirect('compte');
         }
 
         Database::run('UPDATE users SET transcription_vocale = ? WHERE id = ?', [(int) $choix, Auth::id()]);
-        Session::flash('succes', $choix === '1'
-            ? 'Transcription activée : vos prochains messages vocaux seront transcrits.'
-            : 'Transcription coupée : vos messages vocaux partiront sans texte.');
+        Session::flash('succes', t($choix === '1' ? 'auth.fl.transcription_on' : 'auth.fl.transcription_off'));
         redirect('compte');
     }
 
@@ -432,18 +432,18 @@ final class AuthController
 
         $hash = (string) Database::valeur('SELECT password_hash FROM users WHERE id = ?', [$userId]);
         if (!password_verify($actuel, $hash)) {
-            Session::flash('erreur', 'Mot de passe actuel incorrect.');
+            Session::flash('erreur', t('auth.fl.mdp_actuel'));
             // Le formulaire se rouvre, pour réessayer sans recliquer sur « Modifier ».
             Session::garder('mot_de_passe_ouvert', true);
             redirect('compte');
         }
         if (strlen($nouveau) < 8) {
-            Session::flash('erreur', 'Le nouveau mot de passe doit faire au moins 8 caractères.');
+            Session::flash('erreur', t('auth.fl.nouveau_mdp_court'));
             Session::garder('mot_de_passe_ouvert', true);
             redirect('compte');
         }
         if ($nouveau !== $confirmation) {
-            Session::flash('erreur', 'La confirmation ne correspond pas.');
+            Session::flash('erreur', t('auth.fl.confirmation'));
             Session::garder('mot_de_passe_ouvert', true);
             redirect('compte');
         }
@@ -453,7 +453,7 @@ final class AuthController
         ]);
         // Cette session reste ouverte ; celles des autres appareils se ferment.
         Auth::retenirMotDePasse($userId);
-        Session::flash('succes', 'Mot de passe mis à jour.');
+        Session::flash('succes', t('auth.fl.mdp_maj'));
         redirect('compte');
     }
 
@@ -468,15 +468,12 @@ final class AuthController
     private function verifierInscriptionPossible(): void
     {
         if (!Config::get('app', 'inscription_ouverte')) {
-            Session::flash('erreur', 'Les inscriptions sont fermées.');
+            Session::flash('erreur', t('auth.fl.inscriptions_fermees'));
             redirect('connexion');
         }
 
         if ($this->codeInscription() === '' && !$this->accesLocal()) {
-            Session::flash('erreur',
-                'Inscription impossible : l’application est accessible depuis le réseau et '
-                . 'aucun code d’inscription n’est défini. Renseignez « code_inscription » dans '
-                . 'config/parametres.php, ou passez « inscription_ouverte » à false.');
+            Session::flash('erreur', t('auth.fl.inscription_impossible'));
             redirect('connexion');
         }
     }

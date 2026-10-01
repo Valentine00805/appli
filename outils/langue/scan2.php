@@ -30,7 +30,14 @@ foreach ($fichiers as $f) {
         foreach (["/'([^']{6,})'/u", '/"([^"<>]{6,})"/u'] as $motif) {
             if (preg_match_all($motif, $l, $m)) {
                 foreach ($m[1] as $v) {
-                    if (preg_match($motsFr, $v) && !preg_match('#^[a-z0-9_./ -]+$#', $v)) {
+                    /*
+                     * Une phrase se reconnaît à un mot-outil français — ou, à
+                     * défaut, à un accent : « Cours enregistré. » n'a ni « le »
+                     * ni « la », et passait donc entre les mailles.
+                     */
+                    $frSansOutil = preg_match('/[àâäçéèêëîïôöùûüœÀÂÄÇÉÈÊËÎÏÔÖÙÛÜŒ]/u', $v) === 1
+                        && preg_match('/\p{L}{3}/u', $v) === 1;
+                    if (($frSansOutil || preg_match($motsFr, $v)) && !preg_match('#^[a-z0-9_./ -]+$#', $v)) {
                         $vus[] = '  ' . ($i + 1) . ' chaîne  ' . $v;
                     }
                 }
