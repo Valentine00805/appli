@@ -21,13 +21,12 @@ qu'elles répondent dans la bonne langue, puis efface ce compte. Elle contrôle
 aussi que les quatre fichiers de langue ont exactement les mêmes clés et que
 chaque pluriel a ses deux moitiés.
 
-**`amis.php`** (hors du projet, voir plus bas) — la même chose pour les amis et
-les groupes : deux comptes deviennent amis, créent un groupe, le renomment, se
-nomment administrateurs, et l'on vérifie que les notes de la discussion
-(« Alma vous a ajouté ») suivent la langue. Trois comptes d'essai, effacés à
-la fin.
+**`discussions_langue.php`** — la même chose pour les amis et les groupes :
+deux comptes deviennent amis, créent un groupe, le renomment, se nomment
+administrateurs, et l'on vérifie que les notes de la discussion (« Alma vous a
+ajouté ») suivent la langue. Trois comptes d'essai, effacés à la fin.
 
-**`notifs.php`** (hors du projet, voir plus bas) — les notifications. Trois
+**`envois_langue.php`** — les notifications. Trois
 comptes, trois langues, et l'on vérifie que chacun lit la sienne : une demande
 d'ami, une acceptation, un message et ses pièces jointes, puis un ajout à un
 groupe qui prévient l'anglais et l'allemand dans la même boucle. Elle vérifie
@@ -78,34 +77,36 @@ de commande vient d'ouvrir.
 **`scan2.php`** — repère le français restant dans des fichiers précis, avec plus
 de détail que `reste.php`.
 
-## L'antivirus, et où lancer les suites
+## L'antivirus, et les noms qu'il a condamnés
 
-Les suites qui ouvrent des sessions par HTTP avec un mot de passe passent pour
-une attaque aux yeux d'une heuristique : Norton les met en quarantaine, parfois
-**pendant qu'elles tournent**. Le script meurt alors en plein milieu, son
-ménage de fin ne se fait pas, et des comptes d'essai restent en base.
+**Depuis le 2 octobre 2026, le dossier du projet est exclu de Norton**, et les
+huit suites tournent d'ici jusqu'au bout. Ce qui suit explique pourquoi
+certaines portent un nom bizarre, et ce qu'il faudra savoir si l'exclusion
+disparaît un jour.
 
-Ce qu'on a observé, le 30 septembre et le 1er octobre 2026 :
+Les suites qui ouvrent des sessions par HTTP avec un mot de passe passaient pour
+une attaque aux yeux d'une heuristique : Norton les mettait en quarantaine,
+parfois **pendant qu'elles tournaient**. Le script mourait alors en plein
+milieu, son ménage de fin ne se faisait pas, et des comptes d'essai restaient
+en base.
 
-- lancées depuis le dossier du projet, `amis_langue.php` et
-  `partages_langue.php` ont été supprimées en cours d'exécution ;
-- lancées depuis un dossier hors du projet, les mêmes ont tourné jusqu'au bout ;
-- après une quarantaine, Windows garde le **nom** du fichier bloqué : on ne peut
-  plus rien écrire à cette place, il faut en changer. C'est pourquoi
-  `controleurs_langue.php` et `budget_langue.php` s'appellent désormais
-  `pages_langue.php` et `argent_langue.php` ;
-- deux suites se font supprimer **où qu'on les mette dans le projet**, même
-  sous un nouveau nom : celle des amis et celle des notifications. Elles ne
-  vivent plus ici du tout. Leur copie de travail est hors du projet, avec
-  `base.php` et `cles.php` à côté, et c'est de là qu'on les lance.
+Ce qu'on a observé, les 30 septembre et 1er octobre 2026 :
 
-Donc : lancer les suites **depuis un dossier hors du projet**, en y copiant ce
-dont elles ont besoin. `verif_langue.php`, elle, passe depuis le projet.
+- lancées depuis le dossier du projet, six suites ont été supprimées en cours
+  d'exécution ; lancées depuis un dossier hors du projet, les mêmes tournaient
+  jusqu'au bout ;
+- **après une quarantaine, Windows garde le nom du fichier bloqué** : on ne peut
+  plus rien écrire à cette place, jamais, et l'exclusion n'y change rien. Les
+  noms condamnés sont `verif_amis.php`, `verif_partages.php`,
+  `controleurs_langue.php`, `budget_langue.php`, `amis_langue.php`,
+  `amities_langue.php`, `notifs_langue.php` et `notifications_langue.php`.
 
-Le vrai remède serait une exclusion Norton sur `C:\wamp64\www\mon_appli\appli`.
-C'est un réglage du poste, pas du code : il demande l'accord de qui s'en sert.
+D'où les noms d'aujourd'hui : `pages_langue.php`, `argent_langue.php`,
+`discussions_langue.php` et `envois_langue.php`. Ce ne sont pas de bons noms,
+ce sont les premiers qui étaient libres.
 
-Si une suite s'arrête au milieu, vérifier ce qui reste :
+Si une suite s'arrête au milieu, son ménage de fin n'a pas eu lieu. Vérifier
+alors ce qui reste :
 
     SELECT id, email FROM users WHERE email LIKE '%exemple-test.fr';
 
