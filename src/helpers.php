@@ -461,7 +461,7 @@ function couleur_operation(array $operation): string
 function libelle_categorie(array $operation): string
 {
     $nom = (string) ($operation['categorie_nom'] ?? '');
-    return $nom !== '' ? $nom : 'Sans catégorie';
+    return $nom !== '' ? $nom : t('bud.sans_categorie');
 }
 
 /** Icône de la catégorie d'une opération, avec repli. */

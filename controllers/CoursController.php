@@ -1900,14 +1900,16 @@ final class CoursController
     {
         $nomImage = (string) ($fichiers['name'][$cle] ?? 'image');
         if ($erreur !== UPLOAD_ERR_OK) {
-            return '« ' . $nomImage . ' » : ' . Fichiers::messageErreur($erreur);
+            return t('cours.img.refus', [
+                'nom' => $nomImage, 'raison' => Fichiers::messageErreur($erreur),
+            ]);
         }
         $temporaire = (string) ($fichiers['tmp_name'][$cle] ?? '');
         if ($temporaire === '' || !is_uploaded_file($temporaire)) {
-            return '« ' . $nomImage . ' » n’est pas arrivée entière.';
+            return t('cours.img.incomplete', ['nom' => $nomImage]);
         }
         if ((int) ($fichiers['size'][$cle] ?? 0) > Fichiers::tailleMax()) {
-            return '« ' . $nomImage . ' » est trop lourde pour le serveur.';
+            return t('cours.img.trop_lourde', ['nom' => $nomImage]);
         }
 
         $mesure = @getimagesize($temporaire);
@@ -1918,15 +1920,15 @@ final class CoursController
             default        => null,
         };
         if ($mesure === false || $sorte === null) {
-            return '« ' . $nomImage . ' » n’est pas une image PNG, JPEG ou GIF — les formats que Word ouvre partout.';
+            return t('cours.img.mauvais_format', ['nom' => $nomImage]);
         }
         if ((int) $mesure[0] <= 0 || (int) $mesure[1] <= 0) {
-            return '« ' . $nomImage . ' » n’a pas de dimensions lisibles.';
+            return t('cours.img.sans_dimensions', ['nom' => $nomImage]);
         }
 
         $octets = file_get_contents($temporaire);
         if ($octets === false || $octets === '') {
-            return '« ' . $nomImage . ' » n’a pas pu être lue.';
+            return t('cours.img.illisible', ['nom' => $nomImage]);
         }
 
         return [

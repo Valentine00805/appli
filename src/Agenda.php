@@ -80,7 +80,7 @@ final class Agenda
             'replie'  => isset($replies[SynchroAgenda::MIENS]),
             'sources' => [[
                 'cle'     => SynchroAgenda::MIENS,
-                'nom'     => 'Mes évènements',
+                'nom'     => t('ag.mes_evenements'),
                 'affiche' => (int) ($moi['afficher_miens'] ?? 1) !== 0,
                 'couleur' => self::couleurOuDefaut((string) ($moi['couleur_miens'] ?? ''), 0),
                 'partage' => false,

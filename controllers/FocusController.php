@@ -212,7 +212,7 @@ final class FocusController
         Auth::exiger();
         Session::verifierCsrf();
         Focus::terminer(Auth::id(), $id, 0, 0, null);
-        Session::flash('succes', 'Session abandonnée : rien n’a été compté.');
+        Session::flash('succes', t('foc.fl.abandonnee'));
         redirect('focus');
     }
 }

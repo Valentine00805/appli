@@ -50,7 +50,7 @@ $estPartage = !empty($evt['est_partage']);
     <?php elseif ($estTache): ?>
       <?php
       // Cocher ici ramène sur le calendrier, au mois et aux filtres en cours.
-      $estListe = ($evt['type_nom'] ?? '') === 'Tâche principale';
+      $estListe = !empty($evt['est_liste']);
       $fait = (int) $evt['termine'] === 1;
       ?>
       <form method="post" action="<?= url((string) $evt['route_cocher']) ?>" class="en-ligne">

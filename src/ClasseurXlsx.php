@@ -63,7 +63,7 @@ final class ClasseurXlsx
 
         $zip = new ZipArchive();
         if ($zip->open($temporaire, ZipArchive::OVERWRITE) !== true) {
-            throw new RuntimeException('Impossible d\'ouvrir l\'archive du classeur.');
+            throw new RuntimeException(t('xls.archive_impossible'));
         }
 
         $zip->addFromString('[Content_Types].xml', $this->contentTypes());

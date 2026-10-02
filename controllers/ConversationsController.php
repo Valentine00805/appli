@@ -337,7 +337,8 @@ final class ConversationsController
         Session::verifierCsrf();
         $pseudo = (string) (Amis::compte($membre)['pseudo'] ?? '');
         $refus = Conversations::annulerInvitation(Auth::id(), $id, $membre);
-        Session::flash($refus === null ? 'succes' : 'erreur', $refus ?? 'Invitation de ' . $pseudo . ' annulée.');
+        Session::flash($refus === null ? 'succes' : 'erreur',
+            $refus ?? t('grp.fl.invitation_annulee', ['qui' => $pseudo]));
         $this->retour($id);
     }
 

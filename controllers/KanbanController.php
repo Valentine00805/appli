@@ -147,7 +147,7 @@ final class KanbanController
             [$note, $id, $userId]
         );
 
-        Session::flash('succes', $note === null ? 'Remarque effacée.' : 'Remarque enregistrée.');
+        Session::flash('succes', t($note === null ? 'kb.fl.remarque_effacee' : 'kb.fl.remarque_enregistree'));
         $this->repartirVers('tableau');
     }
 

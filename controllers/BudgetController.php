@@ -398,27 +398,28 @@ final class BudgetController
     /** Catégories de départ pour un nouveau compte. */
     public static function creerCategoriesParDefaut(int $userId): void
     {
+        // Le nom part en base dans la langue du compte, et se renomme ensuite.
         $defauts = [
-            ['Courses', '🛒', '#059669', 'depense'],
-            ['Transport', '🚌', '#0ea5e9', 'depense'],
-            ['Logement', '🏠', '#7c3aed', 'depense'],
-            ['Sorties', '🎉', '#db2777', 'depense'],
-            ['Fournitures', '✏️', '#ca8a04', 'depense'],
-            ['Santé', '💊', '#dc2626', 'depense'],
-            ['Abonnements', '📱', '#ea580c', 'depense'],
-            ['Divers', '💶', '#64748b', 'depense'],
-            ['Bourse', '🎓', '#059669', 'recette'],
-            ['Salaire', '💼', '#4f46e5', 'recette'],
-            ['Aide famille', '👪', '#0ea5e9', 'recette'],
-            ['Autre', '💰', '#64748b', 'recette'],
+            ['courses', '🛒', '#059669', 'depense'],
+            ['transport', '🚌', '#0ea5e9', 'depense'],
+            ['logement', '🏠', '#7c3aed', 'depense'],
+            ['sorties', '🎉', '#db2777', 'depense'],
+            ['fournitures', '✏️', '#ca8a04', 'depense'],
+            ['sante', '💊', '#dc2626', 'depense'],
+            ['abonnements', '📱', '#ea580c', 'depense'],
+            ['divers', '💶', '#64748b', 'depense'],
+            ['bourse', '🎓', '#059669', 'recette'],
+            ['salaire', '💼', '#4f46e5', 'recette'],
+            ['aide_famille', '👪', '#0ea5e9', 'recette'],
+            ['autre', '💰', '#64748b', 'recette'],
         ];
         $rangs = ['depense' => 0, 'recette' => 0];
-        foreach ($defauts as [$nom, $icone, $couleur, $sens]) {
+        foreach ($defauts as [$cle, $icone, $couleur, $sens]) {
             $rangs[$sens]++;
             Database::run(
                 'INSERT IGNORE INTO categories_budget (user_id, nom, icone, couleur, sens, position)
                  VALUES (?, ?, ?, ?, ?, ?)',
-                [$userId, $nom, $icone, $couleur, $sens, $rangs[$sens]]
+                [$userId, t('bud.cat_defaut.' . $cle), $icone, $couleur, $sens, $rangs[$sens]]
             );
         }
     }

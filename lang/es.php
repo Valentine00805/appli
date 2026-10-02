@@ -3997,4 +3997,56 @@ return [
     'pt.detail.fichier' => 'Archivo · {taille}',
     // L’aperçu d’un document
     'apc.numeros_de_page' => 'Los números de página aparecerán al abrir el documento en Word o LibreOffice.',
+    // Les catégories du budget
+    'bud.cat_defaut.courses' => 'Compra',
+    'bud.cat_defaut.transport' => 'Transporte',
+    'bud.cat_defaut.logement' => 'Vivienda',
+    'bud.cat_defaut.sorties' => 'Salidas',
+    'bud.cat_defaut.fournitures' => 'Material',
+    'bud.cat_defaut.sante' => 'Salud',
+    'bud.cat_defaut.abonnements' => 'Suscripciones',
+    'bud.cat_defaut.divers' => 'Varios',
+    'bud.cat_defaut.bourse' => 'Beca',
+    'bud.cat_defaut.salaire' => 'Salario',
+    'bud.cat_defaut.aide_famille' => 'Ayuda familiar',
+    'bud.cat_defaut.autre' => 'Otro',
+    'bud.sans_categorie' => 'Sin categoría',
+    // Les groupes, la suite
+    'grp.fl.invitation_annulee' => 'Invitación a {qui} anulada.',
+    // Les images d’un document
+    'cours.img.incomplete' => '«{nom}» no ha llegado completa.',
+    'cours.img.trop_lourde' => '«{nom}» es demasiado pesada para el servidor.',
+    'cours.img.mauvais_format' => '«{nom}» no es una imagen PNG, JPEG o GIF — los formatos que Word abre en cualquier parte.',
+    'cours.img.sans_dimensions' => '«{nom}» no tiene dimensiones legibles.',
+    'cours.img.illisible' => '«{nom}» no se ha podido leer.',
+    'cours.img.refus' => '«{nom}»: {raison}',
+    // Les dossiers, la suite
+    'dos.fl.remonte' => '«{nom}» ha subido al primer nivel.',
+    'dos.fl.range_dans' => '«{nom}» guardado en «{parent}».',
+    // Les sessions de révision
+    'foc.fl.abandonnee' => 'Sesión abandonada: no se ha contado nada.',
+    'foc.evt_revision' => 'Repaso',
+    'foc.evt_revision_cours' => 'Repaso: {titre}',
+    'foc.evt_revision_plusieurs' => 'Repaso: {n} clases',
+    // Le tableau, la suite
+    'kb.fl.remarque_effacee' => 'Nota borrada.',
+    'kb.fl.remarque_enregistree' => 'Nota guardada.',
+    // Les tâches, la suite
+    'taches.tache_principale_min' => 'tarea principal',
+    // Les travaux de groupe, la suite
+    'tr.fl.tache_modifiee' => 'Tarea modificada.',
+    'tr.fl.type_cree' => 'Tipo «{nom}» creado.',
+    // La sous-navigation de l’organisation
+    'titre.types_evenement' => 'Tipos de evento',
+    'orga.matieres' => 'Asignaturas',
+    'orga.types' => 'Tipos de evento',
+    'orga.dossiers' => 'Carpetas',
+    'orga.tags' => 'Etiquetas',
+    // Les agendas et les classeurs, la fin
+    'ag.mes_evenements' => 'Mis eventos',
+    'ag.refus_demande' => '{qui} ha rehusado la petición.',
+    'xls.archive_impossible' => 'No se ha podido abrir el archivo del libro.',
+    // Le journal d’alternance imprimé
+    'alt.aucune_mission' => 'Ninguna misión anotada esta semana.',
+    'alt.competences_label' => 'Competencias: ',
 ];

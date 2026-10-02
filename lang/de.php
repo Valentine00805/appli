@@ -3997,4 +3997,56 @@ return [
     'pt.detail.fichier' => 'Datei · {taille}',
     // L’aperçu d’un document
     'apc.numeros_de_page' => 'Die Seitenzahlen erscheinen, sobald das Dokument in Word oder LibreOffice geöffnet wird.',
+    // Les catégories du budget
+    'bud.cat_defaut.courses' => 'Einkauf',
+    'bud.cat_defaut.transport' => 'Verkehr',
+    'bud.cat_defaut.logement' => 'Wohnen',
+    'bud.cat_defaut.sorties' => 'Ausgehen',
+    'bud.cat_defaut.fournitures' => 'Material',
+    'bud.cat_defaut.sante' => 'Gesundheit',
+    'bud.cat_defaut.abonnements' => 'Abos',
+    'bud.cat_defaut.divers' => 'Verschiedenes',
+    'bud.cat_defaut.bourse' => 'Stipendium',
+    'bud.cat_defaut.salaire' => 'Lohn',
+    'bud.cat_defaut.aide_famille' => 'Familienhilfe',
+    'bud.cat_defaut.autre' => 'Sonstiges',
+    'bud.sans_categorie' => 'Ohne Kategorie',
+    // Les groupes, la suite
+    'grp.fl.invitation_annulee' => 'Einladung an {qui} zurückgezogen.',
+    // Les images d’un document
+    'cours.img.incomplete' => '„{nom}“ ist nicht vollständig angekommen.',
+    'cours.img.trop_lourde' => '„{nom}“ ist zu groß für den Server.',
+    'cours.img.mauvais_format' => '„{nom}“ ist kein PNG-, JPEG- oder GIF-Bild — die Formate, die Word überall öffnet.',
+    'cours.img.sans_dimensions' => '„{nom}“ hat keine lesbaren Maße.',
+    'cours.img.illisible' => '„{nom}“ ließ sich nicht lesen.',
+    'cours.img.refus' => '„{nom}“: {raison}',
+    // Les dossiers, la suite
+    'dos.fl.remonte' => '„{nom}“ ist auf die oberste Ebene gerückt.',
+    'dos.fl.range_dans' => '„{nom}“ in „{parent}“ eingeordnet.',
+    // Les sessions de révision
+    'foc.fl.abandonnee' => 'Sitzung abgebrochen: nichts wurde gezählt.',
+    'foc.evt_revision' => 'Wiederholung',
+    'foc.evt_revision_cours' => 'Wiederholung: {titre}',
+    'foc.evt_revision_plusieurs' => 'Wiederholung: {n} Kurse',
+    // Le tableau, la suite
+    'kb.fl.remarque_effacee' => 'Notiz gelöscht.',
+    'kb.fl.remarque_enregistree' => 'Notiz gespeichert.',
+    // Les tâches, la suite
+    'taches.tache_principale_min' => 'Hauptaufgabe',
+    // Les travaux de groupe, la suite
+    'tr.fl.tache_modifiee' => 'Aufgabe geändert.',
+    'tr.fl.type_cree' => 'Typ „{nom}“ erstellt.',
+    // La sous-navigation de l’organisation
+    'titre.types_evenement' => 'Terminarten',
+    'orga.matieres' => 'Fächer',
+    'orga.types' => 'Terminarten',
+    'orga.dossiers' => 'Ordner',
+    'orga.tags' => 'Tags',
+    // Les agendas et les classeurs, la fin
+    'ag.mes_evenements' => 'Meine Termine',
+    'ag.refus_demande' => '{qui} hat die Anfrage abgelehnt.',
+    'xls.archive_impossible' => 'Das Archiv der Arbeitsmappe ließ sich nicht öffnen.',
+    // Le journal d’alternance imprimé
+    'alt.aucune_mission' => 'Kein Einsatz in dieser Woche notiert.',
+    'alt.competences_label' => 'Kompetenzen: ',
 ];

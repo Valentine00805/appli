@@ -57,8 +57,7 @@ $ligne = static function (string $etiquette, string $valeur): string {
      * minutée, sur le cours qu'elle vise. C'est l'heure venue qu'on ouvre sa
      * fiche — autant que le pas suivant soit à un clic.
      */
-    $aReviser = (int) ($evenement['cours_id'] ?? 0) > 0
-        && str_starts_with((string) $evenement['titre'], 'Révision');
+    $aReviser = Focus::coursDUnEvenement(Auth::id(), (int) $evenement['id']) !== [];
     ?>
     <?php if ($aReviser): ?>
       <?php // Tous les cours prévus se recochent : l’évènement s’en souvient. ?>

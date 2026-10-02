@@ -131,12 +131,13 @@ final class ExportPdf
 
             [$texte] = self::blocsDuTexteRiche($semaine['missions']);
             if ($texte === []) {
-                $texte = [['html' => '<i>' . $gris('Aucune mission notée cette semaine.') . '</i>']];
+                $texte = [['html' => '<i>' . $gris(t('alt.aucune_mission')) . '</i>']];
             }
             array_push($blocs, ...$texte);
 
             if ($semaine['competences'] !== []) {
-                $blocs[] = ['html' => $gris('Compétences : ') . $e(implode(', ', $semaine['competences']))];
+                $blocs[] = ['html' => $gris(t('alt.competences_label'))
+                    . $e(implode(', ', $semaine['competences']))];
             }
             foreach ($semaine['competences'] as $competence) {
                 $cle = mb_strtolower($competence);

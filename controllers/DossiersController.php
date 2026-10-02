@@ -303,9 +303,12 @@ final class DossiersController
 
         $nom = Database::valeur('SELECT nom FROM dossiers WHERE id = ? AND user_id = ?', [$id, $userId]);
         Session::flash('succes', $parent === null
-            ? '« ' . $nom . ' » est remonté au premier niveau.'
-            : '« ' . $nom . ' » rangé dans « '
-              . Database::valeur('SELECT nom FROM dossiers WHERE id = ? AND user_id = ?', [$parent, $userId]) . ' ».');
+            ? t('dos.fl.remonte', ['nom' => (string) $nom])
+            : t('dos.fl.range_dans', [
+                'nom' => (string) $nom,
+                'parent' => (string) Database::valeur(
+                    'SELECT nom FROM dossiers WHERE id = ? AND user_id = ?', [$parent, $userId]),
+            ]));
 
         redirect('organisation/dossiers');
     }

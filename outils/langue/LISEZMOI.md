@@ -76,7 +76,31 @@ commande venait d'ouvrir. C'est réglé depuis l'exclusion, mais rien n'oblige
 ces trois fonctions à en dépendre.
 
 **`scan2.php`** — repère le français restant dans des fichiers précis, avec plus
-de détail que `reste.php`.
+de détail que `reste.php`. Comme `reste.php`, il lit le fichier comme du texte
+et compte donc les commentaires : préférer `scan3.php`.
+
+**`scan3.php`** — **celui sur lequel se fier.** Il passe par `token_get_all()` :
+les commentaires et les blocs de documentation disparaissent pour de bon, et il
+ne reste que ce qui peut atteindre un écran. Il écarte ensuite ce qui a l'air
+d'une phrase sans jamais s'afficher — SQL, clé de langue, chemin, sélecteur,
+attribut HTML, CSS — et dit combien il en a écarté. `--tout` les montre avec
+leur motif.
+
+    php outils/langue/scan3.php                 tout le projet
+    php outils/langue/scan3.php src/Amis.php    ces fichiers-là
+    php outils/langue/scan3.php --tout          avec les faux amis
+
+**`menage.php`** — efface les comptes d'essai restés en base, un par un, par
+leur adresse. Sans argument il dit seulement ce qu'il voit ; `--efface` le
+fait. Il ne touche qu'à des adresses en `@exemple-test.fr`, et sa suppression
+finale porte à la fois sur l'identifiant et sur l'adresse : un vrai compte ne
+peut pas entrer dans sa requête.
+
+**`signaux_langue.php`** — les trois endroits où le code se demandait « de quoi
+s'agit-il ? » en comparant du texte affiché : une liste de tâches au
+calendrier, une session de révision, et le « c'est aujourd'hui » de la
+recherche dans un groupe. Elle vérifie que chacun se décide maintenant sur
+autre chose que des mots. Deux comptes d'essai, effacés à la fin.
 
 **`installation_langue.php`** — ce que le navigateur lit avant toute page : le
 manifeste d'installation (le nom sous l'icône, la description, les raccourcis)
@@ -84,26 +108,46 @@ et le service worker. Elle vérifie aussi que le manifeste n'est plus servi en
 cache `public`, puisqu'il varie d'un compte à l'autre. Un compte d'essai,
 effacé à la fin.
 
-## Ce que `reste.php` compte encore, et qui restera
+## Ce qui reste en français, et qui doit y rester
 
-Le compteur ne descendra pas à zéro, et c'est voulu. Ce qu'il voit encore est
-pour l'essentiel du français qui n'est pas de l'interface :
+La traduction est finie. `scan3.php` signale encore une quarantaine de lignes,
+et **chacune est voulue**. Avant de « corriger » l'une d'elles, retrouver sa
+catégorie ici :
 
-- **les commentaires du code**, que `scan2.php` ne sait pas toujours distinguer
-  d'une chaîne — c'est le gros du compte ;
-- **`views/erreurs/base.php`**, la seule page qui doit rester en français :
+- **`views/erreurs/base.php`** — la seule page qui doit rester française.
   `t()` demande la langue du compte à la base, et cette page annonce justement
-  qu'on ne l'atteint pas. Son en-tête l'explique ;
-- **les messages d'`error_log()`** (`src/Courriel.php`, `src/Reinitialisation.php`) :
-  ils vont dans le journal du serveur, que lit qui l'administre, pas un compte ;
-- **`src/ReleveExcel.php`**, qui reconnaît des mois et des tournures français
-  dans un relevé bancaire : c'est de la lecture d'entrée, pas de l'affichage ;
-- **`Alternance::MOTS_DES_LIEUX`**, pour la même raison : ces mots servent à
-  deviner un lieu depuis un titre d'agenda ;
-- **« Mes Cours »**, le nom de l'application, qui ne se traduit pas.
+  qu'on ne l'atteint pas. Son en-tête l'explique.
+- **Les messages d'`error_log()`** (`src/Courriel.php`, `src/Reinitialisation.php`)
+  — ils vont dans le journal du serveur, que lit qui l'administre, pas un compte.
+- **Ce qui lit du français au lieu de l'afficher** — les noms de mois de
+  `src/PlanningPdf.php` et de `src/ReleveExcel.php`, qui reconnaissent un
+  planning PDF et un relevé bancaire ; `Alternance::MOTS_DES_LIEUX`, qui devine
+  un lieu depuis un titre d'agenda ; la liste d'accents d'`src/Amis.php`, qui
+  sert à normaliser une recherche.
+- **`Focus::LISTE`** (« Révisions ») — c'est par ce nom qu'on retrouve la liste
+  en base (`WHERE nom = ?`). Le traduire ferait perdre la sienne à qui change
+  de langue, et en créerait une seconde. Rien n'empêche de la renommer depuis
+  la page des tâches.
+- **`Langue::LANGUES`** — « Français », « English », « Español », « Deutsch » :
+  chaque langue se nomme dans la sienne, c'est le propre d'un menu de langues.
+- **« Mes Cours »**, le nom de l'application, et ce qui en dérive : les
+  `PRODID` des fichiers iCalendar, le `/Producer` des PDF, le nom du fichier de
+  sauvegarde, l'adresse d'expédition des e-mails.
+- **Un commentaire JavaScript dans un `heredoc`** (`NotificationsController`) —
+  du code, que le découpage en jetons ne peut pas distinguer d'une chaîne.
 
-Avant de « corriger » une ligne que `reste.php` signale, vérifier dans quelle
-de ces catégories elle tombe.
+### Le piège à connaître
+
+Trois fois dans ce travail, le code se demandait « de quoi s'agit-il ? » en
+comparant un **libellé affiché** à un mot écrit en clair. Traduire le libellé
+faisait échouer la comparaison, sans rien casser bruyamment : un bouton
+disparaissait, une date s'ajoutait, un moyen de paiement partait en base sous
+un nom que le contrôle d'entrée refusait ensuite.
+
+La règle qui en sort : **ce qui s'affiche ne sert jamais à décider**. Un
+libellé se traduit ; ce qui identifie — une clé, un drapeau, une ligne de
+table — reste stable et voyage à part. `signaux_langue.php` garde les trois
+endroits sous surveillance.
 
 ## L'antivirus
 

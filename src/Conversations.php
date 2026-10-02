@@ -1120,7 +1120,7 @@ final class Conversations
             $parMessage[$m][$e]['nombre']++;
             if ((int) $l['user_id'] === $moi) {
                 $parMessage[$m][$e]['moi'] = true;
-                array_unshift($parMessage[$m][$e]['qui'], 'Vous');
+                array_unshift($parMessage[$m][$e]['qui'], t('msg.vous'));
             } else {
                 $parMessage[$m][$e]['qui'][] = (string) $l['pseudo'];
             }
@@ -1169,8 +1169,9 @@ final class Conversations
 
             return [
                 'id' => (int) $l['id'],
-                'auteur' => $auteur === $moi ? 'Vous' : ($pseudos[$auteur] ?? 'Un ancien membre'),
-                'quand' => ($jour === 'Aujourd’hui' ? '' : $jour . ' · ') . $moment->format('H:i'),
+                'auteur' => $auteur === $moi ? t('msg.vous') : ($pseudos[$auteur] ?? t('grpevt.ancien_membre')),
+                'quand' => (Amis::cEstAujourdhui($moment) ? '' : $jour . ' · ')
+                    . heure_courte($moment->getTimestamp()),
                 'piece' => $nomFichier !== '' ? '📎 ' : ($l['image_nom'] !== null ? '📷 ' : ''),
             ] + Amis::decouper($source, $recherche);
         }, array_slice($tous, 0, Amis::RECHERCHE_MAX));
@@ -1230,9 +1231,10 @@ final class Conversations
 
             return [
                 'id' => (int) $l['id'],
-                'auteur' => $auteur === $moi ? 'Vous' : ($pseudos[$auteur] ?? 'Un ancien membre'),
+                'auteur' => $auteur === $moi ? t('msg.vous') : ($pseudos[$auteur] ?? t('grpevt.ancien_membre')),
                 'extrait' => Amis::extrait($l),
-                'quand' => ($jour === 'Aujourd’hui' ? '' : $jour . ' · ') . $moment->format('H:i'),
+                'quand' => (Amis::cEstAujourdhui($moment) ? '' : $jour . ' · ')
+                    . heure_courte($moment->getTimestamp()),
             ];
         }, $lignes);
     }

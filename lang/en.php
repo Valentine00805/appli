@@ -3997,4 +3997,56 @@ return [
     'pt.detail.fichier' => 'File · {taille}',
     // L’aperçu d’un document
     'apc.numeros_de_page' => 'Page numbers will appear when the document is opened in Word or LibreOffice.',
+    // Les catégories du budget
+    'bud.cat_defaut.courses' => 'Groceries',
+    'bud.cat_defaut.transport' => 'Transport',
+    'bud.cat_defaut.logement' => 'Housing',
+    'bud.cat_defaut.sorties' => 'Going out',
+    'bud.cat_defaut.fournitures' => 'Supplies',
+    'bud.cat_defaut.sante' => 'Health',
+    'bud.cat_defaut.abonnements' => 'Subscriptions',
+    'bud.cat_defaut.divers' => 'Other',
+    'bud.cat_defaut.bourse' => 'Grant',
+    'bud.cat_defaut.salaire' => 'Wages',
+    'bud.cat_defaut.aide_famille' => 'Family support',
+    'bud.cat_defaut.autre' => 'Other',
+    'bud.sans_categorie' => 'No category',
+    // Les groupes, la suite
+    'grp.fl.invitation_annulee' => 'Invitation to {qui} cancelled.',
+    // Les images d’un document
+    'cours.img.incomplete' => '“{nom}” did not arrive in one piece.',
+    'cours.img.trop_lourde' => '“{nom}” is too heavy for the server.',
+    'cours.img.mauvais_format' => '“{nom}” is not a PNG, JPEG or GIF image — the formats Word opens everywhere.',
+    'cours.img.sans_dimensions' => '“{nom}” has no readable dimensions.',
+    'cours.img.illisible' => '“{nom}” could not be read.',
+    'cours.img.refus' => '“{nom}”: {raison}',
+    // Les dossiers, la suite
+    'dos.fl.remonte' => '“{nom}” moved up to the top level.',
+    'dos.fl.range_dans' => '“{nom}” filed under “{parent}”.',
+    // Les sessions de révision
+    'foc.fl.abandonnee' => 'Session abandoned: nothing was counted.',
+    'foc.evt_revision' => 'Revision',
+    'foc.evt_revision_cours' => 'Revision: {titre}',
+    'foc.evt_revision_plusieurs' => 'Revision: {n} classes',
+    // Le tableau, la suite
+    'kb.fl.remarque_effacee' => 'Note deleted.',
+    'kb.fl.remarque_enregistree' => 'Note saved.',
+    // Les tâches, la suite
+    'taches.tache_principale_min' => 'main task',
+    // Les travaux de groupe, la suite
+    'tr.fl.tache_modifiee' => 'Task updated.',
+    'tr.fl.type_cree' => 'Type “{nom}” created.',
+    // La sous-navigation de l’organisation
+    'titre.types_evenement' => 'Event types',
+    'orga.matieres' => 'Subjects',
+    'orga.types' => 'Event types',
+    'orga.dossiers' => 'Folders',
+    'orga.tags' => 'Tags',
+    // Les agendas et les classeurs, la fin
+    'ag.mes_evenements' => 'My events',
+    'ag.refus_demande' => '{qui} refused the request.',
+    'xls.archive_impossible' => 'Could not open the workbook’s archive.',
+    // Le journal d’alternance imprimé
+    'alt.aucune_mission' => 'No assignment noted this week.',
+    'alt.competences_label' => 'Skills: ',
 ];

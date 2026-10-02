@@ -32,7 +32,7 @@ final class TypesEvenementController
                 'SELECT COUNT(*) FROM evenements WHERE user_id = ? AND type_id IS NULL',
                 [$userId]
             ),
-        ], "Types d'évènement");
+        ], t('titre.types_evenement'));
     }
 
     public function creer(): void

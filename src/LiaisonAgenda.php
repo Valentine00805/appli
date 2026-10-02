@@ -302,7 +302,7 @@ final class LiaisonAgenda
             // ligne suffit.
             $dit = trim((string) preg_replace('/\R.*$/s', '', $dit));
 
-            return $dit === '' ? $this->f->nom() . ' a refusé la demande.' : $dit;
+            return $dit === '' ? t('ag.refus_demande', ['qui' => $this->f->nom()]) : $dit;
         }
 
         return $reponse['corps'];

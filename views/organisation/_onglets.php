@@ -4,10 +4,10 @@
  * @var string $onglet  matieres, types, dossiers ou tags
  */
 $liens = [
-    'matieres' => ['libelle' => 'Matières', 'icone' => '🎨'],
-    'types'    => ['libelle' => "Types d'évènement", 'icone' => '🏷️'],
-    'dossiers' => ['libelle' => 'Dossiers', 'icone' => '📁'],
-    'tags'     => ['libelle' => 'Tags', 'icone' => '#'],
+    'matieres' => ['libelle' => t('orga.matieres'), 'icone' => '🎨'],
+    'types'    => ['libelle' => t('orga.types'), 'icone' => '🏷️'],
+    'dossiers' => ['libelle' => t('orga.dossiers'), 'icone' => '📁'],
+    'tags'     => ['libelle' => t('orga.tags'), 'icone' => '#'],
 ];
 ?>
 <nav class="onglets" aria-label="<?= e(t('orga.sections')) ?>">

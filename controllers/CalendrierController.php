@@ -1261,8 +1261,9 @@ final class CalendrierController
                 (string) $tache['echeance'],
                 (int) $tache['faite'] === 1,
                 (int) $tache['liste_id'],
-                'Sous-tâche',
+                t('taches.sous_tache'),
                 '☑️',
+                false,
                 'taches/' . (int) $tache['id'] . '/cocher',
                 (string) $tache['liste_couleur'],
                 (string) $tache['liste_icone'] . ' ' . (string) $tache['liste_nom']
@@ -1285,6 +1286,7 @@ final class CalendrierController
                 (int) $liste['id'],
                 t('tableau.tache_principale'),
                 (string) $liste['icone'],
+                true,
                 'taches/listes/' . (int) $liste['id'] . '/cocher',
                 (string) $liste['couleur'],
                 (int) $liste['total'] === 0
@@ -1305,6 +1307,7 @@ final class CalendrierController
         int $listeId,
         string $typeNom,
         string $icone,
+        bool $estListe,
         string $routeCocher,
         string $couleur,
         string $detail
@@ -1317,6 +1320,8 @@ final class CalendrierController
             'journee_entiere' => 1,
             'termine'         => $termine ? 1 : 0,
             'type_nom'        => $typeNom,
+            // Une liste, ou l'une de ses tâches : la vue ne le devine pas d'un libellé.
+            'est_liste'       => $estListe,
             'type_icone'      => $icone !== '' ? $icone : '📋',
             'type_couleur'    => $couleur,
             'matiere_nom'     => null,

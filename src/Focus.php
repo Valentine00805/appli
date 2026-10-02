@@ -187,7 +187,14 @@ final class Focus
 
     // --- Ce qui suit la session -------------------------------------------------
 
-    /** Le nom de la liste où sont rangées les révisions à venir. */
+    /*
+     * Le nom de la liste où sont rangées les révisions à venir.
+     *
+     * Il reste en français, et doit y rester : c'est par ce nom qu'on
+     * retrouve la liste en base (« WHERE nom = ? »). Le traduire ferait
+     * perdre la sienne à qui change de langue, et en créerait une seconde.
+     * Rien n'empêche de la renommer depuis la page des tâches.
+     */
     public const LISTE = 'Révisions';
 
     /** Les délais d'une révision espacée : le lendemain, puis trois, puis sept jours. */
@@ -272,9 +279,9 @@ final class Focus
         $debut = new DateTimeImmutable($jour . ' ' . $heure . ':00');
         $titres = array_column(self::titresDesCours($userId, $coursIds), 'titre');
         $titre = match (true) {
-            $titres === []      => 'Révision',
-            count($titres) === 1 => 'Révision : ' . $titres[0],
-            default             => 'Révision : ' . count($titres) . ' cours',
+            $titres === []       => t('foc.evt_revision'),
+            count($titres) === 1 => t('foc.evt_revision_cours', ['titre' => $titres[0]]),
+            default              => t('foc.evt_revision_plusieurs', ['n' => count($titres)]),
         };
 
         Database::run(

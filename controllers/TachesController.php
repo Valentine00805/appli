@@ -666,7 +666,7 @@ final class TachesController
                 'titre'         => (string) $liste['nom'],
                 'echeance'      => $liste['echeance'],
                 'liste_id'      => (int) $liste['id'],
-                'liste_nom'     => 'tâche principale',
+                'liste_nom'     => t('taches.tache_principale_min'),
                 'liste_couleur' => (string) $liste['couleur'],
                 'liste_icone'   => (string) $liste['icone'],
             ];
@@ -979,7 +979,7 @@ final class TachesController
             return;
         }
 
-        Vue::afficher('taches/nouvelle', $donnees, 'Nouvelle tâche');
+        Vue::afficher('taches/nouvelle', $donnees, t('taches.nouvelle_titre'));
     }
 
     /** Envoyé depuis « + Tâche » ? Les deux formulaires de création le disent. */

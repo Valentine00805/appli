@@ -244,7 +244,7 @@ final class TravauxController
         $refus = Travaux::modifierTache(Auth::id(), $id, post('titre'), $_POST['membre_id'] ?? null,
             post('echeance'), post('note'));
         // Refusé : on reste sur le formulaire, pour corriger.
-        $this->finir($refus, 'Tâche modifiée.',
+        $this->finir($refus, t('tr.fl.tache_modifiee'),
             $refus === null ? 'travaux/' . (int) $tache['projet_id'] : 'travaux/taches/' . $id . '/modifier');
     }
 
@@ -362,7 +362,7 @@ final class TravauxController
         $this->projet($id);
         $refus = Travaux::enregistrerType($id, null, $_POST);
         // Refusé : on reste sur le formulaire, pour corriger.
-        $this->finir($refus, 'Type « ' . trim(post('nom')) . ' » créé.',
+        $this->finir($refus, t('tr.fl.type_cree', ['nom' => trim(post('nom'))]),
             'travaux/' . $id . ($refus === null ? '/types' : '/types/nouveau'));
     }
 
