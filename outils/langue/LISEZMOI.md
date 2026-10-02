@@ -78,6 +78,33 @@ ces trois fonctions à en dépendre.
 **`scan2.php`** — repère le français restant dans des fichiers précis, avec plus
 de détail que `reste.php`.
 
+**`installation_langue.php`** — ce que le navigateur lit avant toute page : le
+manifeste d'installation (le nom sous l'icône, la description, les raccourcis)
+et le service worker. Elle vérifie aussi que le manifeste n'est plus servi en
+cache `public`, puisqu'il varie d'un compte à l'autre. Un compte d'essai,
+effacé à la fin.
+
+## Ce que `reste.php` compte encore, et qui restera
+
+Le compteur ne descendra pas à zéro, et c'est voulu. Ce qu'il voit encore est
+pour l'essentiel du français qui n'est pas de l'interface :
+
+- **les commentaires du code**, que `scan2.php` ne sait pas toujours distinguer
+  d'une chaîne — c'est le gros du compte ;
+- **`views/erreurs/base.php`**, la seule page qui doit rester en français :
+  `t()` demande la langue du compte à la base, et cette page annonce justement
+  qu'on ne l'atteint pas. Son en-tête l'explique ;
+- **les messages d'`error_log()`** (`src/Courriel.php`, `src/Reinitialisation.php`) :
+  ils vont dans le journal du serveur, que lit qui l'administre, pas un compte ;
+- **`src/ReleveExcel.php`**, qui reconnaît des mois et des tournures français
+  dans un relevé bancaire : c'est de la lecture d'entrée, pas de l'affichage ;
+- **`Alternance::MOTS_DES_LIEUX`**, pour la même raison : ces mots servent à
+  deviner un lieu depuis un titre d'agenda ;
+- **« Mes Cours »**, le nom de l'application, qui ne se traduit pas.
+
+Avant de « corriger » une ligne que `reste.php` signale, vérifier dans quelle
+de ces catégories elle tombe.
+
 ## L'antivirus
 
 **Depuis le 2 octobre 2026, le dossier du projet est exclu de Norton**, et les

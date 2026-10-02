@@ -29,13 +29,13 @@ final class HorsLigneController
     {
         $nom = (string) Config::get('app', 'nom');
         header('Content-Type: application/manifest+json; charset=utf-8');
-        header('Cache-Control: public, max-age=3600');
+        header('Cache-Control: private, max-age=3600');
 
         echo (string) json_encode([
             'name' => $nom,
             'short_name' => $nom,
-            'description' => 'Vos cours, vos fichiers et votre planning au même endroit.',
-            'lang' => 'fr',
+            'description' => t('accueil.pitch'),
+            'lang' => Langue::courante(),
             'dir' => 'ltr',
             'start_url' => url(''),
             'scope' => url(''),
@@ -49,9 +49,9 @@ final class HorsLigneController
                 ['src' => url('icone-512.png'), 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'maskable'],
             ],
             'shortcuts' => [
-                ['name' => 'Calendrier', 'url' => url('calendrier')],
-                ['name' => 'Mes cours', 'url' => url('cours')],
-                ['name' => 'Alternance', 'url' => url('alternance')],
+                ['name' => t('nav.calendrier'), 'url' => url('calendrier')],
+                ['name' => t('nav.cours'), 'url' => url('cours')],
+                ['name' => t('nav.alternance'), 'url' => url('alternance')],
             ],
         ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
         exit;

@@ -3978,4 +3978,35 @@ return [
     'xls.pas_un_classeur' => 'Ce fichier n’est pas un classeur Excel lisible.',
     'xls.aucune_feuille' => 'Aucune feuille trouvée dans le classeur.',
     'xls.feuille_illisible' => 'La feuille du classeur est illisible.',
+    // Les types d’évènement
+    'evt.type_defaut.cours' => 'Cours',
+    'evt.type_defaut.examen' => 'Examen',
+    'evt.type_defaut.devoir' => 'Devoir',
+    'evt.type_defaut.revision' => 'Révision',
+    'evt.type_defaut.autre' => 'Autre',
+    'evt.sans_type' => 'Sans type',
+    // Les échéances
+    'ech.en_retard' => 'En retard · {date}',
+    // Les travaux de groupe
+    'tr.type_defaut.rendu' => 'Rendu',
+    'tr.type_defaut.soutenance' => 'Soutenance',
+    'tr.type_defaut.reunion' => 'Réunion',
+    'tr.echeance_sans_titre' => 'Échéance',
+    // La limite des tentatives de connexion
+    'conn.trop_de_tentatives.un' => 'Trop de tentatives de connexion. Réessayez dans {n} minute.',
+    'conn.trop_de_tentatives.plusieurs' => 'Trop de tentatives de connexion. Réessayez dans {n} minutes.',
+    // Les classeurs, la suite
+    'xls.temporaire_impossible' => 'Impossible de créer le fichier temporaire du classeur.',
+    'xls.lecture_impossible' => 'Lecture du classeur impossible.',
+    // Ce qu’un lot de documents annonce
+    'pt.a_partage_quoi' => '🔗 a partagé {quoi}',
+    'pt.detail.cours' => 'Cours',
+    'pt.detail.cours_fichiers.un' => 'Cours · {n} fichier',
+    'pt.detail.cours_fichiers.plusieurs' => 'Cours · {n} fichiers',
+    'pt.detail.fiche' => 'Fiche de révision',
+    'pt.detail.dossier' => 'Dossier · {quoi}',
+    'pt.detail.evenement' => 'Évènement · {date}',
+    'pt.detail.fichier' => 'Fichier · {taille}',
+    // L’aperçu d’un document
+    'apc.numeros_de_page' => 'Les numéros de page apparaîtront à l’ouverture du document dans Word ou LibreOffice.',
 ];

@@ -58,7 +58,7 @@ final class ClasseurXlsx
     {
         $temporaire = tempnam(sys_get_temp_dir(), 'xlsx');
         if ($temporaire === false) {
-            throw new RuntimeException('Impossible de créer le fichier temporaire du classeur.');
+            throw new RuntimeException(t('xls.temporaire_impossible'));
         }
 
         $zip = new ZipArchive();
@@ -78,7 +78,7 @@ final class ClasseurXlsx
         @unlink($temporaire);
 
         if ($contenu === false) {
-            throw new RuntimeException('Lecture du classeur impossible.');
+            throw new RuntimeException(t('xls.lecture_impossible'));
         }
         return $contenu;
     }

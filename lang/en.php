@@ -3966,4 +3966,35 @@ return [
     'xls.pas_un_classeur' => 'This file is not a readable Excel workbook.',
     'xls.aucune_feuille' => 'No sheet found in the workbook.',
     'xls.feuille_illisible' => 'The workbook’s sheet cannot be read.',
+    // Les types d’évènement
+    'evt.type_defaut.cours' => 'Class',
+    'evt.type_defaut.examen' => 'Exam',
+    'evt.type_defaut.devoir' => 'Assignment',
+    'evt.type_defaut.revision' => 'Revision',
+    'evt.type_defaut.autre' => 'Other',
+    'evt.sans_type' => 'No type',
+    // Les échéances
+    'ech.en_retard' => 'Overdue · {date}',
+    // Les travaux de groupe
+    'tr.type_defaut.rendu' => 'Hand-in',
+    'tr.type_defaut.soutenance' => 'Oral defence',
+    'tr.type_defaut.reunion' => 'Meeting',
+    'tr.echeance_sans_titre' => 'Deadline',
+    // La limite des tentatives de connexion
+    'conn.trop_de_tentatives.un' => 'Too many sign-in attempts. Try again in {n} minute.',
+    'conn.trop_de_tentatives.plusieurs' => 'Too many sign-in attempts. Try again in {n} minutes.',
+    // Les classeurs, la suite
+    'xls.temporaire_impossible' => 'Could not create the workbook’s temporary file.',
+    'xls.lecture_impossible' => 'The workbook could not be read.',
+    // Ce qu’un lot de documents annonce
+    'pt.a_partage_quoi' => '🔗 shared {quoi}',
+    'pt.detail.cours' => 'Class',
+    'pt.detail.cours_fichiers.un' => 'Class · {n} file',
+    'pt.detail.cours_fichiers.plusieurs' => 'Class · {n} files',
+    'pt.detail.fiche' => 'Revision sheet',
+    'pt.detail.dossier' => 'Folder · {quoi}',
+    'pt.detail.evenement' => 'Event · {date}',
+    'pt.detail.fichier' => 'File · {taille}',
+    // L’aperçu d’un document
+    'apc.numeros_de_page' => 'Page numbers will appear when the document is opened in Word or LibreOffice.',
 ];

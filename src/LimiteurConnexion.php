@@ -87,12 +87,7 @@ final class LimiteurConnexion
     /** Message d'attente, en minutes arrondies vers le haut. */
     public static function message(int $secondes): string
     {
-        $minutes = max(1, (int) ceil($secondes / 60));
-        return sprintf(
-            'Trop de tentatives de connexion. Réessayez dans %d minute%s.',
-            $minutes,
-            $minutes > 1 ? 's' : ''
-        );
+        return tn('conn.trop_de_tentatives', max(1, (int) ceil($secondes / 60)));
     }
 
     /** Adresse de l'appelant, telle que la voit le serveur. */

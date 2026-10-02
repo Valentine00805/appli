@@ -215,7 +215,7 @@ final class FournisseurMicrosoft extends Fournisseur
         $texte = trim((string) ($brut['bodyPreview'] ?? ''));
 
         return [
-            'titre'           => mb_substr($titre === '' ? '(sans titre)' : $titre, 0, 200),
+            'titre'           => mb_substr($titre === '' ? t('ag.sans_titre') : $titre, 0, 200),
             'description'     => $texte === '' ? null : mb_substr($texte, 0, 2000),
             'lieu'            => $lieu === '' ? null : mb_substr($lieu, 0, 160),
             'debut'           => $debut->format('Y-m-d H:i:s'),
@@ -251,7 +251,7 @@ final class FournisseurMicrosoft extends Fournisseur
         string $fuseau
     ): array {
         $corps = [
-            'subject'  => mb_substr($titre === '' ? '(sans titre)' : $titre, 0, 250),
+            'subject'  => mb_substr($titre === '' ? t('ag.sans_titre') : $titre, 0, 250),
             'body'     => ['contentType' => 'text', 'content' => mb_substr($texte, 0, 4000)],
             'isAllDay' => $journee,
             'start'    => ['dateTime' => $debut->format('Y-m-d\TH:i:s'), 'timeZone' => $fuseau],

@@ -559,10 +559,15 @@ final class Travaux
     // --- Les types d'échéance, réglables comme les types d'évènement ----------
 
     /** Les types d'un nouveau projet ; chacun les règle ensuite comme il veut. */
+    /*
+     * Les types d'échéance créés avec un projet. « cle » sert à écrire le nom
+     * dans la langue du compte au moment de l'insertion ; ce nom part en base
+     * et chacun peut le renommer ensuite.
+     */
     public const TYPES_DEPART = [
-        ['nom' => 'Rendu',      'icone' => '📦', 'couleur' => '#dc2626', 'rappels' => '2880,1440'],
-        ['nom' => 'Soutenance', 'icone' => '🎤', 'couleur' => '#7c3aed', 'rappels' => '1440,60'],
-        ['nom' => 'Réunion',    'icone' => '👥', 'couleur' => '#0ea5e9', 'rappels' => '60,15'],
+        ['cle' => 'rendu',      'icone' => '📦', 'couleur' => '#dc2626', 'rappels' => '2880,1440'],
+        ['cle' => 'soutenance', 'icone' => '🎤', 'couleur' => '#7c3aed', 'rappels' => '1440,60'],
+        ['cle' => 'reunion',    'icone' => '👥', 'couleur' => '#0ea5e9', 'rappels' => '60,15'],
     ];
 
     /** Une échéance sans type (le sien a été supprimé) garde cette icône. */
@@ -579,7 +584,8 @@ final class Travaux
         foreach (self::TYPES_DEPART as $rang => $t) {
             Database::run(
                 'INSERT IGNORE INTO projet_types (projet_id, nom, icone, couleur, rappels, position) VALUES (?, ?, ?, ?, ?, ?)',
-                [$projet, $t['nom'], $t['icone'], $t['couleur'], $t['rappels'], $rang + 1]);
+                [$projet, t('tr.type_defaut.' . $t['cle']), $t['icone'], $t['couleur'],
+                 $t['rappels'], $rang + 1]);
         }
     }
 
@@ -709,7 +715,7 @@ final class Travaux
         }
         $titre = self::nettoyer((string) ($source['titre'] ?? ''), 160);
         if ($titre === '') {
-            $titre = $type['nom'] ?? 'Échéance';
+            $titre = $type['nom'] ?? t('tr.echeance_sans_titre');
         }
         $jour = self::dateValide(trim((string) ($source['jour'] ?? '')));
         if ($jour === null) {

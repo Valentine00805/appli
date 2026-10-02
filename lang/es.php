@@ -3966,4 +3966,35 @@ return [
     'xls.pas_un_classeur' => 'Este archivo no es un libro de Excel legible.',
     'xls.aucune_feuille' => 'No se ha encontrado ninguna hoja en el libro.',
     'xls.feuille_illisible' => 'La hoja del libro es ilegible.',
+    // Les types d’évènement
+    'evt.type_defaut.cours' => 'Clase',
+    'evt.type_defaut.examen' => 'Examen',
+    'evt.type_defaut.devoir' => 'Tarea',
+    'evt.type_defaut.revision' => 'Repaso',
+    'evt.type_defaut.autre' => 'Otro',
+    'evt.sans_type' => 'Sin tipo',
+    // Les échéances
+    'ech.en_retard' => 'Atrasado · {date}',
+    // Les travaux de groupe
+    'tr.type_defaut.rendu' => 'Entrega',
+    'tr.type_defaut.soutenance' => 'Defensa',
+    'tr.type_defaut.reunion' => 'Reunión',
+    'tr.echeance_sans_titre' => 'Vencimiento',
+    // La limite des tentatives de connexion
+    'conn.trop_de_tentatives.un' => 'Demasiados intentos de conexión. Vuelve a intentarlo en {n} minuto.',
+    'conn.trop_de_tentatives.plusieurs' => 'Demasiados intentos de conexión. Vuelve a intentarlo en {n} minutos.',
+    // Les classeurs, la suite
+    'xls.temporaire_impossible' => 'No se ha podido crear el archivo temporal del libro.',
+    'xls.lecture_impossible' => 'No se ha podido leer el libro.',
+    // Ce qu’un lot de documents annonce
+    'pt.a_partage_quoi' => '🔗 ha compartido {quoi}',
+    'pt.detail.cours' => 'Clase',
+    'pt.detail.cours_fichiers.un' => 'Clase · {n} archivo',
+    'pt.detail.cours_fichiers.plusieurs' => 'Clase · {n} archivos',
+    'pt.detail.fiche' => 'Ficha de repaso',
+    'pt.detail.dossier' => 'Carpeta · {quoi}',
+    'pt.detail.evenement' => 'Evento · {date}',
+    'pt.detail.fichier' => 'Archivo · {taille}',
+    // L’aperçu d’un document
+    'apc.numeros_de_page' => 'Los números de página aparecerán al abrir el documento en Word o LibreOffice.',
 ];

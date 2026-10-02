@@ -202,8 +202,7 @@ $dansUneFenetre = $dansUneFenetre ?? false;
         <?php endforeach; ?>
       </ul>
       <p class="champ__aide" style="margin:.7rem 0 0">
-        Les numéros de page apparaîtront à l'ouverture du document dans Word
-        ou LibreOffice.
+        <?= e(t('apc.numeros_de_page')) ?>
       </p>
     </nav>
   <?php endif; ?>

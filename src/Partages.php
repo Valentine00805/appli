@@ -561,7 +561,8 @@ final class Partages
                 'UPDATE conversation_membres SET lu_jusqua = GREATEST(lu_jusqua, ?) WHERE conversation_id = ? AND user_id = ?',
                 [$dernier, $g, $moi]
             );
-            array_push($notifications, ...Conversations::notifier($moi, $g, '🔗 a partagé ' . $quoi . ($texte === '' ? '' : ' · ' . $texte)));
+            array_push($notifications, ...Conversations::notifier($moi, $g,
+                t('pt.a_partage_quoi', ['quoi' => $quoi]) . ($texte === '' ? '' : ' · ' . $texte)));
         }
 
         return [count($atteints), null, $notifications];
@@ -1200,11 +1201,15 @@ final class Partages
                     default => Fichiers::icone((string) $cible['mime'], (string) $cible['nom_origine']),
                 },
                 'detail' => match ($type) {
-                    'cours' => 'Cours' . ((int) $cible['nb_fichiers'] > 0 ? ' · ' . (int) $cible['nb_fichiers'] . ' fichier' . ((int) $cible['nb_fichiers'] > 1 ? 's' : '') : ''),
-                    'fiche' => 'Fiche de révision',
-                    'dossier' => 'Dossier · ' . self::compteCours((int) $cible['nb_cours']),
-                    'evenement' => 'Évènement · ' . date_fr((string) $cible['debut'], (int) $cible['journee_entiere'] !== 1),
-                    default => 'Fichier · ' . taille_lisible((int) $cible['taille']),
+                    'cours' => (int) $cible['nb_fichiers'] > 0
+                        ? tn('pt.detail.cours_fichiers', (int) $cible['nb_fichiers'])
+                        : t('pt.detail.cours'),
+                    'fiche' => t('pt.detail.fiche'),
+                    'dossier' => t('pt.detail.dossier', ['quoi' => self::compteCours((int) $cible['nb_cours'])]),
+                    'evenement' => t('pt.detail.evenement', [
+                        'date' => date_fr((string) $cible['debut'], (int) $cible['journee_entiere'] !== 1),
+                    ]),
+                    default => t('pt.detail.fichier', ['taille' => taille_lisible((int) $cible['taille'])]),
                 },
             ];
         }
@@ -2207,7 +2212,7 @@ final class Partages
      */
     private static function creerDossier(int $moi, string $nom, string $icone, ?int $parent): int
     {
-        $nom = mb_substr(trim($nom) === '' ? 'Dossier partagé' : trim($nom), 0, 110);
+        $nom = mb_substr(trim($nom) === '' ? t('pt.libelle_dossier') : trim($nom), 0, 110);
         $essai = $nom;
         for ($i = 2; Database::valeur('SELECT 1 FROM dossiers WHERE user_id = ? AND nom = ?', [$moi, $essai]) !== null; $i++) {
             $essai = $nom . ' (' . $i . ')';

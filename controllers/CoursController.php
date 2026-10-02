@@ -843,7 +843,8 @@ final class CoursController
         $noms = $_FILES['fichiers']['name'] ?? null;
 
         if (!is_array($noms)) {
-            $this->repondreJson(['cours' => 0, 'dossiers' => 0, 'erreurs' => ['Aucun fichier reçu.']]);
+            $this->repondreJson(['cours' => 0, 'dossiers' => 0,
+                'erreurs' => [t('cours.fl.aucun_fichier')]]);
         }
 
         $cours = 0;

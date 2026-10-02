@@ -86,6 +86,7 @@ final class NotificationsController
         ], JSON_UNESCAPED_SLASHES);
         $base = json_encode(url(''), JSON_UNESCAPED_SLASHES);
         $horsLigne = json_encode(url('hors-ligne'), JSON_UNESCAPED_SLASHES);
+        $langue = json_encode(Langue::courante());
 
         echo <<<JS
 /* Mes Cours — les notifications de rappel, et l'application hors connexion. */
@@ -94,6 +95,7 @@ var CACHE = 'mescours-' + VERSION;
 var BASE = $base;
 var HORS_LIGNE = $horsLigne;
 var COQUILLE = $coquille;
+var LANGUE = $langue;
 JS;
         echo <<<'JS'
 
@@ -221,7 +223,7 @@ self.addEventListener('push', function (evenement) {
     tag: message.tag || undefined,
     // Une notification du même fil remplace la précédente, et prévient de nouveau.
     renotify: !!message.tag,
-    lang: 'fr',
+    lang: LANGUE,
     data: { url: message.url || './' }
   }));
 });

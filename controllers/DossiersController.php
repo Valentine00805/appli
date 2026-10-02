@@ -40,7 +40,7 @@ final class DossiersController
                 'SELECT COUNT(*) FROM cours WHERE user_id = ? AND dossier_id IS NULL',
                 [$userId]
             ),
-        ], 'Mes dossiers');
+        ], t('dos.titre'));
     }
 
     /**

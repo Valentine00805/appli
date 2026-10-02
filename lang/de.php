@@ -3966,4 +3966,35 @@ return [
     'xls.pas_un_classeur' => 'Diese Datei ist keine lesbare Excel-Arbeitsmappe.',
     'xls.aucune_feuille' => 'Kein Blatt in der Arbeitsmappe gefunden.',
     'xls.feuille_illisible' => 'Das Blatt der Arbeitsmappe ist nicht lesbar.',
+    // Les types d’évènement
+    'evt.type_defaut.cours' => 'Unterricht',
+    'evt.type_defaut.examen' => 'Prüfung',
+    'evt.type_defaut.devoir' => 'Hausaufgabe',
+    'evt.type_defaut.revision' => 'Wiederholung',
+    'evt.type_defaut.autre' => 'Sonstiges',
+    'evt.sans_type' => 'Ohne Typ',
+    // Les échéances
+    'ech.en_retard' => 'Überfällig · {date}',
+    // Les travaux de groupe
+    'tr.type_defaut.rendu' => 'Abgabe',
+    'tr.type_defaut.soutenance' => 'Verteidigung',
+    'tr.type_defaut.reunion' => 'Besprechung',
+    'tr.echeance_sans_titre' => 'Frist',
+    // La limite des tentatives de connexion
+    'conn.trop_de_tentatives.un' => 'Zu viele Anmeldeversuche. Versuch es in {n} Minute erneut.',
+    'conn.trop_de_tentatives.plusieurs' => 'Zu viele Anmeldeversuche. Versuch es in {n} Minuten erneut.',
+    // Les classeurs, la suite
+    'xls.temporaire_impossible' => 'Die temporäre Datei der Arbeitsmappe ließ sich nicht erstellen.',
+    'xls.lecture_impossible' => 'Die Arbeitsmappe ließ sich nicht lesen.',
+    // Ce qu’un lot de documents annonce
+    'pt.a_partage_quoi' => '🔗 hat {quoi} geteilt',
+    'pt.detail.cours' => 'Unterricht',
+    'pt.detail.cours_fichiers.un' => 'Unterricht · {n} Datei',
+    'pt.detail.cours_fichiers.plusieurs' => 'Unterricht · {n} Dateien',
+    'pt.detail.fiche' => 'Lernzettel',
+    'pt.detail.dossier' => 'Ordner · {quoi}',
+    'pt.detail.evenement' => 'Termin · {date}',
+    'pt.detail.fichier' => 'Datei · {taille}',
+    // L’aperçu d’un document
+    'apc.numeros_de_page' => 'Die Seitenzahlen erscheinen, sobald das Dokument in Word oder LibreOffice geöffnet wird.',
 ];

@@ -135,11 +135,11 @@ function heure_courte(int $ts): string
 function types_evenement_par_defaut(): array
 {
     return [
-        ['nom' => 'Cours',    'icone' => '📘', 'couleur' => '#4f46e5', 'est_echeance' => 0, 'au_tableau' => 0],
-        ['nom' => 'Examen',   'icone' => '📝', 'couleur' => '#dc2626', 'est_echeance' => 1, 'au_tableau' => 1],
-        ['nom' => 'Devoir',   'icone' => '🗂️', 'couleur' => '#ea580c', 'est_echeance' => 1, 'au_tableau' => 1],
-        ['nom' => 'Révision', 'icone' => '🔁', 'couleur' => '#059669', 'est_echeance' => 0, 'au_tableau' => 1],
-        ['nom' => 'Autre',    'icone' => '📌', 'couleur' => '#64748b', 'est_echeance' => 0, 'au_tableau' => 0],
+        ['nom' => t('evt.type_defaut.cours'),    'icone' => '📘', 'couleur' => '#4f46e5', 'est_echeance' => 0, 'au_tableau' => 0],
+        ['nom' => t('evt.type_defaut.examen'),   'icone' => '📝', 'couleur' => '#dc2626', 'est_echeance' => 1, 'au_tableau' => 1],
+        ['nom' => t('evt.type_defaut.devoir'),   'icone' => '🗂️', 'couleur' => '#ea580c', 'est_echeance' => 1, 'au_tableau' => 1],
+        ['nom' => t('evt.type_defaut.revision'), 'icone' => '🔁', 'couleur' => '#059669', 'est_echeance' => 0, 'au_tableau' => 1],
+        ['nom' => t('evt.type_defaut.autre'),    'icone' => '📌', 'couleur' => '#64748b', 'est_echeance' => 0, 'au_tableau' => 0],
     ];
 }
 
@@ -306,7 +306,7 @@ function icone_evenement(array $evt): string
 /** Libellé du type d'un évènement, avec repli si le type a été supprimé. */
 function libelle_type(array $evt): string
 {
-    return (string) ($evt['type_nom'] ?? '') !== '' ? (string) $evt['type_nom'] : 'Sans type';
+    return (string) ($evt['type_nom'] ?? '') !== '' ? (string) $evt['type_nom'] : t('evt.sans_type');
 }
 
 /**
@@ -513,17 +513,20 @@ function echeance_libelle(?string $echeance, bool $faite = false): string
 
     if ($etat === 'retard') {
         $jours = (int) date_create('today')->diff(date_create((string) $echeance)->setTime(0, 0))->format('%a');
-        return $jours === 1 ? 'Hier' : 'En retard · ' . $date;
+        return $jours === 1 ? t('date.hier') : t('ech.en_retard', ['date' => $date]);
     }
     if ($etat === 'aujourdhui') {
-        return "Aujourd'hui";
+        return t('date.aujourdhui');
     }
     if ($etat === 'demain') {
-        return 'Demain';
+        return t('date.demain');
     }
     if ($etat === 'proche') {
-        $jours = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
-        return $jours[(int) date('w', $ts)] . '. ' . $date;
+        return t('alt.jour_court', [
+            'jour' => t('alt.jour.' . date('N', $ts)),
+            'n' => (int) date('j', $ts),
+            'mois' => nom_mois_court((int) date('n', $ts)),
+        ]);
     }
     // Au-delà d'un an, l'année lève l'ambiguïté.
     return $date . (date('Y', $ts) !== date('Y') ? ' ' . date('Y', $ts) : '');
