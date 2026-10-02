@@ -12,7 +12,7 @@ declare(strict_types=1);
 mb_internal_encoding('UTF-8');
 date_default_timezone_set('Europe/Paris');
 
-$racine = 'C:/wamp64/www/mon_appli/appli';
+$racine = dirname(__DIR__, 2);
 foreach (['Config', 'Depot', 'Session', 'Langue', 'Auth', 'Courriel', 'Fichiers',
           'WebPush', 'FileNotifications', 'Amis', 'Conversations', 'Travaux',
           'Partages', 'Difference', 'Requete', 'helpers'] as $classe) {

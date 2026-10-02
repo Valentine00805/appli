@@ -21,12 +21,12 @@ qu'elles répondent dans la bonne langue, puis efface ce compte. Elle contrôle
 aussi que les quatre fichiers de langue ont exactement les mêmes clés et que
 chaque pluriel a ses deux moitiés.
 
-**`discussions_langue.php`** — la même chose pour les amis et les groupes :
+**`amis_langue.php`** — la même chose pour les amis et les groupes :
 deux comptes deviennent amis, créent un groupe, le renomment, se nomment
 administrateurs, et l'on vérifie que les notes de la discussion (« Alma vous a
 ajouté ») suivent la langue. Trois comptes d'essai, effacés à la fin.
 
-**`envois_langue.php`** — les notifications. Trois
+**`notifications_langue.php`** — les notifications. Trois
 comptes, trois langues, et l'on vérifie que chacun lit la sienne : une demande
 d'ami, une acceptation, un message et ses pièces jointes, puis un ajout à un
 groupe qui prévient l'anglais et l'allemand dans la même boucle. Elle vérifie
@@ -47,11 +47,11 @@ quoi » et ses trois colonnes, une tâche, les échéances et leurs types, les
 fichiers, le document commun, les membres et le lien public. Un compte et un
 projet d'essai, effacés à la fin.
 
-**`pages_langue.php`** — les messages des contrôleurs : mon compte,
+**`controleurs_langue.php`** — les messages des contrôleurs : mon compte,
 les cours, les tâches, les cartes, le carnet des remboursements. Un compte
 d'essai, effacé à la fin.
 
-**`argent_langue.php`** — le budget et ses moyens de paiement, une
+**`budget_langue.php`** — le budget et ses moyens de paiement, une
 opération, les catégories, les prévisions, l'import et les dossiers. Il
 vérifie aussi qu'un moyen de paiement part en base sous sa clé (« carte »)
 pendant que l'écran affiche son nom traduit. Un compte d'essai, effacé à la
@@ -71,39 +71,32 @@ l'ancre ne se trouve pas exactement une fois, elle ne touche à rien et le dit.
 
 **`base.php`** — une connexion PDO à `mon_appli_cours`, et trois fonctions
 (`bd_run`, `bd_valeur`, `bd_all`). Aucun fichier de l'application n'est chargé :
-l'antivirus met parfois en quarantaine un PHP du projet qu'un script en ligne
-de commande vient d'ouvrir.
+l'antivirus mettait en quarantaine un PHP du projet qu'un script en ligne de
+commande venait d'ouvrir. C'est réglé depuis l'exclusion, mais rien n'oblige
+ces trois fonctions à en dépendre.
 
 **`scan2.php`** — repère le français restant dans des fichiers précis, avec plus
 de détail que `reste.php`.
 
-## L'antivirus, et les noms qu'il a condamnés
+## L'antivirus
 
 **Depuis le 2 octobre 2026, le dossier du projet est exclu de Norton**, et les
-huit suites tournent d'ici jusqu'au bout. Ce qui suit explique pourquoi
-certaines portent un nom bizarre, et ce qu'il faudra savoir si l'exclusion
-disparaît un jour.
+huit suites tournent d'ici jusqu'au bout. Il n'y a rien de particulier à faire.
 
-Les suites qui ouvrent des sessions par HTTP avec un mot de passe passaient pour
-une attaque aux yeux d'une heuristique : Norton les mettait en quarantaine,
-parfois **pendant qu'elles tournaient**. Le script mourait alors en plein
-milieu, son ménage de fin ne se faisait pas, et des comptes d'essai restaient
-en base.
+Avant cette exclusion, les suites qui ouvrent des sessions par HTTP avec un mot
+de passe passaient pour une attaque aux yeux d'une heuristique : Norton les
+mettait en quarantaine, parfois **pendant qu'elles tournaient**. Le script
+mourait alors en plein milieu, son ménage de fin ne se faisait pas, et des
+comptes d'essai restaient en base. Huit fichiers y sont passés en trois jours.
 
-Ce qu'on a observé, les 30 septembre et 1er octobre 2026 :
+Deux choses retenues de ces trois jours, au cas où l'exclusion disparaîtrait :
 
-- lancées depuis le dossier du projet, six suites ont été supprimées en cours
-  d'exécution ; lancées depuis un dossier hors du projet, les mêmes tournaient
-  jusqu'au bout ;
-- **après une quarantaine, Windows garde le nom du fichier bloqué** : on ne peut
-  plus rien écrire à cette place, jamais, et l'exclusion n'y change rien. Les
-  noms condamnés sont `verif_amis.php`, `verif_partages.php`,
-  `controleurs_langue.php`, `budget_langue.php`, `amis_langue.php`,
-  `amities_langue.php`, `notifs_langue.php` et `notifications_langue.php`.
-
-D'où les noms d'aujourd'hui : `pages_langue.php`, `argent_langue.php`,
-`discussions_langue.php` et `envois_langue.php`. Ce ne sont pas de bons noms,
-ce sont les premiers qui étaient libres.
+- une quarantaine laisse le **nom** du fichier bloqué sous Windows — écrire à
+  cette place répond « Permission denied », et l'exclusion n'y change rien. Il
+  faut vider la quarantaine depuis Norton pour récupérer le nom, ou en prendre
+  un autre ;
+- lancées depuis un dossier hors du projet, les mêmes suites tournaient jusqu'au
+  bout. C'est le recours si le problème revient.
 
 Si une suite s'arrête au milieu, son ménage de fin n'a pas eu lieu. Vérifier
 alors ce qui reste :
