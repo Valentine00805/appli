@@ -188,14 +188,12 @@ final class Focus
     // --- Ce qui suit la session -------------------------------------------------
 
     /*
-     * Le nom de la liste où sont rangées les révisions à venir.
-     *
-     * Il reste en français, et doit y rester : c'est par ce nom qu'on
-     * retrouve la liste en base (« WHERE nom = ? »). Le traduire ferait
-     * perdre la sienne à qui change de langue, et en créerait une seconde.
-     * Rien n'empêche de la renommer depuis la page des tâches.
+     * La liste où sont rangées les révisions à venir se retrouve par son rôle, pas par son nom :
+     * le nom est écrit dans la langue de son propriétaire, qui peut aussi le changer.
+     * « Révisions » est le nom que portaient les listes d'avant le rôle.
      */
-    public const LISTE = 'Révisions';
+    public const ROLE_LISTE = 'revisions';
+    private const NOM_HISTORIQUE = 'Révisions';
 
     /** Les délais d'une révision espacée : le lendemain, puis trois, puis sept jours. */
     public const ESPACEMENT = [1, 3, 7];
@@ -216,15 +214,22 @@ final class Focus
         }
 
         $liste = self::listeDesRevisions($userId);
-        $libelle = mb_substr('Revoir : ' . $titre, 0, 200);
+        $libelle = mb_substr(t('foc.revoir', ['titre' => $titre]), 0, 200);
+        // Une révision déjà posée l'est peut-être dans une autre langue — celle d'avant un changement :
+        // on la reconnaît sous ses quatre écritures, sans quoi chaque changement de langue la doublerait.
+        $ecritures = array_values(array_unique(array_map(
+            static fn (string $langue): string => mb_substr(
+                str_replace('{titre}', $titre, Langue::texteEn($langue, 'foc.revoir')), 0, 200),
+            array_keys(Langue::LANGUES))));
+        $marques = implode(', ', array_fill(0, count($ecritures), '?'));
         $posees = 0;
         $connues = 0;
 
         foreach (self::ESPACEMENT as $jours) {
             $quand = (new DateTimeImmutable('today'))->modify('+' . $jours . ' days')->format('Y-m-d');
             $deja = Database::valeur(
-                'SELECT id FROM taches WHERE user_id = ? AND liste_id = ? AND titre = ? AND echeance = ? AND faite = 0',
-                [$userId, $liste, $libelle, $quand]);
+                'SELECT id FROM taches WHERE user_id = ? AND liste_id = ? AND titre IN (' . $marques . ') AND echeance = ? AND faite = 0',
+                [$userId, $liste, ...$ecritures, $quand]);
             if ($deja !== null && $deja !== false) {
                 $connues++;
                 continue;
@@ -240,21 +245,16 @@ final class Focus
         return ['liste' => $liste, 'posees' => $posees, 'connues' => $connues];
     }
 
-    /** La liste « Révisions », créée au premier besoin. */
+    /** La liste des révisions, créée au premier besoin, dans la langue de son propriétaire. */
     public static function listeDesRevisions(int $userId): int
     {
-        $liste = Database::valeur(
-            'SELECT id FROM listes_taches WHERE user_id = ? AND nom = ? LIMIT 1', [$userId, self::LISTE]);
-        if ($liste !== null && $liste !== false) {
-            return (int) $liste;
-        }
+        return (int) liste_systeme($userId, self::ROLE_LISTE, 'liste.revisions', self::NOM_HISTORIQUE, '#7c3aed', '🔁');
+    }
 
-        $rang = (int) Database::valeur('SELECT COALESCE(MAX(position), 0) + 1 FROM listes_taches WHERE user_id = ?', [$userId]);
-        Database::run(
-            'INSERT INTO listes_taches (user_id, nom, couleur, icone, position, created_at) VALUES (?, ?, ?, ?, ?, NOW())',
-            [$userId, self::LISTE, '#7c3aed', '🔁', $rang]);
-
-        return Database::dernierId();
+    /** Le nom que porte cette liste chez lui — celui qu'il lui a donné, ou celui de départ. */
+    public static function nomDeLaListe(int $userId): string
+    {
+        return nom_liste_systeme($userId, self::ROLE_LISTE, 'liste.revisions');
     }
 
     /** Combien de cartes de ce cours sont à revoir aujourd'hui. */

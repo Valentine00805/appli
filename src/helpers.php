@@ -588,6 +588,74 @@ function echeance_libelle(?string $echeance, bool $faite = false): string
     return $date . (date('Y', $ts) !== date('Y') ? ' ' . date('Y', $ts) : '');
 }
 
+/**
+ * Une liste de tâches que l'application tient pour elle-même (« Révisions », « Alternance »),
+ * créée au premier besoin et retrouvée par son RÔLE — jamais par son nom.
+ *
+ * Le nom appartient à celui qui la voit : écrit dans sa langue à la création, il peut être
+ * changé à la main. Retrouvée par son nom, la liste se perdait au premier changement de langue
+ * ou de nom, et une seconde naissait, la première restant orpheline (colonne listes_taches.role).
+ *
+ * @param string $role          « revisions » ou « alternance »
+ * @param string $cleNom        la clé de langue du nom de départ
+ * @param string $nomHistorique le nom français d'avant le rôle, que portent les listes d'une archive
+ *                              ancienne : une telle liste est reconnue, non dupliquée
+ * @param bool   $creer         faux pour seulement lire : null si la liste n'existe pas
+ */
+function liste_systeme(int $userId, string $role, string $cleNom, string $nomHistorique,
+                       string $couleur, string $icone, bool $creer = true): ?int
+{
+    $id = Database::valeur('SELECT id FROM listes_taches WHERE user_id = ? AND role = ? LIMIT 1', [$userId, $role]);
+    if ($id !== null && $id !== false) {
+        return (int) $id;
+    }
+
+    // Une liste du même nom, faite à la main ou venue d'une archive d'avant le rôle : on la
+    // reconnaît plutôt que d'en fabriquer une jumelle, ou d'échouer sur le nom unique.
+    $nom = t($cleNom);
+    $connue = Database::valeur(
+        'SELECT id FROM listes_taches WHERE user_id = ? AND role IS NULL AND nom IN (?, ?) ORDER BY id LIMIT 1',
+        [$userId, $nom, $nomHistorique]);
+    if ($connue !== null && $connue !== false) {
+        Database::run('UPDATE listes_taches SET role = ? WHERE id = ? AND user_id = ?', [$role, $connue, $userId]);
+
+        return (int) $connue;
+    }
+    if (!$creer) {
+        return null;
+    }
+
+    // Le nom est pris par une autre liste — l'autre liste d'application, renommée comme celle-ci :
+    // « Repaso (2) » plutôt qu'un refus.
+    $essai = $nom;
+    for ($i = 2; Database::valeur('SELECT id FROM listes_taches WHERE user_id = ? AND nom = ?', [$userId, $essai]) !== null; $i++) {
+        $essai = $nom . ' (' . $i . ')';
+    }
+    $rang = (int) Database::valeur('SELECT COALESCE(MAX(position), 0) + 1 FROM listes_taches WHERE user_id = ?', [$userId]);
+    // IGNORE : deux envois simultanés se disputent la clé (compte, rôle) ; le perdant relit celle du gagnant.
+    Database::run(
+        'INSERT IGNORE INTO listes_taches (user_id, nom, couleur, icone, role, position, created_at) VALUES (?, ?, ?, ?, ?, ?, NOW())',
+        [$userId, $essai, $couleur, $icone, $role, $rang]);
+
+    $id = Database::valeur('SELECT id FROM listes_taches WHERE user_id = ? AND role = ? LIMIT 1', [$userId, $role]);
+    if ($id === null || $id === false) {
+        throw new RuntimeException('La liste « ' . $role . ' » n\'a pas pu être créée.');
+    }
+
+    return (int) $id;
+}
+
+/**
+ * Le nom que porte cette liste chez cet utilisateur : le sien, si elle existe et qu'il l'a peut-être
+ * renommée ; sinon le nom de départ, dans sa langue. C'est lui qu'on cite dans les messages.
+ */
+function nom_liste_systeme(int $userId, string $role, string $cleNom): string
+{
+    $nom = Database::valeur('SELECT nom FROM listes_taches WHERE user_id = ? AND role = ? LIMIT 1', [$userId, $role]);
+
+    return ($nom === null || $nom === false) ? t($cleNom) : (string) $nom;
+}
+
 /** Emoji proposés pour une liste de tâches. */
 function icones_listes(): array
 {

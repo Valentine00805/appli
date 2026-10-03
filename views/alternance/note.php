@@ -110,7 +110,7 @@ $action = $edition ? url('alternance/notes/' . (int) $note['id']) : url('alterna
           <button class="bouton" type="submit"><?= e(t('alt.nt.en_taches')) ?></button>
         </p>
       </div>
-      <p class="champ__aide" style="margin-top:.6rem"><?= e(t('alt.nt.taches_aide', ['liste' => Alternance::LISTE])) ?></p>
+      <p class="champ__aide" style="margin-top:.6rem"><?= e(t('alt.nt.taches_aide', ['liste' => Alternance::nomDeLaListe(Auth::id())])) ?></p>
     </form>
   </section>
 <?php endif; ?>

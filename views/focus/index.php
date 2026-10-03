@@ -80,7 +80,7 @@ $coches = array_flip(array_map('intval', $coches));
         </a>
       <?php endif; ?>
     </p>
-    <p class="champ__aide" style="margin-bottom:0"><?= e(t('focus.espacer_aide', ['liste' => Focus::LISTE])) ?></p>
+    <p class="champ__aide" style="margin-bottom:0"><?= e(t('focus.espacer_aide', ['liste' => Focus::nomDeLaListe(Auth::id())])) ?></p>
   </div>
 <?php endif; ?>
 

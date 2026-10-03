@@ -130,7 +130,7 @@ final class AlternanceController
         Session::flash($posees === 0 ? 'erreur' : 'succes', match (true) {
             $posees === 0 && $depassees > 0 => t('alt.msg.etapes_passees'),
             $posees === 0 => t('alt.msg.donnez_date'),
-            default => tn('alt.msg.etapes_posees', $posees, ['liste' => Alternance::LISTE])
+            default => tn('alt.msg.etapes_posees', $posees, ['liste' => Alternance::nomDeLaListe($userId)])
                 . ($depassees > 0 ? tn('alt.msg.deja_passees', $depassees) : t('alt.msg.point')),
         });
         redirect('alternance/entreprise');
@@ -219,8 +219,8 @@ final class AlternanceController
         $bilan = Alternance::poserTaches($userId, $titres, Alternance::dateValide(post('echeance')));
         Session::flash($bilan['ajoutees'] === 0 ? 'erreur' : 'succes',
             $bilan['ajoutees'] === 0
-                ? t('alt.msg.taches_deja', ['liste' => Alternance::LISTE])
-                : tn('alt.msg.taches_ajoutees', $bilan['ajoutees'], ['liste' => Alternance::LISTE])
+                ? t('alt.msg.taches_deja', ['liste' => Alternance::nomDeLaListe($userId)])
+                : tn('alt.msg.taches_ajoutees', $bilan['ajoutees'], ['liste' => Alternance::nomDeLaListe($userId)])
                     . ($bilan['connues'] > 0 ? tn('alt.msg.y_etaient_deja', $bilan['connues']) : t('alt.msg.point')));
         redirect('alternance/notes/' . $id);
     }

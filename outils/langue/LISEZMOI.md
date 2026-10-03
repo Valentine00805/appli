@@ -96,6 +96,14 @@ fait. Il ne touche qu'à des adresses en `@exemple-test.fr`, et sa suppression
 finale porte à la fois sur l'identifiant et sur l'adresse : un vrai compte ne
 peut pas entrer dans sa requête.
 
+**`listes_langue.php`** — les listes que l'application tient pour elle-même (« Révisions »,
+« Alternance »). Elles se retrouvent par leur **rôle**, non par leur nom : la liste survit à un
+changement de langue et à un renommage, une liste faite à la main — ou venue d'une archive d'avant
+le rôle — est adoptée plutôt que doublée, la clé unique tient, et lire ne crée rien. Puis par les
+vraies pages : les messages citent le nom de la liste chez *cet* utilisateur, et poser deux fois les
+mêmes révisions, dans deux langues, ne crée aucune tâche en double. Six comptes d'essai, effacés à
+la fin.
+
 **`titres_langue.php`** — le `<title>` de chacune des 44 pages, dans les quatre
 langues. Un titre identique au français est une anomalie, sauf quand il s'écrit
 vraiment pareil (« Notifications » en anglais). Un titre est une chaîne seule,
@@ -148,10 +156,9 @@ catégorie ici :
   planning PDF et un relevé bancaire ; `Alternance::MOTS_DES_LIEUX`, qui devine
   un lieu depuis un titre d'agenda ; la liste d'accents d'`src/Amis.php`, qui
   sert à normaliser une recherche.
-- **`Focus::LISTE`** (« Révisions ») — c'est par ce nom qu'on retrouve la liste
-  en base (`WHERE nom = ?`). Le traduire ferait perdre la sienne à qui change
-  de langue, et en créerait une seconde. Rien n'empêche de la renommer depuis
-  la page des tâches.
+- **`Focus::NOM_HISTORIQUE`** et **`Alternance::NOM_HISTORIQUE`** (« Révisions », « Alternance ») —
+  le nom français que portaient ces listes avant d'avoir un rôle. Il ne sert qu'à reconnaître,
+  et à adopter, une liste venue d'une archive ancienne.
 - **`Langue::LANGUES`** — « Français », « English », « Español », « Deutsch » :
   chaque langue se nomme dans la sienne, c'est le propre d'un menu de langues.
 - **« Mes Cours »**, le nom de l'application, et ce qui en dérive : les
@@ -242,6 +249,28 @@ grammatical du français. Il laisse donc passer, et c'est arrivé :
 Quand on ajoute un libellé, ne pas se fier au silence du scanner : chercher
 aussi à la main, ou relire avec un détecteur plus large (toute chaîne à deux
 mots d'au moins trois lettres).
+
+### Les listes que l'application crée pour vous
+
+« Révisions » et « Alternance » naissent au premier usage. Leur nom est écrit dans la langue du
+compte à cet instant (`liste.revisions`, `liste.alternance`), puis c'est une donnée comme une autre :
+on peut la renommer, et un changement de langue ne la retraduit pas.
+
+Ce qui les identifie est la colonne **`listes_taches.role`** (`revisions`, `alternance`, `NULL` pour
+toutes les autres), unique par compte. `liste_systeme()` et `nom_liste_systeme()`, dans
+`src/helpers.php`, sont les deux seuls points d'entrée : ne jamais retrouver une liste par son nom.
+
+- Migration : `sql/migration-listes-systeme.sql`, à exécuter une fois sur une base déjà installée.
+  `schema.sql` porte la colonne pour une installation neuve.
+- Une liste du même nom, sans rôle, est **adoptée** (on lui donne son rôle) au premier besoin :
+  c'est ce qui absorbe une liste faite à la main, ou une archive d'avant le rôle.
+- Si le nom de départ est déjà pris par l'autre liste de l'application, la nouvelle s'appelle
+  « Nom (2) ».
+- Les tâches de révision espacée portent un titre traduit (`foc.revoir`) et se reconnaissent sous
+  les quatre écritures : changer de langue ne les repose pas en double.
+- **Limite connue** : les étapes d'alternance (`Alternance::poserTaches`) se reconnaissent par leur
+  titre, tel qu'il est écrit au moment de la pose. Reposer les mêmes étapes après un changement de
+  langue en crée une seconde série — visible, et supprimable depuis la liste.
 
 ### Le piège à connaître
 

@@ -633,18 +633,13 @@ final class Alternance
     /** La liste de tâches de l'alternance, créée au premier besoin. */
     public static function listeDesTaches(int $userId): int
     {
-        $liste = Database::valeur(
-            'SELECT id FROM listes_taches WHERE user_id = ? AND nom = ? LIMIT 1', [$userId, self::LISTE]);
-        if ($liste !== null && $liste !== false) {
-            return (int) $liste;
-        }
+        return (int) liste_systeme($userId, self::ROLE_LISTE, 'liste.alternance', self::NOM_HISTORIQUE, '#b45309', '🏢');
+    }
 
-        $rang = (int) Database::valeur('SELECT COALESCE(MAX(position), 0) + 1 FROM listes_taches WHERE user_id = ?', [$userId]);
-        Database::run(
-            'INSERT INTO listes_taches (user_id, nom, couleur, icone, position, created_at) VALUES (?, ?, ?, ?, ?, NOW())',
-            [$userId, self::LISTE, '#b45309', '🏢', $rang]);
-
-        return Database::dernierId();
+    /** Le nom que porte cette liste chez lui — celui qu'il lui a donné, ou celui de départ. */
+    public static function nomDeLaListe(int $userId): string
+    {
+        return nom_liste_systeme($userId, self::ROLE_LISTE, 'liste.alternance');
     }
 
     /**
@@ -722,8 +717,13 @@ final class Alternance
         return $comptes;
     }
 
-    /** Le nom de cette liste : on la retrouve à son nom, et on n'en fait qu'une. */
-    public const LISTE = 'Alternance';
+    /*
+     * La liste des tâches de l'alternance se retrouve par son rôle, et on n'en fait qu'une : son nom
+     * est écrit dans la langue de son propriétaire, qui peut aussi le changer.
+     * « Alternance » est le nom que portaient les listes d'avant le rôle.
+     */
+    public const ROLE_LISTE = 'alternance';
+    private const NOM_HISTORIQUE = 'Alternance';
 
     /**
      * Le rétroplanning du rapport et de la soutenance : ce qu'il faut avoir
@@ -834,9 +834,8 @@ final class Alternance
      */
     public static function tachesAFaire(int $userId, int $limite = 8): array
     {
-        $liste = Database::valeur(
-            'SELECT id FROM listes_taches WHERE user_id = ? AND nom = ? LIMIT 1', [$userId, self::LISTE]);
-        if ($liste === null || $liste === false) {
+        $liste = liste_systeme($userId, self::ROLE_LISTE, 'liste.alternance', self::NOM_HISTORIQUE, '#b45309', '🏢', false);
+        if ($liste === null) {
             return [];
         }
 

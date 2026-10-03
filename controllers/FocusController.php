@@ -178,8 +178,8 @@ final class FocusController
             $posees += Focus::programmerRevisions($userId, $coursId)['posees'];
         }
         Session::flash($posees === 0 ? 'erreur' : 'succes', $posees === 0
-            ? t('flash.focus_deja_posees', ['liste' => Focus::LISTE])
-            : tn('flash.focus_posees', $posees, ['liste' => Focus::LISTE]));
+            ? t('flash.focus_deja_posees', ['liste' => Focus::nomDeLaListe($userId)])
+            : tn('flash.focus_posees', $posees, ['liste' => Focus::nomDeLaListe($userId)]));
         redirect('focus');
     }
 

@@ -4083,4 +4083,9 @@ return [
     'date.longue' => '{jour} de {mois} de {annee}',
     'date.jour_mois_court' => '{jour} {mois}',
     'date.plage_mois' => '{debut} – {fin} de {mois} de {annee}',
+    // Les listes de tâches que l’application tient pour elle-même
+    'liste.revisions' => 'Repaso',
+    'liste.alternance' => 'Alternancia',
+    // Les révisions espacées
+    'foc.revoir' => 'Repasar: {titre}',
 ];

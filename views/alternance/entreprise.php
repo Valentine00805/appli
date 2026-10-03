@@ -162,7 +162,7 @@ foreach (Alternance::ECHEANCES as $champ) {
           <form method="post" action="<?= url('alternance/entreprise/retroplanning') ?>" style="margin-top:.8rem">
             <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
             <button class="bouton bouton--secondaire bouton--bloc" type="submit"><?= e(t('alt.en.retroplanning')) ?></button>
-            <p class="champ__aide" style="margin-top:.5rem"><?= e(t('alt.en.retroplanning_aide', ['liste' => Alternance::LISTE])) ?></p>
+            <p class="champ__aide" style="margin-top:.5rem"><?= e(t('alt.en.retroplanning_aide', ['liste' => Alternance::nomDeLaListe(Auth::id())])) ?></p>
           </form>
         <?php endif; ?>
       </section>
