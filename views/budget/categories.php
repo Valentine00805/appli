@@ -127,7 +127,7 @@ $carte = static function (array $c) use ($csrf, $palette, $icones): string {
         <?= e(t('cat.aucune_depense_classee', ['n' => SuggestionBudget::MOIS_MINIMUM])) ?>
       <?php else: ?>
         <?= e(tn('cat.mois_enregistres', (int) $suggestions['mois_disponibles'])) ?>
-        <?= e(t('cat.encore_mois', ['manque' => $manque, 'min' => SuggestionBudget::MOIS_MINIMUM])) ?>
+        <?= e(tn('cat.encore_mois', $manque, ['min' => SuggestionBudget::MOIS_MINIMUM])) ?>
       <?php endif; ?>
     </p>
     <div class="jauge" style="margin-top:.6rem;max-width:300px">

@@ -47,8 +47,8 @@ try {
     echo "\n2. Une opération\n";
     $csrfB = $jeton($budget);
     $sansLibelle = $appel('budget/operations', ['_csrf' => $csrfB, 'libelle' => '', 'montant' => '10', 'date_operation' => date('Y-m-d')]);
-    $dire('sans libellé : « Say what this entry is for. »',
-        $oui(str_contains($sansLibelle, 'Say what this entry is for.')), 'oui');
+    $dire('sans libellé : « Say what this transaction is for. »',
+        $oui(str_contains($sansLibelle, 'Say what this transaction is for.')), 'oui');
     $mauvais = $appel('budget/operations', ['_csrf' => $csrfB, 'libelle' => 'Test', 'montant' => 'abc', 'date_operation' => date('Y-m-d')]);
     $dire('un montant illisible : le refus est en anglais',
         $oui(str_contains($mauvais, 'The amount is not valid.')), 'oui');

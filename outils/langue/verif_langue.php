@@ -112,7 +112,7 @@ try {
         $oui(str_contains($fiche, '>Revision sheet</h2>') && str_contains($fiche, '>What to remember</label>')
             && str_contains($fiche, 'Attached items') && str_contains($fiche, '📎 Files and images')), 'oui');
     $dire('  les rayons : cartes, liens, autres cours, calendrier',
-        $oui(str_contains($fiche, 'No card for this course.') && str_contains($fiche, '+ Add a link')
+        $oui(str_contains($fiche, 'No cards for this course.') && str_contains($fiche, '+ Add a link')
             && str_contains($fiche, '📘 Other courses') && str_contains($fiche, 'Your calendar is still empty.')
             && str_contains($fiche, 'Nothing yet.')), 'oui');
     $dire('  le dépôt et les boutons de la fiche',

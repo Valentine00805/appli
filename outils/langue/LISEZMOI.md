@@ -140,9 +140,41 @@ et le service worker. Elle vérifie aussi que le manifeste n'est plus servi en
 cache `public`, puisqu'il varie d'un compte à l'autre. Un compte d'essai,
 effacé à la fin.
 
+**`relecture.php`** — le contrôle **mécanique** de la qualité des textes anglais,
+espagnols et allemands, à lancer après toute retouche de `lang/*.php`. Il compare chaque phrase à
+son original français et signale : une variable `{n}` ou une balise qui a changé, un reste de
+français (un accent dans l'anglais, « pour », « avec »…), une phrase identique au français, une
+ponctuation finale ou un emoji de tête qui diffère, une espace avant « : ; ! ? » (habitude française,
+sauf dans le texte aligné de la sauvegarde et le tableau CSV à coller), des guillemets ou des
+apostrophes à la mauvaise forme, le vouvoiement (« Sie », « usted »), un « ? » espagnol sans « ¿ »,
+une phrase dont la longueur s'écarte trop de l'original. Il sort avec le code 1 s'il y a des
+signalements, dont certains sont des faux amis voulus à lire plutôt qu'à corriger d'office.
+
+    php outils/langue/relecture.php             tout, en détail
+    php outils/langue/relecture.php de          une langue
+    php outils/langue/relecture.php --resume    le nombre de signalements par catégorie
+
+### Ce que la relecture ne remplace pas
+
+Elle trouve ce qui se compte. Elle ne trouve pas qu'une phrase est **correcte mais fausse de ton** :
+« Sage hallo » ou « Say hello » sont justes, et pourtant un locuteur natif dirait peut-être autre
+chose ; elle ne sait pas non plus si « Lernblatt » est le mot qu'un lycéen allemand emploierait
+pour une fiche de révision. La relecture manuelle de toutes les clés (3 895 × trois langues) a
+corrigé des fautes de vocabulaire, de registre, de grammaire (« 1 more months »), des calques du
+français (« poser », « partir », « renvoi ») et des genres supposés (« ihm », « er » pour quelqu'un
+dont on ne sait rien) — mais c'est la relecture d'une seule personne, qui n'est native d'aucune des
+trois langues. **Une relecture par un locuteur natif de chacune reste la seule façon de trancher
+l'idiome et le ton.**
+
+Choix de style tenus partout : anglais britannique (« colour », « Log in »), espagnol en « tú »
+(« curso », « Alternancia », jamais « compartición »), allemand en « du » (« Lernblatt »,
+« Frist », « Typ » pour un type, « anheften » pour épingler, jamais « anpinnen »). Le français, lui,
+vouvoie : c'est l'original, on n'y a pas touché.
+
 ## Ce qui reste en français, et qui doit y rester
 
-La traduction est finie. `scan3.php` signale encore une quarantaine de lignes,
+La traduction est complète : chaque chaîne existe dans les quatre langues, et elle a été relue
+(voir ci-dessus). `scan3.php` signale encore une quarantaine de lignes,
 et **chacune est voulue**. Avant de « corriger » l'une d'elles, retrouver sa
 catégorie ici :
 

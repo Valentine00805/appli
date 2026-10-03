@@ -91,8 +91,8 @@ try {
     $dire('sans nom : « Write a name. »', $oui(str_contains($sansNomP, 'Write a name.')), 'oui');
     $appel('budget/personnes', ['_csrf' => $csrfP, 'nom' => 'Alex']);
     $deja = $appel('budget/personnes', ['_csrf' => $csrfP, 'nom' => 'Alex']);
-    $dire('en double : « “Alex” is already in the book. »',
-        $oui(str_contains($deja, 'is already in the book')), 'oui');
+    $dire('en double : « “Alex” is already in the address book. »',
+        $oui(str_contains($deja, 'is already in the address book')), 'oui');
     $groupe = $appel('budget/groupes', ['_csrf' => $csrfP, 'nom' => 'Flatmates']);
     $dire('un groupe créé : « Group “Flatmates” created. »',
         $oui(str_contains($groupe, 'created. Tick who belongs to it.')), 'oui');

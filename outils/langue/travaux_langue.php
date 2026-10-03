@@ -38,18 +38,18 @@ try {
     echo "\n1. La liste, vide\n";
     $liste = $appel('travaux');
     $dire('le titre, l’aide et l’état vide',
-        $oui(str_contains($liste, 'Group works') && str_contains($liste, '+ New group work')
-            && str_contains($liste, 'No group work yet.')), 'oui');
+        $oui(str_contains($liste, 'Group projects') && str_contains($liste, '+ New group project')
+            && str_contains($liste, 'No group project yet.')), 'oui');
     $dire('  sans français resté en route',
         $oui(!str_contains($liste, 'Travaux de groupe') && !str_contains($liste, 'Aucun travail de groupe')), 'oui');
     $formulaire = $appel('travaux/nouveau');
     $dire('le formulaire de création',
-        $oui(str_contains($formulaire, 'New group work') && str_contains($formulaire, 'The topic, the instructions')
+        $oui(str_contains($formulaire, 'New group project') && str_contains($formulaire, 'The topic, the instructions')
             && str_contains($formulaire, 'Invite friends')), 'oui');
 
     echo "\n2. Un projet, et son tableau\n";
     $cree = $appel('travaux', ['_csrf' => $csrf, 'nom' => 'Essai de langue', 'description' => 'Un sujet.']);
-    $dire('« Group work created. »', $oui(str_contains($cree, 'Group work created.')), 'oui');
+    $dire('« Group project created. »', $oui(str_contains($cree, 'Group project created.')), 'oui');
     $projet = (int) bd_valeur('SELECT id FROM projets WHERE cree_par = ? ORDER BY id DESC LIMIT 1', [$id]);
     $dire('le projet est en base', $projet > 0 ? 'oui' : 'non', 'oui');
     $taches = $appel('travaux/' . $projet);
@@ -77,11 +77,11 @@ try {
     echo "\n4. Les échéances et leurs types\n";
     $echeances = $appel('travaux/' . $projet . '/echeances');
     $dire('l’état vide et les boutons',
-        $oui(str_contains($echeances, 'No deadline ahead.') && str_contains($echeances, '+ New deadline')
-            && str_contains($echeances, 'Kinds of deadline')), 'oui');
+        $oui(str_contains($echeances, 'No upcoming deadline.') && str_contains($echeances, '+ New deadline')
+            && str_contains($echeances, 'Deadline types')), 'oui');
     $types = $appel('travaux/' . $projet . '/types');
     $dire('les types : le titre et l’état vide',
-        $oui(str_contains($types, 'Kinds of deadline') && str_contains($types, '+ New kind')), 'oui');
+        $oui(str_contains($types, 'Deadline types') && str_contains($types, '+ New type')), 'oui');
     $champs = $appel('travaux/' . $projet . '/echeances/nouvelle');
     $dire('les champs d’une échéance',
         $oui(str_contains($champs, '>Day</label>') && str_contains($champs, 'Length (min)')
