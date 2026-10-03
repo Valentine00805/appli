@@ -100,7 +100,7 @@ final class CartesController
             // Les propositions passent par la session : elles ne sont pas encore
             // des cartes, et rien ne doit les enregistrer avant validation.
             'propositions' => (array) (Session::reprendre('propositions_cartes') ?? []),
-        ], 'Cartes');
+        ], t('nav.cartes'));
     }
 
     /** Le paquet d'un cours : ses cartes, et de quoi en ajouter. */

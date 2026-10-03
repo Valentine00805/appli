@@ -95,7 +95,7 @@ final class CoursController
             'semaines'   => $semaines,
             'taches'     => $taches,
             'termes'     => preg_split('/\s+/u', $recherche, -1, PREG_SPLIT_NO_EMPTY) ?: [],
-        ], 'Recherche');
+        ], t('rech.titre'));
     }
 
     public function afficher(int $id): void

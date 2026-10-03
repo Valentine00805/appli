@@ -96,6 +96,13 @@ fait. Il ne touche qu'à des adresses en `@exemple-test.fr`, et sa suppression
 finale porte à la fois sur l'identifiant et sur l'adresse : un vrai compte ne
 peut pas entrer dans sa requête.
 
+**`titres_langue.php`** — le `<title>` de chacune des 44 pages, dans les quatre
+langues. Un titre identique au français est une anomalie, sauf quand il s'écrit
+vraiment pareil (« Notifications » en anglais). Un titre est une chaîne seule,
+souvent sans accent, que les scanners ne regardent pas : quatre (« Accueil »,
+« Cartes », « Tableau », « Recherche ») étaient restés en français partout.
+Un compte d'essai, effacé à la fin.
+
 **`visiteur_langue.php`** — quelqu'un **sans compte** lit l'application dans sa
 langue : connexion, inscription, mot de passe oublié, liens publics, manifeste,
 page hors-ligne. Elle vérifie la lecture d'un en-tête `Accept-Language`
@@ -185,11 +192,38 @@ Un choix à connaître : **l'anglais suit l'usage britannique** (`d/m/Y`, « €
 l'application comptant en euros. Pour le format américain, `date.courte` vaut
 `m/d/Y` dans `lang/en.php`.
 
+Les dates en toutes lettres suivent la même règle (`date.longue`, `date.jour_mois_court`,
+`date.plage_mois`) : « 4 octobre 2026 », « 4 October 2026 », « 4 de octubre de 2026 »,
+« 4. Oktober 2026 » — le point de l'ordinal allemand, le « de » espagnol.
+
 Côté code : `montant_lisible()`, `taille_lisible()` et `date_numerique()` (dans
 `src/helpers.php`) ; côté script, `nombreLocal()` et les clés `js.taille.*`.
 La saisie d'un montant passe par `montant_depuis_saisie()`, qui lit selon la
 langue en cours ; `ReleveCsv` lui impose le français, parce que le fichier d'une
 banque ne change pas avec la langue de la page.
+
+### Le contrôle visuel
+
+Les essais lisent le HTML ; ils ne voient pas une mise en page. L'allemand est souvent
+30 % plus long que le français : un bouton qui ne tient plus, un titre qui sort de
+l'écran. Pour le vérifier :
+
+1. `php outils/langue/controle_visuel_prepare.php` — crée un compte d'essai garni de
+   données (des titres longs, c'est ce qui déborde) et affiche l'identifiant de sa
+   session. Le mot de passe de personne n'est saisi.
+2. Dans le navigateur, sur une page de l'application : poser ce cookie
+   (`document.cookie = "MESCOURS_SESSID=…; path=/mon_appli/appli"`) et recharger.
+3. Coller `controle_visuel.js`, puis `await controleVisuel(375, [...pages])`. Chaque page
+   s'ouvre dans un iframe de la largeur demandée ; le mesureur rend ce qui déborde, ce qui
+   est coupé, et les boutons passés sur deux lignes.
+4. Changer la langue du compte en base entre deux mesures, et ne regarder que ce qui
+   apparaît dans la seconde. Puis **regarder une capture** : le mesureur ne voit ni un
+   chevauchement, ni une hiérarchie qui se brouille.
+5. `php outils/langue/menage.php --efface` supprime le compte.
+
+Fait le 4 octobre 2026 : 43 pages × 4 langues, à 375, 768 et 1280 px. Un seul vrai
+débordement, qui existait déjà en français : la vue semaine du calendrier (le groupe
+flèches + titre ne se repliait pas, et « Ganztägig » était coupé). Corrigé.
 
 ### Ce que `scan3.php` ne voit pas
 
@@ -221,6 +255,17 @@ La règle qui en sort : **ce qui s'affiche ne sert jamais à décider**. Un
 libellé se traduit ; ce qui identifie — une clé, un drapeau, une ligne de
 table — reste stable et voyage à part. `signaux_langue.php` garde les trois
 endroits sous surveillance.
+
+## Ces outils ne sont pas joignables par le web
+
+Le `.htaccess` du projet répond 404 à tout ce qui passe par `outils/` et par `.git`. Ce
+n'était pas le cas : jusqu'au 4 octobre 2026, `menage.php`, `reste.php` et `base.php`
+répondaient 200 à une adresse, et le dépôt git était lisible (`.git/HEAD`, `.git/config`).
+Sur un site hébergé depuis ce dossier, n'importe qui aurait pu lancer ces scripts — certains
+créent et effacent des comptes — ou télécharger tout le code et son historique.
+
+Les scripts se lancent en ligne de commande (`php outils/langue/….php`), que la règle ne
+touche pas. Si un jour on ne parvient plus à les ouvrir par HTTP, c'est voulu.
 
 ## L'antivirus
 

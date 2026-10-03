@@ -69,7 +69,7 @@ final class KanbanController
             'matiereId'  => $matiereId,
             'typeId'     => $typeId,
             'source'     => $source,
-        ], 'Tableau');
+        ], t('kb.titre'));
     }
 
     /** Déplace une carte d'une colonne à l'autre. */

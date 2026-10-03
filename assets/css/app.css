@@ -1195,6 +1195,9 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
   /* Trop étroit pour une seule ligne : la barre se replie comme avant. */
   .cal-barre, .cal-barre > .actions { flex-wrap: wrap; }
   .cal-barre > .actions:last-child { flex: 1 1 auto; }
+  /* Les flèches et le titre se replient aussi : à 0 0 auto, ce groupe gardait sa largeur de
+     contenu et sortait de l'écran (« 28. Sept. – 4. Okt. 2026 »). */
+  .cal-barre > .actions:first-child { flex: 0 1 auto; min-width: 0; }
   .cal-filtres { flex-wrap: wrap; }
   .cal-filtres select { flex: 1 1 12rem; }
   .cal-titre { white-space: normal; }
@@ -3317,7 +3320,8 @@ summary.cal-volet__groupe:focus-visible {
 
 @media (max-width: 640px) {
   .sem-planning { --heure: 2.8rem; --colonne-heures: 3.2rem; --jour-mini: 5.2rem; }
-  .sem-planning__etiquette { font-size: .58rem; letter-spacing: 0; padding: .4rem .2rem; }
+  /* « Ganztägig » ne tient pas sur 3 rem : le mot se coupe plutôt que de disparaître. */
+  .sem-planning__etiquette { font-size: .58rem; letter-spacing: 0; padding: .4rem .2rem; overflow-wrap: anywhere; hyphens: auto; }
 }
 
 /* --- Le reste d'une journée chargée --------------------------------------

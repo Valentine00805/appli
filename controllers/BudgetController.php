@@ -82,7 +82,7 @@ final class BudgetController
             'moyens'      => self::moyens(),
             'personnes'   => RemboursementsController::personnes($userId),
             'historique'  => $this->douzeDerniersMois($userId, $mois),
-        ], 'Budget — ' . nom_mois((int) $mois->format('n')) . ' ' . $mois->format('Y'));
+        ], t('bud.titre') . ' — ' . nom_mois((int) $mois->format('n')) . ' ' . $mois->format('Y'));
     }
 
     // --- Opérations ----------------------------------------------------------

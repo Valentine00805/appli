@@ -4079,4 +4079,8 @@ return [
     'grp.fl.membre_retire' => '{qui} is no longer in the group.',
     // Le graphique des prévisions
     'prev.solde_saisi_court' => 'entered balance',
+    // Les dates écrites en toutes lettres
+    'date.longue' => '{jour} {mois} {annee}',
+    'date.jour_mois_court' => '{jour} {mois}',
+    'date.plage_mois' => '{debut} – {fin} {mois} {annee}',
 ];

@@ -123,7 +123,7 @@ function date_fr(string $datetime, bool $avecHeure = true): string
     // Les mois s'écrivent en minuscule en français et en espagnol, en majuscule ailleurs.
     $mois = nom_mois_en_phrase((int) date('n', $ts));
     $annee = date('Y', $ts);
-    $texte = "$jour $mois $annee";
+    $texte = t('date.longue', ['jour' => $jour, 'mois' => $mois, 'annee' => $annee]);
     if ($avecHeure) {
         $texte .= ' ' . t('date.a') . ' ' . heure_courte($ts);
     }
@@ -565,7 +565,7 @@ function echeance_libelle(?string $echeance, bool $faite = false): string
         return '';
     }
     $ts = strtotime((string) $echeance);
-    $date = (int) date('j', $ts) . ' ' . nom_mois_court((int) date('n', $ts));
+    $date = t('date.jour_mois_court', ['jour' => (int) date('j', $ts), 'mois' => nom_mois_court((int) date('n', $ts))]);
 
     if ($etat === 'retard') {
         $jours = (int) date_create('today')->diff(date_create((string) $echeance)->setTime(0, 0))->format('%a');

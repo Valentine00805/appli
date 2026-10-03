@@ -48,19 +48,22 @@ if ($vue === 'jour') {
     $moisDebut = (int) $debut->format('n');
     $moisFin   = (int) $fin->format('n');
 
+    // Le jour et le mois abrégé s'écrivent à la façon de la langue : « 4 oct. », « 4. Okt. ».
+    $court = static fn (DateTimeInterface $d, int $m): string => t('date.jour_mois_court', [
+        'jour' => $d->format('j'), 'mois' => nom_mois_court($m),
+    ]);
+
     if ($moisDebut === $moisFin && $debut->format('Y') === $fin->format('Y')) {
-        $titre = $debut->format('j') . ' – ' . $fin->format('j')
-            . ' ' . nom_mois_en_phrase($moisFin) . ' ' . $fin->format('Y');
+        $titre = t('date.plage_mois', [
+            'debut' => $debut->format('j'), 'fin' => $fin->format('j'),
+            'mois' => nom_mois_en_phrase($moisFin), 'annee' => $fin->format('Y'),
+        ]);
     } elseif ($debut->format('Y') === $fin->format('Y')) {
-        $titre = $debut->format('j') . ' ' . nom_mois_court($moisDebut)
-            . ' – ' . $fin->format('j') . ' ' . nom_mois_court($moisFin)
-            . ' ' . $fin->format('Y');
+        $titre = $court($debut, $moisDebut) . ' – ' . $court($fin, $moisFin) . ' ' . $fin->format('Y');
     } else {
         // Une semaine à cheval sur deux années : chacune porte la sienne.
-        $titre = $debut->format('j') . ' ' . nom_mois_court($moisDebut)
-            . ' ' . $debut->format('Y')
-            . ' – ' . $fin->format('j') . ' ' . nom_mois_court($moisFin)
-            . ' ' . $fin->format('Y');
+        $titre = $court($debut, $moisDebut) . ' ' . $debut->format('Y')
+            . ' – ' . $court($fin, $moisFin) . ' ' . $fin->format('Y');
     }
 } elseif ($vue === 'annee') {
     $titre = $ancre->format('Y');

@@ -99,6 +99,28 @@ foreach (['fr', 'en', 'es', 'de'] as $langue) {
         'fevrier aout decembre');
 }
 
+echo "\n4 ter. Une date en toutes lettres\n";
+/*
+ * « 4 Oktober 2026 » : l'allemand veut un point après le jour (« 4. Oktober »), et l'espagnol
+ * écrit « 4 de octubre de 2026 ». Le jour et le mois se composaient à la main, à la française.
+ */
+$longues = [
+    'fr' => ['4 octobre 2026', '4 octobre 2026 à 14h30'],
+    'en' => ['4 October 2026', '4 October 2026 at 14:30'],
+    'es' => ['4 de octubre de 2026', '4 de octubre de 2026 a las 14:30'],
+    'de' => ['4. Oktober 2026', '4. Oktober 2026 um 14:30'],
+];
+foreach ($longues as $langue => [$sans, $avec]) {
+    Langue::imposer($langue);
+    $dire("$langue : sans l’heure", date_fr('2026-10-04 14:30:00', false), $sans);
+    $dire("$langue :   avec l’heure", date_fr('2026-10-04 14:30:00', true), $avec);
+}
+// L'échéance lointaine : le jour et le mois abrégé, puis l'année.
+foreach (['fr' => '/^5 \S+ 2031$/u', 'en' => '/^5 \S+ 2031$/u', 'es' => '/^5 \S+ 2031$/u', 'de' => '/^5\. \S+ 2031$/u'] as $langue => $motif) {
+    Langue::imposer($langue);
+    $dire("$langue : une échéance en 2031, sa forme", (string) preg_match($motif, echeance_libelle('2031-03-05')), '1');
+}
+
 echo "\n5. Une saisie se lit selon la langue\n";
 $cas = [
     // [langue, saisie, attendu]
@@ -178,6 +200,11 @@ try {
     $appel('compte/langue', ['_csrf' => $csrf, 'langue' => 'de']);
     $page = $appel('budget');
     $dire('la page l’écrit « 1.234,50 € »', $oui(str_contains($page, "1.234,50{$i}€")), 'oui');
+    // Le titre de la semaine : « 28. Sept. – 4. Okt. 2026 », le point après chaque jour.
+    $semaine = $appel('calendrier?vue=semaine');
+    preg_match('/<h2 class="cal-titre">([^<]+)<\/h2>/u', $semaine, $titre);
+    $dire('  le titre de la semaine : « ' . ($titre[1] ?? '?') . ' »',
+        $oui(preg_match('/\d{1,2}\.(?: \S+)? – \d{1,2}\. \S+ \d{4}/u', $titre[1] ?? '') === 1), 'oui');
     Langue::imposer('de');
     $periode = nom_mois_en_phrase((int) date('n')) . ' ' . date('Y');
     $dire('  la période : « ' . $periode . ' »', $oui(str_contains($page, $periode)), 'oui');

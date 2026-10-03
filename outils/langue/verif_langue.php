@@ -62,12 +62,14 @@ try {
     $dire('« Español » : menu et accueil suivent',
         $langueDeLaPage($accueilEs) . ' · ' . $oui(str_contains($accueilEs, '>Inicio</a>') && str_contains($accueilEs, 'Mis tareas')), 'es · oui');
     $dire('  et les mois restent en minuscule, comme il se doit',
-        $oui(preg_match('/Hoy es \d{1,2} (enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre) \d{4}/', $accueilEs) === 1), 'oui');
+        $oui(preg_match('/Hoy es \d{1,2} de (enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre) de \d{4}/', $accueilEs) === 1), 'oui');
 
     $appel('compte/langue', ['_csrf' => $csrf, 'langue' => 'de']);
     [, $accueilDe] = $appel('');
     $dire('« Deutsch » : menu et accueil suivent',
         $langueDeLaPage($accueilDe) . ' · ' . $oui(str_contains($accueilDe, '>Start</a>') && str_contains($accueilDe, 'Meine Aufgaben')), 'de · oui');
+    $dire('  la date prend le point de l’ordinal : « 4. Oktober »',
+        $oui(preg_match('/Heute ist der \d{1,2}\. (Januar|Februar|März|April|Mai|Juni|Juli|August|September|Oktober|November|Dezember) \d{4}/u', $accueilDe) === 1), 'oui');
 
     $appel('compte/langue', ['_csrf' => $csrf, 'langue' => 'klingon']);
     $dire('une langue inconnue revient au français',
