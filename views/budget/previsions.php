@@ -350,14 +350,14 @@ $aVenirIds = array_map(static fn (array $r): int => (int) $r['id'], $aVenir);
           <label for="categorie_id"><?= e(t('bud.categorie')) ?></label>
           <select id="categorie_id" name="categorie_id">
             <option value=""><?= e(t('bud.aucune_categorie')) ?></option>
-            <optgroup label="Dépenses">
+            <optgroup label="<?= e(t('bud.depenses')) ?>">
               <?php foreach ($categories as $c): ?>
                 <?php if ($c['sens'] === 'depense'): ?>
                   <option value="<?= (int) $c['id'] ?>"><?= e($c['icone'] . ' ' . $c['nom']) ?></option>
                 <?php endif; ?>
               <?php endforeach; ?>
             </optgroup>
-            <optgroup label="Recettes">
+            <optgroup label="<?= e(t('bud.recettes')) ?>">
               <?php foreach ($categories as $c): ?>
                 <?php if ($c['sens'] === 'recette'): ?>
                   <option value="<?= (int) $c['id'] ?>"><?= e($c['icone'] . ' ' . $c['nom']) ?></option>

@@ -4049,4 +4049,9 @@ return [
     // Le journal d’alternance imprimé
     'alt.aucune_mission' => 'Kein Einsatz in dieser Woche notiert.',
     'alt.competences_label' => 'Kompetenzen: ',
+    // Les derniers restes, point par point
+    'js.mdp.afficher' => 'Passwort anzeigen',
+    'js.mdp.masquer' => 'Passwort verbergen',
+    'titre.notifications' => 'Benachrichtigungen',
+    'titre.hors_ligne' => 'Offline',
 ];

@@ -695,7 +695,7 @@
     var prevenir = function (titre, corps) {
       try {
         if ('Notification' in window && Notification.permission === 'granted') {
-          new Notification(titre, { body: corps, tag: 'focus', lang: 'fr' });
+          new Notification(titre, { body: corps, tag: 'focus', lang: langueLocale() });
         }
       } catch (e) {}
       try {

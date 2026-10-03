@@ -9,6 +9,13 @@
 (function () {
   'use strict';
 
+  /*
+   * Les mots viennent de la page (window.MOTS, posée par le serveur dans la
+   * langue du compte). Ce script se charge aussi sur les pages sans compte :
+   * elles posent le même objet.
+   */
+  var mot = function (cle) { return (window.MOTS && window.MOTS[cle]) || ''; };
+
   var ns = 'http://www.w3.org/2000/svg';
   var dessin = function (barre) {
     var svg = document.createElementNS(ns, 'svg');
@@ -43,8 +50,9 @@
       bouton.textContent = '';
       bouton.appendChild(dessin(visible));
       bouton.setAttribute('aria-pressed', visible ? 'true' : 'false');
-      bouton.setAttribute('aria-label', visible ? 'Masquer le mot de passe' : 'Afficher le mot de passe');
-      bouton.title = visible ? 'Masquer le mot de passe' : 'Afficher le mot de passe';
+      var libelle = mot(visible ? 'mdp.masquer' : 'mdp.afficher');
+      bouton.setAttribute('aria-label', libelle);
+      bouton.title = libelle;
     };
     montrer(false);
     bouton.addEventListener('click', function () {

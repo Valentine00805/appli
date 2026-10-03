@@ -105,6 +105,36 @@ try {
     $dire('chacun a bien sa langue', $corpsEn === $corpsDe ? 'la même pour les deux' : 'chacun la sienne',
         'chacun la sienne');
     $dire('  et le pseudo de qui ajoute y est', str_contains($corpsEn, 'Notif_fr') ? 'oui' : 'non', 'oui');
+
+    echo "\n5. Un partage de document, lu par chacun dans sa langue\n";
+    /*
+     * Le compte français partage un cours avec l'anglais et l'allemand. L'annonce
+     * se fabriquait avant l'envoi, donc dans la langue de l'expéditeur : l'anglais
+     * lisait « a partagé le cours… ». L'un reçoit dans la discussion, l'autre
+     * dans l'onglet « Partagés » : les deux chemins sont couverts.
+     */
+    foreach (['en', 'de'] as $langue) {
+        Database::run(
+            'INSERT IGNORE INTO amities (demandeur_id, destinataire_id, petit_id, grand_id, statut, acceptee_le)
+             VALUES (?, ?, ?, ?, \'acceptee\', UTC_TIMESTAMP())',
+            [$ids['fr'], $ids[$langue], min($ids['fr'], $ids[$langue]), max($ids['fr'], $ids[$langue])]);
+    }
+    Database::run('UPDATE users SET partages_dans_discussion = 1 WHERE id = ?', [$ids['en']]);
+    Database::run('UPDATE users SET partages_dans_discussion = 0 WHERE id = ?', [$ids['de']]);
+    Database::run('INSERT INTO cours (user_id, titre) VALUES (?, ?)', [$ids['fr'], 'Algèbre']);
+    $coursId = (int) Database::valeur('SELECT id FROM cours WHERE user_id = ? ORDER BY id DESC LIMIT 1', [$ids['fr']]);
+
+    Langue::imposer('fr');
+    [$atteints, $refus] = Partages::partagerAvecAmis($ids['fr'], 'cours', $coursId, [$ids['en'], $ids['de']], [], '');
+    $dire('le partage est parti', (string) $atteints . ($refus === null ? '' : ' — ' . $refus), '2');
+    $dire('la langue de qui partage est rendue intacte', Langue::courante(), 'fr');
+
+    $en = $lire($ids['en']);
+    $de = $lire($ids['de']);
+    $dire('dans la discussion, en anglais', (string) $en['corps'],
+        '🔗 Notif_fr shared the course “Algèbre”');
+    $dire('dans l’onglet, en allemand', (string) $de['corps'],
+        'Notif_fr hat den Kurs „Algèbre“ geteilt');
 } finally {
     // Ménage : ces trois comptes d'essai seuls, et ce qu'ils ont semé.
     foreach ($ids as $cle => $id) {

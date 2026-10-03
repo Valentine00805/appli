@@ -4061,4 +4061,9 @@ return [
     // Le journal d’alternance imprimé
     'alt.aucune_mission' => 'Aucune mission notée cette semaine.',
     'alt.competences_label' => 'Compétences : ',
+    // Les derniers restes, point par point
+    'js.mdp.afficher' => 'Afficher le mot de passe',
+    'js.mdp.masquer' => 'Masquer le mot de passe',
+    'titre.notifications' => 'Notifications',
+    'titre.hors_ligne' => 'Hors connexion',
 ];

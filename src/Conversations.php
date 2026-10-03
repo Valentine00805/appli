@@ -1293,19 +1293,24 @@ final class Conversations
      *
      * @return list<int> les notifications en file
      */
-    public static function notifier(int $expediteur, int $conversation, string $texte, bool $avecImage = false, ?string $nomFichier = null,
+    public static function notifier(int $expediteur, int $conversation, string|Closure $texte, bool $avecImage = false, ?string $nomFichier = null,
                                     ?int $dureeVocal = null): array
     {
-        $apercu = trim((string) preg_replace('/\s+/u', ' ', $texte));
-        if ($avecImage) {
-            $apercu = '📷 Photo' . ($apercu === '' ? '' : ' · ' . $apercu);
-        }
-        if ($nomFichier !== null) {
-            $apercu = '📎 ' . $nomFichier . ($apercu === '' ? '' : ' · ' . $apercu);
-        }
-        if ($dureeVocal !== null) {
-            $apercu = t('msg.piece_vocal_duree', ['duree' => Amis::duree($dureeVocal)]) . ($apercu === '' ? '' : ' · ' . $apercu);
-        }
+        $apercu = function () use ($texte, $avecImage, $nomFichier, $dureeVocal): string {
+            $ligne = trim((string) preg_replace('/\s+/u', ' ', $texte instanceof Closure ? $texte() : $texte));
+            if ($avecImage) {
+                $ligne = t('msg.piece_photo') . ($ligne === '' ? '' : ' · ' . $ligne);
+            }
+            if ($nomFichier !== null) {
+                $ligne = '📎 ' . $nomFichier . ($ligne === '' ? '' : ' · ' . $ligne);
+            }
+            if ($dureeVocal !== null) {
+                $ligne = t('msg.piece_vocal_duree', ['duree' => Amis::duree($dureeVocal)])
+                    . ($ligne === '' ? '' : ' · ' . $ligne);
+            }
+
+            return $ligne;
+        };
         $pseudoBrut = Amis::compte($expediteur)['pseudo'] ?? null;
         $nom = self::nom($conversation);
 
@@ -1319,7 +1324,7 @@ final class Conversations
             $id = FileNotifications::ajouter($membre, 'message', fn (): array => [
                 'title' => '👥 ' . $nom,
                 'body' => mb_strimwidth(
-                    ((string) ($pseudoBrut ?? t('grp.un_membre'))) . ' : ' . $apercu,
+                    ((string) ($pseudoBrut ?? t('grp.un_membre'))) . ' : ' . $apercu(),
                     0, Amis::APERCU_NOTIFICATION, '…'
                 ),
                 'url' => url('groupes/' . $conversation),

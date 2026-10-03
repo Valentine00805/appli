@@ -34,6 +34,7 @@
   </div>
 </main>
 
+<script>window.MOTS = <?= json_encode(Langue::pourLeScript(), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;</script>
 <script src="<?= asset('assets/js/mot-de-passe.js') ?>" defer></script>
 </body>
 </html>

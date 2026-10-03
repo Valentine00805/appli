@@ -1508,7 +1508,7 @@ final class Amis
             [$moi, $ami, $muette ? 1 : 0, $muette ? $jusqua : null]);
     }
 
-    public static function notifier(int $expediteur, int $destinataire, string $texte, bool $avecImage = false, ?string $nomFichier = null,
+    public static function notifier(int $expediteur, int $destinataire, string|Closure $texte, bool $avecImage = false, ?string $nomFichier = null,
                                     ?int $dureeVocal = null): ?int
     {
         $depuis = Database::valeur(
@@ -1527,7 +1527,7 @@ final class Amis
         $id = FileNotifications::ajouter($destinataire, 'message', function () use (
             $compte, $texte, $avecImage, $nomFichier, $dureeVocal, $expediteur
         ): array {
-            $apercu = trim((string) preg_replace('/\s+/u', ' ', $texte));
+            $apercu = trim((string) preg_replace('/\s+/u', ' ', $texte instanceof Closure ? $texte() : $texte));
             if ($avecImage) {
                 $apercu = t('msg.piece_photo') . ($apercu === '' ? '' : ' · ' . $apercu);
             }

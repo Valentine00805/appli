@@ -17,7 +17,7 @@ final class HorsLigneController
     public function page(): void
     {
         header('Cache-Control: no-cache');
-        Vue::afficherPublic('hors-ligne', [], 'Hors connexion');
+        Vue::afficherPublic('hors-ligne', [], t('titre.hors_ligne'));
     }
 
     /**

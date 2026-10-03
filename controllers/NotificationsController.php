@@ -36,7 +36,7 @@ final class NotificationsController
             return;
         }
 
-        Vue::afficher('notifications/index', $donnees, 'Notifications');
+        Vue::afficher('notifications/index', $donnees, t('titre.notifications'));
     }
 
     /** Ce qu'on choisit de recevoir : une case par sorte de notification. */

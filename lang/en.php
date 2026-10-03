@@ -4049,4 +4049,9 @@ return [
     // Le journal d’alternance imprimé
     'alt.aucune_mission' => 'No assignment noted this week.',
     'alt.competences_label' => 'Skills: ',
+    // Les derniers restes, point par point
+    'js.mdp.afficher' => 'Show password',
+    'js.mdp.masquer' => 'Hide password',
+    'titre.notifications' => 'Notifications',
+    'titre.hors_ligne' => 'Offline',
 ];

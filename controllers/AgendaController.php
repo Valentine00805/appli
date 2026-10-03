@@ -17,7 +17,7 @@ final class AgendaController
         $f = Agenda::pour($cle);
         if ($f === null) {
             http_response_code(404);
-            Vue::afficher('erreurs/404', [], 'Page introuvable');
+            Vue::afficher('erreurs/404', [], t('err404.titre'));
             exit;
         }
 

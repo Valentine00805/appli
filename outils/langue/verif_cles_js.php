@@ -6,17 +6,20 @@
  * de langue. Une clé appelée sans exister se rendrait telle quelle à l'écran ;
  * une clé « js. » que personne n'appelle part pour rien dans chaque page.
  */
-$racine = 'C:/wamp64/www/mon_appli/appli/';
+$racine = str_replace('\\', '/', dirname(__DIR__, 2)) . '/';
 $fr = file_get_contents($racine . 'lang/fr.php');
 
 // Le script, sans ses commentaires : une clé citée en commentaire n'est pas un appel.
 $js = '';
-foreach (preg_split("/\r\n|\n/", file_get_contents($racine . 'assets/js/app.js')) as $ligne) {
-    $nue = ltrim($ligne);
-    if (str_starts_with($nue, '//') || str_starts_with($nue, '*') || str_starts_with($nue, '/*')) {
-        continue;
+// Tous les scripts de l'application : mot-de-passe.js a longtemps échappé au contrôle.
+foreach (glob($racine . 'assets/js/*.js') ?: [] as $script) {
+    foreach (preg_split("/\r\n|\n/", (string) file_get_contents($script)) as $ligne) {
+        $nue = ltrim($ligne);
+        if (str_starts_with($nue, '//') || str_starts_with($nue, '*') || str_starts_with($nue, '/*')) {
+            continue;
+        }
+        $js .= $ligne . "\n";
     }
-    $js .= $ligne . "\n";
 }
 
 // Ce que le script demande : mot('x'), motN('y'), et les clés posées dans un tableau.

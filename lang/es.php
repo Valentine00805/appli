@@ -4049,4 +4049,9 @@ return [
     // Le journal d’alternance imprimé
     'alt.aucune_mission' => 'Ninguna misión anotada esta semana.',
     'alt.competences_label' => 'Competencias: ',
+    // Les derniers restes, point par point
+    'js.mdp.afficher' => 'Mostrar contraseña',
+    'js.mdp.masquer' => 'Ocultar contraseña',
+    'titre.notifications' => 'Notificaciones',
+    'titre.hors_ligne' => 'Sin conexión',
 ];

@@ -523,15 +523,19 @@ final class Partages
 
         $atteints = [];
         $notifications = [];
-        $pseudo = (string) (Amis::compte($moi)['pseudo'] ?? t('pt.un_ami'));
-        $quoi = t('pt.quoi_' . (in_array($type, ['cours', 'fiche', 'dossier'], true) ? $type : 'fichier'), [
+        // Ce qui s'écrit pour un destinataire s'écrit dans sa langue : on garde de quoi
+        // le faire (des fonctions), pas le texte déjà fait dans la mienne.
+        $pseudoBrut = Amis::compte($moi)['pseudo'] ?? null;
+        $pseudo = fn (): string => (string) ($pseudoBrut ?? t('pt.un_ami'));
+        $quoi = fn (): string => t('pt.quoi_' . (in_array($type, ['cours', 'fiche', 'dossier'], true) ? $type : 'fichier'), [
             'titre' => mb_strimwidth((string) ($cible['titre_cours'] ?? $cible['titre']), 0, 80, '…'),
         ]);
 
         foreach ($amis as $a) {
             self::donnerAcces($moi, $a, $type, $id, $droit, $texte);
             $atteints[$a] = true;
-            $annonce = t('pt.a_partage', ['qui' => $pseudo, 'quoi' => $quoi]) . ($texte === '' ? '' : ' · ' . $texte);
+            $annonce = fn (): string => t('pt.a_partage', ['qui' => $pseudo(), 'quoi' => $quoi()])
+                . ($texte === '' ? '' : ' · ' . $texte);
             if (self::dansLaDiscussion($a)) {
                 Database::run(
                     'INSERT INTO messages (expediteur_id, destinataire_id, texte, partage_type, partage_id, created_at) VALUES (?, ?, ?, ?, ?, UTC_TIMESTAMP())',
@@ -562,7 +566,8 @@ final class Partages
                 [$dernier, $g, $moi]
             );
             array_push($notifications, ...Conversations::notifier($moi, $g,
-                t('pt.a_partage_quoi', ['quoi' => $quoi]) . ($texte === '' ? '' : ' · ' . $texte)));
+                fn (): string => t('pt.a_partage_quoi', ['quoi' => $quoi()])
+                    . ($texte === '' ? '' : ' · ' . $texte)));
         }
 
         return [count($atteints), null, $notifications];
@@ -643,8 +648,9 @@ final class Partages
 
         $atteints = [];
         $notifications = [];
-        $pseudo = (string) (Amis::compte($moi)['pseudo'] ?? t('pt.un_ami'));
-        $combien = t('pt.dont', [
+        $pseudoBrut = Amis::compte($moi)['pseudo'] ?? null;
+        $pseudo = fn (): string => (string) ($pseudoBrut ?? t('pt.un_ami'));
+        $combien = fn (): string => t('pt.dont', [
             'combien' => self::combien(array_map('count', $comptes)),
             'titre' => mb_strimwidth($documents[0]['titre'], 0, 60, '…'),
         ]);
@@ -661,7 +667,8 @@ final class Partages
                 }
             }
             $atteints[$a] = true;
-            $annonce = t('pt.a_partage', ['qui' => $pseudo, 'quoi' => $combien]) . ($texte === '' ? '' : ' · ' . $texte);
+            $annonce = fn (): string => t('pt.a_partage', ['qui' => $pseudo(), 'quoi' => $combien()])
+                . ($texte === '' ? '' : ' · ' . $texte);
             $n = $carte ? Amis::notifier($moi, $a, $annonce) : self::notifierOnglet($a, $pseudo, $annonce);
             if ($n !== null) {
                 $notifications[] = $n;
@@ -688,7 +695,8 @@ final class Partages
                 );
             }
             array_push($notifications, ...Conversations::notifier($moi, $g,
-                t('pt.a_partage_groupe', ['quoi' => $combien]) . ($texte === '' ? '' : ' · ' . $texte)));
+                fn (): string => t('pt.a_partage_groupe', ['quoi' => $combien()])
+                    . ($texte === '' ? '' : ' · ' . $texte)));
         }
 
         return [self::combien(array_map('count', $comptes)), count($atteints), null, $notifications];
@@ -736,11 +744,11 @@ final class Partages
     }
 
     /** La notification d'un partage qui n'arrive que dans l'onglet : un clic l'ouvre. */
-    private static function notifierOnglet(int $destinataire, string $pseudo, string $annonce): ?int
+    private static function notifierOnglet(int $destinataire, Closure $pseudo, Closure $annonce): ?int
     {
         return FileNotifications::ajouter($destinataire, 'partage', fn (): array => [
-            'title' => '🔗 ' . $pseudo,
-            'body' => mb_strimwidth((string) preg_replace('/^🔗\s*/u', '', $annonce), 0, 200, '…'),
+            'title' => '🔗 ' . $pseudo(),
+            'body' => mb_strimwidth((string) preg_replace('/^🔗\s*/u', '', $annonce()), 0, 200, '…'),
             'url' => url('partages'),
             'tag' => 'partages-recus',
         ]);

@@ -22,7 +22,7 @@ const DOMAINE = '@exemple-test.fr';
 $parUserId = ['notifications_file', 'abonnements_push', 'discussions_etat', 'conversation_membres',
     'conversation_epingles', 'taches', 'listes_taches', 'evenements', 'cours', 'matieres',
     'types_evenement', 'tags', 'dossiers', 'operations', 'categories_budget', 'recurrences',
-    'soldes_saisis', 'personnes', 'groupes', 'partages_amis', 'partages_calendrier',
+    'soldes_saisis', 'personnes', 'groupes', 'partages_calendrier',
     'alternance_documents', 'projet_membres'];
 
 $efface = in_array('--efface', $argv, true);

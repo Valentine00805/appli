@@ -77,6 +77,28 @@ try {
     $dire('var LANGUE = "fr"', $oui(str_contains($appel('service-worker.js'), 'var LANGUE = "fr";')), 'oui');
     $dire('  et le manifeste suit',
         (string) (json_decode($appel('manifeste.webmanifest'), true)['lang'] ?? ''), 'fr');
+
+    echo "\n6. L’œil du champ de mot de passe\n";
+    /*
+     * mot-de-passe.js écrivait « Afficher le mot de passe » en dur. Il lit
+     * maintenant window.MOTS, que la page doit poser — y compris les pages sans
+     * compte (connexion, inscription), qui n'en posaient aucune.
+     */
+    $appel('compte/langue', ['_csrf' => $csrf, 'langue' => 'en']);
+    $compte = $appel('compte');
+    $dire('connecté, en anglais : « Show password »',
+        $oui(str_contains($compte, '"mdp.afficher":"Show password"')), 'oui');
+    $dire('  et « Hide password »', $oui(str_contains($compte, '"mdp.masquer":"Hide password"')), 'oui');
+    $appel('compte/langue', ['_csrf' => $csrf, 'langue' => 'fr']);
+
+    // Sans cookie : la page de connexion telle que la voit un visiteur.
+    usleep(320000);
+    $visiteur = curl_init('http://localhost/mon_appli/appli/connexion');
+    curl_setopt_array($visiteur, [CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 30]);
+    $connexion = (string) curl_exec($visiteur);
+    $dire('la page de connexion pose window.MOTS', $oui(str_contains($connexion, 'window.MOTS')), 'oui');
+    $dire('  avec les mots de l’œil', $oui(str_contains($connexion, '"mdp.afficher":"Afficher le mot de passe"')), 'oui');
+    $dire('  et charge bien le script', $oui(str_contains($connexion, 'mot-de-passe.js')), 'oui');
 } finally {
     // Ménage : ce compte d'essai seul, et ce qui en dépend.
     if ($id > 0) {
