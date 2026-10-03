@@ -65,7 +65,7 @@ $aVenirIds = array_map(static fn (array $r): int => (int) $r['id'], $aVenir);
   <div class="carte stat">
     <div class="stat__valeur" style="color:<?= $couleurSolde($courant['solde_depart'] ?? null) ?>">
       <?= $courant === null || $courant['solde_depart'] === null
-          ? '—' : e(montant_fr($courant['solde_depart'])) ?>
+          ? '—' : e(montant_lisible($courant['solde_depart'])) ?>
     </div>
     <div class="stat__libelle">
       <?= e(t('prev.solde_depart')) ?>
@@ -79,24 +79,24 @@ $aVenirIds = array_map(static fn (array $r): int => (int) $r['id'], $aVenir);
 
   <div class="carte stat">
     <div class="stat__valeur" style="color:var(--succes)">
-      + <?= e(montant_fr(($courant['reel_recettes'] ?? 0) + ($courant['prevu_recettes'] ?? 0))) ?>
+      + <?= e(montant_lisible(($courant['reel_recettes'] ?? 0) + ($courant['prevu_recettes'] ?? 0))) ?>
     </div>
     <div class="stat__libelle">
       <?= e(t('prev.recettes')) ?>
       <?php if (($courant['prevu_recettes'] ?? 0) > 0): ?>
-        <span class="discret"><?= e(t('prev.dont_a_venir', ['montant' => montant_fr($courant['prevu_recettes'])])) ?></span>
+        <span class="discret"><?= e(t('prev.dont_a_venir', ['montant' => montant_lisible($courant['prevu_recettes'])])) ?></span>
       <?php endif; ?>
     </div>
   </div>
 
   <div class="carte stat">
     <div class="stat__valeur" style="color:var(--erreur)">
-      − <?= e(montant_fr(($courant['reel_depenses'] ?? 0) + ($courant['prevu_depenses'] ?? 0))) ?>
+      − <?= e(montant_lisible(($courant['reel_depenses'] ?? 0) + ($courant['prevu_depenses'] ?? 0))) ?>
     </div>
     <div class="stat__libelle">
       <?= e(t('prev.depenses')) ?>
       <?php if (($courant['prevu_depenses'] ?? 0) > 0): ?>
-        <span class="discret"><?= e(t('prev.dont_a_venir', ['montant' => montant_fr($courant['prevu_depenses'])])) ?></span>
+        <span class="discret"><?= e(t('prev.dont_a_venir', ['montant' => montant_lisible($courant['prevu_depenses'])])) ?></span>
       <?php endif; ?>
     </div>
   </div>
@@ -104,7 +104,7 @@ $aVenirIds = array_map(static fn (array $r): int => (int) $r['id'], $aVenir);
   <div class="carte stat" style="border-color:var(--accent)">
     <div class="stat__valeur" style="color:<?= $couleurSolde($courant['solde_previsionnel'] ?? null) ?>">
       <?= $courant === null || $courant['solde_previsionnel'] === null
-          ? '—' : e(montant_fr($courant['solde_previsionnel'])) ?>
+          ? '—' : e(montant_lisible($courant['solde_previsionnel'])) ?>
     </div>
     <div class="stat__libelle"><?= t('prev.solde_previsionnel') ?></div>
   </div>
@@ -166,7 +166,7 @@ $aVenirIds = array_map(static fn (array $r): int => (int) $r['id'], $aVenir);
 
                     <strong style="font-variant-numeric:tabular-nums;white-space:nowrap;color:<?=
                         $r['sens'] === 'recette' ? 'var(--succes)' : 'var(--erreur)' ?>">
-                      <?= $r['sens'] === 'recette' ? '+' : '−' ?> <?= e(montant_fr($r['montant'])) ?>
+                      <?= $r['sens'] === 'recette' ? '+' : '−' ?> <?= e(montant_lisible($r['montant'])) ?>
                     </strong>
 
                     <?php if ($enAttente && (int) $r['actif'] === 1): ?>
@@ -200,7 +200,7 @@ $aVenirIds = array_map(static fn (array $r): int => (int) $r['id'], $aVenir);
                       <div class="champ">
                         <label for="mnt-<?= (int) $r['id'] ?>"><?= e(t('bud.montant')) ?></label>
                         <input type="text" id="mnt-<?= (int) $r['id'] ?>" name="montant" required inputmode="decimal"
-                               value="<?= e(montant_fr($r['montant'], false)) ?>">
+                               value="<?= e(montant_lisible($r['montant'], false)) ?>">
                       </div>
                       <div class="champ">
                         <label for="jour-<?= (int) $r['id'] ?>"><?= e(t('prev.jour')) ?></label>
@@ -295,16 +295,16 @@ $aVenirIds = array_map(static fn (array $r): int => (int) $r['id'], $aVenir);
                     <span class="discret" title="<?= e(t('prev.solde_saisi_titre')) ?>">✎</span>
                   <?php endif; ?>
                 </th>
-                <td class="nombre"><?= $ligne['solde_depart'] === null ? '—' : e(montant_fr($ligne['solde_depart'])) ?></td>
+                <td class="nombre"><?= $ligne['solde_depart'] === null ? '—' : e(montant_lisible($ligne['solde_depart'])) ?></td>
                 <td class="nombre" style="color:var(--succes)">
-                  <?= e(montant_fr($ligne['reel_recettes'] + $ligne['prevu_recettes'])) ?>
+                  <?= e(montant_lisible($ligne['reel_recettes'] + $ligne['prevu_recettes'])) ?>
                 </td>
                 <td class="nombre" style="color:var(--erreur)">
-                  <?= e(montant_fr($ligne['reel_depenses'] + $ligne['prevu_depenses'])) ?>
+                  <?= e(montant_lisible($ligne['reel_depenses'] + $ligne['prevu_depenses'])) ?>
                 </td>
                 <td class="nombre">
                   <strong style="color:<?= $couleurSolde($ligne['solde_previsionnel']) ?>">
-                    <?= $ligne['solde_previsionnel'] === null ? '—' : e(montant_fr($ligne['solde_previsionnel'])) ?>
+                    <?= $ligne['solde_previsionnel'] === null ? '—' : e(montant_lisible($ligne['solde_previsionnel'])) ?>
                   </strong>
                 </td>
               </tr>
@@ -386,7 +386,7 @@ $aVenirIds = array_map(static fn (array $r): int => (int) $r['id'], $aVenir);
       <?php if ($ancrage !== null): ?>
         <p class="discret" style="margin:0 0 .75rem">
           <?= t('prev.dernier_saisi', [
-              'montant' => e(montant_fr($ancrage['montant'])),
+              'montant' => e(montant_lisible($ancrage['montant'])),
               'mois' => e(strtolower(nom_mois((int) substr((string) $ancrage['periode'], 5, 2)))),
               'annee' => e(substr((string) $ancrage['periode'], 0, 4)),
           ]) ?>
@@ -404,9 +404,9 @@ $aVenirIds = array_map(static fn (array $r): int => (int) $r['id'], $aVenir);
             <?= e(t('prev.forcer_solde', ['mois' => strtolower(nom_mois((int) $mois->format('n')))])) ?>
           </label>
           <input type="text" id="montant-solde" name="montant" required inputmode="decimal"
-                 value="<?= $soldeSaisi !== null ? e(montant_fr($soldeSaisi['montant'], false)) : '' ?>"
+                 value="<?= $soldeSaisi !== null ? e(montant_lisible($soldeSaisi['montant'], false)) : '' ?>"
                  placeholder="<?= $courant !== null && $courant['solde_depart'] !== null
-                     ? e(montant_fr($courant['solde_depart'], false)) : '0,00' ?>">
+                     ? e(montant_lisible($courant['solde_depart'], false)) : '0,00' ?>">
           <span class="champ__aide">
             <?= e(t('prev.forcer_aide')) ?>
           </span>

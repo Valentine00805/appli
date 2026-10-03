@@ -98,7 +98,7 @@ final class RemboursementsController
         $titre = $personne !== '' ? t('remb.xl.compte_pour', ['qui' => $personne]) : t('remb.xl.a_rembourser');
         $classeur->ligne([['valeur' => t('remb.xl.titre', ['titre' => $titre, 'periode' => $intitulePeriode]),
             'style' => ClasseurXlsx::TITRE]]);
-        $classeur->ligne([['valeur' => t('remb.xl.edite_le', ['date' => date('d/m/Y')]), 'style' => ClasseurXlsx::DISCRET]]);
+        $classeur->ligne([['valeur' => t('remb.xl.edite_le', ['date' => date_numerique(time())]), 'style' => ClasseurXlsx::DISCRET]]);
         $classeur->ligne();
 
         foreach ($rubriques as $rubrique) {
@@ -260,7 +260,7 @@ final class RemboursementsController
         );
 
         Session::flash('succes', t('remb.regles', [
-            'montant' => montant_fr($montant),
+            'montant' => montant_lisible($montant),
             'periode' => mb_strtolower(nom_mois((int) substr($periode, 5, 2))) . ' ' . substr($periode, 0, 4),
             'date' => date_fr($date . ' 00:00:00', false),
         ]));
@@ -387,7 +387,7 @@ final class RemboursementsController
 
         $part = montant_depuis_saisie(post('part_rembourser'));
         if ($part !== null && ($part <= 0 || $part > (float) $operation['montant'] + 0.001)) {
-            Session::flash('erreur', t('remb.part_invalide', ['montant' => montant_fr($operation['montant'])]));
+            Session::flash('erreur', t('remb.part_invalide', ['montant' => montant_lisible($operation['montant'])]));
             redirect('budget/remboursements', $this->parametresRetour());
         }
 

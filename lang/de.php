@@ -4054,4 +4054,17 @@ return [
     'js.mdp.masquer' => 'Passwort verbergen',
     'titre.notifications' => 'Benachrichtigungen',
     'titre.hors_ligne' => 'Offline',
+    // Les formats : nombres, monnaie, tailles et dates
+    'fmt.decimal' => ',',
+    'fmt.milliers' => '.',
+    'fmt.monnaie' => '{montant} €',
+    'fmt.taille.o' => 'B',
+    'fmt.taille.ko' => 'KB',
+    'fmt.taille.mo' => 'MB',
+    'fmt.taille.go' => 'GB',
+    'date.courte' => 'd.m.Y',
+    'date.jour_mois' => 'd.m.',
+    'js.taille.o' => 'B',
+    'js.taille.ko' => 'KB',
+    'js.taille.mo' => 'MB',
 ];

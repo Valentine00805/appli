@@ -60,10 +60,10 @@ $ecarts = array_filter($controles, static fn (array $c): bool => $c['ecart'] !==
           <th scope="row" style="font-weight:500;text-transform:capitalize">
             <?= e(strtolower(nom_mois((int) substr($c['mois'], 5, 2))) . ' ' . substr($c['mois'], 0, 4)) ?>
           </th>
-          <td class="nombre"><?= e(montant_fr($c['recalcule'])) ?></td>
+          <td class="nombre"><?= e(montant_lisible($c['recalcule'])) ?></td>
           <td class="nombre"><?= $c['feuille'] === null
               ? '<span class="discret">' . e(t('cls.non_indique')) . '</span>'
-              : e(montant_fr($c['feuille'])) ?></td>
+              : e(montant_lisible($c['feuille'])) ?></td>
           <td>
             <?php if ($c['ecart'] === null): ?>
               <span class="discret">—</span>
@@ -71,7 +71,7 @@ $ecarts = array_filter($controles, static fn (array $c): bool => $c['ecart'] !==
               <span class="pastille" style="background:var(--succes-doux);color:var(--succes)"><?= e(t('cls.identique')) ?></span>
             <?php else: ?>
               <span class="pastille" style="background:var(--erreur-doux);color:var(--erreur)">
-                <?= $c['ecart'] > 0 ? '+' : '−' ?> <?= e(montant_fr(abs($c['ecart']))) ?>
+                <?= $c['ecart'] > 0 ? '+' : '−' ?> <?= e(montant_lisible(abs($c['ecart']))) ?>
               </span>
             <?php endif; ?>
           </td>
@@ -165,7 +165,7 @@ $ecarts = array_filter($controles, static fn (array $c): bool => $c['ecart'] !==
                        <?= $l['doublon'] ? '' : ' checked' ?>
                        aria-label="<?= e(t('cls.reprendre_ligne', ['nom' => $l['libelle']])) ?>">
               </td>
-              <td style="white-space:nowrap"><?= e(date('d/m/Y', strtotime($l['date']))) ?></td>
+              <td style="white-space:nowrap"><?= e(date_numerique($l['date'])) ?></td>
               <td>
                 <?= e($l['libelle']) ?>
                 <?php if ($l['doublon']): ?>
@@ -175,13 +175,13 @@ $ecarts = array_filter($controles, static fn (array $c): bool => $c['ecart'] !==
                   <span class="pastille"><?= e(t('cls.hors_total')) ?></span>
                 <?php endif; ?>
               </td>
-              <td class="nombre"><?= e(montant_fr($l['montant'])) ?></td>
+              <td class="nombre"><?= e(montant_lisible($l['montant'])) ?></td>
               <td class="nombre">
                 <?php if ($l['part'] !== null): ?>
-                  <strong><?= e(montant_fr($l['part'])) ?></strong>
+                  <strong><?= e(montant_lisible($l['part'])) ?></strong>
                   <span class="discret" title="<?= e(t('cls.bloc_partage')) ?>">◐</span>
                 <?php else: ?>
-                  <?= e(montant_fr($l['montant'])) ?>
+                  <?= e(montant_lisible($l['montant'])) ?>
                 <?php endif; ?>
               </td>
               <td class="discret"><?= e($l['rubrique'] ?? '—') ?></td>

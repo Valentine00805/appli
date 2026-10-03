@@ -18,7 +18,7 @@
 
 // « le 29/09/2026 à 13:54 » : la tournure et l'heure viennent de la langue.
 $quand = static fn (string $datetime): string => t('date.le_a', [
-    'date'  => date('d/m/Y', (int) strtotime($datetime)),
+    'date'  => date_numerique($datetime),
     'heure' => heure_courte((int) strtotime($datetime)),
 ]);
 ?>
@@ -84,7 +84,7 @@ $aReautoriser = !($partage ?? true) && $partagesEnAttente > 0 && ($souci ?? null
       <?php if ($souci !== null): ?>
         <p class="outlook-attention">
           <strong><?= e(t('agenda.echec')) ?></strong>
-          (<?= e(t('date.le_a', ['date' => date('d/m/Y', (int) strtotime($souci['quand'])),
+          (<?= e(t('date.le_a', ['date' => date_numerique($souci['quand']),
                                 'heure' => heure_courte((int) strtotime($souci['quand']))])) ?>) :
           <?= e($souci['quoi']) ?>
         </p>

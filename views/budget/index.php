@@ -51,16 +51,16 @@ $plafondHistorique = max(array_merge([1.0], array_map(
 
 <div class="grille grille--4" style="margin-bottom:1.5rem">
   <div class="carte stat">
-    <div class="stat__valeur" style="color:var(--succes)">+ <?= e(montant_fr($totaux['recettes'])) ?></div>
+    <div class="stat__valeur" style="color:var(--succes)">+ <?= e(montant_lisible($totaux['recettes'])) ?></div>
     <div class="stat__libelle"><?= e(t('bud.recettes_mois')) ?></div>
   </div>
   <div class="carte stat">
-    <div class="stat__valeur" style="color:var(--erreur)">− <?= e(montant_fr($totaux['depenses'])) ?></div>
+    <div class="stat__valeur" style="color:var(--erreur)">− <?= e(montant_lisible($totaux['depenses'])) ?></div>
     <div class="stat__libelle"><?= e(t('bud.depenses_mois')) ?></div>
   </div>
   <div class="carte stat">
     <div class="stat__valeur" style="color:<?= $totaux['solde'] >= 0 ? 'var(--succes)' : 'var(--erreur)' ?>">
-      <?= $totaux['solde'] >= 0 ? '+ ' : '− ' ?><?= e(montant_fr(abs($totaux['solde']))) ?>
+      <?= $totaux['solde'] >= 0 ? '+ ' : '− ' ?><?= e(montant_lisible(abs($totaux['solde']))) ?>
     </div>
     <div class="stat__libelle"><?= e(t('bud.solde')) ?></div>
   </div>
@@ -155,7 +155,7 @@ $plafondHistorique = max(array_merge([1.0], array_map(
               <span class="evt-ligne__droite">
                 <strong style="font-variant-numeric:tabular-nums;white-space:nowrap;color:<?=
                     $op['sens'] === 'recette' ? 'var(--succes)' : 'var(--erreur)' ?>">
-                  <?= $op['sens'] === 'recette' ? '+' : '−' ?> <?= e(montant_fr($op['montant'])) ?>
+                  <?= $op['sens'] === 'recette' ? '+' : '−' ?> <?= e(montant_lisible($op['montant'])) ?>
                 </strong>
                 <form method="post" action="<?= url('operations/' . $op['id'] . '/rembourser') ?>" class="en-ligne">
                   <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
@@ -286,9 +286,9 @@ $plafondHistorique = max(array_merge([1.0], array_map(
               <div style="display:flex;justify-content:space-between;gap:.5rem;font-size:.88rem">
                 <span><?= e($c['icone'] . ' ' . $c['nom']) ?></span>
                 <span style="font-variant-numeric:tabular-nums;white-space:nowrap">
-                  <strong><?= e(montant_fr($total)) ?></strong>
+                  <strong><?= e(montant_lisible($total)) ?></strong>
                   <?php if ($plafond !== null): ?>
-                    <span class="discret">/ <?= e(montant_fr($plafond)) ?></span>
+                    <span class="discret">/ <?= e(montant_lisible($plafond)) ?></span>
                   <?php endif; ?>
                 </span>
               </div>
@@ -300,7 +300,7 @@ $plafondHistorique = max(array_merge([1.0], array_map(
               </div>
               <?php if ($depassement): ?>
                 <span class="discret" style="color:var(--erreur)">
-                  <?= e(t('bud.plafond_depasse', ['montant' => montant_fr($total - $plafond)])) ?>
+                  <?= e(t('bud.plafond_depasse', ['montant' => montant_lisible($total - $plafond)])) ?>
                 </span>
               <?php endif; ?>
             </div>
@@ -322,8 +322,8 @@ $plafondHistorique = max(array_merge([1.0], array_map(
              href="<?= url('budget', ['mois' => $h['periode']]) ?>"
              title="<?= e(t('bud.mois_detail', [
                  'mois' => nom_mois((int) $h['mois']->format('n')) . ' ' . $h['mois']->format('Y'),
-                 'recettes' => montant_fr($h['recettes']),
-                 'depenses' => montant_fr($h['depenses']),
+                 'recettes' => montant_lisible($h['recettes']),
+                 'depenses' => montant_lisible($h['depenses']),
              ])) ?>">
             <span class="histogramme__barres">
               <span class="histogramme__recette" style="height:<?= number_format($hr, 1, '.', '') ?>%"></span>

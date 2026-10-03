@@ -96,6 +96,14 @@ fait. Il ne touche qu'à des adresses en `@exemple-test.fr`, et sa suppression
 finale porte à la fois sur l'identifiant et sur l'adresse : un vrai compte ne
 peut pas entrer dans sa requête.
 
+**`formats_langue.php`** — les montants, les tailles de fichier et les dates,
+écrits à la façon de la langue du compte et lus de même. Elle vérifie les
+valeurs exactes dans les quatre langues au caractère près (« 1 234,50 € »,
+« €1,234.50 », « 1.234,50 € »), que le **français n'a pas bougé d'un octet**,
+qu'une saisie se lit selon la langue (« 1,234 » est un millier en anglais, une
+décimale en français), qu'un relevé de banque garde sa convention, puis passe
+par la page du budget. Un compte d'essai, effacé à la fin.
+
 **`signaux_langue.php`** — les trois endroits où le code se demandait « de quoi
 s'agit-il ? » en comparant du texte affiché : une liste de tâches au
 calendrier, une session de révision, et le « c'est aujourd'hui » de la
@@ -135,6 +143,23 @@ catégorie ici :
   sauvegarde, l'adresse d'expédition des e-mails.
 - **Un commentaire JavaScript dans un `heredoc`** (`NotificationsController`) —
   du code, que le découpage en jetons ne peut pas distinguer d'une chaîne.
+
+### Les formats de chaque langue
+
+Les séparateurs, la place du symbole et l'ordre d'une date vivent dans les
+fichiers de langue (`fmt.decimal`, `fmt.milliers`, `fmt.monnaie`, `fmt.taille.*`,
+`date.courte`, `date.jour_mois`), pas dans le code. Pour en changer un, c'est
+une ligne par langue — rien d'autre à toucher.
+
+Un choix à connaître : **l'anglais suit l'usage britannique** (`d/m/Y`, « €1,234.50 »),
+l'application comptant en euros. Pour le format américain, `date.courte` vaut
+`m/d/Y` dans `lang/en.php`.
+
+Côté code : `montant_lisible()`, `taille_lisible()` et `date_numerique()` (dans
+`src/helpers.php`) ; côté script, `nombreLocal()` et les clés `js.taille.*`.
+La saisie d'un montant passe par `montant_depuis_saisie()`, qui lit selon la
+langue en cours ; `ReleveCsv` lui impose le français, parce que le fichier d'une
+banque ne change pas avec la langue de la page.
 
 ### Le piège à connaître
 

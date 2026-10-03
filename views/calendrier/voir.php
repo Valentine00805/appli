@@ -165,7 +165,7 @@ $ligne = static function (string $etiquette, string $valeur): string {
       <?php if ($serie !== null): ?>
         <?= $ligne(t('evt.repetition'), e(tn('evt.occurrences', (int) $serie['occurrences'], [
             'frequence' => ucfirst((string) $serie['frequence']),
-            'date' => date('d/m/Y', (int) strtotime((string) $serie['jusqu_au'])),
+            'date' => date_numerique((string) $serie['jusqu_au']),
         ]))) ?>
       <?php endif; ?>
 

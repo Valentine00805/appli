@@ -42,7 +42,7 @@ $csrf = Session::jetonCsrf();
               <?php else: ?>
                 <?= e(tn('cat.nb_operations', $nb)) ?>
                 <?php if ($reste > 0): ?>
-                  <?= t('pers.encore_a_reclamer', ['montant' => e(montant_fr($reste))]) ?>
+                  <?= t('pers.encore_a_reclamer', ['montant' => e(montant_lisible($reste))]) ?>
                 <?php else: ?>
                   <?= e(t('pers.rien_a_reclamer')) ?>
                 <?php endif; ?>

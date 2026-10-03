@@ -54,14 +54,16 @@ function entier_ou_null(mixed $valeur): ?int
 /** Formate une taille en octets de façon lisible. */
 function taille_lisible(int $octets): string
 {
-    $unites = ['o', 'Ko', 'Mo', 'Go'];
+    $unites = ['o', 'ko', 'mo', 'go'];
     $i = 0;
     $taille = (float) $octets;
     while ($taille >= 1024 && $i < count($unites) - 1) {
         $taille /= 1024;
         $i++;
     }
-    return ($i === 0 ? (string) (int) $taille : number_format($taille, 1, ',', ' ')) . ' ' . $unites[$i];
+    $nombre = $i === 0 ? (string) (int) $taille : number_format($taille, 1, t('fmt.decimal'), t('fmt.milliers'));
+
+    return $nombre . ' ' . t('fmt.taille.' . $unites[$i]);
 }
 
 /**
@@ -418,24 +420,40 @@ function surligner(string $texteEchappe, array $termes): string
     return $texteEchappe;
 }
 
-/* --- Montants (budget) ------------------------------------------------- */
-
-/** Formate un montant pour l'affichage : 1 234,50 €. */
-function montant_fr(int|float|string|null $montant, bool $avecSymbole = true): string
+/**
+ * Une date en chiffres, à la façon de la langue : 03/10/2026, ou 03.10.2026 en allemand.
+ *
+ * @param DateTimeInterface|int|string $quand une date, un horodatage, ou un texte que strtotime lit
+ */
+function date_numerique(DateTimeInterface|int|string $quand): string
 {
-    $valeur = (float) ($montant ?? 0);
-    // Espace fine insécable pour les milliers : un montant ne doit jamais
-    // se couper en fin de ligne.
-    $texte = number_format($valeur, 2, ',', " ");
-    // Espace insécable avant le symbole : « 12,50 € » ne se coupe pas.
-    return $avecSymbole ? $texte . " €" : $texte;
+    if ($quand instanceof DateTimeInterface) {
+        return $quand->format(t('date.courte'));
+    }
+
+    return date(t('date.courte'), is_int($quand) ? $quand : (int) strtotime($quand));
 }
 
+/* --- Montants (budget) ------------------------------------------------- */
+
+/**
+ * Formate un montant pour l'affichage, à la façon de la langue en cours :
+ * « 1 234,50 € » en français, « €1,234.50 » en anglais, « 1.234,50 € » en allemand.
+ */
+function montant_lisible(int|float|string|null $montant, bool $avecSymbole = true, int $decimales = 2): string
+{
+    $valeur = round((float) ($montant ?? 0), $decimales);
+    // Le signe se pose devant le tout : « -12,50 € » comme « -€12.50 ».
+    $signe = $valeur < 0 ? '-' : '';
+    $texte = number_format(abs($valeur), $decimales, t('fmt.decimal'), t('fmt.milliers'));
+
+    return $signe . ($avecSymbole ? t('fmt.monnaie', ['montant' => $texte]) : $texte);
+}
 /**
  * Lit un montant saisi à la main : « 12,50 », « 12.50 », « 1 234,50 », « 12 € ».
  * Renvoie null si la saisie n'est pas un nombre exploitable.
  */
-function montant_depuis_saisie(string $saisie): ?float
+function montant_depuis_saisie(string $saisie, ?string $convention = null): ?float
 {
     $saisie = trim($saisie);
     if ($saisie === '') {
@@ -443,13 +461,34 @@ function montant_depuis_saisie(string $saisie): ?float
     }
     // Espaces (y compris insécables), symbole monétaire : on retire.
     $saisie = str_replace(["\u{00A0}", "\u{202F}", ' ', '€', 'EUR'], '', $saisie);
-    $saisie = str_replace(',', '.', $saisie);
+
+    $virgules = substr_count($saisie, ',');
+    $points = substr_count($saisie, '.');
+    if ($virgules > 0 && $points > 0) {
+        // Les deux à la fois : le dernier est la décimale, l'autre sépare les milliers.
+        $decimale = (int) strrpos($saisie, ',') > (int) strrpos($saisie, '.') ? ',' : '.';
+        $milliers = $decimale === ',' ? '.' : ',';
+        $saisie = str_replace($decimale, '.', str_replace($milliers, '', $saisie));
+    } elseif ($virgules + $points > 0) {
+        /*
+         * Un seul signe. « 12,50 » et « 12.50 » sont des décimales dans toutes les
+         * langues ; « 1,234 » ou « 1.234 » est un millier si c'est le signe des
+         * milliers de la langue (la virgule en anglais, le point en allemand), et
+         * une décimale sinon — c'est le cas du français, qui n'a que l'espace.
+         * Un fichier de banque lit la langue du fichier, pas celle de la page :
+         * l'appelant le dit par « $convention ».
+         */
+        $signe = $virgules > 0 ? ',' : '.';
+        $miens = Langue::texteEn($convention ?? Langue::courante(), 'fmt.milliers');
+        $forme = '/^[-+]?\d{1,3}(?:' . preg_quote($signe, '/') . '\d{3})+$/';
+        $estMilliers = $signe === $miens && preg_match($forme, $saisie) === 1;
+        $saisie = $estMilliers ? str_replace($signe, '', $saisie) : str_replace(',', '.', $saisie);
+    }
     if (!is_numeric($saisie)) {
         return null;
     }
     return round((float) $saisie, 2);
 }
-
 /** Couleur d'une opération : celle de sa catégorie, sinon un gris neutre. */
 function couleur_operation(array $operation): string
 {

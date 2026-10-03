@@ -17,10 +17,10 @@ $carte = static function (array $c) use ($csrf, $palette, $icones): string {
           <p class="discret" style="margin:0">
             <?= e(tn('cat.nb_operations', (int) $c['nb_operations'])) ?>
             <?php if ((int) $c['nb_operations'] > 0): ?>
-              <?= e(t('cat.total', ['montant' => montant_fr($c['total'])])) ?>
+              <?= e(t('cat.total', ['montant' => montant_lisible($c['total'])])) ?>
             <?php endif; ?>
             <?php if ($c['plafond_mensuel'] !== null): ?>
-              <?= e(t('cat.plafond', ['montant' => montant_fr($c['plafond_mensuel'])])) ?>
+              <?= e(t('cat.plafond', ['montant' => montant_lisible($c['plafond_mensuel'])])) ?>
             <?php endif; ?>
           </p>
         </div>
@@ -74,7 +74,7 @@ $carte = static function (array $c) use ($csrf, $palette, $icones): string {
               <label for="plafond-<?= (int) $c['id'] ?>"><?= e(t('cat.plafond_mensuel')) ?></label>
               <input type="text" id="plafond-<?= (int) $c['id'] ?>" name="plafond_mensuel" inputmode="decimal"
                      placeholder="<?= e(t('cat.plafond_vide')) ?>"
-                     value="<?= $c['plafond_mensuel'] !== null ? e(montant_fr($c['plafond_mensuel'], false)) : '' ?>">
+                     value="<?= $c['plafond_mensuel'] !== null ? e(montant_lisible($c['plafond_mensuel'], false)) : '' ?>">
               <span class="champ__aide">
                 <?= e(t('cat.plafond_aide')) ?>
               </span>
@@ -164,12 +164,12 @@ $carte = static function (array $c) use ($csrf, $palette, $icones): string {
                 <?php endif; ?>
               </th>
               <td class="nombre">
-                <?= e(montant_fr($s['bas'])) ?> <span class="discret"><?= e(t('cat.a')) ?></span> <?= e(montant_fr($s['haut'])) ?>
+                <?= e(montant_lisible($s['bas'])) ?> <span class="discret"><?= e(t('cat.a')) ?></span> <?= e(montant_lisible($s['haut'])) ?>
               </td>
-              <td class="nombre"><strong><?= e(montant_fr($s['conseille'])) ?></strong></td>
+              <td class="nombre"><strong><?= e(montant_lisible($s['conseille'])) ?></strong></td>
               <td class="discret" style="font-size:.82rem;white-space:nowrap">
                 <?= e(t('cat.mois_de_a', [
-                    'n' => (int) $s['mois'], 'mini' => montant_fr($s['mini']), 'maxi' => montant_fr($s['maxi']),
+                    'n' => (int) $s['mois'], 'mini' => montant_lisible($s['mini']), 'maxi' => montant_lisible($s['maxi']),
                 ])) ?>
               </td>
               <td>
@@ -180,7 +180,7 @@ $carte = static function (array $c) use ($csrf, $palette, $icones): string {
                     <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
                     <button class="bouton bouton--secondaire bouton--petit" type="submit"
                             title="<?= e(t('cat.fixer_plafond_titre')) ?>">
-                      <?= e(t('cat.utiliser')) ?><?= $s['plafond'] !== null ? e(t('cat.utiliser_remplace', ['montant' => montant_fr($s['plafond'])])) : '' ?>
+                      <?= e(t('cat.utiliser')) ?><?= $s['plafond'] !== null ? e(t('cat.utiliser_remplace', ['montant' => montant_lisible($s['plafond'])])) : '' ?>
                     </button>
                   </form>
                 <?php endif; ?>
@@ -190,11 +190,11 @@ $carte = static function (array $c) use ($csrf, $palette, $icones): string {
           <tr style="border-top:2px solid var(--bordure-forte)">
             <th scope="row"><?= e(t('cat.ensemble')) ?></th>
             <td class="nombre">
-              <?= e(montant_fr($suggestions['total_bas'])) ?>
+              <?= e(montant_lisible($suggestions['total_bas'])) ?>
               <span class="discret"><?= e(t('cat.a')) ?></span>
-              <?= e(montant_fr($suggestions['total_haut'])) ?>
+              <?= e(montant_lisible($suggestions['total_haut'])) ?>
             </td>
-            <td class="nombre"><strong><?= e(montant_fr($suggestions['total_conseille'])) ?></strong></td>
+            <td class="nombre"><strong><?= e(montant_lisible($suggestions['total_conseille'])) ?></strong></td>
             <td colspan="2"></td>
           </tr>
         </tbody>

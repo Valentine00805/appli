@@ -99,7 +99,7 @@ $relies = array_filter($etats, static fn (array $e): bool => $e['relie']);
         <?php if ($etat['souci'] !== null): ?>
           <p class="outlook-attention">
             <strong><?= e(t('agenda.echec')) ?></strong>
-            (<?= e(t('date.le_a', ['date' => date('d/m/Y', (int) strtotime($etat['souci']['quand'])),
+            (<?= e(t('date.le_a', ['date' => date_numerique($etat['souci']['quand']),
                                   'heure' => heure_courte((int) strtotime($etat['souci']['quand']))])) ?>) :
             <?= e($etat['souci']['quoi']) ?>
           </p>

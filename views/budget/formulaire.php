@@ -41,7 +41,7 @@ $retour = url('budget', ['mois' => substr((string) $operation['date_operation'],
         <div class="champ">
           <label for="montant"><?= e(t('bud.montant')) ?></label>
           <input type="text" id="montant" name="montant" required inputmode="decimal"
-                 value="<?= e(montant_fr($operation['montant'], false)) ?>">
+                 value="<?= e(montant_lisible($operation['montant'], false)) ?>">
         </div>
         <div class="champ">
           <label for="date_operation"><?= e(t('bud.date')) ?></label>
@@ -116,11 +116,11 @@ $retour = url('budget', ['mois' => substr((string) $operation['date_operation'],
           <div class="champ">
             <label for="part_rembourser"><?= e(t('bud.part_reclamer')) ?></label>
             <input type="text" id="part_rembourser" name="part_rembourser" inputmode="decimal"
-                   placeholder="<?= e(t('remb.tout_suffixe', ['montant' => montant_fr($operation['montant'], false)])) ?>"
+                   placeholder="<?= e(t('remb.tout_suffixe', ['montant' => montant_lisible($operation['montant'], false)])) ?>"
                    value="<?= $operation['part_rembourser'] !== null
-                       ? e(montant_fr($operation['part_rembourser'], false)) : '' ?>">
+                       ? e(montant_lisible($operation['part_rembourser'], false)) : '' ?>">
             <span class="champ__aide">
-              <?= e(t('form.part_aide', ['montant' => montant_fr(round((float) $operation['montant'] / 2, 2))])) ?>
+              <?= e(t('form.part_aide', ['montant' => montant_lisible(round((float) $operation['montant'] / 2, 2))])) ?>
             </span>
           </div>
 

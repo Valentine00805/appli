@@ -24,7 +24,7 @@ $estPartage = !empty($evt['est_partage']);
   <span class="evt-ligne__barre" style="background:<?= e($couleur) ?>"></span>
 
   <span class="evt-ligne__heure">
-    <?= e($avecDate ? date('d/m', strtotime((string) $evt['debut'])) . ' ' . $heureCourte : $heure) ?>
+    <?= e($avecDate ? date(t('date.jour_mois'), strtotime((string) $evt['debut'])) . ' ' . $heureCourte : $heure) ?>
   </span>
 
   <span style="min-width:0">

@@ -76,7 +76,7 @@ final class PrevisionsController
             [$userId, $periode, number_format($montant, 2, '.', ''), mb_substr(post('note'), 0, 160) ?: null]
         );
 
-        Session::flash('succes', t('prev.fl.solde_fixe', ['montant' => montant_fr($montant)]));
+        Session::flash('succes', t('prev.fl.solde_fixe', ['montant' => montant_lisible($montant)]));
         redirect('budget/previsions', ['mois' => $periode]);
     }
 
@@ -127,7 +127,7 @@ final class PrevisionsController
         Session::flash('succes', t('prev.fl.ajoutee', [
             'quoi' => t($donnees['sens'] === 'recette' ? 'prev.fl.recette_reguliere' : 'prev.fl.charge_fixe'),
             'libelle' => (string) $donnees['libelle'],
-            'montant' => montant_fr($donnees['montant']),
+            'montant' => montant_lisible($donnees['montant']),
         ]));
         redirect('budget/previsions', ['mois' => $this->periodeValide(post('periode')) ?? date('Y-m')]);
     }

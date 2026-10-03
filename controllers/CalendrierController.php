@@ -384,7 +384,7 @@ final class CalendrierController
         Session::flash('succes', $combien === 1
             ? t('flash.evt_ajoute')
             : t('flash.evt_occurrences_ajoutees', [
-                'n' => $combien, 'date' => $quand['jusqu_au']->format('d/m/Y'),
+                'n' => $combien, 'date' => date_numerique($quand['jusqu_au']),
               ]));
 
         redirect('calendrier', ['date' => substr($donnees['debut'], 0, 10)]);

@@ -109,8 +109,8 @@ final class ReleveCsv
             $libelle = self::lireLibelle($ligne, $mapping);
 
             if (($mapping['mode'] ?? 'montant') === 'debit_credit') {
-                $debit  = montant_depuis_saisie(self::champ($ligne, $mapping['debit'] ?? null));
-                $credit = montant_depuis_saisie(self::champ($ligne, $mapping['credit'] ?? null));
+                $debit  = self::montant(self::champ($ligne, $mapping['debit'] ?? null));
+                $credit = self::montant(self::champ($ligne, $mapping['credit'] ?? null));
                 if ($credit !== null && abs($credit) > 0) {
                     $montant = abs($credit);
                     $sens = 'recette';
@@ -122,7 +122,7 @@ final class ReleveCsv
                     $sens = 'depense';
                 }
             } else {
-                $valeur = montant_depuis_saisie(self::champ($ligne, $mapping['montant'] ?? null));
+                $valeur = self::montant(self::champ($ligne, $mapping['montant'] ?? null));
                 $montant = $valeur === null ? null : abs($valeur);
                 $sens = ($valeur !== null && $valeur > 0) ? 'recette' : 'depense';
                 if ($montant !== null && abs($montant) < 0.005) {
@@ -235,7 +235,7 @@ final class ReleveCsv
                 $n++;
                 if (self::lireDate($v) !== null) {
                     $dates++;
-                } elseif (montant_depuis_saisie($v) !== null) {
+                } elseif (self::montant($v) !== null) {
                     $nombres++;
                 } else {
                     $longueurTexte += mb_strlen($v);
@@ -329,5 +329,14 @@ final class ReleveCsv
             'à' => 'a', 'â' => 'a', 'ä' => 'a', 'é' => 'e', 'è' => 'e', 'ê' => 'e', 'ë' => 'e',
             'î' => 'i', 'ï' => 'i', 'ô' => 'o', 'ö' => 'o', 'ù' => 'u', 'û' => 'u', 'ü' => 'u', 'ç' => 'c',
         ]);
+    }
+
+    /**
+     * Un montant lu dans un relevé. Le fichier garde la convention de la banque,
+     * pas celle de la langue de la page : « 1,234 » y reste 1,234, comme avant.
+     */
+    private static function montant(string $valeur): ?float
+    {
+        return montant_depuis_saisie($valeur, Langue::PAR_DEFAUT);
     }
 }

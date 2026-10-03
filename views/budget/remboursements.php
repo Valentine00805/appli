@@ -52,15 +52,15 @@ $lien = static fn (string $m): string => url('budget/remboursements',
 
 <div class="grille grille--4" style="margin-bottom:1.5rem">
   <div class="carte stat" style="border-color:var(--accent)">
-    <div class="stat__valeur" style="color:var(--accent-fonce)"><?= e(montant_fr($totaux['attente'])) ?></div>
+    <div class="stat__valeur" style="color:var(--accent-fonce)"><?= e(montant_lisible($totaux['attente'])) ?></div>
     <div class="stat__libelle"><?= t('remb.reste_a_reclamer') ?></div>
   </div>
   <div class="carte stat">
-    <div class="stat__valeur" style="color:var(--succes)"><?= e(montant_fr($totaux['regle'])) ?></div>
+    <div class="stat__valeur" style="color:var(--succes)"><?= e(montant_lisible($totaux['regle'])) ?></div>
     <div class="stat__libelle"><?= e(t('remb.deja_rembourse')) ?></div>
   </div>
   <div class="carte stat">
-    <div class="stat__valeur"><?= e(montant_fr($totaux['paye'])) ?></div>
+    <div class="stat__valeur"><?= e(montant_lisible($totaux['paye'])) ?></div>
     <div class="stat__libelle"><?= e(t('remb.avance_total')) ?></div>
   </div>
   <div class="carte stat">
@@ -133,7 +133,7 @@ $lien = static fn (string $m): string => url('budget/remboursements',
         <h2 style="margin:0;color:var(--succes)"><?= e(t('remb.mois_rembourse')) ?></h2>
         <p class="discret" style="margin:.35rem 0 0">
           <?= e(t('remb.regle_le', [
-              'montant' => montant_fr($reglement['montant']),
+              'montant' => montant_lisible($reglement['montant']),
               'date' => date_fr((string) $reglement['date_reglement'] . ' 00:00:00', false),
           ])) ?>
           <?php if ($reglement['operation_id'] !== null): ?>
@@ -159,7 +159,7 @@ $lien = static fn (string $m): string => url('budget/remboursements',
   <section class="carte sans-impression" style="margin-bottom:1.25rem;border-color:var(--accent)">
     <h2 style="margin:0"><?= e(t('remb.vous_a_t_il')) ?></h2>
     <p class="discret" style="margin:.35rem 0 .9rem">
-      <?= t('remb.confirmer_aide', ['montant' => e(montant_fr($totaux['attente']))]) ?>
+      <?= t('remb.confirmer_aide', ['montant' => e(montant_lisible($totaux['attente']))]) ?>
     </p>
 
     <form method="post" action="<?= url('budget/remboursements/regler-mois') ?>">
@@ -185,7 +185,7 @@ $lien = static fn (string $m): string => url('budget/remboursements',
         </div>
         <div class="champ">
           <button class="bouton" type="submit">
-            <?= e(t('remb.oui_rembourses', ['montant' => montant_fr($totaux['attente'])])) ?>
+            <?= e(t('remb.oui_rembourses', ['montant' => montant_lisible($totaux['attente'])])) ?>
           </button>
         </div>
       </div>
@@ -217,9 +217,9 @@ $lien = static fn (string $m): string => url('budget/remboursements',
             <span aria-hidden="true"><?= e($rubrique['icone']) ?></span> <?= e($rubrique['nom']) ?>
           </h2>
           <span style="font-variant-numeric:tabular-nums">
-            <strong style="font-size:1.05rem"><?= e(montant_fr($rubrique['total'])) ?></strong>
+            <strong style="font-size:1.05rem"><?= e(montant_lisible($rubrique['total'])) ?></strong>
             <?php if (abs($rubrique['total'] - $rubrique['paye']) > 0.005): ?>
-              <span class="discret"><?= e(t('remb.sur_avances', ['montant' => montant_fr($rubrique['paye'])])) ?></span>
+              <span class="discret"><?= e(t('remb.sur_avances', ['montant' => montant_lisible($rubrique['paye'])])) ?></span>
             <?php endif; ?>
           </span>
         </div>
@@ -247,16 +247,16 @@ $lien = static fn (string $m): string => url('budget/remboursements',
                              aria-label="<?= e(t('remb.selectionner_ligne', ['nom' => $l['libelle']])) ?>">
                     <?php endif; ?>
                   </td>
-                  <td style="white-space:nowrap"><?= e(date('d/m/Y', strtotime((string) $l['date_operation']))) ?></td>
+                  <td style="white-space:nowrap"><?= e(date_numerique((string) $l['date_operation'])) ?></td>
                   <td>
                     <?= e($l['libelle']) ?>
                     <?php if ($l['rembourse_par']): ?>
                       <span class="discret">· <?= e($l['rembourse_par']) ?></span>
                     <?php endif; ?>
                   </td>
-                  <td class="nombre"><?= e(montant_fr($l['montant'])) ?></td>
+                  <td class="nombre"><?= e(montant_lisible($l['montant'])) ?></td>
                   <td class="nombre">
-                    <strong><?= e(montant_fr($l['montant_reclame'])) ?></strong>
+                    <strong><?= e(montant_lisible($l['montant_reclame'])) ?></strong>
                     <?php if ($partiel): ?>
                       <span class="discret" title="<?= e(t('remb.partiel_titre')) ?>">◐</span>
                     <?php endif; ?>
@@ -268,7 +268,7 @@ $lien = static fn (string $m): string => url('budget/remboursements',
                         default      => 'background:var(--accent-doux);color:var(--accent-fonce)',
                     } ?>"><?= e($statuts[$l['statut_remb']]) ?></span>
                     <?php if ($l['date_remboursement']): ?>
-                      <span class="discret"><?= e(t('remb.le_date', ['date' => date('d/m/Y', (int) strtotime((string) $l['date_remboursement']))])) ?></span>
+                      <span class="discret"><?= e(t('remb.le_date', ['date' => date_numerique((string) $l['date_remboursement'])])) ?></span>
                     <?php endif; ?>
                   </td>
                   <td class="sans-impression">
@@ -284,10 +284,10 @@ $lien = static fn (string $m): string => url('budget/remboursements',
                         <label for="part-<?= (int) $l['id'] ?>"><?= e(t('remb.part_reclamee')) ?></label>
                         <input type="text" id="part-<?= (int) $l['id'] ?>" form="f-<?= (int) $l['id'] ?>"
                                name="part_rembourser" inputmode="decimal"
-                               placeholder="<?= e(t('remb.tout_suffixe', ['montant' => montant_fr($l['montant'], false)])) ?>"
-                               value="<?= $partiel ? e(montant_fr($l['part_rembourser'], false)) : '' ?>">
+                               placeholder="<?= e(t('remb.tout_suffixe', ['montant' => montant_lisible($l['montant'], false)])) ?>"
+                               value="<?= $partiel ? e(montant_lisible($l['part_rembourser'], false)) : '' ?>">
                         <span class="champ__aide">
-                          <?= e(t('remb.moitie', ['montant' => montant_fr(round((float) $l['montant'] / 2, 2), false)])) ?>
+                          <?= e(t('remb.moitie', ['montant' => montant_lisible(round((float) $l['montant'] / 2, 2), false)])) ?>
                         </span>
                       </div>
                       <?= Vue::rendre('budget/_qui_rembourse', [
@@ -329,13 +329,13 @@ $lien = static fn (string $m): string => url('budget/remboursements',
       <div style="display:flex;justify-content:space-between;align-items:baseline;gap:1rem;flex-wrap:wrap">
         <h2 style="margin:0"><?= e(t('remb.total_de', ['mois' => $titrePeriode])) ?></h2>
         <strong style="font-size:1.5rem;color:var(--accent-fonce);font-variant-numeric:tabular-nums">
-          <?= e(montant_fr($totaux['reclame'])) ?>
+          <?= e(montant_lisible($totaux['reclame'])) ?>
         </strong>
       </div>
 
       <?php if ($totaux['hors_total'] > 0): ?>
         <p class="discret" style="margin:.8rem 0 0">
-          <?= e(t('remb.hors_total_note', ['montant' => montant_fr($totaux['hors_total'])])) ?>
+          <?= e(t('remb.hors_total_note', ['montant' => montant_lisible($totaux['hors_total'])])) ?>
         </p>
       <?php endif; ?>
     </div>
@@ -373,13 +373,13 @@ $lien = static fn (string $m): string => url('budget/remboursements',
         <a class="pastille" href="<?= $lien($cle) ?>"
            <?= $cle === $periode ? 'style="background:var(--accent);color:#fff"' : '' ?>>
           <?= e(strtolower(nom_mois((int) substr($cle, 5, 2))) . ' ' . substr($cle, 0, 4)) ?>
-          · <?= e(montant_fr($infos['total'])) ?>
+          · <?= e(montant_lisible($infos['total'])) ?>
         </a>
       <?php endforeach; ?>
     </div>
     <?php if ($aReclamerGlobal > $totaux['attente'] + 0.005): ?>
       <p class="discret" style="margin:.8rem 0 0">
-        <?= e(t('remb.tous_mois', ['montant' => montant_fr($aReclamerGlobal)])) ?>
+        <?= e(t('remb.tous_mois', ['montant' => montant_lisible($aReclamerGlobal)])) ?>
       </p>
     <?php endif; ?>
   </section>

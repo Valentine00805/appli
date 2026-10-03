@@ -274,7 +274,7 @@ $matiereActive = $edition ? entier_ou_null($evenement['matiere_id']) : null;
           <legend>
             <?= e(tn('evtf.serie_titre', (int) $serie['occurrences'], [
                 'rythme' => t('evtf.serie.' . $serie['frequence']),
-                'date' => date('d/m/Y', (int) strtotime((string) $serie['jusqu_au'])),
+                'date' => date_numerique((string) $serie['jusqu_au']),
             ])) ?>
           </legend>
           <label class="case">

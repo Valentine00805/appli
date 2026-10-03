@@ -96,6 +96,20 @@ final class Langue
     }
 
     /**
+     * La phrase d'une clé dans une langue précise, sans toucher à la langue en cours.
+     *
+     * Pour ce qui se lit dans la langue d'un fichier plutôt que dans celle de la page :
+     * les séparateurs d'un nombre, quand on lit un relevé de banque.
+     */
+    public static function texteEn(string $langue, string $cle): string
+    {
+        $langue = isset(self::LANGUES[$langue]) ? $langue : self::PAR_DEFAUT;
+        $phrase = self::phrases($langue)[$cle] ?? self::phrases(self::PAR_DEFAUT)[$cle] ?? $cle;
+
+        return is_array($phrase) ? implode(' ', $phrase) : (string) $phrase;
+    }
+
+    /**
      * Une phrase qui s'accorde : « 1 tâche », « 3 tâches ».
      *
      * Deux clés au lieu d'une : « taches.reste.un » et « taches.reste.plusieurs ».

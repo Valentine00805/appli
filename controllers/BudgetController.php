@@ -127,7 +127,7 @@ final class BudgetController
 
         Session::flash('succes', t('bud.fl.enregistree', [
             'quoi' => t($donnees['sens'] === 'recette' ? 'bud.fl.recette' : 'bud.fl.depense'),
-            'montant' => montant_fr($donnees['montant']),
+            'montant' => montant_lisible($donnees['montant']),
         ]));
         redirect('budget', ['mois' => substr($donnees['date_operation'], 0, 7)]);
     }
@@ -367,7 +367,7 @@ final class BudgetController
         Session::flash('succes', $nb === 1
             ? t('bud.fl.plafond_fixe', [
                 'nom' => (string) $retenues[0]['nom'],
-                'montant' => montant_fr($retenues[0]['conseille']),
+                'montant' => montant_lisible($retenues[0]['conseille']),
             ])
             : t('bud.fl.plafonds_fixes', ['n' => $nb]));
         redirect('budget/categories');
@@ -569,7 +569,7 @@ final class BudgetController
             $saisiePart = montant_depuis_saisie(post('part_rembourser'));
             if ($saisiePart !== null) {
                 if ($saisiePart <= 0 || $saisiePart > $montant + 0.001) {
-                    return t('bud.fl.part_invalide', ['montant' => montant_fr($montant)]);
+                    return t('bud.fl.part_invalide', ['montant' => montant_lisible($montant)]);
                 }
                 // Réclamer exactement ce qui a été payé revient à ne rien préciser.
                 $part = abs($saisiePart - $montant) < 0.005

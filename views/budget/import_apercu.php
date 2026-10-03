@@ -138,7 +138,7 @@ $choixColonne = static function (string $champ, ?int $actif) use ($colonnes): st
 
               <td style="white-space:nowrap">
                 <?= $l['date'] !== null
-                    ? e(date('d/m/Y', strtotime($l['date'])))
+                    ? e(date_numerique($l['date']))
                     : '<span class="discret">' . e(t('apc.date_inconnue')) . '</span>' ?>
               </td>
 
@@ -151,7 +151,7 @@ $choixColonne = static function (string $champ, ?int $actif) use ($colonnes): st
 
               <td class="nombre" style="color:<?= $l['sens'] === 'recette' ? 'var(--succes)' : 'var(--erreur)' ?>">
                 <?php if ($l['montant'] !== null): ?>
-                  <?= $l['sens'] === 'recette' ? '+' : '−' ?> <?= e(montant_fr($l['montant'])) ?>
+                  <?= $l['sens'] === 'recette' ? '+' : '−' ?> <?= e(montant_lisible($l['montant'])) ?>
                 <?php else: ?>
                   <span class="discret"><?= e(t('apc.montant_inconnu')) ?></span>
                 <?php endif; ?>

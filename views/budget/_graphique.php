@@ -88,8 +88,8 @@ $resume = sprintf(
     t('prev.graphique_aria'),
     strtolower(nom_mois((int) $points[0]['mois']->format('n'))) . ' ' . $points[0]['mois']->format('Y'),
     strtolower(nom_mois((int) $dernier['mois']->format('n'))) . ' ' . $dernier['mois']->format('Y'),
-    montant_fr(min($valeurs)),
-    montant_fr(max($valeurs))
+    montant_lisible(min($valeurs)),
+    montant_lisible(max($valeurs))
 );
 ?>
 
@@ -101,7 +101,7 @@ $resume = sprintf(
       <line class="graphique__grille" x1="<?= $n((float) $gauche) ?>" y1="<?= $n($y($g)) ?>"
             x2="<?= $n((float) ($largeur - $droite)) ?>" y2="<?= $n($y($g)) ?>" />
       <text class="graphique__graduation" x="<?= $gauche - 8 ?>" y="<?= $n($y($g) + 4) ?>" text-anchor="end">
-        <?= e(number_format($g, 0, ',', ' ')) ?> €
+        <?= e(montant_lisible($g, true, 0)) ?>
       </text>
     <?php endforeach; ?>
 
@@ -125,7 +125,7 @@ $resume = sprintf(
         <circle cx="<?= $n($x($i)) ?>" cy="<?= $n($y($solde)) ?>" r="<?= $i === $indexCourant ? 5 : 3.5 ?>" />
         <title><?= e(
             strtolower(nom_mois((int) $p['mois']->format('n'))) . ' ' . $p['mois']->format('Y')
-            . ' : ' . montant_fr($solde)
+            . ' : ' . montant_lisible($solde)
             . ($p['origine'] === 'saisi' ? ' (solde saisi)' : '')
         ) ?></title>
       </g>

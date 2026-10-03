@@ -38,6 +38,20 @@
   var langueLocale = function () {
     return document.documentElement.lang || MOTS['_langue'] || 'fr';
   };
+  /*
+   * Un nombre à la façon de la langue de la page : « 1,5 » ici, « 1.5 » ailleurs.
+   * « fixe » garde les décimales même nulles (« 2,0 »), sinon « 2 ».
+   */
+  var nombreLocal = function (n, decimales, fixe) {
+    try {
+      return new Intl.NumberFormat(langueLocale(), {
+        minimumFractionDigits: fixe ? decimales : 0,
+        maximumFractionDigits: decimales
+      }).format(n);
+    } catch (e) {
+      return String(n);
+    }
+  };
 
   /*
    * Remonter en haut, et voir d'un coup d'œil où l'on en est.
@@ -3004,9 +3018,9 @@
       var FICHIER_MAX = Number(formulaire.getAttribute('data-fichier-max')) || 50 * 1024 * 1024;
       var enMo = function (octets) { return Math.round(octets / 1048576); };
       var poidsLisible = function (octets) {
-        if (octets < 1024) { return octets + ' o'; }
-        if (octets < 1048576) { return Math.round(octets / 1024) + ' Ko'; }
-        return (octets / 1048576).toFixed(1).replace('.', ',') + ' Mo';
+        if (octets < 1024) { return octets + ' ' + mot('taille.o'); }
+        if (octets < 1048576) { return Math.round(octets / 1024) + ' ' + mot('taille.ko'); }
+        return nombreLocal(octets / 1048576, 1, true) + ' ' + mot('taille.mo');
       };
       var apercus = chat.querySelector('[data-chat-apercus]');
       var choixImage = formulaire.querySelector('[data-chat-image]');
@@ -5382,7 +5396,7 @@
       };
 
       var enCm = function (px) {
-        return String(Math.round(px * 25.4 / 96) / 10).replace(".", ",") + " cm";
+        return nombreLocal(Math.round(px * 25.4 / 96) / 10, 1) + " cm";
       };
 
       var groupeHabillage = barreOutils.querySelector("[data-habillage-image]");
@@ -5548,7 +5562,7 @@
         };
 
         var enMo = function (octets) {
-          return String(Math.round(octets / 104857.6) / 10).replace(".", ",") + " Mo";
+          return nombreLocal(Math.round(octets / 104857.6) / 10, 1) + " " + mot('taille.mo');
         };
 
         // Ce que pèsent les images en attente dont l'image est encore dans le

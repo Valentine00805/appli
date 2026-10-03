@@ -347,7 +347,7 @@ $etiquetteRythme = static function (string $cle, bool $court = false) use ($ryth
             <span class="cal-jour__numero"><?= (int) $curseur->format('j') ?></span>
             <?= $etiquetteRythme($cle) ?>
             <a class="cal-jour__ajout" href="<?= url('evenements/nouveau', ['date' => $cle]) ?>" data-fenetre
-               title="<?= e(t('cal.ajouter_le', ['date' => $curseur->format('d/m/Y')])) ?>">+</a>
+               title="<?= e(t('cal.ajouter_le', ['date' => date_numerique($curseur)])) ?>">+</a>
           </div>
           <?php foreach (array_slice($duJour, 0, 4) as $evt): ?>
             <?= $puce($evt) ?>
@@ -521,7 +521,7 @@ $etiquetteRythme = static function (string $cle, bool $court = false) use ($ryth
           <?php foreach ($planning['jours'] as $unJour): ?>
             <a class="sem-planning__jour<?= $unJour['cle'] === $aujourdhui ? ' sem-planning__jour--aujourdhui' : '' ?>"
                href="<?= $lien('jour', $unJour['date']) ?>"
-               title="<?= e(t('cal.voir_le', ['date' => $unJour['date']->format('d/m/Y')])) ?>">
+               title="<?= e(t('cal.voir_le', ['date' => date_numerique($unJour['date'])])) ?>">
               <span class="sem-planning__jour-nom"><?= e(jours_semaine()[(int) $unJour['date']->format('N') - 1]) ?></span>
               <span class="sem-planning__jour-numero"><?= (int) $unJour['date']->format('j') ?></span>
               <?= $etiquetteRythme($unJour['cle'], true) ?>
