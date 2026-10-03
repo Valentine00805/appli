@@ -100,6 +100,18 @@ function jours_semaine(): array
     return Langue::liste('jours');
 }
 
+/**
+ * Le nom d'un mois au milieu d'une phrase : « octobre 2026 » en français et en espagnol,
+ * « October 2026 » en anglais, « Oktober 2026 » en allemand, où les mois gardent leur majuscule.
+ * C'est la règle de « date.mois_minuscule » ; on n'écrit plus strtolower() à la main.
+ */
+function nom_mois_en_phrase(int $mois): string
+{
+    $nom = nom_mois($mois);
+
+    return t('date.mois_minuscule') === '1' ? mb_strtolower($nom) : $nom;
+}
+
 /** Affiche une date/heure au format français. */
 function date_fr(string $datetime, bool $avecHeure = true): string
 {
@@ -109,8 +121,7 @@ function date_fr(string $datetime, bool $avecHeure = true): string
     }
     $jour = date('j', $ts);
     // Les mois s'écrivent en minuscule en français et en espagnol, en majuscule ailleurs.
-    $mois = nom_mois((int) date('n', $ts));
-    $mois = t('date.mois_minuscule') === '1' ? mb_strtolower($mois) : $mois;
+    $mois = nom_mois_en_phrase((int) date('n', $ts));
     $annee = date('Y', $ts);
     $texte = "$jour $mois $annee";
     if ($avecHeure) {

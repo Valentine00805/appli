@@ -24,7 +24,7 @@ $filtres = array_filter([
     'statut' => $statut,
 ], static fn ($v): bool => $v !== null && $v !== '');
 
-$titrePeriode = strtolower(nom_mois((int) $mois->format('n'))) . ' ' . $mois->format('Y');
+$titrePeriode = nom_mois_en_phrase((int) $mois->format('n')) . ' ' . $mois->format('Y');
 $lien = static fn (string $m): string => url('budget/remboursements',
     array_filter(['mois' => $m, 'qui' => $qui ?: null, 'statut' => $statut]));
 ?>
@@ -139,7 +139,7 @@ $lien = static fn (string $m): string => url('budget/remboursements',
           <?php if ($reglement['operation_id'] !== null): ?>
             <?= e(t('remb.recette_ajoutee')) ?>
             <a href="<?= url('budget', ['mois' => substr((string) $reglement['date_recette'], 0, 7)]) ?>">
-              <?= e(strtolower(nom_mois((int) substr((string) $reglement['date_recette'], 5, 2)))
+              <?= e(nom_mois_en_phrase((int) substr((string) $reglement['date_recette'], 5, 2))
                   . ' ' . substr((string) $reglement['date_recette'], 0, 4)) ?></a>.
           <?php else: ?>
             <span style="color:var(--erreur)"><?= e(t('remb.recette_supprimee')) ?></span>
@@ -372,7 +372,7 @@ $lien = static fn (string $m): string => url('budget/remboursements',
       <?php foreach ($moisRenseignes as $cle => $infos): ?>
         <a class="pastille" href="<?= $lien($cle) ?>"
            <?= $cle === $periode ? 'style="background:var(--accent);color:#fff"' : '' ?>>
-          <?= e(strtolower(nom_mois((int) substr($cle, 5, 2))) . ' ' . substr($cle, 0, 4)) ?>
+          <?= e(nom_mois_en_phrase((int) substr($cle, 5, 2)) . ' ' . substr($cle, 0, 4)) ?>
           · <?= e(montant_lisible($infos['total'])) ?>
         </a>
       <?php endforeach; ?>

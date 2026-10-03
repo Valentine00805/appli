@@ -170,6 +170,6 @@ final class SuggestionBudget
 
     private static function intitule(string $periode): string
     {
-        return strtolower(nom_mois((int) substr($periode, 5, 2))) . ' ' . substr($periode, 0, 4);
+        return nom_mois_en_phrase((int) substr($periode, 5, 2)) . ' ' . substr($periode, 0, 4);
     }
 }

@@ -60,7 +60,7 @@ final class PrevisionsController
 
         $periode = $this->periodeValide(post('periode'));
         if ($periode === null) {
-            Session::flash('erreur', 'Mois invalide.');
+            Session::flash('erreur', t('remb.mois_invalide'));
             redirect('budget/previsions');
         }
 

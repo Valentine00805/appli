@@ -202,7 +202,7 @@ final class AuthController
             'jeton' => $demande === null ? '' : $jeton,
             'compte' => $demande,
             'erreur' => null,
-        ], 'Nouveau mot de passe');
+        ], t('auth.nouveau_mdp_titre'));
     }
 
     public function reinitialiser(): void
@@ -216,7 +216,7 @@ final class AuthController
                 'jeton' => $demande === null ? '' : $jeton,
                 'compte' => $demande,
                 'erreur' => $refus,
-            ], 'Nouveau mot de passe');
+            ], t('auth.nouveau_mdp_titre'));
             return;
         }
         // Qui était connecté (sur ce navigateur) doit se reconnecter, comme les autres appareils.

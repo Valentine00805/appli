@@ -1372,7 +1372,7 @@ final class Conversations
         $images = self::lignes($moi, $conversation, 'm.image_nom IS NOT NULL', [], 'ORDER BY m.id DESC LIMIT 300');
         $fichiers = self::lignes($moi, $conversation, 'm.fichier_nom IS NOT NULL', [], 'ORDER BY m.id DESC LIMIT 300');
         $pseudos = self::pseudos(array_merge(array_column($images, 'expediteur_id'), array_column($fichiers, 'expediteur_id')));
-        $qui = static fn (array $l): string => (int) $l['expediteur_id'] === $moi ? 'vous' : ($pseudos[(int) $l['expediteur_id']] ?? 'un ancien membre');
+        $qui = static fn (array $l): string => (int) $l['expediteur_id'] === $moi ? t('prf.vous') : ($pseudos[(int) $l['expediteur_id']] ?? t('grp.ancien_membre'));
 
         return [
             'photos' => array_map(static fn (array $l): array => [

@@ -4075,4 +4075,8 @@ return [
     'fic.refus' => '“{nom}”: {raison}',
     'fic.transfert_invalide' => '“{nom}”: invalid upload.',
     'tr.copie_description' => 'Group work “{nom}”.',
+    // Les derniers libellés trouvés par le balayage large
+    'grp.fl.membre_retire' => '{qui} is no longer in the group.',
+    // Le graphique des prévisions
+    'prev.solde_saisi_court' => 'entered balance',
 ];

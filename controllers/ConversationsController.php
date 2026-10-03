@@ -269,7 +269,7 @@ final class ConversationsController
         Session::verifierCsrf();
         $pseudo = (string) (Amis::compte($membre)['pseudo'] ?? '');
         $refus = Conversations::retirer(Auth::id(), $id, $membre);
-        Session::flash($refus === null ? 'succes' : 'erreur', $refus ?? $pseudo . ' ne fait plus partie du groupe.');
+        Session::flash($refus === null ? 'succes' : 'erreur', $refus ?? t('grp.fl.membre_retire', ['qui' => $pseudo]));
         $this->retour($id);
     }
 

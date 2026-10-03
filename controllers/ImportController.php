@@ -158,7 +158,8 @@ final class ImportController
         // Comparaison avec les totaux inscrits dans la feuille.
         $controles = [];
         foreach ($parMois as $mois => $somme) {
-            $nom = self::sansAccents(strtolower(nom_mois((int) substr($mois, 5, 2))));
+            // Rangés sous le nom français du mois, celui de la feuille — pas celui de l'interface.
+            $nom = ReleveExcel::cleDuMois((int) substr($mois, 5, 2));
             $sien = $releve['totaux'][$nom] ?? null;
             $controles[] = [
                 'mois'      => $mois,

@@ -191,6 +191,24 @@ La saisie d'un montant passe par `montant_depuis_saisie()`, qui lit selon la
 langue en cours ; `ReleveCsv` lui impose le français, parce que le fichier d'une
 banque ne change pas avec la langue de la page.
 
+### Ce que `scan3.php` ne voit pas
+
+`scan3.php` ne signale une chaîne que si elle porte un accent ou un mot
+grammatical du français. Il laisse donc passer, et c'est arrivé :
+
+- les phrases **sans accent ni mot de liaison** (« Code d'inscription incorrect »,
+  « Mois invalide », « Nouveau mot de passe ») ;
+- les **guillemets français assemblés à la main** (`'« ' . $x . ' »'`) — utiliser
+  `guillemets()` ;
+- les **attributs HTML statiques** (`<optgroup label="Dépenses">`) : `strip_tags`
+  les efface avant l'examen ;
+- les **noms de mois passés par `strtolower()`** : « october 2026 », « oktober » —
+  utiliser `nom_mois_en_phrase()`, qui suit `date.mois_minuscule`.
+
+Quand on ajoute un libellé, ne pas se fier au silence du scanner : chercher
+aussi à la main, ou relire avec un détecteur plus large (toute chaîne à deux
+mots d'au moins trois lettres).
+
 ### Le piège à connaître
 
 Trois fois dans ce travail, le code se demandait « de quoi s'agit-il ? » en

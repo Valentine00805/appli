@@ -4075,4 +4075,8 @@ return [
     'fic.refus' => '„{nom}“: {raison}',
     'fic.transfert_invalide' => '„{nom}“: ungültiger Upload.',
     'tr.copie_description' => 'Gruppenarbeit „{nom}“.',
+    // Les derniers libellés trouvés par le balayage large
+    'grp.fl.membre_retire' => '{qui} gehört nicht mehr zur Gruppe.',
+    // Le graphique des prévisions
+    'prev.solde_saisi_court' => 'eingegebener Saldo',
 ];

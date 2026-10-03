@@ -58,7 +58,7 @@ $ecarts = array_filter($controles, static fn (array $c): bool => $c['ecart'] !==
       <?php foreach ($controles as $c): ?>
         <tr>
           <th scope="row" style="font-weight:500;text-transform:capitalize">
-            <?= e(strtolower(nom_mois((int) substr($c['mois'], 5, 2))) . ' ' . substr($c['mois'], 0, 4)) ?>
+            <?= e(nom_mois_en_phrase((int) substr($c['mois'], 5, 2)) . ' ' . substr($c['mois'], 0, 4)) ?>
           </th>
           <td class="nombre"><?= e(montant_lisible($c['recalcule'])) ?></td>
           <td class="nombre"><?= $c['feuille'] === null

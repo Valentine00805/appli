@@ -16,6 +16,19 @@ declare(strict_types=1);
  */
 final class ReleveExcel
 {
+    /**
+     * Le mois d'un numéro, tel qu'une feuille française l'écrit : sans accent, en minuscule.
+     * Les totaux d'un classeur sont rangés sous ce nom, quelle que soit la langue de la page.
+     */
+    private const MOIS_PAR_NUMERO = [1 => 'janvier', 2 => 'fevrier', 3 => 'mars', 4 => 'avril',
+        5 => 'mai', 6 => 'juin', 7 => 'juillet', 8 => 'aout', 9 => 'septembre', 10 => 'octobre',
+        11 => 'novembre', 12 => 'decembre'];
+
+    public static function cleDuMois(int $mois): string
+    {
+        return self::MOIS_PAR_NUMERO[$mois] ?? '';
+    }
+
     private const MOIS = ['janvier', 'février', 'fevrier', 'mars', 'avril', 'mai', 'juin',
         'juillet', 'août', 'aout', 'septembre', 'octobre', 'novembre', 'décembre', 'decembre'];
 

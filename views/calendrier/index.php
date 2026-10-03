@@ -50,7 +50,7 @@ if ($vue === 'jour') {
 
     if ($moisDebut === $moisFin && $debut->format('Y') === $fin->format('Y')) {
         $titre = $debut->format('j') . ' – ' . $fin->format('j')
-            . ' ' . strtolower(nom_mois($moisFin)) . ' ' . $fin->format('Y');
+            . ' ' . nom_mois_en_phrase($moisFin) . ' ' . $fin->format('Y');
     } elseif ($debut->format('Y') === $fin->format('Y')) {
         $titre = $debut->format('j') . ' ' . nom_mois_court($moisDebut)
             . ' – ' . $fin->format('j') . ' ' . nom_mois_court($moisFin)
@@ -605,7 +605,7 @@ $etiquetteRythme = static function (string $cle, bool $court = false) use ($ryth
   <?php if ($evenements === []): ?>
     <div class="vide">
       <span class="vide__icone">🗓️</span>
-      <p><?= e(t('cal.rien_a_partir_de', ['mois' => mb_strtolower(nom_mois((int) $ancre->format('n'))), 'annee' => $ancre->format('Y')])) ?></p>
+      <p><?= e(t('cal.rien_a_partir_de', ['mois' => nom_mois_en_phrase((int) $ancre->format('n')), 'annee' => $ancre->format('Y')])) ?></p>
       <a class="bouton" href="<?= url('evenements/nouveau') ?>" data-fenetre><?= e(t('cal.planifier')) ?></a>
     </div>
   <?php else: ?>

@@ -86,8 +86,8 @@ for ($i = 0; $i <= 3; $i++) {
 $dernier = end($points);
 $resume = sprintf(
     t('prev.graphique_aria'),
-    strtolower(nom_mois((int) $points[0]['mois']->format('n'))) . ' ' . $points[0]['mois']->format('Y'),
-    strtolower(nom_mois((int) $dernier['mois']->format('n'))) . ' ' . $dernier['mois']->format('Y'),
+    nom_mois_en_phrase((int) $points[0]['mois']->format('n')) . ' ' . $points[0]['mois']->format('Y'),
+    nom_mois_en_phrase((int) $dernier['mois']->format('n')) . ' ' . $dernier['mois']->format('Y'),
     montant_lisible(min($valeurs)),
     montant_lisible(max($valeurs))
 );
@@ -124,9 +124,9 @@ $resume = sprintf(
       <g class="graphique__point<?= $i === $indexCourant ? ' est-actif' : '' ?><?= $solde < 0 ? ' est-negatif' : '' ?>">
         <circle cx="<?= $n($x($i)) ?>" cy="<?= $n($y($solde)) ?>" r="<?= $i === $indexCourant ? 5 : 3.5 ?>" />
         <title><?= e(
-            strtolower(nom_mois((int) $p['mois']->format('n'))) . ' ' . $p['mois']->format('Y')
+            nom_mois_en_phrase((int) $p['mois']->format('n')) . ' ' . $p['mois']->format('Y')
             . ' : ' . montant_lisible($solde)
-            . ($p['origine'] === 'saisi' ? ' (solde saisi)' : '')
+            . ($p['origine'] === 'saisi' ? ' (' . t('prev.solde_saisi_court') . ')' : '')
         ) ?></title>
       </g>
 

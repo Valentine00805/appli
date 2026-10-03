@@ -90,7 +90,7 @@ final class RemboursementsController
 
         $rubriques = $this->grouperParRubrique($lignes);
         $totaux = $this->totaux($lignes);
-        $intitulePeriode = strtolower(nom_mois((int) $mois->format('n'))) . ' ' . $mois->format('Y');
+        $intitulePeriode = nom_mois_en_phrase((int) $mois->format('n')) . ' ' . $mois->format('Y');
 
         $classeur = new ClasseurXlsx(t('remb.xl.classeur'));
         $classeur->largeurs([13, 44, 14, 14, 15]);
@@ -226,7 +226,7 @@ final class RemboursementsController
         }
 
         $intitule = t('remb.intitule', [
-            'mois' => mb_strtolower(nom_mois((int) substr($periode, 5, 2))),
+            'mois' => nom_mois_en_phrase((int) substr($periode, 5, 2)),
             'annee' => substr($periode, 0, 4),
             'qui' => $personne !== '' ? t('remb.intitule_qui', ['qui' => $personne]) : '',
         ]);
@@ -261,7 +261,7 @@ final class RemboursementsController
 
         Session::flash('succes', t('remb.regles', [
             'montant' => montant_lisible($montant),
-            'periode' => mb_strtolower(nom_mois((int) substr($periode, 5, 2))) . ' ' . substr($periode, 0, 4),
+            'periode' => nom_mois_en_phrase((int) substr($periode, 5, 2)) . ' ' . substr($periode, 0, 4),
             'date' => date_fr($date . ' 00:00:00', false),
         ]));
         redirect('budget/remboursements', $retour);
@@ -788,7 +788,7 @@ final class RemboursementsController
     {
         $noms = array_map(
             static fn (string $p): string =>
-                strtolower(nom_mois((int) substr($p, 5, 2))) . ' ' . substr($p, 0, 4),
+                nom_mois_en_phrase((int) substr($p, 5, 2)) . ' ' . substr($p, 0, 4),
             $periodes
         );
 

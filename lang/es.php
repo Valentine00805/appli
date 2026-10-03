@@ -4075,4 +4075,8 @@ return [
     'fic.refus' => '«{nom}»: {raison}',
     'fic.transfert_invalide' => '«{nom}»: carga no válida.',
     'tr.copie_description' => 'Trabajo en grupo «{nom}».',
+    // Les derniers libellés trouvés par le balayage large
+    'grp.fl.membre_retire' => '{qui} ya no forma parte del grupo.',
+    // Le graphique des prévisions
+    'prev.solde_saisi_court' => 'saldo introducido',
 ];

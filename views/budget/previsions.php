@@ -37,7 +37,7 @@ $aVenirIds = array_map(static fn (array $r): int => (int) $r['id'], $aVenir);
     <a class="bouton bouton--secondaire bouton--petit"
        href="<?= url('budget/previsions', ['mois' => $suivant]) ?>" aria-label="<?= e(t('bud.mois_suivant')) ?>">→</a>
     <h2 class="cal-titre" style="text-transform:capitalize">
-      <?= e(strtolower(nom_mois((int) $mois->format('n'))) . ' ' . $mois->format('Y')) ?>
+      <?= e(nom_mois_en_phrase((int) $mois->format('n')) . ' ' . $mois->format('Y')) ?>
     </h2>
   </div>
 </div>
@@ -52,7 +52,7 @@ $aVenirIds = array_map(static fn (array $r): int => (int) $r['id'], $aVenir);
       <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
       <input type="hidden" name="periode" value="<?= e($periode) ?>">
       <div class="champ">
-        <label for="montant-depart"><?= t('prev.solde_au_1er', ['mois' => e(strtolower(nom_mois((int) $mois->format('n'))))]) ?></label>
+        <label for="montant-depart"><?= t('prev.solde_au_1er', ['mois' => e(nom_mois_en_phrase((int) $mois->format('n')))]) ?></label>
         <input type="text" id="montant-depart" name="montant" required inputmode="decimal" autofocus
                placeholder="1250,40">
       </div>
@@ -289,7 +289,7 @@ $aVenirIds = array_map(static fn (array $r): int => (int) $r['id'], $aVenir);
               <tr<?= $p === $periode ? ' class="est-actif"' : '' ?>>
                 <th scope="row" style="font-weight:600;text-transform:capitalize">
                   <a href="<?= url('budget/previsions', ['mois' => $p]) ?>" style="text-decoration:none;color:inherit">
-                    <?= e(strtolower(nom_mois((int) $ligne['mois']->format('n'))) . ' ' . $ligne['mois']->format('Y')) ?>
+                    <?= e(nom_mois_en_phrase((int) $ligne['mois']->format('n')) . ' ' . $ligne['mois']->format('Y')) ?>
                   </a>
                   <?php if ($ligne['origine'] === 'saisi'): ?>
                     <span class="discret" title="<?= e(t('prev.solde_saisi_titre')) ?>">✎</span>
@@ -387,7 +387,7 @@ $aVenirIds = array_map(static fn (array $r): int => (int) $r['id'], $aVenir);
         <p class="discret" style="margin:0 0 .75rem">
           <?= t('prev.dernier_saisi', [
               'montant' => e(montant_lisible($ancrage['montant'])),
-              'mois' => e(strtolower(nom_mois((int) substr((string) $ancrage['periode'], 5, 2)))),
+              'mois' => e(nom_mois_en_phrase((int) substr((string) $ancrage['periode'], 5, 2))),
               'annee' => e(substr((string) $ancrage['periode'], 0, 4)),
           ]) ?>
           <?php if ($ancrage['periode'] !== $periode): ?>
@@ -401,7 +401,7 @@ $aVenirIds = array_map(static fn (array $r): int => (int) $r['id'], $aVenir);
         <input type="hidden" name="periode" value="<?= e($periode) ?>">
         <div class="champ">
           <label for="montant-solde">
-            <?= e(t('prev.forcer_solde', ['mois' => strtolower(nom_mois((int) $mois->format('n')))])) ?>
+            <?= e(t('prev.forcer_solde', ['mois' => nom_mois_en_phrase((int) $mois->format('n'))])) ?>
           </label>
           <input type="text" id="montant-solde" name="montant" required inputmode="decimal"
                  value="<?= $soldeSaisi !== null ? e(montant_lisible($soldeSaisi['montant'], false)) : '' ?>"

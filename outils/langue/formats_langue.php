@@ -17,7 +17,7 @@ mb_internal_encoding('UTF-8');
 date_default_timezone_set('Europe/Paris');
 
 $racine = dirname(__DIR__, 2);
-foreach (['Config', 'Depot', 'Session', 'Langue', 'Auth', 'Requete', 'helpers', 'ReleveCsv'] as $classe) {
+foreach (['Config', 'Depot', 'Session', 'Langue', 'Auth', 'Requete', 'helpers', 'ReleveCsv', 'ReleveExcel'] as $classe) {
     require_once $racine . '/src/' . $classe . '.php';
 }
 Config::charger([
@@ -83,6 +83,21 @@ Langue::imposer('de');
 $dire('de :   un horodatage', date_numerique($jour->getTimestamp()), '03.10.2026');
 $dire('de :   un texte', date_numerique('2026-10-03 08:00:00'), '03.10.2026');
 $dire('de :   jour et mois seuls', date(t('date.jour_mois'), $jour->getTimestamp()), '03.10.');
+
+echo "\n4 bis. Un mois au milieu d’une phrase\n";
+/*
+ * Une vingtaine d'endroits écrivaient le mois avec strtolower() : « october 2026 » en anglais,
+ * « oktober » en allemand, où les mois prennent une majuscule. La règle est celle de la langue.
+ */
+foreach (['fr' => 'octobre', 'en' => 'October', 'es' => 'octubre', 'de' => 'Oktober'] as $langue => $attendu) {
+    Langue::imposer($langue);
+    $dire("$langue : le dixième mois", nom_mois_en_phrase(10), $attendu);
+}
+foreach (['fr', 'en', 'es', 'de'] as $langue) {
+    Langue::imposer($langue);
+    $dire("$langue : la clé d’un mois de classeur", ReleveExcel::cleDuMois(2) . ' ' . ReleveExcel::cleDuMois(8) . ' ' . ReleveExcel::cleDuMois(12),
+        'fevrier aout decembre');
+}
 
 echo "\n5. Une saisie se lit selon la langue\n";
 $cas = [
@@ -152,17 +167,29 @@ try {
         '1234.50');
     $page = $appel('budget');
     $dire('la page l’écrit « €1,234.50 »', $oui(str_contains($page, '€1,234.50')), 'oui');
+    // Le mois de la période : « October 2026 », pas « october 2026 ».
+    Langue::imposer('en');
+    $periode = nom_mois_en_phrase((int) date('n')) . ' ' . date('Y');
+    $dire('  la période : « ' . $periode . ' »', $oui(str_contains($page, $periode)), 'oui');
+    $dire('  et pas en minuscule', $oui(!str_contains($page, mb_strtolower($periode))), 'oui');
     $dire('  et plus à la française', $oui(!str_contains($page, "1{$f}234,50")), 'oui');
 
     echo "\n8. La même page, en allemand\n";
     $appel('compte/langue', ['_csrf' => $csrf, 'langue' => 'de']);
     $page = $appel('budget');
     $dire('la page l’écrit « 1.234,50 € »', $oui(str_contains($page, "1.234,50{$i}€")), 'oui');
+    Langue::imposer('de');
+    $periode = nom_mois_en_phrase((int) date('n')) . ' ' . date('Y');
+    $dire('  la période : « ' . $periode . ' »', $oui(str_contains($page, $periode)), 'oui');
+    $dire('  et pas en minuscule', $oui(!str_contains($page, mb_strtolower($periode))), 'oui');
 
     echo "\n9. Et en français, comme avant\n";
     $appel('compte/langue', ['_csrf' => $csrf, 'langue' => 'fr']);
     $page = $appel('budget');
     $dire('la page l’écrit « 1 234,50 € »', $oui(str_contains($page, "1{$f}234,50{$i}€")), 'oui');
+    Langue::imposer('fr');
+    $periode = nom_mois_en_phrase((int) date('n')) . ' ' . date('Y');
+    $dire('  la période : « ' . $periode . ' », en minuscule', $oui(str_contains($page, $periode)), 'oui');
     $dire('  et le montant en base n’a pas bougé',
         (string) Database::valeur('SELECT montant FROM operations WHERE user_id = ? ORDER BY id DESC LIMIT 1', [$id]),
         '1234.50');

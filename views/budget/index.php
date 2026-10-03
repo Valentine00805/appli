@@ -44,7 +44,7 @@ $plafondHistorique = max(array_merge([1.0], array_map(
     <a class="bouton bouton--secondaire bouton--petit" href="<?= $lienMois($suivant) ?>"
        aria-label="<?= e(t('bud.mois_suivant')) ?>">→</a>
     <h2 class="cal-titre" style="text-transform:capitalize">
-      <?= e(strtolower(nom_mois((int) $mois->format('n'))) . ' ' . $mois->format('Y')) ?>
+      <?= e(nom_mois_en_phrase((int) $mois->format('n')) . ' ' . $mois->format('Y')) ?>
     </h2>
   </div>
 </div>

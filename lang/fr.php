@@ -4087,4 +4087,8 @@ return [
     'fic.refus' => '« {nom} » : {raison}',
     'fic.transfert_invalide' => '« {nom} » : transfert invalide.',
     'tr.copie_description' => 'Travail de groupe « {nom} ».',
+    // Les derniers libellés trouvés par le balayage large
+    'grp.fl.membre_retire' => '{qui} ne fait plus partie du groupe.',
+    // Le graphique des prévisions
+    'prev.solde_saisi_court' => 'solde saisi',
 ];
