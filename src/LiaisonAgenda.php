@@ -341,7 +341,7 @@ final class LiaisonAgenda
     {
         $ch = curl_init($url);
         if ($ch === false) {
-            throw new RuntimeException('Impossible de contacter l’agenda.');
+            throw new RuntimeException(t('ag.contact_impossible'));
         }
 
         $recues = [];

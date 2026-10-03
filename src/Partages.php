@@ -1566,7 +1566,7 @@ final class Partages
             self::prevenir($moi, $type, $id, '📎',
                 fn (): string => t('pt.fichiers_ajoutes_' . ($type === 'cours' ? 'cours' : 'fiche'), [
                     'quoi' => $ajoutes === 1 ? t('pt.le_fichier') : t('pt.n_fichiers', ['n' => $ajoutes]),
-                    'noms' => implode(', ', array_map(static fn (string $n): string => '« ' . $n . ' »', array_reverse($noms)))
+                    'noms' => implode(', ', array_map(static fn (string $n): string => guillemets($n), array_reverse($noms)))
                         . ($ajoutes > 3 ? '…' : ''),
                     'titre' => mb_strimwidth((string) ($cible['titre_cours'] ?? $cible['titre']), 0, 60, '…'),
                 ]),

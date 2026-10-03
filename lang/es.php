@@ -83,7 +83,6 @@ return [
     'langue.titre' => '🌐 Idioma',
     'langue.aide' => 'El de la aplicación: menús, botones y mensajes. Lo que escribes — apuntes, notas, mensajes — no se traduce.',
     'langue.enregistree' => 'Idioma: {nom}.',
-    'langue.partielle' => 'Algunas páginas siguen en francés; se van traduciendo poco a poco.',
 
     'commun.modifier' => '✎ Editar',
     'commun.enregistrer' => 'Guardar',
@@ -4067,4 +4066,13 @@ return [
     'js.taille.o' => 'B',
     'js.taille.ko' => 'KB',
     'js.taille.mo' => 'MB',
+    // Les visiteurs sans compte, et les derniers libellés assemblés à la main
+    'langue.choisir' => 'Elegir idioma',
+    'auth.fl.code_incorrect' => 'Código de registro incorrecto.',
+    'fmt.guillemets' => '«{texte}»',
+    'ag.contact_impossible' => 'No se ha podido contactar con la agenda.',
+    'ag.agenda_principal' => 'la agenda',
+    'fic.refus' => '«{nom}»: {raison}',
+    'fic.transfert_invalide' => '«{nom}»: carga no válida.',
+    'tr.copie_description' => 'Trabajo en grupo «{nom}».',
 ];

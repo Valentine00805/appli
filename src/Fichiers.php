@@ -57,13 +57,13 @@ final class Fichiers
             $nomOrigine = (string) ($fichiers['name'][$i] ?? '');
 
             if ($code !== UPLOAD_ERR_OK) {
-                $erreurs[] = sprintf('« %s » : %s', $nomOrigine, self::messageErreur((int) $code));
+                $erreurs[] = t('fic.refus', ['nom' => $nomOrigine, 'raison' => self::messageErreur((int) $code)]);
                 continue;
             }
 
             $tmp = (string) $fichiers['tmp_name'][$i];
             if (!is_uploaded_file($tmp)) {
-                $erreurs[] = sprintf('« %s » : transfert invalide.', $nomOrigine);
+                $erreurs[] = t('fic.transfert_invalide', ['nom' => $nomOrigine]);
                 continue;
             }
 

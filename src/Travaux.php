@@ -804,7 +804,7 @@ final class Travaux
 
         return $e + [
             'titre_copie' => mb_substr(($e['type_icone'] ?? self::ICONE_SANS_TYPE) . ' ' . $e['titre'] . ' · ' . $e['projet_nom'], 0, 200),
-            'description_copie' => 'Travail de groupe « ' . $e['projet_nom'] . ' ».',
+            'description_copie' => t('tr.copie_description', ['nom' => (string) $e['projet_nom']]),
             'rappels_copie' => (string) ($e['type_rappels'] ?? '1440'),
         ];
     }
@@ -812,7 +812,7 @@ final class Travaux
     /** La copie de l'échéance dans le calendrier d'un membre (une seule). */
     public static function copier(int $echeanceId, int $userId): void
     {
-        $e = self::contenuCopie($echeanceId);
+        $e = Langue::pourLeCompte($userId, static fn (): ?array => self::contenuCopie($echeanceId));
         if ($e === null || Database::valeur(
                 'SELECT id FROM evenements WHERE user_id = ? AND projet_echeance_id = ?', [$userId, $echeanceId]) !== null) {
             return;
@@ -830,15 +830,19 @@ final class Travaux
      */
     private static function mettreAJourCopies(int $echeanceId): void
     {
-        $e = self::contenuCopie($echeanceId);
-        if ($e === null) {
-            return;
+        // Une copie par membre, chacune dans la langue de son propriétaire.
+        foreach (Database::all('SELECT DISTINCT user_id FROM evenements WHERE projet_echeance_id = ?', [$echeanceId]) as $ligne) {
+            $membre = (int) $ligne['user_id'];
+            $e = Langue::pourLeCompte($membre, static fn (): ?array => self::contenuCopie($echeanceId));
+            if ($e === null) {
+                return;
+            }
+            Database::run(
+                'UPDATE evenements SET titre = ?, description = ?, lieu = ?, debut = ?, fin = ?, journee_entiere = ?
+                  WHERE projet_echeance_id = ? AND user_id = ?',
+                [$e['titre_copie'], $e['description_copie'], $e['lieu'], $e['debut'], $e['fin'],
+                 (int) $e['journee_entiere'], $echeanceId, $membre]);
         }
-        Database::run(
-            'UPDATE evenements SET titre = ?, description = ?, lieu = ?, debut = ?, fin = ?, journee_entiere = ?
-              WHERE projet_echeance_id = ?',
-            [$e['titre_copie'], $e['description_copie'], $e['lieu'], $e['debut'], $e['fin'],
-             (int) $e['journee_entiere'], $echeanceId]);
     }
 
     /** Le projet d'une copie du calendrier, si j'en suis membre. */

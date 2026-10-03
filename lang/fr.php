@@ -94,7 +94,6 @@ return [
     'langue.titre' => '🌐 Langue',
     'langue.aide' => 'Celle de l’application : menus, boutons et messages. Ce que vous écrivez — cours, notes, messages — n’est pas traduit.',
     'langue.enregistree' => 'Langue : {nom}.',
-    'langue.partielle' => 'Certaines pages sont encore en français ; elles se traduisent petit à petit.',
 
     // Les boutons et mots qui reviennent partout.
     'commun.modifier' => '✎ Modifier',
@@ -4079,4 +4078,13 @@ return [
     'js.taille.o' => 'o',
     'js.taille.ko' => 'Ko',
     'js.taille.mo' => 'Mo',
+    // Les visiteurs sans compte, et les derniers libellés assemblés à la main
+    'langue.choisir' => 'Choisir la langue',
+    'auth.fl.code_incorrect' => 'Code d’inscription incorrect.',
+    'fmt.guillemets' => '« {texte} »',
+    'ag.contact_impossible' => 'Impossible de contacter l’agenda.',
+    'ag.agenda_principal' => 'l’agenda',
+    'fic.refus' => '« {nom} » : {raison}',
+    'fic.transfert_invalide' => '« {nom} » : transfert invalide.',
+    'tr.copie_description' => 'Travail de groupe « {nom} ».',
 ];

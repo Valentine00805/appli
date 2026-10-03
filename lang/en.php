@@ -83,7 +83,6 @@ return [
     'langue.titre' => '🌐 Language',
     'langue.aide' => 'The app’s language: menus, buttons and messages. What you write — courses, notes, messages — is never translated.',
     'langue.enregistree' => 'Language: {nom}.',
-    'langue.partielle' => 'Some pages are still in French; they are being translated bit by bit.',
 
     'commun.modifier' => '✎ Edit',
     'commun.enregistrer' => 'Save',
@@ -4067,4 +4066,13 @@ return [
     'js.taille.o' => 'B',
     'js.taille.ko' => 'KB',
     'js.taille.mo' => 'MB',
+    // Les visiteurs sans compte, et les derniers libellés assemblés à la main
+    'langue.choisir' => 'Choose language',
+    'auth.fl.code_incorrect' => 'Incorrect sign-up code.',
+    'fmt.guillemets' => '“{texte}”',
+    'ag.contact_impossible' => 'Could not reach the calendar.',
+    'ag.agenda_principal' => 'the calendar',
+    'fic.refus' => '“{nom}”: {raison}',
+    'fic.transfert_invalide' => '“{nom}”: invalid upload.',
+    'tr.copie_description' => 'Group work “{nom}”.',
 ];

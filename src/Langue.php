@@ -28,15 +28,95 @@ final class Langue
     /** @var array<string, array<string, string|array>> les fichiers déjà lus */
     private static array $chargees = [];
 
-    /** La langue en cours : celle du compte, ou le français. */
+    /**
+     * Le cookie où un visiteur sans compte garde sa langue. Il est purement fonctionnel :
+     * il ne sert qu'à retrouver ce choix, et à rien d'autre.
+     */
+    public const COOKIE = 'MESCOURS_LANGUE';
+
+    /**
+     * La langue en cours : celle du compte ; à défaut, celle du visiteur — son
+     * choix, puis son navigateur — ; à défaut, le français.
+     */
     public static function courante(): string
     {
         if (self::$courante !== null) {
             return self::$courante;
         }
-        $dite = (string) (Auth::utilisateur()['langue'] ?? self::PAR_DEFAUT);
+        $dite = (string) (Auth::utilisateur()['langue'] ?? self::duVisiteur());
 
         return self::$courante = isset(self::LANGUES[$dite]) ? $dite : self::PAR_DEFAUT;
+    }
+
+    /**
+     * La langue de quelqu'un qui n'a pas de compte : celle qu'il a choisie sur une
+     * page publique, sinon la première que son navigateur demande et que
+     * l'application parle.
+     */
+    public static function duVisiteur(): string
+    {
+        // La réponse dépend de ces deux en-têtes : un cache ne doit pas la resservir à un autre.
+        if (!headers_sent()) {
+            header('Vary: Accept-Language, Cookie', false);
+        }
+        $choisie = $_COOKIE[self::COOKIE] ?? null;
+        if (is_string($choisie) && isset(self::LANGUES[$choisie])) {
+            return $choisie;
+        }
+
+        return self::duNavigateur((string) ($_SERVER['HTTP_ACCEPT_LANGUAGE'] ?? ''));
+    }
+
+    /**
+     * La première langue d'un en-tête Accept-Language que l'application parle.
+     *
+     * « en-GB,en;q=0.9,fr;q=0.8 » donne « en » ; « ja,zh;q=0.9 », que nous ne parlons
+     * pas, donne le français. Les préférences se trient par qualité (q), à égalité
+     * dans l'ordre d'écriture ; q=0 veut dire « surtout pas ».
+     */
+    public static function duNavigateur(string $entete): string
+    {
+        $demandees = [];
+        foreach (explode(',', $entete) as $morceau) {
+            $parties = explode(';', $morceau);
+            $code = strtolower(explode('-', trim($parties[0]))[0]);
+            $qualite = 1.0;
+            foreach (array_slice($parties, 1) as $parametre) {
+                if (preg_match('/^\s*q\s*=\s*([0-9.]+)\s*$/i', $parametre, $m) === 1) {
+                    $qualite = (float) $m[1];
+                }
+            }
+            if ($qualite > 0 && isset(self::LANGUES[$code])) {
+                $demandees[] = [$code, $qualite];
+            }
+        }
+        // Le tri de PHP est stable : à qualité égale, l'ordre d'écriture reste.
+        usort($demandees, static fn (array $a, array $b): int => $b[1] <=> $a[1]);
+
+        return $demandees[0][0] ?? self::PAR_DEFAUT;
+    }
+
+    /**
+     * Garde la langue d'un visiteur dans un cookie, pour un an. Elle sert aux pages
+     * ouvertes sans compte, et à la page de connexion après une déconnexion.
+     */
+    public static function retenirPourLeVisiteur(string $langue): void
+    {
+        if (!isset(self::LANGUES[$langue])) {
+            return;
+        }
+        $_COOKIE[self::COOKIE] = $langue;
+        if (headers_sent()) {
+            return;
+        }
+        $base = defined('BASE_URL') ? (string) BASE_URL : '';
+        setcookie(self::COOKIE, $langue, [
+            'expires'  => time() + 365 * 86400,
+            'path'     => $base . '/',
+            'secure'   => !empty($_SERVER['HTTPS']),
+            'httponly' => true,
+            'samesite' => 'Lax',
+        ]);
     }
 
     /** Impose une langue (au changement de réglage, et dans les essais). */

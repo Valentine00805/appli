@@ -40,7 +40,7 @@ final class AuthController
             // Un code faux compte comme un échec : on ne veut pas qu'il se devine
             // par essais successifs non plus.
             LimiteurConnexion::enregistrer('', $ip, false);
-            $erreurs['code_inscription'] = 'Code d’inscription incorrect.';
+            $erreurs['code_inscription'] = t('auth.fl.code_incorrect');
         }
 
         if (mb_strlen($nom) < 2) {
@@ -70,8 +70,8 @@ final class AuthController
 
         try {
             Database::run(
-                'INSERT INTO users (nom, pseudo, email, password_hash) VALUES (?, ?, ?, ?)',
-                [$nom, $pseudo, $email, password_hash($mdp, PASSWORD_DEFAULT)]
+                'INSERT INTO users (nom, pseudo, email, password_hash, langue) VALUES (?, ?, ?, ?, ?)',
+                [$nom, $pseudo, $email, password_hash($mdp, PASSWORD_DEFAULT), Langue::courante()]
             );
         } catch (PDOException $e) {
             // Pris entre la vérification et l'écriture, par une inscription simultanée.
@@ -90,8 +90,20 @@ final class AuthController
         BudgetController::creerCategoriesParDefaut($userId);
 
         Auth::connecter($userId);
+        Langue::retenirPourLeVisiteur(Langue::courante());
         Session::flash('succes', t('auth.fl.bienvenue', ['qui' => $pseudo]));
         redirect('');
+    }
+
+    /**
+     * Le choix de langue d'un visiteur, sur une page ouverte sans compte. Il se garde
+     * dans un cookie ; un compte, lui, garde la sienne dans « Mon compte ».
+     */
+    public function choisirLangueVisiteur(): void
+    {
+        Session::verifierCsrf();
+        Langue::retenirPourLeVisiteur(post('langue'));
+        repartir_vers('connexion');
     }
 
     public function formulaireConnexion(): void
@@ -152,6 +164,8 @@ final class AuthController
 
         $destination = $_SESSION['_apres_connexion'] ?? null;
         Auth::connecter((int) $utilisateur['id']);
+        Langue::imposer((string) $utilisateur['langue']);
+        Langue::retenirPourLeVisiteur(Langue::courante());
         Session::flash('succes', t('auth.fl.content_revoir', ['qui' => Auth::nomAffiche($utilisateur)]));
 
         if (is_string($destination) && $destination !== '') {
@@ -298,6 +312,7 @@ final class AuthController
         Database::run('UPDATE users SET langue = ? WHERE id = ?', [$langue, Auth::id()]);
         // Le message part dans la langue qu'on vient de choisir.
         Langue::imposer($langue);
+        Langue::retenirPourLeVisiteur($langue);
         Session::flash('succes', t('langue.enregistree', ['nom' => Langue::LANGUES[$langue]['nom']]));
         redirect('compte');
     }

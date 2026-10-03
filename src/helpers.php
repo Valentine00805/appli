@@ -420,6 +420,12 @@ function surligner(string $texteEchappe, array $termes): string
     return $texteEchappe;
 }
 
+/** Un texte entre guillemets, à la façon de la langue : « x », “x”, «x» ou „x“. */
+function guillemets(string $texte): string
+{
+    return t('fmt.guillemets', ['texte' => $texte]);
+}
+
 /**
  * Une date en chiffres, à la façon de la langue : 03/10/2026, ou 03.10.2026 en allemand.
  *

@@ -232,6 +232,7 @@ $routes = [
     ['GET',  'mot-de-passe/nouveau',      [AuthController::class, 'formulaireNouveau']],
     ['POST', 'mot-de-passe/nouveau',      [AuthController::class, 'reinitialiser']],
     ['POST', 'deconnexion',               [AuthController::class, 'deconnecter']],
+    ['POST', 'langue',                    [AuthController::class, 'choisirLangueVisiteur']],
     ['GET',  'compte',                    [AuthController::class, 'compte']],
     ['GET',  'notifications',             [NotificationsController::class, 'index']],
     ['GET',  'service-worker.js',         [NotificationsController::class, 'serviceWorker']],

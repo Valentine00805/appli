@@ -83,7 +83,6 @@ return [
     'langue.titre' => '🌐 Sprache',
     'langue.aide' => 'Die Sprache der App: Menüs, Schaltflächen und Meldungen. Was Sie selbst schreiben — Kurse, Notizen, Nachrichten — wird nicht übersetzt.',
     'langue.enregistree' => 'Sprache: {nom}.',
-    'langue.partielle' => 'Einige Seiten sind noch französisch; sie werden nach und nach übersetzt.',
 
     'commun.modifier' => '✎ Bearbeiten',
     'commun.enregistrer' => 'Speichern',
@@ -4067,4 +4066,13 @@ return [
     'js.taille.o' => 'B',
     'js.taille.ko' => 'KB',
     'js.taille.mo' => 'MB',
+    // Les visiteurs sans compte, et les derniers libellés assemblés à la main
+    'langue.choisir' => 'Sprache wählen',
+    'auth.fl.code_incorrect' => 'Falscher Registrierungscode.',
+    'fmt.guillemets' => '„{texte}“',
+    'ag.contact_impossible' => 'Der Kalender ließ sich nicht erreichen.',
+    'ag.agenda_principal' => 'den Kalender',
+    'fic.refus' => '„{nom}“: {raison}',
+    'fic.transfert_invalide' => '„{nom}“: ungültiger Upload.',
+    'tr.copie_description' => 'Gruppenarbeit „{nom}“.',
 ];

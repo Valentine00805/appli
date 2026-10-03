@@ -109,7 +109,7 @@ $langueActuelle = Langue::courante();
         </label>
       <?php endforeach; ?>
     </div>
-    <p class="champ__aide"><?= e(t('langue.aide')) ?> <?= e(t('langue.partielle')) ?></p>
+    <p class="champ__aide"><?= e(t('langue.aide')) ?></p>
     <p class="actions" style="margin:.4rem 0 0">
       <noscript><button class="bouton bouton--petit" type="submit"><?= e(t('commun.enregistrer')) ?></button></noscript>
       <button class="bouton bouton--discret bouton--petit" type="button" data-reglage-annuler><?= e(t('commun.fermer')) ?></button>

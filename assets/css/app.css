@@ -3977,3 +3977,13 @@ summary.cal-volet__groupe:focus-visible {
 .themes-choix__apercu--auto { background: linear-gradient(105deg, #f5f6fa 50%, #12141d 50%); }
 .themes-choix__apercu--auto .themes-choix__barre { background: linear-gradient(105deg, #4f46e5 50%, #8b85ff 50%); }
 .themes-choix__apercu--auto .themes-choix__ligne { background: linear-gradient(105deg, #c6ccdd 50%, #454b63 50%); }
+
+/* Le choix de la langue, sur les pages qu'on ouvre sans compte. */
+.choix-langue { display: flex; flex-wrap: wrap; justify-content: center; gap: .25rem .5rem; margin: 1rem 0 0; }
+.choix-langue__bouton {
+  background: none; border: 0; padding: .35rem .6rem; border-radius: var(--rayon-s);
+  color: var(--texte-doux); font: inherit; font-size: .85rem; cursor: pointer;
+}
+.choix-langue__bouton:hover, .choix-langue__bouton:focus-visible { background: var(--fond-doux); color: var(--texte); }
+.choix-langue__bouton[aria-current="true"] { color: var(--texte); font-weight: 600; cursor: default; }
+.pied-public { padding: .5rem 1rem 2rem; }

@@ -594,7 +594,7 @@ final class SynchroAgenda
     private function unCalendrier(int $userId, ?array $calendrier, string $question): array
     {
         $chemin = $question;
-        $nom = $calendrier === null ? 'l’agenda' : '« ' . (string) $calendrier['nom'] . ' »';
+        $nom = $calendrier === null ? t('ag.agenda_principal') : guillemets((string) $calendrier['nom']);
 
         /*
          * « Prefer » demande que les heures reviennent déjà dans notre fuseau.

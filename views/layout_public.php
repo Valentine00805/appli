@@ -32,5 +32,12 @@
   <?= $contenu ?>
 </main>
 
+<?php // Quelqu'un qui ouvre un lien public n'a pas forcément de compte : il choisit sa langue ici. ?>
+<footer class="pied-public">
+  <?php if (!Auth::connecte()): ?>
+    <?= Vue::rendre('_choix_langue') ?>
+  <?php endif; ?>
+</footer>
+
 </body>
 </html>

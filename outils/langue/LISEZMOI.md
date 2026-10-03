@@ -96,6 +96,15 @@ fait. Il ne touche qu'à des adresses en `@exemple-test.fr`, et sa suppression
 finale porte à la fois sur l'identifiant et sur l'adresse : un vrai compte ne
 peut pas entrer dans sa requête.
 
+**`visiteur_langue.php`** — quelqu'un **sans compte** lit l'application dans sa
+langue : connexion, inscription, mot de passe oublié, liens publics, manifeste,
+page hors-ligne. Elle vérifie la lecture d'un en-tête `Accept-Language`
+(`en-GB,en;q=0.9`, les qualités, `q=0`, une langue qu'on ne parle pas), le choix
+par cookie et ses garde-fous (langue inconnue, retour vers un autre site, jeton
+CSRF absent), qu'un compte garde sa langue, et qu'une inscription crée le
+compte — et ses matières de départ — dans la langue de la page. Trois comptes
+d'essai, effacés à la fin.
+
 **`formats_langue.php`** — les montants, les tailles de fichier et les dates,
 écrits à la façon de la langue du compte et lus de même. Elle vérifie les
 valeurs exactes dans les quatre langues au caractère près (« 1 234,50 € »,
@@ -143,6 +152,27 @@ catégorie ici :
   sauvegarde, l'adresse d'expédition des e-mails.
 - **Un commentaire JavaScript dans un `heredoc`** (`NotificationsController`) —
   du code, que le découpage en jetons ne peut pas distinguer d'une chaîne.
+
+### D'où vient la langue d'une page
+
+`Langue::courante()` cherche, dans cet ordre :
+
+1. **le compte**, s'il y en a un connecté (`users.langue`) ;
+2. **le choix du visiteur**, gardé dans le cookie `MESCOURS_LANGUE` ;
+3. **son navigateur**, par l'en-tête `Accept-Language` ;
+4. le **français**.
+
+Le sélecteur de langue des pages sans compte (`views/_choix_langue.php`) poste
+vers `POST /langue`, qui pose le cookie et revient à la page d'où l'on vient.
+Le cookie est purement fonctionnel : il ne retient que ce choix, pour un an.
+Il suit aussi le compte — posé à la connexion, à l'inscription et à chaque
+changement de langue dans « Mon compte » — pour que la page de connexion reste
+dans la langue de celui qui vient de se déconnecter.
+
+Les réponses qui en dépendent portent `Vary: Accept-Language, Cookie`.
+
+Une inscription crée le compte dans la langue de la page, et ses matières, types
+d'évènement et catégories de départ de même.
 
 ### Les formats de chaque langue
 
