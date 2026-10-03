@@ -14,7 +14,9 @@ DirectoryIndex index.php
 # Les dossiers internes ne sont jamais servis directement. « outils » porte des scripts faits
 # pour la ligne de commande — certains lisent et effacent des comptes d'essai en base : une
 # adresse ne doit pas pouvoir les lancer.
-RedirectMatch 404 (?i)^/.*/(config|src|controllers|views|storage|sql|outils)/
+# « (/.*)? » : le dossier de l'application peut être à la racine du domaine (« /src/… ») comme
+# dans un sous-dossier (« /mes-cours/src/… »). Sans cela, seul le second était protégé.
+RedirectMatch 404 (?i)^(/.*)?/(config|src|controllers|views|storage|sql|outils)/
 
 # Le dépôt git n'est pas à servir : il contient tout le code et son historique.
 RedirectMatch 404 (?i)/\.git(/|ignore|attributes|$)
