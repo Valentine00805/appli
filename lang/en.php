@@ -4089,4 +4089,6 @@ return [
     'liste.alternance' => 'Apprenticeship',
     // Les révisions espacées
     'foc.revoir' => 'Review: {titre}',
+    'apparence.valider' => 'Apply',
+    'apparence.apercu_aide' => 'Preview: the page takes the chosen look, but it is only saved if you apply it.',
 ];

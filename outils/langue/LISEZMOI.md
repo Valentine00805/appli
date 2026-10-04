@@ -360,3 +360,8 @@ puis effacer chaque compte par son adresse, un par un.
 Les essais ne travaillent que sur des comptes en `@exemple-test.fr`, et chaque
 suppression porte un `WHERE` sur l'adresse ou l'identifiant. Rien n'est jamais
 effacé en masse.
+
+**`theme_langue.php`** — l'apparence : le formulaire n'a plus d'envoi automatique, « Valider » est un
+vrai bouton, rien n'est enregistré avant lui, et le bouton se lit dans les quatre langues. L'aperçu
+en direct et « Annuler » sont du JavaScript : ils se vérifient dans un navigateur. Un compte d'essai,
+effacé à la fin.

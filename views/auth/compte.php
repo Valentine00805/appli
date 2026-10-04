@@ -41,9 +41,10 @@ $enEdition = is_string($pseudoSaisi);
  * L'apparence : claire, sombre, ou celle de l'appareil.
  *
  * Comme le pseudo et le fuseau : l'apparence choisie se lit, et les trois
- * vignettes ne se déplient qu'en passant par « Modifier ». Le choix s'applique
- * à l'instant où on le fait — le script pose le thème sur la page avant même
- * l'enregistrement —, puis le formulaire part tout seul.
+ * vignettes ne se déplient qu'en passant par « Modifier ». Choisir une vignette
+ * montre le résultat à l'instant — le script pose le thème sur la page —, mais
+ * rien n'est enregistré avant « Valider » ; « Annuler » rend à la page le thème
+ * du compte.
  */
 $themeActuel = Auth::theme($moi);
 ?>
@@ -57,7 +58,7 @@ $themeActuel = Auth::theme($moi);
     <button class="bouton bouton--secondaire" type="button" data-reglage-modifier><?= e(t('commun.modifier')) ?></button>
   </div>
 
-  <form method="post" action="<?= url('compte/theme') ?>" data-auto-envoi data-choix-theme data-reglage-edition hidden>
+  <form method="post" action="<?= url('compte/theme') ?>" data-choix-theme data-reglage-edition hidden>
     <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
     <div class="themes-choix">
       <?php foreach (Auth::THEMES as $cle => $theme): ?>
@@ -73,9 +74,10 @@ $themeActuel = Auth::theme($moi);
         </label>
       <?php endforeach; ?>
     </div>
-    <p class="actions" style="margin:.8rem 0 0">
-      <noscript><button class="bouton bouton--petit" type="submit"><?= e(t('commun.enregistrer')) ?></button></noscript>
-      <button class="bouton bouton--discret bouton--petit" type="button" data-reglage-annuler><?= e(t('commun.fermer')) ?></button>
+    <p class="champ__aide"><?= e(t('apparence.apercu_aide')) ?></p>
+    <p class="actions" style="margin:.4rem 0 0">
+      <button class="bouton bouton--petit" type="submit"><?= e(t('apparence.valider')) ?></button>
+      <button class="bouton bouton--discret bouton--petit" type="button" data-reglage-annuler><?= e(t('commun.annuler')) ?></button>
     </p>
   </form>
 </section>

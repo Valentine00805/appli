@@ -4191,8 +4191,8 @@
   });
 
   /*
-   * L'apparence choisie s'applique à l'instant du clic : la page prend le
-   * thème sans attendre l'enregistrement, qui part juste après (data-auto-envoi).
+   * L'apparence choisie se montre à l'instant du clic : la page prend le
+   * thème pour qu'on la voie, mais rien n'est enregistré avant « Valider ».
    */
   document.addEventListener("change", function (evenement) {
     var choix = evenement.target;

@@ -4101,4 +4101,6 @@ return [
     'liste.alternance' => 'Alternance',
     // Les révisions espacées
     'foc.revoir' => 'Revoir : {titre}',
+    'apparence.valider' => 'Valider',
+    'apparence.apercu_aide' => 'Aperçu : la page prend le thème choisi, mais il n’est enregistré que si vous validez.',
 ];

@@ -4089,4 +4089,6 @@ return [
     'liste.alternance' => 'Ausbildung',
     // Les révisions espacées
     'foc.revoir' => 'Wiederholen: {titre}',
+    'apparence.valider' => 'Übernehmen',
+    'apparence.apercu_aide' => 'Vorschau: die Seite zeigt die gewählte Darstellung, gespeichert wird sie aber nur, wenn du sie übernimmst.',
 ];

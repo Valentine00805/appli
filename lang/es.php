@@ -4089,4 +4089,6 @@ return [
     'liste.alternance' => 'Alternancia',
     // Les révisions espacées
     'foc.revoir' => 'Repasar: {titre}',
+    'apparence.valider' => 'Aplicar',
+    'apparence.apercu_aide' => 'Vista previa: la página adopta el tema elegido, pero solo se guarda si lo aplicas.',
 ];
