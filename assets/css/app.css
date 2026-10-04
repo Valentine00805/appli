@@ -3193,6 +3193,9 @@ summary.cal-volet__groupe:focus-visible {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* Des évènements côte à côte n'ont chacun qu'une colonne étroite : le titre prend la place
+   de l'heure, qui reste dans l'infobulle et dans la fenêtre qu'ouvre un clic. */
+.jour-planning__evt--partage .jour-planning__evt-heure { display: none; }
 .jour-planning__evt-heure { font-size: .7rem; color: var(--texte-doux, #64748b); }
 .jour-planning__evt-titre { font-weight: 600; }
 .jour-planning__evt-lieu {

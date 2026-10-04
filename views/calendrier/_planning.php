@@ -109,14 +109,17 @@ $ou = static function (array $evt): string {
         $largeur = 100 / $bloc['colonnes'];
         ?>
         <a class="jour-planning__evt<?= $evt['termine'] ? ' jour-planning__evt--termine' : ''
-           ?><?= $bloc['court'] ? ' jour-planning__evt--court' : '' ?>"
+           ?><?= $bloc['court'] ? ' jour-planning__evt--court' : ''
+           ?><?= $bloc['colonnes'] > 1 ? ' jour-planning__evt--partage' : '' ?>"
            href="<?= $ou($evt) ?>"
            <?= empty($evt['est_tache']) ? 'data-fenetre' : '' ?>
            style="--minute:<?= (float) $bloc['haut'] ?>;--duree:<?= (float) $bloc['hauteur'] ?>;
                   --gauche:<?= round($bloc['colonne'] * $largeur, 3) ?>%;
                   --largeur:<?= round($largeur, 3) ?>%;
                   --teinte:<?= e($couleur) ?>"
-           title="<?= e(libelle_type($evt) . ' · ' . $evt['titre']) ?>">
+           title="<?= e(libelle_type($evt) . ' · ' . $evt['titre']
+               // Côte à côte, l'heure n'a plus la place de s'écrire : elle reste dans l'infobulle.
+               . ($bloc['colonnes'] > 1 ? ' · ' . date('H:i', strtotime($evt['debut'])) . '–' . date('H:i', strtotime($evt['fin'])) : '')) ?>">
           <span class="jour-planning__evt-heure">
             <?= e(date('H:i', strtotime($evt['debut']))) ?>–<?= e(date('H:i', strtotime($evt['fin']))) ?>
           </span>
