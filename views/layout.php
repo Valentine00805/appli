@@ -158,5 +158,6 @@ if ($utilisateur !== null
 <script src="<?= asset('assets/js/app.js') ?>" defer></script>
 <script src="<?= asset('assets/js/mot-de-passe.js') ?>" defer></script>
 <script src="<?= asset('assets/js/carte-mentale.js') ?>" defer></script>
+<script src="<?= asset('assets/js/zoom-image.js') ?>" defer></script>
 </body>
 </html>

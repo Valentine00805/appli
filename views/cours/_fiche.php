@@ -314,7 +314,8 @@ $avancementFiche = avancement_anneaux(
             <figure class="fichier__vue" data-image="<?= $rang ?>"
                     data-vue="<?= (int) $image['position_lecture'] >= 1 ? '1' : '' ?>"
                     data-position-url="<?= url('fichiers/' . $image['id'] . '/position') ?>">
-              <a href="<?= url('fichiers/' . $image['id']) ?>" target="_blank" rel="noopener"
+              <?php // Dans une fenêtre, avec de quoi zoomer ; sans script, le lien ouvre la page d'aperçu. ?>
+              <a href="<?= url('fichiers/' . $image['id'] . '/apercu') ?>" <?= $dansUneFenetre ? 'data-fenetre-dessus' : 'data-fenetre' ?>
                  title="<?= e(t('fiche.image_grand')) ?>">
                 <img src="<?= url('fichiers/' . $image['id']) ?>" loading="lazy"
                      alt="<?= e($image['nom_origine']) ?>">

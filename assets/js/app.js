@@ -1190,6 +1190,8 @@
         initialiserBrouillons(corps);
         // L'éditeur de carte mentale (assets/js/carte-mentale.js) : un fragment n'exécute pas de script.
         if (window.initialiserCarteMentale) { window.initialiserCarteMentale(corps); }
+        // Le zoom d'une image (assets/js/zoom-image.js), pour la même raison.
+        if (window.initialiserZoomImage) { window.initialiserZoomImage(corps); }
     };
 
     var ouvrir = function (adresse) {

@@ -81,11 +81,25 @@ $dansUneFenetre = $dansUneFenetre ?? false;
   </p>
 
 <?php elseif ($genre === 'image'): ?>
-  <div class="carte apercu-image">
-    <a href="<?= url('fichiers/' . $fichier['id']) ?>" target="_blank" rel="noopener"
-       title="<?= e(t('ap.image_grand')) ?>">
+  <?php
+  /*
+   * L'image dans un cadre qui défile, avec de quoi zoomer (assets/js/zoom-image.js : la barre n'apparaît qu'avec le
+   * script). Sans lui, l'image se montre à la largeur de la page, et le lien ouvre l'original dans un onglet.
+   */
+  ?>
+  <div class="carte apercu-image" data-zoom-image>
+    <div class="zoom__barre" role="toolbar" aria-label="<?= e(t('ap.zoom_barre')) ?>" hidden data-zoom-barre>
+      <button type="button" class="bouton bouton--secondaire bouton--petit" data-zoom-action="moins" title="<?= e(t('ap.zoom_moins')) ?> (−)">−</button>
+      <span class="zoom__niveau" data-zoom-niveau aria-live="polite"></span>
+      <button type="button" class="bouton bouton--secondaire bouton--petit" data-zoom-action="plus" title="<?= e(t('ap.zoom_plus')) ?> (+)">＋</button>
+      <button type="button" class="bouton bouton--discret bouton--petit" data-zoom-action="ajuster" title="<?= e(t('ap.zoom_ajuster')) ?> (0)">⤢ <?= e(t('ap.zoom_ajuster')) ?></button>
+      <button type="button" class="bouton bouton--discret bouton--petit" data-zoom-action="reel" title="<?= e(t('ap.zoom_reel')) ?> (1)">1:1</button>
+      <a class="bouton bouton--discret bouton--petit" href="<?= url('fichiers/' . $fichier['id']) ?>" target="_blank" rel="noopener">↗ <?= e(t('ap.zoom_onglet')) ?></a>
+    </div>
+    <div class="zoom__cadre" data-zoom-cadre>
       <img src="<?= url('fichiers/' . $fichier['id']) ?>" alt="<?= e((string) $fichier['nom_origine']) ?>">
-    </a>
+    </div>
+    <p class="champ__aide" hidden data-zoom-aide><?= e(t('ap.zoom_aide')) ?></p>
   </div>
 
 <?php elseif ($genre === 'brut'): ?>

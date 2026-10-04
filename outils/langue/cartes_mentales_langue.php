@@ -401,6 +401,25 @@ try {
     $dire('  un second ajout reçoit un numéro (deux images ne se confondent pas)', $oui(in_array('Carte mentale — Sauvée (2).png', $noms, true)), 'oui');
     [$fiche] = $appel($a, 'revision/' . $coursM);
     $dire('  la fiche de révision la montre parmi ses fichiers et images', $oui(str_contains($fiche, 'Carte mentale — Sauvée.png')), 'oui');
+    $idImage = (int) $lignes[0]['id'];
+    $dire('  dans la fiche, cliquer l’image ouvre son aperçu dans une fenêtre (plus dans un nouvel onglet)',
+        $oui(preg_match('#<a href="[^"]*/fichiers/' . $idImage . '/apercu" data-fenetre\s+title="Ouvrir l’image en grand"#', $fiche) === 1), 'oui');
+    [$apercu] = $appel($a, 'fichiers/' . $idImage . '/apercu?fenetre=1');
+    $dire('  l’aperçu en fenêtre : un fragment avec la barre de zoom (− + ajuster 1:1) et sans script à exécuter',
+        $oui(str_contains($apercu, 'data-zoom-image') && !str_contains($apercu, '<header class="entete"') && !str_contains($apercu, 'zoom-image.js')
+            && str_contains($apercu, 'data-zoom-action="moins"') && str_contains($apercu, 'data-zoom-action="plus"')
+            && str_contains($apercu, 'data-zoom-action="ajuster"') && str_contains($apercu, 'data-zoom-action="reel"')
+            && str_contains($apercu, 'data-zoom-cadre') && str_contains($apercu, 'Ajuster à la largeur')), 'oui');
+    [$apercuPage] = $appel($a, 'fichiers/' . $idImage . '/apercu');
+    [$jsZoom] = $appel($a, 'assets/js/zoom-image.js');
+    $dire('  la page entière charge le script du zoom (que app.js appelle sur ce qu’il pose en fenêtre)',
+        $oui(str_contains($apercuPage, 'zoom-image.js') && str_contains($jsZoom, 'initialiserZoomImage')
+            && str_contains((string) $appel($a, 'assets/js/app.js')[0], 'initialiserZoomImage')), 'oui');
+    foreach (['en' => 'Fit to width', 'es' => 'Ajustar al ancho', 'de' => 'An Breite anpassen', 'fr' => 'Ajuster à la largeur'] as $langue => $mot) {
+        $appel($a, 'compte/langue', ['_csrf' => $csrf, 'langue' => $langue]);
+        [$apercu] = $appel($a, 'fichiers/' . $idImage . '/apercu?fenetre=1');
+        $dire("  $langue : la barre de zoom parle la langue", $oui(str_contains($apercu, $mot) && !preg_match('/>\s*ap\.zoom_[a-z]+\s*</', $apercu)), 'oui');
+    }
 
     $avant = count($jointes());
     foreach ([
