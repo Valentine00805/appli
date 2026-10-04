@@ -31,7 +31,7 @@ final class FocusController
             $dernier = Focus::dernierCours($userId);
             $coches = $dernier === null ? [] : [(int) $dernier['id']];
         }
-        Vue::afficher('focus/index', [
+        $donnees = [
             'enCours'   => Focus::enCours($userId),
             'bilan'     => $bilan,
             'objectif'  => Focus::objectif($userId),
@@ -55,7 +55,17 @@ final class FocusController
             // et les cartes que ce cours donne à revoir aujourd’hui.
             'apres'     => $apres,
             'apresCours' => $apres === null ? [] : Focus::coursDeLaSession((int) $apres['id']),
-        ], t('focus.titre_page'));
+        ];
+
+        // Demandé en fragment (« Réviser » depuis l'accueil), le départ s'ouvre dans une fenêtre ;
+        // « Démarrer » emmène ensuite, en pleine page, sur l'écran de travail.
+        if (Vue::enFenetre()) {
+            Vue::fragment('focus/index', $donnees);
+
+            return;
+        }
+
+        Vue::afficher('focus/index', $donnees, t('focus.titre_page'));
     }
 
     /** Ouvre la session, puis emmène droit sur l'écran de travail. */

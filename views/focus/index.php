@@ -16,9 +16,10 @@
  */
 $csrf = Session::jetonCsrf();
 $coches = array_flip(array_map('intval', $coches));
+$dansUneFenetre = $dansUneFenetre ?? false;
 ?>
 
-<div class="entete-page">
+<div class="entete-page"<?= $dansUneFenetre ? ' data-large' : '' ?>>
   <div>
     <h1><?= e(t('focus.titre')) ?></h1>
     <p><?= e(t('focus.sous_titre')) ?></p>
