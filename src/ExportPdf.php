@@ -108,6 +108,20 @@ final class ExportPdf
     }
 
     /**
+     * Un résumé écrit par l'IA, en PDF : son titre, une ligne qui dit ce que c'est, puis son texte mis en pages comme
+     * celui d'une fiche (titres, puces, gras).
+     *
+     * @param string $html  le corps, en HTML déjà sûr (sorti de Markdown::html, ou fabriqué ici) : il repasse de toute
+     *                      façon par le crible du texte riche
+     */
+    public static function depuisResume(string $titre, string $sousTitre, string $html): string
+    {
+        [$blocs, $profondeur] = self::blocsDuTexteRiche(TexteRiche::MARQUE . $html);
+
+        return self::publier(['titre' => $titre, 'sous_titre' => $sousTitre], $blocs, $profondeur, t('pdf.resume_vide'), $titre);
+    }
+
+    /**
      * Le journal des missions de l'alternance, semaine après semaine : c'est
      * ce qu'on recopie dans le livret d'apprentissage, ou qu'on joint au
      * rapport. Le récapitulatif des compétences vient à la fin, du plus

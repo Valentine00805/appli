@@ -105,6 +105,38 @@ $coursDuPaquet = array_values(array_filter($sources, static fn ($s): bool => (in
 <?php endif; ?>
 <p class="champ__aide"><?= e(t('ria.avertissement_ia')) ?></p>
 
+<?php
+/*
+ * Le résumé en PDF : à télécharger, ou à joindre à la fiche de révision d'un des cours lus — où il rejoint les
+ * autres fichiers de la fiche. Pour tous les genres : des flash cards donnent un PDF « Question / Réponse ».
+ */
+?>
+<section class="carte">
+  <h2><?= e(t('ria.pdf_titre')) ?></h2>
+  <p class="champ__aide"><?= e(t('ria.pdf_aide')) ?></p>
+  <p class="actions">
+    <a class="bouton bouton--secondaire" href="<?= url('resumes/' . $id . '/pdf') ?>"><?= e(t('ria.pdf_telecharger')) ?></a>
+  </p>
+  <?php if ($coursDuPaquet !== []): ?>
+    <form method="post" action="<?= url('resumes/' . $id . '/pdf-fiche') ?>" class="fabrique__form"<?= $envoi ?>>
+      <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
+      <?php if (count($coursDuPaquet) === 1): ?>
+        <input type="hidden" name="cours" value="<?= (int) $coursDuPaquet[0]['id'] ?>">
+      <?php else: ?>
+        <div class="champ">
+          <label for="cours_pdf"><?= e(t('ria.fiche_vers')) ?></label>
+          <select id="cours_pdf" name="cours">
+            <?php foreach ($coursDuPaquet as $c): ?>
+              <option value="<?= (int) $c['id'] ?>"><?= e((string) $c['cours']) ?></option>
+            <?php endforeach; ?>
+          </select>
+        </div>
+      <?php endif; ?>
+      <button class="bouton bouton--secondaire" type="submit"><?= e(t('ria.pdf_joindre')) ?><?php if (count($coursDuPaquet) === 1): ?> — <?= e((string) $coursDuPaquet[0]['cours']) ?><?php endif; ?></button>
+    </form>
+  <?php endif; ?>
+</section>
+
 <?php if ($sources !== []): ?>
   <section class="carte">
     <h2><?= e(t('ria.sources')) ?></h2>

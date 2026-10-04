@@ -133,7 +133,7 @@ try {
     [$fragment] = $appel($a, 'resumes/' . $idResume . '?fenetre=1');
     $dire('  demandé en fenêtre, c’est un fragment : pas de menu, pas de lien de retour, formulaires faits pour la fenêtre',
         $oui(!str_contains($fragment, '<header class="entete"') && !str_contains($fragment, 'Tous les résumés')
-            && str_contains($fragment, 'data-large') && substr_count($fragment, 'data-envoi-fenetre') === 3
+            && str_contains($fragment, 'data-large') && substr_count($fragment, 'data-envoi-fenetre') === 4
             && str_contains($fragment, '<strong>gras</strong>') && str_contains($fragment, '&lt;script&gt;')), 'oui');
     $dire('  appelé directement, c’est la page entière, avec son lien de retour',
         $oui(str_contains($r, '<header class="entete"') && str_contains($r, 'Tous les résumés') && !str_contains($r, 'data-envoi-fenetre')), 'oui');
@@ -311,6 +311,75 @@ try {
     }
     bd_run('DELETE FROM cartes WHERE user_id = ?', [$idA]);
 
+    echo "\n5 quinquies. Le PDF\n";
+    require_once dirname(__DIR__, 2) . '/src/TextePdf.php';
+    $dejaLaP = array_column(bd_all('SELECT id FROM resumes_ia WHERE user_id = ?', [$idA]), 'id');
+    [$r, $url] = $appel($a, 'resumes/generer', ['_csrf' => $csrf, 'cours' => [$coursA], 'genres' => ['points']]);
+    $idP = $idOuvert($url);
+    [$page] = $appel($a, 'resumes/' . $idP);
+    $dire('la page propose « Télécharger en PDF » et « Joindre le PDF à ma fiche de révision »',
+        $oui(str_contains($page, '>Télécharger en PDF</a>') && str_contains($page, 'Joindre le PDF à ma fiche de révision — Cyber')), 'oui');
+    $tmpPdf = tempnam(sys_get_temp_dir(), 'pdf');
+    $h = curl_init('http://localhost/mon_appli/appli/resumes/' . $idP . '/pdf');
+    $entetes = [];
+    curl_setopt_array($h, [CURLOPT_RETURNTRANSFER => true, CURLOPT_COOKIEFILE => $cookies[$a], CURLOPT_HEADERFUNCTION => static function ($c, string $l) use (&$entetes): int {
+        $entetes[] = trim($l); return strlen($l); }]);
+    $pdf = (string) curl_exec($h);
+    $codePdf = (int) curl_getinfo($h, CURLINFO_RESPONSE_CODE);
+    unset($h);
+    file_put_contents($tmpPdf, $pdf);
+    // L'extraction rend le texte sans les espaces : on compare sans espaces.
+    $sansEspaces = static fn (string $t): string => (string) preg_replace('/\s+/u', '', $t);
+    $texte = $sansEspaces((string) TextePdf::extraire($tmpPdf));
+    $dire('« Télécharger en PDF » : un vrai PDF, en pièce jointe, nommé d’après le résumé',
+        $codePdf . ' · ' . $oui(str_starts_with($pdf, '%PDF-') && str_contains(implode("\n", $entetes), 'Content-Type: application/pdf')
+            && str_contains(implode("\n", $entetes), 'attachment') && str_contains(implode("\n", $entetes), rawurlencode('Points clés — Cyber.pdf'))), '200 · oui');
+    $dire('  le PDF contient le titre, le sous-titre (écrit par l’IA) et le texte du résumé',
+        $oui(str_contains($texte, 'Pointsclés') && str_contains($texte, 'écritparl’IA') && str_contains($texte, 'Modèle:gemini-3.8-flash')), 'oui');
+    $dire('  le script glissé dans le texte n’y est qu’un texte', $oui(!str_contains($pdf, '/JavaScript') && !str_contains($pdf, '/JS')), 'oui');
+    @unlink($tmpPdf);
+    [, , $code] = $appel($b, 'resumes/' . $idP . '/pdf');
+    $dire('  un autre compte ne le télécharge pas', (string) $code, '404');
+
+    $avantF = (int) bd_valeur('SELECT COUNT(*) FROM fichiers WHERE cours_id = ? AND pour_fiche = 1', [$coursA]);
+    [$r] = $appel($a, 'resumes/' . $idP . '/pdf-fiche', ['_csrf' => $csrf, 'cours' => $coursA]);
+    $joints = bd_all('SELECT nom_origine, nom_stocke, mime, taille, pour_fiche FROM fichiers WHERE cours_id = ? AND pour_fiche = 1 ORDER BY id DESC', [$coursA]);
+    $cheminJoint = $racine . '/storage/uploads/' . ($joints[0]['nom_stocke'] ?? 'absent');
+    $dire('« Joindre le PDF » : un fichier de la fiche (pas du cours), de type PDF, bien rangé sur le disque',
+        (count($joints) - $avantF) . ' · ' . ($joints[0]['nom_origine'] ?? '?') . ' · ' . ($joints[0]['mime'] ?? '?') . ' · '
+        . $oui(is_file($cheminJoint) && (int) $joints[0]['taille'] === filesize($cheminJoint) && str_starts_with((string) file_get_contents($cheminJoint), '%PDF-')),
+        '1 · Points clés — Cyber.pdf · application/pdf · oui');
+    $dire('  le message le dit, et la fiche le montre parmi ses fichiers',
+        $oui(str_contains($r, 'PDF joint à la fiche de révision de « Cyber »')) . ' · '
+        . $oui(str_contains((string) $appel($a, 'revision/' . $coursA)[0], 'Points clés — Cyber.pdf')), 'oui · oui');
+    $appel($a, 'resumes/' . $idP . '/pdf-fiche', ['_csrf' => $csrf, 'cours' => $coursA]);
+    $noms = array_column(bd_all('SELECT nom_origine FROM fichiers WHERE cours_id = ? AND pour_fiche = 1 ORDER BY id', [$coursA]), 'nom_origine');
+    $dire('  un second ajout reçoit un numéro, pour ne pas confondre deux PDF', $oui(in_array('Points clés — Cyber (2).pdf', $noms, true)), 'oui');
+    [, , $code] = $appel($b, 'resumes/' . $idP . '/pdf-fiche', ['_csrf' => $jeton((string) $appel($b, 'resumes')[0]), 'cours' => $coursB]);
+    $dire('  un autre compte ne peut pas', $code . ' · ' . bd_valeur('SELECT COUNT(*) FROM fichiers WHERE cours_id = ?', [$coursB]), '404 · 0');
+    [$r] = $appel($a, 'resumes/' . $idP . '/pdf-fiche', ['_csrf' => $csrf, 'cours' => $coursB]);
+    $dire('  ni joindre à la fiche d’un cours que le résumé n’a pas lu',
+        $oui(str_contains($r, 'Impossible d’ajouter ce texte à une fiche')) . ' · ' . bd_valeur('SELECT COUNT(*) FROM fichiers WHERE cours_id = ?', [$coursB]), 'oui · 0');
+    // Des flash cards aussi : un PDF « Question / Réponse ».
+    $appel($a, 'resumes/generer', ['_csrf' => $csrf, 'cours' => [$coursA], 'genres' => ['questions']]);
+    $lesP = array_values(array_filter(bd_all('SELECT id FROM resumes_ia WHERE user_id = ? ORDER BY id', [$idA]), static fn (array $x): bool => !in_array($x['id'], $dejaLaP, false)));
+    $derniereP = end($lesP);
+    $tmpPdf = tempnam(sys_get_temp_dir(), 'pdf');
+    $h = curl_init('http://localhost/mon_appli/appli/resumes/' . $derniereP['id'] . '/pdf');
+    curl_setopt_array($h, [CURLOPT_RETURNTRANSFER => true, CURLOPT_COOKIEFILE => $cookies[$a]]);
+    file_put_contents($tmpPdf, (string) curl_exec($h));
+    unset($h);
+    $texteCartes = $sansEspaces((string) TextePdf::extraire($tmpPdf));
+    @unlink($tmpPdf);
+    $dire('  des flash cards : le PDF liste « Question 1. … Réponse. … », pas du JSON',
+        $oui(str_contains($texteCartes, 'Question1.') && str_contains($texteCartes, 'Queprotègelechiffrement') && str_contains($texteCartes, 'Réponse.') && !str_contains($texteCartes, '"question"')), 'oui');
+    // Ménage : les PDF joints (fichiers du disque), les résumés et les cartes d'essai.
+    foreach (bd_all('SELECT nom_stocke FROM fichiers WHERE cours_id = ? AND pour_fiche = 1', [$coursA]) as $f) { @unlink($racine . '/storage/uploads/' . basename((string) $f['nom_stocke'])); }
+    bd_run('DELETE FROM fichiers WHERE cours_id = ? AND pour_fiche = 1', [$coursA]);
+    foreach (bd_all('SELECT id FROM resumes_ia WHERE user_id = ?', [$idA]) as $l) {
+        if (!in_array($l['id'], $dejaLaP, false)) { bd_run('DELETE FROM resumes_ia WHERE id = ?', [$l['id']]); }
+    }
+
     echo "\n6. La voix\n";
     [$r] = $appel($a, 'resumes/' . $idResume);
     $dire('avant : un bouton « Générer l’audio », pas de lecteur',
@@ -476,6 +545,10 @@ try {
         str_contains($r, 'Google refuse cette clé') ? 'oui' : 'oui (hors ligne : passé)');
     $dire('  rien d’écrit, et la clé bidon n’apparaît nulle part', ($nbResumes($idA) - $avant) . ' · ' . $oui(!str_contains($r, 'cle-bidon-pour-essai')), '0 · oui');
 } finally {
+    // Les PDF joints à une fiche d'essai (fichiers de disque que la base, en cascade, oublie).
+    foreach (bd_all('SELECT nom_stocke FROM fichiers WHERE user_id IN (?, ?)', [$idA ?? 0, $idB ?? 0]) as $fichierEssai) {
+        @unlink($racine . '/storage/uploads/' . basename((string) $fichierEssai['nom_stocke']));
+    }
     foreach (array_filter($sons) as $s) { @unlink($dossierSon . '/' . $s); }
     // Les fichiers son des comptes d'essai encore rangés (un essai interrompu) : retrouvés par la base.
     foreach (bd_all('SELECT audio_nom FROM resumes_ia WHERE user_id IN (?, ?) AND audio_nom IS NOT NULL', [$idA ?? 0, $idB ?? 0]) as $l) {

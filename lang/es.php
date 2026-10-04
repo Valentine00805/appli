@@ -4199,4 +4199,12 @@ return [
     'ria.fl.fiche_ajoutee' => 'Añadido a la ficha de repaso de «{cours}».',
     'ria.fl.fiche_deja' => 'Este texto ya está en la ficha de repaso de «{cours}»: no se ha añadido nada.',
     'ria.fl.fiche_impossible' => 'No se puede añadir este texto a una ficha: elige uno de los cursos de los que se ha escrito este resumen.',
+    'ria.pdf_titre' => '📄 PDF',
+    'ria.pdf_telecharger' => 'Descargar en PDF',
+    'ria.pdf_joindre' => 'Adjuntar el PDF a mi ficha de repaso',
+    'ria.pdf_aide' => 'El PDF recoge este texto (o estas tarjetas), maquetado. Adjunto a la ficha de repaso, pasa a sus archivos, con tus otros documentos.',
+    'ria.pdf_ecrit_par_ia' => 'escrito por la IA',
+    'ria.fl.pdf_joint' => 'PDF adjunto a la ficha de repaso de «{cours}».',
+    'ria.fl.pdf_echec' => 'No se ha podido crear el PDF.',
+    'pdf.resume_vide' => 'Este resumen está vacío.',
 ];

@@ -4199,4 +4199,12 @@ return [
     'ria.fl.fiche_ajoutee' => 'Zum Lernblatt von „{cours}“ hinzugefügt.',
     'ria.fl.fiche_deja' => 'Dieser Text steht schon im Lernblatt von „{cours}“: es wurde nichts hinzugefügt.',
     'ria.fl.fiche_impossible' => 'Dieser Text kann keinem Lernblatt hinzugefügt werden: wähle einen der Kurse, aus denen diese Zusammenfassung stammt.',
+    'ria.pdf_titre' => '📄 PDF',
+    'ria.pdf_telecharger' => 'Als PDF herunterladen',
+    'ria.pdf_joindre' => 'PDF an mein Lernblatt anhängen',
+    'ria.pdf_aide' => 'Das PDF übernimmt diesen Text (oder diese Karten) im Seitenlayout. An das Lernblatt angehängt, gehört es zu dessen Dateien, neben deinen anderen Dokumenten.',
+    'ria.pdf_ecrit_par_ia' => 'von der KI geschrieben',
+    'ria.fl.pdf_joint' => 'PDF an das Lernblatt von „{cours}“ angehängt.',
+    'ria.fl.pdf_echec' => 'Das PDF konnte nicht erstellt werden.',
+    'pdf.resume_vide' => 'Diese Zusammenfassung ist leer.',
 ];

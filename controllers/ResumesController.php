@@ -393,6 +393,99 @@ final class ResumesController
         redirect('resumes/' . $id);
     }
 
+    /** Le résumé en PDF, à télécharger. */
+    public function pdf(int $id): void
+    {
+        Auth::exiger();
+        $resume = $this->resume($id, Auth::id());
+        try {
+            $pdf = $this->fabriquerLePdf($resume);
+        } catch (Throwable) {
+            Session::flash('erreur', t('ria.fl.pdf_echec'));
+            redirect('resumes/' . $id);
+        }
+        $nom = self::nomDuPdf($resume);
+        header('Content-Type: application/pdf');
+        header('Content-Length: ' . strlen($pdf));
+        header('X-Content-Type-Options: nosniff');
+        header('Cache-Control: private, no-store');
+        header(sprintf("Content-Disposition: attachment; filename=\"%s\"; filename*=UTF-8''%s",
+            preg_replace('/[^A-Za-z0-9._-]+/', '_', $nom) ?? 'resume.pdf', rawurlencode($nom)));
+        echo $pdf;
+        exit;
+    }
+
+    /**
+     * Joint le PDF du résumé à la fiche de révision d'un des cours lus : il y rejoint ses fichiers, avec les autres
+     * documents de la fiche. Le cours vient du résumé lui-même, jamais d'un numéro libre ; un nom déjà pris dans la
+     * fiche reçoit un numéro, pour que deux PDF ne se confondent pas.
+     */
+    public function pdfVersLaFiche(int $id): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $userId = Auth::id();
+        $resume = $this->resume($id, $userId);
+
+        $coursId = entier_ou_null($_POST['cours'] ?? null);
+        $cours = null;
+        foreach ((array) (json_decode((string) $resume['sources'], true) ?? []) as $source) {
+            if ($coursId !== null && (int) ($source['id'] ?? 0) === $coursId) {
+                $cours = $source;
+            }
+        }
+        if ($cours === null || Database::valeur('SELECT id FROM cours WHERE id = ? AND user_id = ?', [$coursId, $userId]) === null) {
+            Session::flash('erreur', t('ria.fl.fiche_impossible'));
+            redirect('resumes/' . $id);
+        }
+
+        try {
+            $pdf = $this->fabriquerLePdf($resume);
+        } catch (Throwable) {
+            Session::flash('erreur', t('ria.fl.pdf_echec'));
+            redirect('resumes/' . $id);
+        }
+
+        $dossier = (string) Config::get('app', 'dossier_uploads');
+        if (!is_dir($dossier) && !mkdir($dossier, 0775, true) && !is_dir($dossier)) {
+            Session::flash('erreur', t('ria.fl.ecriture'));
+            redirect('resumes/' . $id);
+        }
+        $stocke = bin2hex(random_bytes(16)) . '.pdf';
+        if (file_put_contents($dossier . DIRECTORY_SEPARATOR . $stocke, $pdf) === false) {
+            Session::flash('erreur', t('ria.fl.ecriture'));
+            redirect('resumes/' . $id);
+        }
+
+        $nom = self::nomDuPdf($resume);
+        $deja = array_column(Database::all(
+            'SELECT nom_origine FROM fichiers WHERE cours_id = ? AND pour_fiche = 1', [$coursId]), 'nom_origine');
+        $base = substr($nom, 0, -4);
+        for ($n = 2; in_array($nom, $deja, true); $n++) {
+            $nom = $base . ' (' . $n . ').pdf';
+        }
+        Database::run(
+            'INSERT INTO fichiers (user_id, cours_id, pour_fiche, nom_origine, nom_stocke, mime, taille) VALUES (?, ?, 1, ?, ?, ?, ?)',
+            [$userId, $coursId, mb_substr($nom, 0, 255), $stocke, 'application/pdf', strlen($pdf)]
+        );
+        Partages::suivreAjouts($userId, 'fiche', (int) $coursId, 1);
+
+        Session::flash('succes', t('ria.fl.pdf_joint', ['cours' => (string) $cours['cours']]));
+        redirect('resumes/' . $id);
+    }
+
+    /** Fabrique le PDF d'un résumé. */
+    private function fabriquerLePdf(array $resume): string
+    {
+        return ExportPdf::depuisResume((string) $resume['titre'], ResumeIa::sousTitrePdf($resume), ResumeIa::htmlPourPdf($resume));
+    }
+
+    /** Le nom d'un PDF de résumé : son titre, sans les signes qu'un système de fichiers refuse. */
+    private static function nomDuPdf(array $resume): string
+    {
+        return (trim((string) preg_replace('/[\\\\\/:*?"<>|]+/', ' ', (string) $resume['titre'])) ?: 'resume') . '.pdf';
+    }
+
     /** Efface un résumé, et sa voix. */
     public function supprimer(int $id): void
     {

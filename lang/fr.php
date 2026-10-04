@@ -4211,4 +4211,12 @@ return [
     'ria.fl.fiche_ajoutee' => 'Ajouté à la fiche de révision de « {cours} ».',
     'ria.fl.fiche_deja' => 'Ce texte est déjà dans la fiche de révision de « {cours} » : rien n’a été ajouté.',
     'ria.fl.fiche_impossible' => 'Impossible d’ajouter ce texte à une fiche : choisissez un des cours que ce résumé a lus.',
+    'ria.pdf_titre' => '📄 PDF',
+    'ria.pdf_telecharger' => 'Télécharger en PDF',
+    'ria.pdf_joindre' => 'Joindre le PDF à ma fiche de révision',
+    'ria.pdf_aide' => 'Le PDF reprend ce texte (ou ces cartes), mis en pages. Joint à la fiche de révision, il rejoint ses fichiers, avec vos autres documents.',
+    'ria.pdf_ecrit_par_ia' => 'écrit par l’IA',
+    'ria.fl.pdf_joint' => 'PDF joint à la fiche de révision de « {cours} ».',
+    'ria.fl.pdf_echec' => 'Le PDF n’a pas pu être fabriqué.',
+    'pdf.resume_vide' => 'Ce résumé est vide.',
 ];

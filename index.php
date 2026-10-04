@@ -591,6 +591,8 @@ $routes = [
     ['POST', 'resumes/{id}/voix',           [ResumesController::class, 'voix']],
     ['POST', 'resumes/{id}/cartes',         [ResumesController::class, 'versLesCartes']],
     ['POST', 'resumes/{id}/fiche',          [ResumesController::class, 'versLaFiche']],
+    ['GET',  'resumes/{id}/pdf',            [ResumesController::class, 'pdf']],
+    ['POST', 'resumes/{id}/pdf-fiche',      [ResumesController::class, 'pdfVersLaFiche']],
     ['POST', 'resumes/{id}/supprimer',      [ResumesController::class, 'supprimer']],
     // Depuis l'onglet, le cours est dans le formulaire et non dans l'adresse.
     // Fabriquer une carte se fait depuis l'onglet, jamais depuis un cours :

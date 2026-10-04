@@ -4199,4 +4199,12 @@ return [
     'ria.fl.fiche_ajoutee' => 'Added to the revision sheet of “{cours}”.',
     'ria.fl.fiche_deja' => 'This text is already in the revision sheet of “{cours}”: nothing was added.',
     'ria.fl.fiche_impossible' => 'This text cannot be added to a sheet: choose one of the courses this summary was written from.',
+    'ria.pdf_titre' => '📄 PDF',
+    'ria.pdf_telecharger' => 'Download as PDF',
+    'ria.pdf_joindre' => 'Attach the PDF to my revision sheet',
+    'ria.pdf_aide' => 'The PDF takes up this text (or these cards), laid out in pages. Attached to the revision sheet, it joins its files, with your other documents.',
+    'ria.pdf_ecrit_par_ia' => 'written by the AI',
+    'ria.fl.pdf_joint' => 'PDF attached to the revision sheet of “{cours}”.',
+    'ria.fl.pdf_echec' => 'The PDF could not be made.',
+    'pdf.resume_vide' => 'This summary is empty.',
 ];

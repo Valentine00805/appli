@@ -195,6 +195,32 @@ final class ResumeIa
     }
 
     /**
+     * Le corps d'un résumé en HTML pour le PDF : le texte mis en forme, ou — pour des flash cards — « Question 1. … »
+     * suivie de « Réponse. … », une carte après l'autre.
+     */
+    public static function htmlPourPdf(array $resume): string
+    {
+        $cartes = self::cartesDe($resume);
+        if ($cartes === null) {
+            return Markdown::html((string) $resume['contenu']);
+        }
+        $e = static fn (string $t): string => htmlspecialchars($t, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+        $html = '';
+        foreach ($cartes as $rang => $carte) {
+            $html .= '<div><b>' . $e(t('ria.carte.lue_question', ['n' => $rang + 1])) . '</b> ' . $e($carte['question']) . '</div>'
+                . '<div><b>' . $e(t('ria.carte.lue_reponse')) . '</b> ' . $e($carte['reponse']) . '</div><div><br></div>';
+        }
+
+        return $html;
+    }
+
+    /** La ligne sous le titre d'un PDF de résumé : le genre, la date, et que c'est l'IA qui l'a écrit. */
+    public static function sousTitrePdf(array $resume): string
+    {
+        return t('ria.genre.' . $resume['genre']) . ' · ' . date_fr((string) $resume['created_at'], false) . ' · ' . t('ria.pdf_ecrit_par_ia');
+    }
+
+    /**
      * Le texte qu'une voix lira : le Markdown du résumé, ou — pour des flash cards — « Question 1. … Réponse. … ».
      * (Du JSON lu à voix haute serait inécoutable.)
      */
