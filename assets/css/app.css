@@ -4081,3 +4081,15 @@ summary.cal-volet__groupe:focus-visible {
 .fenetre--plein .cm__toile { max-height: calc(100vh - 17rem); }
 .fenetre--plein .apercu-cadre iframe { height: calc(100vh - 13rem); }
 [data-visible-si-genre][hidden] { display: none; }
+
+/* --- « Résumés IA » : le formulaire à gauche, ce qui est déjà fait à droite ---------------------------------- */
+.ria-page { display: grid; grid-template-columns: minmax(0, 1fr) 21rem; gap: 1.25rem; align-items: start; }
+.ria-page__principal { min-width: 0; }
+.ria-page__principal > .carte:last-child { margin-bottom: 0; }
+/* La colonne de droite suit le défilement (sous l'entête collant) : cartes et résumés restent à portée. */
+.ria-page__liste { position: sticky; top: 4.6rem; display: flex; flex-direction: column; gap: 1rem; max-height: calc(100vh - 5.6rem); overflow-y: auto; }
+.ria-page__liste .carte { margin: 0; }
+@media (max-width: 900px) {
+  .ria-page { grid-template-columns: minmax(0, 1fr); }
+  .ria-page__liste { position: static; max-height: none; overflow: visible; }
+}

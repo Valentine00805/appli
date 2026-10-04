@@ -37,6 +37,15 @@ $pret = $cleConfiguree && $cleFin !== null;
     <?= e(t('cm.ouvrir', ['titre' => (string) $carteAOuvrir['titre']])) ?></a></p>
 <?php endif; ?>
 
+<?php
+/*
+ * Deux colonnes : à gauche, de quoi demander (un long formulaire) ; à droite, ce qui est déjà fait — cartes mentales et
+ * résumés —, qui reste en vue quand on descend : plus besoin de faire défiler la page pour les retrouver. Sur un écran
+ * étroit, la colonne de droite passe sous le formulaire.
+ */
+?>
+<div class="ria-page">
+<div class="ria-page__principal">
 <section class="carte fabrique">
   <h2><?= e(t('ria.demander')) ?></h2>
 
@@ -159,7 +168,9 @@ $pret = $cleConfiguree && $cleFin !== null;
     </form>
   </section>
 <?php endif; ?>
+</div>
 
+<aside class="ria-page__liste">
 <section class="carte">
   <h2><?= e(t('cm.titre_liste')) ?></h2>
   <?php if ($cartesMentales === []): ?>
@@ -198,3 +209,5 @@ $pret = $cleConfiguree && $cleFin !== null;
     </ul>
   <?php endif; ?>
 </section>
+</aside>
+</div>
