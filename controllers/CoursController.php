@@ -417,6 +417,29 @@ final class CoursController
         return $parCours;
     }
     /**
+     * L'avancement de la fiche de révision d'un cours, tel que l'affiche son anneau : la moyenne de ses documents suivis
+     * (pages lues, enregistrements écoutés) et de son paquet de cartes. Null si le cours n'est pas celui de l'utilisateur
+     * ou si rien n'y est suivi — l'anneau n'existe pas non plus dans ce cas.
+     *
+     * Publique : le PDF d'un résumé et celui d'une fiche le reprennent, pour que le chiffre y soit le même qu'à l'écran.
+     *
+     * @return array{pourcentage: int, total: int, finis: int, commences: int, a_faire: int}|null
+     */
+    public function avancementDeLaFiche(int $coursId, int $userId): ?array
+    {
+        if (Database::valeur('SELECT id FROM cours WHERE id = ? AND user_id = ?', [$coursId, $userId]) === null) {
+            return null;
+        }
+        $cartes = $this->cartesDuCours($coursId, $userId);
+        $avancement = avancement_anneaux(
+            fichiers_suivis($this->fichiersDeFiche($coursId, $userId)),
+            $cartes['avancement'] === null ? [] : [$cartes['avancement']]
+        );
+
+        return $avancement['total'] > 0 ? $avancement : null;
+    }
+
+    /**
      * Où en est le paquet de cartes d'un cours.
      *
      * @return array{total: int, a_revoir: int}
@@ -1305,7 +1328,8 @@ final class CoursController
         }
 
         try {
-            $pdf = ExportPdf::depuisFiche($cours, $this->fichiersDeFiche($id, $userId), $this->elementsDeFiche($id, $userId));
+            $pdf = ExportPdf::depuisFiche($cours, $this->fichiersDeFiche($id, $userId), $this->elementsDeFiche($id, $userId),
+                $this->avancementDeLaFiche($id, $userId)['pourcentage'] ?? null);
         } catch (Throwable) {
             Session::flash('erreur', t('cours.fl.pdf_fiche'));
             redirect('revision/' . $id);

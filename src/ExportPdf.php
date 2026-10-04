@@ -111,14 +111,15 @@ final class ExportPdf
      * Un résumé écrit par l'IA, en PDF : son titre, une ligne qui dit ce que c'est, puis son texte mis en pages comme
      * celui d'une fiche (titres, puces, gras).
      *
+     * @param list<string> $avancements  des lignes toutes faites (« Avancement de la révision — Cyber : 55 % »)
      * @param string $html  le corps, en HTML déjà sûr (sorti de Markdown::html, ou fabriqué ici) : il repasse de toute
      *                      façon par le crible du texte riche
      */
-    public static function depuisResume(string $titre, string $sousTitre, string $html): string
+    public static function depuisResume(string $titre, string $sousTitre, string $html, array $avancements = []): string
     {
         [$blocs, $profondeur] = self::blocsDuTexteRiche(TexteRiche::MARQUE . $html);
 
-        return self::publier(['titre' => $titre, 'sous_titre' => $sousTitre], $blocs, $profondeur, t('pdf.resume_vide'), $titre);
+        return self::publier(['titre' => $titre, 'sous_titre' => $sousTitre, 'lignes' => $avancements], $blocs, $profondeur, t('pdf.resume_vide'), $titre);
     }
 
     /**
@@ -184,8 +185,9 @@ final class ExportPdf
      * @param array{titre: string, fiche_revision: ?string, matiere_nom?: ?string} $cours
      * @param list<array> $fichiers les fichiers de la fiche
      * @param list<array> $elements les liens, cours et évènements rattachés
+     * @param ?int $avancement l'avancement de la fiche en pourcentage, ou null s'il n'y a rien à suivre
      */
-    public static function depuisFiche(array $cours, array $fichiers, array $elements): string
+    public static function depuisFiche(array $cours, array $fichiers, array $elements, ?int $avancement = null): string
     {
         [$blocs, $profondeur] = self::blocsDuTexteRiche($cours['fiche_revision'] ?? null);
         $e = static fn (string $texte): string => htmlspecialchars($texte, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
@@ -232,6 +234,8 @@ final class ExportPdf
             [
                 'titre' => (string) $cours['titre'],
                 'sous_titre' => $matiere === '' ? t('pdf.fiche') : t('pdf.fiche_matiere', ['matiere' => $matiere]),
+                // Où l'on en est de cette fiche : le chiffre de son anneau, sous le titre.
+                'lignes' => $avancement === null ? [] : [t('pdf.avancement', ['n' => $avancement])],
             ],
             $blocs, $profondeur, t('pdf.fiche_vide'), t('pdf.fiche_nom', ['titre' => (string) $cours['titre']])
         );
@@ -240,7 +244,7 @@ final class ExportPdf
     /**
      * Mettre en pages un texte sous son en-tête, sommaire compris, et rendre le PDF.
      *
-     * @param array{titre: string, sous_titre: string} $entete
+     * @param array{titre: string, sous_titre: string, lignes?: list<string>} $entete  `lignes` : d'autres lignes grises sous le sous-titre
      * @param list<array> $blocs
      */
     private static function publier(array $entete, array $blocs, int $profondeur, string $vide, string $nomDocument): string
@@ -277,6 +281,9 @@ final class ExportPdf
                      'titre' => 1, 'taille_titre' => 22.0]);
         if ($entete['sous_titre'] !== '') {
             $this->bloc(['html' => '<span data-couleur="6b7280">' . htmlspecialchars($entete['sous_titre'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</span>']);
+        }
+        foreach ($entete['lignes'] ?? [] as $ligne) {
+            $this->bloc(['html' => '<span data-couleur="6b7280">' . htmlspecialchars($ligne, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</span>']);
         }
         $this->y -= 6;
 

@@ -341,6 +341,35 @@ try {
     [, , $code] = $appel($b, 'resumes/' . $idP . '/pdf');
     $dire('  un autre compte ne le télécharge pas', (string) $code, '404');
 
+    // L'avancement de la révision : le chiffre de l'anneau de la fiche, repris en tête des PDF.
+    $pdfTexte = function (string $chemin) use ($a, $cookies, $sansEspaces): string {
+        $h = curl_init('http://localhost/mon_appli/appli/' . $chemin);
+        curl_setopt_array($h, [CURLOPT_RETURNTRANSFER => true, CURLOPT_COOKIEFILE => $cookies[$a]]);
+        $octets = (string) curl_exec($h);
+        unset($h);
+        $tmp = tempnam(sys_get_temp_dir(), 'pdf');
+        file_put_contents($tmp, $octets);
+        $t = $sansEspaces((string) TextePdf::extraire($tmp));
+        @unlink($tmp);
+
+        return $t;
+    };
+    $dire('  sans rien à suivre dans le cours, pas de ligne d’avancement (ni sur le résumé, ni sur la fiche)',
+        $oui(!str_contains($pdfTexte('resumes/' . $idP . '/pdf'), 'Avancementdelarévision')
+            && !str_contains($pdfTexte('revision/' . $coursA . '/pdf'), 'Avancementdelarévision')), 'oui');
+    foreach ([3, 5] as $rang => $boite) {
+        bd_run('INSERT INTO cartes (user_id, cours_id, question, reponse, origine, source, empreinte, boite, revoir_le) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURDATE())',
+            [$idA, $coursA, 'Question d’avancement ' . $rang, 'Réponse', 'main', '', md5('avancement-pdf-' . $rang), $boite]);
+    }
+    $ecran = (string) bd_valeur('SELECT AVG(boite) FROM cartes WHERE cours_id = ?', [$coursA]);
+    $dire('  avec deux cartes en boîtes 3 et 5, le résumé donne « Avancement de la révision — Cyber : 75 % »',
+        $oui(str_contains($pdfTexte('resumes/' . $idP . '/pdf'), 'Avancementdelarévision—Cyber:75%')) . ' (boîte moyenne ' . rtrim($ecran, '0.') . ')', 'oui (boîte moyenne 4)');
+    $dire('  et la fiche : « Avancement de la révision : 75 % », le chiffre de son anneau',
+        $oui(str_contains($pdfTexte('revision/' . $coursA . '/pdf'), 'Avancementdelarévision:75%')), 'oui');
+    $dire('  l’anneau de la fiche, à l’écran, dit lui aussi 75 %',
+        $oui(str_contains((string) $appel($a, 'revision/' . $coursA)[0], '75')), 'oui');
+    bd_run('DELETE FROM cartes WHERE user_id = ?', [$idA]);
+
     $avantF = (int) bd_valeur('SELECT COUNT(*) FROM fichiers WHERE cours_id = ? AND pour_fiche = 1', [$coursA]);
     [$r] = $appel($a, 'resumes/' . $idP . '/pdf-fiche', ['_csrf' => $csrf, 'cours' => $coursA]);
     $joints = bd_all('SELECT nom_origine, nom_stocke, mime, taille, pour_fiche FROM fichiers WHERE cours_id = ? AND pour_fiche = 1 ORDER BY id DESC', [$coursA]);

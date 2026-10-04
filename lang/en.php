@@ -4207,4 +4207,6 @@ return [
     'ria.fl.pdf_joint' => 'PDF attached to the revision sheet of “{cours}”.',
     'ria.fl.pdf_echec' => 'The PDF could not be made.',
     'pdf.resume_vide' => 'This summary is empty.',
+    'pdf.avancement' => 'Revision progress: {n}%',
+    'pdf.avancement_cours' => 'Revision progress — {cours}: {n}%',
 ];

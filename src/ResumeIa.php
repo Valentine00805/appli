@@ -214,6 +214,27 @@ final class ResumeIa
         return $html;
     }
 
+    /**
+     * Où en est la révision de chaque cours lu par un résumé, en une ligne par cours (le chiffre de l'anneau de sa
+     * fiche). Rien pour un cours où rien n'est suivi : ni paquet de cartes, ni document lu ou écouté.
+     *
+     * @return list<string>
+     */
+    public static function avancementsPourPdf(array $resume, int $userId): array
+    {
+        $lignes = [];
+        $controleur = new CoursController();
+        foreach ((array) (json_decode((string) $resume['sources'], true) ?? []) as $source) {
+            $id = (int) ($source['id'] ?? 0);
+            $avancement = $id > 0 ? $controleur->avancementDeLaFiche($id, $userId) : null;
+            if ($avancement !== null) {
+                $lignes[] = t('pdf.avancement_cours', ['cours' => (string) $source['cours'], 'n' => $avancement['pourcentage']]);
+            }
+        }
+
+        return $lignes;
+    }
+
     /** La ligne sous le titre d'un PDF de résumé : le genre, la date, et que c'est l'IA qui l'a écrit. */
     public static function sousTitrePdf(array $resume): string
     {
