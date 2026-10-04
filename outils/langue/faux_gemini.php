@@ -1,0 +1,81 @@
+<?php
+/**
+ * Un faux Gemini, pour les essais : « php -S 127.0.0.1:8765 outils/langue/faux_gemini.php ».
+ *
+ * Il répond comme l'API (generateContent) selon la CLÉ qu'on lui présente — aucune vraie clé, aucun
+ * appel chez Google :
+ *   cle-bonne   → un texte (ou un son pour un modèle « tts »)
+ *   cle-wav     → comme cle-bonne, mais le son arrive déjà dans un fichier WAV
+ *   cle-mauvaise → 400 « API key not valid »
+ *   cle-quota   → 429 RESOURCE_EXHAUSTED
+ *   cle-modele  → 404 pour le premier modèle d'une liste, une réponse pour les suivants
+ *   cle-vide    → 200 sans texte (contenu bloqué)
+ *   cle-panne   → 503
+ * Chaque requête reçue est notée dans le dossier temporaire (« faux_gemini_dernier.json »), pour que
+ * l'essai vérifie ce qui a vraiment été envoyé — l'adresse, la clé et le corps.
+ */
+header('Content-Type: application/json');
+
+$chemin = parse_url((string) $_SERVER['REQUEST_URI'], PHP_URL_PATH);
+$corps = (string) file_get_contents('php://input');
+$cle = (string) ($_SERVER['HTTP_X_GOOG_API_KEY'] ?? '');
+file_put_contents(sys_get_temp_dir() . '/faux_gemini_dernier.json', json_encode([
+    'uri' => $_SERVER['REQUEST_URI'], 'cle' => $cle, 'corps' => json_decode($corps, true),
+    'query' => (string) ($_SERVER['QUERY_STRING'] ?? ''),
+]));
+
+$erreur = static function (int $code, string $statut, string $message): never {
+    http_response_code($code);
+    echo json_encode(['error' => ['code' => $code, 'status' => $statut, 'message' => $message]]);
+    exit;
+};
+
+if (!preg_match('#/models/([^:/]+):generateContent$#', (string) $chemin, $m)) {
+    $erreur(404, 'NOT_FOUND', 'Chemin inconnu.');
+}
+$modele = $m[1];
+$voix = str_contains($modele, 'tts');
+
+// La clé se reconnaît à son début : le champ de l'application exige 20 caractères au moins.
+switch (true) {
+    case str_starts_with($cle, 'cle-mauvaise'):
+        $erreur(400, 'INVALID_ARGUMENT', 'API key not valid. Please pass a valid API key (' . $cle . ').');
+    case str_starts_with($cle, 'cle-quota'):
+        $erreur(429, 'RESOURCE_EXHAUSTED', 'You exceeded your current quota.');
+    case str_starts_with($cle, 'cle-panne'):
+        $erreur(503, 'UNAVAILABLE', 'The model is overloaded.');
+    case str_starts_with($cle, 'cle-modele'):
+        if (in_array($modele, ['gemini-3.8-flash', 'gemini-3.8-flash-tts'], true)) {
+            $erreur(404, 'NOT_FOUND', "models/$modele is not found for API version v1beta.");
+        }
+        break;
+    case str_starts_with($cle, 'cle-vide'):
+        echo json_encode(['promptFeedback' => ['blockReason' => 'SAFETY']]);
+        exit;
+    case str_starts_with($cle, 'cle-bonne'):
+    case str_starts_with($cle, 'cle-wav'):
+        break;
+    default:
+        $erreur(403, 'PERMISSION_DENIED', 'Clé inconnue du faux serveur.');
+}
+
+if ($voix) {
+    // 0,25 s de « la » à 440 Hz, 24 kHz, 16 bits mono.
+    $pcm = '';
+    for ($i = 0; $i < 6000; $i++) {
+        $pcm .= pack('v', (int) (8000 * sin(2 * M_PI * 440 * $i / 24000)) & 0xFFFF);
+    }
+    $octets = $pcm;
+    $mime = 'audio/L16;codec=pcm;rate=24000';
+    if (str_starts_with($cle, 'cle-wav')) {
+        $taille = strlen($pcm);
+        $octets = 'RIFF' . pack('V', 36 + $taille) . 'WAVEfmt ' . pack('VvvVVvv', 16, 1, 1, 24000, 48000, 2, 16)
+            . 'LIST' . pack('V', 4) . 'INFO' . 'data' . pack('V', $taille) . $pcm;   // un bloc LIST avant « data » : l'en-tête n'a pas 44 octets
+        $mime = 'audio/wav';
+    }
+    echo json_encode(['candidates' => [['content' => ['parts' => [['inlineData' => ['mimeType' => $mime, 'data' => base64_encode($octets)]]]]]]]);
+    exit;
+}
+
+$entree = (string) (json_decode($corps, true)['contents'][0]['parts'][0]['text'] ?? '');
+echo json_encode(['candidates' => [['content' => ['parts' => [['text' => "## Résumé bidon\n\n- Modèle : $modele\n- Reçu : " . mb_strlen($entree) . " caractères\n\nUne phrase avec **gras** et <script>alert(1)</script>."]]]]]]);

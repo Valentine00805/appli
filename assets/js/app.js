@@ -4223,6 +4223,22 @@
   });
 
   /*
+   * Un formulaire « data-attente » met du temps à répondre (l'IA écrit) : au lieu d'un bouton qui ne bouge
+   * pas, il se grise et dit ce qui se passe. Le texte vient du serveur (il est traduit).
+   */
+  document.addEventListener("submit", function (evenement) {
+    var formulaire = evenement.target;
+    if (!formulaire.hasAttribute || !formulaire.hasAttribute("data-attente")) { return; }
+    var bouton = evenement.submitter || formulaire.querySelector('button[type="submit"]');
+    if (!bouton) { return; }
+    // Après l'envoi, pas pendant : un bouton désactivé n'envoie plus son nom au formulaire.
+    window.setTimeout(function () {
+      bouton.disabled = true;
+      bouton.textContent = formulaire.getAttribute("data-attente");
+    }, 0);
+  });
+
+  /*
    * Choisir une langue montre la page « Mon compte » dans cette langue — un
    * aperçu servi par le serveur, qui seul sait traduire —, sans l'enregistrer.
    * « Valider » enregistre ; « Annuler » rouvre la page sans l'aperçu.

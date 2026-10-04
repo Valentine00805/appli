@@ -3994,3 +3994,18 @@ summary.cal-volet__groupe:focus-visible {
 .choix-langue__bouton:hover, .choix-langue__bouton:focus-visible { background: var(--fond-doux); color: var(--texte); }
 .choix-langue__bouton[aria-current="true"] { color: var(--texte); font-weight: 600; cursor: default; }
 .pied-public { padding: .5rem 1rem 2rem; }
+
+/* Les résumés écrits par l'IA : l'avertissement avant le bouton, la liste, le texte rendu. */
+.ria-avertissement {
+  border-left: 3px solid var(--attention, #e0a030); background: var(--attention-doux, #fdf6e6);
+  padding: .55rem .8rem; border-radius: 6px; margin: 0 0 1rem; color: var(--texte);
+}
+.ria-liste { list-style: none; margin: 0; padding: 0; display: grid; gap: .55rem; }
+.ria-liste li { display: flex; flex-wrap: wrap; gap: .2rem .6rem; align-items: baseline; }
+.ria-texte { line-height: 1.6; }
+.ria-texte > :first-child { margin-top: 0; }
+.ria-texte > :last-child { margin-bottom: 0; }
+.ria-texte h3, .ria-texte h4, .ria-texte h5 { margin: 1.1rem 0 .4rem; }
+.ria-texte ul, .ria-texte ol { margin: .4rem 0 .8rem; padding-left: 1.4rem; }
+.ria-texte li { margin: .2rem 0; }
+.ria-texte code { background: var(--fond-doux); padding: .05rem .3rem; border-radius: 4px; }

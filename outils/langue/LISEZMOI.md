@@ -375,3 +375,19 @@ prérempli), le refus d'une saisie absurde et d'un envoi sans jeton CSRF, la cl�
 en clair, attachée à sa ligne), le message qui ne cite que ses quatre derniers caractères, une clé par
 compte, l'absence de la clé dans l'archive de sauvegarde (ouverte et lue : c'est un zip), le retrait, et
 la disparition de la clé avec le compte. Deux comptes d'essai, effacés à la fin.
+
+**`faux_gemini.php`** — un faux Gemini pour les essais (`php -S 127.0.0.1:8765 outils/langue/faux_gemini.php`). Il répond
+comme l'API selon le début de la clé qu'on lui présente (`cle-bonne…`, `cle-quota…`, `cle-mauvaise…`, `cle-panne…`,
+`cle-modele…`, `cle-vide…`, `cle-wav…`) et note chaque requête reçue. Aucune vraie clé, aucun appel chez Google.
+
+**`gemini_client.php`** — le client `src/Gemini.php`, le Markdown et la consigne, contre ce faux serveur : la clé part dans
+un en-tête et jamais dans l'adresse, les refus se classent (clé, quota, modèle, panne, réseau, contenu bloqué), un modèle
+inconnu passe au suivant, une adresse étrangère est ignorée (la clé ne part que chez Google ou sur le poste), le son brut
+se met dans un WAV bien formé et un WAV déjà fait se lit sans supposer 44 octets d'en-tête, le HTML glissé dans un texte
+n'est jamais interprété.
+
+**`resumes_langue.php`** — l'espace « Résumés » de bout en bout, toujours contre le faux serveur (l'application y est
+redirigée par `config/parametres.test.php`, que `Config` ne lit que depuis le poste et que la suite retire) : sans clé,
+le formulaire et son avertissement, les demandes refusées (aucun cours, cours d'un autre, sans jeton), ce que Gemini reçoit
+(texte du cours, fiche, balisage, consigne, clé), le choix des sources, la voix (fichier rangé, lecture par morceaux,
+remplacement), le cloisonnement entre comptes, les refus de Google dits clairement, les quatre langues, l'effacement.

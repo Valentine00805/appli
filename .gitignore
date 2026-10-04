@@ -10,3 +10,6 @@
 /storage/alternance/*
 !/storage/alternance/.gitignore
 /outils/langue/ck_*.txt
+/storage/resumes/*
+!/storage/resumes/.gitignore
+/config/parametres.test.php

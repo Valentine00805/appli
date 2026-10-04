@@ -35,6 +35,23 @@ final class Config
             $locaux = [];
         }
 
+        /*
+         * Un second fichier facultatif, « parametres.test.php », que les suites d'essais posent le temps
+         * d'un essai (rediriger Gemini vers un faux serveur local, par exemple) puis retirent. Il ne va
+         * pas au dépôt et ne porte aucun secret ; ses sections l'emportent sur celles du fichier local. Il n'est lu que depuis le poste lui-même
+         * (ligne de commande ou 127.0.0.1) : oublié sur un serveur en ligne, il ne peut rien rediriger.
+         */
+        $essai = $fichier !== null ? dirname($fichier) . DIRECTORY_SEPARATOR . 'parametres.test.php' : null;
+        $locale = PHP_SAPI === 'cli' || in_array((string) ($_SERVER['REMOTE_ADDR'] ?? ''), ['127.0.0.1', '::1'], true);
+        if ($essai !== null && $locale && is_file($essai)) {
+            $surcharge = require $essai;
+            foreach (is_array($surcharge) ? $surcharge : [] as $section => $reglages) {
+                $locaux[$section] = is_array($reglages) && is_array($locaux[$section] ?? null)
+                    ? $reglages + $locaux[$section]
+                    : $reglages;
+            }
+        }
+
         foreach ($locaux as $section => $reglages) {
             $defauts[$section] = is_array($reglages) && is_array($defauts[$section] ?? null)
                 ? $reglages + $defauts[$section]

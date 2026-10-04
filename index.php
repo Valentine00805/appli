@@ -29,6 +29,9 @@ require __DIR__ . '/src/Courriel.php';
 require __DIR__ . '/src/Reinitialisation.php';
 require __DIR__ . '/src/Sauvegarde.php';
 require __DIR__ . '/src/CleApi.php';
+require __DIR__ . '/src/Gemini.php';
+require __DIR__ . '/src/Markdown.php';
+require __DIR__ . '/src/ResumeIa.php';
 require __DIR__ . '/src/Fichiers.php';
 require __DIR__ . '/src/ApercuDocument.php';
 require __DIR__ . '/src/ImagesDocument.php';
@@ -88,6 +91,7 @@ require __DIR__ . '/controllers/AlternanceController.php';
 require __DIR__ . '/controllers/KanbanController.php';
 require __DIR__ . '/controllers/TableauBordController.php';
 require __DIR__ . '/controllers/CartesController.php';
+require __DIR__ . '/controllers/ResumesController.php';
 require __DIR__ . '/controllers/NotificationsController.php';
 require __DIR__ . '/controllers/HorsLigneController.php';
 require __DIR__ . '/controllers/FocusController.php';
@@ -580,6 +584,12 @@ $routes = [
     // pris pour un identifiant.
     ['GET',  'cartes',                       [CartesController::class, 'index']],
     ['GET',  'cartes/seance',                [CartesController::class, 'seance']],
+    ['GET',  'resumes',                     [ResumesController::class, 'index']],
+    ['POST', 'resumes/generer',             [ResumesController::class, 'generer']],
+    ['GET',  'resumes/{id}',                [ResumesController::class, 'voir']],
+    ['GET',  'resumes/{id}/audio',          [ResumesController::class, 'audio']],
+    ['POST', 'resumes/{id}/voix',           [ResumesController::class, 'voix']],
+    ['POST', 'resumes/{id}/supprimer',      [ResumesController::class, 'supprimer']],
     // Depuis l'onglet, le cours est dans le formulaire et non dans l'adresse.
     // Fabriquer une carte se fait depuis l'onglet, jamais depuis un cours :
     // le cours voyage dans le formulaire.
