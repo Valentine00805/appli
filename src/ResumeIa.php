@@ -218,7 +218,7 @@ final class ResumeIa
      * Où en est la révision de chaque cours lu par un résumé, en une ligne par cours (le chiffre de l'anneau de sa
      * fiche). Rien pour un cours où rien n'est suivi : ni paquet de cartes, ni document lu ou écouté.
      *
-     * @return list<array{texte: string, pourcentage: int}>
+     * @return list<string>
      */
     public static function avancementsPourPdf(array $resume, int $userId): array
     {
@@ -228,10 +228,7 @@ final class ResumeIa
             $id = (int) ($source['id'] ?? 0);
             $avancement = $id > 0 ? $controleur->avancementDeLaFiche($id, $userId) : null;
             if ($avancement !== null) {
-                $lignes[] = [
-                    'texte' => t('pdf.avancement_cours', ['cours' => (string) $source['cours'], 'n' => $avancement['pourcentage']]),
-                    'pourcentage' => $avancement['pourcentage'],
-                ];
+                $lignes[] = t('pdf.avancement_cours', ['cours' => (string) $source['cours'], 'n' => $avancement['pourcentage']]);
             }
         }
 

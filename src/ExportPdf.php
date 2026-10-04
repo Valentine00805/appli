@@ -111,7 +111,7 @@ final class ExportPdf
      * Un résumé écrit par l'IA, en PDF : son titre, une ligne qui dit ce que c'est, puis son texte mis en pages comme
      * celui d'une fiche (titres, puces, gras).
      *
-     * @param list<array{texte: string, pourcentage: int}> $avancements  une ligne et sa barre par cours lu (« Avancement de la révision — Cyber : 55 % »)
+     * @param list<string> $avancements  une ligne par cours lu (« Avancement de la révision — Cyber : 55 % »)
      * @param string $html  le corps, en HTML déjà sûr (sorti de Markdown::html, ou fabriqué ici) : il repasse de toute
      *                      façon par le crible du texte riche
      */
@@ -235,7 +235,7 @@ final class ExportPdf
                 'titre' => (string) $cours['titre'],
                 'sous_titre' => $matiere === '' ? t('pdf.fiche') : t('pdf.fiche_matiere', ['matiere' => $matiere]),
                 // Où l'on en est de cette fiche : le chiffre de son anneau, sous le titre.
-                'lignes' => $avancement === null ? [] : [['texte' => t('pdf.avancement', ['n' => $avancement]), 'pourcentage' => $avancement]],
+                'lignes' => $avancement === null ? [] : [t('pdf.avancement', ['n' => $avancement])],
             ],
             $blocs, $profondeur, t('pdf.fiche_vide'), t('pdf.fiche_nom', ['titre' => (string) $cours['titre']])
         );
@@ -244,7 +244,7 @@ final class ExportPdf
     /**
      * Mettre en pages un texte sous son en-tête, sommaire compris, et rendre le PDF.
      *
-     * @param array{titre: string, sous_titre: string, lignes?: list<array{texte: string, pourcentage: int}>} $entete  `lignes` : des avancements, sous le sous-titre
+     * @param array{titre: string, sous_titre: string, lignes?: list<string>} $entete  `lignes` : des avancements, sous le sous-titre
      * @param list<array> $blocs
      */
     private static function publier(array $entete, array $blocs, int $profondeur, string $vide, string $nomDocument): string
@@ -283,7 +283,7 @@ final class ExportPdf
             $this->bloc(['html' => '<span data-couleur="6b7280">' . htmlspecialchars($entete['sous_titre'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</span>']);
         }
         foreach ($entete['lignes'] ?? [] as $ligne) {
-            $this->barreDAvancement($ligne['texte'], $ligne['pourcentage']);
+            $this->ligneDAvancement($ligne);
         }
         $this->y -= 6;
 
@@ -854,22 +854,12 @@ final class ExportPdf
         }
     }
 
-    /** Où l'on en est, bien en vue : la phrase en gras et colorée, puis une barre qui se remplit. */
-    private function barreDAvancement(string $texte, int $pourcentage): void
+    /** Où l'on en est, bien en vue : la phrase en gras et colorée. */
+    private function ligneDAvancement(string $texte): void
     {
         $this->y -= 4;
         $this->bloc(['html' => '<b><span data-couleur="1d4ed8">' . htmlspecialchars($texte, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</span></b>',
                      'titre' => 3, 'taille_titre' => 12.0]);
-        $hauteur = 7.0;
-        $this->place($hauteur + 6);
-        $largeur = PdfSimple::LARGEUR - 2 * self::MARGE;
-        $bas = $this->y - $hauteur;
-        $this->pdf->rectangle(self::MARGE, $bas, $largeur, $hauteur, [0.89, 0.91, 0.94]);
-        $rempli = $largeur * max(0, min(100, $pourcentage)) / 100;
-        if ($rempli > 0) {
-            $this->pdf->rectangle(self::MARGE, $bas, $rempli, $hauteur, [0.114, 0.306, 0.847]);
-        }
-        $this->y = $bas - 6;
     }
 
     private function marqueDeListe(string $liste, int $niveau, mixed $numero, float $gauche, float $base, float $taille): void
