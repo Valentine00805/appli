@@ -574,7 +574,7 @@ final class ResumesController
     }
 
     /** Fait quelque chose de long sans tenir la session : les autres onglets restent libres. */
-    private function sansVerrou(callable $travail): mixed
+    public function sansVerrou(callable $travail): mixed
     {
         @set_time_limit(600);
         session_write_close();
@@ -607,7 +607,7 @@ final class ResumesController
         }
     }
 
-    private function messageDErreur(GeminiErreur $e): string
+    public function messageDErreur(GeminiErreur $e): string
     {
         return match ($e->nature) {
             'quota'   => t('ria.err.quota'),

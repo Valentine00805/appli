@@ -1,0 +1,170 @@
+<?php
+declare(strict_types=1);
+
+/**
+ * Les cartes mentales d'un cours : créées à la main, ou proposées par l'IA (avec la clé Gemini de l'utilisateur)
+ * puis corrigées dans l'éditeur. Chaque carte appartient à un cours, et à son propriétaire seul.
+ */
+final class CartesMentalesController
+{
+    /** La carte, dans son éditeur. */
+    public function voir(int $id): void
+    {
+        Auth::exiger();
+        $carte = $this->carte($id, Auth::id());
+        $arbre = json_decode((string) $carte['arbre'], true);
+        $arbre = CarteMentale::nettoyer($arbre) ?? CarteMentale::racine((string) $carte['titre']);
+        $cours = Database::one('SELECT id, titre FROM cours WHERE id = ? AND user_id = ?', [(int) $carte['cours_id'], Auth::id()]);
+
+        Vue::afficher('cartes-mentales/voir', [
+            'carte' => $carte, 'arbre' => $arbre, 'cours' => $cours,
+        ], (string) $carte['titre']);
+    }
+
+    /** Une carte neuve, réduite à son idée centrale : le titre du cours. */
+    public function creer(int $coursId): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $userId = Auth::id();
+        $cours = $this->cours($coursId, $userId);
+
+        $arbre = CarteMentale::racine((string) $cours['titre']);
+        Database::run(
+            'INSERT INTO cartes_mentales (user_id, cours_id, titre, arbre, ia) VALUES (?, ?, ?, ?, 0)',
+            [$userId, $coursId, CarteMentale::titre('', $arbre), json_encode($arbre, JSON_UNESCAPED_UNICODE)]
+        );
+        Session::flash('succes', t('cm.fl.creee'));
+        redirect('cartes-mentales/' . Database::dernierId());
+    }
+
+    /**
+     * Demande à Gemini la carte d'un cours : il lit le cours, sa fiche et ses documents, et rend une carte à
+     * trois niveaux, qu'on corrige ensuite comme n'importe quelle autre. Rien ne part avant ce bouton.
+     */
+    public function generer(int $coursId): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $userId = Auth::id();
+        $cours = $this->cours($coursId, $userId);
+        $retour = 'revision/' . $coursId;
+
+        $cle = CleApi::lire($userId, CleApi::GEMINI);
+        if ($cle === null) {
+            Session::flash('erreur', t('ria.fl.pas_de_cle'));
+            redirect($retour);
+        }
+
+        $lu = ResumeIa::rassembler($userId, [$coursId], ['cours', 'fiche', 'documents'], []);
+        foreach ($lu['muets'] as $nom) {
+            Session::flash('info', t('ria.fl.muet', ['nom' => $nom]));
+        }
+        if ($lu['blocs'] === []) {
+            Session::flash('erreur', t('ria.fl.rien_a_lire'));
+            redirect($retour);
+        }
+
+        $langue = Langue::courante();
+        $contenu = ResumeIa::contenu($lu['blocs']);
+        $resumes = new ResumesController();
+        try {
+            [$texte, ] = $resumes->sansVerrou(static fn (): array => Gemini::texte(
+                $cle, CarteMentale::consigne($langue), $contenu, CarteMentale::schemaIa()));
+        } catch (GeminiErreur $e) {
+            Session::flash('erreur', $resumes->messageDErreur($e));
+            redirect($retour);
+        }
+
+        $arbre = CarteMentale::depuisIa($texte, (string) $cours['titre']);
+        if ($arbre === null) {
+            Session::flash('erreur', t('cm.fl.ia_vide'));
+            redirect($retour);
+        }
+
+        if ($lu['tronque']) {
+            Session::flash('info', t('ria.fl.tronque'));
+        }
+        Database::run(
+            'INSERT INTO cartes_mentales (user_id, cours_id, titre, arbre, ia) VALUES (?, ?, ?, ?, 1)',
+            [$userId, $coursId, CarteMentale::titre('', $arbre), json_encode($arbre, JSON_UNESCAPED_UNICODE)]
+        );
+        Session::flash('succes', t('cm.fl.ia_creee'));
+        redirect('cartes-mentales/' . Database::dernierId());
+    }
+
+    /**
+     * Garde la carte, telle que l'éditeur l'envoie (à chaque modification, sans recharger la page). Ne répond
+     * rien, sinon un code : 204 si c'est gardé, 422 si ce n'est pas une carte, 404 si elle n'est pas à vous.
+     */
+    public function enregistrer(int $id): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $userId = Auth::id();
+        $carte = Database::one('SELECT id, titre FROM cartes_mentales WHERE id = ? AND user_id = ?', [$id, $userId]);
+        if ($carte === null) {
+            http_response_code(404);
+            exit;
+        }
+
+        $arbre = CarteMentale::nettoyer(json_decode((string) ($_POST['arbre'] ?? ''), true));
+        if ($arbre === null) {
+            http_response_code(422);
+            exit;
+        }
+        $titre = array_key_exists('titre', $_POST)
+            ? CarteMentale::titre((string) $_POST['titre'], $arbre)
+            : (string) $carte['titre'];
+
+        Database::run(
+            'UPDATE cartes_mentales SET titre = ?, arbre = ? WHERE id = ? AND user_id = ?',
+            [$titre, json_encode($arbre, JSON_UNESCAPED_UNICODE), $id, $userId]
+        );
+        http_response_code(204);
+        exit;
+    }
+
+    /** Efface la carte, et revient à la fiche du cours. */
+    public function supprimer(int $id): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $carte = $this->carte($id, Auth::id());
+
+        Database::run('DELETE FROM cartes_mentales WHERE id = ? AND user_id = ?', [$id, Auth::id()]);
+        Session::flash('succes', t('cm.fl.supprimee'));
+        redirect('revision/' . (int) $carte['cours_id']);
+    }
+
+    // --- Dedans ---------------------------------------------------------------
+
+    /** Une carte de l'utilisateur, ou une page introuvable. */
+    private function carte(int $id, int $userId): array
+    {
+        $carte = Database::one('SELECT * FROM cartes_mentales WHERE id = ? AND user_id = ?', [$id, $userId]);
+        if ($carte === null) {
+            $this->introuvable();
+        }
+
+        return $carte;
+    }
+
+    /** Un cours de l'utilisateur, ou une page introuvable. */
+    private function cours(int $id, int $userId): array
+    {
+        $cours = Database::one('SELECT id, titre FROM cours WHERE id = ? AND user_id = ?', [$id, $userId]);
+        if ($cours === null) {
+            $this->introuvable();
+        }
+
+        return $cours;
+    }
+
+    private function introuvable(): never
+    {
+        http_response_code(404);
+        Vue::afficher('erreurs/404', [], t('titre.introuvable'));
+        exit;
+    }
+}

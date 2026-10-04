@@ -1481,3 +1481,20 @@ CREATE TABLE IF NOT EXISTS `resumes_ia` (
   KEY `idx_resumes_user_date` (`user_id`, `created_at`),
   CONSTRAINT `fk_resumes_user` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Les cartes mentales d'un cours (arbre d'idées en JSON), écrites à la main ou proposées par l'IA.
+
+CREATE TABLE IF NOT EXISTS `cartes_mentales` (
+  `id`         INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `user_id`    INT UNSIGNED NOT NULL,
+  `cours_id`   INT UNSIGNED NOT NULL,
+  `titre`      VARCHAR(190) NOT NULL,
+  `arbre`      MEDIUMTEXT   NOT NULL,
+  `ia`         TINYINT(1)   NOT NULL DEFAULT 0,
+  `created_at` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_cm_cours` (`cours_id`, `updated_at`),
+  CONSTRAINT `fk_cm_user`  FOREIGN KEY (`user_id`)  REFERENCES `users`(`id`)  ON DELETE CASCADE,
+  CONSTRAINT `fk_cm_cours` FOREIGN KEY (`cours_id`) REFERENCES `cours`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

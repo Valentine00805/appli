@@ -32,6 +32,7 @@ require __DIR__ . '/src/CleApi.php';
 require __DIR__ . '/src/Gemini.php';
 require __DIR__ . '/src/Markdown.php';
 require __DIR__ . '/src/ResumeIa.php';
+require __DIR__ . '/src/CarteMentale.php';
 require __DIR__ . '/src/Fichiers.php';
 require __DIR__ . '/src/ApercuDocument.php';
 require __DIR__ . '/src/ImagesDocument.php';
@@ -92,6 +93,7 @@ require __DIR__ . '/controllers/KanbanController.php';
 require __DIR__ . '/controllers/TableauBordController.php';
 require __DIR__ . '/controllers/CartesController.php';
 require __DIR__ . '/controllers/ResumesController.php';
+require __DIR__ . '/controllers/CartesMentalesController.php';
 require __DIR__ . '/controllers/NotificationsController.php';
 require __DIR__ . '/controllers/HorsLigneController.php';
 require __DIR__ . '/controllers/FocusController.php';
@@ -592,6 +594,11 @@ $routes = [
     ['POST', 'resumes/{id}/cartes',         [ResumesController::class, 'versLesCartes']],
     ['POST', 'resumes/{id}/fiche',          [ResumesController::class, 'versLaFiche']],
     ['GET',  'resumes/{id}/pdf',            [ResumesController::class, 'pdf']],
+    ['POST', 'revision/{id}/cartes-mentales',     [CartesMentalesController::class, 'creer']],
+    ['POST', 'revision/{id}/cartes-mentales/ia',  [CartesMentalesController::class, 'generer']],
+    ['GET',  'cartes-mentales/{id}',              [CartesMentalesController::class, 'voir']],
+    ['POST', 'cartes-mentales/{id}',              [CartesMentalesController::class, 'enregistrer']],
+    ['POST', 'cartes-mentales/{id}/supprimer',    [CartesMentalesController::class, 'supprimer']],
     ['POST', 'resumes/{id}/pdf-fiche',      [ResumesController::class, 'pdfVersLaFiche']],
     ['POST', 'resumes/{id}/supprimer',      [ResumesController::class, 'supprimer']],
     // Depuis l'onglet, le cours est dans le formulaire et non dans l'adresse.

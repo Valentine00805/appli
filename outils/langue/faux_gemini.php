@@ -107,6 +107,19 @@ if ($voix) {
 // Le mode JSON (responseSchema) : trois flash cards, dont une paire vide qu'il faut écarter — sauf pour la clé
 // « cle-sans-json », qui répond en prose comme un modèle qui n'aurait pas suivi le format.
 $demande = json_decode($corps, true);
+// Une carte mentale : le schéma est un OBJET (les flash cards sont une LISTE). Une idée centrale, trois branches.
+if (($demande['generationConfig']['responseSchema']['type'] ?? '') === 'OBJECT' && !str_starts_with($cle, 'cle-sans-json')) {
+    echo json_encode(['candidates' => [['content' => ['parts' => [['text' => json_encode([
+        'titre' => 'Cybersécurité',
+        'branches' => [
+            ['titre' => 'Chiffrement', 'sous_branches' => [
+                ['titre' => 'Confidentialité', 'details' => ['Clé secrète']], ['titre' => 'Intégrité']]],
+            ['titre' => 'Pare-feu', 'sous_branches' => [['titre' => 'Filtrage du trafic <script>alert(1)</script>']]],
+            ['titre' => 'Défense en profondeur'],
+        ],
+    ], JSON_UNESCAPED_UNICODE)]]]]]]);
+    exit;
+}
 if (($demande['generationConfig']['responseMimeType'] ?? '') === 'application/json' && !str_starts_with($cle, 'cle-sans-json')) {
     echo json_encode(['candidates' => [['content' => ['parts' => [['text' => json_encode([
         ['question' => 'Que protège le chiffrement ?', 'reponse' => 'La confidentialité des données.'],

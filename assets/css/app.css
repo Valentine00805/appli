@@ -4024,3 +4024,18 @@ summary.cal-volet__groupe:focus-visible {
 .flashcard__etiquette { display: block; margin-bottom: .35rem; font-size: .68rem; letter-spacing: .05em; text-transform: uppercase; color: var(--texte-doux); }
 /* « hidden » doit l'emporter sur « display: block » ci-dessus : sans cela, les deux faces d'une carte s'affichent. */
 .flashcard__face[hidden] { display: none; }
+
+/* --- Les cartes mentales ------------------------------------------------------------------------------------- */
+.cm__titre { max-width: 36rem; }
+.cm__barre { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem; margin: .75rem 0 .5rem; }
+.cm__barre[hidden], .cm__toile[hidden], .cm__plan[hidden] { display: none; }
+.cm__sep { width: 1px; align-self: stretch; margin: 0 .25rem; background: var(--bordure); }
+.cm__toile { position: relative; overflow: auto; max-height: 70vh; min-height: 280px; border: 1px solid var(--bordure); border-radius: var(--rayon-s); background: var(--fond-doux); }
+.cm__dessin { position: relative; width: max-content; }
+.cm__dessin svg { display: block; }
+.cm__saisie { position: absolute; z-index: 2; box-sizing: border-box; padding: 2px 8px; font: 14px system-ui, sans-serif; text-align: center; color: var(--texte); background: var(--fond-carte); border: 2px solid var(--accent); border-radius: 10px; }
+.cm__etat { min-height: 1.4em; margin: .5rem 0 0; font-size: .85rem; color: var(--texte-doux); }
+.cm__plan ul { margin: .25rem 0 .25rem 1.1rem; padding-left: .5rem; }
+.cm__plan > ul { margin-left: 0; padding-left: 1.1rem; }
+.fiche__cartes-mentales { list-style: none; margin: 0 0 .5rem; padding: 0; }
+.fiche__cartes-mentales li { display: flex; flex-wrap: wrap; gap: .25rem .5rem; align-items: baseline; padding: .25rem 0; }

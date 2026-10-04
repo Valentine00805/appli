@@ -455,6 +455,53 @@ $avancementFiche = avancement_anneaux(
     <?php endif; ?>
   </div>
 
+  <?php // --- Cartes mentales ------------------------------------------ ?>
+  <?php
+  /*
+   * Les cartes mentales du cours : on les ouvre dans leur éditeur (une page à elles), on en commence une
+   * vierge, ou l'on demande à l'IA une première version à corriger. Ces formulaires ouvrent une autre page :
+   * ils ne s'enregistrent pas sur place.
+   */
+  $cartesMentales = $cartesMentales ?? CarteMentale::duCours((int) $cours['id'], Auth::id());
+  $aUneCleGemini = CleApi::fin(Auth::id(), CleApi::GEMINI) !== null;
+  ?>
+  <div class="fiche__rayon<?= $cartesMentales === [] ? ' fiche__rayon--vide' : '' ?>" data-cartes-mentales>
+    <h4 class="fiche__titre"><?= e(t('fiche.cartes_mentales')) ?></h4>
+
+    <?php if ($cartesMentales === []): ?>
+      <p class="discret fiche__vide"><?= e(t('cm.aucune')) ?></p>
+    <?php else: ?>
+      <ul class="fiche__cartes-mentales">
+        <?php foreach ($cartesMentales as $cm): ?>
+          <li>
+            <a href="<?= url('cartes-mentales/' . $cm['id']) ?>"><?= e($cm['titre']) ?></a>
+            <span class="discret">
+              <?= e(tn('cm.idees', $cm['idees'])) ?><?php if ($cm['ia'] === 1): ?> · <?= e(t('cm.ia_badge')) ?><?php endif; ?>
+            </span>
+          </li>
+        <?php endforeach; ?>
+      </ul>
+    <?php endif; ?>
+
+    <div class="actions">
+      <form method="post" action="<?= url('revision/' . $cours['id'] . '/cartes-mentales') ?>" class="en-ligne">
+        <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
+        <button class="bouton bouton--secondaire bouton--petit" type="submit"><?= e(t('cm.nouvelle')) ?></button>
+      </form>
+      <?php if ($aUneCleGemini): ?>
+        <form method="post" action="<?= url('revision/' . $cours['id'] . '/cartes-mentales/ia') ?>" class="en-ligne"
+              data-attente="<?= e(t('cm.generer_attente')) ?>">
+          <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
+          <button class="bouton bouton--petit" type="submit"><?= e(t('cm.generer')) ?></button>
+        </form>
+      <?php endif; ?>
+    </div>
+    <?php if ($aUneCleGemini): ?>
+      <p class="champ__aide"><?= e(t('cm.generer_aide')) ?></p>
+    <?php else: ?>
+      <p class="champ__aide"><?= e(t('ria.pas_de_cle')) ?> <a href="<?= url('compte') ?>#gemini"><?= e(t('ria.ajouter_cle')) ?></a></p>
+    <?php endif; ?>
+  </div>
   <?php // --- Liens web ----------------------------------------------- ?>
   <div class="fiche__rayon<?= $parType['lien'] === [] ? ' fiche__rayon--vide' : '' ?>">
     <h4 class="fiche__titre"><?= e(t('fiche.liens')) ?></h4>
