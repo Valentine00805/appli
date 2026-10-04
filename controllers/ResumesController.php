@@ -477,8 +477,7 @@ final class ResumesController
     /** Fabrique le PDF d'un résumé. */
     private function fabriquerLePdf(array $resume): string
     {
-        return ExportPdf::depuisResume((string) $resume['titre'], ResumeIa::sousTitrePdf($resume), ResumeIa::htmlPourPdf($resume),
-            ResumeIa::avancementsPourPdf($resume, (int) $resume['user_id']));
+        return ExportPdf::depuisResume((string) $resume['titre'], ResumeIa::sousTitrePdf($resume), ResumeIa::htmlPourPdf($resume));
     }
 
     /** Le nom d'un PDF de résumé : son titre, sans les signes qu'un système de fichiers refuse. */

@@ -4207,6 +4207,4 @@ return [
     'ria.fl.pdf_joint' => 'PDF adjunto a la ficha de repaso de «{cours}».',
     'ria.fl.pdf_echec' => 'No se ha podido crear el PDF.',
     'pdf.resume_vide' => 'Este resumen está vacío.',
-    'pdf.avancement' => 'Progreso del repaso: {n} %',
-    'pdf.avancement_cours' => 'Progreso del repaso — {cours}: {n} %',
 ];

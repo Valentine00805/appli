@@ -4219,6 +4219,4 @@ return [
     'ria.fl.pdf_joint' => 'PDF joint à la fiche de révision de « {cours} ».',
     'ria.fl.pdf_echec' => 'Le PDF n’a pas pu être fabriqué.',
     'pdf.resume_vide' => 'Ce résumé est vide.',
-    'pdf.avancement' => 'Avancement de la révision : {n} %',
-    'pdf.avancement_cours' => 'Avancement de la révision — {cours} : {n} %',
 ];

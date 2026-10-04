@@ -4207,6 +4207,4 @@ return [
     'ria.fl.pdf_joint' => 'PDF an das Lernblatt von „{cours}“ angehängt.',
     'ria.fl.pdf_echec' => 'Das PDF konnte nicht erstellt werden.',
     'pdf.resume_vide' => 'Diese Zusammenfassung ist leer.',
-    'pdf.avancement' => 'Lernfortschritt: {n} %',
-    'pdf.avancement_cours' => 'Lernfortschritt — {cours}: {n} %',
 ];
