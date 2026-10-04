@@ -1447,3 +1447,17 @@ ALTER TABLE `users`
 
 ALTER TABLE `users`
   ADD COLUMN `langue` CHAR(2) NOT NULL DEFAULT 'fr' AFTER `theme`;
+
+-- La clé d'API qu'un utilisateur peut enregistrer (Gemini pour commencer). Chiffrée (AES-256-GCM),
+-- jamais en clair, et absente des sauvegardes exportables. Voir migration-cles-api.sql.
+
+CREATE TABLE IF NOT EXISTS `cles_api` (
+  `user_id`      INT UNSIGNED NOT NULL,
+  `fournisseur`  VARCHAR(20)  NOT NULL,
+  `cle_chiffree` TEXT         NOT NULL,
+  `fin`          CHAR(4)      NOT NULL,
+  `cree_le`      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `modifie_le`   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`user_id`, `fournisseur`),
+  CONSTRAINT `fk_cles_api_user` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

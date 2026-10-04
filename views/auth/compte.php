@@ -129,6 +129,56 @@ $langueChoisie = $apercuLangue ?? $langueEnregistree;
   </form>
 </section>
 
+<?php
+/*
+ * La clé d'API Gemini : chacun apporte la sienne.
+ *
+ * Elle se lit repliée — « Aucune clé » ou « se termine par … » — et ne se déplie qu'en passant par
+ * le bouton. Le champ est un champ de mot de passe, jamais prérempli : la clé enregistrée ne revient
+ * pas à l'écran, même à son propriétaire. Elle est chiffrée côté serveur (CleApi).
+ */
+$geminiFin = CleApi::configure() ? CleApi::fin((int) Auth::id(), CleApi::GEMINI) : null;
+?>
+<section class="carte" style="margin-bottom:1rem" id="gemini" data-reglage>
+  <h2 style="margin-top:0"><?= e(t('gemini.titre')) ?></h2>
+
+  <?php if (!CleApi::configure()): ?>
+    <p class="champ__aide" style="margin:0"><?= e(t('gemini.non_configure')) ?></p>
+  <?php else: ?>
+    <div class="reglage-lecture" data-reglage-lecture>
+      <p class="reglage-lecture__valeur">
+        <?= $geminiFin === null ? e(t('gemini.aucune')) : e(t('gemini.enregistree_fin', ['fin' => $geminiFin])) ?>
+      </p>
+      <button class="bouton bouton--secondaire" type="button" data-reglage-modifier>
+        <?= e($geminiFin === null ? t('gemini.ajouter') : t('commun.modifier')) ?>
+      </button>
+    </div>
+
+    <form method="post" action="<?= url('compte/gemini') ?>" data-reglage-edition hidden autocomplete="off">
+      <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
+      <label for="cle_gemini"><?= e(t('gemini.champ')) ?></label>
+      <input type="password" id="cle_gemini" name="cle_gemini" required maxlength="128"
+             autocomplete="off" spellcheck="false" autocapitalize="off"
+             placeholder="<?= e(t('gemini.placeholder')) ?>">
+      <p class="champ__aide">
+        <?= e(t('gemini.aide')) ?>
+        <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer"><?= e(t('gemini.lien')) ?></a>
+      </p>
+      <p class="actions" style="margin:.4rem 0 0">
+        <button class="bouton bouton--petit" type="submit"><?= e(t('commun.enregistrer')) ?></button>
+        <button class="bouton bouton--discret bouton--petit" type="button" data-reglage-annuler><?= e(t('commun.annuler')) ?></button>
+      </p>
+    </form>
+
+    <?php if ($geminiFin !== null): ?>
+      <form method="post" action="<?= url('compte/gemini/retirer') ?>" data-confirmation="<?= e(t('gemini.retirer_sur')) ?>" style="margin-top:.6rem">
+        <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
+        <button class="bouton bouton--discret bouton--petit" type="submit"><?= e(t('gemini.retirer')) ?></button>
+      </form>
+    <?php endif; ?>
+  <?php endif; ?>
+</section>
+
 <section class="carte" style="margin-bottom:1rem" id="pseudo-carte" data-reglage>
   <h2 style="margin-top:0"><?= e(t('cpt.pseudo')) ?></h2>
 

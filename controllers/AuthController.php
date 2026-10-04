@@ -325,6 +325,42 @@ final class AuthController
         redirect('compte');
     }
 
+    /**
+     * Enregistre la clé d'API Gemini de l'utilisateur.
+     *
+     * La clé arrive en POST seulement, jamais dans une adresse ; elle n'est ni rendue à l'écran, ni
+     * mise dans un message, ni dans le journal. Le texte est nettoyé des espaces qu'un copier-coller
+     * ajoute volontiers, puis jugé à son allure seule — aucun appel au fournisseur ici.
+     */
+    public function enregistrerCleGemini(): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+
+        if (!CleApi::configure()) {
+            Session::flash('erreur', t('gemini.non_configure'));
+            redirect('compte');
+        }
+        $cle = trim(post('cle_gemini'));
+        if (!CleApi::valide($cle)) {
+            Session::flash('erreur', t('gemini.invalide'));
+            redirect('compte');
+        }
+        CleApi::enregistrer(Auth::id(), CleApi::GEMINI, $cle);
+        Session::flash('succes', t('gemini.enregistree', ['fin' => substr($cle, -4)]));
+        redirect('compte');
+    }
+
+    /** Retire la clé d'API Gemini : elle est effacée de la base, pas seulement cachée. */
+    public function retirerCleGemini(): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        CleApi::retirer(Auth::id(), CleApi::GEMINI);
+        Session::flash('info', t('gemini.retiree'));
+        redirect('compte');
+    }
+
     /** L'apparence : claire, sombre, ou celle de l'appareil. */
     public function changerTheme(): void
     {

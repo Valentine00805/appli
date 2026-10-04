@@ -28,6 +28,7 @@ require __DIR__ . '/src/LimiteurConnexion.php';
 require __DIR__ . '/src/Courriel.php';
 require __DIR__ . '/src/Reinitialisation.php';
 require __DIR__ . '/src/Sauvegarde.php';
+require __DIR__ . '/src/CleApi.php';
 require __DIR__ . '/src/Fichiers.php';
 require __DIR__ . '/src/ApercuDocument.php';
 require __DIR__ . '/src/ImagesDocument.php';
@@ -251,6 +252,8 @@ $routes = [
     ['POST', 'compte/fuseau',            [AuthController::class, 'changerFuseau']],
     ['POST', 'compte/theme',             [AuthController::class, 'changerTheme']],
     ['POST', 'compte/langue',            [AuthController::class, 'changerLangue']],
+    ['POST', 'compte/gemini',            [AuthController::class, 'enregistrerCleGemini']],
+    ['POST', 'compte/gemini/retirer',    [AuthController::class, 'retirerCleGemini']],
     ['POST', 'compte/pseudo',            [AuthController::class, 'changerPseudo']],
     ['POST', 'compte/transcription',     [AuthController::class, 'changerTranscription']],
     ['POST', 'compte/photo',             [AuthController::class, 'changerPhoto']],

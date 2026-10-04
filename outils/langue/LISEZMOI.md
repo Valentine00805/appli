@@ -369,3 +369,9 @@ effacé à la fin.
 Pour la langue, l'aperçu est servi par le serveur (`compte?apercu_langue=xx`), seul à savoir traduire :
 choisir une langue rouvre « Mon compte » dedans, formulaire ouvert, sans rien écrire en base ; « Valider »
 enregistre, « Annuler » est un simple lien vers la page sans aperçu. Une valeur inconnue est ignorée.
+
+**`gemini_langue.php`** — l'espace « Clé API Gemini » de « Mon compte » : le champ (mot de passe, jamais
+prérempli), le refus d'une saisie absurde et d'un envoi sans jeton CSRF, la clé chiffrée en base (jamais
+en clair, attachée à sa ligne), le message qui ne cite que ses quatre derniers caractères, une clé par
+compte, l'absence de la clé dans l'archive de sauvegarde (ouverte et lue : c'est un zip), le retrait, et
+la disparition de la clé avec le compte. Deux comptes d'essai, effacés à la fin.
