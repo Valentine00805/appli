@@ -9,6 +9,7 @@
  * @var string $dateDefaut
  * @var ?int $typeDefaut
  * @var bool $dansUneFenetre  rendu seul, pour être posé dans une fenêtre
+ * @var ?string $retour  la page où revenir une fois créé (l'accueil : « / »), ou null
  */
 $dansUneFenetre = $dansUneFenetre ?? false;
 $edition = $evenement !== null;
@@ -139,6 +140,9 @@ $matiereActive = $edition ? entier_ou_null($evenement['matiere_id']) : null;
 
 <form method="post" action="<?= $action ?>">
   <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
+  <?php if (!$edition && ($retour ?? null) !== null): ?>
+    <input type="hidden" name="retour" value="<?= e($retour) ?>">
+  <?php endif; ?>
 
   <div class="colonnes">
     <div class="carte">

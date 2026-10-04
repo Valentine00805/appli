@@ -314,6 +314,7 @@ final class CalendrierController
             'matieres'   => $this->matieres($userId),
             'coursListe' => Database::all('SELECT id, titre FROM cours WHERE user_id = ? ORDER BY titre', [$userId]),
             'dateDefaut' => $dateDefaut,
+            'retour'     => self::retourInterne($_GET['retour'] ?? null),
             'types'      => TypesEvenementController::pourUtilisateur($userId),
             'typeDefaut' => $this->typeValide($userId, $_GET['type'] ?? null),
             'serie'      => $evenement === null || $evenement['serie_id'] === null ? null
@@ -387,7 +388,26 @@ final class CalendrierController
                 'n' => $combien, 'date' => date_numerique($quand['jusqu_au']),
               ]));
 
+        // Créé depuis l'accueil (« + Nouvel évènement »), on y revient : l'évènement s'y voit déjà.
+        $retour = self::retourInterne($_POST['retour'] ?? null);
+        if ($retour !== null) {
+            redirect(ltrim($retour, '/'));
+        }
+
         redirect('calendrier', ['date' => substr($donnees['debut'], 0, 10)]);
+    }
+
+    /**
+     * Un chemin de l'application où revenir, ou rien. Une chaîne vide n'est pas une absence :
+     * c'est l'accueil. Seul un chemin interne est accepté.
+     */
+    private static function retourInterne(mixed $retour): ?string
+    {
+        if (!is_string($retour) || str_contains($retour, '//') || preg_match('#[\r\n:]#', $retour) === 1) {
+            return null;
+        }
+
+        return $retour;
     }
 
     /**

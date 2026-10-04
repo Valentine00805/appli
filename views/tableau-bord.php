@@ -21,7 +21,7 @@
     <?php // Réviser d’un clic : la session reprend le dernier cours révisé. ?>
     <a class="bouton bouton--secondaire" href="<?= url('focus') ?>"><?= e(t('accueil.reviser')) ?></a>
     <a class="bouton bouton--secondaire" href="<?= url('cours/nouveau') ?>" data-fenetre><?= e(t('accueil.nouveau_cours')) ?></a>
-    <a class="bouton" href="<?= url('evenements/nouveau') ?>"><?= e(t('accueil.nouvel_evenement')) ?></a>
+    <a class="bouton" href="<?= url('evenements/nouveau', ['retour' => '/']) ?>" data-fenetre><?= e(t('accueil.nouvel_evenement')) ?></a>
   </div>
 </div>
 
