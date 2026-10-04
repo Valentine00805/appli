@@ -65,6 +65,20 @@ try {
             && str_starts_with($ou('http://localhost:8765/v1beta/'), 'http://localhost:8765/')), 'oui');
     Config::charger(['gemini' => ['adresse' => "http://127.0.0.1:$port/v1beta/"]]);
 
+    /*
+     * Le vrai Google, avec une clé qui n'en est pas une et deux lettres de contenu : rien de personnel ne part.
+     * Ce que cet essai prouve, et que le faux serveur ne peut pas : le certificat de Google se vérifie bien depuis
+     * ce poste (WAMP ne livre aucune liste d'autorités), l'adresse de l'API est la bonne, et Google répond
+     * « clé invalide » là où nous attendons « cle ». Hors ligne, l'essai est passé.
+     */
+    Config::charger([]);
+    $vrai = $essai(fn () => Gemini::texte('cle-bidon-pour-essai-tls-0123456789', 'c', 'x'));
+    $dire('le vrai Google : certificat vérifié, clé bidon refusée comme « cle »',
+        str_starts_with($vrai, 'cle|') ? 'oui'
+            : (str_starts_with($vrai, 'reseau|') && !stripos($vrai, 'ssl') && !stripos($vrai, 'certificate') ? 'oui (hors ligne : passé)' : $vrai),
+        str_starts_with($vrai, 'cle|') ? 'oui' : 'oui (hors ligne : passé)');
+    Config::charger(['gemini' => ['adresse' => "http://127.0.0.1:$port/v1beta/"]]);
+
     echo "\n3. La voix\n";
     [$pcm, $freq, $modeleVoix] = Gemini::voix('cle-bonne', 'Bonjour', 'Puck');
     $dire('du son brut, sa fréquence et le modèle', strlen($pcm) . ' · ' . $freq . ' · ' . $modeleVoix, '12000 · 24000 · gemini-3.8-flash-tts');

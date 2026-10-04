@@ -4162,7 +4162,7 @@ return [
     'ria.err.cle' => 'Google rejects this key. Check it in “My account”, or create a new one.',
     'ria.err.modele' => 'The requested model is not available for your key: {detail}',
     'ria.err.service' => 'Google’s service is down or overloaded. Try again in a moment.',
-    'ria.err.reseau' => 'Could not reach Google. Check the server’s connection.',
+    'ria.err.reseau' => 'Could not reach Google: {detail}',
     'ria.err.refus' => 'Gemini refused to process this content.',
     'ria.err.vide' => 'Gemini returned nothing. Try again.',
     'ria.err.autre' => 'Gemini answered with an error: {detail}',

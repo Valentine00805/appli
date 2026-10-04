@@ -308,7 +308,7 @@ final class ResumesController
             'cle'     => t('ria.err.cle'),
             'modele'  => t('ria.err.modele', ['detail' => $e->getMessage()]),
             'service' => t('ria.err.service'),
-            'reseau'  => t('ria.err.reseau'),
+            'reseau'  => t('ria.err.reseau', ['detail' => $e->getMessage()]),
             'refus'   => t('ria.err.refus'),
             'vide'    => t('ria.err.vide'),
             default   => t('ria.err.autre', ['detail' => $e->getMessage()]),

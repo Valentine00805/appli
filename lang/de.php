@@ -4162,7 +4162,7 @@ return [
     'ria.err.cle' => 'Google lehnt diesen Schlüssel ab. Prüfe ihn unter „Mein Konto“ oder erstelle einen neuen.',
     'ria.err.modele' => 'Das angeforderte Modell ist für deinen Schlüssel nicht verfügbar: {detail}',
     'ria.err.service' => 'Der Dienst von Google ist gestört oder überlastet. Versuche es gleich noch einmal.',
-    'ria.err.reseau' => 'Google ist nicht erreichbar. Prüfe die Verbindung des Servers.',
+    'ria.err.reseau' => 'Google ist nicht erreichbar: {detail}',
     'ria.err.refus' => 'Gemini hat die Verarbeitung dieses Inhalts abgelehnt.',
     'ria.err.vide' => 'Gemini hat nichts zurückgegeben. Versuche es erneut.',
     'ria.err.autre' => 'Gemini hat mit einem Fehler geantwortet: {detail}',

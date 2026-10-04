@@ -4174,7 +4174,7 @@ return [
     'ria.err.cle' => 'Google refuse cette clé. Vérifiez-la dans « Mon compte », ou créez-en une nouvelle.',
     'ria.err.modele' => 'Le modèle demandé n’est pas disponible pour votre clé : {detail}',
     'ria.err.service' => 'Le service de Google est en panne ou surchargé. Réessayez dans un moment.',
-    'ria.err.reseau' => 'Impossible de joindre Google. Vérifiez la connexion du serveur.',
+    'ria.err.reseau' => 'Impossible de joindre Google : {detail}',
     'ria.err.refus' => 'Gemini a refusé de traiter ce contenu.',
     'ria.err.vide' => 'Gemini n’a rien rendu. Réessayez.',
     'ria.err.autre' => 'Gemini a répondu par une erreur : {detail}',

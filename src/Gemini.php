@@ -200,6 +200,11 @@ final class Gemini
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_CONNECTTIMEOUT => 15,
             CURLOPT_TIMEOUT => 170,
+            // Le certificat de Google se vérifie, avec la liste d'autorités de Windows : WAMP n'en livre aucune et
+            // php.ini n'en désigne pas (comme pour le courriel, l'agenda et les notifications). Option ignorée ailleurs.
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_SSL_VERIFYHOST => 2,
+            CURLOPT_SSL_OPTIONS => defined('CURLSSLOPT_NATIVE_CA') ? CURLSSLOPT_NATIVE_CA : 0,
         ]);
         $brut = curl_exec($h);
         $code = (int) curl_getinfo($h, CURLINFO_RESPONSE_CODE);

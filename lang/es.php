@@ -4162,7 +4162,7 @@ return [
     'ria.err.cle' => 'Google rechaza esta clave. Compruébala en «Mi cuenta», o crea una nueva.',
     'ria.err.modele' => 'El modelo solicitado no está disponible para tu clave: {detail}',
     'ria.err.service' => 'El servicio de Google está caído o saturado. Vuelve a intentarlo en un momento.',
-    'ria.err.reseau' => 'No se ha podido contactar con Google. Comprueba la conexión del servidor.',
+    'ria.err.reseau' => 'No se ha podido contactar con Google: {detail}',
     'ria.err.refus' => 'Gemini se ha negado a procesar este contenido.',
     'ria.err.vide' => 'Gemini no ha devuelto nada. Vuelve a intentarlo.',
     'ria.err.autre' => 'Gemini ha respondido con un error: {detail}',

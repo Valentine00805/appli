@@ -241,6 +241,19 @@ try {
     $dire('le résumé et son audio disparaissent',
         $oui((string) bd_valeur('SELECT COUNT(*) FROM resumes_ia WHERE id = ?', [$idResume]) === '0' && !is_file($dossierSon . '/' . $son2)
             && str_contains($r, 'Résumé effacé')), 'oui');
+
+    echo "\n10. Le vrai Google, par le serveur web (clé bidon, texte fictif)\n";
+    // Le faux serveur n'est plus dans le chemin : c'est ce que fera le premier vrai essai. Sans rien de personnel :
+    // la clé n'est pas une clé, le cours est celui de l'essai. Ce que ça prouve : le certificat de Google se
+    // vérifie depuis PHP tel qu'Apache le lance (c'est là que « Impossible de joindre Google » était né).
+    @unlink($fichierEssai);
+    $appel($a, 'compte/gemini', ['_csrf' => $csrf, 'cle_gemini' => 'cle-bidon-pour-essai-tls-0123456789']);
+    $avant = $nbResumes($idA);
+    [$r] = $appel($a, 'resumes/generer', ['_csrf' => $csrf, 'cours' => [$coursA]]);
+    $dire('Google refuse la clé bidon, et l’application le dit (pas « Impossible de joindre »)',
+        str_contains($r, 'Google refuse cette clé') ? 'oui' : (str_contains($r, 'Impossible de joindre Google') && !stripos($r, 'certificate') ? 'oui (hors ligne : passé)' : substr(strip_tags($r), 0, 80)),
+        str_contains($r, 'Google refuse cette clé') ? 'oui' : 'oui (hors ligne : passé)');
+    $dire('  rien d’écrit, et la clé bidon n’apparaît nulle part', ($nbResumes($idA) - $avant) . ' · ' . $oui(!str_contains($r, 'cle-bidon-pour-essai')), '0 · oui');
 } finally {
     foreach (array_filter($sons) as $s) { @unlink($dossierSon . '/' . $s); }
     // Les fichiers son des comptes d'essai encore rangés (un essai interrompu) : retrouvés par la base.
