@@ -223,6 +223,8 @@ try {
         . $oui(str_contains($page, '3 flash cards') && !str_contains($page, 'ria-texte') && str_contains($page, 'Que protège le chiffrement ?')), '3 · 3 · oui');
     $dire('  une réponse qui contient du HTML reste du texte',
         $oui(str_contains($page, '&lt;b&gt;réseau&lt;/b&gt;') && !str_contains($page, '<b>réseau</b>')), 'oui');
+    $dire('  pas de section « Audio » sous des flash cards : ni voix à choisir, ni bouton « Générer l’audio »',
+        $oui(!str_contains($page, '🔊 Audio') && !str_contains($page, 'name="voix"') && !str_contains($page, 'Générer l’audio') && !str_contains($page, '<audio')), 'oui');
     $dire('  un seul cours : le bouton le nomme, sans choix à faire',
         $oui(str_contains($page, 'Ajouter à mon paquet de révision — Cyber') && preg_match('/name="cours" value="' . $coursA . '"/', $page) === 1), 'oui');
 
@@ -247,6 +249,11 @@ try {
     $lue = (string) ($dernier()['corps']['contents'][0]['parts'][0]['text'] ?? '');
     $dire('l’audio des flash cards lit « Question 1. … Réponse. … », pas du JSON',
         $oui(str_contains($lue, 'Question 1.') && str_contains($lue, 'Réponse.') && !str_contains($lue, '{') && !str_contains($lue, '"question"')), 'oui');
+    $tousFc = $creesFc();
+    $avecSon = end($tousFc) ?: ['id' => 0];   // le dernier : celui qu'on vient d'écrire avec l'audio
+    [$pageSon] = $appel($a, 'resumes/' . $avecSon['id']);
+    $dire('  des flash cards déjà lues à voix haute : le lecteur reste, sans formulaire pour refaire la voix',
+        $oui(str_contains($pageSon, '<audio controls') && !str_contains($pageSon, 'name="voix"') && !str_contains($pageSon, 'Refaire l’audio')), 'oui');
     $nettoyerFc();
 
     // Un modèle qui n'a pas suivi le format (de la prose au lieu de JSON) : le texte s'affiche, sans cartes ni paquet.

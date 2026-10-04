@@ -94,6 +94,13 @@ $coursDuPaquet = array_values(array_filter($sources, static fn ($s): bool => (in
   </section>
 <?php endif; ?>
 
+<?php
+/*
+ * Des flash cards se retournent et se versent au paquet : pas de voix à proposer. Seul un audio déjà fait (demandé
+ * avec la case « Audio » à l'écriture) reste, à écouter — sans formulaire pour en refaire un.
+ */
+?>
+<?php if ($cartes === null || $resume['audio_nom'] !== null): ?>
 <section class="carte">
   <h2><?= e(t('ria.audio')) ?></h2>
 
@@ -104,7 +111,9 @@ $coursDuPaquet = array_values(array_filter($sources, static fn ($s): bool => (in
     </p>
   <?php endif; ?>
 
-  <?php if ($cleFin === null): ?>
+  <?php if ($cartes !== null): ?>
+    <?php // Des flash cards : l'audio existant se lit, mais on n'en refait pas ici. ?>
+  <?php elseif ($cleFin === null): ?>
     <p><?= e(t('ria.pas_de_cle')) ?> <a href="<?= url('compte') ?>#gemini"><?= e(t('ria.ajouter_cle')) ?></a></p>
   <?php else: ?>
     <form method="post" action="<?= url('resumes/' . $id . '/voix') ?>" class="fabrique__form"
@@ -125,6 +134,7 @@ $coursDuPaquet = array_values(array_filter($sources, static fn ($s): bool => (in
     </form>
   <?php endif; ?>
 </section>
+<?php endif; ?>
 
 <form method="post" action="<?= url('resumes/' . $id . '/supprimer') ?>" data-confirmation="<?= e(t('ria.supprimer_sur')) ?>"<?= $envoi ?>>
   <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
