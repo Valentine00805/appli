@@ -316,7 +316,7 @@ return [
     'evtf.heure_debut' => 'Start time',
     'evtf.heure_fin' => 'End time',
     'evtf.rappels' => '🔔 Reminders',
-    'evtf.rappels_aide' => 'Before the event — tick as many as you like, or none to receive no reminder. For an all-day event, the reminder comes at 8 a.m.',
+    'evtf.rappels_aide' => 'Before the event — tick as many as you like, or “None” to receive no reminder. For an all-day event, the reminder comes at 8 a.m.',
     'evtf.regler_notifications' => 'Notification settings',
     'evtf.repeter' => 'Repeat',
     'evtf.jamais' => 'Do not repeat',
@@ -4092,4 +4092,6 @@ return [
     'apparence.valider' => 'Apply',
     'apparence.apercu_aide' => 'Preview: the page takes the chosen look, but it is only saved if you apply it.',
     'langue.apercu_aide' => 'Preview: the page is shown in the chosen language, but your account only changes if you apply it.',
+    'evtf.rappel_aucun' => 'None',
+    'evtf.rappel_aucun_titre' => 'No reminder',
 ];

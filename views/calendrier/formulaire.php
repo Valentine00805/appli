@@ -215,7 +215,7 @@ $matiereActive = $edition ? entier_ou_null($evenement['matiere_id']) : null;
        */
       $rappelsActuels = $edition ? Rappels::lire((string) ($evenement['rappels'] ?? '')) : [15];
       ?>
-      <fieldset class="rappels-choix">
+      <fieldset class="rappels-choix" data-rappels>
         <legend><?= e(t('evtf.rappels')) ?></legend>
         <div class="rappels-choix__liste">
           <?php foreach (array_reverse(Rappels::DELAIS_COURTS, true) as $minutes => $court): ?>
@@ -224,6 +224,11 @@ $matiereActive = $edition ? entier_ou_null($evenement['matiere_id']) : null;
               <span class="pastille"><?= e(Rappels::court((int) $minutes)) ?></span>
             </label>
           <?php endforeach; ?>
+          <?php // « Aucun » ne part pas : sans aucun délai envoyé, l'évènement n'a pas de rappel. ?>
+          <label class="rappels-choix__option" title="<?= e(t('evtf.rappel_aucun_titre')) ?>">
+            <input type="checkbox" data-rappel-aucun<?= $rappelsActuels === [] ? ' checked' : '' ?>>
+            <span class="pastille"><?= e(t('evtf.rappel_aucun')) ?></span>
+          </label>
         </div>
         <span class="champ__aide">
           <?= e(t('evtf.rappels_aide')) ?>

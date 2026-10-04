@@ -316,7 +316,7 @@ return [
     'evtf.heure_debut' => 'Hora de inicio',
     'evtf.heure_fin' => 'Hora de fin',
     'evtf.rappels' => '🔔 Recordatorios',
-    'evtf.rappels_aide' => 'Antes del evento: marca los que quieras, ninguno para no recibir aviso. En un evento de todo el día, el aviso llega a las 8.',
+    'evtf.rappels_aide' => 'Antes del evento: marca los que quieras, o «Ninguno» para no recibir aviso. En un evento de todo el día, el aviso llega a las 8.',
     'evtf.regler_notifications' => 'Ajustar las notificaciones',
     'evtf.repeter' => 'Repetir',
     'evtf.jamais' => 'No repetir',
@@ -4092,4 +4092,6 @@ return [
     'apparence.valider' => 'Aplicar',
     'apparence.apercu_aide' => 'Vista previa: la página adopta el tema elegido, pero solo se guarda si lo aplicas.',
     'langue.apercu_aide' => 'Vista previa: la página se muestra en el idioma elegido, pero tu cuenta solo cambia si lo aplicas.',
+    'evtf.rappel_aucun' => 'Ninguno',
+    'evtf.rappel_aucun_titre' => 'Sin recordatorio',
 ];

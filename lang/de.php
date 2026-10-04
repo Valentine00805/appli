@@ -316,7 +316,7 @@ return [
     'evtf.heure_debut' => 'Startzeit',
     'evtf.heure_fin' => 'Endzeit',
     'evtf.rappels' => '🔔 Erinnerungen',
-    'evtf.rappels_aide' => 'Vor dem Termin — beliebig viele ankreuzen, keines, wenn du nicht benachrichtigt werden willst. Bei ganztägigen Terminen kommt die Erinnerung um 8 Uhr.',
+    'evtf.rappels_aide' => 'Vor dem Termin — beliebig viele ankreuzen oder „Keine“, wenn du nicht benachrichtigt werden willst. Bei ganztägigen Terminen kommt die Erinnerung um 8 Uhr.',
     'evtf.regler_notifications' => 'Benachrichtigungen einstellen',
     'evtf.repeter' => 'Wiederholen',
     'evtf.jamais' => 'Nicht wiederholen',
@@ -4092,4 +4092,6 @@ return [
     'apparence.valider' => 'Übernehmen',
     'apparence.apercu_aide' => 'Vorschau: die Seite zeigt die gewählte Darstellung, gespeichert wird sie aber nur, wenn du sie übernimmst.',
     'langue.apercu_aide' => 'Vorschau: die Seite erscheint in der gewählten Sprache, dein Konto ändert sich aber nur, wenn du sie übernimmst.',
+    'evtf.rappel_aucun' => 'Keine',
+    'evtf.rappel_aucun_titre' => 'Keine Erinnerung',
 ];

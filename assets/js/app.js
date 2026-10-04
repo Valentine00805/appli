@@ -4201,6 +4201,28 @@
   });
 
   /*
+   * Les rappels d'un évènement : « Aucun » et les délais s'excluent. Cocher « Aucun » décoche
+   * tous les délais ; cocher un délai décoche « Aucun » ; sans délai coché, « Aucun » l'est.
+   * « Aucun » n'a pas de nom : il ne part pas, et un formulaire sans délai n'a pas de rappel.
+   */
+  document.addEventListener("change", function (evenement) {
+    var champ = evenement.target;
+    var groupe = champ.closest && champ.closest("[data-rappels]");
+    if (!groupe || champ.type !== "checkbox") { return; }
+    var aucun = groupe.querySelector("[data-rappel-aucun]");
+    if (!aucun) { return; }
+    var delais = groupe.querySelectorAll('input[name="rappels[]"]');
+    if (champ === aucun) {
+      // Décocher « Aucun » sans rien d'autre de coché ne dit rien de plus : il reste coché.
+      aucun.checked = true;
+      delais.forEach(function (d) { d.checked = false; });
+      return;
+    }
+    var unCoche = Array.prototype.some.call(delais, function (d) { return d.checked; });
+    aucun.checked = !unCoche;
+  });
+
+  /*
    * Choisir une langue montre la page « Mon compte » dans cette langue — un
    * aperçu servi par le serveur, qui seul sait traduire —, sans l'enregistrer.
    * « Valider » enregistre ; « Annuler » rouvre la page sans l'aperçu.

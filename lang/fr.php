@@ -328,7 +328,7 @@ return [
     'evtf.heure_debut' => 'Heure de début',
     'evtf.heure_fin' => 'Heure de fin',
     'evtf.rappels' => '🔔 Rappels',
-    'evtf.rappels_aide' => 'Avant l’évènement — cochez-en autant que vous voulez, aucun pour ne pas être prévenu. En journée entière, le rappel tombe à 8 h.',
+    'evtf.rappels_aide' => 'Avant l’évènement — cochez-en autant que vous voulez, ou « Aucun » pour ne pas être prévenu. En journée entière, le rappel tombe à 8 h.',
     'evtf.regler_notifications' => 'Régler les notifications',
     'evtf.repeter' => 'Répéter',
     'evtf.jamais' => 'Ne pas répéter',
@@ -4104,4 +4104,6 @@ return [
     'apparence.valider' => 'Valider',
     'apparence.apercu_aide' => 'Aperçu : la page prend le thème choisi, mais il n’est enregistré que si vous validez.',
     'langue.apercu_aide' => 'Aperçu : la page s’affiche dans la langue choisie, mais le compte ne change que si vous validez.',
+    'evtf.rappel_aucun' => 'Aucun',
+    'evtf.rappel_aucun_titre' => 'Aucun rappel',
 ];
