@@ -95,6 +95,9 @@ final class ResumesController
             $genres = ['resume'];
         }
         $longueur = in_array($_POST['longueur'] ?? '', ResumeIa::LONGUEURS, true) ? (string) $_POST['longueur'] : 'moyen';
+        // « Audio » coché : chaque résumé écrit est aussi lu à voix haute. Coché seul, il lit un résumé simple.
+        $avecAudio = !empty($_POST['audio']);
+        $voix = in_array($_POST['voix'] ?? '', Gemini::VOIX, true) ? (string) $_POST['voix'] : Gemini::VOIX[0];
 
         $lu = ResumeIa::rassembler($userId, $ids, $parts, $this->documentsRetenus($ids));
         foreach ($lu['muets'] as $nom) {
@@ -112,13 +115,27 @@ final class ResumesController
          * Un appel par genre, un après l'autre. Une clé refusée ou une limite atteinte arrête tout : les
          * suivants échoueraient de la même façon. Une autre panne n'empêche pas les genres restants.
          */
-        [$ecrits, $echecs] = $this->sansVerrou(static function () use ($cle, $genres, $longueur, $langue, $contenu): array {
+        /*
+         * L'audio s'ajoute après chaque texte, dans la limite d'un budget de temps : au-delà, les voix
+         * restantes sont laissées (le texte, lui, est gardé) et on dit comment les demander ensuite.
+         */
+        $limite = time() + max(0, (int) (Config::get('gemini', 'budget_audio') ?? 270));
+        [$ecrits, $echecs] = $this->sansVerrou(static function () use ($cle, $genres, $longueur, $langue, $contenu, $avecAudio, $voix, $limite): array {
             $ecrits = [];
             $echecs = [];
             foreach ($genres as $genre) {
                 try {
                     [$texte, $modele] = Gemini::texte($cle, ResumeIa::consigne($genre, $longueur, $langue), $contenu);
-                    $ecrits[] = [$genre, $texte, $modele];
+                    $son = null;
+                    $sonErreur = null;
+                    if ($avecAudio) {
+                        try {
+                            $son = self::sonDe($cle, $texte, $voix, $limite);
+                        } catch (GeminiErreur $e) {
+                            $sonErreur = $e;
+                        }
+                    }
+                    $ecrits[] = [$genre, $texte, $modele, $son, $sonErreur];
                 } catch (GeminiErreur $e) {
                     $echecs[$genre] = $e;
                     if (in_array($e->nature, ['cle', 'quota'], true)) {
@@ -132,7 +149,9 @@ final class ResumesController
 
         $noms = array_column($lu['sources'], 'cours');
         $ids = [];
-        foreach ($ecrits as [$genre, $texte, $modele]) {
+        $sons = 0;
+        $sonsManques = [];
+        foreach ($ecrits as [$genre, $texte, $modele, $son, $sonErreur]) {
             $titre = t('ria.genre.' . $genre) . ' — ' . (count($noms) === 1 ? $noms[0] : tn('ria.n_cours', count($noms)));
             Database::run(
                 'INSERT INTO resumes_ia (user_id, titre, genre, longueur, langue, sources, contenu, modele)
@@ -141,15 +160,34 @@ final class ResumesController
                  json_encode($lu['sources'], JSON_UNESCAPED_UNICODE), $texte, $modele]
             );
             $ids[] = Database::dernierId();
+            if ($son !== null) {
+                $nom = self::ranger($son[0], $son[1]);
+                if ($nom !== null) {
+                    Database::run('UPDATE resumes_ia SET audio_nom = ?, audio_voix = ? WHERE id = ? AND user_id = ?',
+                        [$nom, $voix, end($ids), $userId]);
+                    $sons++;
+                    continue;
+                }
+                $sonErreur = new GeminiErreur('écriture', 'ecriture');
+            }
+            if ($sonErreur !== null) {
+                $sonsManques[$genre] = $sonErreur;
+            }
         }
 
         if ($ids !== []) {
             if ($lu['tronque']) {
                 Session::flash('info', t('ria.fl.tronque'));
             }
-            Session::flash('succes', tn('ria.fl.ecrits', count($ids)));
+            Session::flash('succes', tn($sons > 0 && $sons === count($ids) ? 'ria.fl.ecrits_audio' : 'ria.fl.ecrits', count($ids)));
         }
         $this->direLesEchecs($echecs, $genres);
+        foreach ($sonsManques as $genre => $e) {
+            Session::flash($e->nature === 'delai' ? 'info' : 'erreur', t($e->nature === 'delai' ? 'ria.fl.audio_delai' : 'ria.fl.echec_audio', [
+                'genre' => mb_strtolower(t('ria.genre.' . $genre)),
+                'detail' => $e->nature === 'delai' ? '' : $this->messageDErreur($e),
+            ]));
+        }
         if ($ids === []) {
             redirect('resumes');
         }
@@ -212,35 +250,20 @@ final class ResumesController
         $voix = in_array($_POST['voix'] ?? '', Gemini::VOIX, true) ? (string) $_POST['voix'] : Gemini::VOIX[0];
 
         $texte = Markdown::brut((string) $resume['contenu']);
-        $morceaux = ResumeIa::morceauxDeVoix($texte);
-        if ($morceaux === []) {
+        if (ResumeIa::morceauxDeVoix($texte) === []) {
             Session::flash('erreur', t('ria.fl.rien_a_lire'));
             redirect('resumes/' . $id);
         }
 
         try {
-            [$pcm, $frequence] = $this->sansVerrou(static function () use ($cle, $morceaux, $voix): array {
-                $son = '';
-                $frequence = 24000;
-                foreach ($morceaux as $morceau) {
-                    [$partie, $frequence] = Gemini::voix($cle, $morceau, $voix);
-                    $son .= $partie;
-                }
-
-                return [$son, $frequence];
-            });
+            [$pcm, $frequence] = $this->sansVerrou(static fn (): array => self::sonDe($cle, (string) $resume['contenu'], $voix, time() + 280));
         } catch (GeminiErreur $e) {
             Session::flash('erreur', $this->messageDErreur($e));
             redirect('resumes/' . $id);
         }
 
-        $dossier = self::dossier();
-        if (!is_dir($dossier) && !mkdir($dossier, 0775, true) && !is_dir($dossier)) {
-            Session::flash('erreur', t('ria.fl.ecriture'));
-            redirect('resumes/' . $id);
-        }
-        $nom = bin2hex(random_bytes(12)) . '.wav';
-        if (file_put_contents($dossier . DIRECTORY_SEPARATOR . $nom, Gemini::wav($pcm, $frequence)) === false) {
+        $nom = self::ranger($pcm, $frequence);
+        if ($nom === null) {
             Session::flash('erreur', t('ria.fl.ecriture'));
             redirect('resumes/' . $id);
         }
@@ -266,6 +289,44 @@ final class ResumesController
         Database::run('DELETE FROM resumes_ia WHERE id = ? AND user_id = ?', [$id, Auth::id()]);
         Session::flash('info', t('ria.fl.efface'));
         redirect('resumes');
+    }
+
+    /**
+     * Lit un texte (Markdown) à voix haute, morceau par morceau.
+     *
+     * @return array{0: string, 1: int}  le son brut (PCM 16 bits mono) et sa fréquence
+     * @throws GeminiErreur  « delai » si la limite de temps est passée avant la fin : un son coupé en route
+     *                       serait pire que pas de son
+     */
+    private static function sonDe(string $cle, string $markdown, string $voix, int $limite): array
+    {
+        $morceaux = ResumeIa::morceauxDeVoix(Markdown::brut($markdown));
+        if ($morceaux === []) {
+            throw new GeminiErreur('Rien à lire.', 'vide');
+        }
+        $son = '';
+        $frequence = 24000;
+        foreach ($morceaux as $morceau) {
+            if (time() >= $limite) {
+                throw new GeminiErreur('Délai dépassé.', 'delai');
+            }
+            [$partie, $frequence] = Gemini::voix($cle, $morceau, $voix);
+            $son .= $partie;
+        }
+
+        return [$son, $frequence];
+    }
+
+    /** Range un son dans un fichier WAV : son nom, ou null si l'écriture échoue. */
+    private static function ranger(string $pcm, int $frequence): ?string
+    {
+        $dossier = self::dossier();
+        if (!is_dir($dossier) && !mkdir($dossier, 0775, true) && !is_dir($dossier)) {
+            return null;
+        }
+        $nom = bin2hex(random_bytes(12)) . '.wav';
+
+        return file_put_contents($dossier . DIRECTORY_SEPARATOR . $nom, Gemini::wav($pcm, $frequence)) === false ? null : $nom;
     }
 
     /** Où rangent les fichiers son. */
@@ -308,7 +369,7 @@ final class ResumesController
     /** Fait quelque chose de long sans tenir la session : les autres onglets restent libres. */
     private function sansVerrou(callable $travail): mixed
     {
-        @set_time_limit(300);
+        @set_time_limit(600);
         session_write_close();
         try {
             return $travail();
@@ -349,6 +410,8 @@ final class ResumesController
             'reseau'  => t('ria.err.reseau', ['detail' => $e->getMessage()]),
             'refus'   => t('ria.err.refus'),
             'vide'    => t('ria.err.vide'),
+            'delai'   => t('ria.err.delai'),
+            'ecriture' => t('ria.fl.ecriture'),
             default   => t('ria.err.autre', ['detail' => $e->getMessage()]),
         };
     }

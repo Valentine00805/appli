@@ -62,6 +62,12 @@ switch (true) {
             $erreur(503, 'UNAVAILABLE', 'The model is overloaded.');
         }
         break;
+    case str_starts_with($cle, 'cle-texte-seul'):
+        // Le texte passe, la voix est refusée (limite) : un résumé écrit dont l'audio manque.
+        if ($voix) {
+            $erreur(429, 'RESOURCE_EXHAUSTED', 'You exceeded your current quota.');
+        }
+        break;
     case str_starts_with($cle, 'cle-modele'):
         if (in_array($modele, ['gemini-3.8-flash', 'gemini-3.8-flash-tts'], true)) {
             $erreur(404, 'NOT_FOUND', "models/$modele is not found for API version v1beta.");

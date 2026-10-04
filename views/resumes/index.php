@@ -49,7 +49,7 @@ $pret = $cleConfiguree && $cleFin !== null;
     <p class="champ__aide ria-avertissement" role="note"><?= e(t('ria.confidentialite')) ?></p>
 
     <form method="post" action="<?= url('resumes/generer') ?>" class="fabrique__form"
-          data-attente="<?= e(t('ria.en_cours')) ?>">
+          data-attente="<?= e(t('ria.en_cours')) ?>" data-attente-audio="<?= e(t('ria.en_cours_audio')) ?>">
       <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
 
       <fieldset class="sources choix-cours">
@@ -87,7 +87,22 @@ $pret = $cleConfiguree && $cleFin !== null;
               <span class="discret"><?= e(t('ria.genre.' . $genre . '_aide')) ?></span></span>
           </label>
         <?php endforeach; ?>
+        <?php // L'audio ne remplace rien : il s'ajoute à ce qui est coché (ou à un résumé simple si rien ne l'est). ?>
+        <label class="sources__choix">
+          <input type="checkbox" name="audio" value="1">
+          <span><?= e(t('ria.audio_choix')) ?>
+            <span class="discret"><?= e(t('ria.audio_choix_aide')) ?></span></span>
+        </label>
       </fieldset>
+
+      <div class="champ">
+        <label for="voix_lot"><?= e(t('ria.voix')) ?></label>
+        <select id="voix_lot" name="voix">
+          <?php foreach (Gemini::VOIX as $voix): ?>
+            <option value="<?= e($voix) ?>"><?= e($voix) ?></option>
+          <?php endforeach; ?>
+        </select>
+      </div>
 
       <div class="champ">
         <label for="longueur"><?= e(t('ria.longueur')) ?></label>

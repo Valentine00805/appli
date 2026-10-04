@@ -4182,4 +4182,12 @@ return [
     'ria.fl.ecrits.plusieurs' => '{n} résumés écrits.',
     'ria.fl.echec_genre' => '« {genre} » n’a pas pu être écrit. {detail}',
     'ria.ouvrir' => 'Ouvrir le résumé « {titre} »',
+    'ria.audio_choix' => 'Audio',
+    'ria.audio_choix_aide' => 'chaque résumé est aussi lu à voix haute (bien plus long)',
+    'ria.en_cours_audio' => 'Écriture et enregistrement en cours… cela peut prendre plusieurs minutes.',
+    'ria.fl.ecrits_audio.un' => 'Résumé écrit, avec son audio.',
+    'ria.fl.ecrits_audio.plusieurs' => '{n} résumés écrits, avec leur audio.',
+    'ria.fl.echec_audio' => 'L’audio de « {genre} » n’a pas pu être généré : {detail} Le texte est gardé : ouvrez-le et cliquez sur « Générer l’audio » pour réessayer.',
+    'ria.fl.audio_delai' => 'L’audio de « {genre} » n’a pas été fait faute de temps. Le texte est gardé : ouvrez-le et cliquez sur « Générer l’audio ».',
+    'ria.err.delai' => 'Le délai est dépassé : réessayez avec un résumé plus court.',
 ];

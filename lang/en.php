@@ -4170,4 +4170,12 @@ return [
     'ria.fl.ecrits.plusieurs' => '{n} summaries written.',
     'ria.fl.echec_genre' => '“{genre}” could not be written. {detail}',
     'ria.ouvrir' => 'Open the summary “{titre}”',
+    'ria.audio_choix' => 'Audio',
+    'ria.audio_choix_aide' => 'each summary is also read aloud (takes much longer)',
+    'ria.en_cours_audio' => 'Writing and recording… this can take several minutes.',
+    'ria.fl.ecrits_audio.un' => 'Summary written, with its audio.',
+    'ria.fl.ecrits_audio.plusieurs' => '{n} summaries written, with their audio.',
+    'ria.fl.echec_audio' => 'The audio for “{genre}” could not be generated: {detail} The text is kept: open it and click “Generate the audio” to try again.',
+    'ria.fl.audio_delai' => 'The audio for “{genre}” was not made for lack of time. The text is kept: open it and click “Generate the audio”.',
+    'ria.err.delai' => 'The time limit was exceeded: try again with a shorter summary.',
 ];

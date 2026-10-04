@@ -4244,7 +4244,9 @@
     // Après l'envoi, pas pendant : un bouton désactivé n'envoie plus son nom au formulaire.
     window.setTimeout(function () {
       bouton.disabled = true;
-      bouton.textContent = formulaire.getAttribute("data-attente");
+      // Avec l'audio coché, l'attente se compte en minutes : on le dit.
+      var avecAudio = formulaire.querySelector('input[name="audio"]:checked') !== null && formulaire.hasAttribute("data-attente-audio");
+      bouton.textContent = formulaire.getAttribute(avecAudio ? "data-attente-audio" : "data-attente");
     }, 0);
   });
 

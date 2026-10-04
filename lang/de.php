@@ -4170,4 +4170,12 @@ return [
     'ria.fl.ecrits.plusieurs' => '{n} Zusammenfassungen geschrieben.',
     'ria.fl.echec_genre' => '„{genre}“ konnte nicht geschrieben werden. {detail}',
     'ria.ouvrir' => 'Zusammenfassung „{titre}“ öffnen',
+    'ria.audio_choix' => 'Audio',
+    'ria.audio_choix_aide' => 'jede Zusammenfassung wird auch vorgelesen (dauert deutlich länger)',
+    'ria.en_cours_audio' => 'Schreiben und Aufnehmen laufen … das kann mehrere Minuten dauern.',
+    'ria.fl.ecrits_audio.un' => 'Zusammenfassung geschrieben, mit Audio.',
+    'ria.fl.ecrits_audio.plusieurs' => '{n} Zusammenfassungen geschrieben, mit Audio.',
+    'ria.fl.echec_audio' => 'Das Audio zu „{genre}“ konnte nicht erstellt werden: {detail} Der Text bleibt erhalten: öffne ihn und klicke auf „Audio erstellen“, um es erneut zu versuchen.',
+    'ria.fl.audio_delai' => 'Das Audio zu „{genre}“ wurde aus Zeitmangel nicht erstellt. Der Text bleibt erhalten: öffne ihn und klicke auf „Audio erstellen“.',
+    'ria.err.delai' => 'Die Zeit ist abgelaufen: versuche es mit einer kürzeren Zusammenfassung erneut.',
 ];

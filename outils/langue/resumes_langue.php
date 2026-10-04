@@ -238,6 +238,73 @@ try {
             && !str_contains($fragmentVoix, '<header class="entete"')) . ' · ' . bd_valeur('SELECT audio_voix FROM resumes_ia WHERE id = ?', [$idResume]), 'oui · Charon');
     $son2 = (string) bd_valeur('SELECT audio_nom FROM resumes_ia WHERE id = ?', [$idResume]);
 
+    echo "\n6 bis. L’audio demandé avec le résumé\n";
+    [$page] = $appel($a, 'resumes');
+    $dire('la case « Audio » est dans « Ce que je veux », avec le choix de la voix et l’attente annoncée',
+        $oui(preg_match('/name="audio" value="1"/', $page) === 1 && str_contains($page, 'id="voix_lot"')
+            && str_contains($page, 'data-attente-audio="Écriture et enregistrement en cours')), 'oui');
+    $dejaLa = array_column(bd_all('SELECT id FROM resumes_ia WHERE user_id = ?', [$idA]), 'id');
+    $nouveaux = static function () use ($idA, &$dejaLa): array {
+        $l = bd_all('SELECT id, genre, audio_nom, audio_voix FROM resumes_ia WHERE user_id = ? ORDER BY id', [$idA]);
+        return array_values(array_filter($l, static fn (array $x): bool => !in_array($x['id'], $dejaLa, false)));
+    };
+    $menage = static function () use ($idA, &$dejaLa, $dossierSon): void {
+        foreach (bd_all('SELECT id, audio_nom FROM resumes_ia WHERE user_id = ?', [$idA]) as $l) {
+            if (!in_array($l['id'], $dejaLa, false)) {
+                if ($l['audio_nom'] !== null) { @unlink($dossierSon . '/' . basename((string) $l['audio_nom'])); }
+                bd_run('DELETE FROM resumes_ia WHERE id = ? AND user_id = ?', [$l['id'], $idA]);
+            }
+        }
+    };
+
+    [$r, $url] = $appel($a, 'resumes/generer', ['_csrf' => $csrf, 'cours' => [$coursA], 'genres' => ['resume'], 'audio' => '1', 'voix' => 'Fenrir']);
+    $n = $nouveaux();
+    $octets = isset($n[0]['audio_nom']) && is_file($dossierSon . '/' . $n[0]['audio_nom']) ? (string) file_get_contents($dossierSon . '/' . $n[0]['audio_nom']) : '';
+    $dire('« résumé » + audio : un résumé, son fichier WAV, la voix choisie',
+        count($n) . ' · ' . $oui(str_starts_with($octets, 'RIFF') && strlen($octets) > 44) . ' · ' . ($n[0]['audio_voix'] ?? '?'), '1 · oui · Fenrir');
+    $dire('  le message dit « avec son audio », et le lecteur est dans la fenêtre',
+        $oui(str_contains($r, 'Résumé écrit, avec son audio.')) . ' · ' . $oui(str_contains((string) $appel($a, 'resumes/' . ($n[0]['id'] ?? 0) . '?fenetre=1')[0], '<audio controls')), 'oui · oui');
+    $dire('  Gemini a lu le texte sans marque de mise en forme, avec la voix demandée',
+        $oui(!preg_match('/[#*`]/', (string) ($dernier()['corps']['contents'][0]['parts'][0]['text'] ?? '#'))
+            && ($dernier()['corps']['generationConfig']['speechConfig']['voiceConfig']['prebuiltVoiceConfig']['voiceName'] ?? '') === 'Fenrir'), 'oui');
+    $menage();
+
+    [$r, $url] = $appel($a, 'resumes/generer', ['_csrf' => $csrf, 'cours' => [$coursA], 'audio' => '1']);
+    $n = $nouveaux();
+    $dire('  « Audio » coché seul : un résumé simple, lu à voix haute', ($n[0]['genre'] ?? '?') . ' · ' . $oui(isset($n[0]['audio_nom'])), 'resume · oui');
+    $menage();
+
+    [$r] = $appel($a, 'resumes/generer', ['_csrf' => $csrf, 'cours' => [$coursA], 'genres' => ['points', 'questions'], 'audio' => '1']);
+    $n = $nouveaux();
+    $dire('  deux genres + audio : deux résumés, chacun avec sa voix',
+        count($n) . ' · ' . $oui(count(array_filter($n, static fn (array $x): bool => $x['audio_nom'] !== null)) === 2 && str_contains($r, '2 résumés écrits, avec leur audio')), '2 · oui');
+    $menage();
+
+    [$r] = $appel($a, 'resumes/generer', ['_csrf' => $csrf, 'cours' => [$coursA], 'genres' => ['resume']]);
+    $n = $nouveaux();
+    $dire('  sans la case : pas d’audio (c’est un choix, jamais un défaut)', count($n) . ' · ' . $oui(!isset($n[0]['audio_nom'])), '1 · oui');
+    $menage();
+
+    $appel($a, 'compte/gemini', ['_csrf' => $csrf, 'cle_gemini' => 'cle-texte-seul-0123456789abc']);
+    [$r] = $appel($a, 'resumes/generer', ['_csrf' => $csrf, 'cours' => [$coursA], 'genres' => ['resume'], 'audio' => '1']);
+    $n = $nouveaux();
+    $dire('la voix refusée (limite) : le texte est gardé, sans audio, et on dit comment le demander ensuite',
+        count($n) . ' · ' . $oui(!isset($n[0]['audio_nom'])) . ' · ' . $oui(str_contains($r, 'L’audio de « résumé » n’a pas pu être généré')
+            && str_contains($r, 'Limite de la clé gratuite atteinte') && str_contains($r, 'Générer l’audio')), '1 · oui · oui');
+    $menage();
+
+    // Le budget de temps épuisé : le texte est écrit, la voix laissée, et le message le dit (sans accuser Google).
+    file_put_contents($fichierEssai, "<?php\nreturn ['gemini' => ['adresse' => 'http://127.0.0.1:$port/v1beta/', 'pause_reessai' => 0, 'budget_audio' => 0]];\n");
+    sleep(4);   // OPcache ne relit « parametres.test.php » que toutes les deux secondes : on lui laisse le temps de le voir changer
+    $appel($a, 'compte/gemini', ['_csrf' => $csrf, 'cle_gemini' => 'cle-bonne-0123456789abcdef']);
+    [$r] = $appel($a, 'resumes/generer', ['_csrf' => $csrf, 'cours' => [$coursA], 'genres' => ['resume'], 'audio' => '1']);
+    $n = $nouveaux();
+    $dire('le budget de temps épuisé : texte écrit, voix laissée « faute de temps »',
+        count($n) . ' · ' . $oui(!isset($n[0]['audio_nom'])) . ' · ' . $oui(str_contains($r, 'faute de temps') && !str_contains($r, 'Limite de la clé')), '1 · oui · oui');
+    $menage();
+    file_put_contents($fichierEssai, "<?php\nreturn ['gemini' => ['adresse' => 'http://127.0.0.1:$port/v1beta/', 'pause_reessai' => 0]];\n");
+    sleep(4);   // idem : la suite ne doit plus voir « budget_audio »
+
     echo "\n7. Les refus de Google, dits clairement\n";
     foreach ([
         ['cle-quota-0123456789abcdef', 'Limite de la clé gratuite atteinte'],

@@ -4170,4 +4170,12 @@ return [
     'ria.fl.ecrits.plusieurs' => '{n} resúmenes escritos.',
     'ria.fl.echec_genre' => '«{genre}» no se ha podido escribir. {detail}',
     'ria.ouvrir' => 'Abrir el resumen «{titre}»',
+    'ria.audio_choix' => 'Audio',
+    'ria.audio_choix_aide' => 'cada resumen se lee también en voz alta (tarda bastante más)',
+    'ria.en_cours_audio' => 'Escribiendo y grabando… puede tardar varios minutos.',
+    'ria.fl.ecrits_audio.un' => 'Resumen escrito, con su audio.',
+    'ria.fl.ecrits_audio.plusieurs' => '{n} resúmenes escritos, con su audio.',
+    'ria.fl.echec_audio' => 'No se ha podido generar el audio de «{genre}»: {detail} El texto se conserva: ábrelo y pulsa «Generar el audio» para volver a intentarlo.',
+    'ria.fl.audio_delai' => 'El audio de «{genre}» no se ha hecho por falta de tiempo. El texto se conserva: ábrelo y pulsa «Generar el audio».',
+    'ria.err.delai' => 'Se ha superado el tiempo: vuelve a intentarlo con un resumen más corto.',
 ];
