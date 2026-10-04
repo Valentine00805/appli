@@ -4161,7 +4161,7 @@ return [
     'ria.err.quota' => 'Límite de la clave gratuita alcanzado. Vuelve a intentarlo en un minuto, o mañana (la cuota del día se reinicia a medianoche, hora del Pacífico).',
     'ria.err.cle' => 'Google rechaza esta clave. Compruébala en «Mi cuenta», o crea una nueva.',
     'ria.err.modele' => 'El modelo solicitado no está disponible para tu clave: {detail}',
-    'ria.err.service' => 'El servicio de Google está caído o saturado. Vuelve a intentarlo en un momento.',
+    'ria.err.service' => 'El servicio de Google está caído o saturado. Vuelve a intentarlo en un momento. (Respuesta de Google: {detail})',
     'ria.err.reseau' => 'No se ha podido contactar con Google: {detail}',
     'ria.err.refus' => 'Gemini se ha negado a procesar este contenido.',
     'ria.err.vide' => 'Gemini no ha devuelto nada. Vuelve a intentarlo.',

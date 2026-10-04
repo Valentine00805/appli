@@ -52,7 +52,7 @@ try {
     // Les reprises : un service surchargé est rappelé (trois essais au plus), pas les autres refus.
     Config::charger(['gemini' => ['adresse' => "http://127.0.0.1:$port/v1beta/", 'pause_reessai' => 0]]);
     $appels = static fn (string $cle): int => (int) @file_get_contents(sys_get_temp_dir() . '/faux_gemini_compteur_' . md5($cle) . '.txt');
-    foreach (['cle-instable-0123456789', 'cle-panne-0123456789', 'cle-mauvaise-0123456789', 'cle-quota-0123456789'] as $k) {
+    foreach (['cle-instable-0123456789', 'cle-panne-0123456789', 'cle-delai-0123456789abc', 'cle-mauvaise-0123456789', 'cle-quota-0123456789'] as $k) {
         @unlink(sys_get_temp_dir() . '/faux_gemini_compteur_' . md5($k) . '.txt');
     }
     [$texteReprise] = Gemini::texte('cle-instable-0123456789', 'c', 'x');
@@ -60,6 +60,9 @@ try {
         $oui(str_contains($texteReprise, 'Résumé bidon')) . ' · ' . $appels('cle-instable-0123456789'), 'oui · 3');
     $dire('  une vraie panne : trois essais, puis « service »',
         substr($essai(fn () => Gemini::texte('cle-panne-0123456789', 'c', 'x')), 0, 7) . ' · ' . $appels('cle-panne-0123456789'), 'service · 3');
+    $retour504 = $essai(fn () => Gemini::texte('cle-delai-0123456789abc', 'c', 'x'));
+    $dire('  un délai dépassé chez Google (504) ne se rappelle pas : un seul essai, et le code est dans le message',
+        $oui(str_starts_with($retour504, 'service|') && str_contains($retour504, 'HTTP 504') && str_contains($retour504, 'timed out')) . ' · ' . $appels('cle-delai-0123456789abc'), 'oui · 1');
     $essai(fn () => Gemini::texte('cle-mauvaise-0123456789', 'c', 'x'));
     $essai(fn () => Gemini::texte('cle-quota-0123456789', 'c', 'x'));
     $dire('  clé refusée, limite atteinte : un seul essai, on ne s’acharne pas',

@@ -406,7 +406,7 @@ final class ResumesController
             'quota'   => t('ria.err.quota'),
             'cle'     => t('ria.err.cle'),
             'modele'  => t('ria.err.modele', ['detail' => $e->getMessage()]),
-            'service' => t('ria.err.service'),
+            'service' => t('ria.err.service', ['detail' => $e->getMessage()]),
             'reseau'  => t('ria.err.reseau', ['detail' => $e->getMessage()]),
             'refus'   => t('ria.err.refus'),
             'vide'    => t('ria.err.vide'),

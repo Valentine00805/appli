@@ -4161,7 +4161,7 @@ return [
     'ria.err.quota' => 'Free key limit reached. Try again in a minute, or tomorrow (the daily quota resets at midnight Pacific time).',
     'ria.err.cle' => 'Google rejects this key. Check it in “My account”, or create a new one.',
     'ria.err.modele' => 'The requested model is not available for your key: {detail}',
-    'ria.err.service' => 'Google’s service is down or overloaded. Try again in a moment.',
+    'ria.err.service' => 'Google’s service is down or overloaded. Try again in a moment. (Google’s answer: {detail})',
     'ria.err.reseau' => 'Could not reach Google: {detail}',
     'ria.err.refus' => 'Gemini refused to process this content.',
     'ria.err.vide' => 'Gemini returned nothing. Try again.',

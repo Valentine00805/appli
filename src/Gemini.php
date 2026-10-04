@@ -8,7 +8,7 @@ final class GeminiErreur extends RuntimeException
      * @param string $nature  cle (refusée), quota (limite atteinte), modele (inconnu), service (panne),
      *                        reseau (injoignable), refus (contenu refusé), vide (rien rendu), requete (autre)
      */
-    public function __construct(string $message, public readonly string $nature)
+    public function __construct(string $message, public readonly string $nature, public readonly int $http = 0)
     {
         parent::__construct($message);
     }
@@ -203,7 +203,8 @@ final class Gemini
             try {
                 return self::appeler($cle, $modele, $corps);
             } catch (GeminiErreur $e) {
-                if ($e->nature !== 'service' || $essai >= 3) {
+                // Un 500, 502 ou 503 est passager. Un 504 (délai dépassé chez Google) se répéterait à l'identique : on ne le rappelle pas.
+                if ($e->nature !== 'service' || !in_array($e->http, [500, 502, 503], true) || $essai >= 3) {
                     throw $e;
                 }
                 if ($pause > 0) {
@@ -254,7 +255,8 @@ final class Gemini
             default                                                                 => 'requete',
         };
 
-        throw new GeminiErreur(self::nettoyer($message !== '' ? $message : 'HTTP ' . $code, $cle), $nature);
+        // Le code HTTP accompagne toujours le message : sans lui, « surchargé » et « délai dépassé » se ressemblent.
+        throw new GeminiErreur(self::nettoyer('HTTP ' . $code . ($message !== '' ? ' — ' . $message : ''), $cle), $nature, $code);
     }
 
     /**

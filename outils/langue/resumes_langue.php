@@ -309,7 +309,7 @@ try {
     foreach ([
         ['cle-quota-0123456789abcdef', 'Limite de la clé gratuite atteinte'],
         ['cle-mauvaise-0123456789abc', 'Google refuse cette clé'],
-        ['cle-panne-0123456789abcdef', 'en panne ou surchargé'],
+        ['cle-panne-0123456789abcdef', 'en panne ou surchargé. Réessayez dans un moment. (Réponse de Google : HTTP 503'],
         ['cle-vide-0123456789abcdefg', 'a refusé de traiter ce contenu'],
     ] as [$cleEssai, $message]) {
         $appel($a, 'compte/gemini', ['_csrf' => $csrf, 'cle_gemini' => $cleEssai]);

@@ -50,6 +50,8 @@ switch (true) {
         $erreur(429, 'RESOURCE_EXHAUSTED', 'You exceeded your current quota.');
     case str_starts_with($cle, 'cle-panne'):
         $erreur(503, 'UNAVAILABLE', 'The model is overloaded.');
+    case str_starts_with($cle, 'cle-delai'):
+        $erreur(504, 'DEADLINE_EXCEEDED', 'The request timed out.');
     case str_starts_with($cle, 'cle-instable'):
         // Surchargé aux deux premiers appels, puis rétabli : de quoi essayer les reprises.
         if ($appels <= 2) {
