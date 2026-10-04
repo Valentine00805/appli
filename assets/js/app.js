@@ -1188,6 +1188,8 @@
         initialiserSeance(corps);
         initialiserHoraire(corps);
         initialiserBrouillons(corps);
+        // L'éditeur de carte mentale (assets/js/carte-mentale.js) : un fragment n'exécute pas de script.
+        if (window.initialiserCarteMentale) { window.initialiserCarteMentale(corps); }
     };
 
     var ouvrir = function (adresse) {

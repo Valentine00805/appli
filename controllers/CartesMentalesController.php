@@ -17,9 +17,16 @@ final class CartesMentalesController
         $arbre = CarteMentale::nettoyer($arbre) ?? CarteMentale::racine((string) $carte['titre']);
         $cours = Database::one('SELECT id, titre FROM cours WHERE id = ? AND user_id = ?', [(int) $carte['cours_id'], Auth::id()]);
 
-        Vue::afficher('cartes-mentales/voir', [
-            'carte' => $carte, 'arbre' => $arbre, 'cours' => $cours,
-        ], (string) $carte['titre']);
+        $donnees = ['carte' => $carte, 'arbre' => $arbre, 'cours' => $cours];
+
+        // Demandée depuis une liste, la carte s'ouvre dans une fenêtre, par-dessus la page où l'on était.
+        if (Vue::enFenetre()) {
+            Vue::fragment('cartes-mentales/voir', $donnees);
+
+            return;
+        }
+
+        Vue::afficher('cartes-mentales/voir', $donnees, (string) $carte['titre']);
     }
 
     /**
@@ -40,7 +47,8 @@ final class CartesMentalesController
             [$userId, $coursId, CarteMentale::titre('', $arbre), json_encode($arbre, JSON_UNESCAPED_UNICODE)]
         );
         Session::flash('succes', t('cm.fl.creee'));
-        redirect('cartes-mentales/' . Database::dernierId());
+        // La liste rouvre aussitôt la carte dans une fenêtre (lien « data-ouvrir-auto »).
+        redirect('resumes', ['carte' => Database::dernierId()]);
     }
 
     /**
@@ -84,6 +92,7 @@ final class CartesMentalesController
 
         Database::run('DELETE FROM cartes_mentales WHERE id = ? AND user_id = ?', [$id, Auth::id()]);
         Session::flash('succes', t('cm.fl.supprimee'));
+        // Depuis une fenêtre, « fenetre=1 » suit (voir redirect) : la fiche du cours remplace la carte effacée.
         redirect('revision/' . (int) $carte['cours_id']);
     }
 

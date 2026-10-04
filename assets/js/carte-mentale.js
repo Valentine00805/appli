@@ -8,12 +8,13 @@
  *
  * Les couleurs sont des attributs, pas du CSS : le même dessin sert à l'écran (clair ou sombre) et à l'image
  * téléchargée, sans dépendre de la feuille de style.
+ *
+ * La carte s'ouvre le plus souvent dans une fenêtre : le contenu y est posé par app.js, qui n'exécute pas les scripts
+ * d'un fragment. Ce fichier est donc chargé avec toutes les pages, et app.js appelle window.initialiserCarteMentale(zone)
+ * sur ce qu'il vient de poser. Une page entière (sans fenêtre) est initialisée au chargement.
  */
 (function () {
   'use strict';
-
-  var racine = document.querySelector('[data-carte-mentale]');
-  if (!racine) { return; }
 
   var MOTS = window.MOTS || {};
   var mot = function (cle, valeurs) {
@@ -21,6 +22,10 @@
     Object.keys(valeurs || {}).forEach(function (nom) { phrase = phrase.split('{' + nom + '}').join(String(valeurs[nom])); });
     return phrase;
   };
+
+  var initialiser = function (racine) {
+  if (racine.hasAttribute('data-cm-pret')) { return; }
+  racine.setAttribute('data-cm-pret', '1');
 
   var NOEUDS_MAX = parseInt(racine.getAttribute('data-max-noeuds'), 10) || 250;
   var NIVEAUX_MAX = parseInt(racine.getAttribute('data-max-niveaux'), 10) || 6;
@@ -34,7 +39,10 @@
   var etat = racine.querySelector('[data-cm-etat]');
   var plan = racine.querySelector('[data-cm-plan]');
   var champTitre = racine.querySelector('[data-cm-titre]');
-  var compte = document.querySelector('[data-cm-compte]');
+  // La page et la fenêtre peuvent montrer deux cartes à la fois : on ne cherche que dans la zone de celle-ci.
+  var zone = racine.parentNode || document;
+  var compte = zone.querySelector('[data-cm-compte]');
+  var titrePage = zone.querySelector('[data-cm-titre-page]');
 
   var arbre;
   try { arbre = JSON.parse(racine.getAttribute('data-arbre')); } catch (e) { return; }
@@ -283,12 +291,12 @@
     if (champTitre) { corps.append('titre', champTitre.value); }
     modifie = false;
     dire(mot('cm.en_cours'));
-    fetch(URL_ENREGISTRER, { method: 'POST', body: corps, credentials: 'same-origin' })
+    // « keepalive » : l'envoi va à son terme même si la fenêtre se ferme, ou la page se recharge, juste après.
+    fetch(URL_ENREGISTRER, { method: 'POST', body: corps, credentials: 'same-origin', keepalive: true })
       .then(function (r) {
         if (r.status !== 204) { throw new Error('http ' + r.status); }
         dire(mot('cm.enregistre'));
-        var titre = document.querySelector('h1');
-        if (titre && champTitre && champTitre.value.trim() !== '') { titre.textContent = champTitre.value.trim(); }
+        if (titrePage && champTitre && champTitre.value.trim() !== '') { titrePage.textContent = champTitre.value.trim(); }
       })
       .catch(function () { modifie = true; dire(mot('cm.echec')); })
       .then(function () { enEnregistrement = false; });
@@ -296,6 +304,8 @@
 
   var programmer = function () {
     modifie = true;
+    // Dans une fenêtre : la page derrière se recharge à la fermeture, pour dire la même chose (voir app.js).
+    document.dispatchEvent(new Event('fenetre:changee'));
     dire(mot('cm.modifie'));
     clearTimeout(minuteur);
     minuteur = setTimeout(enregistrer, 700);
@@ -517,9 +527,12 @@
 
   if (champTitre) { champTitre.addEventListener('input', programmer); }
 
-  // Quitter la page avec une modification en route : on l'envoie quand même.
+  // Fermer la fenêtre, ou quitter la page, avec une modification en route : on l'envoie tout de suite.
+  document.addEventListener('click', function (ev) {
+    if (modifie && document.body.contains(racine) && ev.target.closest && ev.target.closest('.fenetre__fermer')) { enregistrer(); }
+  }, true);
   document.addEventListener('visibilitychange', function () {
-    if (document.visibilityState === 'hidden' && modifie && navigator.sendBeacon) {
+    if (document.visibilityState === 'hidden' && modifie && document.body.contains(racine) && navigator.sendBeacon) {
       var corps = new FormData();
       corps.append('_csrf', JETON);
       corps.append('arbre', JSON.stringify(epure(arbre)));
@@ -541,4 +554,14 @@
   plan.hidden = true;
   dessiner(false);
   ajuster();
+  };
+
+  window.initialiserCarteMentale = function (zone) {
+    Array.prototype.forEach.call((zone || document).querySelectorAll('[data-carte-mentale]'), initialiser);
+  };
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function () { window.initialiserCarteMentale(document); });
+  } else {
+    window.initialiserCarteMentale(document);
+  }
 })();

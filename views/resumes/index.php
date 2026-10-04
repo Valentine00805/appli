@@ -9,6 +9,7 @@
  * @var ?int $choisi             un cours à cocher d'avance
  * @var array $historique        les résumés déjà écrits
  * @var ?array $aOuvrir          le résumé qui vient d'être écrit, à ouvrir aussitôt
+ * @var ?array $carteAOuvrir     la carte mentale qui vient d'être écrite ou créée, à ouvrir aussitôt
  * @var array $cartesMentales    ses cartes mentales (elles se retrouvent aussi dans la fiche de chaque cours)
  */
 // La carte mentale n'est pas un résumé : elle se range dans la fiche du cours, mais se demande ici, avec les autres.
@@ -28,6 +29,12 @@ $pret = $cleConfiguree && $cleFin !== null;
   <?php // Le script clique ici tout seul : le résumé s'ouvre en fenêtre. Sans script, le lien reste, à cliquer. ?>
   <p class="carte"><a href="<?= url('resumes/' . (int) $aOuvrir['id']) ?>" data-fenetre data-ouvrir-auto>
     <?= e(t('ria.ouvrir', ['titre' => (string) $aOuvrir['titre']])) ?></a></p>
+<?php endif; ?>
+
+<?php if ($carteAOuvrir !== null): ?>
+  <?php // Comme le résumé : le script clique ici tout seul, et la carte s'ouvre en fenêtre. ?>
+  <p class="carte"><a href="<?= url('cartes-mentales/' . (int) $carteAOuvrir['id']) ?>" data-fenetre data-ouvrir-auto>
+    <?= e(t('cm.ouvrir', ['titre' => (string) $carteAOuvrir['titre']])) ?></a></p>
 <?php endif; ?>
 
 <section class="carte fabrique">
@@ -153,7 +160,7 @@ $pret = $cleConfiguree && $cleFin !== null;
     <ul class="ria-liste">
       <?php foreach ($cartesMentales as $cm): ?>
         <li>
-          <a href="<?= url('cartes-mentales/' . (int) $cm['id']) ?>"><strong><?= e($cm['titre']) ?></strong></a>
+          <a href="<?= url('cartes-mentales/' . (int) $cm['id']) ?>" data-fenetre><strong><?= e($cm['titre']) ?></strong></a>
           <span class="discret">
             — <a href="<?= url('revision/' . (int) $cm['cours_id']) ?>"><?= e($cm['cours_titre']) ?></a>
             · <?= e(date_fr((string) $cm['updated_at'])) ?>

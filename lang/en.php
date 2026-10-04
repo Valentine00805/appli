@@ -4258,4 +4258,5 @@ return [
     'cm.titre_liste' => 'My mind maps',
     'cm.aucune_liste' => 'No mind map yet.',
     'cm.aller_resumes' => 'Create a mind map in “AI summaries” →',
+    'cm.ouvrir' => 'Open the mind map “{titre}”',
 ];

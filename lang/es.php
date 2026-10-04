@@ -4258,4 +4258,5 @@ return [
     'cm.titre_liste' => 'Mis mapas mentales',
     'cm.aucune_liste' => 'Aún no hay mapas mentales.',
     'cm.aller_resumes' => 'Crear un mapa mental en «Resúmenes con IA» →',
+    'cm.ouvrir' => 'Abrir el mapa mental «{titre}»',
 ];

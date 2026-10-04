@@ -472,7 +472,7 @@ $avancementFiche = avancement_anneaux(
       <ul class="fiche__cartes-mentales">
         <?php foreach ($cartesMentales as $cm): ?>
           <li>
-            <a href="<?= url('cartes-mentales/' . $cm['id']) ?>"><?= e($cm['titre']) ?></a>
+            <a href="<?= url('cartes-mentales/' . $cm['id']) ?>" <?= $dansUneFenetre ? 'data-fenetre-dessus' : 'data-fenetre' ?>><?= e($cm['titre']) ?></a>
             <span class="discret">
               <?= e(tn('cm.idees', $cm['idees'])) ?><?php if ($cm['ia'] === 1): ?> · <?= e(t('cm.ia_badge')) ?><?php endif; ?>
             </span>

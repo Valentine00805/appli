@@ -4258,4 +4258,5 @@ return [
     'cm.titre_liste' => 'Meine Mindmaps',
     'cm.aucune_liste' => 'Noch keine Mindmap.',
     'cm.aller_resumes' => 'Eine Mindmap unter „KI-Zusammenfassungen“ erstellen →',
+    'cm.ouvrir' => 'Mindmap „{titre}“ öffnen',
 ];

@@ -61,7 +61,8 @@ $appel = static function (string $compte, string $chemin, ?array $post = null) u
 };
 $jeton = static fn (string $html): string => preg_match('/name="_csrf" value="([^"]+)"/', $html, $m) ? $m[1] : '';
 $dernier = static fn (): array => json_decode((string) @file_get_contents(sys_get_temp_dir() . '/faux_gemini_dernier.json'), true) ?: [];
-$idCarte = static fn (string $url): int => preg_match('#/cartes-mentales/(\d+)$#', $url, $m) === 1 ? (int) $m[1] : 0;
+// L'identifiant d'une carte, dans l'adresse de l'éditeur ou dans « Résumés IA » (« ?carte=… », qui l'ouvre en fenêtre).
+$idCarte = static fn (string $url): int => preg_match('#/cartes-mentales/(\d+)$#', $url, $m) === 1 || preg_match('/[?&]carte=(\d+)/', $url, $m) === 1 ? (int) $m[1] : 0;
 $nbCartes = static fn (int $cours): int => (int) bd_valeur('SELECT COUNT(*) FROM cartes_mentales WHERE cours_id = ?', [$cours]);
 $arbreDe = static fn (int $id): array => json_decode((string) bd_valeur('SELECT arbre FROM cartes_mentales WHERE id = ?', [$id]), true) ?: [];
 /** @return array{0: string, 1: int} */
@@ -99,8 +100,18 @@ try {
     echo "\n2. Créer une carte vierge (depuis « Résumés IA »)\n";
     [$r, $url] = $appel($a, 'cartes-mentales', ['_csrf' => $csrf, 'cours' => $coursA]);
     $id = $idCarte($url);
-    $dire('on arrive dans l’éditeur de la nouvelle carte, qui dit qu’elle est créée',
-        $oui($id > 0 && str_contains($r, 'Carte mentale créée.') && str_contains($r, 'data-carte-mentale')) . ' · ' . $nbCartes($coursA), 'oui · 1');
+    $dire('on revient à « Résumés IA », qui dit que la carte est créée et l’ouvre aussitôt en fenêtre',
+        $oui($id > 0 && str_contains($url, '/resumes?carte=') && str_contains($r, 'Carte mentale créée.')
+            && preg_match('#href="[^"]*/cartes-mentales/' . $id . '" data-fenetre data-ouvrir-auto#', $r) === 1) . ' · ' . $nbCartes($coursA), 'oui · 1');
+    [$popup] = $appel($a, 'cartes-mentales/' . $id . '?fenetre=1');
+    $dire('  demandée en fenêtre : un fragment (sans bandeau, sans lien de retour), large, avec son éditeur et sans script',
+        $oui(str_contains($popup, 'data-carte-mentale') && !str_contains($popup, '<header class="entete"') && !str_contains($popup, 'Retour à la fiche')
+            && str_contains($popup, 'data-large data-document') && !str_contains($popup, 'carte-mentale.js')
+            && substr_count($popup, 'data-envoi-fenetre') === 1), 'oui');
+    [$r] = $appel($a, 'cartes-mentales/' . $id);
+    $dire('  demandée seule : la page entière, avec le lien de retour et le script de l’éditeur',
+        $oui(str_contains($r, '<header class="entete"') && str_contains($r, '← Retour à la fiche de Cyber') && str_contains($r, 'carte-mentale.js')
+            && !str_contains($r, 'data-envoi-fenetre')), 'oui');
     $dire('  l’idée centrale est le titre du cours, la carte n’est pas « écrite par l’IA »',
         ($arbreDe($id)['t'] ?? '?') . ' · ' . bd_valeur('SELECT ia FROM cartes_mentales WHERE id = ?', [$id]) . ' · '
         . $oui(!str_contains($r, 'écrite par l’IA')), 'Cyber · 0 · oui');
@@ -126,7 +137,7 @@ try {
         '204 · Ma carte · 2 · 1');
     [$r] = $appel($a, 'cartes-mentales/' . $id);
     $dire('  rouverte : le titre, le plan, et le script du texte échappé partout',
-        $oui(str_contains($r, '<h1>Ma carte</h1>') && str_contains($r, '<li>Symétrique</li>') && str_contains($r, '3 idées') === false
+        $oui(str_contains($r, '<h1 data-cm-titre-page>Ma carte</h1>') && str_contains($r, '<li>Symétrique</li>') && str_contains($r, '3 idées') === false
             && !str_contains($r, '<script>alert(1)</script>') && str_contains($r, '&lt;script&gt;alert(1)&lt;/script&gt;')), 'oui');
     $dire('  elle compte bien ses idées (le total des idées, repliées ou non)', $oui(str_contains($r, '5 idées')), 'oui');
 
@@ -193,14 +204,16 @@ try {
     [$r, $url] = $appel($a, 'resumes/generer', ['_csrf' => $csrf, 'cours' => [$coursA], 'genres' => ['carte']]);
     $idIa = $idCarte($url);
     $ia = $arbreDe($idIa);
-    $dire('une carte seule : on arrive dans son éditeur, « écrite par l’IA », à relire, sans résumé écrit',
-        $oui($idIa > 0 && $idIa !== $id && str_contains($r, 'écrite par l’IA') && str_contains($r, 'relis-la et corrige-la'))
+    [$popup] = $appel($a, 'cartes-mentales/' . $idIa . '?fenetre=1');
+    $dire('une carte seule : « Résumés IA » le dit (« écrite par l’IA », à relire) et l’ouvre en fenêtre, sans résumé écrit',
+        $oui($idIa > 0 && $idIa !== $id && str_contains($r, 'écrite par l’IA') && str_contains($r, 'relis-la et corrige-la')
+            && str_contains($url, '/resumes?carte=') && str_contains($r, 'data-ouvrir-auto'))
         . ' · ' . $nbCartes($coursA) . ' · ' . $nbResumes(), 'oui · 2 · 0');
     $dire('  l’idée centrale, 3 branches, et leurs sous-branches et détails',
         ($ia['t'] ?? '?') . ' · ' . count($ia['c'] ?? []) . ' · ' . count($ia['c'][0]['c'] ?? []) . ' · ' . ($ia['c'][0]['c'][0]['c'][0]['t'] ?? '?'),
         'Cybersécurité · 3 · 2 · Clé secrète');
     $dire('  le texte venu de l’IA est du texte : le script glissé dedans est échappé',
-        $oui(!str_contains($r, '<script>alert(1)') && str_contains($r, 'Filtrage du trafic &lt;script&gt;')), 'oui');
+        $oui(!str_contains($popup, '<script>alert(1)') && str_contains($popup, 'Filtrage du trafic &lt;script&gt;')), 'oui');
     $envoye = $dernier();
     $texteEnvoye = json_encode($envoye['corps'] ?? [], JSON_UNESCAPED_UNICODE);
     $dire('  Gemini a reçu le cours ET sa fiche, avec la clé de l’utilisateur, et la consigne « carte mentale » en français',
@@ -252,6 +265,13 @@ try {
     [$r, $url] = $appel($a, 'cartes-mentales/' . $idIa . '/supprimer', ['_csrf' => $jeton($r)]);
     $dire('la carte disparaît, et l’on revient à la fiche du cours',
         $oui(str_contains($r, 'Carte mentale supprimée.') && str_contains($url, '/revision/' . $coursA)) . ' · ' . $nbCartes($coursA), 'oui · 1');
+    [, $url] = $appel($a, 'cartes-mentales', ['_csrf' => $csrf, 'cours' => $coursA]);
+    $idF = $idCarte($url);
+    [$popup] = $appel($a, 'cartes-mentales/' . $idF . '?fenetre=1');
+    [$r, $url] = $appel($a, 'cartes-mentales/' . $idF . '/supprimer', ['_csrf' => $jeton($popup), 'fenetre' => '1']);
+    $dire('effacée depuis la fenêtre : la fiche du cours la remplace, en fragment (la fenêtre reste ouverte)',
+        $oui(str_contains($url, '/revision/' . $coursA) && str_contains($url, 'fenetre=1') && !str_contains($r, '<header class="entete"')
+            && str_contains($r, 'data-cartes-mentales')) . ' · ' . $nbCartes($coursA), 'oui · 1');
     bd_run('DELETE FROM cours WHERE id = ? AND user_id = ?', [$coursA, $idA]);
     $dire('et une carte disparaît avec son cours', (string) bd_valeur('SELECT COUNT(*) FROM cartes_mentales WHERE user_id = ?', [$idA]), '0');
     bd_run('INSERT INTO cours (user_id, titre, contenu) VALUES (?, ?, ?)', [$idA, 'Cyber', 'Le chiffrement protège.']);
@@ -278,6 +298,7 @@ try {
             $oui(array_reduce($motsResumes, static fn (bool $ok, string $m): bool => $ok && str_contains($resumes, $m), true)), 'oui');
         [$r, $url] = $appel($a, 'cartes-mentales', ['_csrf' => $jeton($resumes), 'cours' => $coursA]);
         $idL = $idCarte($url);
+        [$r] = $appel($a, 'cartes-mentales/' . $idL);
         $dire("$langue : l’éditeur parle la langue (retour, titre, boutons, aide, phrases du script)",
             $oui(str_contains($r, 'data-cm-action="enfant"') && $idL > 0
                 && str_contains($r, ['fr' => '← Retour à la fiche de Cyber', 'en' => '← Back to the revision sheet of Cyber',

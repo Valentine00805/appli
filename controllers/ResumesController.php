@@ -34,8 +34,15 @@ final class ResumesController
         if ($demande !== null) {
             $aOuvrir = Database::one('SELECT id, titre FROM resumes_ia WHERE id = ? AND user_id = ?', [$demande, $userId]);
         }
+        // Une carte mentale qui vient d'être écrite (ou créée vierge) : de même, en fenêtre.
+        $carteAOuvrir = null;
+        $demandee = entier_ou_null($_GET['carte'] ?? null);
+        if ($demandee !== null && $aOuvrir === null) {
+            $carteAOuvrir = Database::one('SELECT id, titre FROM cartes_mentales WHERE id = ? AND user_id = ?', [$demandee, $userId]);
+        }
         Vue::afficher('resumes/index', [
             'aOuvrir'       => $aOuvrir,
+            'carteAOuvrir'  => $carteAOuvrir,
             'cleConfiguree' => CleApi::configure(),
             'cleFin'        => CleApi::fin($userId, CleApi::GEMINI),
             'documentsParCours' => $documentsParCours,
@@ -209,8 +216,8 @@ final class ResumesController
         $cartesIds = $avecCarte ? $this->ecrireLesCartes($userId, $cle, $coursIds, $parts, $langue) : [];
 
         if ($ids === [] && count($cartesIds) === 1) {
-            // Une seule carte et rien d'autre : on l'ouvre, à relire (elle est listée dans la fiche du cours).
-            redirect('cartes-mentales/' . $cartesIds[0]);
+            // Une seule carte et rien d'autre : la liste l'ouvre aussitôt, à relire (elle est aussi dans la fiche du cours).
+            redirect('resumes', ['carte' => $cartesIds[0]]);
         }
         if ($ids === []) {
             redirect('resumes');

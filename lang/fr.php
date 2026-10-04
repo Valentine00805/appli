@@ -4270,4 +4270,5 @@ return [
     'cm.titre_liste' => 'Mes cartes mentales',
     'cm.aucune_liste' => 'Aucune carte mentale pour l’instant.',
     'cm.aller_resumes' => 'Créer une carte mentale dans « Résumés IA » →',
+    'cm.ouvrir' => 'Ouvrir la carte mentale « {titre} »',
 ];

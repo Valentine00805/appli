@@ -5,15 +5,22 @@
  * @var array $carte  la ligne de cartes_mentales
  * @var array $arbre  la carte, nettoyée : {t, c, p}
  * @var array $cours  le cours auquel elle appartient (id, titre)
+ * @var bool $dansUneFenetre  rendue seule, pour être posée dans une fenêtre
  */
 $id = (int) $carte['id'];
+$dansUneFenetre = $dansUneFenetre ?? false;
+// Dans une fenêtre, l'éditeur prend toute la place que l'écran laisse (« data-document »), et la croix ramène à la page
+// d'où l'on vient : pas de lien de retour. Effacer la carte s'y fait sans la quitter.
+$envoi = $dansUneFenetre ? ' data-envoi-fenetre' : '';
 ?>
-<div class="entete-page">
+<div class="entete-page"<?= $dansUneFenetre ? ' data-large data-document' : '' ?>>
   <div>
-    <p class="discret" style="margin-bottom:.35rem">
-      <a href="<?= url('revision/' . (int) $cours['id']) ?>"><?= e(t('cm.retour', ['cours' => (string) $cours['titre']])) ?></a>
-    </p>
-    <h1><?= e((string) $carte['titre']) ?></h1>
+    <?php if (!$dansUneFenetre): ?>
+      <p class="discret" style="margin-bottom:.35rem">
+        <a href="<?= url('revision/' . (int) $cours['id']) ?>"><?= e(t('cm.retour', ['cours' => (string) $cours['titre']])) ?></a>
+      </p>
+    <?php endif; ?>
+    <h1 data-cm-titre-page><?= e((string) $carte['titre']) ?></h1>
     <p class="discret">
       <span data-cm-compte><?= e(tn('cm.idees', CarteMentale::compter($arbre))) ?></span>
       <?php if ((int) $carte['ia'] === 1): ?> · <?= e(t('cm.ia_badge')) ?><?php endif; ?>
@@ -65,9 +72,7 @@ $id = (int) $carte['id'];
   </div>
 </section>
 
-<form method="post" action="<?= url('cartes-mentales/' . $id . '/supprimer') ?>" data-confirmation="<?= e(t('cm.supprimer_sur')) ?>">
+<form method="post" action="<?= url('cartes-mentales/' . $id . '/supprimer') ?>" data-confirmation="<?= e(t('cm.supprimer_sur')) ?>"<?= $envoi ?>>
   <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
   <button class="bouton bouton--discret" type="submit"><?= e(t('cm.supprimer')) ?></button>
 </form>
-
-<script src="<?= asset('assets/js/carte-mentale.js') ?>" defer></script>
