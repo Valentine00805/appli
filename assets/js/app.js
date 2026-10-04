@@ -4200,6 +4200,17 @@
     document.documentElement.setAttribute("data-theme", choix.value);
   });
 
+  /*
+   * Choisir une langue montre la page « Mon compte » dans cette langue — un
+   * aperçu servi par le serveur, qui seul sait traduire —, sans l'enregistrer.
+   * « Valider » enregistre ; « Annuler » rouvre la page sans l'aperçu.
+   */
+  document.addEventListener("change", function (evenement) {
+    var choix = evenement.target;
+    if (!choix.form || !choix.form.hasAttribute("data-choix-langue") || choix.name !== "langue") { return; }
+    window.location.href = choix.form.getAttribute("data-apercu-url") + "?apercu_langue=" + encodeURIComponent(choix.value) + "#langue";
+  });
+
   // Les dossiers se plient : seuls ceux de premier niveau restent
   // visibles, un clic sur un dossier montre ou masque les siens.
   // Sans JavaScript, rien ne se replie et l arborescence reste entiere.

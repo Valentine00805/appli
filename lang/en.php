@@ -4091,4 +4091,5 @@ return [
     'foc.revoir' => 'Review: {titre}',
     'apparence.valider' => 'Apply',
     'apparence.apercu_aide' => 'Preview: the page takes the chosen look, but it is only saved if you apply it.',
+    'langue.apercu_aide' => 'Preview: the page is shown in the chosen language, but your account only changes if you apply it.',
 ];

@@ -241,6 +241,13 @@ final class AuthController
     {
         Auth::exiger();
         $userId = Auth::id();
+        // « ?apercu_langue=en » montre la page dans cette langue sans rien enregistrer : seul « Valider » écrit.
+        $apercuLangue = null;
+        $demandee = $_GET['apercu_langue'] ?? null;
+        if (is_string($demandee) && isset(Langue::LANGUES[$demandee])) {
+            Langue::imposer($demandee);
+            $apercuLangue = $demandee;
+        }
         $stats = [
             'cours'      => (int) Database::valeur('SELECT COUNT(*) FROM cours WHERE user_id = ?', [$userId]),
             'matieres'   => (int) Database::valeur('SELECT COUNT(*) FROM matieres WHERE user_id = ?', [$userId]),
@@ -256,6 +263,7 @@ final class AuthController
             'partagesDansDiscussion' => Partages::dansLaDiscussion($userId),
             'calendriersAmis' => Partages::calendriersAvecMesAmis($userId),
             'fuseaux' => self::fuseauxParRegion(),
+            'apercuLangue' => $apercuLangue,
         ], t('titre.mon_compte'));
     }
 

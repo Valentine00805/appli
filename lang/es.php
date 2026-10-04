@@ -4091,4 +4091,5 @@ return [
     'foc.revoir' => 'Repasar: {titre}',
     'apparence.valider' => 'Aplicar',
     'apparence.apercu_aide' => 'Vista previa: la página adopta el tema elegido, pero solo se guarda si lo aplicas.',
+    'langue.apercu_aide' => 'Vista previa: la página se muestra en el idioma elegido, pero tu cuenta solo cambia si lo aplicas.',
 ];

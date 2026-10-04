@@ -4103,4 +4103,5 @@ return [
     'foc.revoir' => 'Revoir : {titre}',
     'apparence.valider' => 'Valider',
     'apparence.apercu_aide' => 'Aperçu : la page prend le thème choisi, mais il n’est enregistré que si vous validez.',
+    'langue.apercu_aide' => 'Aperçu : la page s’affiche dans la langue choisie, mais le compte ne change que si vous validez.',
 ];

@@ -87,34 +87,44 @@ $themeActuel = Auth::theme($moi);
  * La langue de l'application.
  *
  * Comme l'apparence : elle se lit, et les choix ne se déplient qu'en passant
- * par « Modifier ». Ce qu'on écrit soi-même n'est jamais traduit.
+ * par « Modifier ». Choisir une langue rouvre cette page dans cette langue
+ * (« ?apercu_langue= ») : c'est un aperçu, le compte ne change qu'avec « Valider ».
+ * Ce qu'on écrit soi-même n'est jamais traduit.
  */
-$langueActuelle = Langue::courante();
+$langueEnregistree = (string) ($moi['langue'] ?? '');
+if (!isset(Langue::LANGUES[$langueEnregistree])) { $langueEnregistree = Langue::PAR_DEFAUT; }
+$apercuLangue = isset($apercuLangue) && isset(Langue::LANGUES[$apercuLangue]) ? $apercuLangue : null;
+$langueChoisie = $apercuLangue ?? $langueEnregistree;
 ?>
 <section class="carte" style="margin-bottom:1rem" id="langue" data-reglage>
   <h2 style="margin-top:0"><?= e(t('langue.titre')) ?></h2>
 
-  <div class="reglage-lecture" data-reglage-lecture>
+  <div class="reglage-lecture" data-reglage-lecture<?= $apercuLangue !== null ? ' hidden' : '' ?>>
     <p class="reglage-lecture__valeur">
-      <?= Langue::LANGUES[$langueActuelle]['drapeau'] ?> <?= e(Langue::LANGUES[$langueActuelle]['nom']) ?>
+      <?= Langue::LANGUES[$langueEnregistree]['drapeau'] ?> <?= e(Langue::LANGUES[$langueEnregistree]['nom']) ?>
     </p>
     <button class="bouton bouton--secondaire" type="button" data-reglage-modifier><?= e(t('commun.modifier')) ?></button>
   </div>
 
-  <form method="post" action="<?= url('compte/langue') ?>" data-auto-envoi data-reglage-edition hidden>
+  <form method="post" action="<?= url('compte/langue') ?>" data-choix-langue data-apercu-url="<?= url('compte') ?>" data-reglage-edition<?= $apercuLangue === null ? ' hidden' : '' ?>>
     <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
     <div class="themes-choix">
       <?php foreach (Langue::LANGUES as $code => $langue): ?>
         <label class="themes-choix__option">
-          <input type="radio" name="langue" value="<?= e($code) ?>"<?= $langueActuelle === $code ? ' checked' : '' ?>>
+          <input type="radio" name="langue" value="<?= e($code) ?>"<?= $langueChoisie === $code ? ' checked' : '' ?>>
           <span class="themes-choix__nom"><?= $langue['drapeau'] ?> <?= e($langue['nom']) ?></span>
         </label>
       <?php endforeach; ?>
     </div>
     <p class="champ__aide"><?= e(t('langue.aide')) ?></p>
+    <p class="champ__aide"><?= e(t('langue.apercu_aide')) ?></p>
     <p class="actions" style="margin:.4rem 0 0">
-      <noscript><button class="bouton bouton--petit" type="submit"><?= e(t('commun.enregistrer')) ?></button></noscript>
-      <button class="bouton bouton--discret bouton--petit" type="button" data-reglage-annuler><?= e(t('commun.fermer')) ?></button>
+      <button class="bouton bouton--petit" type="submit"><?= e(t('apparence.valider')) ?></button>
+      <?php if ($apercuLangue !== null): ?>
+        <a class="bouton bouton--discret bouton--petit" href="<?= url('compte') ?>#langue"><?= e(t('commun.annuler')) ?></a>
+      <?php else: ?>
+        <button class="bouton bouton--discret bouton--petit" type="button" data-reglage-annuler><?= e(t('commun.annuler')) ?></button>
+      <?php endif; ?>
     </p>
   </form>
 </section>

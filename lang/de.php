@@ -4091,4 +4091,5 @@ return [
     'foc.revoir' => 'Wiederholen: {titre}',
     'apparence.valider' => 'Übernehmen',
     'apparence.apercu_aide' => 'Vorschau: die Seite zeigt die gewählte Darstellung, gespeichert wird sie aber nur, wenn du sie übernimmst.',
+    'langue.apercu_aide' => 'Vorschau: die Seite erscheint in der gewählten Sprache, dein Konto ändert sich aber nur, wenn du sie übernimmst.',
 ];
