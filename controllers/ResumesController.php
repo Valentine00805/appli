@@ -28,7 +28,14 @@ final class ResumesController
         }
 
         $choisi = entier_ou_null($_GET['cours'] ?? null);
+        // Un résumé qui vient d'être écrit : la page l'ouvre aussitôt dans une fenêtre (voir app.js).
+        $aOuvrir = null;
+        $demande = entier_ou_null($_GET['ouvrir'] ?? null);
+        if ($demande !== null) {
+            $aOuvrir = Database::one('SELECT id, titre FROM resumes_ia WHERE id = ? AND user_id = ?', [$demande, $userId]);
+        }
         Vue::afficher('resumes/index', [
+            'aOuvrir'       => $aOuvrir,
             'cleConfiguree' => CleApi::configure(),
             'cleFin'        => CleApi::fin($userId, CleApi::GEMINI),
             'documentsParCours' => $documentsParCours,
@@ -146,8 +153,8 @@ final class ResumesController
         if ($ids === []) {
             redirect('resumes');
         }
-        // Un seul : on l'ouvre. Plusieurs : la liste, où ils sont tous.
-        redirect(count($ids) === 1 ? 'resumes/' . $ids[0] : 'resumes');
+        // Un seul : la liste l'ouvre aussitôt dans une fenêtre. Plusieurs : la liste, où ils sont tous.
+        redirect('resumes', count($ids) === 1 ? ['ouvrir' => $ids[0]] : []);
     }
 
     /** Un résumé : son texte, ses sources, sa voix. */
@@ -156,11 +163,21 @@ final class ResumesController
         Auth::exiger();
         $resume = $this->resume($id, Auth::id());
 
-        Vue::afficher('resumes/voir', [
+        $donnees = [
             'resume'  => $resume,
             'sources' => (array) (json_decode((string) $resume['sources'], true) ?? []),
             'cleFin'  => CleApi::fin(Auth::id(), CleApi::GEMINI),
-        ], (string) $resume['titre']);
+        ];
+
+        // Demandé en fragment (depuis la liste), le résumé s'ouvre dans une fenêtre ; sa voix et son effacement
+        // s'y font sans la quitter. Sans script, la page entière répond.
+        if (Vue::enFenetre()) {
+            Vue::fragment('resumes/voir', $donnees);
+
+            return;
+        }
+
+        Vue::afficher('resumes/voir', $donnees, (string) $resume['titre']);
     }
 
     /** Envoie le fichier son, pour son seul propriétaire. */

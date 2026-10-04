@@ -4169,4 +4169,5 @@ return [
     'ria.fl.ecrits.un' => 'Zusammenfassung geschrieben.',
     'ria.fl.ecrits.plusieurs' => '{n} Zusammenfassungen geschrieben.',
     'ria.fl.echec_genre' => '„{genre}“ konnte nicht geschrieben werden. {detail}',
+    'ria.ouvrir' => 'Zusammenfassung „{titre}“ öffnen',
 ];

@@ -61,6 +61,7 @@ $appel = static function (string $compte, string $chemin, ?array $post = null, a
 };
 $jeton = static fn (string $html): string => preg_match('/name="_csrf" value="([^"]+)"/', $html, $m) ? $m[1] : '';
 $dernier = static fn (): array => json_decode((string) @file_get_contents(sys_get_temp_dir() . '/faux_gemini_dernier.json'), true) ?: [];
+$idOuvert = static fn (string $url): int => preg_match('/[?&]ouvrir=(\d+)/', $url, $m) === 1 ? (int) $m[1] : 0;
 $nbResumes = static fn (int $uid): int => (int) bd_valeur('SELECT COUNT(*) FROM resumes_ia WHERE user_id = ?', [$uid]);
 $sons = [];
 
@@ -104,10 +105,12 @@ try {
 
     echo "\n4. Écrire un résumé\n";
     [$r, $url] = $appel($a, 'resumes/generer', ['_csrf' => $csrf, 'cours' => [$coursA], 'genres' => ['points'], 'longueur' => 'court']);
-    $idResume = (int) basename(parse_url($url, PHP_URL_PATH));
+    $idResume = $idOuvert($url);
     $ligne = bd_all('SELECT * FROM resumes_ia WHERE id = ?', [$idResume])[0] ?? [];
-    $dire('on arrive sur la page du résumé, un seul enregistrement',
-        $oui($idResume > 0 && str_contains($url, '/resumes/' . $idResume)) . ' · ' . $nbResumes($idA), 'oui · 1');
+    $dire('on revient à la liste, qui ouvre aussitôt le résumé en fenêtre (lien « data-ouvrir-auto »), un seul enregistrement',
+        $oui($idResume > 0 && parse_url($url, PHP_URL_PATH) === '/mon_appli/appli/resumes'
+            && preg_match('/href="[^"]*\/resumes\/' . $idResume . '" data-fenetre data-ouvrir-auto/', $r) === 1) . ' · ' . $nbResumes($idA), 'oui · 1');
+    [$r] = $appel($a, 'resumes/' . $idResume);
     $dire('  genre, longueur, modèle et titre',
         ($ligne['genre'] ?? '?') . ' · ' . ($ligne['longueur'] ?? '?') . ' · ' . ($ligne['modele'] ?? '?') . ' · ' . ($ligne['titre'] ?? '?'),
         'points · court · gemini-3.8-flash · Points clés — Cyber');
@@ -125,7 +128,15 @@ try {
     $dire('  la page dit d’où ça vient, et que l’IA peut se tromper',
         $oui(str_contains($r, 'Écrit à partir de') && str_contains($r, 'Cyber') && str_contains($r, 'peut contenir des erreurs')), 'oui');
     [$liste] = $appel($a, 'resumes');
-    $dire('  il figure dans « Mes résumés »', $oui(str_contains($liste, 'resumes/' . $idResume) && str_contains($liste, 'Points clés — Cyber')), 'oui');
+    $dire('  il figure dans « Mes résumés », et s’y ouvre en fenêtre',
+        $oui(preg_match('/href="[^"]*\/resumes\/' . $idResume . '" data-fenetre><strong>Points clés — Cyber/', $liste) === 1), 'oui');
+    [$fragment] = $appel($a, 'resumes/' . $idResume . '?fenetre=1');
+    $dire('  demandé en fenêtre, c’est un fragment : pas de menu, pas de lien de retour, formulaires faits pour la fenêtre',
+        $oui(!str_contains($fragment, '<header class="entete"') && !str_contains($fragment, 'Tous les résumés')
+            && str_contains($fragment, 'data-large') && substr_count($fragment, 'data-envoi-fenetre') === 2
+            && str_contains($fragment, '<strong>gras</strong>') && str_contains($fragment, '&lt;script&gt;')), 'oui');
+    $dire('  appelé directement, c’est la page entière, avec son lien de retour',
+        $oui(str_contains($r, '<header class="entete"') && str_contains($r, 'Tous les résumés') && !str_contains($r, 'data-envoi-fenetre')), 'oui');
 
     echo "\n5. Choisir les documents d’un cours\n";
     $avant = $nbResumes($idA);
@@ -156,7 +167,7 @@ try {
     $dire('  chacun a sa consigne : le dernier appel demandait des questions', $oui(str_contains((string) ($dernier()['corps']['systemInstruction']['parts'][0]['text'] ?? ''), '5 questions de révision')), 'oui');
     [$r, $url] = $appel($a, 'resumes/generer', ['_csrf' => $csrf, 'cours' => [$coursA]]);
     $encore = bd_all('SELECT id, genre FROM resumes_ia WHERE user_id = ? ORDER BY id DESC LIMIT 1', [$idA])[0] ?? [];
-    $dire('  aucun genre coché : un résumé simple, par défaut', ($encore['genre'] ?? '?') . ' · ' . $oui(str_contains($url, '/resumes/' . ($encore['id'] ?? 0))), 'resume · oui');
+    $dire('  aucun genre coché : un résumé simple, par défaut', ($encore['genre'] ?? '?') . ' · ' . $oui($idOuvert($url) === (int) ($encore['id'] ?? 0)), 'resume · oui');
     bd_run('DELETE FROM resumes_ia WHERE user_id = ? AND id IN (' . implode(',', array_map('intval', array_merge(array_column($nouveaux, 'id'), [$encore['id'] ?? 0]))) . ')', [$idA]);
     $appel($a, 'compte/gemini', ['_csrf' => $csrf, 'cle_gemini' => 'cle-quota-0123456789abcdef']);
     $avant = $nbResumes($idA);
@@ -182,7 +193,7 @@ try {
     $dire('  « résumé » écrit, « questions » en panne : le résumé est gardé, et le message nomme le genre manquant',
         $oui(($nbResumes($idA) - $avant) === 1 && str_contains($r, 'Résumé écrit')
             && str_contains($r, '« questions de révision » n’a pas pu être écrit') && str_contains($r, 'en panne ou surchargé')) . ' · '
-        . $oui(str_contains($url, '/resumes/')), 'oui · oui');
+        . $oui($idOuvert($url) > 0), 'oui · oui');
     bd_run('DELETE FROM resumes_ia WHERE user_id = ? AND id NOT IN (' . implode(',', array_map('intval', $dejaLa ?: [0])) . ')', [$idA]);
     $appel($a, 'compte/gemini', ['_csrf' => $csrf, 'cle_gemini' => 'cle-bonne-0123456789abcdef']);
 
@@ -219,6 +230,14 @@ try {
     $dire('refaire la voix remplace l’ancien fichier',
         $oui($son2 !== $son && !is_file($dossierSon . '/' . $son) && is_file($dossierSon . '/' . $son2)), 'oui');
 
+    // La voix refaite DANS la fenêtre : le formulaire envoie « fenetre », la redirection le garde, la réponse est un fragment.
+    [$fragmentVoix, $urlVoix] = $appel($a, 'resumes/' . $idResume . '/voix', ['_csrf' => $csrf, 'voix' => 'Charon', 'fenetre' => '1']);
+    $sons[] = (string) bd_valeur('SELECT audio_nom FROM resumes_ia WHERE id = ?', [$idResume]);
+    $dire('la voix refaite dans la fenêtre : la réponse est un fragment (lecteur et message), pas une page entière',
+        $oui(str_contains($urlVoix, 'fenetre=1') && str_contains($fragmentVoix, '<audio controls') && str_contains($fragmentVoix, 'Audio prêt')
+            && !str_contains($fragmentVoix, '<header class="entete"')) . ' · ' . bd_valeur('SELECT audio_voix FROM resumes_ia WHERE id = ?', [$idResume]), 'oui · Charon');
+    $son2 = (string) bd_valeur('SELECT audio_nom FROM resumes_ia WHERE id = ?', [$idResume]);
+
     echo "\n7. Les refus de Google, dits clairement\n";
     foreach ([
         ['cle-quota-0123456789abcdef', 'Limite de la clé gratuite atteinte'],
@@ -234,7 +253,7 @@ try {
     }
     $appel($a, 'compte/gemini', ['_csrf' => $csrf, 'cle_gemini' => 'cle-modele-0123456789abcdef']);
     [$r, $url] = $appel($a, 'resumes/generer', ['_csrf' => $csrf, 'cours' => [$coursA]]);
-    $dire('un modèle inconnu : le suivant écrit le résumé', (string) bd_valeur('SELECT modele FROM resumes_ia WHERE id = ?', [(int) basename($url)]), 'gemini-2.5-flash');
+    $dire('un modèle inconnu : le suivant écrit le résumé', (string) bd_valeur('SELECT modele FROM resumes_ia WHERE id = ?', [$idOuvert($url)]), 'gemini-2.5-flash');
     $appel($a, 'compte/gemini', ['_csrf' => $csrf, 'cle_gemini' => 'cle-quota-0123456789abcdef']);
     [$r] = $appel($a, 'resumes/' . $idResume . '/voix', ['_csrf' => $csrf, 'voix' => 'Kore']);
     $dire('la voix refusée par la limite : message clair, l’ancien audio reste',
@@ -253,7 +272,7 @@ try {
         $dire("$langue : page, bouton, et consigne donnée à Gemini en « $nomLangue »",
             $oui(str_contains($page, $titre) && str_contains($page, $demander)
                 && str_contains((string) ($dernier()['corps']['systemInstruction']['parts'][0]['text'] ?? ''), $nomLangue)
-                && bd_valeur('SELECT langue FROM resumes_ia WHERE id = ?', [(int) basename($url)]) === $langue), 'oui');
+                && bd_valeur('SELECT langue FROM resumes_ia WHERE id = ?', [$idOuvert($url)]) === $langue), 'oui');
     }
     $appel($a, 'compte/langue', ['_csrf' => $csrf, 'langue' => 'fr']);
 

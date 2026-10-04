@@ -4181,4 +4181,5 @@ return [
     'ria.fl.ecrits.un' => 'Résumé écrit.',
     'ria.fl.ecrits.plusieurs' => '{n} résumés écrits.',
     'ria.fl.echec_genre' => '« {genre} » n’a pas pu être écrit. {detail}',
+    'ria.ouvrir' => 'Ouvrir le résumé « {titre} »',
 ];

@@ -5,13 +5,20 @@
  * @var array $resume    la ligne de resumes_ia
  * @var array $sources   ce qui a été lu : [['cours' => titre, 'lu' => [étiquettes]]]
  * @var ?string $cleFin  la fin de la clé Gemini de l'utilisateur, ou null
+ * @var bool $dansUneFenetre  rendu seul, pour être posé dans une fenêtre
  */
 $id = (int) $resume['id'];
+$dansUneFenetre = $dansUneFenetre ?? false;
+// Dans une fenêtre, la voix et l'effacement s'y font sans la quitter : le résumé reste là, à jour.
+$envoi = $dansUneFenetre ? ' data-envoi-fenetre' : '';
 ?>
 
-<div class="entete-page">
+<div class="entete-page"<?= $dansUneFenetre ? ' data-large' : '' ?>>
   <div>
-    <p class="discret" style="margin-bottom:.35rem"><a href="<?= url('resumes') ?>"><?= e(t('ria.retour')) ?></a></p>
+    <?php // Dans une fenêtre, la liste est juste derrière : la croix y ramène. ?>
+    <?php if (!$dansUneFenetre): ?>
+      <p class="discret" style="margin-bottom:.35rem"><a href="<?= url('resumes') ?>"><?= e(t('ria.retour')) ?></a></p>
+    <?php endif; ?>
     <h1><?= e($resume['titre']) ?></h1>
     <p class="discret">
       <?= e(t('ria.genre.' . $resume['genre'])) ?> · <?= e(t('ria.long.' . $resume['longueur'])) ?> ·
@@ -52,7 +59,7 @@ $id = (int) $resume['id'];
     <p><?= e(t('ria.pas_de_cle')) ?> <a href="<?= url('compte') ?>#gemini"><?= e(t('ria.ajouter_cle')) ?></a></p>
   <?php else: ?>
     <form method="post" action="<?= url('resumes/' . $id . '/voix') ?>" class="fabrique__form"
-          data-attente="<?= e(t('ria.voix_en_cours')) ?>">
+          data-attente="<?= e(t('ria.voix_en_cours')) ?>"<?= $envoi ?>>
       <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
       <div class="champ">
         <label for="voix"><?= e(t('ria.voix')) ?></label>
@@ -70,7 +77,7 @@ $id = (int) $resume['id'];
   <?php endif; ?>
 </section>
 
-<form method="post" action="<?= url('resumes/' . $id . '/supprimer') ?>" data-confirmation="<?= e(t('ria.supprimer_sur')) ?>">
+<form method="post" action="<?= url('resumes/' . $id . '/supprimer') ?>" data-confirmation="<?= e(t('ria.supprimer_sur')) ?>"<?= $envoi ?>>
   <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
   <button class="bouton bouton--discret" type="submit"><?= e(t('ria.supprimer')) ?></button>
 </form>

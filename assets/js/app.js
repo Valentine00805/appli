@@ -4223,6 +4223,16 @@
   });
 
   /*
+   * Un lien « data-ouvrir-auto » est cliqué tout seul au chargement : le résumé qui vient d'être écrit
+   * s'ouvre en fenêtre par-dessus la liste. Un tour d'horloge d'attente : la fenêtre écoute les clics sur
+   * le document, et doit avoir fini de s'installer. Sans script, le lien reste affiché, à cliquer.
+   */
+  var ouvertureAuto = document.querySelector("[data-ouvrir-auto]");
+  if (ouvertureAuto) {
+    window.setTimeout(function () { ouvertureAuto.click(); }, 0);
+  }
+
+  /*
    * Un formulaire « data-attente » met du temps à répondre (l'IA écrit) : au lieu d'un bouton qui ne bouge
    * pas, il se grise et dit ce qui se passe. Le texte vient du serveur (il est traduit).
    */

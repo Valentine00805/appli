@@ -8,6 +8,7 @@
  * @var array $documentsParCours les fichiers de chaque cours
  * @var ?int $choisi             un cours à cocher d'avance
  * @var array $historique        les résumés déjà écrits
+ * @var ?array $aOuvrir          le résumé qui vient d'être écrit, à ouvrir aussitôt
  */
 $genres = ['resume', 'points', 'questions'];
 $longueurs = ['court', 'moyen', 'long'];
@@ -20,6 +21,12 @@ $pret = $cleConfiguree && $cleFin !== null;
     <p><?= e(t('ria.sous_titre')) ?></p>
   </div>
 </div>
+
+<?php if ($aOuvrir !== null): ?>
+  <?php // Le script clique ici tout seul : le résumé s'ouvre en fenêtre. Sans script, le lien reste, à cliquer. ?>
+  <p class="carte"><a href="<?= url('resumes/' . (int) $aOuvrir['id']) ?>" data-fenetre data-ouvrir-auto>
+    <?= e(t('ria.ouvrir', ['titre' => (string) $aOuvrir['titre']])) ?></a></p>
+<?php endif; ?>
 
 <section class="carte fabrique">
   <h2><?= e(t('ria.demander')) ?></h2>
@@ -104,7 +111,7 @@ $pret = $cleConfiguree && $cleFin !== null;
     <ul class="ria-liste">
       <?php foreach ($historique as $r): ?>
         <li>
-          <a href="<?= url('resumes/' . (int) $r['id']) ?>"><strong><?= e($r['titre']) ?></strong></a>
+          <a href="<?= url('resumes/' . (int) $r['id']) ?>" data-fenetre><strong><?= e($r['titre']) ?></strong></a>
           <span class="discret">
             <?= e(t('ria.long.' . $r['longueur'])) ?> · <?= e(date_fr((string) $r['created_at'])) ?>
             <?php if ((int) $r['a_audio'] === 1): ?> · 🔊<?php endif; ?>
