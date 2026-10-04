@@ -4105,7 +4105,7 @@ return [
     'gemini.retirer' => 'Schlüssel entfernen',
     'gemini.retirer_sur' => 'Deinen Gemini-Schlüssel entfernen? Er wird vom Server gelöscht.',
     'gemini.non_configure' => 'Die Verschlüsselung von Schlüsseln ist auf dieser Installation nicht eingerichtet: bitte den Administrator, „cle_chiffrement“ in config/parametres.php einzutragen.',
-    'gemini.invalide' => 'Das sieht nicht wie ein API-Schlüssel aus: er enthält nur Buchstaben, Ziffern, „-“ und „_“, ohne Leerzeichen.',
+    'gemini.invalide' => 'Das sieht nicht wie ein API-Schlüssel aus (empfangen: {n} Zeichen): er enthält nur Buchstaben, Ziffern, „.“, „-“ und „_“, ohne Leerzeichen.',
     'gemini.enregistree' => 'Gemini-Schlüssel gespeichert (endet auf {fin}).',
     'gemini.retiree' => 'Gemini-Schlüssel entfernt.',
 ];

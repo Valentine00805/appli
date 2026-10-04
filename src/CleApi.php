@@ -35,12 +35,25 @@ final class CleApi
     }
 
     /**
+     * Ce qu'un copier-coller ajoute volontiers autour d'une clé : espaces, retours à la ligne,
+     * guillemets ou apostrophes. Le reste de la saisie n'est pas touché.
+     */
+    public static function nettoyer(string $saisie): string
+    {
+        return trim($saisie, " \t\n\r\0\x0B\"'`");
+    }
+
+    /**
      * Une clé a-t-elle l'allure de celles qu'on délivre ? Ce n'est pas un essai auprès du
      * fournisseur : seulement de quoi refuser un texte collé par erreur (espaces, phrase, URL).
+     *
+     * Les formats changent (les clés d'hier : « AIza… », 39 caractères ; certaines d'aujourd'hui
+     * contiennent un point et sont plus longues) : on n'impose donc que ce qu'aucune clé n'a jamais
+     * eu de raison de contenir — pas d'espace, pas de « : », « / » ou « ? » d'adresse web.
      */
     public static function valide(string $cle): bool
     {
-        return preg_match('/^[A-Za-z0-9_\-]{20,128}$/', $cle) === 1;
+        return preg_match('/^[A-Za-z0-9_.\-]{20,256}$/', $cle) === 1;
     }
 
     public static function enregistrer(int $userId, string $fournisseur, string $cle): void

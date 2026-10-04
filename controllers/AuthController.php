@@ -341,9 +341,10 @@ final class AuthController
             Session::flash('erreur', t('gemini.non_configure'));
             redirect('compte');
         }
-        $cle = trim(post('cle_gemini'));
+        $cle = CleApi::nettoyer(post('cle_gemini'));
         if (!CleApi::valide($cle)) {
-            Session::flash('erreur', t('gemini.invalide'));
+            // La longueur reçue aide à comprendre (une ligne de trop, une clé tronquée) sans rien révéler de la clé.
+            Session::flash('erreur', t('gemini.invalide', ['n' => mb_strlen($cle)]));
             redirect('compte');
         }
         CleApi::enregistrer(Auth::id(), CleApi::GEMINI, $cle);

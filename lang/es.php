@@ -4105,7 +4105,7 @@ return [
     'gemini.retirer' => 'Quitar la clave',
     'gemini.retirer_sur' => '¿Quitar tu clave de Gemini? Se borrará del servidor.',
     'gemini.non_configure' => 'El cifrado de claves no está configurado en esta instalación: pide al administrador que añada «cle_chiffrement» en config/parametres.php.',
-    'gemini.invalide' => 'Esto no parece una clave API: solo contiene letras, cifras, «-» y «_», sin espacios.',
+    'gemini.invalide' => 'Esto no parece una clave API (recibido: {n} caracteres): solo contiene letras, cifras, «.», «-» y «_», sin espacios.',
     'gemini.enregistree' => 'Clave de Gemini guardada (termina en {fin}).',
     'gemini.retiree' => 'Clave de Gemini quitada.',
 ];

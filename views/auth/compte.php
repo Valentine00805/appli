@@ -157,7 +157,7 @@ $geminiFin = CleApi::configure() ? CleApi::fin((int) Auth::id(), CleApi::GEMINI)
     <form method="post" action="<?= url('compte/gemini') ?>" data-reglage-edition hidden autocomplete="off">
       <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
       <label for="cle_gemini"><?= e(t('gemini.champ')) ?></label>
-      <input type="password" id="cle_gemini" name="cle_gemini" required maxlength="128"
+      <input type="password" id="cle_gemini" name="cle_gemini" required maxlength="256"
              autocomplete="off" spellcheck="false" autocapitalize="off"
              placeholder="<?= e(t('gemini.placeholder')) ?>">
       <p class="champ__aide">

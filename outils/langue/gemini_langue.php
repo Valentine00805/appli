@@ -97,6 +97,16 @@ try {
         bd_valeur('SELECT COUNT(*) FROM cles_api WHERE user_id = ?', [$id]) . ' · ' . bd_valeur('SELECT fin FROM cles_api WHERE user_id = ?', [$id]),
         '1 · ' . substr($cle2, -4));
 
+    // Les clés changent de forme : un point, plus de 39 caractères, des guillemets collés avec elles.
+    $cle3 = 'AQ.Ab8RN6ExempleBidon_0123456789-abcdefghijklmnopqrstuvwxyz';
+    $appel('compte/gemini', ['_csrf' => $csrf, 'cle_gemini' => ' "' . $cle3 . '" ']);
+    $ligne3 = bd_all('SELECT cle_chiffree, fin FROM cles_api WHERE user_id = ?', [$id])[0] ?? null;
+    $dire('une clé plus récente (point, 60 caractères, entre guillemets) est acceptée',
+        $ligne3 === null ? 'absente' : (string) $dechiffrer((string) $ligne3['cle_chiffree'], $id), $cle3);
+    $r = $appel('compte/gemini', ['_csrf' => $csrf, 'cle_gemini' => 'une phrase avec espaces et une adresse https://x.fr/a?b=1']);
+    $dire('  le refus indique le nombre de caractères reçus, pas la saisie',
+        $oui(preg_match('/reçu : \d+ caractères/', $r) === 1 && !str_contains($r, 'une phrase avec')), 'oui');
+
     echo "\n4. Chacun la sienne\n";
     $dire('l’autre compte n’a rien', bd_valeur('SELECT COUNT(*) FROM cles_api WHERE user_id = ?', [$idAutre]), '0');
 
@@ -113,12 +123,12 @@ try {
     @unlink($zipTmp);
     $dire('l’archive exportée se lit (zip, donnees.json non vide)', $oui(str_starts_with($archive, 'PK') && strlen($donnees) > 100), 'oui');
     $dire('  elle ne contient ni la clé, ni la table, ni le chiffré',
-        $oui(!str_contains($contenuZip, $cle2) && !str_contains($contenuZip, 'cles_api') && !str_contains($contenuZip, 'cle_chiffree')), 'oui');
+        $oui(!str_contains($contenuZip, $cle3) && !str_contains($contenuZip, 'cles_api') && !str_contains($contenuZip, 'cle_chiffree')), 'oui');
     foreach (['en' => ['Gemini API key', 'Key saved · ends in'], 'es' => ['Clave API de Gemini', 'Clave guardada · termina en'],
               'de' => ['Gemini-API-Schlüssel', 'Schlüssel gespeichert · endet auf']] as $langue => [$titre, $dit]) {
         $appel('compte/langue', ['_csrf' => $csrf, 'langue' => $langue]);
         $page = $appel('compte');
-        $dire("  en $langue : « $titre »", $oui(str_contains($page, $titre) && str_contains($page, $dit) && !str_contains($page, $cle2)), 'oui');
+        $dire("  en $langue : « $titre »", $oui(str_contains($page, $titre) && str_contains($page, $dit) && !str_contains($page, $cle3)), 'oui');
     }
     $appel('compte/langue', ['_csrf' => $csrf, 'langue' => 'fr']);
 

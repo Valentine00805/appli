@@ -4105,7 +4105,7 @@ return [
     'gemini.retirer' => 'Remove the key',
     'gemini.retirer_sur' => 'Remove your Gemini key? It will be erased from the server.',
     'gemini.non_configure' => 'Key encryption is not set up on this installation: ask the administrator to add “cle_chiffrement” to config/parametres.php.',
-    'gemini.invalide' => 'This does not look like an API key: it only contains letters, digits, “-” and “_”, with no space.',
+    'gemini.invalide' => 'This does not look like an API key (received: {n} characters): it only contains letters, digits, “.”, “-” and “_”, with no space.',
     'gemini.enregistree' => 'Gemini key saved (ends in {fin}).',
     'gemini.retiree' => 'Gemini key removed.',
 ];
