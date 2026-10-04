@@ -159,8 +159,8 @@ function types_evenement_par_defaut(): array
 /**
  * Parmi des pièces jointes, celles dont on sait mesurer l'avancement.
  *
- * Un enregistrement, toujours. Un PDF dès qu'on connaît ses pages et qu'il en
- * a plus d'une : une feuille unique ne se parcourt pas. Le reste — une image,
+ * Un enregistrement, toujours. Un PDF dès qu'on connaît ses pages, même s'il
+ * n'en a qu'une : on le déclare lu avec « Terminer ». Le reste — une image,
  * un tableur — n'a pas d'anneau et ne pèse donc dans aucune moyenne.
  *
  * @param array<int, array> $fichiers
@@ -172,7 +172,7 @@ function fichiers_suivis(array $fichiers): array
     foreach ($fichiers as $fichier) {
         $mime = (string) ($fichier['mime'] ?? '');
         $nom = (string) ($fichier['nom_origine'] ?? '');
-        $pdfSuivi = Fichiers::estPdf($mime, $nom) && (int) ($fichier['duree_lecture'] ?? 0) > 1;
+        $pdfSuivi = Fichiers::estPdf($mime, $nom) && (int) ($fichier['duree_lecture'] ?? 0) > 0;
 
         if (Fichiers::estMedia($mime, $nom) || $pdfSuivi) {
             $suivis[] = $fichier;

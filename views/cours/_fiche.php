@@ -158,7 +158,7 @@ $avancementFiche = avancement_anneaux(
               </form>
             </span>
 
-            <?php if ($estAudio || $estVideo || $pages > 1): ?>
+            <?php if ($estAudio || $estVideo || $pages > 0): ?>
               <?php
               /*
                * L'anneau dit où l'on en est : dans l'enregistrement pour un
@@ -174,9 +174,9 @@ $avancementFiche = avancement_anneaux(
                     'titre'       => t('fiche.avancement_de', ['nom' => $f['nom_origine']]),
                 ]) ?>
                 <span class="fichier__minutage">
-                  <?php if ($pages > 1 && $pageAtteinte > 0): ?>
+                  <?php if ($pages > 0 && $pageAtteinte > 0): ?>
                     <?= e(t('fiche.page_sur', ['page' => $pageAtteinte, 'total' => $pages])) ?>
-                  <?php elseif ($pages > 1): ?>
+                  <?php elseif ($pages > 0): ?>
                     <?= e(t('fiche.pas_encore_lu')) ?>
                   <?php elseif ((int) $f['duree_lecture'] > 0): ?>
                     <?= e(duree_lisible((int) $f['position_lecture'])) ?>
@@ -227,22 +227,27 @@ $avancementFiche = avancement_anneaux(
                 <iframe src="<?= url('fichiers/' . $f['id']) ?>#page=<?= $pageLue ?>&amp;navpanes=0&amp;view=FitH"
                         loading="lazy" title="<?= e($f['nom_origine']) ?>"></iframe>
 
-                <?php if ($pages > 1): ?>
+                <?php if ($pages > 0): ?>
                   <?php
                   /*
+                   * Un document d'une seule page (un résumé, une affiche) n'a pas de page à tourner : seul « Terminer »
+                   * lui reste, pour dire qu'on l'a lu.
+                   *
                    * La visionneuse du navigateur ne dit pas où l'on en est : ces
                    * flèches sont notre seul moyen de le savoir, et elles font
                    * avancer l'anneau à mesure qu'on tourne les pages.
                    */
                   ?>
                   <span class="fichier__pages">
-                    <button class="bouton bouton--discret bouton--petit" type="button"
-                            data-pdf-recule title="<?= e(t('fiche.page_precedente')) ?>">◀</button>
-                    <span class="fichier__page" data-pdf-libelle aria-live="polite">
-                      <?= e(t('fiche.page_sur', ['page' => $pageLue, 'total' => $pages])) ?>
-                    </span>
-                    <button class="bouton bouton--discret bouton--petit" type="button"
-                            data-pdf-avance title="<?= e(t('fiche.page_suivante')) ?>">▶</button>
+                    <?php if ($pages > 1): ?>
+                      <button class="bouton bouton--discret bouton--petit" type="button"
+                              data-pdf-recule title="<?= e(t('fiche.page_precedente')) ?>">◀</button>
+                      <span class="fichier__page" data-pdf-libelle aria-live="polite">
+                        <?= e(t('fiche.page_sur', ['page' => $pageLue, 'total' => $pages])) ?>
+                      </span>
+                      <button class="bouton bouton--discret bouton--petit" type="button"
+                              data-pdf-avance title="<?= e(t('fiche.page_suivante')) ?>">▶</button>
+                    <?php endif; ?>
                     <?php
                     /*
                      * Lu en diagonale, ou déjà connu : on le déclare fini sans

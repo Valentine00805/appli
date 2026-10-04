@@ -355,6 +355,19 @@ try {
     $appel($a, 'resumes/' . $idP . '/pdf-fiche', ['_csrf' => $csrf, 'cours' => $coursA]);
     $noms = array_column(bd_all('SELECT nom_origine FROM fichiers WHERE cours_id = ? AND pour_fiche = 1 ORDER BY id', [$coursA]), 'nom_origine');
     $dire('  un second ajout reçoit un numéro, pour ne pas confondre deux PDF', $oui(in_array('Points clés — Cyber (2).pdf', $noms, true)), 'oui');
+
+    // Un PDF d'une seule page (comme un résumé) a son anneau, et un « Terminer » pour le déclarer lu.
+    $idJoint = (int) bd_valeur('SELECT id FROM fichiers WHERE cours_id = ? AND pour_fiche = 1 AND nom_origine = ?', [$coursA, 'Points clés — Cyber.pdf']);
+    [$fiche] = $appel($a, 'revision/' . $coursA);
+    $dire('  ce PDF d’une page a son anneau, « pas encore lu » et « Terminer », sans flèches',
+        $oui(str_contains($fiche, 'data-avancement="' . $idJoint . '"') && str_contains($fiche, 'pas encore lu')
+            && str_contains($fiche, 'data-pdf-fini') && !str_contains($fiche, 'data-pdf-recule')) . ' · '
+        . (int) bd_valeur('SELECT duree_lecture FROM fichiers WHERE id = ?', [$idJoint]) . ' page', 'oui · 1 page');
+    [$r] = $appel($a, 'fichiers/' . $idJoint . '/position', ['_csrf' => $csrf, 'position' => '1', 'duree' => '1']);
+    [$fiche] = $appel($a, 'revision/' . $coursA);
+    $dire('  « Terminer » le marque lu : l’anneau le dit',
+        (int) bd_valeur('SELECT position_lecture FROM fichiers WHERE id = ?', [$idJoint]) . ' · '
+        . $oui(str_contains($fiche, 'Page 1 sur 1')), '1 · oui');
     [, , $code] = $appel($b, 'resumes/' . $idP . '/pdf-fiche', ['_csrf' => $jeton((string) $appel($b, 'resumes')[0]), 'cours' => $coursB]);
     $dire('  un autre compte ne peut pas', $code . ' · ' . bd_valeur('SELECT COUNT(*) FROM fichiers WHERE cours_id = ?', [$coursB]), '404 · 0');
     [$r] = $appel($a, 'resumes/' . $idP . '/pdf-fiche', ['_csrf' => $csrf, 'cours' => $coursB]);

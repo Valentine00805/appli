@@ -6530,7 +6530,7 @@
       var page = parseInt(bloc.getAttribute("data-page") || "1", 10);
       // Ouvrir un document ne l'a pas fait lire : l'anneau attend le premier saut.
       var atteinte = parseInt(bloc.getAttribute("data-atteinte") || "0", 10);
-      if (!pages || pages < 2) { return; }
+      if (!pages || pages < 1) { return; }
 
       var id = bloc.getAttribute("data-pdf");
       var cadre = bloc.querySelector("iframe");
