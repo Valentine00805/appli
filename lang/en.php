@@ -4168,4 +4168,5 @@ return [
     'ria.err.autre' => 'Gemini answered with an error: {detail}',
     'ria.fl.ecrits.un' => 'Summary written.',
     'ria.fl.ecrits.plusieurs' => '{n} summaries written.',
+    'ria.fl.echec_genre' => '“{genre}” could not be written. {detail}',
 ];

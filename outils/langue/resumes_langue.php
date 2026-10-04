@@ -23,7 +23,7 @@ $port = 8766;
 $journal = sys_get_temp_dir() . '/faux_gemini.log';
 
 @unlink($fichierEssai);
-file_put_contents($fichierEssai, "<?php\nreturn ['gemini' => ['adresse' => 'http://127.0.0.1:$port/v1beta/']];\n");
+file_put_contents($fichierEssai, "<?php\nreturn ['gemini' => ['adresse' => 'http://127.0.0.1:$port/v1beta/', 'pause_reessai' => 0]];\n");
 $serveur = proc_open([PHP_BINARY, '-S', "127.0.0.1:$port", __DIR__ . '/faux_gemini.php'],
     [0 => ['pipe', 'r'], 1 => ['file', $journal, 'w'], 2 => ['file', $journal, 'a']], $tuyaux);
 for ($i = 0; $i < 50; $i++) {
@@ -163,6 +163,27 @@ try {
     [$r] = $appel($a, 'resumes/generer', ['_csrf' => $csrf, 'cours' => [$coursA], 'genres' => ['resume', 'points', 'questions']]);
     $dire('  limite atteinte dès le premier : on s’arrête là, un seul message, rien d’écrit',
         $oui(str_contains($r, 'Limite de la clé gratuite atteinte') && substr_count($r, 'Limite de la clé gratuite atteinte') === 1) . ' · ' . ($nbResumes($idA) - $avant), 'oui · 0');
+    // Un service surchargé est rappelé : le résumé arrive quand même, sans que l'utilisateur ait rien vu.
+    $compteur = sys_get_temp_dir() . '/faux_gemini_compteur_' . md5('cle-instable-0123456789abcdef') . '.txt';
+    @unlink($compteur);
+    $appel($a, 'compte/gemini', ['_csrf' => $csrf, 'cle_gemini' => 'cle-instable-0123456789abcdef']);
+    $avant = $nbResumes($idA);
+    [$r] = $appel($a, 'resumes/generer', ['_csrf' => $csrf, 'cours' => [$coursA], 'genres' => ['resume']]);
+    $dire('  un service surchargé deux fois : le résumé s’écrit à la troisième tentative, sans message d’erreur',
+        $oui(str_contains($r, 'Résumé écrit') && !str_contains($r, 'en panne')) . ' · ' . ($nbResumes($idA) - $avant) . ' · ' . (int) @file_get_contents($compteur), 'oui · 1 · 3');
+    @unlink($compteur);
+    bd_run('DELETE FROM resumes_ia WHERE user_id = ? AND id = (SELECT m FROM (SELECT MAX(id) AS m FROM resumes_ia WHERE user_id = ?) x)', [$idA, $idA]);
+
+    // Une série dont un genre manque : on écrit les autres, et on dit lequel manque.
+    $appel($a, 'compte/gemini', ['_csrf' => $csrf, 'cle_gemini' => 'cle-sans-questions-0123456789']);
+    $avant = $nbResumes($idA);
+    $dejaLa = array_column(bd_all('SELECT id FROM resumes_ia WHERE user_id = ?', [$idA]), 'id');
+    [$r, $url] = $appel($a, 'resumes/generer', ['_csrf' => $csrf, 'cours' => [$coursA], 'genres' => ['resume', 'questions']]);
+    $dire('  « résumé » écrit, « questions » en panne : le résumé est gardé, et le message nomme le genre manquant',
+        $oui(($nbResumes($idA) - $avant) === 1 && str_contains($r, 'Résumé écrit')
+            && str_contains($r, '« questions de révision » n’a pas pu être écrit') && str_contains($r, 'en panne ou surchargé')) . ' · '
+        . $oui(str_contains($url, '/resumes/')), 'oui · oui');
+    bd_run('DELETE FROM resumes_ia WHERE user_id = ? AND id NOT IN (' . implode(',', array_map('intval', $dejaLa ?: [0])) . ')', [$idA]);
     $appel($a, 'compte/gemini', ['_csrf' => $csrf, 'cle_gemini' => 'cle-bonne-0123456789abcdef']);
 
     echo "\n6. La voix\n";

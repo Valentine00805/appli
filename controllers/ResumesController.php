@@ -105,22 +105,22 @@ final class ResumesController
          * Un appel par genre, un après l'autre. Une clé refusée ou une limite atteinte arrête tout : les
          * suivants échoueraient de la même façon. Une autre panne n'empêche pas les genres restants.
          */
-        [$ecrits, $erreur] = $this->sansVerrou(static function () use ($cle, $genres, $longueur, $langue, $contenu): array {
+        [$ecrits, $echecs] = $this->sansVerrou(static function () use ($cle, $genres, $longueur, $langue, $contenu): array {
             $ecrits = [];
-            $erreur = null;
+            $echecs = [];
             foreach ($genres as $genre) {
                 try {
                     [$texte, $modele] = Gemini::texte($cle, ResumeIa::consigne($genre, $longueur, $langue), $contenu);
                     $ecrits[] = [$genre, $texte, $modele];
                 } catch (GeminiErreur $e) {
-                    $erreur = $e;
+                    $echecs[$genre] = $e;
                     if (in_array($e->nature, ['cle', 'quota'], true)) {
                         break;
                     }
                 }
             }
 
-            return [$ecrits, $erreur];
+            return [$ecrits, $echecs];
         });
 
         $noms = array_column($lu['sources'], 'cours');
@@ -136,16 +136,16 @@ final class ResumesController
             $ids[] = Database::dernierId();
         }
 
-        if ($erreur !== null) {
-            Session::flash('erreur', $this->messageDErreur($erreur));
+        if ($ids !== []) {
+            if ($lu['tronque']) {
+                Session::flash('info', t('ria.fl.tronque'));
+            }
+            Session::flash('succes', tn('ria.fl.ecrits', count($ids)));
         }
+        $this->direLesEchecs($echecs, $genres);
         if ($ids === []) {
             redirect('resumes');
         }
-        if ($lu['tronque']) {
-            Session::flash('info', t('ria.fl.tronque'));
-        }
-        Session::flash('succes', tn('ria.fl.ecrits', count($ids)));
         // Un seul : on l'ouvre. Plusieurs : la liste, où ils sont tous.
         redirect(count($ids) === 1 ? 'resumes/' . $ids[0] : 'resumes');
     }
@@ -298,6 +298,27 @@ final class ResumesController
         } finally {
             // Rouverte pour dire le résultat (message, redirection) : le jeton CSRF et les messages y vivent.
             Session::demarrer();
+        }
+    }
+
+    /**
+     * Dit ce qui n'a pas pu être écrit. Une clé refusée ou une limite atteinte ne se dit qu'une fois, telle
+     * quelle : elle vaut pour tous les genres. Une autre panne se dit genre par genre quand on en a demandé
+     * plusieurs — sinon on ne saurait pas lequel manque.
+     *
+     * @param array<string, GeminiErreur> $echecs
+     * @param list<string> $genres  ceux qui ont été demandés
+     */
+    private function direLesEchecs(array $echecs, array $genres): void
+    {
+        foreach ($echecs as $genre => $e) {
+            if (count($genres) === 1 || in_array($e->nature, ['cle', 'quota'], true)) {
+                Session::flash('erreur', $this->messageDErreur($e));
+                continue;
+            }
+            Session::flash('erreur', t('ria.fl.echec_genre', [
+                'genre' => mb_strtolower(t('ria.genre.' . $genre)), 'detail' => $this->messageDErreur($e),
+            ]));
         }
     }
 

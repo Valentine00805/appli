@@ -10,7 +10,8 @@
  *   cle-quota   → 429 RESOURCE_EXHAUSTED
  *   cle-modele  → 404 pour le premier modèle d'une liste, une réponse pour les suivants
  *   cle-vide    → 200 sans texte (contenu bloqué)
- *   cle-panne   → 503
+ *   cle-panne   → 503 (toujours)
+ *   cle-instable → 503 aux deux premiers appels, puis une réponse
  * Chaque requête reçue est notée dans le dossier temporaire (« faux_gemini_dernier.json »), pour que
  * l'essai vérifie ce qui a vraiment été envoyé — l'adresse, la clé et le corps.
  */
@@ -36,6 +37,11 @@ if (!preg_match('#/models/([^:/]+):generateContent$#', (string) $chemin, $m)) {
 $modele = $m[1];
 $voix = str_contains($modele, 'tts');
 
+// Combien de fois cette clé a déjà appelé (le compteur est dans le dossier temporaire ; les essais le remettent à zéro).
+$compteur = sys_get_temp_dir() . '/faux_gemini_compteur_' . md5($cle) . '.txt';
+$appels = (int) @file_get_contents($compteur) + 1;
+file_put_contents($compteur, (string) $appels);
+
 // La clé se reconnaît à son début : le champ de l'application exige 20 caractères au moins.
 switch (true) {
     case str_starts_with($cle, 'cle-mauvaise'):
@@ -44,6 +50,18 @@ switch (true) {
         $erreur(429, 'RESOURCE_EXHAUSTED', 'You exceeded your current quota.');
     case str_starts_with($cle, 'cle-panne'):
         $erreur(503, 'UNAVAILABLE', 'The model is overloaded.');
+    case str_starts_with($cle, 'cle-instable'):
+        // Surchargé aux deux premiers appels, puis rétabli : de quoi essayer les reprises.
+        if ($appels <= 2) {
+            $erreur(503, 'UNAVAILABLE', 'The model is overloaded.');
+        }
+        break;
+    case str_starts_with($cle, 'cle-sans-questions'):
+        // En panne pour les questions de révision seulement : une série dont un genre manque.
+        if (str_contains((string) (json_decode($corps, true)['systemInstruction']['parts'][0]['text'] ?? ''), 'questions de révision')) {
+            $erreur(503, 'UNAVAILABLE', 'The model is overloaded.');
+        }
+        break;
     case str_starts_with($cle, 'cle-modele'):
         if (in_array($modele, ['gemini-3.8-flash', 'gemini-3.8-flash-tts'], true)) {
             $erreur(404, 'NOT_FOUND', "models/$modele is not found for API version v1beta.");

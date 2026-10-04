@@ -24,7 +24,7 @@ for ($i = 0; $i < 50; $i++) {
     if ($c) { fclose($c); break; }
     usleep(100000);
 }
-Config::charger(['gemini' => ['adresse' => "http://127.0.0.1:$port/v1beta/"]]);
+Config::charger(['gemini' => ['adresse' => "http://127.0.0.1:$port/v1beta/", 'pause_reessai' => 0]]);
 $dernier = static fn (): array => json_decode((string) @file_get_contents(sys_get_temp_dir() . '/faux_gemini_dernier.json'), true) ?: [];
 $essai = static function (callable $f): string {
     try { $f(); return 'aucune erreur'; } catch (GeminiErreur $e) { return $e->nature . '|' . $e->getMessage(); }
@@ -49,7 +49,22 @@ try {
     $dire('  panne → « service »', substr($essai(fn () => Gemini::texte('cle-panne', 'c', 'x')), 0, 7), 'service');
     $dire('  contenu bloqué → « refus »', substr($essai(fn () => Gemini::texte('cle-vide', 'c', 'x')), 0, 5), 'refus');
     $dire('  clé inconnue (403) → « cle »', substr($essai(fn () => Gemini::texte('autre', 'c', 'x')), 0, 3), 'cle');
-    Config::charger(['gemini' => ['adresse' => 'http://127.0.0.1:9/v1beta/']]);
+    // Les reprises : un service surchargé est rappelé (trois essais au plus), pas les autres refus.
+    Config::charger(['gemini' => ['adresse' => "http://127.0.0.1:$port/v1beta/", 'pause_reessai' => 0]]);
+    $appels = static fn (string $cle): int => (int) @file_get_contents(sys_get_temp_dir() . '/faux_gemini_compteur_' . md5($cle) . '.txt');
+    foreach (['cle-instable-0123456789', 'cle-panne-0123456789', 'cle-mauvaise-0123456789', 'cle-quota-0123456789'] as $k) {
+        @unlink(sys_get_temp_dir() . '/faux_gemini_compteur_' . md5($k) . '.txt');
+    }
+    [$texteReprise] = Gemini::texte('cle-instable-0123456789', 'c', 'x');
+    $dire('un service surchargé deux fois, puis rétabli : le résumé arrive (3 appels)',
+        $oui(str_contains($texteReprise, 'Résumé bidon')) . ' · ' . $appels('cle-instable-0123456789'), 'oui · 3');
+    $dire('  une vraie panne : trois essais, puis « service »',
+        substr($essai(fn () => Gemini::texte('cle-panne-0123456789', 'c', 'x')), 0, 7) . ' · ' . $appels('cle-panne-0123456789'), 'service · 3');
+    $essai(fn () => Gemini::texte('cle-mauvaise-0123456789', 'c', 'x'));
+    $essai(fn () => Gemini::texte('cle-quota-0123456789', 'c', 'x'));
+    $dire('  clé refusée, limite atteinte : un seul essai, on ne s’acharne pas',
+        $appels('cle-mauvaise-0123456789') . ' · ' . $appels('cle-quota-0123456789'), '1 · 1');
+    Config::charger(['gemini' => ['adresse' => 'http://127.0.0.1:9/v1beta/', 'pause_reessai' => 0]]);
     $dire('  serveur injoignable → « reseau »', substr($essai(fn () => Gemini::texte('cle-bonne', 'c', 'x')), 0, 6), 'reseau');
     // Sans appel : on regarde où la clé partirait. Seul Google, ou le poste lui-même, la reçoit.
     $adresse = new ReflectionMethod(Gemini::class, 'adresse');
@@ -63,7 +78,7 @@ try {
             && str_starts_with($ou('http://pirate.example/v1beta/'), 'https://generativelanguage.googleapis.com/')
             && str_starts_with($ou(''), 'https://generativelanguage.googleapis.com/')
             && str_starts_with($ou('http://localhost:8765/v1beta/'), 'http://localhost:8765/')), 'oui');
-    Config::charger(['gemini' => ['adresse' => "http://127.0.0.1:$port/v1beta/"]]);
+    Config::charger(['gemini' => ['adresse' => "http://127.0.0.1:$port/v1beta/", 'pause_reessai' => 0]]);
 
     /*
      * Le vrai Google, avec une clé qui n'en est pas une et deux lettres de contenu : rien de personnel ne part.
@@ -77,7 +92,7 @@ try {
         str_starts_with($vrai, 'cle|') ? 'oui'
             : (str_starts_with($vrai, 'reseau|') && !stripos($vrai, 'ssl') && !stripos($vrai, 'certificate') ? 'oui (hors ligne : passé)' : $vrai),
         str_starts_with($vrai, 'cle|') ? 'oui' : 'oui (hors ligne : passé)');
-    Config::charger(['gemini' => ['adresse' => "http://127.0.0.1:$port/v1beta/"]]);
+    Config::charger(['gemini' => ['adresse' => "http://127.0.0.1:$port/v1beta/", 'pause_reessai' => 0]]);
 
     echo "\n3. La voix\n";
     [$pcm, $freq, $modeleVoix] = Gemini::voix('cle-bonne', 'Bonjour', 'Puck');

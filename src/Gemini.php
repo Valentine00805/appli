@@ -175,7 +175,7 @@ final class Gemini
         $derniere = null;
         foreach ($modeles as $modele) {
             try {
-                $reponse = self::appeler($cle, $modele, $corps);
+                $reponse = self::appelerAvecReprises($cle, $modele, $corps);
 
                 return [$lire($reponse), $modele];
             } catch (GeminiErreur $e) {
@@ -187,6 +187,30 @@ final class Gemini
         }
 
         throw $derniere ?? new GeminiErreur('Aucun modèle disponible.', 'modele');
+    }
+
+    /**
+     * Rappelle quand le service est surchargé (503, « model is overloaded ») : c'est fréquent, et ça passe
+     * presque toujours à la deuxième ou à la troisième tentative. Trois essais au plus, séparés d'une pause
+     * qui s'allonge ; tout autre refus (clé, limite, modèle) est définitif et remonte tout de suite.
+     *
+     * @return array<string, mixed>
+     */
+    private static function appelerAvecReprises(string $cle, string $modele, array $corps): array
+    {
+        $pause = (int) (Config::get('gemini', 'pause_reessai') ?? 2);
+        for ($essai = 1; ; $essai++) {
+            try {
+                return self::appeler($cle, $modele, $corps);
+            } catch (GeminiErreur $e) {
+                if ($e->nature !== 'service' || $essai >= 3) {
+                    throw $e;
+                }
+                if ($pause > 0) {
+                    sleep($pause * $essai);
+                }
+            }
+        }
     }
 
     /** @return array<string, mixed> */
