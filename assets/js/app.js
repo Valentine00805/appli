@@ -4284,6 +4284,19 @@
   }
 
   /*
+   * Un bloc « data-visible-si-genre » ne se montre que si la case de ce genre est cochée (« Carte mentale » : la carte
+   * vierge). Sans la case sur la page, le bloc reste affiché : il n'y a alors rien d'autre pour y accéder.
+   */
+  document.querySelectorAll("[data-visible-si-genre]").forEach(function (bloc) {
+    var genre = bloc.getAttribute("data-visible-si-genre");
+    var caseGenre = document.querySelector('input[name="genres[]"][value="' + genre + '"]');
+    if (!caseGenre) { return; }
+    var majBloc = function () { bloc.hidden = !caseGenre.checked; };
+    caseGenre.addEventListener("change", majBloc);
+    majBloc();
+  });
+
+  /*
    * Le choix de la voix ne se montre que si la case « Audio » est cochée : sans audio, il ne sert à rien. Sans
    * script, il reste visible (la page ne cache rien qu'elle ne sache remontrer).
    */

@@ -4080,3 +4080,4 @@ summary.cal-volet__groupe:focus-visible {
 .fenetre--plein .zoom__cadre { max-height: calc(100vh - 13rem); }
 .fenetre--plein .cm__toile { max-height: calc(100vh - 17rem); }
 .fenetre--plein .apercu-cadre iframe { height: calc(100vh - 13rem); }
+[data-visible-si-genre][hidden] { display: none; }

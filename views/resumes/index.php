@@ -135,7 +135,14 @@ $pret = $cleConfiguree && $cleFin !== null;
  */
 ?>
 <?php if ($cours !== []): ?>
-  <section class="carte">
+  <?php
+  /*
+   * Cette section ne se montre que si la case « Carte mentale » est cochée (le script s'en charge). Sans cette
+   * case — pas de clé Gemini, donc pas de formulaire d'écriture — elle reste affichée : c'est alors le seul moyen
+   * de créer une carte.
+   */
+  ?>
+  <section class="carte" data-visible-si-genre="carte">
     <h2><?= e(t('cm.vierge_titre')) ?></h2>
     <p class="champ__aide"><?= e(t('cm.vierge_aide')) ?></p>
     <form method="post" action="<?= url('cartes-mentales') ?>" class="fabrique__form">

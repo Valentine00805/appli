@@ -92,7 +92,8 @@ try {
     $dire('« Résumés IA » propose la carte vierge (sans clé) et la liste de ses cartes, vide',
         $oui(str_contains($resumes, 'Une carte mentale à remplir soi-même') && str_contains($resumes, 'action="/mon_appli/appli/cartes-mentales"')
             && str_contains($resumes, 'Aucune carte mentale pour l’instant.')), 'oui');
-    $dire('  sans clé : pas de case « Carte mentale » (le formulaire d’écriture n’y est pas)', $oui(!str_contains($resumes, 'value="carte"')), 'oui');
+    $dire('  sans clé : pas de case « Carte mentale » (le formulaire d’écriture n’y est pas), et la carte vierge reste affichée',
+        $oui(!str_contains($resumes, 'value="carte"') && str_contains($resumes, '<section class="carte" data-visible-si-genre="carte">')), 'oui');
     [$r] = $appel($a, 'resumes/generer', ['_csrf' => $csrf, 'cours' => [$coursA], 'genres' => ['carte']]);
     $dire('  et même en forçant la demande : « Il faut d’abord enregistrer votre clé », rien d’écrit',
         $oui(str_contains($r, 'enregistrer votre clé Gemini')) . ' · ' . $nbCartes($coursA), 'oui · 0');
@@ -200,6 +201,10 @@ try {
     [$resumes] = $appel($a, 'resumes');
     $dire('avec une clé : la case « Carte mentale » parmi les genres, et ce que la carte devient',
         $oui(str_contains($resumes, 'value="carte"') && str_contains($resumes, 'rangée dans sa fiche de révision')), 'oui');
+    [$jsResumes] = $appel($a, 'assets/js/app.js');
+    $dire('  la carte vierge ne se montre que si cette case est cochée (bloc « data-visible-si-genre », géré par le script)',
+        $oui(substr_count($resumes, 'data-visible-si-genre="carte"') === 1 && str_contains($jsResumes, '[data-visible-si-genre]')
+            && str_contains($jsResumes, 'bloc.hidden = !caseGenre.checked')), 'oui');
     $nbResumes = static fn (): int => (int) bd_valeur('SELECT COUNT(*) FROM resumes_ia WHERE user_id = ?', [$idA]);
     [$r, $url] = $appel($a, 'resumes/generer', ['_csrf' => $csrf, 'cours' => [$coursA], 'genres' => ['carte']]);
     $idIa = $idCarte($url);
