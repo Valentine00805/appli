@@ -4259,4 +4259,10 @@ return [
     'cm.aucune_liste' => 'No mind map yet.',
     'cm.aller_resumes' => 'Create a mind map in “AI summaries” →',
     'cm.ouvrir' => 'Open the mind map “{titre}”',
+    'cm.b.fiche' => 'Add to the revision sheet',
+    'cm.b.fiche_aide' => 'Attaches the map, as an image, to the files of the revision sheet of “{cours}”',
+    'cm.image_nom' => 'Mind map — {titre}',
+    'js.cm.image_envoi' => 'Sending the image…',
+    'js.cm.image_ajoutee' => 'Image added to the files of the revision sheet.',
+    'js.cm.image_echec' => 'Could not add the image to the sheet — try again.',
 ];

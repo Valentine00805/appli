@@ -31,6 +31,7 @@ $envoi = $dansUneFenetre ? ' data-envoi-fenetre' : '';
 <section class="carte cm" data-carte-mentale
          data-arbre="<?= e((string) json_encode($arbre, JSON_UNESCAPED_UNICODE)) ?>"
          data-url="<?= url('cartes-mentales/' . $id) ?>"
+         data-url-image="<?= url('cartes-mentales/' . $id . '/image') ?>"
          data-jeton="<?= e(Session::jetonCsrf()) ?>"
          data-max-noeuds="<?= CarteMentale::NOEUDS_MAX ?>"
          data-max-niveaux="<?= CarteMentale::NIVEAUX_MAX ?>"
@@ -57,6 +58,7 @@ $envoi = $dansUneFenetre ? ' data-envoi-fenetre' : '';
     <button type="button" class="bouton bouton--discret bouton--petit" data-cm-action="zoom-plus" title="<?= e(t('cm.b.zoom_plus')) ?>">＋</button>
     <button type="button" class="bouton bouton--discret bouton--petit" data-cm-action="ajuster" title="<?= e(t('cm.b.ajuster')) ?>">⤢</button>
     <button type="button" class="bouton bouton--discret bouton--petit" data-cm-action="image" title="<?= e(t('cm.b.image')) ?>">⬇ <?= e(t('cm.b.image')) ?></button>
+    <button type="button" class="bouton bouton--secondaire bouton--petit" data-cm-action="fiche" title="<?= e(t('cm.b.fiche_aide', ['cours' => (string) $cours['titre']])) ?>">🖼 <?= e(t('cm.b.fiche')) ?></button>
   </div>
 
   <p class="champ__aide" hidden data-cm-aide><?= e(t('cm.aide')) ?></p>

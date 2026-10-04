@@ -4271,4 +4271,10 @@ return [
     'cm.aucune_liste' => 'Aucune carte mentale pour l’instant.',
     'cm.aller_resumes' => 'Créer une carte mentale dans « Résumés IA » →',
     'cm.ouvrir' => 'Ouvrir la carte mentale « {titre} »',
+    'cm.b.fiche' => 'Ajouter à la fiche de révision',
+    'cm.b.fiche_aide' => 'Joint la carte, en image, aux fichiers de la fiche de révision de « {cours} »',
+    'cm.image_nom' => 'Carte mentale — {titre}',
+    'js.cm.image_envoi' => 'Envoi de l’image…',
+    'js.cm.image_ajoutee' => 'Image ajoutée aux fichiers de la fiche de révision.',
+    'js.cm.image_echec' => 'Impossible d’ajouter l’image à la fiche — réessaie.',
 ];

@@ -339,7 +339,89 @@ try {
     $dire('restaurée : la carte revient, rattachée à son cours, avec sa branche repliée',
         count($restauree) . ' · ' . ($restauree[0]['titre'] ?? '?') . ' · ' . ($restauree[0]['cours'] ?? '?') . ' · '
         . (json_decode((string) ($restauree[0]['arbre'] ?? '{}'), true)['c'][0]['p'] ?? 0), '1 · Sauvée · Cyber · 1');
+
+    echo "\n10. La carte en image, dans la fiche de révision\n";
+    $idM = (int) bd_valeur('SELECT id FROM cartes_mentales WHERE user_id = ?', [$idA]);
+    $coursM = (int) bd_valeur('SELECT cours_id FROM cartes_mentales WHERE id = ?', [$idM]);
+    [$page] = $appel($a, 'cartes-mentales/' . $idM);
+    $csrfM = $jeton($page);
+    $dire('l’éditeur propose « Ajouter à la fiche de révision », et sait où envoyer l’image',
+        $oui(str_contains($page, 'data-cm-action="fiche"') && str_contains($page, 'Ajouter à la fiche de révision')
+            && str_contains($page, 'data-url-image="/mon_appli/appli/cartes-mentales/' . $idM . '/image"')), 'oui');
+    [$js] = $appel($a, 'assets/js/carte-mentale.js');
+    $dire('  et le script dessine la carte sur une toile, l’envoie en PNG avec le jeton', $oui(str_contains($js, "toBlob(") && str_contains($js, "'image/png'") && str_contains($js, 'URL_IMAGE')), 'oui');
+
+    $png = static function (int $largeur, int $hauteur): string {
+        $im = imagecreatetruecolor($largeur, $hauteur);
+        imagefill($im, 0, 0, imagecolorallocate($im, 255, 255, 255));
+        ob_start();
+        imagepng($im);
+        return (string) ob_get_clean();
+    };
+    // Un PNG qui ne fait que DIRE ses dimensions (signature + en-tête IHDR) : de quoi tester le refus d'une image trop
+    // grande sans en fabriquer une — 5000 × 5000 points feraient exploser la mémoire du script, pas celle du serveur.
+    $enteteSeul = static function (int $largeur, int $hauteur): string {
+        $bloc = static fn (string $type, string $donnees): string => pack('N', strlen($donnees)) . $type . $donnees . pack('N', crc32($type . $donnees));
+        return "\x89PNG\r\n\x1a\n" . $bloc('IHDR', pack('NNCCCCC', $largeur, $hauteur, 8, 2, 0, 0, 0)) . $bloc('IEND', '');
+    };
+    $jpeg = static function (): string {
+        $im = imagecreatetruecolor(20, 20);
+        ob_start();
+        imagejpeg($im);
+        return (string) ob_get_clean();
+    };
+    /** Envoie une image comme le fait le script (multipart), et rend le code de la réponse. */
+    $envoyer = static function (string $compte, int $id, string $csrf, ?string $octets, string $nom = 'carte-mentale.png') use ($cookies): int {
+        usleep(300000);
+        $tmp = tempnam(sys_get_temp_dir(), 'img');
+        file_put_contents($tmp, $octets ?? '');
+        $post = ['_csrf' => $csrf];
+        if ($octets !== null) { $post['image'] = new CURLFile($tmp, 'image/png', $nom); }
+        $h = curl_init('http://localhost/mon_appli/appli/cartes-mentales/' . $id . '/image');
+        curl_setopt_array($h, [CURLOPT_RETURNTRANSFER => true, CURLOPT_COOKIEFILE => $cookies[$compte], CURLOPT_COOKIEJAR => $cookies[$compte], CURLOPT_POSTFIELDS => $post]);
+        curl_exec($h);
+        $code = (int) curl_getinfo($h, CURLINFO_RESPONSE_CODE);
+        unset($h);
+        @unlink($tmp);
+        return $code;
+    };
+    $jointes = static fn (): array => bd_all('SELECT id, nom_origine, nom_stocke, mime, taille, pour_fiche FROM fichiers WHERE cours_id = ? ORDER BY id', [$coursM]);
+
+    $code = $envoyer($a, $idM, $csrfM, $png(40, 20));
+    $lignes = $jointes();
+    $chemin = $racine . '/storage/uploads/' . basename((string) ($lignes[0]['nom_stocke'] ?? 'absent'));
+    $infos = is_file($chemin) ? getimagesize($chemin) : false;
+    $dire('une image PNG est jointe (204) : un fichier de la fiche, de type image/png, bien rangé et de la bonne taille',
+        $code . ' · ' . count($lignes) . ' · ' . ($lignes[0]['mime'] ?? '?') . ' · ' . ($lignes[0]['pour_fiche'] ?? '?') . ' · '
+        . $oui($infos !== false && $infos[0] === 40 && $infos[1] === 20 && (int) $lignes[0]['taille'] === filesize($chemin)
+            && str_starts_with((string) file_get_contents($chemin), "\x89PNG")), '204 · 1 · image/png · 1 · oui');
+    $dire('  son nom dit ce que c’est : « Carte mentale — » et le titre de la carte', (string) ($lignes[0]['nom_origine'] ?? '?'), 'Carte mentale — Sauvée.png');
+    $envoyer($a, $idM, $csrfM, $png(40, 20));
+    $noms = array_column($jointes(), 'nom_origine');
+    $dire('  un second ajout reçoit un numéro (deux images ne se confondent pas)', $oui(in_array('Carte mentale — Sauvée (2).png', $noms, true)), 'oui');
+    [$fiche] = $appel($a, 'revision/' . $coursM);
+    $dire('  la fiche de révision la montre parmi ses fichiers et images', $oui(str_contains($fiche, 'Carte mentale — Sauvée.png')), 'oui');
+
+    $avant = count($jointes());
+    foreach ([
+        'un JPEG déguisé en PNG' => [$jpeg(), 422],
+        'du texte nommé .png' => ['pas une image', 422],
+        'un PNG trop large (9000 px)' => [$enteteSeul(9000, 1), 422],
+        'un PNG trop grand (5000 × 5000 points, 25 millions)' => [$enteteSeul(5000, 5000), 422],
+        'pas d’image du tout' => [null, 400],
+    ] as $quoi => [$octets, $attendu]) {
+        $code = $envoyer($a, $idM, $csrfM, $octets);
+        $dire("  refusé : $quoi", $code . ' · ' . count($jointes()), $attendu . ' · ' . $avant);
+    }
+    $code = $envoyer($a, $idM, 'faux', $png(10, 10));
+    $dire('  sans le bon jeton CSRF, rien n’est rangé', $oui(count($jointes()) === $avant) . ' · ' . $oui($code !== 204), 'oui · oui');
+    [$pageB] = $appel($b, 'compte');
+    $code = $envoyer($b, $idM, $jeton($pageB), $png(10, 10));
+    $dire('  un autre compte ne peut pas joindre d’image à la carte d’un autre', $code . ' · ' . count($jointes()), '404 · ' . $avant);
 } finally {
+    foreach (bd_all('SELECT nom_stocke FROM fichiers WHERE user_id IN (?, ?)', [$idA ?? 0, $idB ?? 0]) as $rangee) {
+        @unlink($racine . '/storage/uploads/' . basename((string) $rangee['nom_stocke']));
+    }
     if (is_resource($serveur)) { proc_terminate($serveur); proc_close($serveur); }
     @unlink($fichierEssai);
     foreach ($cookies as $f) { @unlink($f); }

@@ -4259,4 +4259,10 @@ return [
     'cm.aucune_liste' => 'Aún no hay mapas mentales.',
     'cm.aller_resumes' => 'Crear un mapa mental en «Resúmenes con IA» →',
     'cm.ouvrir' => 'Abrir el mapa mental «{titre}»',
+    'cm.b.fiche' => 'Añadir a la ficha de repaso',
+    'cm.b.fiche_aide' => 'Adjunta el mapa, como imagen, a los archivos de la ficha de repaso de «{cours}»',
+    'cm.image_nom' => 'Mapa mental — {titre}',
+    'js.cm.image_envoi' => 'Enviando la imagen…',
+    'js.cm.image_ajoutee' => 'Imagen añadida a los archivos de la ficha de repaso.',
+    'js.cm.image_echec' => 'No se pudo añadir la imagen a la ficha: inténtalo de nuevo.',
 ];

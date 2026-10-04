@@ -31,6 +31,7 @@
   var NIVEAUX_MAX = parseInt(racine.getAttribute('data-max-niveaux'), 10) || 6;
   var TEXTE_MAX = parseInt(racine.getAttribute('data-max-texte'), 10) || 120;
   var URL_ENREGISTRER = racine.getAttribute('data-url');
+  var URL_IMAGE = racine.getAttribute('data-url-image');
   var JETON = racine.getAttribute('data-jeton');
 
   var toile = racine.querySelector('[data-cm-toile]');
@@ -463,6 +464,44 @@
     setTimeout(function () { URL.revokeObjectURL(lien.href); }, 1000);
   };
 
+  /**
+   * La carte en image dans la fiche de révision : le SVG est dessiné sur une toile (à deux fois sa taille, au plus 4 000
+   * points de côté, pour rester nette), puis envoyé en PNG au serveur, qui le range avec les fichiers de la fiche.
+   */
+  var versLaFiche = function () {
+    var bouton = barre.querySelector('[data-cm-action="fiche"]');
+    var fini = function (texte) { if (bouton) { bouton.disabled = false; } dire(texte); };
+    if (bouton) { bouton.disabled = true; }
+    dire(mot('cm.image_envoi'));
+
+    var adresse = URL.createObjectURL(new Blob([svg(true)], { type: 'image/svg+xml;charset=utf-8' }));
+    var image = new Image();
+    image.onerror = function () { URL.revokeObjectURL(adresse); fini(mot('cm.image_echec')); };
+    image.onload = function () {
+      var facteur = Math.min(2, 4000 / Math.max(dessin.largeur, dessin.hauteur));
+      var toileImage = document.createElement('canvas');
+      toileImage.width = Math.max(1, Math.round(dessin.largeur * facteur));
+      toileImage.height = Math.max(1, Math.round(dessin.hauteur * facteur));
+      toileImage.getContext('2d').drawImage(image, 0, 0, toileImage.width, toileImage.height);
+      URL.revokeObjectURL(adresse);
+      toileImage.toBlob(function (png) {
+        if (!png) { fini(mot('cm.image_echec')); return; }
+        var corps = new FormData();
+        corps.append('_csrf', JETON);
+        corps.append('image', png, 'carte-mentale.png');
+        fetch(URL_IMAGE, { method: 'POST', body: corps, credentials: 'same-origin' })
+          .then(function (r) {
+            if (r.status !== 204) { throw new Error('http ' + r.status); }
+            fini(mot('cm.image_ajoutee'));
+            // Dans une fenêtre : la page derrière se recharge à la fermeture, et montre l'image dans la fiche.
+            document.dispatchEvent(new Event('fenetre:changee'));
+          })
+          .catch(function () { fini(mot('cm.image_echec')); });
+      }, 'image/png');
+    };
+    image.src = adresse;
+  };
+
   var agir = function (action) {
     switch (action) {
       case 'enfant': ajouter(selection, null); break;
@@ -477,6 +516,7 @@
       case 'zoom-plus': zoomer(1.25); break;
       case 'ajuster': ajuster(); break;
       case 'image': telecharger(); break;
+      case 'fiche': versLaFiche(); break;
     }
   };
 

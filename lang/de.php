@@ -4259,4 +4259,10 @@ return [
     'cm.aucune_liste' => 'Noch keine Mindmap.',
     'cm.aller_resumes' => 'Eine Mindmap unter „KI-Zusammenfassungen“ erstellen →',
     'cm.ouvrir' => 'Mindmap „{titre}“ öffnen',
+    'cm.b.fiche' => 'Zum Lernblatt hinzufügen',
+    'cm.b.fiche_aide' => 'Hängt die Mindmap als Bild an die Dateien des Lernblatts von „{cours}“ an',
+    'cm.image_nom' => 'Mindmap — {titre}',
+    'js.cm.image_envoi' => 'Bild wird gesendet…',
+    'js.cm.image_ajoutee' => 'Bild zu den Dateien des Lernblatts hinzugefügt.',
+    'js.cm.image_echec' => 'Das Bild konnte nicht zum Lernblatt hinzugefügt werden – versuche es noch einmal.',
 ];

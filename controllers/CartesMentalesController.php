@@ -83,6 +83,86 @@ final class CartesMentalesController
         exit;
     }
 
+    /**
+     * Joint la carte, en image, à la fiche de révision de son cours : elle rejoint les fichiers et images de la fiche,
+     * où l'on la voit, la télécharge ou la retire comme les autres.
+     *
+     * L'image est dessinée par le navigateur (un PNG) ; on ne lui fait pas confiance pour autant : le type, les
+     * dimensions et le poids sont vérifiés, et l'image est ré-encodée par GD quand il est là, pour que ce qui est
+     * rangé soit un vrai PNG et rien d'autre. Ne répond rien, sinon un code : 204 si c'est joint, 400 si l'envoi est
+     * incomplet, 413 s'il est trop lourd, 422 si ce n'est pas une image acceptable, 404 si la carte n'est pas à vous.
+     */
+    public function imageVersLaFiche(int $id): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $userId = Auth::id();
+        $carte = Database::one('SELECT id, cours_id, titre FROM cartes_mentales WHERE id = ? AND user_id = ?', [$id, $userId]);
+        if ($carte === null) {
+            http_response_code(404);
+            exit;
+        }
+
+        $envoi = $_FILES['image'] ?? null;
+        if (!is_array($envoi) || ($envoi['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK || !is_uploaded_file((string) $envoi['tmp_name'])) {
+            http_response_code(($envoi['error'] ?? 0) === UPLOAD_ERR_INI_SIZE || ($envoi['error'] ?? 0) === UPLOAD_ERR_FORM_SIZE ? 413 : 400);
+            exit;
+        }
+        if ((int) $envoi['size'] > min(Fichiers::tailleMax(), TexteRiche::IMAGE_MAX)) {
+            http_response_code(413);
+            exit;
+        }
+
+        $tmp = (string) $envoi['tmp_name'];
+        $infos = @getimagesize($tmp);
+        // Un PNG, de dimensions raisonnables : une carte de 250 idées tient largement dans 8 000 px, 16 millions de points.
+        if ($infos === false || $infos[2] !== IMAGETYPE_PNG || $infos[0] < 1 || $infos[1] < 1
+            || $infos[0] > 8000 || $infos[1] > 8000 || $infos[0] * $infos[1] > 16000000) {
+            http_response_code(422);
+            exit;
+        }
+        $octets = (string) file_get_contents($tmp);
+        if (function_exists('imagecreatefromstring') && ($image = @imagecreatefromstring($octets)) !== false) {
+            imagealphablending($image, false);
+            imagesavealpha($image, true);
+            ob_start();
+            $ecrit = imagepng($image);
+            $propre = (string) ob_get_clean();
+            if ($ecrit && $propre !== '') {
+                $octets = $propre;
+            }
+        }
+
+        $dossier = (string) Config::get('app', 'dossier_uploads');
+        if (!is_dir($dossier) && !mkdir($dossier, 0775, true) && !is_dir($dossier)) {
+            http_response_code(500);
+            exit;
+        }
+        $stocke = bin2hex(random_bytes(16)) . '.png';
+        if (file_put_contents($dossier . DIRECTORY_SEPARATOR . $stocke, $octets) === false) {
+            http_response_code(500);
+            exit;
+        }
+
+        // Le nom : celui de la carte, sans les signes qu'un système de fichiers refuse ; un nom déjà pris reçoit un numéro.
+        $base = trim((string) preg_replace('/[\\\\\/:*?"<>|]+/', ' ', (string) $carte['titre'])) ?: 'carte';
+        $base = mb_substr(t('cm.image_nom', ['titre' => $base]), 0, 240);
+        $deja = array_column(Database::all(
+            'SELECT nom_origine FROM fichiers WHERE cours_id = ? AND pour_fiche = 1', [(int) $carte['cours_id']]), 'nom_origine');
+        $nom = $base . '.png';
+        for ($n = 2; in_array($nom, $deja, true); $n++) {
+            $nom = $base . ' (' . $n . ').png';
+        }
+        Database::run(
+            'INSERT INTO fichiers (user_id, cours_id, pour_fiche, nom_origine, nom_stocke, mime, taille) VALUES (?, ?, 1, ?, ?, ?, ?)',
+            [$userId, (int) $carte['cours_id'], $nom, $stocke, 'image/png', strlen($octets)]
+        );
+        Partages::suivreAjouts($userId, 'fiche', (int) $carte['cours_id'], 1);
+
+        http_response_code(204);
+        exit;
+    }
+
     /** Efface la carte, et revient à la fiche du cours. */
     public function supprimer(int $id): void
     {

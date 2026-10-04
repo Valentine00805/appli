@@ -597,6 +597,7 @@ $routes = [
     ['POST', 'cartes-mentales',                   [CartesMentalesController::class, 'creer']],
     ['GET',  'cartes-mentales/{id}',              [CartesMentalesController::class, 'voir']],
     ['POST', 'cartes-mentales/{id}',              [CartesMentalesController::class, 'enregistrer']],
+    ['POST', 'cartes-mentales/{id}/image',        [CartesMentalesController::class, 'imageVersLaFiche']],
     ['POST', 'cartes-mentales/{id}/supprimer',    [CartesMentalesController::class, 'supprimer']],
     ['POST', 'resumes/{id}/pdf-fiche',      [ResumesController::class, 'pdfVersLaFiche']],
     ['POST', 'resumes/{id}/supprimer',      [ResumesController::class, 'supprimer']],
