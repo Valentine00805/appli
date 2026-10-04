@@ -104,7 +104,8 @@ $pret = $cleConfiguree && $cleFin !== null;
         </label>
       </fieldset>
 
-      <div class="champ">
+      <?php // Le choix de la voix n'a de sens qu'avec l'audio : le script ne le montre que si la case est cochée. ?>
+      <div class="champ" data-voix-si-audio>
         <label for="voix_lot"><?= e(t('ria.voix')) ?></label>
         <select id="voix_lot" name="voix">
           <?php foreach (Gemini::VOIX as $voix): ?>

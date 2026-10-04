@@ -439,7 +439,12 @@ try {
     $dire('la case « Audio » est dans « Ce que je veux », avec le choix de la voix et l’attente annoncée',
         $oui(preg_match('/name="audio" value="1"/', $page) === 1 && str_contains($page, 'id="voix_lot"')
             && str_contains($page, 'data-attente-audio="Écriture et enregistrement en cours')), 'oui');
-    $dejaLa = array_column(bd_all('SELECT id FROM resumes_ia WHERE user_id = ?', [$idA]), 'id');
+    [$jsApp] = $appel($a, 'assets/js/app.js');
+    $dire('  le choix de la voix est dans un champ « data-voix-si-audio », que le script ne montre qu’avec la case cochée',
+        $oui(preg_match('/<div class="champ" data-voix-si-audio>\s*<label for="voix_lot">/', $page) === 1
+            && substr_count($page, 'data-voix-si-audio') === 1 && str_contains($jsApp, '[data-voix-si-audio]')
+            && str_contains($jsApp, 'champ.hidden = !audio.checked')), 'oui');
+    $dejaLa =array_column(bd_all('SELECT id FROM resumes_ia WHERE user_id = ?', [$idA]), 'id');
     $nouveaux = static function () use ($idA, &$dejaLa): array {
         $l = bd_all('SELECT id, genre, audio_nom, audio_voix FROM resumes_ia WHERE user_id = ? ORDER BY id', [$idA]);
         return array_values(array_filter($l, static fn (array $x): bool => !in_array($x['id'], $dejaLa, false)));

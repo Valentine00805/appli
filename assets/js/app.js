@@ -4284,6 +4284,19 @@
   }
 
   /*
+   * Le choix de la voix ne se montre que si la case « Audio » est cochée : sans audio, il ne sert à rien. Sans
+   * script, il reste visible (la page ne cache rien qu'elle ne sache remontrer).
+   */
+  document.querySelectorAll("[data-voix-si-audio]").forEach(function (champ) {
+    var formulaire = champ.closest("form");
+    var audio = formulaire ? formulaire.querySelector('input[name="audio"]') : null;
+    if (!audio) { return; }
+    var majVoix = function () { champ.hidden = !audio.checked; };
+    audio.addEventListener("change", majVoix);
+    majVoix();
+  });
+
+  /*
    * Un formulaire « data-attente » met du temps à répondre (l'IA écrit) : au lieu d'un bouton qui ne bouge
    * pas, il se grise et dit ce qui se passe. Le texte vient du serveur (il est traduit).
    */
