@@ -4271,4 +4271,6 @@ return [
     'ap.zoom_reel' => 'Actual size (100%)',
     'ap.zoom_onglet' => 'Open in a tab',
     'ap.zoom_aide' => 'Use the + and − buttons (or the + and − keys) to zoom, 0 to fit, 1 for actual size; double-click to switch between them; drag the image to move around.',
+    'js.fenetre.plein' => 'Full screen',
+    'js.fenetre.reduire' => 'Exit full screen',
 ];

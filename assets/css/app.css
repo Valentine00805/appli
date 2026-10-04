@@ -3501,10 +3501,20 @@ summary.cal-volet__groupe:focus-visible {
   box-shadow: 0 2px 6px rgb(15 23 42 / 15%);
 }
 .fenetre__retour:hover { color: var(--texte); }
+/* Plein écran : un second bouton rond, juste à gauche de la croix. */
+.fenetre__plein {
+  position: absolute; z-index: 10; top: -.6rem; right: 1.7rem;
+  width: 1.9rem; height: 1.9rem; border-radius: 50%;
+  border: 1px solid var(--bordure); background: var(--fond-carte); color: var(--texte-doux);
+  cursor: pointer; font-size: 1rem; line-height: 1;
+  box-shadow: 0 2px 6px rgb(15 23 42 / 15%);
+}
+.fenetre__plein:hover { color: var(--texte); }
 
 @media (max-width: 560px) {
   .fenetre { width: calc(100vw - 1rem); border-radius: 12px; }
   .fenetre__fermer { top: .4rem; right: .4rem; box-shadow: none; }
+  .fenetre__plein { top: .4rem; right: 2.7rem; box-shadow: none; }
   .fenetre__corps { --corps-haut: 2.2rem; }
 }
 /* La journée en plus petit, pour la colonne de l'accueil : une heure y vaut
@@ -4051,3 +4061,22 @@ summary.cal-volet__groupe:focus-visible {
 .zoom__cadre--glisse { cursor: grabbing; user-select: none; }
 /* Dans la fenêtre d'un document, le cadre prend la hauteur qui reste sous l'entête. */
 .fenetre--document .zoom__cadre { max-height: calc(100vh - 14rem); min-height: 12rem; }
+
+/* --- Une fenêtre en plein écran ------------------------------------------------------------------------------ */
+.fenetre--plein, .fenetre--plein.fenetre--large, .fenetre--plein.fenetre--document {
+  /* En pourcentage, pas en « vw » : ceux-ci comptent la barre de défilement de la page, qui masquerait les boutons du coin. */
+  inset: 0; width: 100%; max-width: 100%; height: 100%; max-height: 100%;
+  margin: 0; border: 0; border-radius: 0;
+}
+.fenetre--plein .fenetre__corps, .fenetre--plein.fenetre--document .fenetre__corps {
+  --corps-haut: 2.8rem;
+  height: 100%; max-height: 100%;
+}
+/* Les boutons ronds rentrent dans l'écran : il n'y a plus de marge au-delà de la fenêtre. */
+.fenetre--plein .fenetre__fermer { top: .6rem; right: .6rem; }
+.fenetre--plein .fenetre__plein { top: .6rem; right: 3rem; }
+.fenetre--plein .fenetre__retour { top: .6rem; left: .6rem; }
+/* Ce qui peut grandir prend la hauteur de l'écran. */
+.fenetre--plein .zoom__cadre { max-height: calc(100vh - 13rem); }
+.fenetre--plein .cm__toile { max-height: calc(100vh - 17rem); }
+.fenetre--plein .apercu-cadre iframe { height: calc(100vh - 13rem); }

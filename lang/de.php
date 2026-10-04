@@ -4271,4 +4271,6 @@ return [
     'ap.zoom_reel' => 'Originalgröße (100 %)',
     'ap.zoom_onglet' => 'In einem Tab öffnen',
     'ap.zoom_aide' => 'Mit den Tasten + und − (oder den Schaltflächen) zoomen, 0 zum Anpassen, 1 für die Originalgröße; Doppelklick wechselt zwischen beiden; Bild ziehen, um sich zu bewegen.',
+    'js.fenetre.plein' => 'Vollbild',
+    'js.fenetre.reduire' => 'Vollbild beenden',
 ];

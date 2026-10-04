@@ -1042,11 +1042,38 @@
   if (typeof HTMLDialogElement === 'function') {
     var fenetre = document.createElement('dialog');
     fenetre.className = 'fenetre';
+    /*
+     * Plein écran : la fenêtre prend tout l'écran (une carte mentale, une grande image, un document s'y lisent
+     * mieux). Le bouton bascule, et chaque fenêtre qui se ferme reprend sa taille : on ne rouvre pas un petit
+     * formulaire plein écran sans l'avoir demandé.
+     */
+    var boutonPlein = function () {
+      return '<button class="fenetre__plein" type="button" aria-pressed="false" aria-label="' + mot('fenetre.plein')
+        + '" title="' + mot('fenetre.plein') + '">⤢</button>';
+    };
+    var reglerPlein = function (dialogue, plein) {
+      var bouton = dialogue.querySelector('.fenetre__plein');
+      dialogue.classList.toggle('fenetre--plein', plein);
+      if (!bouton) { return; }
+      var texte = mot(plein ? 'fenetre.reduire' : 'fenetre.plein');
+      bouton.textContent = plein ? '⤡' : '⤢';
+      bouton.title = texte;
+      bouton.setAttribute('aria-label', texte);
+      bouton.setAttribute('aria-pressed', plein ? 'true' : 'false');
+    };
+    var brancherPlein = function (dialogue) {
+      dialogue.querySelector('.fenetre__plein').addEventListener('click', function () {
+        reglerPlein(dialogue, !dialogue.classList.contains('fenetre--plein'));
+      });
+    };
+
     fenetre.innerHTML =
       '<button class="fenetre__retour" type="button" aria-label="Revenir" title="Revenir" hidden>←</button>' +
+      boutonPlein() +
       '<button class="fenetre__fermer" type="button" aria-label="Fermer">✕</button>' +
       '<div class="fenetre__corps"></div>';
     document.body.appendChild(fenetre);
+    brancherPlein(fenetre);
 
     var corps = fenetre.querySelector('.fenetre__corps');
 
@@ -1087,6 +1114,7 @@
       corps.innerHTML = '';
       historique = [];
       majRetour();
+      reglerPlein(fenetre, false);
       fenetre.close();
       if (aChange) {
         aChange = false;
@@ -1337,9 +1365,11 @@
     var dessus = document.createElement('dialog');
     dessus.className = 'fenetre fenetre--dessus';
     dessus.innerHTML =
+      boutonPlein() +
       '<button class="fenetre__fermer" type="button" aria-label="Fermer">✕</button>' +
       '<div class="fenetre__corps"></div>';
     document.body.appendChild(dessus);
+    brancherPlein(dessus);
     var corpsDessus = dessus.querySelector('.fenetre__corps');
     var adresseDessus = null;
     // Les pages vues dans la fenêtre du dessus : « Annuler » revient à la précédente.
@@ -1356,6 +1386,9 @@
       dessus.querySelector('.fenetre__fermer').focus({ preventScroll: true });
       initialiserTexteRiche(corpsDessus);
       initialiserNotifications(corpsDessus);
+      // Une carte mentale ou une image ouverte par-dessus la fiche (même raison que dans la fenêtre principale).
+      if (window.initialiserCarteMentale) { window.initialiserCarteMentale(corpsDessus); }
+      if (window.initialiserZoomImage) { window.initialiserZoomImage(corpsDessus); }
     };
     var ouvrirDessus = function (adresse) {
       adresseDessus = adresse;
@@ -1379,6 +1412,7 @@
       corpsDessus.innerHTML = '';
       adresseDessus = null;
       cheminDessus = [];
+      reglerPlein(dessus, false);
       dessus.close();
       if (relireDerriere && changeDessus) {
         // La fenêtre principale se relit à sa page ; sans elle, c'est la page.

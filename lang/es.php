@@ -4271,4 +4271,6 @@ return [
     'ap.zoom_reel' => 'Tamaño real (100 %)',
     'ap.zoom_onglet' => 'Abrir en una pestaña',
     'ap.zoom_aide' => 'Usa los botones + y − (o las teclas + y −) para hacer zoom, 0 para ajustar, 1 para el tamaño real; doble clic para alternar; arrastra la imagen para moverte.',
+    'js.fenetre.plein' => 'Pantalla completa',
+    'js.fenetre.reduire' => 'Salir de pantalla completa',
 ];

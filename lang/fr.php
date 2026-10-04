@@ -4283,4 +4283,6 @@ return [
     'ap.zoom_reel' => 'Taille réelle (100 %)',
     'ap.zoom_onglet' => 'Ouvrir dans un onglet',
     'ap.zoom_aide' => 'Boutons + et − (ou les touches + et −) pour zoomer, 0 pour ajuster, 1 pour la taille réelle ; double-clic pour passer de l’un à l’autre ; fais glisser l’image pour te déplacer.',
+    'js.fenetre.plein' => 'Plein écran',
+    'js.fenetre.reduire' => 'Quitter le plein écran',
 ];

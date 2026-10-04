@@ -415,6 +415,19 @@ try {
     $dire('  la page entière charge le script du zoom (que app.js appelle sur ce qu’il pose en fenêtre)',
         $oui(str_contains($apercuPage, 'zoom-image.js') && str_contains($jsZoom, 'initialiserZoomImage')
             && str_contains((string) $appel($a, 'assets/js/app.js')[0], 'initialiserZoomImage')), 'oui');
+    // Les fenêtres : celle du dessus (une image ou une carte ouverte depuis une fiche déjà en fenêtre) doit, elle aussi,
+    // animer ce qu'elle reçoit — un oubli qui laissait l'image sans barre de zoom. Et toutes ont un bouton plein écran.
+    [$jsApp] = $appel($a, 'assets/js/app.js');
+    [$cssApp] = $appel($a, 'assets/css/app.css');
+    $dire('  la fenêtre du dessus anime ce qu’elle reçoit (zoom d’image, éditeur de carte), comme la principale',
+        $oui(str_contains($jsApp, 'window.initialiserZoomImage(corpsDessus)') && str_contains($jsApp, 'window.initialiserCarteMentale(corpsDessus)')
+            && str_contains($jsApp, 'window.initialiserZoomImage(corps)') && str_contains($jsApp, 'window.initialiserCarteMentale(corps)')), 'oui');
+    $dire('  chaque fenêtre a son bouton « plein écran », qui se réinitialise à la fermeture',
+        $oui(substr_count($jsApp, 'brancherPlein(') === 2 && substr_count($jsApp, 'reglerPlein(fenetre, false)') === 1
+            && substr_count($jsApp, 'reglerPlein(dessus, false)') === 1 && str_contains($cssApp, '.fenetre--plein')), 'oui');
+    [$pageAvecMots] = $appel($a, 'revision/' . $coursM);
+    $dire('  le bouton parle la langue de la page (clés « js.fenetre.plein » / « reduire »)',
+        $oui(str_contains($pageAvecMots, '"fenetre.plein":"Plein écran"') && str_contains($pageAvecMots, '"fenetre.reduire":"Quitter le plein écran"')), 'oui');
     foreach (['en' => 'Fit to width', 'es' => 'Ajustar al ancho', 'de' => 'An Breite anpassen', 'fr' => 'Ajuster à la largeur'] as $langue => $mot) {
         $appel($a, 'compte/langue', ['_csrf' => $csrf, 'langue' => $langue]);
         [$apercu] = $appel($a, 'fichiers/' . $idImage . '/apercu?fenetre=1');
