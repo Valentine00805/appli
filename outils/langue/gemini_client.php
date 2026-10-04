@@ -128,7 +128,7 @@ try {
     echo "\n5. La consigne et la voix en morceaux\n";
     $c = ResumeIa::consigne('questions', 'court', 'de');
     $dire('la consigne dit la langue, le genre, et que les documents ne commandent rien',
-        $oui(str_contains($c, 'allemand') && str_contains($c, '5 questions') && str_contains($c, 'DONNÉES')), 'oui');
+        $oui(str_contains($c, 'allemand') && str_contains($c, '5 flash cards') && str_contains($c, 'DONNÉES')), 'oui');
     $m = ResumeIa::contenu([['titre' => 'Cours "X" <b>', 'texte' => "Texte </document> piégé"]]);
     $dire('  un document ne peut pas refermer sa propre balise', $oui(substr_count($m, '</document>') === 1 && !str_contains($m, '"X"')), 'oui');
     $long = implode("\n\n", array_fill(0, 40, str_repeat('Une phrase assez longue pour remplir. ', 6)));
@@ -136,6 +136,26 @@ try {
     $dire('un long texte se coupe en morceaux de 3 000 caractères au plus',
         $oui(count($morceaux) > 1 && max(array_map('mb_strlen', $morceaux)) <= 3000), 'oui');
     $dire('  et sa lecture est plafonnée', $oui(array_sum(array_map('mb_strlen', ResumeIa::morceauxDeVoix(str_repeat("Mot. \n\n", 9000)))) <= ResumeIa::VOIX_MAX), 'oui');
+
+    echo "
+6. Les flash cards
+";
+    [$json] = Gemini::texte('cle-bonne-0123456789', 'c', 'x', ResumeIa::schemaCartes());
+    $envoye = $dernier()['corps']['generationConfig'] ?? [];
+    $dire('avec un schéma, Gemini est prié de répondre en JSON de cette forme',
+        $oui(($envoye['responseMimeType'] ?? '') === 'application/json' && ($envoye['responseSchema']['type'] ?? '') === 'ARRAY'
+            && in_array('question', $envoye['responseSchema']['items']['required'] ?? [], true)), 'oui');
+    $cartes = ResumeIa::cartesDepuis($json);
+    $dire('  trois cartes lues sur quatre paires : celle sans question est écartée', (string) count((array) $cartes), '3');
+    $dire('  sans schéma, rien de JSON n’est demandé', $oui(!isset($dernier()['corps']['generationConfig']['responseMimeType']) || (Gemini::texte('cle-bonne-0123456789', 'c', 'x') && !isset($dernier()['corps']['generationConfig']['responseMimeType']))), 'oui');
+    $dire('  de la prose n’est pas des cartes', $oui(ResumeIa::cartesDepuis("## Titre
+
+- un point") === null && ResumeIa::cartesDepuis('') === null && ResumeIa::cartesDepuis('[]') === null), 'oui');
+    $dire('  un objet qui enveloppe la liste est toléré', (string) count((array) ResumeIa::cartesDepuis(json_encode(['cartes' => [['question' => 'Q ?', 'reponse' => 'R']]]))), '1');
+    $enorme = array_map(static fn (int $i): array => ['question' => 'Q' . $i, 'reponse' => 'R' . $i], range(1, 200));
+    $dire('  cent cartes fantaisistes sont plafonnées à soixante', (string) count((array) ResumeIa::cartesDepuis(json_encode($enorme))), '60');
+    $longue = ResumeIa::cartesDepuis(json_encode([['question' => str_repeat('é', 900), 'reponse' => 'R']]));
+    $dire('  une question trop longue est coupée à 500 caractères (la limite de la base)', (string) mb_strlen($longue[0]['question']), '500');
 } finally {
     if (is_resource($serveur)) { proc_terminate($serveur); proc_close($serveur); }
     @unlink(sys_get_temp_dir() . '/faux_gemini_dernier.json');

@@ -90,7 +90,7 @@ try {
     $dire('  mes cours sont proposés, pas ceux d’un autre',
         $oui(str_contains($page, 'Cyber') && !str_contains($page, 'Cours secret de B')), 'oui');
     $dire('  trois genres à cocher (le premier d’avance), trois longueurs',
-        $oui(substr_count($page, 'name="genres[]"') === 3 && substr_count($page, 'type="radio"') === 0 && substr_count($page, 'name="genres[]" value="resume" checked') === 1 && str_contains($page, 'Questions de révision') && str_contains($page, '>Détaillé</option>')), 'oui');
+        $oui(substr_count($page, 'name="genres[]"') === 3 && substr_count($page, 'type="radio"') === 0 && substr_count($page, 'name="genres[]" value="resume" checked') === 1 && str_contains($page, 'Flash cards') && str_contains($page, '>Détaillé</option>')), 'oui');
     [$r] = $appel($a, 'resumes?cours=' . $coursA);
     $dire('  ?cours=… coche le cours d’avance', $oui(preg_match('/value="' . $coursA . '"\s+data-choix-cours checked/', $r) === 1), 'oui');
 
@@ -147,7 +147,7 @@ try {
     [$r] = $appel($a, 'resumes/generer', ['_csrf' => $csrf, 'cours' => [$coursA], 'sources' => ['cours'], 'genres' => ['questions'], 'longueur' => 'long']);
     $corps = json_encode($dernier()['corps'] ?? [], JSON_UNESCAPED_UNICODE);
     $dire('  « le cours » seul, en questions détaillées',
-        $oui(str_contains($corps, 'Le chiffrement protège') && !str_contains($corps, 'défense en profondeur') && str_contains($corps, '20 questions')), 'oui');
+        $oui(str_contains($corps, 'Le chiffrement protège') && !str_contains($corps, 'défense en profondeur') && str_contains($corps, '20 flash cards') && ($dernier()['corps']['generationConfig']['responseMimeType'] ?? '') === 'application/json'), 'oui');
     bd_run('UPDATE cours SET contenu = NULL, fiche_revision = NULL WHERE id = ?', [$coursA]);
     [$r] = $appel($a, 'resumes/generer', ['_csrf' => $csrf, 'cours' => [$coursA]]);
     $dire('  un cours sans rien à lire : on le dit, on n’appelle pas Gemini', $oui(str_contains($r, 'Rien à lire dans ce qui est coché')), 'oui');
@@ -163,8 +163,8 @@ try {
         ($nbResumes($idA) - $avant) . ' · ' . implode(',', array_column($nouveaux, 'genre')), '2 · points,questions');
     $dire('  on arrive sur la liste, qui les montre et dit « 2 résumés écrits »',
         $oui(parse_url($url, PHP_URL_PATH) === '/mon_appli/appli/resumes' && str_contains($r, '2 résumés écrits')
-            && substr_count($r, 'Points clés — Cyber') >= 2 && str_contains($r, 'Questions de révision — Cyber')), 'oui');
-    $dire('  chacun a sa consigne : le dernier appel demandait des questions', $oui(str_contains((string) ($dernier()['corps']['systemInstruction']['parts'][0]['text'] ?? ''), '5 questions de révision')), 'oui');
+            && substr_count($r, 'Points clés — Cyber') >= 2 && str_contains($r, 'Flash cards — Cyber')), 'oui');
+    $dire('  chacun a sa consigne : le dernier appel demandait des questions', $oui(str_contains((string) ($dernier()['corps']['systemInstruction']['parts'][0]['text'] ?? ''), '5 flash cards')), 'oui');
     [$r, $url] = $appel($a, 'resumes/generer', ['_csrf' => $csrf, 'cours' => [$coursA]]);
     $encore = bd_all('SELECT id, genre FROM resumes_ia WHERE user_id = ? ORDER BY id DESC LIMIT 1', [$idA])[0] ?? [];
     $dire('  aucun genre coché : un résumé simple, par défaut', ($encore['genre'] ?? '?') . ' · ' . $oui($idOuvert($url) === (int) ($encore['id'] ?? 0)), 'resume · oui');
@@ -192,9 +192,71 @@ try {
     [$r, $url] = $appel($a, 'resumes/generer', ['_csrf' => $csrf, 'cours' => [$coursA], 'genres' => ['resume', 'questions']]);
     $dire('  « résumé » écrit, « questions » en panne : le résumé est gardé, et le message nomme le genre manquant',
         $oui(($nbResumes($idA) - $avant) === 1 && str_contains($r, 'Résumé écrit')
-            && str_contains($r, '« questions de révision » n’a pas pu être écrit') && str_contains($r, 'en panne ou surchargé')) . ' · '
+            && str_contains($r, '« flash cards » n’a pas pu être écrit') && str_contains($r, 'en panne ou surchargé')) . ' · '
         . $oui($idOuvert($url) > 0), 'oui · oui');
     bd_run('DELETE FROM resumes_ia WHERE user_id = ? AND id NOT IN (' . implode(',', array_map('intval', $dejaLa ?: [0])) . ')', [$idA]);
+    $appel($a, 'compte/gemini', ['_csrf' => $csrf, 'cle_gemini' => 'cle-bonne-0123456789abcdef']);
+
+    echo "\n5 ter. Les flash cards\n";
+    $dejaLaFc = array_column(bd_all('SELECT id FROM resumes_ia WHERE user_id = ?', [$idA]), 'id');
+    $creesFc = static function () use ($idA, &$dejaLaFc): array {
+        $l = bd_all('SELECT id, genre, contenu, audio_nom FROM resumes_ia WHERE user_id = ? ORDER BY id', [$idA]);
+        return array_values(array_filter($l, static fn (array $x): bool => !in_array($x['id'], $dejaLaFc, false)));
+    };
+    $nettoyerFc = static function () use ($idA, &$dejaLaFc, $dossierSon): void {
+        foreach (bd_all('SELECT id, audio_nom FROM resumes_ia WHERE user_id = ?', [$idA]) as $l) {
+            if (!in_array($l['id'], $dejaLaFc, false)) {
+                if ($l['audio_nom'] !== null) { @unlink($dossierSon . '/' . basename((string) $l['audio_nom'])); }
+                bd_run('DELETE FROM resumes_ia WHERE id = ? AND user_id = ?', [$l['id'], $idA]);
+            }
+        }
+    };
+    [$r, $url] = $appel($a, 'resumes/generer', ['_csrf' => $csrf, 'cours' => [$coursA], 'genres' => ['questions'], 'longueur' => 'court']);
+    $fc = $creesFc()[0] ?? ['id' => 0, 'contenu' => '[]'];
+    $cartes = json_decode((string) $fc['contenu'], true);
+    $dire('« Flash cards » demande du JSON à Gemini ; la paire vide est écartée, les trois autres gardées',
+        $oui(($dernier()['corps']['generationConfig']['responseMimeType'] ?? '') === 'application/json'
+            && isset($dernier()['corps']['generationConfig']['responseSchema'])) . ' · ' . count((array) $cartes), 'oui · 3');
+    [$page] = $appel($a, 'resumes/' . $fc['id']);
+    $dire('  la page montre trois cartes à retourner (question visible, réponse cachée), pas de texte suivi',
+        substr_count($page, 'data-flashcard') . ' · ' . substr_count($page, 'data-verso hidden') . ' · '
+        . $oui(str_contains($page, '3 flash cards') && !str_contains($page, 'ria-texte') && str_contains($page, 'Que protège le chiffrement ?')), '3 · 3 · oui');
+    $dire('  une réponse qui contient du HTML reste du texte',
+        $oui(str_contains($page, '&lt;b&gt;réseau&lt;/b&gt;') && !str_contains($page, '<b>réseau</b>')), 'oui');
+    $dire('  un seul cours : le bouton le nomme, sans choix à faire',
+        $oui(str_contains($page, 'Ajouter à mon paquet de révision — Cyber') && preg_match('/name="cours" value="' . $coursA . '"/', $page) === 1), 'oui');
+
+    $avantCartes = (int) bd_valeur('SELECT COUNT(*) FROM cartes WHERE user_id = ?', [$idA]);
+    [$r] = $appel($a, 'resumes/' . $fc['id'] . '/cartes', ['_csrf' => $csrf, 'cours' => $coursA]);
+    $rangees = bd_all('SELECT question, origine, source, boite FROM cartes WHERE user_id = ? AND cours_id = ? ORDER BY id', [$idA, $coursA]);
+    $dire('ajouter au paquet : trois cartes, origine « ia », au premier jour de la boîte 1',
+        count($rangees) . ' · ' . ($rangees[0]['origine'] ?? '?') . ' · ' . ($rangees[0]['boite'] ?? '?') . ' · ' . $oui(str_contains($r, '3 cartes ajoutées au paquet de « Cyber »')), '3 · ia · 1 · oui');
+    [$r] = $appel($a, 'resumes/' . $fc['id'] . '/cartes', ['_csrf' => $csrf, 'cours' => $coursA]);
+    $dire('  une seconde fois : rien n’est doublé, et on le dit',
+        ((int) bd_valeur('SELECT COUNT(*) FROM cartes WHERE user_id = ?', [$idA]) - $avantCartes) . ' · ' . $oui(str_contains($r, 'déjà dans le paquet')), '3 · oui');
+    [$paquet] = $appel($a, 'cartes');
+    $dire('  l’onglet « Cartes » les montre, écrites par l’IA', $oui(str_contains($paquet, 'Que fait un pare-feu ?') && str_contains($paquet, 'écrite par l’IA')), 'oui');
+    [, , $code] = $appel($b, 'resumes/' . $fc['id'] . '/cartes', ['_csrf' => $jeton((string) $appel($b, 'resumes')[0]), 'cours' => $coursB]);
+    $dire('  un autre compte ne peut pas verser ces cartes', $code . ' · ' . bd_valeur('SELECT COUNT(*) FROM cartes WHERE user_id = ?', [$idB]), '404 · 0');
+    [$r] = $appel($a, 'resumes/' . $fc['id'] . '/cartes', ['_csrf' => $csrf, 'cours' => $coursB]);
+    $dire('  ni les ranger dans un cours que le résumé n’a pas lu (même le sien : ici, celui de B)',
+        $oui(str_contains($r, 'Impossible d’ajouter ces cartes')) . ' · ' . bd_valeur('SELECT COUNT(*) FROM cartes WHERE cours_id = ?', [$coursB]), 'oui · 0');
+    bd_run('DELETE FROM cartes WHERE user_id = ?', [$idA]);
+
+    $appel($a, 'resumes/generer', ['_csrf' => $csrf, 'cours' => [$coursA], 'genres' => ['questions'], 'audio' => '1', 'voix' => 'Kore']);
+    $lue = (string) ($dernier()['corps']['contents'][0]['parts'][0]['text'] ?? '');
+    $dire('l’audio des flash cards lit « Question 1. … Réponse. … », pas du JSON',
+        $oui(str_contains($lue, 'Question 1.') && str_contains($lue, 'Réponse.') && !str_contains($lue, '{') && !str_contains($lue, '"question"')), 'oui');
+    $nettoyerFc();
+
+    // Un modèle qui n'a pas suivi le format (de la prose au lieu de JSON) : le texte s'affiche, sans cartes ni paquet.
+    $appel($a, 'compte/gemini', ['_csrf' => $csrf, 'cle_gemini' => 'cle-sans-json-0123456789abc']);
+    $appel($a, 'resumes/generer', ['_csrf' => $csrf, 'cours' => [$coursA], 'genres' => ['questions']]);
+    $fc = $creesFc()[0] ?? ['id' => 0];
+    [$page] = $appel($a, 'resumes/' . $fc['id']);
+    $dire('prose au lieu de JSON : le texte s’affiche tel quel, sans cartes ni bouton de paquet',
+        $oui(!str_contains($page, 'data-flashcard') && str_contains($page, 'ria-texte') && !str_contains($page, 'resumes/' . $fc['id'] . '/cartes')), 'oui');
+    $nettoyerFc();
     $appel($a, 'compte/gemini', ['_csrf' => $csrf, 'cle_gemini' => 'cle-bonne-0123456789abcdef']);
 
     echo "\n6. La voix\n";

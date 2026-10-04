@@ -28,9 +28,58 @@ $envoi = $dansUneFenetre ? ' data-envoi-fenetre' : '';
   </div>
 </div>
 
-<section class="carte ria-texte">
-  <?= Markdown::html((string) $resume['contenu']) ?>
-</section>
+<?php
+/*
+ * Des flash cards (genre « questions ») : une carte par paire, à retourner d'un clic. Un ancien résumé de ce
+ * genre, resté en prose, ou un modèle qui n'a pas suivi le format : ni cartes ni paquet, le texte s'affiche tel quel.
+ */
+$cartes = ResumeIa::cartesDe($resume);
+$coursDuPaquet = array_values(array_filter($sources, static fn ($s): bool => (int) ($s['id'] ?? 0) > 0));
+?>
+<?php if ($cartes !== null): ?>
+  <section class="carte">
+    <h2><?= e(tn('ria.cartes_titre', count($cartes))) ?></h2>
+    <p class="champ__aide"><?= e(t('ria.carte.retourner')) ?></p>
+    <div class="flashcards">
+      <?php foreach ($cartes as $carte): ?>
+        <button type="button" class="flashcard" data-flashcard aria-pressed="false">
+          <span class="flashcard__face" data-recto>
+            <small class="flashcard__etiquette"><?= e(t('ria.carte.question')) ?></small>
+            <?= e($carte['question']) ?>
+          </span>
+          <span class="flashcard__face flashcard__face--verso" data-verso hidden>
+            <small class="flashcard__etiquette"><?= e(t('ria.carte.reponse')) ?></small>
+            <?= e($carte['reponse']) ?>
+          </span>
+        </button>
+      <?php endforeach; ?>
+    </div>
+
+    <?php if ($coursDuPaquet !== []): ?>
+      <form method="post" action="<?= url('resumes/' . $id . '/cartes') ?>" class="fabrique__form"<?= $envoi ?>>
+        <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
+        <?php if (count($coursDuPaquet) === 1): ?>
+          <input type="hidden" name="cours" value="<?= (int) $coursDuPaquet[0]['id'] ?>">
+        <?php else: ?>
+          <div class="champ">
+            <label for="cours_paquet"><?= e(t('ria.cartes_vers')) ?></label>
+            <select id="cours_paquet" name="cours">
+              <?php foreach ($coursDuPaquet as $c): ?>
+                <option value="<?= (int) $c['id'] ?>"><?= e((string) $c['cours']) ?></option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+        <?php endif; ?>
+        <p class="champ__aide"><?= e(t('ria.cartes_aide')) ?></p>
+        <button class="bouton bouton--secondaire" type="submit"><?= e(t('ria.cartes_ajouter')) ?><?php if (count($coursDuPaquet) === 1): ?> — <?= e((string) $coursDuPaquet[0]['cours']) ?><?php endif; ?></button>
+      </form>
+    <?php endif; ?>
+  </section>
+<?php else: ?>
+  <section class="carte ria-texte">
+    <?= Markdown::html((string) $resume['contenu']) ?>
+  </section>
+<?php endif; ?>
 <p class="champ__aide"><?= e(t('ria.avertissement_ia')) ?></p>
 
 <?php if ($sources !== []): ?>

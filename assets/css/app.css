@@ -4009,3 +4009,18 @@ summary.cal-volet__groupe:focus-visible {
 .ria-texte ul, .ria-texte ol { margin: .4rem 0 .8rem; padding-left: 1.4rem; }
 .ria-texte li { margin: .2rem 0; }
 .ria-texte code { background: var(--fond-doux); padding: .05rem .3rem; border-radius: 4px; }
+
+/* Les flash cards d'un résumé : une carte par question, qui se retourne d'un clic. */
+.flashcards { display: grid; grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); gap: .8rem; margin: .8rem 0 1.2rem; }
+.flashcard {
+  text-align: left; min-height: 7.5rem; padding: .9rem 1rem; font: inherit; line-height: 1.45; cursor: pointer;
+  color: var(--texte); background: var(--fond-carte); border: 1px solid var(--bordure-forte); border-radius: var(--rayon);
+  box-shadow: var(--ombre); transition: border-color .12s, background .12s;
+}
+.flashcard:hover { border-color: var(--accent); }
+.flashcard:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.flashcard[aria-pressed="true"] { background: var(--accent-doux); border-color: var(--accent); }
+.flashcard__face { display: block; }
+.flashcard__etiquette { display: block; margin-bottom: .35rem; font-size: .68rem; letter-spacing: .05em; text-transform: uppercase; color: var(--texte-doux); }
+/* « hidden » doit l'emporter sur « display: block » ci-dessus : sans cela, les deux faces d'une carte s'affichent. */
+.flashcard__face[hidden] { display: none; }

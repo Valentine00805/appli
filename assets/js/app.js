@@ -4223,6 +4223,19 @@
   });
 
   /*
+   * Une flash card (« data-flashcard ») montre sa question ; un clic la retourne sur sa réponse, un second la
+   * remet. Écouté sur le document : les cartes d'une fenêtre ouverte après coup se retournent aussi.
+   */
+  document.addEventListener("click", function (evenement) {
+    var carte = evenement.target.closest && evenement.target.closest("[data-flashcard]");
+    if (!carte) { return; }
+    var retournee = carte.getAttribute("aria-pressed") !== "true";
+    carte.setAttribute("aria-pressed", retournee ? "true" : "false");
+    carte.querySelector("[data-recto]").hidden = retournee;
+    carte.querySelector("[data-verso]").hidden = !retournee;
+  });
+
+  /*
    * Un lien « data-ouvrir-auto » est cliqué tout seul au chargement : le résumé qui vient d'être écrit
    * s'ouvre en fenêtre par-dessus la liste. Un tour d'horloge d'attente : la fenêtre écoute les clics sur
    * le document, et doit avoir fini de s'installer. Sans script, le lien reste affiché, à cliquer.

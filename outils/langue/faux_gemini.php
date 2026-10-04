@@ -60,7 +60,7 @@ switch (true) {
         break;
     case str_starts_with($cle, 'cle-sans-questions'):
         // En panne pour les questions de révision seulement : une série dont un genre manque.
-        if (str_contains((string) (json_decode($corps, true)['systemInstruction']['parts'][0]['text'] ?? ''), 'questions de révision')) {
+        if (str_contains((string) (json_decode($corps, true)['systemInstruction']['parts'][0]['text'] ?? ''), 'flash cards')) {
             $erreur(503, 'UNAVAILABLE', 'The model is overloaded.');
         }
         break;
@@ -78,6 +78,7 @@ switch (true) {
     case str_starts_with($cle, 'cle-vide'):
         echo json_encode(['promptFeedback' => ['blockReason' => 'SAFETY']]);
         exit;
+    case str_starts_with($cle, 'cle-sans-json'):
     case str_starts_with($cle, 'cle-bonne'):
     case str_starts_with($cle, 'cle-wav'):
         break;
@@ -100,6 +101,19 @@ if ($voix) {
         $mime = 'audio/wav';
     }
     echo json_encode(['candidates' => [['content' => ['parts' => [['inlineData' => ['mimeType' => $mime, 'data' => base64_encode($octets)]]]]]]]);
+    exit;
+}
+
+// Le mode JSON (responseSchema) : trois flash cards, dont une paire vide qu'il faut écarter — sauf pour la clé
+// « cle-sans-json », qui répond en prose comme un modèle qui n'aurait pas suivi le format.
+$demande = json_decode($corps, true);
+if (($demande['generationConfig']['responseMimeType'] ?? '') === 'application/json' && !str_starts_with($cle, 'cle-sans-json')) {
+    echo json_encode(['candidates' => [['content' => ['parts' => [['text' => json_encode([
+        ['question' => 'Que protège le chiffrement ?', 'reponse' => 'La confidentialité des données.'],
+        ['question' => '   ', 'reponse' => 'Une paire sans question.'],
+        ['question' => 'Que fait un pare-feu ?', 'reponse' => 'Il filtre le trafic <b>réseau</b>.'],
+        ['question' => 'Qu’est-ce que la défense en profondeur ?', 'reponse' => 'Superposer plusieurs protections.'],
+    ], JSON_UNESCAPED_UNICODE)]]]]]]);
     exit;
 }
 

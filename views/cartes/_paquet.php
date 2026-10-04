@@ -20,6 +20,7 @@ $provenance = static function (array $c): string {
         'fichier' => $c['source'] !== ''
             ? t('crt.venue_fichier', ['nom' => $c['source']])
             : t('crt.venue_document'),
+        'ia'      => t('crt.venue_ia'),
         default   => t('crt.ecrite_main'),
     };
 };

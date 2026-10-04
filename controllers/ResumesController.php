@@ -125,12 +125,17 @@ final class ResumesController
             $echecs = [];
             foreach ($genres as $genre) {
                 try {
-                    [$texte, $modele] = Gemini::texte($cle, ResumeIa::consigne($genre, $longueur, $langue), $contenu);
+                    // Des flash cards se demandent en JSON (une liste de paires) ; le reste, en prose.
+                    [$texte, $modele] = Gemini::texte($cle, ResumeIa::consigne($genre, $longueur, $langue), $contenu,
+                        $genre === 'questions' ? ResumeIa::schemaCartes() : null);
+                    if ($genre === 'questions' && ($cartes = ResumeIa::cartesDepuis($texte)) !== null) {
+                        $texte = json_encode($cartes, JSON_UNESCAPED_UNICODE);   // propre, plafonné, sans paire vide
+                    }
                     $son = null;
                     $sonErreur = null;
                     if ($avecAudio) {
                         try {
-                            $son = self::sonDe($cle, $texte, $voix, $limite);
+                            $son = self::sonDe($cle, ResumeIa::aLire(['genre' => $genre, 'contenu' => $texte]), $voix, $limite);
                         } catch (GeminiErreur $e) {
                             $sonErreur = $e;
                         }
@@ -249,14 +254,14 @@ final class ResumesController
         }
         $voix = in_array($_POST['voix'] ?? '', Gemini::VOIX, true) ? (string) $_POST['voix'] : Gemini::VOIX[0];
 
-        $texte = Markdown::brut((string) $resume['contenu']);
+        $texte = ResumeIa::aLire($resume);
         if (ResumeIa::morceauxDeVoix($texte) === []) {
             Session::flash('erreur', t('ria.fl.rien_a_lire'));
             redirect('resumes/' . $id);
         }
 
         try {
-            [$pcm, $frequence] = $this->sansVerrou(static fn (): array => self::sonDe($cle, (string) $resume['contenu'], $voix, time() + 280));
+            [$pcm, $frequence] = $this->sansVerrou(static fn (): array => self::sonDe($cle, $texte, $voix, time() + 280));
         } catch (GeminiErreur $e) {
             Session::flash('erreur', $this->messageDErreur($e));
             redirect('resumes/' . $id);
@@ -279,6 +284,58 @@ final class ResumesController
         redirect('resumes/' . $id);
     }
 
+    /**
+     * Verse les flash cards d'un résumé dans le paquet de révision d'un des cours qu'il a lus.
+     *
+     * Le cours vient du résumé lui-même (jamais d'un numéro libre) : un résumé ne range ses cartes que chez les
+     * cours dont il est tiré. Une question que le paquet a déjà est passée sans bruit, comme partout ailleurs.
+     */
+    public function versLesCartes(int $id): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $userId = Auth::id();
+        $resume = $this->resume($id, $userId);
+
+        $cartes = ResumeIa::cartesDe($resume);
+        $sources = (array) (json_decode((string) $resume['sources'], true) ?? []);
+        $coursId = entier_ou_null($_POST['cours'] ?? null);
+        $cours = null;
+        foreach ($sources as $source) {
+            if ($coursId !== null && (int) ($source['id'] ?? 0) === $coursId) {
+                $cours = $source;
+            }
+        }
+        if ($cartes === null || $cours === null
+            || Database::valeur('SELECT id FROM cours WHERE id = ? AND user_id = ?', [$coursId, $userId]) === null) {
+            Session::flash('erreur', t('ria.fl.cartes_impossible'));
+            redirect('resumes/' . $id);
+        }
+
+        $ajoutees = 0;
+        foreach ($cartes as $carte) {
+            try {
+                Database::run(
+                    'INSERT INTO cartes (user_id, cours_id, question, reponse, origine, source, empreinte, revoir_le)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, CURDATE())',
+                    [$userId, $coursId, $carte['question'], $carte['reponse'], 'ia',
+                     mb_substr((string) $resume['titre'], 0, 255), GenerateurCartes::empreinte($carte['question'])]
+                );
+                $ajoutees++;
+            } catch (PDOException $e) {
+                // 23000 : la question existe déjà pour ce cours. Ce n'est pas un incident.
+                if ($e->getCode() !== '23000') {
+                    throw $e;
+                }
+            }
+        }
+
+        Session::flash($ajoutees > 0 ? 'succes' : 'info', $ajoutees > 0
+            ? tn('ria.fl.cartes_ajoutees', $ajoutees, ['cours' => (string) $cours['cours']])
+            : t('ria.fl.cartes_deja'));
+        redirect('resumes/' . $id);
+    }
+
     /** Efface un résumé, et sa voix. */
     public function supprimer(int $id): void
     {
@@ -292,15 +349,15 @@ final class ResumesController
     }
 
     /**
-     * Lit un texte (Markdown) à voix haute, morceau par morceau.
+     * Lit un texte à voix haute (déjà débarrassé de sa mise en forme : voir ResumeIa::aLire), morceau par morceau.
      *
      * @return array{0: string, 1: int}  le son brut (PCM 16 bits mono) et sa fréquence
      * @throws GeminiErreur  « delai » si la limite de temps est passée avant la fin : un son coupé en route
      *                       serait pire que pas de son
      */
-    private static function sonDe(string $cle, string $markdown, string $voix, int $limite): array
+    private static function sonDe(string $cle, string $aLire, string $voix, int $limite): array
     {
-        $morceaux = ResumeIa::morceauxDeVoix(Markdown::brut($markdown));
+        $morceaux = ResumeIa::morceauxDeVoix($aLire);
         if ($morceaux === []) {
             throw new GeminiErreur('Rien à lire.', 'vide');
         }

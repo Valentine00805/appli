@@ -40,16 +40,23 @@ final class Gemini
     /**
      * Écrit un texte.
      *
+     * Avec un schéma, Gemini rend du JSON de cette forme (mode « responseSchema ») au lieu de prose : de quoi
+     * obtenir des fiches question/réponse sans avoir à deviner où finit l'une et où commence l'autre.
+     *
+     * @param array<string, mixed>|null $schema  le schéma JSON attendu, ou null pour du texte libre
      * @return array{0: string, 1: string}  le texte, et le modèle qui l'a écrit
      * @throws GeminiErreur
      */
-    public static function texte(string $cle, string $consigne, string $contenu): array
+    public static function texte(string $cle, string $consigne, string $contenu, ?array $schema = null): array
     {
         $corps = [
             'systemInstruction' => ['parts' => [['text' => $consigne]]],
             'contents' => [['role' => 'user', 'parts' => [['text' => $contenu]]]],
             'generationConfig' => ['temperature' => 0.4],
         ];
+        if ($schema !== null) {
+            $corps['generationConfig'] += ['responseMimeType' => 'application/json', 'responseSchema' => $schema];
+        }
 
         return self::essayer($cle, self::modeles('modele_texte', self::MODELES_TEXTE), $corps,
             static function (array $reponse): string {
