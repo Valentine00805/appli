@@ -133,7 +133,7 @@ try {
     [$fragment] = $appel($a, 'resumes/' . $idResume . '?fenetre=1');
     $dire('  demandé en fenêtre, c’est un fragment : pas de menu, pas de lien de retour, formulaires faits pour la fenêtre',
         $oui(!str_contains($fragment, '<header class="entete"') && !str_contains($fragment, 'Tous les résumés')
-            && str_contains($fragment, 'data-large') && substr_count($fragment, 'data-envoi-fenetre') === 2
+            && str_contains($fragment, 'data-large') && substr_count($fragment, 'data-envoi-fenetre') === 3
             && str_contains($fragment, '<strong>gras</strong>') && str_contains($fragment, '&lt;script&gt;')), 'oui');
     $dire('  appelé directement, c’est la page entière, avec son lien de retour',
         $oui(str_contains($r, '<header class="entete"') && str_contains($r, 'Tous les résumés') && !str_contains($r, 'data-envoi-fenetre')), 'oui');
@@ -265,6 +265,51 @@ try {
         $oui(!str_contains($page, 'data-flashcard') && str_contains($page, 'ria-texte') && !str_contains($page, 'resumes/' . $fc['id'] . '/cartes')), 'oui');
     $nettoyerFc();
     $appel($a, 'compte/gemini', ['_csrf' => $csrf, 'cle_gemini' => 'cle-bonne-0123456789abcdef']);
+
+    echo "\n5 quater. Verser un résumé dans la fiche de révision\n";
+    $ficheAvant = (string) bd_valeur('SELECT fiche_revision FROM cours WHERE id = ?', [$coursA]);
+    $dejaLaF = array_column(bd_all('SELECT id FROM resumes_ia WHERE user_id = ?', [$idA]), 'id');
+    [$r, $url] = $appel($a, 'resumes/generer', ['_csrf' => $csrf, 'cours' => [$coursA], 'genres' => ['points']]);
+    $idF = $idOuvert($url);
+    [$page] = $appel($a, 'resumes/' . $idF);
+    $dire('un résumé en prose propose « Ajouter à ma fiche de révision » (le cours est nommé, sans choix à faire)',
+        $oui(str_contains($page, 'Ajouter à ma fiche de révision — Cyber') && preg_match('/action="[^"]*\/resumes\/' . $idF . '\/fiche"/', $page) === 1), 'oui');
+    [$r] = $appel($a, 'resumes/' . $idF . '/fiche', ['_csrf' => $csrf, 'cours' => $coursA]);
+    $fiche = (string) bd_valeur('SELECT fiche_revision FROM cours WHERE id = ?', [$coursA]);
+    $dire('ajouté : la fiche devient mise en forme, garde son texte d’avant et reçoit le résumé sous son titre',
+        $oui(str_starts_with($fiche, '<!--riche-->') && str_contains($fiche, 'penser à la défense en profondeur')
+            && str_contains($fiche, '<h2>Points clés — Cyber</h2>') && str_contains($fiche, '<li>Modèle : gemini-3.8-flash</li>')
+            && str_contains($r, 'Ajouté à la fiche de révision de « Cyber »')), 'oui');
+    $dire('  rien d’exécutable ne passe : le script glissé dans le texte reste du texte',
+        $oui(!str_contains($fiche, '<script') && str_contains($fiche, '&lt;script&gt;')), 'oui');
+    [$r] = $appel($a, 'resumes/' . $idF . '/fiche', ['_csrf' => $csrf, 'cours' => $coursA]);
+    $dire('  une seconde fois : rien n’est doublé, et on le dit',
+        $oui(bd_valeur('SELECT fiche_revision FROM cours WHERE id = ?', [$coursA]) === $fiche && str_contains($r, 'déjà dans la fiche de révision')), 'oui');
+    [$feuille] = $appel($a, 'revision/' . $coursA);
+    $dire('  la fiche du cours la montre', $oui(str_contains($feuille, 'Points clés — Cyber')), 'oui');
+    [, , $code] = $appel($b, 'resumes/' . $idF . '/fiche', ['_csrf' => $jeton((string) $appel($b, 'resumes')[0]), 'cours' => $coursB]);
+    $dire('  un autre compte ne peut pas', $code . ' · ' . $oui(bd_valeur('SELECT fiche_revision FROM cours WHERE id = ?', [$coursB]) === null), '404 · oui');
+    [$r] = $appel($a, 'resumes/' . $idF . '/fiche', ['_csrf' => $csrf, 'cours' => $coursB]);
+    $dire('  ni écrire dans la fiche d’un cours que le résumé n’a pas lu',
+        $oui(str_contains($r, 'Impossible d’ajouter ce texte à une fiche') && bd_valeur('SELECT fiche_revision FROM cours WHERE id = ?', [$coursB]) === null), 'oui');
+    bd_run('UPDATE cours SET fiche_revision = ? WHERE id = ?', [$ficheAvant === '' ? null : $ficheAvant, $coursA]);
+    [$r] = $appel($a, 'resumes/' . $idF . '/fiche', ['_csrf' => $csrf, 'cours' => $coursA]);
+    $dire('  une fiche qui n’existait pas encore se crée avec le résumé', $oui(str_starts_with((string) bd_valeur('SELECT fiche_revision FROM cours WHERE id = ?', [$coursA]), '<!--riche-->')), 'oui');
+    bd_run('UPDATE cours SET fiche_revision = ? WHERE id = ?', [$ficheAvant === '' ? null : $ficheAvant, $coursA]);
+    bd_run('UPDATE cours SET fiche_revision = NULL WHERE id = ?', [$coursA]);
+    [$r] = $appel($a, 'resumes/' . $idF . '/fiche', ['_csrf' => $csrf, 'cours' => $coursA]);
+    $dire('  et sur une fiche vide, sans ligne blanche en tête', $oui(str_starts_with((string) bd_valeur('SELECT fiche_revision FROM cours WHERE id = ?', [$coursA]), '<!--riche--><h2>')), 'oui');
+    bd_run('UPDATE cours SET fiche_revision = ? WHERE id = ?', [$ficheAvant === '' ? null : $ficheAvant, $coursA]);
+    $appel($a, 'resumes/generer', ['_csrf' => $csrf, 'cours' => [$coursA], 'genres' => ['questions']]);
+    $tousF = array_values(array_filter(bd_all('SELECT id, genre FROM resumes_ia WHERE user_id = ? ORDER BY id', [$idA]), static fn (array $x): bool => !in_array($x['id'], $dejaLaF, false)));
+    $cartesF = end($tousF);
+    [$pageCartes] = $appel($a, 'resumes/' . $cartesF['id']);
+    $dire('  des flash cards n’ont pas ce bouton (elles ont leur propre chemin : le paquet de cartes)',
+        $oui(!str_contains($pageCartes, '/fiche"') && str_contains($pageCartes, '/cartes"')), 'oui');
+    foreach (bd_all('SELECT id FROM resumes_ia WHERE user_id = ?', [$idA]) as $l) {
+        if (!in_array($l['id'], $dejaLaF, false)) { bd_run('DELETE FROM resumes_ia WHERE id = ?', [$l['id']]); }
+    }
+    bd_run('DELETE FROM cartes WHERE user_id = ?', [$idA]);
 
     echo "\n6. La voix\n";
     [$r] = $appel($a, 'resumes/' . $idResume);

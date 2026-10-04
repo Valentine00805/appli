@@ -336,6 +336,63 @@ final class ResumesController
         redirect('resumes/' . $id);
     }
 
+    /**
+     * Ajoute le texte d'un résumé (ou de points clés) à la fiche de révision d'un des cours qu'il a lus.
+     *
+     * Il se met à la suite de la fiche, sous un titre, sans rien effacer de ce qui y est : une fiche en texte brut
+     * devient une fiche mise en forme, mot pour mot. Le tout repasse par le même crible que n'importe quel texte
+     * de l'éditeur. Le cours vient du résumé lui-même, jamais d'un numéro libre ; un texte déjà dans la fiche
+     * n'y est pas remis une seconde fois.
+     */
+    public function versLaFiche(int $id): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $userId = Auth::id();
+        $resume = $this->resume($id, $userId);
+
+        $coursId = entier_ou_null($_POST['cours'] ?? null);
+        $cours = null;
+        foreach ((array) (json_decode((string) $resume['sources'], true) ?? []) as $source) {
+            if ($coursId !== null && (int) ($source['id'] ?? 0) === $coursId) {
+                $cours = $source;
+            }
+        }
+        $fiche = $coursId === null ? null : Database::valeur(
+            'SELECT COALESCE(fiche_revision, \'\') FROM cours WHERE id = ? AND user_id = ?', [$coursId, $userId]);
+        // Des flash cards ont leur propre chemin (le paquet de cartes) : la fiche reçoit du texte, pas du JSON.
+        if ($cours === null || $fiche === null || ResumeIa::cartesDe($resume) !== null) {
+            Session::flash('erreur', t('ria.fl.fiche_impossible'));
+            redirect('resumes/' . $id);
+        }
+        $fiche = (string) $fiche;
+
+        // Déjà dedans ? Comparé sans mise en forme, sans ponctuation ni casse : l'éditeur a pu tout reformater.
+        $empreinte = static fn (string $t): string => (string) preg_replace('/[^\p{L}\p{N}]+/u', '', mb_strtolower($t));
+        $debut = $empreinte(mb_substr(Markdown::brut((string) $resume['contenu']), 0, 300));
+        if ($debut !== '' && str_contains($empreinte(TexteRiche::versTexte($fiche)), $debut)) {
+            Session::flash('info', t('ria.fl.fiche_deja', ['cours' => (string) $cours['cours']]));
+            redirect('resumes/' . $id);
+        }
+
+        $base = TexteRiche::pourEditeur($fiche);
+        if (!TexteRiche::estRiche($base)) {
+            $lignes = trim($base) === '' ? [] : (preg_split('/\R/u', trim($base)) ?: []);
+            $base = TexteRiche::MARQUE . implode('', array_map(
+                static fn (string $l): string => '<div>' . (trim($l) === '' ? '<br>' : htmlspecialchars($l, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')) . '</div>', $lignes));
+        }
+        $ajout = (trim(strip_tags($base)) === '' ? '' : '<div><br></div>')
+            . '<h2>' . htmlspecialchars((string) $resume['titre'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</h2>'
+            . Markdown::html((string) $resume['contenu']);
+        $nouvelle = TexteRiche::depuisFormulaire($base . $ajout);
+
+        Database::run('UPDATE cours SET fiche_revision = ? WHERE id = ? AND user_id = ?', [$nouvelle, $coursId, $userId]);
+        Partages::suivreTexte($userId, 'fiche', (int) $coursId, $fiche, $nouvelle);
+
+        Session::flash('succes', t('ria.fl.fiche_ajoutee', ['cours' => (string) $cours['cours']]));
+        redirect('resumes/' . $id);
+    }
+
     /** Efface un résumé, et sa voix. */
     public function supprimer(int $id): void
     {

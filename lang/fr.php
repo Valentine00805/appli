@@ -4205,4 +4205,10 @@ return [
     'ria.fl.cartes_deja' => 'Ces questions sont déjà dans le paquet : rien n’a été ajouté.',
     'ria.fl.cartes_impossible' => 'Impossible d’ajouter ces cartes : choisissez un des cours que ce résumé a lus.',
     'crt.venue_ia' => 'écrite par l’IA',
+    'ria.fiche_ajouter' => 'Ajouter à ma fiche de révision',
+    'ria.fiche_vers' => 'Fiche du cours',
+    'ria.fiche_aide' => 'Le texte est ajouté à la suite de la fiche du cours, sous son titre, sans rien effacer : vous pourrez ensuite le retoucher.',
+    'ria.fl.fiche_ajoutee' => 'Ajouté à la fiche de révision de « {cours} ».',
+    'ria.fl.fiche_deja' => 'Ce texte est déjà dans la fiche de révision de « {cours} » : rien n’a été ajouté.',
+    'ria.fl.fiche_impossible' => 'Impossible d’ajouter ce texte à une fiche : choisissez un des cours que ce résumé a lus.',
 ];

@@ -4193,4 +4193,10 @@ return [
     'ria.fl.cartes_deja' => 'Estas preguntas ya están en el mazo: no se ha añadido nada.',
     'ria.fl.cartes_impossible' => 'No se pueden añadir estas tarjetas: elige uno de los cursos de los que se ha escrito este resumen.',
     'crt.venue_ia' => 'escrita por la IA',
+    'ria.fiche_ajouter' => 'Añadir a mi ficha de repaso',
+    'ria.fiche_vers' => 'Ficha del curso',
+    'ria.fiche_aide' => 'El texto se añade al final de la ficha del curso, bajo su título, sin borrar nada: después podrás retocarlo.',
+    'ria.fl.fiche_ajoutee' => 'Añadido a la ficha de repaso de «{cours}».',
+    'ria.fl.fiche_deja' => 'Este texto ya está en la ficha de repaso de «{cours}»: no se ha añadido nada.',
+    'ria.fl.fiche_impossible' => 'No se puede añadir este texto a una ficha: elige uno de los cursos de los que se ha escrito este resumen.',
 ];

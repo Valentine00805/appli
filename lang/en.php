@@ -4193,4 +4193,10 @@ return [
     'ria.fl.cartes_deja' => 'These questions are already in the deck: nothing was added.',
     'ria.fl.cartes_impossible' => 'These cards cannot be added: choose one of the courses this summary was written from.',
     'crt.venue_ia' => 'written by the AI',
+    'ria.fiche_ajouter' => 'Add to my revision sheet',
+    'ria.fiche_vers' => 'Sheet of the course',
+    'ria.fiche_aide' => 'The text is added at the end of the course’s sheet, under its title, without erasing anything: you can edit it afterwards.',
+    'ria.fl.fiche_ajoutee' => 'Added to the revision sheet of “{cours}”.',
+    'ria.fl.fiche_deja' => 'This text is already in the revision sheet of “{cours}”: nothing was added.',
+    'ria.fl.fiche_impossible' => 'This text cannot be added to a sheet: choose one of the courses this summary was written from.',
 ];

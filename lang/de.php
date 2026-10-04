@@ -4193,4 +4193,10 @@ return [
     'ria.fl.cartes_deja' => 'Diese Fragen sind schon im Stapel: es wurde nichts hinzugefügt.',
     'ria.fl.cartes_impossible' => 'Diese Karten können nicht hinzugefügt werden: wähle einen der Kurse, aus denen diese Zusammenfassung stammt.',
     'crt.venue_ia' => 'von der KI geschrieben',
+    'ria.fiche_ajouter' => 'Zu meinem Lernblatt hinzufügen',
+    'ria.fiche_vers' => 'Lernblatt des Kurses',
+    'ria.fiche_aide' => 'Der Text wird unter seinem Titel ans Ende des Lernblatts des Kurses gehängt, ohne etwas zu löschen: du kannst ihn danach bearbeiten.',
+    'ria.fl.fiche_ajoutee' => 'Zum Lernblatt von „{cours}“ hinzugefügt.',
+    'ria.fl.fiche_deja' => 'Dieser Text steht schon im Lernblatt von „{cours}“: es wurde nichts hinzugefügt.',
+    'ria.fl.fiche_impossible' => 'Dieser Text kann keinem Lernblatt hinzugefügt werden: wähle einen der Kurse, aus denen diese Zusammenfassung stammt.',
 ];

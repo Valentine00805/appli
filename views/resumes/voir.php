@@ -79,6 +79,29 @@ $coursDuPaquet = array_values(array_filter($sources, static fn ($s): bool => (in
   <section class="carte ria-texte">
     <?= Markdown::html((string) $resume['contenu']) ?>
   </section>
+
+  <?php if ($coursDuPaquet !== []): ?>
+    <?php // Le texte peut rejoindre la fiche de révision d'un des cours lus (à la suite de ce qui y est déjà). ?>
+    <section class="carte">
+      <form method="post" action="<?= url('resumes/' . $id . '/fiche') ?>" class="fabrique__form"<?= $envoi ?>>
+        <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
+        <?php if (count($coursDuPaquet) === 1): ?>
+          <input type="hidden" name="cours" value="<?= (int) $coursDuPaquet[0]['id'] ?>">
+        <?php else: ?>
+          <div class="champ">
+            <label for="cours_fiche"><?= e(t('ria.fiche_vers')) ?></label>
+            <select id="cours_fiche" name="cours">
+              <?php foreach ($coursDuPaquet as $c): ?>
+                <option value="<?= (int) $c['id'] ?>"><?= e((string) $c['cours']) ?></option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+        <?php endif; ?>
+        <p class="champ__aide"><?= e(t('ria.fiche_aide')) ?></p>
+        <button class="bouton bouton--secondaire" type="submit"><?= e(t('ria.fiche_ajouter')) ?><?php if (count($coursDuPaquet) === 1): ?> — <?= e((string) $coursDuPaquet[0]['cours']) ?><?php endif; ?></button>
+      </form>
+    </section>
+  <?php endif; ?>
 <?php endif; ?>
 <p class="champ__aide"><?= e(t('ria.avertissement_ia')) ?></p>
 
