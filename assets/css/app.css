@@ -3026,7 +3026,7 @@ summary.cal-volet__groupe:focus-visible {
 .jour-planning {
   --heure: 3.4rem;
   --colonne-heures: 3.6rem;
-  background: var(--carte, #fff);
+  background: var(--fond-carte, #fff);
   border: 1px solid var(--bordure, #e2e8f0);
   border-radius: 12px;
   overflow: hidden;
@@ -3093,7 +3093,7 @@ summary.cal-volet__groupe:focus-visible {
   right: .45rem;
   font-size: .7rem;
   color: var(--texte-doux, #64748b);
-  background: var(--carte, #fff);
+  background: var(--fond-carte, #fff);
   padding: 0 .15rem;
 }
 .jour-planning__heure:first-child span { top: .15rem; }
@@ -3165,7 +3165,7 @@ summary.cal-volet__groupe:focus-visible {
   padding: .2rem .4rem;
   border-radius: 6px;
   border-left: 3px solid var(--teinte, #94a3b8);
-  background: color-mix(in srgb, var(--teinte, #94a3b8) 14%, var(--carte, #fff));
+  background: color-mix(in srgb, var(--teinte, #94a3b8) 14%, var(--fond-carte, #fff));
   color: inherit;
   text-decoration: none;
   font-size: .78rem;
@@ -3173,7 +3173,7 @@ summary.cal-volet__groupe:focus-visible {
   z-index: 2;
 }
 .jour-planning__evt:hover {
-  background: color-mix(in srgb, var(--teinte, #94a3b8) 26%, var(--carte, #fff));
+  background: color-mix(in srgb, var(--teinte, #94a3b8) 26%, var(--fond-carte, #fff));
 }
 .jour-planning__evt:focus-visible {
   outline: 2px solid var(--accent, #4f46e5);
@@ -3222,7 +3222,7 @@ summary.cal-volet__groupe:focus-visible {
   --heure: 3.1rem;
   --colonne-heures: 3.4rem;
   --jour-mini: 6.5rem;
-  background: var(--carte, #fff);
+  background: var(--fond-carte, #fff);
   border: 1px solid var(--bordure, #e2e8f0);
   border-radius: 12px;
   overflow: hidden;
