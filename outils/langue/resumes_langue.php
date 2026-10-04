@@ -88,13 +88,13 @@ try {
         $oui(strpos($page, 'est envoyé à Google') !== false && strpos($page, 'est envoyé à Google') < strpos($page, '>Générer</button>')), 'oui');
     $dire('  mes cours sont proposés, pas ceux d’un autre',
         $oui(str_contains($page, 'Cyber') && !str_contains($page, 'Cours secret de B')), 'oui');
-    $dire('  trois genres, trois longueurs',
-        $oui(substr_count($page, 'name="genre"') === 3 && str_contains($page, 'Questions de révision') && str_contains($page, '>Détaillé</option>')), 'oui');
+    $dire('  trois genres à cocher (le premier d’avance), trois longueurs',
+        $oui(substr_count($page, 'name="genres[]"') === 3 && substr_count($page, 'type="radio"') === 0 && substr_count($page, 'name="genres[]" value="resume" checked') === 1 && str_contains($page, 'Questions de révision') && str_contains($page, '>Détaillé</option>')), 'oui');
     [$r] = $appel($a, 'resumes?cours=' . $coursA);
     $dire('  ?cours=… coche le cours d’avance', $oui(preg_match('/value="' . $coursA . '"\s+data-choix-cours checked/', $r) === 1), 'oui');
 
     echo "\n3. Des demandes refusées\n";
-    [$r] = $appel($a, 'resumes/generer', ['_csrf' => $csrf, 'genre' => 'resume']);
+    [$r] = $appel($a, 'resumes/generer', ['_csrf' => $csrf, 'genres' => ['resume']]);
     $dire('aucun cours coché', $oui(str_contains($r, 'Choisissez au moins un cours')), 'oui');
     [$r] = $appel($a, 'resumes/generer', ['_csrf' => $csrf, 'cours' => [$coursB]]);
     $dire('  le cours de quelqu’un d’autre est ignoré (jamais lu, jamais envoyé)',
@@ -103,7 +103,7 @@ try {
     $dire('  sans jeton CSRF', $code . ' · ' . $nbResumes($idA), '400 · 0');
 
     echo "\n4. Écrire un résumé\n";
-    [$r, $url] = $appel($a, 'resumes/generer', ['_csrf' => $csrf, 'cours' => [$coursA], 'genre' => 'points', 'longueur' => 'court']);
+    [$r, $url] = $appel($a, 'resumes/generer', ['_csrf' => $csrf, 'cours' => [$coursA], 'genres' => ['points'], 'longueur' => 'court']);
     $idResume = (int) basename(parse_url($url, PHP_URL_PATH));
     $ligne = bd_all('SELECT * FROM resumes_ia WHERE id = ?', [$idResume])[0] ?? [];
     $dire('on arrive sur la page du résumé, un seul enregistrement',
@@ -129,11 +129,11 @@ try {
 
     echo "\n5. Choisir les documents d’un cours\n";
     $avant = $nbResumes($idA);
-    [$r] = $appel($a, 'resumes/generer', ['_csrf' => $csrf, 'cours' => [$coursA], 'sources' => ['fiche'], 'genre' => 'resume']);
+    [$r] = $appel($a, 'resumes/generer', ['_csrf' => $csrf, 'cours' => [$coursA], 'sources' => ['fiche'], 'genres' => ['resume']]);
     $corps = json_encode($dernier()['corps'] ?? [], JSON_UNESCAPED_UNICODE);
     $dire('« la fiche » seule : le cours n’est pas envoyé',
         $oui(str_contains($corps, 'défense en profondeur') && !str_contains($corps, 'Le chiffrement protège')) . ' · ' . ($nbResumes($idA) - $avant), 'oui · 1');
-    [$r] = $appel($a, 'resumes/generer', ['_csrf' => $csrf, 'cours' => [$coursA], 'sources' => ['cours'], 'genre' => 'questions', 'longueur' => 'long']);
+    [$r] = $appel($a, 'resumes/generer', ['_csrf' => $csrf, 'cours' => [$coursA], 'sources' => ['cours'], 'genres' => ['questions'], 'longueur' => 'long']);
     $corps = json_encode($dernier()['corps'] ?? [], JSON_UNESCAPED_UNICODE);
     $dire('  « le cours » seul, en questions détaillées',
         $oui(str_contains($corps, 'Le chiffrement protège') && !str_contains($corps, 'défense en profondeur') && str_contains($corps, '20 questions')), 'oui');
@@ -141,6 +141,29 @@ try {
     [$r] = $appel($a, 'resumes/generer', ['_csrf' => $csrf, 'cours' => [$coursA]]);
     $dire('  un cours sans rien à lire : on le dit, on n’appelle pas Gemini', $oui(str_contains($r, 'Rien à lire dans ce qui est coché')), 'oui');
     bd_run('UPDATE cours SET contenu = ?, fiche_revision = ? WHERE id = ?', ["Le chiffrement protège la confidentialité des données.\n\nUn pare-feu filtre le trafic.", 'Fiche : penser à la défense en profondeur.', $coursA]);
+
+    echo "\n5 bis. Plusieurs genres d’un coup\n";
+    $avant = $nbResumes($idA);
+    $dejaLa = array_column(bd_all('SELECT id FROM resumes_ia WHERE user_id = ?', [$idA]), 'id');
+    [$r, $url] = $appel($a, 'resumes/generer', ['_csrf' => $csrf, 'cours' => [$coursA], 'genres' => ['points', 'questions'], 'longueur' => 'court']);
+    $nouveaux = bd_all('SELECT id, genre FROM resumes_ia WHERE user_id = ? ORDER BY id', [$idA]);
+    $nouveaux = array_values(array_filter($nouveaux, static fn (array $l): bool => !in_array($l['id'], $dejaLa, false)));
+    $dire('« points clés » et « questions » cochés : deux résumés, un de chaque genre',
+        ($nbResumes($idA) - $avant) . ' · ' . implode(',', array_column($nouveaux, 'genre')), '2 · points,questions');
+    $dire('  on arrive sur la liste, qui les montre et dit « 2 résumés écrits »',
+        $oui(parse_url($url, PHP_URL_PATH) === '/mon_appli/appli/resumes' && str_contains($r, '2 résumés écrits')
+            && substr_count($r, 'Points clés — Cyber') >= 2 && str_contains($r, 'Questions de révision — Cyber')), 'oui');
+    $dire('  chacun a sa consigne : le dernier appel demandait des questions', $oui(str_contains((string) ($dernier()['corps']['systemInstruction']['parts'][0]['text'] ?? ''), '5 questions de révision')), 'oui');
+    [$r, $url] = $appel($a, 'resumes/generer', ['_csrf' => $csrf, 'cours' => [$coursA]]);
+    $encore = bd_all('SELECT id, genre FROM resumes_ia WHERE user_id = ? ORDER BY id DESC LIMIT 1', [$idA])[0] ?? [];
+    $dire('  aucun genre coché : un résumé simple, par défaut', ($encore['genre'] ?? '?') . ' · ' . $oui(str_contains($url, '/resumes/' . ($encore['id'] ?? 0))), 'resume · oui');
+    bd_run('DELETE FROM resumes_ia WHERE user_id = ? AND id IN (' . implode(',', array_map('intval', array_merge(array_column($nouveaux, 'id'), [$encore['id'] ?? 0]))) . ')', [$idA]);
+    $appel($a, 'compte/gemini', ['_csrf' => $csrf, 'cle_gemini' => 'cle-quota-0123456789abcdef']);
+    $avant = $nbResumes($idA);
+    [$r] = $appel($a, 'resumes/generer', ['_csrf' => $csrf, 'cours' => [$coursA], 'genres' => ['resume', 'points', 'questions']]);
+    $dire('  limite atteinte dès le premier : on s’arrête là, un seul message, rien d’écrit',
+        $oui(str_contains($r, 'Limite de la clé gratuite atteinte') && substr_count($r, 'Limite de la clé gratuite atteinte') === 1) . ' · ' . ($nbResumes($idA) - $avant), 'oui · 0');
+    $appel($a, 'compte/gemini', ['_csrf' => $csrf, 'cle_gemini' => 'cle-bonne-0123456789abcdef']);
 
     echo "\n6. La voix\n";
     [$r] = $appel($a, 'resumes/' . $idResume);

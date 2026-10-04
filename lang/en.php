@@ -4118,7 +4118,7 @@ return [
     'ria.confidentialite' => '⚠️ The text of the ticked documents is sent to Google (Gemini) to be summarised. With a free key, Google may use it to improve its products: do not tick personal documents (CV, certificates, agreements…) or other people’s data.',
     'ria.en_cours' => 'Writing… this can take a minute.',
     'ria.cours' => 'Courses to summarise',
-    'ria.genre' => 'What I want',
+    'ria.genre' => 'What I want (one or more)',
     'ria.genre.resume' => 'Summary',
     'ria.genre.resume_aide' => 'a continuous text',
     'ria.genre.points' => 'Key points',
@@ -4166,4 +4166,6 @@ return [
     'ria.err.refus' => 'Gemini refused to process this content.',
     'ria.err.vide' => 'Gemini returned nothing. Try again.',
     'ria.err.autre' => 'Gemini answered with an error: {detail}',
+    'ria.fl.ecrits.un' => 'Summary written.',
+    'ria.fl.ecrits.plusieurs' => '{n} summaries written.',
 ];

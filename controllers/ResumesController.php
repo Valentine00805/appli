@@ -82,7 +82,11 @@ final class ResumesController
         if ($parts === []) {
             $parts = ['cours', 'fiche', 'documents'];
         }
-        $genre = in_array($_POST['genre'] ?? '', ResumeIa::GENRES, true) ? (string) $_POST['genre'] : 'resume';
+        // Un ou plusieurs genres, dans l'ordre de la page ; rien de coché, c'est un résumé.
+        $genres = array_values(array_intersect(ResumeIa::GENRES, array_map('strval', (array) ($_POST['genres'] ?? []))));
+        if ($genres === []) {
+            $genres = ['resume'];
+        }
         $longueur = in_array($_POST['longueur'] ?? '', ResumeIa::LONGUEURS, true) ? (string) $_POST['longueur'] : 'moyen';
 
         $lu = ResumeIa::rassembler($userId, $ids, $parts, $this->documentsRetenus($ids));
@@ -95,31 +99,55 @@ final class ResumesController
         }
 
         $langue = Langue::courante();
-        $consigne = ResumeIa::consigne($genre, $longueur, $langue);
         $contenu = ResumeIa::contenu($lu['blocs']);
 
-        try {
-            [$texte, $modele] = $this->sansVerrou(static fn (): array => Gemini::texte($cle, $consigne, $contenu));
-        } catch (GeminiErreur $e) {
-            Session::flash('erreur', $this->messageDErreur($e));
-            redirect('resumes');
-        }
+        /*
+         * Un appel par genre, un après l'autre. Une clé refusée ou une limite atteinte arrête tout : les
+         * suivants échoueraient de la même façon. Une autre panne n'empêche pas les genres restants.
+         */
+        [$ecrits, $erreur] = $this->sansVerrou(static function () use ($cle, $genres, $longueur, $langue, $contenu): array {
+            $ecrits = [];
+            $erreur = null;
+            foreach ($genres as $genre) {
+                try {
+                    [$texte, $modele] = Gemini::texte($cle, ResumeIa::consigne($genre, $longueur, $langue), $contenu);
+                    $ecrits[] = [$genre, $texte, $modele];
+                } catch (GeminiErreur $e) {
+                    $erreur = $e;
+                    if (in_array($e->nature, ['cle', 'quota'], true)) {
+                        break;
+                    }
+                }
+            }
+
+            return [$ecrits, $erreur];
+        });
 
         $noms = array_column($lu['sources'], 'cours');
-        $titre = t('ria.genre.' . $genre) . ' — ' . (count($noms) === 1 ? $noms[0] : tn('ria.n_cours', count($noms)));
-        Database::run(
-            'INSERT INTO resumes_ia (user_id, titre, genre, longueur, langue, sources, contenu, modele)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-            [$userId, mb_substr($titre, 0, 190), $genre, $longueur, $langue,
-             json_encode($lu['sources'], JSON_UNESCAPED_UNICODE), $texte, $modele]
-        );
-        $id = (int) Database::dernierId();
+        $ids = [];
+        foreach ($ecrits as [$genre, $texte, $modele]) {
+            $titre = t('ria.genre.' . $genre) . ' — ' . (count($noms) === 1 ? $noms[0] : tn('ria.n_cours', count($noms)));
+            Database::run(
+                'INSERT INTO resumes_ia (user_id, titre, genre, longueur, langue, sources, contenu, modele)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+                [$userId, mb_substr($titre, 0, 190), $genre, $longueur, $langue,
+                 json_encode($lu['sources'], JSON_UNESCAPED_UNICODE), $texte, $modele]
+            );
+            $ids[] = Database::dernierId();
+        }
 
+        if ($erreur !== null) {
+            Session::flash('erreur', $this->messageDErreur($erreur));
+        }
+        if ($ids === []) {
+            redirect('resumes');
+        }
         if ($lu['tronque']) {
             Session::flash('info', t('ria.fl.tronque'));
         }
-        Session::flash('succes', t('ria.fl.ecrit'));
-        redirect('resumes/' . $id);
+        Session::flash('succes', tn('ria.fl.ecrits', count($ids)));
+        // Un seul : on l'ouvre. Plusieurs : la liste, où ils sont tous.
+        redirect(count($ids) === 1 ? 'resumes/' . $ids[0] : 'resumes');
     }
 
     /** Un résumé : son texte, ses sources, sa voix. */

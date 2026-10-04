@@ -4118,7 +4118,7 @@ return [
     'ria.confidentialite' => '⚠️ El texto de los documentos marcados se envía a Google (Gemini) para resumirlo. Con una clave gratuita, Google puede usarlo para mejorar sus productos: no marques documentos personales (CV, certificados, convenios…) ni datos de otras personas.',
     'ria.en_cours' => 'Escribiendo… puede tardar un minuto.',
     'ria.cours' => 'Cursos que resumir',
-    'ria.genre' => 'Lo que quiero',
+    'ria.genre' => 'Lo que quiero (uno o varios)',
     'ria.genre.resume' => 'Resumen',
     'ria.genre.resume_aide' => 'un texto seguido',
     'ria.genre.points' => 'Puntos clave',
@@ -4166,4 +4166,6 @@ return [
     'ria.err.refus' => 'Gemini se ha negado a procesar este contenido.',
     'ria.err.vide' => 'Gemini no ha devuelto nada. Vuelve a intentarlo.',
     'ria.err.autre' => 'Gemini ha respondido con un error: {detail}',
+    'ria.fl.ecrits.un' => 'Resumen escrito.',
+    'ria.fl.ecrits.plusieurs' => '{n} resúmenes escritos.',
 ];

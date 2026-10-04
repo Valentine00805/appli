@@ -75,7 +75,7 @@ $pret = $cleConfiguree && $cleFin !== null;
         <legend><?= e(t('ria.genre')) ?></legend>
         <?php foreach ($genres as $rang => $genre): ?>
           <label class="sources__choix">
-            <input type="radio" name="genre" value="<?= e($genre) ?>" <?= $rang === 0 ? 'checked' : '' ?>>
+            <input type="checkbox" name="genres[]" value="<?= e($genre) ?>" <?= $rang === 0 ? 'checked' : '' ?>>
             <span><?= e(t('ria.genre.' . $genre)) ?>
               <span class="discret"><?= e(t('ria.genre.' . $genre . '_aide')) ?></span></span>
           </label>

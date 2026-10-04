@@ -4130,7 +4130,7 @@ return [
     'ria.confidentialite' => '⚠️ Le texte des documents cochés est envoyé à Google (Gemini) pour être résumé. Avec une clé gratuite, Google peut s’en servir pour améliorer ses produits : ne cochez pas de documents personnels (CV, attestations, conventions…) ni de données d’autres personnes.',
     'ria.en_cours' => 'Écriture en cours… cela peut prendre une minute.',
     'ria.cours' => 'Cours à résumer',
-    'ria.genre' => 'Ce que je veux',
+    'ria.genre' => 'Ce que je veux (un ou plusieurs)',
     'ria.genre.resume' => 'Résumé',
     'ria.genre.resume_aide' => 'un texte suivi',
     'ria.genre.points' => 'Points clés',
@@ -4178,4 +4178,6 @@ return [
     'ria.err.refus' => 'Gemini a refusé de traiter ce contenu.',
     'ria.err.vide' => 'Gemini n’a rien rendu. Réessayez.',
     'ria.err.autre' => 'Gemini a répondu par une erreur : {detail}',
+    'ria.fl.ecrits.un' => 'Résumé écrit.',
+    'ria.fl.ecrits.plusieurs' => '{n} résumés écrits.',
 ];

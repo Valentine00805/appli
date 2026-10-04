@@ -4118,7 +4118,7 @@ return [
     'ria.confidentialite' => '⚠️ Der Text der angekreuzten Dokumente wird zum Zusammenfassen an Google (Gemini) gesendet. Mit einem kostenlosen Schlüssel darf Google ihn zur Verbesserung seiner Produkte nutzen: kreuze keine persönlichen Dokumente (Lebenslauf, Bescheinigungen, Verträge …) und keine Daten anderer Personen an.',
     'ria.en_cours' => 'Wird geschrieben … das kann eine Minute dauern.',
     'ria.cours' => 'Zu zusammenfassende Kurse',
-    'ria.genre' => 'Was ich möchte',
+    'ria.genre' => 'Was ich möchte (eines oder mehrere)',
     'ria.genre.resume' => 'Zusammenfassung',
     'ria.genre.resume_aide' => 'ein zusammenhängender Text',
     'ria.genre.points' => 'Kernpunkte',
@@ -4166,4 +4166,6 @@ return [
     'ria.err.refus' => 'Gemini hat die Verarbeitung dieses Inhalts abgelehnt.',
     'ria.err.vide' => 'Gemini hat nichts zurückgegeben. Versuche es erneut.',
     'ria.err.autre' => 'Gemini hat mit einem Fehler geantwortet: {detail}',
+    'ria.fl.ecrits.un' => 'Zusammenfassung geschrieben.',
+    'ria.fl.ecrits.plusieurs' => '{n} Zusammenfassungen geschrieben.',
 ];
