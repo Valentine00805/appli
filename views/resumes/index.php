@@ -9,8 +9,10 @@
  * @var ?int $choisi             un cours à cocher d'avance
  * @var array $historique        les résumés déjà écrits
  * @var ?array $aOuvrir          le résumé qui vient d'être écrit, à ouvrir aussitôt
+ * @var array $cartesMentales    ses cartes mentales (elles se retrouvent aussi dans la fiche de chaque cours)
  */
-$genres = ['resume', 'points', 'questions'];
+// La carte mentale n'est pas un résumé : elle se range dans la fiche du cours, mais se demande ici, avec les autres.
+$genres = [...ResumeIa::GENRES, 'carte'];
 $longueurs = ['court', 'moyen', 'long'];
 $pret = $cleConfiguree && $cleFin !== null;
 ?>
@@ -115,6 +117,51 @@ $pret = $cleConfiguree && $cleFin !== null;
 
       <button class="bouton" type="submit"><?= e(t('ria.generer')) ?></button>
     </form>
+  <?php endif; ?>
+</section>
+
+<?php
+/*
+ * Une carte mentale à remplir soi-même : pas de clé, pas d'IA. Elle part de l'idée centrale (le titre du cours) et se
+ * range, comme les autres, dans la fiche de révision de ce cours.
+ */
+?>
+<?php if ($cours !== []): ?>
+  <section class="carte">
+    <h2><?= e(t('cm.vierge_titre')) ?></h2>
+    <p class="champ__aide"><?= e(t('cm.vierge_aide')) ?></p>
+    <form method="post" action="<?= url('cartes-mentales') ?>" class="fabrique__form">
+      <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
+      <div class="champ">
+        <label for="cours_vierge"><?= e(t('ria.cours')) ?></label>
+        <select id="cours_vierge" name="cours">
+          <?php foreach ($cours as $c): ?>
+            <option value="<?= (int) $c['id'] ?>" <?= $choisi === (int) $c['id'] ? 'selected' : '' ?>><?= e($c['titre']) ?></option>
+          <?php endforeach; ?>
+        </select>
+      </div>
+      <button class="bouton bouton--secondaire" type="submit"><?= e(t('cm.nouvelle')) ?></button>
+    </form>
+  </section>
+<?php endif; ?>
+
+<section class="carte">
+  <h2><?= e(t('cm.titre_liste')) ?></h2>
+  <?php if ($cartesMentales === []): ?>
+    <p class="discret"><?= e(t('cm.aucune_liste')) ?></p>
+  <?php else: ?>
+    <ul class="ria-liste">
+      <?php foreach ($cartesMentales as $cm): ?>
+        <li>
+          <a href="<?= url('cartes-mentales/' . (int) $cm['id']) ?>"><strong><?= e($cm['titre']) ?></strong></a>
+          <span class="discret">
+            — <a href="<?= url('revision/' . (int) $cm['cours_id']) ?>"><?= e($cm['cours_titre']) ?></a>
+            · <?= e(date_fr((string) $cm['updated_at'])) ?>
+            <?php if ((int) $cm['ia'] === 1): ?> · <?= e(t('cm.ia_badge')) ?><?php endif; ?>
+          </span>
+        </li>
+      <?php endforeach; ?>
+    </ul>
   <?php endif; ?>
 </section>
 

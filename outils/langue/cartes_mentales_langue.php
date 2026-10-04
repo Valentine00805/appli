@@ -82,18 +82,22 @@ try {
     $csrf = $jeton($fiche);
 
     echo "\n1. La fiche, sans carte et sans clé\n";
-    $dire('la fiche a son rayon « Cartes mentales », vide, avec « Nouvelle carte mentale »',
+    $dire('la fiche a son rayon « Cartes mentales », vide, avec un lien vers « Résumés IA » (on y crée, ici on retrouve)',
         $oui(str_contains($fiche, 'data-cartes-mentales') && str_contains($fiche, 'Aucune carte mentale pour ce cours.')
-            && str_contains($fiche, 'Nouvelle carte mentale')), 'oui');
-    $dire('  sans clé Gemini : pas de bouton IA, un lien vers « Mon compte »',
-        $oui(!str_contains($fiche, '/cartes-mentales/ia"') && !str_contains($fiche, 'Générer avec l’IA') && str_contains($fiche, '/compte#gemini')), 'oui');
-    [, , $code] = $appel($a, 'revision/' . $coursA . '/cartes-mentales/ia', ['_csrf' => $csrf]);
-    [$r] = $appel($a, 'revision/' . $coursA);
-    $dire('  et même en forçant l’adresse : « Il faut d’abord enregistrer votre clé », rien d’écrit',
+            && str_contains($fiche, '/resumes?cours=' . $coursA)), 'oui');
+    $dire('  et aucun bouton de création dans la fiche',
+        $oui(!str_contains($fiche, 'Nouvelle carte mentale') && !str_contains($fiche, 'Générer avec l’IA')), 'oui');
+    [$resumes] = $appel($a, 'resumes');
+    $dire('« Résumés IA » propose la carte vierge (sans clé) et la liste de ses cartes, vide',
+        $oui(str_contains($resumes, 'Une carte mentale à remplir soi-même') && str_contains($resumes, 'action="/mon_appli/appli/cartes-mentales"')
+            && str_contains($resumes, 'Aucune carte mentale pour l’instant.')), 'oui');
+    $dire('  sans clé : pas de case « Carte mentale » (le formulaire d’écriture n’y est pas)', $oui(!str_contains($resumes, 'value="carte"')), 'oui');
+    [$r] = $appel($a, 'resumes/generer', ['_csrf' => $csrf, 'cours' => [$coursA], 'genres' => ['carte']]);
+    $dire('  et même en forçant la demande : « Il faut d’abord enregistrer votre clé », rien d’écrit',
         $oui(str_contains($r, 'enregistrer votre clé Gemini')) . ' · ' . $nbCartes($coursA), 'oui · 0');
 
-    echo "\n2. Créer une carte à la main\n";
-    [$r, $url] = $appel($a, 'revision/' . $coursA . '/cartes-mentales', ['_csrf' => $csrf]);
+    echo "\n2. Créer une carte vierge (depuis « Résumés IA »)\n";
+    [$r, $url] = $appel($a, 'cartes-mentales', ['_csrf' => $csrf, 'cours' => $coursA]);
     $id = $idCarte($url);
     $dire('on arrive dans l’éditeur de la nouvelle carte, qui dit qu’elle est créée',
         $oui($id > 0 && str_contains($r, 'Carte mentale créée.') && str_contains($r, 'data-carte-mentale')) . ' · ' . $nbCartes($coursA), 'oui · 1');
@@ -174,22 +178,24 @@ try {
     $dire('  ne la modifie pas', $code . ' · ' . ($arbreDe($id)['t'] ?? '?'), '404 · centre');
     [, , $code] = $appel($b, 'cartes-mentales/' . $id . '/supprimer', ['_csrf' => $csrfB]);
     $dire('  ne la supprime pas', $code . ' · ' . $nbCartes($coursA), '404 · 1');
-    [, , $code] = $appel($b, 'revision/' . $coursA . '/cartes-mentales', ['_csrf' => $csrfB]);
+    [, , $code] = $appel($b, 'cartes-mentales', ['_csrf' => $csrfB, 'cours' => $coursA]);
     $dire('  n’en crée pas dans le cours d’un autre', $code . ' · ' . $nbCartes($coursA), '404 · 1');
-    [, , $code] = $appel($b, 'revision/' . $coursA . '/cartes-mentales/ia', ['_csrf' => $csrfB]);
-    $dire('  ni n’en demande à l’IA', $code . ' · ' . $nbCartes($coursA), '404 · 1');
-
-    echo "\n6. La carte écrite par l’IA\n";
+    $appel($b, 'compte/gemini', ['_csrf' => $csrfB, 'cle_gemini' => 'cle-bonne-0123456789abcdef']);
+    $appel($b, 'resumes/generer', ['_csrf' => $csrfB, 'cours' => [$coursA], 'genres' => ['carte']]);
+    $dire('  ni n’en demande à l’IA pour le cours d’un autre (même avec une clé)',
+        $nbCartes($coursA) . ' · ' . bd_valeur('SELECT COUNT(*) FROM cartes_mentales WHERE user_id = ?', [$idB]), '1 · 0');
+    echo "\n6. Les cartes écrites par l’IA (depuis « Résumés IA »)\n";
     $appel($a, 'compte/gemini', ['_csrf' => $csrf, 'cle_gemini' => 'cle-bonne-0123456789abcdef']);
-    [$fiche] = $appel($a, 'revision/' . $coursA);
-    $dire('avec une clé : « Générer avec l’IA », et la phrase qui dit que rien ne part avant le bouton',
-        $oui(str_contains($fiche, 'Générer avec l’IA') && str_contains($fiche, 'Rien n’est envoyé avant que tu appuies')
-            && str_contains($fiche, '/cartes-mentales/ia"')), 'oui');
-    [$r, $url] = $appel($a, 'revision/' . $coursA . '/cartes-mentales/ia', ['_csrf' => $jeton($fiche)]);
+    [$resumes] = $appel($a, 'resumes');
+    $dire('avec une clé : la case « Carte mentale » parmi les genres, et ce que la carte devient',
+        $oui(str_contains($resumes, 'value="carte"') && str_contains($resumes, 'rangée dans sa fiche de révision')), 'oui');
+    $nbResumes = static fn (): int => (int) bd_valeur('SELECT COUNT(*) FROM resumes_ia WHERE user_id = ?', [$idA]);
+    [$r, $url] = $appel($a, 'resumes/generer', ['_csrf' => $csrf, 'cours' => [$coursA], 'genres' => ['carte']]);
     $idIa = $idCarte($url);
     $ia = $arbreDe($idIa);
-    $dire('on arrive dans l’éditeur de la carte, « écrite par l’IA », à relire',
-        $oui($idIa > 0 && $idIa !== $id && str_contains($r, 'écrite par l’IA') && str_contains($r, 'relis-la et corrige-la')) . ' · ' . $nbCartes($coursA), 'oui · 2');
+    $dire('une carte seule : on arrive dans son éditeur, « écrite par l’IA », à relire, sans résumé écrit',
+        $oui($idIa > 0 && $idIa !== $id && str_contains($r, 'écrite par l’IA') && str_contains($r, 'relis-la et corrige-la'))
+        . ' · ' . $nbCartes($coursA) . ' · ' . $nbResumes(), 'oui · 2 · 0');
     $dire('  l’idée centrale, 3 branches, et leurs sous-branches et détails',
         ($ia['t'] ?? '?') . ' · ' . count($ia['c'] ?? []) . ' · ' . count($ia['c'][0]['c'] ?? []) . ' · ' . ($ia['c'][0]['c'][0]['c'][0]['t'] ?? '?'),
         'Cybersécurité · 3 · 2 · Clé secrète');
@@ -206,22 +212,41 @@ try {
         ($envoye['corps']['generationConfig']['responseMimeType'] ?? '') === 'application/json'
         && ($envoye['corps']['generationConfig']['responseSchema']['type'] ?? '') === 'OBJECT'), 'oui');
     [$fiche] = $appel($a, 'revision/' . $coursA);
-    $dire('  la fiche liste les deux cartes, la seconde marquée « écrite par l’IA »',
+    $dire('  la fiche de révision liste les deux cartes, la seconde marquée « écrite par l’IA »',
         $oui(str_contains($fiche, '/cartes-mentales/' . $idIa . '"') && str_contains($fiche, '/cartes-mentales/' . $id . '"')
             && substr_count($fiche, 'écrite par l’IA') === 1), 'oui');
+    [$resumes] = $appel($a, 'resumes');
+    $dire('  et « Résumés IA » les liste aussi, avec leur cours',
+        $oui(str_contains($resumes, '/cartes-mentales/' . $idIa . '"') && str_contains($resumes, '/revision/' . $coursA . '"')), 'oui');
+
+    // Un résumé ET une carte dans la même demande ; puis deux cours à la fois.
+    $avant = [$nbResumes(), $nbCartes($coursA)];
+    [, $url] = $appel($a, 'resumes/generer', ['_csrf' => $csrf, 'cours' => [$coursA], 'genres' => ['points', 'carte']]);
+    $dire('un résumé ET une carte : le résumé s’ouvre (liste), la carte est rangée dans la fiche du cours',
+        $oui(str_contains($url, '/resumes?ouvrir=')) . ' · ' . ($nbResumes() - $avant[0]) . ' · ' . ($nbCartes($coursA) - $avant[1]), 'oui · 1 · 1');
+    bd_run('INSERT INTO cours (user_id, titre, contenu) VALUES (?, ?, ?)', [$idA, 'Réseaux', 'Un cours sur les réseaux.']);
+    $coursR = (int) bd_valeur('SELECT id FROM cours WHERE user_id = ? AND titre = ?', [$idA, 'Réseaux']);
+    $avant = [$nbResumes(), $nbCartes($coursA), $nbCartes($coursR)];
+    [$r, $url] = $appel($a, 'resumes/generer', ['_csrf' => $csrf, 'cours' => [$coursA, $coursR], 'genres' => ['carte']]);
+    $dire('deux cours cochés : une carte par cours, chacune dans sa fiche, et on revient à la liste',
+        ($nbCartes($coursA) - $avant[1]) . ' · ' . ($nbCartes($coursR) - $avant[2]) . ' · ' . ($nbResumes() - $avant[0]) . ' · '
+        . $oui(!str_contains($url, 'ouvrir=') && str_contains($r, '2 cartes mentales écrites par l’IA')), '1 · 1 · 0 · oui');
+    $recu = json_encode($dernier()['corps'] ?? [], JSON_UNESCAPED_UNICODE);
+    $dire('  chaque carte est écrite à partir de son cours seul (le dernier appel ne contient pas l’autre cours)',
+        $oui(str_contains($recu, 'réseaux') && !str_contains($recu, 'Le chiffrement protège')), 'oui');
+    bd_run('DELETE FROM cours WHERE id = ? AND user_id = ?', [$coursR, $idA]);
+    bd_run('DELETE FROM cartes_mentales WHERE cours_id = ? AND id NOT IN (?, ?)', [$coursA, $id, $idIa]);
+    bd_run('DELETE FROM resumes_ia WHERE user_id = ?', [$idA]);
 
     $appel($a, 'compte/gemini', ['_csrf' => $csrf, 'cle_gemini' => 'cle-sans-json-0123456789abc']);
-    [$fiche] = $appel($a, 'revision/' . $coursA);
-    [$r] = $appel($a, 'revision/' . $coursA . '/cartes-mentales/ia', ['_csrf' => $jeton($fiche)]);
-    $dire('un modèle qui répond en prose : « pas de carte exploitable », rien d’écrit',
-        $oui(str_contains($r, 'n’a pas rendu de carte exploitable')) . ' · ' . $nbCartes($coursA), 'oui · 2');
+    [$r] = $appel($a, 'resumes/generer', ['_csrf' => $csrf, 'cours' => [$coursA], 'genres' => ['carte']]);
+    $dire('un modèle qui répond en prose : « pas de carte exploitable pour Cyber », rien d’écrit',
+        $oui(str_contains($r, 'n’a pas rendu de carte exploitable pour « Cyber »')) . ' · ' . $nbCartes($coursA), 'oui · 2');
     $appel($a, 'compte/gemini', ['_csrf' => $csrf, 'cle_gemini' => 'cle-mauvaise-0123456789abc']);
-    [$fiche] = $appel($a, 'revision/' . $coursA);
-    [$r] = $appel($a, 'revision/' . $coursA . '/cartes-mentales/ia', ['_csrf' => $jeton($fiche)]);
+    [$r] = $appel($a, 'resumes/generer', ['_csrf' => $csrf, 'cours' => [$coursA], 'genres' => ['carte']]);
     $dire('une clé refusée par Google : le message de la clé, rien d’écrit',
         $oui(str_contains($r, 'refusée') || str_contains($r, 'clé')) . ' · ' . $nbCartes($coursA), 'oui · 2');
     $appel($a, 'compte/gemini', ['_csrf' => $csrf, 'cle_gemini' => 'cle-bonne-0123456789abcdef']);
-
     echo "\n7. Supprimer\n";
     [$r] = $appel($a, 'cartes-mentales/' . $idIa);
     [$r, $url] = $appel($a, 'cartes-mentales/' . $idIa . '/supprimer', ['_csrf' => $jeton($r)]);
@@ -234,17 +259,24 @@ try {
 
     echo "\n8. Les quatre langues\n";
     foreach ([
-        'en' => ['Mind maps', 'No mind map for this course yet.', 'New mind map', 'Generate with AI'],
-        'es' => ['Mapas mentales', 'Aún no hay mapas mentales para este curso.', 'Nuevo mapa mental', 'Generar con la IA'],
-        'de' => ['Mindmaps', 'Noch keine Mindmap für diesen Kurs.', 'Neue Mindmap', 'Mit KI erstellen'],
-        'fr' => ['Cartes mentales', 'Aucune carte mentale pour ce cours.', 'Nouvelle carte mentale', 'Générer avec l’IA'],
-    ] as $langue => $mots) {
+        'en' => [['Mind maps', 'No mind map for this course yet.', 'Create a mind map in “AI summaries” →'],
+                 ['A mind map to fill in yourself', 'filed in its revision sheet', 'New mind map']],
+        'es' => [['Mapas mentales', 'Aún no hay mapas mentales para este curso.', 'Crear un mapa mental en «Resúmenes con IA» →'],
+                 ['Un mapa mental para rellenar tú mismo', 'guardado en su ficha de repaso', 'Nuevo mapa mental']],
+        'de' => [['Mindmaps', 'Noch keine Mindmap für diesen Kurs.', 'Eine Mindmap unter „KI-Zusammenfassungen“ erstellen →'],
+                 ['Eine Mindmap zum Selbstausfüllen', 'abgelegt in seinem Lernblatt', 'Neue Mindmap']],
+        'fr' => [['Cartes mentales', 'Aucune carte mentale pour ce cours.', 'Créer une carte mentale dans « Résumés IA » →'],
+                 ['Une carte mentale à remplir soi-même', 'rangée dans sa fiche de révision', 'Nouvelle carte mentale']],
+    ] as $langue => [$motsFiche, $motsResumes]) {
         $appel($a, 'compte/langue', ['_csrf' => $csrf, 'langue' => $langue]);
         bd_run('DELETE FROM cartes_mentales WHERE cours_id = ?', [$coursA]);   // chaque langue repart d'un rayon vide
         [$fiche] = $appel($a, 'revision/' . $coursA);
-        $dire("$langue : le rayon de la fiche, son message vide et ses deux boutons",
-            $oui(array_reduce($mots, static fn (bool $ok, string $m): bool => $ok && str_contains($fiche, $m), true)), 'oui');
-        [$r, $url] = $appel($a, 'revision/' . $coursA . '/cartes-mentales', ['_csrf' => $jeton($fiche)]);
+        $dire("$langue : le rayon de la fiche, son message vide et son lien vers « Résumés »",
+            $oui(array_reduce($motsFiche, static fn (bool $ok, string $m): bool => $ok && str_contains($fiche, $m), true)), 'oui');
+        [$resumes] = $appel($a, 'resumes');
+        $dire("$langue : « Résumés » — la case du genre, la carte vierge et son bouton",
+            $oui(array_reduce($motsResumes, static fn (bool $ok, string $m): bool => $ok && str_contains($resumes, $m), true)), 'oui');
+        [$r, $url] = $appel($a, 'cartes-mentales', ['_csrf' => $jeton($resumes), 'cours' => $coursA]);
         $idL = $idCarte($url);
         $dire("$langue : l’éditeur parle la langue (retour, titre, boutons, aide, phrases du script)",
             $oui(str_contains($r, 'data-cm-action="enfant"') && $idL > 0
@@ -260,7 +292,7 @@ try {
     bd_run('DELETE FROM cartes_mentales WHERE cours_id = ?', [$coursA]);   // celle de la dernière langue
     $appel($a, 'compte/langue', ['_csrf' => $csrf, 'langue' => 'fr']);
     [$fiche] = $appel($a, 'revision/' . $coursA);
-    [$r, $url] = $appel($a, 'revision/' . $coursA . '/cartes-mentales', ['_csrf' => $jeton($fiche)]);
+    [$r, $url] = $appel($a, 'cartes-mentales', ['_csrf' => $csrf, 'cours' => $coursA]);
     $idS = $idCarte($url);
     $enregistrer($a, $idS, $jeton($r), ['t' => 'Centre', 'c' => [['t' => 'Branche', 'c' => [['t' => 'Détail', 'c' => []]], 'p' => 1]]], 'Sauvée');
     $h = curl_init('http://localhost/mon_appli/appli/compte/sauvegarde/export');

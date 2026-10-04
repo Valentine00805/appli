@@ -50,6 +50,12 @@ final class ResumesController
                  ORDER BY COALESCE(m.nom, \'￿\'), c.titre',
                 [$userId]
             ),
+            'cartesMentales' => Database::all(
+                'SELECT cm.id, cm.titre, cm.ia, cm.updated_at, c.id AS cours_id, c.titre AS cours_titre
+                   FROM cartes_mentales cm JOIN cours c ON c.id = cm.cours_id
+                  WHERE cm.user_id = ? ORDER BY cm.updated_at DESC, cm.id DESC LIMIT ' . self::HISTORIQUE_MAX,
+                [$userId]
+            ),
             'historique'    => Database::all(
                 'SELECT id, titre, genre, longueur, created_at, audio_nom IS NOT NULL AS a_audio
                    FROM resumes_ia WHERE user_id = ? ORDER BY created_at DESC, id DESC LIMIT ' . self::HISTORIQUE_MAX,
@@ -89,9 +95,13 @@ final class ResumesController
         if ($parts === []) {
             $parts = ['cours', 'fiche', 'documents'];
         }
-        // Un ou plusieurs genres, dans l'ordre de la page ; rien de coché, c'est un résumé.
-        $genres = array_values(array_intersect(ResumeIa::GENRES, array_map('strval', (array) ($_POST['genres'] ?? []))));
-        if ($genres === []) {
+        // Un ou plusieurs genres, dans l'ordre de la page ; rien de coché, c'est un résumé. La carte mentale n'est pas
+        // un résumé : elle se range dans la fiche du cours (une par cours coché), et se demande à part.
+        $demandes = array_map('strval', (array) ($_POST['genres'] ?? []));
+        $genres = array_values(array_intersect(ResumeIa::GENRES, $demandes));
+        $avecCarte = in_array('carte', $demandes, true);
+        // Rien d'autre de coché : un résumé simple — sauf si la carte mentale est la seule demande (l'audio, lui, lit un résumé).
+        if ($genres === [] && (!$avecCarte || !empty($_POST['audio']))) {
             $genres = ['resume'];
         }
         $longueur = in_array($_POST['longueur'] ?? '', ResumeIa::LONGUEURS, true) ? (string) $_POST['longueur'] : 'moyen';
@@ -152,6 +162,7 @@ final class ResumesController
             return [$ecrits, $echecs];
         });
 
+        $coursIds = $ids;
         $noms = array_column($lu['sources'], 'cours');
         $ids = [];
         $sons = 0;
@@ -193,11 +204,82 @@ final class ResumesController
                 'detail' => $e->nature === 'delai' ? '' : $this->messageDErreur($e),
             ]));
         }
+
+        // Les cartes mentales : une par cours coché, rangée dans sa fiche de révision.
+        $cartesIds = $avecCarte ? $this->ecrireLesCartes($userId, $cle, $coursIds, $parts, $langue) : [];
+
+        if ($ids === [] && count($cartesIds) === 1) {
+            // Une seule carte et rien d'autre : on l'ouvre, à relire (elle est listée dans la fiche du cours).
+            redirect('cartes-mentales/' . $cartesIds[0]);
+        }
         if ($ids === []) {
             redirect('resumes');
         }
         // Un seul : la liste l'ouvre aussitôt dans une fenêtre. Plusieurs : la liste, où ils sont tous.
         redirect('resumes', count($ids) === 1 ? ['ouvrir' => $ids[0]] : []);
+    }
+
+    /**
+     * Demande à Gemini la carte mentale de chaque cours coché, lue seule : chaque carte appartient à un cours, et
+     * c'est dans la fiche de ce cours qu'on la retrouve. Une clé refusée ou une limite atteinte arrête tout ; une
+     * autre panne n'empêche pas les cours suivants. Dit à l'utilisateur ce qui a été fait, et ce qui a manqué.
+     *
+     * @param list<int> $coursIds
+     * @param list<string> $parts
+     * @return list<int> les cartes écrites
+     */
+    private function ecrireLesCartes(int $userId, string $cle, array $coursIds, array $parts, string $langue): array
+    {
+        $documents = $this->documentsRetenus($coursIds);
+        [$faites, $echecs] = $this->sansVerrou(static function () use ($userId, $cle, $coursIds, $parts, $documents, $langue): array {
+            $faites = [];
+            $echecs = [];
+            foreach ($coursIds as $coursId) {
+                $lu = ResumeIa::rassembler($userId, [$coursId], $parts, $documents);
+                if ($lu['blocs'] === []) {
+                    continue;
+                }
+                $titreCours = (string) $lu['sources'][0]['cours'];
+                try {
+                    [$texte, ] = Gemini::texte($cle, CarteMentale::consigne($langue), ResumeIa::contenu($lu['blocs']), CarteMentale::schemaIa());
+                } catch (GeminiErreur $e) {
+                    $echecs[$titreCours] = $e;
+                    if (in_array($e->nature, ['cle', 'quota'], true)) {
+                        break;
+                    }
+                    continue;
+                }
+                $arbre = CarteMentale::depuisIa($texte, $titreCours);
+                if ($arbre === null) {
+                    $echecs[$titreCours] = null;
+                    continue;
+                }
+                $faites[] = [$coursId, $arbre];
+            }
+
+            return [$faites, $echecs];
+        });
+
+        $ids = [];
+        foreach ($faites as [$coursId, $arbre]) {
+            Database::run(
+                'INSERT INTO cartes_mentales (user_id, cours_id, titre, arbre, ia) VALUES (?, ?, ?, ?, 1)',
+                [$userId, $coursId, CarteMentale::titre('', $arbre), json_encode($arbre, JSON_UNESCAPED_UNICODE)]
+            );
+            $ids[] = Database::dernierId();
+        }
+        if ($ids !== []) {
+            Session::flash('succes', tn('cm.fl.ia_creees', count($ids)));
+        }
+        foreach ($echecs as $cours => $e) {
+            Session::flash('erreur', $e === null
+                ? t('cm.fl.ia_vide', ['cours' => (string) $cours])
+                : (in_array($e->nature, ['cle', 'quota'], true)
+                    ? $this->messageDErreur($e)
+                    : t('cm.fl.echec_cours', ['cours' => (string) $cours, 'detail' => $this->messageDErreur($e)])));
+        }
+
+        return $ids;
     }
 
     /** Un résumé : son texte, ses sources, sa voix. */
@@ -574,7 +656,7 @@ final class ResumesController
     }
 
     /** Fait quelque chose de long sans tenir la session : les autres onglets restent libres. */
-    public function sansVerrou(callable $travail): mixed
+    private function sansVerrou(callable $travail): mixed
     {
         @set_time_limit(600);
         session_write_close();
@@ -607,7 +689,7 @@ final class ResumesController
         }
     }
 
-    public function messageDErreur(GeminiErreur $e): string
+    private function messageDErreur(GeminiErreur $e): string
     {
         return match ($e->nature) {
             'quota'   => t('ria.err.quota'),

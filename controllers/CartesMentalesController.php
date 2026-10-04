@@ -2,8 +2,9 @@
 declare(strict_types=1);
 
 /**
- * Les cartes mentales d'un cours : créées à la main, ou proposées par l'IA (avec la clé Gemini de l'utilisateur)
- * puis corrigées dans l'éditeur. Chaque carte appartient à un cours, et à son propriétaire seul.
+ * Les cartes mentales d'un cours : vierges, ou proposées par l'IA — celles-là se demandent depuis la page « Résumés IA »
+ * (voir ResumesController) — puis corrigées dans l'éditeur, et retrouvées dans la fiche de révision du cours.
+ * Chaque carte appartient à un cours, et à son propriétaire seul.
  */
 final class CartesMentalesController
 {
@@ -21,12 +22,16 @@ final class CartesMentalesController
         ], (string) $carte['titre']);
     }
 
-    /** Une carte neuve, réduite à son idée centrale : le titre du cours. */
-    public function creer(int $coursId): void
+    /**
+     * Une carte neuve, réduite à son idée centrale : le titre du cours. Elle se demande depuis la page « Résumés IA »,
+     * comme les cartes écrites par l'IA ; le cours vient du formulaire, et doit être le vôtre.
+     */
+    public function creer(): void
     {
         Auth::exiger();
         Session::verifierCsrf();
         $userId = Auth::id();
+        $coursId = (int) entier_ou_null($_POST['cours'] ?? null);
         $cours = $this->cours($coursId, $userId);
 
         $arbre = CarteMentale::racine((string) $cours['titre']);
@@ -35,61 +40,6 @@ final class CartesMentalesController
             [$userId, $coursId, CarteMentale::titre('', $arbre), json_encode($arbre, JSON_UNESCAPED_UNICODE)]
         );
         Session::flash('succes', t('cm.fl.creee'));
-        redirect('cartes-mentales/' . Database::dernierId());
-    }
-
-    /**
-     * Demande à Gemini la carte d'un cours : il lit le cours, sa fiche et ses documents, et rend une carte à
-     * trois niveaux, qu'on corrige ensuite comme n'importe quelle autre. Rien ne part avant ce bouton.
-     */
-    public function generer(int $coursId): void
-    {
-        Auth::exiger();
-        Session::verifierCsrf();
-        $userId = Auth::id();
-        $cours = $this->cours($coursId, $userId);
-        $retour = 'revision/' . $coursId;
-
-        $cle = CleApi::lire($userId, CleApi::GEMINI);
-        if ($cle === null) {
-            Session::flash('erreur', t('ria.fl.pas_de_cle'));
-            redirect($retour);
-        }
-
-        $lu = ResumeIa::rassembler($userId, [$coursId], ['cours', 'fiche', 'documents'], []);
-        foreach ($lu['muets'] as $nom) {
-            Session::flash('info', t('ria.fl.muet', ['nom' => $nom]));
-        }
-        if ($lu['blocs'] === []) {
-            Session::flash('erreur', t('ria.fl.rien_a_lire'));
-            redirect($retour);
-        }
-
-        $langue = Langue::courante();
-        $contenu = ResumeIa::contenu($lu['blocs']);
-        $resumes = new ResumesController();
-        try {
-            [$texte, ] = $resumes->sansVerrou(static fn (): array => Gemini::texte(
-                $cle, CarteMentale::consigne($langue), $contenu, CarteMentale::schemaIa()));
-        } catch (GeminiErreur $e) {
-            Session::flash('erreur', $resumes->messageDErreur($e));
-            redirect($retour);
-        }
-
-        $arbre = CarteMentale::depuisIa($texte, (string) $cours['titre']);
-        if ($arbre === null) {
-            Session::flash('erreur', t('cm.fl.ia_vide'));
-            redirect($retour);
-        }
-
-        if ($lu['tronque']) {
-            Session::flash('info', t('ria.fl.tronque'));
-        }
-        Database::run(
-            'INSERT INTO cartes_mentales (user_id, cours_id, titre, arbre, ia) VALUES (?, ?, ?, ?, 1)',
-            [$userId, $coursId, CarteMentale::titre('', $arbre), json_encode($arbre, JSON_UNESCAPED_UNICODE)]
-        );
-        Session::flash('succes', t('cm.fl.ia_creee'));
         redirect('cartes-mentales/' . Database::dernierId());
     }
 

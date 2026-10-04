@@ -392,10 +392,11 @@ le formulaire et son avertissement, les demandes refusées (aucun cours, cours d
 (texte du cours, fiche, balisage, consigne, clé), le choix des sources, la voix (fichier rangé, lecture par morceaux,
 remplacement), le cloisonnement entre comptes, les refus de Google dits clairement, les quatre langues, l'effacement.
 
-**`cartes_mentales_langue.php`** — les cartes mentales d'un cours, de bout en bout (même faux serveur que les résumés) :
-le rayon de la fiche (sans clé, avec clé), la création à la main, l'enregistrement et surtout le nettoyage de ce qui arrive
+**`cartes_mentales_langue.php`** — les cartes mentales d'un cours, de bout en bout (même faux serveur que les résumés). Elles
+se créent depuis « Résumés IA » (case « Carte mentale », ou carte vierge) et se retrouvent dans la fiche de révision :
+la fiche (rayon, lien, pas de bouton), la page Résumés (sans clé, avec clé), la création vierge, l'enregistrement et surtout le nettoyage de ce qui arrive
 (texte sur une ligne, idées vides écartées, 120 lettres, 6 niveaux, 250 idées, JSON invalide refusé, jeton CSRF), le
-cloisonnement entre comptes, la carte écrite par l'IA (ce que Gemini reçoit, le schéma d'objet, le HTML glissé dedans
-échappé, un modèle qui répond en prose, une clé refusée), la suppression (et en cascade avec le cours), l'aller-retour par
+cloisonnement entre comptes, les cartes écrites par l'IA (ce que Gemini reçoit, le schéma d'objet, le HTML glissé dedans
+échappé, une carte seule, avec un résumé, pour deux cours, un modèle qui répond en prose, une clé refusée), la suppression (et en cascade avec le cours), l'aller-retour par
 la sauvegarde du compte, les quatre langues. L'éditeur lui-même (assets/js/carte-mentale.js) se contrôle dans un navigateur :
 il n'a pas de test automatique.
