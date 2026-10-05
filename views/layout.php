@@ -99,7 +99,7 @@ $actif = static function (string $prefixe) use ($route): string {
           };
           ?>
           <details class="apps" data-apps data-url-favoris="<?= e(url('compte/menu-favoris')) ?>" data-url-liens="<?= e(url('compte/liens-apps')) ?>"
-                   data-liens-max="<?= LienApp::MAX ?>" data-jeton="<?= e(Session::jetonCsrf()) ?>">
+                   data-liens-max="<?= LienApp::MAX ?>" data-lien-dialogue="apps-lien-dialogue" data-jeton="<?= e(Session::jetonCsrf()) ?>">
             <summary class="apps__bouton" title="<?= e(t('nav.apps')) ?>" aria-label="<?= e(t('nav.apps')) ?>">
               <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false">
                 <?php foreach ([4, 12, 20] as $cy): foreach ([4, 12, 20] as $cx): ?>
@@ -157,27 +157,6 @@ $actif = static function (string $prefixe) use ($route): string {
                   </button>
                 </div>
                 <p class="apps__vide" data-liens-vide<?= $liensApps === [] ? '' : ' hidden' ?>><?= e(t('apps.liens_vide')) ?></p>
-                <form class="apps__form" data-lien-form hidden autocomplete="off">
-                  <h3 class="apps__sous-titre" data-lien-form-titre><?= e(t('apps.lien_nouveau')) ?></h3>
-                  <label>
-                    <span><?= e(t('apps.lien_nom')) ?></span>
-                    <input type="text" name="nom" maxlength="<?= LienApp::NOM_MAX ?>" required placeholder="YouTube">
-                  </label>
-                  <label>
-                    <span><?= e(t('apps.lien_adresse')) ?></span>
-                    <input type="text" name="url" inputmode="url" maxlength="<?= LienApp::URL_MAX ?>" required placeholder="youtube.com">
-                  </label>
-                  <label>
-                    <span><?= e(t('apps.lien_icone')) ?></span>
-                    <input type="text" name="icone" maxlength="<?= LienApp::ICONE_MAX ?>" placeholder="▶️">
-                  </label>
-                  <p class="apps__erreur" role="alert" data-lien-erreur hidden></p>
-                  <div class="apps__form-actions">
-                    <button type="submit" class="bouton bouton--petit"><?= e(t('apps.lien_enregistrer')) ?></button>
-                    <button type="button" class="bouton bouton--discret bouton--petit" data-lien-annuler><?= e(t('apps.lien_annuler')) ?></button>
-                    <button type="button" class="bouton bouton--discret bouton--petit apps__supprimer" data-lien-supprimer hidden><?= e(t('apps.lien_supprimer')) ?></button>
-                  </div>
-                </form>
               </section>
             </div>
           </details>
@@ -196,6 +175,40 @@ $actif = static function (string $prefixe) use ($route): string {
     </nav>
   </div>
 </header>
+
+<?php
+/*
+ * La fenêtre pour ajouter ou modifier une application du menu en grille. Hors du panneau (et de la barre, repliée sur
+ * mobile) : elle reste là même quand le panneau se referme. Le script l'ouvre ; sans lui, elle reste cachée.
+ */
+if ($utilisateur !== null): ?>
+<dialog class="fenetre apps-fenetre" id="apps-lien-dialogue" data-lien-dialogue aria-labelledby="apps-lien-titre">
+  <button class="fenetre__fermer" type="button" data-lien-annuler aria-label="<?= e(t('apps.lien_annuler')) ?>">✕</button>
+  <div class="fenetre__corps">
+    <form class="apps__form" data-lien-form autocomplete="off">
+      <h2 class="apps__sous-titre" id="apps-lien-titre" data-lien-form-titre><?= e(t('apps.lien_nouveau')) ?></h2>
+      <label>
+        <span><?= e(t('apps.lien_nom')) ?></span>
+        <input type="text" name="nom" maxlength="<?= LienApp::NOM_MAX ?>" required placeholder="YouTube">
+      </label>
+      <label>
+        <span><?= e(t('apps.lien_adresse')) ?></span>
+        <input type="text" name="url" inputmode="url" maxlength="<?= LienApp::URL_MAX ?>" required placeholder="youtube.com">
+      </label>
+      <label>
+        <span><?= e(t('apps.lien_icone')) ?></span>
+        <input type="text" name="icone" maxlength="<?= LienApp::ICONE_MAX ?>" placeholder="▶️">
+      </label>
+      <p class="apps__erreur" role="alert" data-lien-erreur hidden></p>
+      <div class="apps__form-actions">
+        <button type="submit" class="bouton bouton--petit"><?= e(t('apps.lien_enregistrer')) ?></button>
+        <button type="button" class="bouton bouton--discret bouton--petit" data-lien-annuler><?= e(t('apps.lien_annuler')) ?></button>
+        <button type="button" class="bouton bouton--discret bouton--petit apps__supprimer" data-lien-supprimer hidden><?= e(t('apps.lien_supprimer')) ?></button>
+      </div>
+    </form>
+  </div>
+</dialog>
+<?php endif; ?>
 
 <?php
 /*

@@ -4204,3 +4204,9 @@ summary.cal-volet__groupe:focus-visible {
 .apps__form-actions { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; }
 .apps__erreur { margin: 0; padding: .4rem .55rem; border-radius: 8px; background: var(--erreur-doux); color: var(--erreur); font-size: .8rem; }
 .apps__supprimer { margin-left: auto; color: var(--erreur); }
+
+/* Ajouter / modifier une application : une fenêtre, plus étroite qu'un formulaire ordinaire. */
+.apps-fenetre { width: min(26rem, calc(100vw - 2rem)); }
+.apps-fenetre .apps__form { margin: 0; padding: 0; border: 0; background: none; }
+.apps-fenetre .apps__sous-titre { font-size: 1.15rem; }
+.apps-fenetre .apps__form input { font-size: 1rem; padding: .5rem .65rem; }

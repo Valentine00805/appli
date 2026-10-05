@@ -33,10 +33,15 @@
     var texteAide = aide ? aide.textContent : '';
 
     // --- Fermer : un clic à côté, ou Échap ------------------------------------------------------------------------
+    var fenetreDesLiens = function () { return document.getElementById(racine.getAttribute('data-lien-dialogue') || ''); };
     document.addEventListener('click', function (ev) {
+      var fenetre = fenetreDesLiens();
+      if (fenetre && (fenetre.open || fenetre.contains(ev.target))) { return; }
       if (racine.open && !racine.contains(ev.target)) { racine.open = false; }
     });
     document.addEventListener('keydown', function (ev) {
+      var fenetre = fenetreDesLiens();
+      if (fenetre && fenetre.open) { return; }
       if (ev.key === 'Escape' && racine.open) {
         racine.open = false;
         if (sommaire) { sommaire.focus(); }
@@ -76,16 +81,19 @@
 
     // --- Mes applications : des liens vers d'autres sites, ajoutés par chacun --------------------------------------
     var blocLiens = racine.querySelector('[data-apps-liens]');
-    if (blocLiens) {
+    var dialogue = document.getElementById(racine.getAttribute('data-lien-dialogue') || '');
+    if (blocLiens && dialogue && typeof dialogue.showModal === 'function') {
       var grilleLiens = blocLiens.querySelector('[data-liens-grille]');
       var videLiens = blocLiens.querySelector('[data-liens-vide]');
       var boutonAjout = blocLiens.querySelector('[data-lien-ajout]');
       var crayonLiens = blocLiens.querySelector('[data-liens-edition]');
       var aideLiens = blocLiens.querySelector('[data-liens-aide]');
-      var formulaire = blocLiens.querySelector('[data-lien-form]');
-      var titreFormulaire = blocLiens.querySelector('[data-lien-form-titre]');
-      var erreurLien = blocLiens.querySelector('[data-lien-erreur]');
-      var boutonSupprimer = blocLiens.querySelector('[data-lien-supprimer]');
+      // Le formulaire est dans une fenêtre (« dialog »), hors du panneau : voir le gabarit. Sans « dialog » (très vieux
+      // navigateur), les liens restent des liens : seul l'ajout manque.
+      var formulaire = dialogue.querySelector('[data-lien-form]');
+      var titreFormulaire = dialogue.querySelector('[data-lien-form-titre]');
+      var erreurLien = dialogue.querySelector('[data-lien-erreur]');
+      var boutonSupprimer = dialogue.querySelector('[data-lien-supprimer]');
       var URL_LIENS = racine.getAttribute('data-url-liens');
       var MAX_LIENS = parseInt(racine.getAttribute('data-liens-max'), 10) || 24;
       var editionLiens = false;
@@ -134,10 +142,11 @@
         formulaire.elements.icone.value = tuile ? tuile.getAttribute('data-icone-choisie') : '';
         erreurLien.hidden = true;
         boutonSupprimer.hidden = !tuile;
-        formulaire.hidden = false;
+        if (!dialogue.open) { dialogue.showModal(); }
         formulaire.elements.nom.focus();
+        formulaire.elements.nom.select();
       };
-      var fermerFormulaire = function () { formulaire.hidden = true; enCours = null; };
+      var fermerFormulaire = function () { if (dialogue.open) { dialogue.close(); } enCours = null; };
       var dire = function (message) { erreurLien.textContent = message; erreurLien.hidden = false; };
 
       /** Envoie au serveur et rend sa réponse JSON ({ok, lien | message}) ; une panne réseau devient un message. */
@@ -153,7 +162,10 @@
       majLiens();
 
       boutonAjout.addEventListener('click', function () { ouvrirFormulaire(null); });
-      blocLiens.querySelector('[data-lien-annuler]').addEventListener('click', fermerFormulaire);
+      Array.prototype.forEach.call(dialogue.querySelectorAll('[data-lien-annuler]'), function (b) { b.addEventListener('click', fermerFormulaire); });
+      // Un clic sur le fond grisé (la fenêtre elle-même, hors de son contenu) la ferme ; Échap aussi, de lui-même.
+      dialogue.addEventListener('click', function (ev) { if (ev.target === dialogue) { fermerFormulaire(); } });
+      dialogue.addEventListener('close', function () { enCours = null; });
       crayonLiens.addEventListener('click', function (ev) {
         ev.stopPropagation();
         editionLiens = !editionLiens;

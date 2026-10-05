@@ -161,6 +161,21 @@ try {
         $oui(str_contains($page, 'Mes applications') && str_contains($page, 'data-lien-ajout hidden') && str_contains($page, 'Aucune application')
             && str_contains($page, 'data-liens-vide>') && !str_contains($page, 'data-liens-vide hidden')), 'oui');
 
+    $dire('  « Ajouter » ouvre une fenêtre (« dialog »), posée hors du panneau et de la barre, avec le formulaire et sa croix',
+        $oui(str_contains($page, 'data-lien-dialogue="apps-lien-dialogue"')
+            && ($d1 = strpos($page, '<dialog class="fenetre apps-fenetre" id="apps-lien-dialogue"')) !== false
+            && $d1 > strpos($page, '</details>') && $d1 > strpos($page, '</header>')
+            && substr_count($page, 'data-lien-form') >= 1 && substr_count($page, '<form class="apps__form"') === 1
+            && $d1 < strpos($page, '<form class="apps__form"') && strpos($page, '<form class="apps__form"') < strpos($page, '</dialog>')
+            && str_contains($page, 'class="fenetre__fermer" type="button" data-lien-annuler')
+            && !preg_match('#<details class="apps".*?<form class="apps__form".*?</details>#s', $page)), 'oui');
+    [$jsAjout] = $appel($a, 'assets/js/menu-apps.js');
+    $dire('  le script l’ouvre en fenêtre modale, la ferme par la croix, « Annuler » ou le fond, et garde le panneau ouvert derrière',
+        $oui(str_contains($jsAjout, 'dialogue.showModal()') && str_contains($jsAjout, 'dialogue.close()') && str_contains($jsAjout, 'ev.target === dialogue')
+            && str_contains($jsAjout, 'fenetre.open')), 'oui');
+    [$vue] = $appel('visiteur', 'connexion');
+    $dire('  sans être connecté, ni menu ni fenêtre', $oui(!str_contains($vue, 'apps-lien-dialogue')), 'oui');
+
     [$j, $code] = $lien($a, $csrf, 'YouTube', 'youtube.com');
     $dire('« YouTube », « youtube.com » : 200, https ajouté, icône proposée d’après le site, rien d’imposé',
         $code . ' · ' . ($j['lien']['url'] ?? '?') . ' · ' . ($j['lien']['icone'] ?? '?') . ' · [' . ($j['lien']['icone_choisie'] ?? '?') . ']', '200 · https://youtube.com · ▶️ · []');
