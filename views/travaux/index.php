@@ -105,7 +105,7 @@ $csrf = Session::jetonCsrf();
         <ul class="travaux-mes-taches">
           <?php foreach ($mesTaches as $t): ?>
             <li>
-              <a href="<?= url('travaux/' . (int) $t['projet_id']) ?>" data-fenetre><?= e((string) $t['titre']) ?></a>
+              <a href="<?= url('travaux/' . (int) $t['projet_id']) ?>" data-fenetre><?= e($t['membre_id'] === null ? t('cal.tache_sans_personne', ['titre' => (string) $t['titre']]) : (string) $t['titre']) ?></a>
               <span class="discret">· <?= e((string) $t['projet_nom']) ?></span>
               <?php $texte = echeance_libelle($t['echeance']); ?>
               <?php if ($texte !== ''): ?>

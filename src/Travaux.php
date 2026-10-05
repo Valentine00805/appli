@@ -536,15 +536,18 @@ final class Travaux
         ]);
     }
 
-    /** Mes tâches à faire, tous projets confondus — pour l'accueil. */
+    /**
+     * Mes tâches à faire, tous projets confondus — pour l'accueil : celles qu'on m'a confiées, et celles que personne n'a prises
+     * (« membre_id » vide : l'affichage le précise).
+     */
     public static function mesTaches(int $moi, int $limite = 6): array
     {
         return Database::all(
-            "SELECT t.id, t.titre, t.echeance, t.statut, p.id AS projet_id, p.nom AS projet_nom
+            "SELECT t.id, t.titre, t.echeance, t.statut, t.membre_id, p.id AS projet_id, p.nom AS projet_nom
                FROM projet_taches t
-               JOIN projet_membres pm ON pm.id = t.membre_id AND pm.user_id = ? AND pm.statut = 'membre'
+               JOIN projet_membres pm ON pm.projet_id = t.projet_id AND pm.user_id = ? AND pm.statut = 'membre'
                JOIN projets p ON p.id = t.projet_id
-              WHERE t.statut <> 'fait'
+              WHERE t.statut <> 'fait' AND (t.membre_id = pm.id OR t.membre_id IS NULL)
               ORDER BY t.echeance IS NULL, t.echeance, t.id
               LIMIT " . max(1, $limite),
             [$moi]);

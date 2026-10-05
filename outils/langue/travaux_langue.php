@@ -151,6 +151,11 @@ try {
     bd_run('INSERT INTO projet_taches (projet_id, titre, membre_id, echeance, statut) VALUES (?, ?, ?, ?, ?)', [$projet, 'Due today', $moiMembre, $demain, 'a_faire']);
     $accueil = $appel('');
     $dire('  et dans la journée de l\'accueil quand elle tombe aujourd\'hui', $oui(str_contains($accueil, 'Due today')), 'oui');
+    $dire('  la carte « Travaux de groupe » de l\'accueil : les miennes, et celles de personne, précisées ; pas celle d\'Alex',
+        $oui(str_contains($accueil, 'Mine due') && str_contains($accueil, 'Nobody due (unassigned)') && !str_contains($accueil, 'Alex due')
+            && !str_contains($accueil, 'Mine due (unassigned)')), 'oui');
+    $liste = $appel('travaux');
+    $dire('  et la colonne « à faire » de la liste des travaux', $oui(str_contains($liste, 'Nobody due (unassigned)') && !str_contains($liste, 'Alex due')), 'oui');
     $apres = $appel('calendrier?date=' . date('Y-m-15', strtotime('+2 months')));
     $dire('  un autre mois ne l\'affiche pas', $oui(!str_contains($apres, 'Mine due')), 'oui');
 
