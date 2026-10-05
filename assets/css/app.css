@@ -4188,7 +4188,6 @@ summary.cal-volet__groupe:focus-visible {
 }
 
 /* --- « Mes applications » : des liens vers d'autres sites, dans le menu en grille ---------------------------------- */
-.apps__tuile--lien .apps__etoile--lien::before { content: '✎'; }
 .apps--edition-liens .apps__etoile--lien { display: block; }
 .apps--edition-liens .apps__tuile--lien { cursor: pointer; outline: 1px dashed var(--bordure-forte); outline-offset: -2px; }
 .apps__tuile--ajout { border: 0; background: none; font: inherit; cursor: pointer; }
@@ -4216,5 +4215,9 @@ summary.cal-volet__groupe:focus-visible {
 .apps__favicon { position: absolute; inset: 0; margin: auto; width: 1.7rem; height: 1.7rem; border-radius: 4px; object-fit: contain; opacity: 0; }
 .apps__icone--image { color: transparent; }
 .apps__icone--image .apps__favicon { opacity: 1; }
+/* Réorganiser les applications : la tuile attrapée se soulève ; le doigt ne fait pas défiler le panneau à sa place. */
+.apps--edition-liens .apps__tuile--lien { cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; }
+.apps--edition-liens .apps__tuile--lien .apps__favicon { pointer-events: none; }
+.apps--edition-liens .apps__tuile--glisse { cursor: grabbing; opacity: .8; transform: scale(1.07); box-shadow: 0 6px 18px rgb(0 0 0 / 25%); background: var(--fond-carte); position: relative; z-index: 2; }
 .apps__indice { display: block; margin-top: .25rem; font-size: .78rem; line-height: 1.35; color: var(--texte-doux); }
 

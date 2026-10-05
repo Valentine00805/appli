@@ -4338,7 +4338,7 @@ return [
     'js.apps.echec' => 'Could not save your favourites — check your connection.',
     'apps.liens' => 'My apps',
     'apps.liens_modifier' => 'Edit my apps',
-    'apps.liens_aide' => 'Click an app to edit or delete it. The pencil ends editing.',
+    'apps.liens_aide' => 'Click an app to edit or delete it, or drag it to move it. The pencil ends editing.',
     'apps.liens_vide' => 'No apps yet: add YouTube, NotebookLM… with “Add”.',
     'apps.lien_ajouter' => 'Add',
     'apps.lien_nouveau' => 'New app',

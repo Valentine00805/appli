@@ -4338,7 +4338,7 @@ return [
     'js.apps.echec' => 'Deine Favoriten konnten nicht gespeichert werden – prüfe deine Verbindung.',
     'apps.liens' => 'Meine Apps',
     'apps.liens_modifier' => 'Meine Apps bearbeiten',
-    'apps.liens_aide' => 'Klicke auf eine App, um sie zu bearbeiten oder zu löschen. Der Stift beendet die Bearbeitung.',
+    'apps.liens_aide' => 'Klicke auf eine App, um sie zu bearbeiten oder zu löschen, oder ziehe sie, um sie zu verschieben. Der Stift beendet die Bearbeitung.',
     'apps.liens_vide' => 'Noch keine Apps: Füge YouTube, NotebookLM … mit „Hinzufügen“ hinzu.',
     'apps.lien_ajouter' => 'Hinzufügen',
     'apps.lien_nouveau' => 'Neue App',

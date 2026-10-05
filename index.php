@@ -264,6 +264,7 @@ $routes = [
     ['POST', 'compte/theme',             [AuthController::class, 'changerTheme']],
     ['POST', 'compte/menu-favoris',      [AuthController::class, 'menuFavoris']],
     ['POST', 'compte/liens-apps',        [LiensAppsController::class, 'creer']],
+    ['POST', 'compte/liens-apps/ordre',  [LiensAppsController::class, 'ordonner']],
     ['POST', 'compte/liens-apps/{id}',   [LiensAppsController::class, 'modifier']],
     ['POST', 'compte/liens-apps/{id}/supprimer', [LiensAppsController::class, 'supprimer']],
     ['POST', 'compte/langue',            [AuthController::class, 'changerLangue']],

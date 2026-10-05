@@ -4338,7 +4338,7 @@ return [
     'js.apps.echec' => 'No se pudieron guardar tus favoritos: comprueba tu conexión.',
     'apps.liens' => 'Mis aplicaciones',
     'apps.liens_modifier' => 'Editar mis aplicaciones',
-    'apps.liens_aide' => 'Haz clic en una aplicación para editarla o eliminarla. El lápiz termina la edición.',
+    'apps.liens_aide' => 'Haz clic en una aplicación para editarla o eliminarla, o arrástrala para moverla. El lápiz termina la edición.',
     'apps.liens_vide' => 'Aún no hay aplicaciones: añade YouTube, NotebookLM… con «Añadir».',
     'apps.lien_ajouter' => 'Añadir',
     'apps.lien_nouveau' => 'Nueva aplicación',

@@ -4,8 +4,10 @@
  * choisis et leur nettoyage, le cloisonnement entre comptes, les quatre langues.
  */
 require __DIR__ . '/base.php';
+require_once dirname(__DIR__, 2) . '/src/LienApp.php';
 
 $anomalies = 0;
+$termine = false;   // faux si le script s'arrête en route (erreur fatale) : le bilan ne doit pas dire « aucune anomalie »
 $dire = static function (string $quoi, string $obtenu, string $attendu) use (&$anomalies): void {
     $bon = $obtenu === $attendu;
     if (!$bon) { $anomalies++; }
@@ -257,6 +259,41 @@ try {
         $code . ' · [' . ($j['lien']['logo'] ?? '?') . '] · [' . ($j['lien']['image'] ?? '?') . ']', '200 · [] · []');
     bd_run('DELETE FROM liens_apps WHERE id = ? AND user_id = ?', [$idLogo, $idA]);
 
+    echo "\n   — réorganiser (glisser-déposer)\n";
+    $ordreDe = static fn (int $uid): array => array_map('intval', array_column(bd_all('SELECT id FROM liens_apps WHERE user_id = ? ORDER BY position, id', [$uid]), 'id'));
+    $ordonner = static fn (string $compte, string $csrf, array $ids): array => $appel($compte, 'compte/liens-apps/ordre', ['_csrf' => $csrf, 'ids' => $ids]);
+    $avant = $ordreDe($idA);
+    $dire('  de quoi réordonner : au moins 3 liens', count($avant) >= 3 ? 'oui' : 'non', 'oui');
+    $inverse = array_reverse($avant);
+    [$corps, , $code] = $ordonner($a, $csrf, $inverse);
+    $dire('  l\'ordre envoyé est enregistré (et la page le suit)',
+        $code . ' · ' . $oui($ordreDe($idA) === $inverse) . ' · ' . $oui((json_decode($corps, true)['ordre'] ?? []) === $inverse), '200 · oui · oui');
+    [$page] = $appel($a, 'calendrier');
+    preg_match_all('#data-lien-id="(\d+)"#', $page, $ids);
+    $dire('  la page liste les tuiles dans ce nouvel ordre', $oui(array_map('intval', $ids[1]) === $inverse), 'oui');
+    // Un identifiant étranger, inconnu, répété ou piégé est ignoré ; un lien oublié reste, à la suite.
+    [$pageB] = $appel($b, 'calendrier');
+    $csrfB = $jeton($pageB);
+    bd_run('INSERT INTO liens_apps (user_id, nom, url, icone, position) VALUES (?, ?, ?, ?, 1)', [$idB, 'De B', 'https://exemple.org', '']);
+    $idDeB = (int) bd_valeur('SELECT id FROM liens_apps WHERE user_id = ?', [$idB]);
+    $premier = $avant[0];
+    $dernier = $avant[count($avant) - 1];
+    [, , $code] = $ordonner($a, $csrf, [$dernier, $idDeB, 999999999, $dernier, '<b>', -4, $premier]);
+    $attendu = array_merge([$dernier, $premier], array_values(array_diff($inverse, [$dernier, $premier])));
+    $dire('  un identifiant étranger, inconnu, répété ou piégé est ignoré ; un lien oublié garde sa place à la suite',
+        $code . ' · ' . $oui($ordreDe($idA) === $attendu) . ' · ' . bd_valeur('SELECT position FROM liens_apps WHERE id = ?', [$idDeB]), '200 · oui · 1');
+    $avantB = $ordreDe($idB);
+    $ordonner($b, $csrfB, array_merge($avant, [$idDeB]));
+    $dire('  on ne réordonne pas les liens d\'un autre : l\'ordre du premier compte ne bouge pas', $oui($ordreDe($idA) === $attendu && $ordreDe($idB) === $avantB), 'oui');
+    [, , $code] = $appel($a, 'compte/liens-apps/ordre', ['_csrf' => $csrf, 'ids' => 'pas-une-liste']);
+    $dire('  « ids » qui n\'est pas une liste : sans effet, sans erreur', $code . ' · ' . $oui($ordreDe($idA) === $attendu), '200 · oui');
+    [, , $code] = $appel($a, 'compte/liens-apps/ordre', ['_csrf' => 'faux', 'ids' => $avant]);
+    $dire('  sans le bon jeton : refusé, l\'ordre ne bouge pas', $oui($code >= 400 && $ordreDe($idA) === $attendu), 'oui');
+    [, , $code] = $appel('visiteur', 'compte/liens-apps/ordre', ['_csrf' => 'x', 'ids' => $avant]);
+    $dire('  un visiteur non connecté ne peut pas', $oui($ordreDe($idA) === $attendu), 'oui');
+    bd_run('DELETE FROM liens_apps WHERE id = ? AND user_id = ?', [$idDeB, $idB]);
+    [$j, $code] = [[], 0];
+
     echo "\n   — modifier, supprimer, limite\n";
     [$j, $code] = $lien($a, $csrf, 'YouTube Music', 'music.youtube.com', '🎵', $idYoutube);
     $dire('modifier : nom, adresse et icône changent', $code . ' · ' . bd_valeur('SELECT nom FROM liens_apps WHERE id = ?', [$idYoutube]) . ' · '
@@ -325,7 +362,9 @@ try {
                 && str_contains($page, '"apps.lien_echec":') && str_contains($page, '"apps.lien_nouveau":')
                 && !preg_match('/>\s*(apps|lia)\.[a-z_.]+\s*</', $page)), 'oui');
     }
+    $termine = true;
 } finally {
+    if (!$termine) { $anomalies++; echo "\n   ✗ le script s'est arrêté avant la fin\n"; }
     foreach ($cookies as $f) { @unlink($f); }
     foreach ($emails as $a) { bd_run('DELETE FROM users WHERE email = ? AND email LIKE ?', [$a, '%@exemple-test.fr']); }
     echo "\n" . ($anomalies === 0 ? 'Aucune anomalie' : $anomalies . ' anomalie(s)')

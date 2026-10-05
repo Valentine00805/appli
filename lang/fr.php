@@ -4350,7 +4350,7 @@ return [
     'js.apps.echec' => 'Impossible d’enregistrer tes favoris — vérifie ta connexion.',
     'apps.liens' => 'Mes applications',
     'apps.liens_modifier' => 'Modifier mes applications',
-    'apps.liens_aide' => 'Clique sur une application pour la modifier ou la supprimer. Le crayon termine la modification.',
+    'apps.liens_aide' => 'Clique sur une application pour la modifier ou la supprimer, ou fais-la glisser pour la déplacer. Le crayon termine la modification.',
     'apps.liens_vide' => 'Aucune application : ajoute YouTube, NotebookLM… avec « Ajouter ».',
     'apps.lien_ajouter' => 'Ajouter',
     'apps.lien_nouveau' => 'Nouvelle application',

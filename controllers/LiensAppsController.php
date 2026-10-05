@@ -4,7 +4,8 @@ declare(strict_types=1);
 /**
  * Les liens vers d'autres applications du menu en grille : ajouter, modifier, supprimer. Le script du menu les appelle
  * sans recharger la page et reçoit du JSON : {ok: true, lien: {…}} ou {ok: false, message}. Un lien appartient à son
- * propriétaire seul ; tout ce qui arrive repasse par LienApp::valider.
+ * propriétaire seul ; tout ce qui arrive repasse par LienApp::valider. Réorganiser (glisser-déposer) envoie la liste des
+ * identifiants dans leur nouvel ordre.
  */
 final class LiensAppsController
 {
@@ -44,6 +45,35 @@ final class LiensAppsController
             [$lien['nom'], $lien['url'], $lien['icone'], $lien['logo'], $id, $userId]);
 
         $this->json(['ok' => true, 'lien' => $this->pourLeScript($id, $lien)]);
+    }
+
+    /**
+     * Enregistre l'ordre des liens : « ids[] », dans l'ordre voulu. Seuls les liens du compte comptent ; un identifiant
+     * étranger ou répété est ignoré, et un lien oublié garde sa place à la suite des autres.
+     */
+    public function ordonner(): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $userId = Auth::id();
+
+        $demandes = $_POST['ids'] ?? [];
+        $demandes = is_array($demandes) ? $demandes : [];
+        $siens = array_map('intval', array_column(Database::all('SELECT id FROM liens_apps WHERE user_id = ? ORDER BY position, id', [$userId]), 'id'));
+
+        $ordre = [];
+        foreach ($demandes as $d) {
+            $id = is_scalar($d) ? (int) $d : 0;
+            if ($id > 0 && in_array($id, $siens, true) && !in_array($id, $ordre, true)) {
+                $ordre[] = $id;
+            }
+        }
+        $ordre = array_merge($ordre, array_values(array_diff($siens, $ordre)));
+
+        foreach ($ordre as $rang => $id) {
+            Database::run('UPDATE liens_apps SET position = ? WHERE id = ? AND user_id = ?', [$rang + 1, $id, $userId]);
+        }
+        $this->json(['ok' => true, 'ordre' => $ordre]);
     }
 
     public function supprimer(int $id): void
