@@ -103,6 +103,30 @@
         </div>
       <?php endif; ?>
     </section>
+
+    <?php if ($travaux['taches'] !== [] || $travaux['invitations'] > 0): ?>
+      <?php // Les travaux de groupe : ce qu'on m'a confié, et qui m'attend. ?>
+      <section class="carte">
+        <h2><a href="<?= url('travaux') ?>"><?= e(t('accueil.travaux')) ?></a></h2>
+        <?php if ($travaux['invitations'] > 0): ?>
+          <p style="margin:0 0 .5rem">✉️ <a href="<?= url('travaux') ?>"><?= e(tn('accueil.invitations_travaux', (int) $travaux['invitations'])) ?></a></p>
+        <?php endif; ?>
+        <?php if ($travaux['taches'] !== []): ?>
+          <ul class="travaux-mes-taches">
+            <?php foreach ($travaux['taches'] as $t): ?>
+              <li>
+                <a href="<?= url('travaux/' . (int) $t['projet_id']) ?>" data-fenetre><?= e((string) $t['titre']) ?></a>
+                <span class="discret">· <?= e((string) $t['projet_nom']) ?></span>
+                <?php $texte = echeance_libelle($t['echeance']); ?>
+                <?php if ($texte !== ''): ?>
+                  <span class="echeance echeance--<?= e(echeance_etat($t['echeance'])) ?>"><?= e($texte) ?></span>
+                <?php endif; ?>
+              </li>
+            <?php endforeach; ?>
+          </ul>
+        <?php endif; ?>
+      </section>
+    <?php endif; ?>
   </div>
 
   <div class="pile">
@@ -166,30 +190,6 @@
             📅 <?= e($alternance['prochaine']['libelle']) ?> :
             <?= e(Alternance::jourCourt($alternance['prochaine']['jour'])) ?>
           </p>
-        <?php endif; ?>
-      </section>
-    <?php endif; ?>
-
-    <?php if ($travaux['taches'] !== [] || $travaux['invitations'] > 0): ?>
-      <?php // Les travaux de groupe : ce qu'on m'a confié, et qui m'attend. ?>
-      <section class="carte">
-        <h2><a href="<?= url('travaux') ?>"><?= e(t('accueil.travaux')) ?></a></h2>
-        <?php if ($travaux['invitations'] > 0): ?>
-          <p style="margin:0 0 .5rem">✉️ <a href="<?= url('travaux') ?>"><?= e(tn('accueil.invitations_travaux', (int) $travaux['invitations'])) ?></a></p>
-        <?php endif; ?>
-        <?php if ($travaux['taches'] !== []): ?>
-          <ul class="travaux-mes-taches">
-            <?php foreach ($travaux['taches'] as $t): ?>
-              <li>
-                <a href="<?= url('travaux/' . (int) $t['projet_id']) ?>" data-fenetre><?= e((string) $t['titre']) ?></a>
-                <span class="discret">· <?= e((string) $t['projet_nom']) ?></span>
-                <?php $texte = echeance_libelle($t['echeance']); ?>
-                <?php if ($texte !== ''): ?>
-                  <span class="echeance echeance--<?= e(echeance_etat($t['echeance'])) ?>"><?= e($texte) ?></span>
-                <?php endif; ?>
-              </li>
-            <?php endforeach; ?>
-          </ul>
         <?php endif; ?>
       </section>
     <?php endif; ?>

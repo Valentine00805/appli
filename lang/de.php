@@ -4418,6 +4418,7 @@ return [
     'tr.err.deja_lie' => 'Dieses Element ist schon mit dieser Gruppe verknüpft.',
     'tr.err.trop_de_liens' => 'Eine Gruppe verknüpft höchstens {max} Elemente.',
     'tr.err.delier' => 'Nur wer es verknüpft hat oder ein Administrator der Gruppe kann es entfernen.',
+    'cal.tache_groupe' => 'Gruppenaufgabe · {projet}',
     'apps.lien_icone' => 'Symbol (optional: ein Emoji statt dem der Seite)',
     'apps.lien_enregistrer' => 'Speichern',
     'apps.lien_annuler' => 'Abbrechen',

@@ -1324,6 +1324,39 @@ final class CalendrierController
             );
         }
 
+        // Les tâches d'un travail de groupe qu'on m'a confiées, avec leur échéance : elles s'ouvrent dans la fenêtre du groupe.
+        foreach (Database::all(
+            "SELECT pt.id, pt.titre, pt.echeance, pt.statut, p.id AS projet_id, p.nom AS projet_nom
+               FROM projet_taches pt
+               JOIN projets p ON p.id = pt.projet_id
+               JOIN projet_membres pm ON pm.id = pt.membre_id AND pm.projet_id = p.id AND pm.user_id = ? AND pm.statut = 'membre'
+              WHERE pt.echeance BETWEEN ? AND ?",
+            $bornes
+        ) as $tache) {
+            $lignes[] = [
+                // Un identifiant à part : celui d'un évènement ne doit pas le recouvrir dans les vues.
+                'id'              => 1000000000 + (int) $tache['id'],
+                'titre'           => (string) $tache['titre'],
+                'debut'           => $tache['echeance'] . ' 00:00:00',
+                'fin'             => $tache['echeance'] . ' 23:59:59',
+                'journee_entiere' => 1,
+                'termine'         => $tache['statut'] === 'fait' ? 1 : 0,
+                'type_nom'        => t('cal.tache_groupe', ['projet' => (string) $tache['projet_nom']]),
+                'type_icone'      => '👥',
+                'type_couleur'    => '#7c3aed',
+                'matiere_nom'     => null,
+                'matiere_couleur' => null,
+                'lieu'            => null,
+                'cours_id'        => null,
+                'cours_titre'     => null,
+                'description'     => null,
+                'est_tache'       => false,
+                // Comme l'évènement d'un ami : il se lit là où il vit, ici le groupe.
+                'est_partage'     => true,
+                'lien'            => url('travaux/' . (int) $tache['projet_id']),
+            ];
+        }
+
         return $lignes;
     }
 

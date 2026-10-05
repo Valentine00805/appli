@@ -4418,6 +4418,7 @@ return [
     'tr.err.deja_lie' => 'Este elemento ya está vinculado a este grupo.',
     'tr.err.trop_de_liens' => 'Un grupo vincula {max} elementos como máximo.',
     'tr.err.delier' => 'Solo quien lo vinculó, o un administrador del grupo, puede quitarlo.',
+    'cal.tache_groupe' => 'Tarea de grupo · {projet}',
     'apps.lien_icone' => 'Icono (opcional: un emoji en lugar del del sitio)',
     'apps.lien_enregistrer' => 'Guardar',
     'apps.lien_annuler' => 'Cancelar',

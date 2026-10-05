@@ -129,6 +129,29 @@ try {
     $dejaFait = $appel('travaux/' . $invitation . '/rejoindre', ['_csrf' => $csrf]);
     $dire('  accepter deux fois : refusé, rien ne s\'ouvre', $oui(!str_contains($dejaFait, 'data-ouvrir-auto')), 'oui');
 
+    echo "\n   — l'échéance d'une tâche de groupe, dans le calendrier\n";
+    $moiMembre = (int) bd_valeur('SELECT id FROM projet_membres WHERE projet_id = ? AND user_id = ?', [$projet, $id]);
+    $alex = (int) bd_valeur('SELECT id FROM projet_membres WHERE projet_id = ? AND nom = ?', [$projet, 'Alex']);
+    $mois15 = date('Y-m-15');
+    bd_run('INSERT INTO projet_taches (projet_id, titre, membre_id, echeance, statut) VALUES (?, ?, ?, ?, ?)', [$projet, 'Mine due', $moiMembre, $mois15, 'a_faire']);
+    bd_run('INSERT INTO projet_taches (projet_id, titre, membre_id, echeance, statut) VALUES (?, ?, ?, ?, ?)', [$projet, 'Done due', $moiMembre, $mois15, 'fait']);
+    bd_run('INSERT INTO projet_taches (projet_id, titre, membre_id, echeance, statut) VALUES (?, ?, ?, ?, ?)', [$projet, 'Alex due', $alex, $mois15, 'a_faire']);
+    bd_run('INSERT INTO projet_taches (projet_id, titre, membre_id, echeance, statut) VALUES (?, ?, NULL, ?, ?)', [$projet, 'Nobody due', $mois15, 'a_faire']);
+    bd_run('INSERT INTO projet_taches (projet_id, titre, membre_id, echeance, statut) VALUES (?, ?, ?, NULL, ?)', [$projet, 'Mine undated', $moiMembre, 'a_faire']);
+    $calendrier = $appel('calendrier?date=' . $mois15);
+    $dire('une tâche de groupe qu\'on m\'a confiée, avec échéance, est dans le calendrier',
+        $oui(str_contains($calendrier, 'Mine due') && str_contains($calendrier, '/travaux/' . $projet . '"')), 'oui');
+    $dire('  avec son type « Group task · le groupe », et les faites aussi (barrées)',
+        $oui(str_contains($calendrier, 'Group task · Essai de langue') && str_contains($calendrier, 'Done due')), 'oui');
+    $dire('  pas celle d\'un autre membre, ni celle de personne, ni celle sans échéance',
+        $oui(!str_contains($calendrier, 'Alex due') && !str_contains($calendrier, 'Nobody due') && !str_contains($calendrier, 'Mine undated')), 'oui');
+    $demain = date('Y-m-d');
+    bd_run('INSERT INTO projet_taches (projet_id, titre, membre_id, echeance, statut) VALUES (?, ?, ?, ?, ?)', [$projet, 'Due today', $moiMembre, $demain, 'a_faire']);
+    $accueil = $appel('');
+    $dire('  et dans la journée de l\'accueil quand elle tombe aujourd\'hui', $oui(str_contains($accueil, 'Due today')), 'oui');
+    $apres = $appel('calendrier?date=' . date('Y-m-15', strtotime('+2 months')));
+    $dire('  un autre mois ne l\'affiche pas', $oui(!str_contains($apres, 'Mine due')), 'oui');
+
     echo "\n7. Le français revient\n";
     $appel('compte/langue', ['_csrf' => $csrf, 'langue' => 'fr']);
     $fr = $appel('travaux/' . $projet);

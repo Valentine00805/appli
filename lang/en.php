@@ -4418,6 +4418,7 @@ return [
     'tr.err.deja_lie' => 'This item is already linked to this group.',
     'tr.err.trop_de_liens' => 'A group can link {max} items at most.',
     'tr.err.delier' => 'Only the person who linked it, or a group administrator, can remove it.',
+    'cal.tache_groupe' => 'Group task · {projet}',
     'apps.lien_icone' => 'Icon (optional: an emoji instead of the site’s own)',
     'apps.lien_enregistrer' => 'Save',
     'apps.lien_annuler' => 'Cancel',
