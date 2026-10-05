@@ -63,7 +63,8 @@ final class LiensAppsController
     private function pourLeScript(int $id, array $lien): array
     {
         return ['id' => $id, 'nom' => $lien['nom'], 'url' => $lien['url'],
-                'icone' => LienApp::icone($lien['icone'], $lien['url']), 'icone_choisie' => $lien['icone']];
+                'icone' => LienApp::icone($lien['icone'], $lien['url']), 'icone_choisie' => $lien['icone'],
+                'site_icone' => LienApp::iconeDuSite($lien['url'])];
     }
 
     private function possede(int $id, int $userId): void

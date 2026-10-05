@@ -147,7 +147,7 @@ $actif = static function (string $prefixe) use ($route): string {
                   <?php foreach ($liensApps as $lien): ?>
                     <a class="apps__tuile apps__tuile--lien" href="<?= e($lien['url']) ?>" target="_blank" rel="noopener noreferrer"
                        data-lien-id="<?= (int) $lien['id'] ?>" data-nom="<?= e($lien['nom']) ?>" data-icone-choisie="<?= e($lien['icone_choisie']) ?>">
-                      <span class="apps__icone" aria-hidden="true"><?= e($lien['icone']) ?><?php if ($lien['icone_choisie'] === ''): ?><img class="apps__favicon" src="<?= e(LienApp::favicon($lien['url'])) ?>" alt="" width="32" height="32" loading="lazy" decoding="async" referrerpolicy="no-referrer"><?php endif; ?></span>
+                      <span class="apps__icone" aria-hidden="true"><?= e($lien['icone']) ?><?php if ($lien['icone_choisie'] === '' && LienApp::iconeDuSite($lien['url'])): ?><img class="apps__favicon" src="<?= e(LienApp::favicon($lien['url'])) ?>" alt="" width="32" height="32" loading="lazy" decoding="async" referrerpolicy="no-referrer"><?php endif; ?></span>
                       <span class="apps__nom"><?= e($lien['nom']) ?></span>
                       <span class="apps__etoile apps__etoile--lien" aria-hidden="true">✎</span>
                     </a>

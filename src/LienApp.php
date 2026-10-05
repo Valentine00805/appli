@@ -31,6 +31,24 @@ final class LienApp
     /** Le service d'icônes de sites : on lui ajoute le nom d'hôte (encodé). */
     public const FAVICON = 'https://www.google.com/s2/favicons?sz=64&domain=';
 
+    /**
+     * Les sites dont le service d'icônes ne rend pas la bonne : derrière une connexion, il ne voit que la page d'accueil
+     * de Google et rend son « G » (NotebookLM, Gmail, Docs, Agenda), ou l'icône de Drive (Sheets, Slides). Pour eux, l'emoji.
+     */
+    private const SANS_ICONE_DE_SITE = [
+        'notebooklm.google.com', 'mail.google.com', 'gmail.com', 'docs.google.com', 'calendar.google.com',
+        'sheets.google.com', 'slides.google.com',
+    ];
+
+    /** Faut-il montrer l'icône du site (et non l'emoji) pour cette adresse, quand aucun emoji n'est choisi ? */
+    public static function iconeDuSite(string $url): bool
+    {
+        $hote = strtolower((string) (parse_url($url, PHP_URL_HOST) ?? ''));
+        $hote = preg_replace('/^www\./', '', $hote) ?? $hote;
+
+        return $hote !== '' && !in_array($hote, self::SANS_ICONE_DE_SITE, true);
+    }
+
     /** L'adresse de l'icône du site d'un lien. */
     public static function favicon(string $url): string
     {

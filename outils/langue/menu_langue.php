@@ -226,7 +226,7 @@ try {
             && str_contains($page, 'data-icone-choisie="🎓"')), 'oui');
     $dire('  sans icône choisie la tuile porte celle du site (le navigateur la demande), avec l’emoji en repli ; avec une icône choisie, pas d’image',
         $oui(str_contains($page, 'class="apps__favicon" src="https://www.google.com/s2/favicons?sz=64&amp;domain=youtube.com"')
-            && !str_contains($page, '🎓<img') && str_contains($page, '🔗<img') && str_contains($page, 'referrerpolicy="no-referrer"')), 'oui');
+            && !str_contains($page, '🎓<img') && !str_contains($page, 'domain=notebooklm.google.com') && str_contains($page, '📓</span>') && str_contains($page, '🔗<img') && str_contains($page, 'referrerpolicy="no-referrer"')), 'oui');
 
     echo "\n   — modifier, supprimer, limite\n";
     [$j, $code] = $lien($a, $csrf, 'YouTube Music', 'music.youtube.com', '🎵', $idYoutube);

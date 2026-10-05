@@ -133,7 +133,7 @@
         pastille.classList.remove('apps__icone--image');
         // Pas d'emoji choisi : l'icône du site, l'emoji tenant sa place tant qu'elle n'est pas là (ou si elle ne vient pas).
         var service = racine.getAttribute('data-favicon');
-        if (!lien.icone_choisie && service) {
+        if (!lien.icone_choisie && lien.site_icone && service) {
           var hote = '';
           try { hote = new URL(lien.url).hostname; } catch (e) { hote = ''; }
           if (hote) {
