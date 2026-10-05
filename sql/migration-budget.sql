@@ -4,6 +4,7 @@
 --   mysql -u root < sql/migration-budget.sql
 
 USE `mon_appli_cours`;
+SET NAMES utf8mb4;
 
 -- 1. Catégories de budget -----------------------------------------------------
 
