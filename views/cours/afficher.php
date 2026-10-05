@@ -206,8 +206,8 @@ $nbElements = count($elements) + count($fichiersFiche);
           <h2><?= e(t('cours.au_calendrier')) ?></h2>
           <div class="pile">
             <?php foreach ($evenements as $evt): ?>
-              <?php // L'évènement s'ouvre dans une fenêtre (dans celle du cours, si l'on y est : la flèche ← y ramène). ?>
-              <a class="evt-ligne" href="<?= url('evenements/' . $evt['id'] . '/modifier') ?>" data-fenetre>
+              <?php // L'aperçu de l'évènement s'ouvre dans une fenêtre (dans celle du cours, si l'on y est : la flèche ← y ramène). ?>
+              <a class="evt-ligne" href="<?= url('evenements/' . $evt['id']) ?>" data-fenetre>
                 <span>
                   <span class="evt-ligne__titre"><?= e(icone_evenement($evt) . ' ' . $evt['titre']) ?></span><br>
                   <span class="evt-ligne__meta"><?= e(date_fr($evt['debut'])) ?></span>
