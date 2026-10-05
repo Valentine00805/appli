@@ -285,5 +285,6 @@ if ($utilisateur !== null
 <script src="<?= asset('assets/js/zoom-image.js') ?>" defer></script>
 <script src="<?= asset('assets/js/diaporama.js') ?>" defer></script>
 <script src="<?= asset('assets/js/menu-apps.js') ?>" defer></script>
+<script src="<?= asset('assets/js/zoom-avatar.js') ?>" defer></script>
 </body>
 </html>

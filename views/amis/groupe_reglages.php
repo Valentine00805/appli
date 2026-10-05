@@ -31,7 +31,7 @@ $moi = Auth::id();
 
 <div class="entete-page profil-ami"<?= $dansUneFenetre ? ' data-large' : '' ?>>
   <div class="profil-ami__identite">
-    <?= Conversations::avatar($id, $groupe['photo_nom'], 'avatar--grand') ?>
+    <?= Conversations::avatar($id, $groupe['photo_nom'], 'avatar--grand', true) ?>
     <div>
       <?php if (!$dansUneFenetre): ?>
         <p class="discret" style="margin:0 0 .2rem"><a href="<?= url('groupes/' . $id) ?>"><?= e(t('prf.retour_discussion')) ?></a></p>
@@ -50,7 +50,7 @@ $moi = Auth::id();
   <h2 style="margin-top:0"><?= e(t('grp.photo')) ?></h2>
   <div class="photo-groupe">
     <span class="photo-groupe__apercu" data-photo-apercu>
-      <?= Conversations::avatar($id, $groupe['photo_nom'], 'avatar--apercu') ?>
+      <?= Conversations::avatar($id, $groupe['photo_nom'], 'avatar--apercu', true) ?>
     </span>
     <div class="fond-reglage__infos">
       <form method="post" action="<?= url('groupes/' . $id . '/photo') ?>" enctype="multipart/form-data" class="fond-reglage__choix" data-photo-formulaire>
@@ -146,7 +146,7 @@ $moi = Auth::id();
   <ul class="groupe-membres">
     <?php foreach ($membres as $m): ?>
       <li class="groupe-membres__ligne">
-        <?= Amis::avatar($m['id'], $m['pseudo']) ?>
+        <?= Amis::avatar($m['id'], $m['pseudo'], '', true) ?>
         <span class="groupe-membres__nom">
           <?= e($m['pseudo']) ?><?= $m['id'] === $moi ? ' <span class="discret">' . e(t('grp.vous')) . '</span>' : '' ?>
           <?php if ($m['role'] === 'admin'): ?><span class="pastille"><?= e(t('grp.administrateur')) ?></span><?php endif; ?>
@@ -195,7 +195,7 @@ $moi = Auth::id();
     <ul class="groupe-membres">
       <?php foreach ($invitations as $inv): ?>
         <li class="groupe-membres__ligne">
-          <?= Amis::avatar((int) $inv['id'], (string) $inv['pseudo']) ?>
+          <?= Amis::avatar((int) $inv['id'], (string) $inv['pseudo'], '', true) ?>
           <span class="groupe-membres__nom">
             <?= e((string) $inv['pseudo']) ?>
             <span class="discret" style="font-size:.8rem"><?= e(t('grp.invite')) ?><?= $inv['par'] !== '' ? e(t('grp.invite_par', ['qui' => (string) $inv['par']])) : '' ?></span>

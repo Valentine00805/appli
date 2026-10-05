@@ -570,11 +570,15 @@ final class Conversations
         return $nomPhoto === null ? null : url('groupes/' . $conversation . '/photo', ['v' => substr($nomPhoto, 0, 12)]);
     }
 
-    /** L'avatar du groupe : sa photo, ou 👥. */
-    public static function avatar(int $conversation, ?string $nomPhoto, string $classes = ''): string
+    /** L'avatar du groupe : sa photo, ou 👥. « $zoom » : un clic sur la photo l'agrandit (voir Amis::avatar). */
+    public static function avatar(int $conversation, ?string $nomPhoto, string $classes = '', bool $zoom = false): string
     {
         $adresse = self::adressePhoto($conversation, $nomPhoto);
         $classe = trim('avatar avatar--groupe ' . $classes);
+        if ($adresse !== null && $zoom) {
+            return '<span class="' . e($classe) . ' avatar--photo avatar--zoomable" data-groupe-avatar data-zoom-avatar role="button" tabindex="0" aria-label="'
+                . e(t('prf.agrandir_photo')) . '" title="' . e(t('prf.agrandir_photo')) . '"><img src="' . e($adresse) . '" alt=""></span>';
+        }
 
         return $adresse === null
             ? '<span class="' . e($classe) . '" aria-hidden="true" data-groupe-avatar>👥</span>'

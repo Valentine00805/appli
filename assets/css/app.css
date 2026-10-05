@@ -4288,3 +4288,9 @@ summary.cal-volet__groupe:focus-visible {
 
 /* Le nom du groupe d'une tâche de groupe, bien lisible : une pastille de la couleur d'accent, pas un mot grisé. */
 .travaux-projet { display: inline-flex; align-items: center; gap: .25rem; padding: .08rem .55rem; border-radius: 999px; background: var(--accent-doux); color: var(--accent-fonce); font-size: .88rem; font-weight: 650; }
+
+/* Une photo de profil qu'un clic agrandit (voir assets/js/zoom-avatar.js). */
+.avatar--zoomable { cursor: zoom-in; transition: box-shadow .12s; }
+.avatar--zoomable:hover { box-shadow: 0 0 0 3px var(--accent-doux), 0 0 0 4px var(--accent); }
+.avatar--zoomable:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.visionneuse--avatar img { max-width: min(92vw, 52rem); }

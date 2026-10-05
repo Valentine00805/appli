@@ -4421,6 +4421,7 @@ return [
     'cal.tache_groupe' => 'Gruppenaufgabe · {projet}',
     'cal.tache_sans_personne' => '{titre} (niemandem zugewiesen)',
     'tr.li.le_projet' => 'Das Gruppenprojekt',
+    'prf.agrandir_photo' => 'Foto vergrößern',
     'apps.lien_icone' => 'Symbol (optional: ein Emoji statt dem der Seite)',
     'apps.lien_enregistrer' => 'Speichern',
     'apps.lien_annuler' => 'Abbrechen',

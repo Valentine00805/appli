@@ -219,7 +219,7 @@ $geminiFin = CleApi::configure() ? CleApi::fin((int) Auth::id(), CleApi::GEMINI)
   <h2 style="margin-top:0"><?= e(t('cpt.photo')) ?></h2>
   <div class="photo-groupe">
     <span class="photo-groupe__apercu" data-photo-apercu>
-      <?= Amis::avatar((int) $moi['id'], Auth::nomAffiche($moi), 'avatar--apercu') ?>
+      <?= Amis::avatar((int) $moi['id'], Auth::nomAffiche($moi), 'avatar--apercu', true) ?>
     </span>
     <div class="fond-reglage__infos">
       <form method="post" action="<?= url('compte/photo') ?>" enctype="multipart/form-data" class="fond-reglage__choix" data-photo-formulaire>
@@ -382,7 +382,7 @@ $calendriersAmis = $calendriersAmis ?? [];
       <?php foreach ($calendriersAmis as $ami): ?>
         <li>
           <span class="reglages-amis__qui">
-            <?= Amis::avatar($ami['id'], $ami['pseudo'], 'avatar--mini') ?>
+            <?= Amis::avatar($ami['id'], $ami['pseudo'], 'avatar--mini', true) ?>
             <strong><?= e($ami['pseudo']) ?></strong>
             <?php if ($ami['meMontreLeSien']): ?><span class="discret"><?= e(t('cpt.montre_le_sien')) ?></span><?php endif; ?>
           </span>
@@ -413,7 +413,7 @@ $calendriersAmis = $calendriersAmis ?? [];
       <?php foreach ($calendrierAmis as $ami): ?>
         <li>
           <span class="reglages-amis__qui">
-            <?= Amis::avatar($ami['id'], $ami['pseudo'], 'avatar--mini') ?>
+            <?= Amis::avatar($ami['id'], $ami['pseudo'], 'avatar--mini', true) ?>
             <strong><?= e($ami['pseudo']) ?></strong>
             <span class="discret">· <?= e($ami['partages'] === 0 ? t('cpt.aucun_partage') : tn('cpt.partages_nb', (int) $ami['partages'])) ?></span>
           </span>

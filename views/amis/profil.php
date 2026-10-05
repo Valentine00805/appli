@@ -25,7 +25,7 @@ $pseudo = (string) $ami['pseudo'];
 
 <div class="entete-page profil-ami"<?= $dansUneFenetre ? ' data-large' : '' ?>>
   <div class="profil-ami__identite">
-    <?= Amis::avatar((int) $ami['id'], $pseudo, 'avatar--grand') ?>
+    <?= Amis::avatar((int) $ami['id'], $pseudo, 'avatar--grand', true) ?>
     <div>
       <?php if (!$dansUneFenetre): ?>
         <p class="discret" style="margin:0 0 .2rem"><a href="<?= url('amis/' . (int) $ami['id']) ?>"><?= e(t('prf.retour_discussion')) ?></a></p>

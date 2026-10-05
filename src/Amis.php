@@ -213,14 +213,21 @@ final class Amis
         return $nom === null ? null : url('comptes/' . $id . '/photo', ['v' => substr($nom, 0, 12)]);
     }
 
-    /** L'avatar d'un compte : sa photo, ou l'initiale de son pseudo. */
-    public static function avatar(int $id, string $pseudo, string $classes = ''): string
+    /**
+     * L'avatar d'un compte : sa photo, ou l'initiale de son pseudo. « $zoom » : un clic sur la photo l'agrandit (script
+     * zoom-avatar.js) — pour les profils et les réglages, pas là où l'avatar est dans un lien ou une case.
+     */
+    public static function avatar(int $id, string $pseudo, string $classes = '', bool $zoom = false): string
     {
         $adresse = self::adressePhoto($id);
         $classe = trim('avatar ' . $classes);
         if ($adresse === null) {
             return '<span class="' . e($classe) . '" aria-hidden="true" data-compte-avatar>'
                 . e(mb_strtoupper(mb_substr($pseudo, 0, 1))) . '</span>';
+        }
+        if ($zoom) {
+            return '<span class="' . e($classe) . ' avatar--photo avatar--zoomable" data-compte-avatar data-zoom-avatar role="button" tabindex="0" aria-label="'
+                . e(t('prf.agrandir_photo')) . '" title="' . e(t('prf.agrandir_photo')) . '"><img src="' . e($adresse) . '" alt=""></span>';
         }
 
         return '<span class="' . e($classe) . ' avatar--photo" aria-hidden="true" data-compte-avatar><img src="' . e($adresse) . '" alt=""></span>';
