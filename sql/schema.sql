@@ -1515,3 +1515,17 @@ CREATE TABLE IF NOT EXISTS `diaporamas` (
   KEY `idx_diaporamas_user_date` (`user_id`, `created_at`),
   CONSTRAINT `fk_diaporamas_user` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Les diaporamas commentés rangés dans la fiche de révision d'un cours.
+
+CREATE TABLE IF NOT EXISTS `diaporama_cours` (
+  `diaporama_id` INT UNSIGNED NOT NULL,
+  `cours_id`     INT UNSIGNED NOT NULL,
+  `user_id`      INT UNSIGNED NOT NULL,
+  `created_at`   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`diaporama_id`, `cours_id`),
+  KEY `idx_diaporama_cours_cours` (`cours_id`, `created_at`),
+  CONSTRAINT `fk_dc_diaporama` FOREIGN KEY (`diaporama_id`) REFERENCES `diaporamas`(`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_dc_cours`     FOREIGN KEY (`cours_id`)     REFERENCES `cours`(`id`)      ON DELETE CASCADE,
+  CONSTRAINT `fk_dc_user`      FOREIGN KEY (`user_id`)      REFERENCES `users`(`id`)      ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

@@ -151,6 +151,78 @@ final class Diaporama
         return $propres;
     }
 
+    /**
+     * Les diaporamas rangés dans la fiche de révision d'un cours, du plus récemment rangé au plus ancien.
+     *
+     * @return list<array{id: int, titre: string, created_at: string, nombre: int}>
+     */
+    public static function duCours(int $coursId, int $userId): array
+    {
+        $liste = [];
+        foreach (Database::all(
+            'SELECT d.id, d.titre, d.diapos, d.created_at
+               FROM diaporamas d JOIN diaporama_cours dc ON dc.diaporama_id = d.id
+              WHERE dc.cours_id = ? AND d.user_id = ? ORDER BY dc.created_at DESC, d.id DESC',
+            [$coursId, $userId]
+        ) as $ligne) {
+            $liste[] = ['id' => (int) $ligne['id'], 'titre' => (string) $ligne['titre'],
+                        'created_at' => (string) $ligne['created_at'], 'nombre' => count(self::diapos($ligne))];
+        }
+
+        return $liste;
+    }
+
+    /**
+     * Les cours d'où vient un diaporama (ceux qu'il a lus, et qui sont toujours à son propriétaire), chacun disant si
+     * le diaporama est déjà rangé dans sa fiche.
+     *
+     * @return list<array{id: int, cours: string, lie: bool}>
+     */
+    public static function coursDeLaFiche(array $ligne, int $userId): array
+    {
+        $cours = [];
+        foreach ((array) (json_decode((string) $ligne['sources'], true) ?? []) as $source) {
+            $id = (int) ($source['id'] ?? 0);
+            if ($id <= 0 || isset($cours[$id])) {
+                continue;
+            }
+            $titre = Database::valeur('SELECT titre FROM cours WHERE id = ? AND user_id = ?', [$id, $userId]);
+            if ($titre === null) {
+                continue;
+            }
+            $cours[$id] = ['id' => $id, 'cours' => (string) $titre, 'lie' => Database::valeur(
+                'SELECT 1 FROM diaporama_cours WHERE diaporama_id = ? AND cours_id = ?', [(int) $ligne['id'], $id]) !== null];
+        }
+
+        return array_values($cours);
+    }
+
+    /** Le diaporama en HTML pour un PDF : un titre par diapositive, ses points, puis son commentaire en italique. */
+    public static function htmlPourPdf(array $diapos): string
+    {
+        $e = static fn (string $t): string => htmlspecialchars($t, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+        $html = '';
+        foreach ($diapos as $rang => $d) {
+            $html .= '<h2>' . $e(($rang + 1) . '. ' . $d['t']) . '</h2>';
+            if ($d['p'] !== []) {
+                $html .= '<ul>' . implode('', array_map(static fn (string $p): string => '<li>' . $e($p) . '</li>', $d['p'])) . '</ul>';
+            }
+            if ($d['c'] !== '') {
+                $html .= '<div><i>' . $e($d['c']) . '</i></div>';
+            }
+            $html .= '<div><br></div>';
+        }
+
+        return $html;
+    }
+
+    /** La ligne sous le titre d'un PDF de diaporama : ce que c'est, combien de diapositives, la date, et que l'IA l'a écrit. */
+    public static function sousTitrePdf(array $ligne): string
+    {
+        return t('ria.genre.diaporama') . ' · ' . tn('dia.nb_diapos', count(self::diapos($ligne))) . ' · '
+            . date_fr((string) $ligne['created_at'], false) . ' · ' . t('ria.pdf_ecrit_par_ia');
+    }
+
     /** Les diaporamas d'un utilisateur, du plus récent au plus ancien. */
     public static function duUser(int $userId, int $limite = 60): array
     {

@@ -22,6 +22,7 @@ final class DiaporamasController
             'diaporama' => $ligne,
             'diapos'    => Diaporama::diapos($ligne),
             'cleFin'    => CleApi::fin($userId, CleApi::GEMINI),
+            'coursFiche' => Diaporama::coursDeLaFiche($ligne, $userId),
         ];
         // Demandé depuis une liste, il s'ouvre dans une fenêtre, par-dessus la page où l'on était.
         if (Vue::enFenetre()) {
@@ -102,6 +103,132 @@ final class DiaporamasController
         ], false, ResumesController::dossier());
     }
 
+    /**
+     * Range le diaporama dans la fiche de révision d'un des cours qu'il a lus : il y apparaît parmi ses diaporamas, et
+     * s'y rouvre avec sa voix. Le cours vient du diaporama lui-même, jamais d'un numéro libre.
+     */
+    public function versLaFiche(int $id): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $userId = Auth::id();
+        $ligne = $this->diaporama($id, $userId);
+
+        $cours = $this->coursDeLaFicheChoisi($ligne, $userId);
+        if ($cours === null) {
+            Session::flash('erreur', t('dia.fl.fiche_impossible'));
+            redirect('diaporamas/' . $id);
+        }
+        if ($cours['lie']) {
+            Session::flash('info', t('dia.fl.fiche_deja', ['cours' => $cours['cours']]));
+            redirect('diaporamas/' . $id);
+        }
+        Database::run('INSERT IGNORE INTO diaporama_cours (diaporama_id, cours_id, user_id) VALUES (?, ?, ?)', [$id, $cours['id'], $userId]);
+        Session::flash('succes', t('dia.fl.fiche_ajoute', ['cours' => $cours['cours']]));
+        redirect('diaporamas/' . $id);
+    }
+
+    /** Retire le diaporama de la fiche d'un cours (il n'est pas effacé : il reste dans « Résumés IA »). */
+    public function retirerDeLaFiche(int $id): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $userId = Auth::id();
+        $ligne = $this->diaporama($id, $userId);
+
+        $coursId = (int) entier_ou_null($_POST['cours'] ?? null);
+        $titre = Database::valeur('SELECT titre FROM cours WHERE id = ? AND user_id = ?', [$coursId, $userId]);
+        if ($titre === null) {
+            Session::flash('erreur', t('dia.fl.fiche_impossible'));
+            redirect('diaporamas/' . $id);
+        }
+        Database::run('DELETE FROM diaporama_cours WHERE diaporama_id = ? AND cours_id = ? AND user_id = ?', [$id, $coursId, $userId]);
+        Session::flash('succes', t('dia.fl.fiche_retire', ['cours' => (string) $titre]));
+
+        // Retiré depuis la fiche elle-même : on y revient (la fiche d'un cours, ou son volet) ; sinon, au diaporama.
+        $retour = $_POST['retour'] ?? '';
+        if ($retour === 'fiche') {
+            redirect('revision/' . $coursId);
+        }
+        if ($retour === 'volet') {
+            redirect('cours/' . $coursId, ['revision' => 1]);
+        }
+        redirect('diaporamas/' . $id);
+    }
+
+    /** Le diaporama en PDF (titres, points, commentaires), à télécharger. */
+    public function pdf(int $id): void
+    {
+        Auth::exiger();
+        $ligne = $this->diaporama($id, Auth::id());
+        try {
+            $pdf = $this->fabriquerLePdf($ligne);
+        } catch (Throwable) {
+            Session::flash('erreur', t('ria.fl.pdf_echec'));
+            redirect('diaporamas/' . $id);
+        }
+        $nom = self::nomDuPdf($ligne);
+        header('Content-Type: application/pdf');
+        header('Content-Length: ' . strlen($pdf));
+        header('X-Content-Type-Options: nosniff');
+        header('Cache-Control: private, no-store');
+        header(sprintf("Content-Disposition: attachment; filename=\"%s\"; filename*=UTF-8''%s",
+            preg_replace('/[^A-Za-z0-9._-]+/', '_', $nom) ?? 'diaporama.pdf', rawurlencode($nom)));
+        echo $pdf;
+        exit;
+    }
+
+    /**
+     * Joint le PDF du diaporama à la fiche de révision d'un des cours lus : il y rejoint les fichiers de la fiche. Un
+     * nom déjà pris dans la fiche reçoit un numéro, pour que deux PDF ne se confondent pas.
+     */
+    public function pdfVersLaFiche(int $id): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $userId = Auth::id();
+        $ligne = $this->diaporama($id, $userId);
+
+        $cours = $this->coursDeLaFicheChoisi($ligne, $userId);
+        if ($cours === null) {
+            Session::flash('erreur', t('dia.fl.fiche_impossible'));
+            redirect('diaporamas/' . $id);
+        }
+        try {
+            $pdf = $this->fabriquerLePdf($ligne);
+        } catch (Throwable) {
+            Session::flash('erreur', t('ria.fl.pdf_echec'));
+            redirect('diaporamas/' . $id);
+        }
+
+        $dossier = (string) Config::get('app', 'dossier_uploads');
+        if (!is_dir($dossier) && !mkdir($dossier, 0775, true) && !is_dir($dossier)) {
+            Session::flash('erreur', t('ria.fl.ecriture'));
+            redirect('diaporamas/' . $id);
+        }
+        $stocke = bin2hex(random_bytes(16)) . '.pdf';
+        if (file_put_contents($dossier . DIRECTORY_SEPARATOR . $stocke, $pdf) === false) {
+            Session::flash('erreur', t('ria.fl.ecriture'));
+            redirect('diaporamas/' . $id);
+        }
+
+        $nom = self::nomDuPdf($ligne);
+        $deja = array_column(Database::all(
+            'SELECT nom_origine FROM fichiers WHERE cours_id = ? AND pour_fiche = 1', [$cours['id']]), 'nom_origine');
+        $base = substr($nom, 0, -4);
+        for ($n = 2; in_array($nom, $deja, true); $n++) {
+            $nom = $base . ' (' . $n . ').pdf';
+        }
+        Database::run(
+            'INSERT INTO fichiers (user_id, cours_id, pour_fiche, nom_origine, nom_stocke, mime, taille) VALUES (?, ?, 1, ?, ?, ?, ?)',
+            [$userId, $cours['id'], mb_substr($nom, 0, 255), $stocke, 'application/pdf', strlen($pdf)]
+        );
+        Partages::suivreAjouts($userId, 'fiche', $cours['id'], 1);
+
+        Session::flash('succes', t('ria.fl.pdf_joint', ['cours' => $cours['cours']]));
+        redirect('diaporamas/' . $id);
+    }
+
     /** Efface le diaporama et ses voix. */
     public function supprimer(int $id): void
     {
@@ -130,6 +257,32 @@ final class DiaporamasController
         }
 
         return $ligne;
+    }
+
+    /** Le cours choisi dans le formulaire, s'il fait partie de ceux que le diaporama a lus (et qu'on possède encore). */
+    private function coursDeLaFicheChoisi(array $ligne, int $userId): ?array
+    {
+        $voulu = entier_ou_null($_POST['cours'] ?? null);
+        foreach (Diaporama::coursDeLaFiche($ligne, $userId) as $cours) {
+            if ($voulu !== null && $cours['id'] === $voulu) {
+                return $cours;
+            }
+        }
+
+        return null;
+    }
+
+    /** Fabrique le PDF d'un diaporama. */
+    private function fabriquerLePdf(array $ligne): string
+    {
+        return ExportPdf::depuisResume((string) $ligne['titre'], Diaporama::sousTitrePdf($ligne),
+            Diaporama::htmlPourPdf(Diaporama::diapos($ligne)));
+    }
+
+    /** Le nom d'un PDF de diaporama : son titre, sans les signes qu'un système de fichiers refuse. */
+    private static function nomDuPdf(array $ligne): string
+    {
+        return (trim((string) preg_replace('/[\\\\\/:*?"<>|]+/', ' ', (string) $ligne['titre'])) ?: 'diaporama') . '.pdf';
     }
 
     private function json(array $donnees, int $code = 200): never

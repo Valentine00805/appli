@@ -5,6 +5,7 @@
  * @var array $diaporama  la ligne de diaporamas
  * @var array $diapos     ses diapositives : [{t, p: [points], c: commentaire, a?: nom du fichier voix}]
  * @var ?string $cleFin   la fin de la clé Gemini de l'utilisateur, ou null
+ * @var list<array{id: int, cours: string, lie: bool}> $coursFiche  les cours qu'il a lus, et s'il est déjà dans leur fiche
  * @var bool $dansUneFenetre  rendu seul, pour être posé dans une fenêtre
  */
 $id = (int) $diaporama['id'];
@@ -122,6 +123,75 @@ $voixChoisie = in_array((string) ($diaporama['voix'] ?? ''), Gemini::VOIX, true)
     </ol>
   </div>
 </section>
+<?php
+/*
+ * Le ranger dans la fiche de révision d'un des cours lus (il s'y rouvre, avec sa voix), ou en joindre le PDF — titres,
+ * points et commentaires — aux fichiers de la fiche. Le cours vient du diaporama lui-même : rien d'autre ne se choisit.
+ */
+$lies = array_values(array_filter($coursFiche, static fn (array $c): bool => $c['lie']));
+$aLier = array_values(array_filter($coursFiche, static fn (array $c): bool => !$c['lie']));
+?>
+<section class="carte" data-dia-fiche>
+  <h2><?= e(t('dia.fiche_titre')) ?></h2>
+  <p class="champ__aide"><?= e(t('dia.fiche_aide')) ?></p>
+
+  <?php if ($lies !== []): ?>
+    <ul class="ria-liste">
+      <?php foreach ($lies as $c): ?>
+        <li>
+          <span><?= e(t('dia.fiche_dans')) ?> <a href="<?= url('revision/' . $c['id']) ?>"><strong><?= e($c['cours']) ?></strong></a></span>
+          <form method="post" action="<?= url('diaporamas/' . $id . '/fiche/retirer') ?>" class="en-ligne"<?= $envoi ?>>
+            <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
+            <input type="hidden" name="cours" value="<?= (int) $c['id'] ?>">
+            <button class="bouton bouton--discret bouton--petit" type="submit"><?= e(t('dia.fiche_retirer')) ?></button>
+          </form>
+        </li>
+      <?php endforeach; ?>
+    </ul>
+  <?php endif; ?>
+
+  <?php if ($aLier !== []): ?>
+    <form method="post" action="<?= url('diaporamas/' . $id . '/fiche') ?>" class="fabrique__form"<?= $envoi ?>>
+      <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
+      <?php if (count($aLier) === 1): ?>
+        <input type="hidden" name="cours" value="<?= (int) $aLier[0]['id'] ?>">
+      <?php else: ?>
+        <div class="champ">
+          <label for="dia_cours_fiche"><?= e(t('ria.fiche_vers')) ?></label>
+          <select id="dia_cours_fiche" name="cours">
+            <?php foreach ($aLier as $c): ?>
+              <option value="<?= (int) $c['id'] ?>"><?= e($c['cours']) ?></option>
+            <?php endforeach; ?>
+          </select>
+        </div>
+      <?php endif; ?>
+      <button class="bouton bouton--secondaire" type="submit"><?= e(t('dia.fiche_ajouter')) ?><?php if (count($aLier) === 1): ?> — <?= e($aLier[0]['cours']) ?><?php endif; ?></button>
+    </form>
+  <?php endif; ?>
+
+  <p class="actions" style="margin-top:.75rem">
+    <a class="bouton bouton--secondaire" href="<?= url('diaporamas/' . $id . '/pdf') ?>"><?= e(t('ria.pdf_telecharger')) ?></a>
+  </p>
+  <?php if ($coursFiche !== []): ?>
+    <form method="post" action="<?= url('diaporamas/' . $id . '/pdf-fiche') ?>" class="fabrique__form"<?= $envoi ?>>
+      <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
+      <?php if (count($coursFiche) === 1): ?>
+        <input type="hidden" name="cours" value="<?= (int) $coursFiche[0]['id'] ?>">
+      <?php else: ?>
+        <div class="champ">
+          <label for="dia_cours_pdf"><?= e(t('ria.fiche_vers')) ?></label>
+          <select id="dia_cours_pdf" name="cours">
+            <?php foreach ($coursFiche as $c): ?>
+              <option value="<?= (int) $c['id'] ?>"><?= e($c['cours']) ?></option>
+            <?php endforeach; ?>
+          </select>
+        </div>
+      <?php endif; ?>
+      <button class="bouton bouton--secondaire" type="submit"><?= e(t('ria.pdf_joindre')) ?><?php if (count($coursFiche) === 1): ?> — <?= e($coursFiche[0]['cours']) ?><?php endif; ?></button>
+    </form>
+  <?php endif; ?>
+</section>
+
 <p class="champ__aide"><?= e(t('ria.avertissement_ia')) ?></p>
 
 <form method="post" action="<?= url('diaporamas/' . $id . '/supprimer') ?>" data-confirmation="<?= e(t('dia.supprimer_sur')) ?>"<?= $envoi ?>>

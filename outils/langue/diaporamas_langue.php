@@ -255,6 +255,92 @@ try {
                 && !preg_match('/>\s*(dia|ria\.genre\.diaporama)[a-z_.]*\s*</', $popup)), 'oui');
     }
 
+    echo "\n7 bis. Dans la fiche de révision\n";
+    require_once dirname(__DIR__, 2) . '/src/TextePdf.php';
+    $sansEspaces = static fn (string $t): string => (string) preg_replace('/\s+/u', '', $t);
+    $coursB = (int) bd_valeur('SELECT id FROM cours WHERE user_id = ?', [$idB]);
+    bd_run('INSERT INTO cours (user_id, titre, contenu) VALUES (?, ?, ?)', [$idA, 'Autre cours', 'Un autre cours, pas lu par le diaporama.']);
+    $coursAutre = (int) bd_valeur('SELECT id FROM cours WHERE user_id = ? AND titre = ?', [$idA, 'Autre cours']);
+    $nbLiens = static fn (): int => (int) bd_valeur('SELECT COUNT(*) FROM diaporama_cours WHERE diaporama_id = ?', [$id]);
+
+    foreach ([
+        'en' => ['Revision sheet', 'Add to the revision sheet', '🎞️ Slideshows', 'No slideshow in this sheet.', 'Create a slideshow in “AI summaries” →'],
+        'es' => ['Ficha de repaso', 'Añadir a la ficha de repaso', '🎞️ Presentaciones', 'Ninguna presentación en esta ficha.', 'Crear una presentación en «Resúmenes con IA» →'],
+        'de' => ['Lernblatt', 'Zum Lernblatt hinzufügen', '🎞️ Präsentationen', 'Keine Präsentation in diesem Lernblatt.', 'Eine Präsentation unter „KI-Zusammenfassungen“ erstellen →'],
+        'fr' => ['Fiche de révision', 'Ajouter à la fiche de révision', '🎞️ Diaporamas', 'Aucun diaporama dans cette fiche.', 'Créer un diaporama dans « Résumés IA » →'],
+    ] as $langue => $mots) {
+        $appel($a, 'compte/langue', ['_csrf' => $csrf, 'langue' => $langue]);
+        [$popup] = $appel($a, 'diaporamas/' . $id . '?fenetre=1');
+        [$fiche] = $appel($a, 'revision/' . $coursA);
+        $dire("$langue : la page du diaporama (fiche de révision) et le rayon de la fiche parlent la langue",
+            $oui(str_contains($popup, $mots[0]) && str_contains($popup, $mots[1]) && str_contains($fiche, $mots[2])
+                && str_contains($fiche, $mots[3]) && str_contains($fiche, $mots[4])), 'oui');
+    }
+
+    [$popup] = $appel($a, 'diaporamas/' . $id . '?fenetre=1');
+    $dire('la page du diaporama propose de le ranger dans la fiche de Cyber, de télécharger le PDF et de le joindre',
+        $oui(str_contains($popup, 'data-dia-fiche') && str_contains($popup, 'Ajouter à la fiche de révision — Cyber')
+            && str_contains($popup, 'Télécharger en PDF') && str_contains($popup, 'Joindre le PDF à ma fiche de révision — Cyber')
+            && !str_contains($popup, 'Retirer de la fiche')) . ' · ' . $nbLiens(), 'oui · 0');
+    [$r, $url] = $appel($a, 'diaporamas/' . $id . '/fiche', ['_csrf' => $jeton($popup), 'cours' => $coursA]);
+    $dire('« Ajouter » : le diaporama est rangé dans la fiche du cours, et la page le dit',
+        $oui(str_contains($r, 'Diaporama ajouté à la fiche de révision de « Cyber »') && str_contains($url, '/diaporamas/' . $id)) . ' · ' . $nbLiens(), 'oui · 1');
+    [$fiche] = $appel($a, 'revision/' . $coursA);
+    $dire('  la fiche de révision a son rayon « Diaporamas » : le lien s’ouvre en fenêtre, avec le nombre de diapositives',
+        $oui(str_contains($fiche, 'data-diaporamas-fiche') && preg_match('#<a href="[^"]*/diaporamas/' . $id . '" data-fenetre>Diaporama commenté — Cyber</a>#', $fiche) === 1
+            && str_contains($fiche, '3 diapositives') && str_contains($fiche, 'name="retour" value="fiche"')), 'oui');
+    [$popup] = $appel($a, 'diaporamas/' . $id . '?fenetre=1');
+    $dire('  et la page du diaporama dit où il est rangé, avec « Retirer de la fiche » (plus de bouton « Ajouter »)',
+        $oui(str_contains($popup, 'Dans la fiche de') && str_contains($popup, 'Retirer de la fiche') && !str_contains($popup, 'Ajouter à la fiche de révision')), 'oui');
+    [$r] = $appel($a, 'diaporamas/' . $id . '/fiche', ['_csrf' => $jeton($popup), 'cours' => $coursA]);
+    $dire('  le ranger deux fois ne le range qu’une fois (message « déjà dans la fiche »)',
+        $oui(str_contains($r, 'est déjà dans la fiche de « Cyber »')) . ' · ' . $nbLiens(), 'oui · 1');
+    foreach (['un cours à soi mais que le diaporama n’a pas lu' => $coursAutre, 'le cours d’un autre compte' => $coursB, 'un numéro absurde' => 999999999] as $quoi => $cible) {
+        [$r] = $appel($a, 'diaporamas/' . $id . '/fiche', ['_csrf' => $csrf, 'cours' => $cible]);
+        $dire("  refusé : $quoi", $oui(str_contains($r, 'choisissez un des cours que ce diaporama a lus')) . ' · ' . $nbLiens(), 'oui · 1');
+    }
+    [, , $code] = $appel($b, 'diaporamas/' . $id . '/fiche', ['_csrf' => $csrfB, 'cours' => $coursA]);
+    [, , $code2] = $appel($b, 'diaporamas/' . $id . '/fiche/retirer', ['_csrf' => $csrfB, 'cours' => $coursA]);
+    $dire('  un autre compte ne range ni ne retire rien', $code . ' · ' . $code2 . ' · ' . $nbLiens(), '404 · 404 · 1');
+
+    [$corps, , $code, $type] = $appel($a, 'diaporamas/' . $id . '/pdf');
+    $texte = $sansEspaces((string) (function () use ($corps) {
+        $tmp = tempnam(sys_get_temp_dir(), 'pdf'); file_put_contents($tmp, $corps);
+        $t = TextePdf::extraire($tmp); @unlink($tmp);
+        return $t;
+    })());
+    $dire('le PDF du diaporama : un vrai PDF, avec le titre, les titres des diapositives, leurs points et leurs commentaires',
+        $code . ' · ' . $oui(str_starts_with($corps, '%PDF-') && str_contains($type, 'application/pdf')
+            && str_contains($texte, 'Diaporamacommenté—Cyber') && str_contains($texte, '1.Pourquoichiffrer?') && str_contains($texte, '2.Lepare-feu')
+            && str_contains($texte, 'Intégritédesdonnées') && str_contains($texte, 'Unpare-feufiltreletraficréseau') && str_contains($texte, '3.Enconclusion')
+            && str_contains($texte, 'Défenseenprofondeur')), '200 · oui');
+    $dire('  le script glissé dans le texte n’y est qu’un texte', $oui(!str_contains($corps, '/JavaScript') && !str_contains($corps, '/JS')), 'oui');
+    [, , $code] = $appel($b, 'diaporamas/' . $id . '/pdf');
+    $dire('  un autre compte ne le télécharge pas', (string) $code, '404');
+
+    $avantF = (int) bd_valeur('SELECT COUNT(*) FROM fichiers WHERE cours_id = ? AND pour_fiche = 1', [$coursA]);
+    [$r] = $appel($a, 'diaporamas/' . $id . '/pdf-fiche', ['_csrf' => $csrf, 'cours' => $coursA]);
+    $joints = bd_all('SELECT nom_origine, nom_stocke, mime, taille FROM fichiers WHERE cours_id = ? AND pour_fiche = 1 ORDER BY id DESC', [$coursA]);
+    $chemin = $racine . '/storage/uploads/' . basename((string) ($joints[0]['nom_stocke'] ?? 'absent'));
+    $dire('« Joindre le PDF » : un fichier de la fiche (pas du cours), de type PDF, bien rangé, et la page le dit',
+        (count($joints) - $avantF) . ' · ' . ($joints[0]['nom_origine'] ?? '?') . ' · ' . ($joints[0]['mime'] ?? '?') . ' · '
+        . $oui(is_file($chemin) && (int) $joints[0]['taille'] === filesize($chemin) && str_starts_with((string) file_get_contents($chemin), '%PDF-')
+            && str_contains($r, 'PDF joint à la fiche de révision de « Cyber »')), '1 · Diaporama commenté — Cyber.pdf · application/pdf · oui');
+    $appel($a, 'diaporamas/' . $id . '/pdf-fiche', ['_csrf' => $csrf, 'cours' => $coursA]);
+    $noms = array_column(bd_all('SELECT nom_origine FROM fichiers WHERE cours_id = ? AND pour_fiche = 1', [$coursA]), 'nom_origine');
+    $dire('  un second ajout reçoit un numéro', $oui(in_array('Diaporama commenté — Cyber (2).pdf', $noms, true)), 'oui');
+    [$r] = $appel($a, 'diaporamas/' . $id . '/pdf-fiche', ['_csrf' => $csrf, 'cours' => $coursAutre]);
+    [, , $code] = $appel($b, 'diaporamas/' . $id . '/pdf-fiche', ['_csrf' => $csrfB, 'cours' => $coursA]);
+    $dire('  refusé pour un cours que le diaporama n’a pas lu, et pour un autre compte',
+        $oui(str_contains($r, 'choisissez un des cours que ce diaporama a lus')) . ' · ' . $code . ' · ' . bd_valeur('SELECT COUNT(*) FROM fichiers WHERE cours_id = ?', [$coursAutre]), 'oui · 404 · 0');
+
+    [$fiche] = $appel($a, 'revision/' . $coursA);
+    [$r, $url] = $appel($a, 'diaporamas/' . $id . '/fiche/retirer', ['_csrf' => $jeton($fiche), 'cours' => $coursA, 'retour' => 'fiche']);
+    $dire('« Retirer » depuis la fiche : on revient à la fiche, qui n’a plus le diaporama — lequel n’est pas effacé',
+        $oui(str_contains($url, '/revision/' . $coursA) && str_contains($r, 'Aucun diaporama dans cette fiche.') && str_contains($r, 'retiré de la fiche'))
+        . ' · ' . $nbLiens() . ' · ' . $nbDia(), 'oui · 0 · 1');
+    $appel($a, 'diaporamas/' . $id . '/fiche', ['_csrf' => $csrf, 'cours' => $coursA]);   // de nouveau rangé : il disparaîtra avec le diaporama
+
     echo "\n8. Effacer\n";
     $fichiers = array_filter(array_column($diapos($id), 'a'));
     [$popup] = $appel($a, 'diaporamas/' . $id . '?fenetre=1');
@@ -268,6 +354,7 @@ try {
 "; }
     [$apres] = $appel($a, 'resumes');
     $dire('  et son message le dit', $oui(str_contains($apres, 'Diaporama supprimé.') || str_contains($r, 'Diaporama supprimé.')), 'oui');
+    $dire('  et son rangement dans la fiche disparaît avec lui', (string) bd_valeur('SELECT COUNT(*) FROM diaporama_cours WHERE diaporama_id = ?', [$id]), '0');
 } finally {
     // Les fichiers voix des comptes d'essai encore rangés (un essai interrompu) : retrouvés par la base.
     foreach (bd_all('SELECT diapos FROM diaporamas WHERE user_id IN (?, ?)', [$idA ?? 0, $idB ?? 0]) as $ligne) {
@@ -276,6 +363,10 @@ try {
         }
     }
     foreach (array_filter($sons) as $s) { @unlink($dossierSon . '/' . basename($s)); }
+    // Les PDF joints à une fiche d'essai : des fichiers de disque que la base, en cascade, oublie.
+    foreach (bd_all('SELECT nom_stocke FROM fichiers WHERE user_id IN (?, ?)', [$idA ?? 0, $idB ?? 0]) as $pj) {
+        @unlink($racine . '/storage/uploads/' . basename((string) $pj['nom_stocke']));
+    }
     if (is_resource($serveur)) { proc_terminate($serveur); proc_close($serveur); }
     @unlink($fichierEssai);
     foreach ($cookies as $f) { @unlink($f); }

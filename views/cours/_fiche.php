@@ -486,6 +486,38 @@ $avancementFiche = avancement_anneaux(
     <p class="champ__aide"><a href="<?= url('resumes', ['cours' => $cours['id']]) ?>"><?= e(t('cm.aller_resumes')) ?></a></p>
   </div>
 
+  <?php // --- Diaporamas commentés ------------------------------------- ?>
+  <?php
+  /*
+   * Les diaporamas rangés dans cette fiche (depuis leur page, bouton « Ajouter à la fiche de révision ») : ils s'ouvrent
+   * dans une fenêtre, avec leur lecture commentée. Retirer d'ici n'efface pas le diaporama.
+   */
+  $diaporamasFiche = $diaporamasFiche ?? Diaporama::duCours((int) $cours['id'], Auth::id());
+  ?>
+  <div class="fiche__rayon<?= $diaporamasFiche === [] ? ' fiche__rayon--vide' : '' ?>" data-diaporamas-fiche>
+    <h4 class="fiche__titre"><?= e(t('fiche.diaporamas')) ?></h4>
+
+    <?php if ($diaporamasFiche === []): ?>
+      <p class="discret fiche__vide"><?= e(t('dia.fiche_aucun')) ?></p>
+    <?php else: ?>
+      <ul class="fiche__cartes-mentales">
+        <?php foreach ($diaporamasFiche as $dia): ?>
+          <li>
+            <a href="<?= url('diaporamas/' . $dia['id']) ?>" <?= $dansUneFenetre ? 'data-fenetre-dessus' : 'data-fenetre' ?>><?= e($dia['titre']) ?></a>
+            <span class="discret"><?= e(tn('dia.nb_diapos', $dia['nombre'])) ?></span>
+            <form<?= $surPlace ?> method="post" action="<?= url('diaporamas/' . $dia['id'] . '/fiche/retirer') ?>" class="en-ligne">
+              <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
+              <input type="hidden" name="cours" value="<?= (int) $cours['id'] ?>">
+              <input type="hidden" name="retour" value="<?= $surPage ? 'fiche' : 'volet' ?>">
+              <button class="bouton bouton--discret bouton--petit" type="submit" title="<?= e(t('dia.fiche_retirer')) ?>">✕</button>
+            </form>
+          </li>
+        <?php endforeach; ?>
+      </ul>
+    <?php endif; ?>
+    <p class="champ__aide"><a href="<?= url('resumes', ['cours' => $cours['id']]) ?>"><?= e(t('dia.aller_resumes')) ?></a></p>
+  </div>
+
   <?php // --- Liens web ----------------------------------------------- ?>
   <div class="fiche__rayon<?= $parType['lien'] === [] ? ' fiche__rayon--vide' : '' ?>">
     <h4 class="fiche__titre"><?= e(t('fiche.liens')) ?></h4>
