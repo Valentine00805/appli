@@ -120,7 +120,8 @@ $ligne = static function (string $etiquette, string $valeur): string {
         . e((string) $evenement['type_icone'] . ' ' . (string) $evenement['type_nom']) . '</span>');
     echo $ligne(t('evt.matiere'), e((string) ($evenement['matiere_nom'] ?? '')));
     echo $ligne(t('evt.cours_lie'), (string) ($evenement['cours_titre'] ?? '') === '' ? '' :
-        '<a href="' . url('cours/' . (int) $evenement['cours_id']) . '">'
+        // Dans la fenêtre de l'évènement, le cours s'ouvre dans la même fenêtre (la flèche ← ramène à l'évènement).
+        '<a href="' . url('cours/' . (int) $evenement['cours_id']) . '"' . ($dansUneFenetre ? ' data-fenetre' : '') . '>'
         . e((string) $evenement['cours_titre']) . '</a>');
     echo $ligne(t('evt.etat'), (int) $evenement['termine'] === 1 ? e(t('evt.termine')) : '');
     // Les rappels : seulement s'il y en a, dits comme dans le formulaire.
