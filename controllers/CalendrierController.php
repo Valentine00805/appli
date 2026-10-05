@@ -812,10 +812,17 @@ final class CalendrierController
             $this->introuvable();
         }
 
+        // Ouvert depuis l'accueil (le crayon d'« Examens & devoirs »), on y revient une fois enregistré.
+        $retour = self::retourInterne($_POST['retour'] ?? null);
+        $versLeFormulaire = ['retour' => $retour];
+        $apres = static fn (array $donnees): never => $retour !== null
+            ? redirect(ltrim($retour, '/'))
+            : redirect('calendrier', ['date' => substr($donnees['debut'], 0, 10)]);
+
         $donnees = $this->lireFormulaire($userId);
         if (is_string($donnees)) {
             Session::flash('erreur', $donnees);
-            redirect('evenements/' . $id . '/modifier');
+            redirect('evenements/' . $id . '/modifier', array_filter($versLeFormulaire, static fn ($v): bool => $v !== null));
         }
 
         $serieId = entier_ou_null($avant['serie_id']);
@@ -825,7 +832,7 @@ final class CalendrierController
             $rythme = $serie === null ? null : $this->rythmeSoumis($serie);
             if (is_string($rythme)) {
                 Session::flash('erreur', $rythme);
-                redirect('evenements/' . $id . '/modifier');
+                redirect('evenements/' . $id . '/modifier', array_filter($versLeFormulaire, static fn ($v): bool => $v !== null));
             }
 
             // Le rythme d'abord : les occurrences qu'il ajoute doivent recevoir
@@ -841,7 +848,7 @@ final class CalendrierController
             if ($refait['retirees'] > 0) { $dit .= tn('flash.serie_retirees', $refait['retirees']); }
 
             Session::flash('succes', $dit . '.');
-            redirect('calendrier', ['date' => substr($donnees['debut'], 0, 10)]);
+            $apres($donnees);
         }
 
         /*
@@ -897,7 +904,7 @@ final class CalendrierController
         }
 
         Session::flash('succes', t('flash.evt_maj'));
-        redirect('calendrier', ['date' => substr($donnees['debut'], 0, 10)]);
+        $apres($donnees);
     }
 
     /**
@@ -1057,7 +1064,8 @@ final class CalendrierController
             Database::run('DELETE FROM evenements WHERE id = ? AND user_id = ?', [$id, $userId]);
             Partages::oublier('evenement', $id);
             Session::flash('succes', t('flash.evt_supprime'));
-            redirect('calendrier');
+            $retour = self::retourInterne($_POST['retour'] ?? null);
+            redirect($retour !== null ? ltrim($retour, '/') : 'calendrier');
         }
 
         $combien = (int) Database::valeur(
@@ -1069,7 +1077,8 @@ final class CalendrierController
         Database::run('DELETE FROM series_evenements WHERE id = ? AND user_id = ?', [$serieId, $userId]);
 
         Session::flash('succes', tn('flash.evt_occurrences_supprimees', $combien));
-        redirect('calendrier');
+        $retour = self::retourInterne($_POST['retour'] ?? null);
+        redirect($retour !== null ? ltrim($retour, '/') : 'calendrier');
     }
 
     public function basculerTermine(int $id): void

@@ -95,8 +95,8 @@
                   <a class="bouton bouton--secondaire" href="<?= url('revision/' . $coursId) ?>" data-fenetre
                      title="<?= e(t('kb.ouvrir_fiche')) ?>"><?= e(t('accueil.fiche_revision')) ?></a>
                 <?php endif; ?>
-                <a class="bouton bouton--discret bouton--petit"
-                   href="<?= url('evenements/' . $evt['id'] . '/modifier') ?>" title="<?= e(t('accueil.modifier')) ?>">✎</a>
+                <a class="bouton bouton--discret bouton--petit" data-fenetre
+                   href="<?= url('evenements/' . $evt['id'] . '/modifier', ['retour' => '/']) ?>" title="<?= e(t('accueil.modifier')) ?>">✎</a>
               </span>
             </div>
           <?php endforeach; ?>

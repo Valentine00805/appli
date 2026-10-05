@@ -6,6 +6,7 @@
 require __DIR__ . '/base.php';
 
 $anomalies = 0;
+$termine = false;   // faux si le script s'arrête en route : le bilan ne doit pas dire « aucune anomalie »
 $dire = static function (string $quoi, string $obtenu, string $attendu) use (&$anomalies): void {
     $bon = $obtenu === $attendu;
     if (!$bon) { $anomalies++; }
@@ -78,7 +79,42 @@ try {
     [$form, , $code] = $appel($a, 'evenements/' . $evenement . '/modifier?fenetre=1');
     $dire('  le formulaire de l’évènement répond en fragment (sans bandeau ni menu)',
         $code . ' · ' . $oui(!str_contains($form, '<header class="entete"') && str_contains($form, 'Rendre le DM')), '200 · oui');
+
+    echo "\n3. L'accueil : « Examens & devoirs »\n";
+    bd_run('INSERT INTO types_evenement (user_id, nom, icone, couleur, est_echeance, au_tableau) VALUES (?, ?, ?, ?, 1, 1)', [$idA, 'Devoir', 'D', '#ea580c']);
+    $type = (int) bd_valeur('SELECT id FROM types_evenement WHERE user_id = ?', [$idA]);
+    $bientot = date('Y-m-d H:i:s', strtotime('+10 days'));
+    bd_run('INSERT INTO evenements (user_id, type_id, cours_id, titre, debut, fin) VALUES (?, ?, ?, ?, ?, ?)', [$idA, $type, $coursA, 'Rendre le TP', $bientot, $bientot]);
+    $devoir = (int) bd_valeur('SELECT id FROM evenements WHERE user_id = ? AND titre = ?', [$idA, 'Rendre le TP']);
+    [$accueil] = $appel($a, '');
+    $dire('« Cours » et « Révision » s\'ouvrent dans une fenêtre (lien « data-fenetre »)',
+        $oui(preg_match('#<a class="bouton bouton--secondaire" href="[^"]*/cours/' . $coursA . '" data-fenetre#', $accueil) === 1
+            && preg_match('#<a class="bouton bouton--secondaire" href="[^"]*/revision/' . $coursA . '" data-fenetre#', $accueil) === 1), 'oui');
+    $dire('  le crayon aussi, et il ramène à l\'accueil (retour = « / »)',
+        $oui(preg_match('#<a class="bouton bouton--discret bouton--petit" data-fenetre\s+href="[^"]*/evenements/' . $devoir . '/modifier\?retour=%2F"#', $accueil) === 1), 'oui');
+    [$form, , $code] = $appel($a, 'evenements/' . $devoir . '/modifier?retour=%2F&fenetre=1');
+    $dire('  le formulaire ouvert ainsi garde ce retour (enregistrer, et les deux boutons « supprimer »)',
+        $code . ' · ' . (substr_count($form, 'name="retour" value="/"') >= 2 ? 'oui' : 'non'), '200 · oui');
+    [$form] = $appel($a, 'evenements/' . $devoir . '/modifier');
+    $dire('  sans retour demandé, le formulaire n\'en porte pas (le calendrier reste la destination)', $oui(!str_contains($form, 'name="retour"')), 'oui');
+
+    $jour = date('Y-m-d', strtotime('+12 days'));
+    $champs = ['_csrf' => $jeton($form), 'titre' => 'Rendre le TP (modifié)', 'type_id' => $type, 'date_debut' => $jour, 'date_fin' => $jour,
+        'journee_entiere' => '1', 'cours_id' => $coursA];
+    [, $adresse] = $appel($a, 'evenements/' . $devoir . '/modifier', $champs + ['retour' => '/']);
+    $dire('  enregistré depuis l\'accueil : on revient à l\'accueil (et non au calendrier)',
+        $oui(preg_match('#/appli/?$#', $adresse) === 1) . ' · ' . bd_valeur('SELECT titre FROM evenements WHERE id = ?', [$devoir]), 'oui · Rendre le TP (modifié)');
+    [, $adresse] = $appel($a, 'evenements/' . $devoir . '/modifier', $champs + ['titre' => 'Rendre le TP (2)']);
+    $dire('  enregistré sans retour : le calendrier, comme avant', $oui(str_contains($adresse, '/calendrier')), 'oui');
+    [, $adresse] = $appel($a, 'evenements/' . $devoir . '/modifier', $champs + ['titre' => 'Rendre le TP (3)', 'retour' => 'https://exemple.org/piege']);
+    $dire('  un retour qui n\'est pas un chemin interne est refusé : le calendrier', $oui(str_contains($adresse, '/calendrier') && !str_contains($adresse, 'exemple.org')), 'oui');
+    [, $adresse] = $appel($a, 'evenements/' . $devoir . '/supprimer', ['_csrf' => $champs['_csrf'], 'retour' => '/']);
+    $dire('  supprimé depuis l\'accueil : on revient à l\'accueil', $oui(preg_match('#/appli/?$#', $adresse) === 1) . ' · ' . bd_valeur('SELECT COUNT(*) FROM evenements WHERE id = ?', [$devoir]), 'oui · 0');
+    $termine = true;
 } finally {
+    if (!$termine) { $anomalies++; echo "
+   ✗ le script s'est arrêté avant la fin
+"; }
     foreach ($cookies as $f) { @unlink($f); }
     foreach ($emails as $a) { bd_run('DELETE FROM users WHERE email = ? AND email LIKE ?', [$a, '%@exemple-test.fr']); }
     echo "\n" . ($anomalies === 0 ? 'Aucune anomalie' : $anomalies . ' anomalie(s)')

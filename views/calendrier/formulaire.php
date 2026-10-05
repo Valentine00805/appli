@@ -9,7 +9,7 @@
  * @var string $dateDefaut
  * @var ?int $typeDefaut
  * @var bool $dansUneFenetre  rendu seul, pour être posé dans une fenêtre
- * @var ?string $retour  la page où revenir une fois créé (l'accueil : « / »), ou null
+ * @var ?string $retour  la page où revenir une fois créé, modifié ou supprimé (l'accueil : « / »), ou null
  */
 $dansUneFenetre = $dansUneFenetre ?? false;
 $edition = $evenement !== null;
@@ -140,7 +140,7 @@ $matiereActive = $edition ? entier_ou_null($evenement['matiere_id']) : null;
 
 <form method="post" action="<?= $action ?>">
   <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
-  <?php if (!$edition && ($retour ?? null) !== null): ?>
+  <?php if (($retour ?? null) !== null): ?>
     <input type="hidden" name="retour" value="<?= e($retour) ?>">
   <?php endif; ?>
 
@@ -491,6 +491,7 @@ $matiereActive = $edition ? entier_ou_null($evenement['matiere_id']) : null;
   <form method="post" action="<?= url('evenements/' . $evenement['id'] . '/supprimer') ?>"
         data-confirmation="<?= e(t('evtf.supprimer_confirmation')) ?>" style="margin-top:1rem;max-width:320px">
     <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
+    <?php if (($retour ?? null) !== null): ?><input type="hidden" name="retour" value="<?= e($retour) ?>"><?php endif; ?>
     <button class="bouton bouton--danger" type="submit"><?= e(t('evtf.supprimer')) ?></button>
   </form>
 
@@ -508,6 +509,7 @@ $matiereActive = $edition ? entier_ou_null($evenement['matiere_id']) : null;
           data-confirmation="<?= e(t('evtf.serie_supprimer_confirmation', ['n' => (int) $serie['occurrences']])) ?>"
           style="margin-top:.5rem;max-width:320px">
       <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
+      <?php if (($retour ?? null) !== null): ?><input type="hidden" name="retour" value="<?= e($retour) ?>"><?php endif; ?>
       <input type="hidden" name="serie" value="1">
       <button class="bouton bouton--danger bouton--petit" type="submit">
         <?= e(t('evtf.serie_supprimer', ['n' => (int) $serie['occurrences']])) ?>
