@@ -29,10 +29,16 @@ final class Gemini
 {
     private const ADRESSE = 'https://generativelanguage.googleapis.com/v1beta/';
 
+    /**
+     * Les modèles, du préféré au dernier recours (liste de la documentation de Google, relue le 5 octobre 2026).
+     * « gemini-2.5-flash » n'y est plus : Google en réserve l'accès aux comptes qui s'en servaient déjà, une clé récente
+     * n'y a pas droit — c'est un repli qui ne repliait sur rien. Les « lite » ont plus de capacité quand un modèle sature.
+     *
+     * @var list<string>
+     */
+    private const MODELES_TEXTE = ['gemini-3.8-flash', 'gemini-3.7-flash', 'gemini-3.5-flash-lite'];
     /** @var list<string> */
-    private const MODELES_TEXTE = ['gemini-3.8-flash', 'gemini-2.5-flash'];
-    /** @var list<string> */
-    private const MODELES_VOIX = ['gemini-3.8-flash-tts', 'gemini-2.5-flash-preview-tts'];
+    private const MODELES_VOIX = ['gemini-3.8-flash-tts', 'gemini-3.8-flash-lite-tts'];
 
     /** Quelques-unes des voix de Google ; le nom est celui qu'il attend. */
     public const VOIX = ['Kore', 'Puck', 'Zephyr', 'Charon', 'Aoede', 'Fenrir'];
@@ -187,6 +193,7 @@ final class Gemini
     {
         $derniere = null;
         $surcharge = null;
+        $echecs = [];
         foreach ($modeles as $modele) {
             try {
                 $reponse = self::appelerAvecReprises($cle, $modele, $corps);
@@ -199,11 +206,18 @@ final class Gemini
                 }
                 $derniere = $e;
                 $surcharge ??= $passager ? $e : null;
+                $echecs[] = $e->getMessage() . ' [' . $modele . ']';
             }
         }
 
         // Tous ont échoué : la surcharge, s'il y en a eu une, est ce qu'il faut dire (un modèle inconnu n'est qu'un détail).
-        throw $surcharge ?? $derniere ?? new GeminiErreur('Aucun modèle disponible.', 'modele');
+        // Avec plusieurs modèles essayés, le message dit ce que chacun a répondu : « saturé » ou « inconnu de la clé »
+        // ne se traitent pas pareil, et on ne le devinerait pas de l'extérieur.
+        $cause = $surcharge ?? $derniere ?? new GeminiErreur('Aucun modèle disponible.', 'modele');
+        if (count($echecs) > 1) {
+            throw new GeminiErreur(implode(' ; ', $echecs), $cause->nature, $cause->http);
+        }
+        throw $cause;
     }
 
     /**

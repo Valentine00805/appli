@@ -521,7 +521,7 @@ try {
     }
     $appel($a, 'compte/gemini', ['_csrf' => $csrf, 'cle_gemini' => 'cle-modele-0123456789abcdef']);
     [$r, $url] = $appel($a, 'resumes/generer', ['_csrf' => $csrf, 'cours' => [$coursA]]);
-    $dire('un modèle inconnu : le suivant écrit le résumé', (string) bd_valeur('SELECT modele FROM resumes_ia WHERE id = ?', [$idOuvert($url)]), 'gemini-2.5-flash');
+    $dire('un modèle inconnu : le suivant écrit le résumé', (string) bd_valeur('SELECT modele FROM resumes_ia WHERE id = ?', [$idOuvert($url)]), 'gemini-3.7-flash');
     $appel($a, 'compte/gemini', ['_csrf' => $csrf, 'cle_gemini' => 'cle-quota-0123456789abcdef']);
     [$r] = $appel($a, 'resumes/' . $idResume . '/voix', ['_csrf' => $csrf, 'voix' => 'Kore']);
     $dire('la voix refusée par la limite : message clair, l’ancien audio reste',

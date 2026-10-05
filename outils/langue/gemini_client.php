@@ -40,7 +40,7 @@ try {
         $oui(($r['corps']['systemInstruction']['parts'][0]['text'] ?? '') === 'Consigne de test'
             && ($r['corps']['contents'][0]['parts'][0]['text'] ?? '') === 'Contenu de test'), 'oui');
     [, $modele2] = Gemini::texte('cle-modele', 'c', 'x');
-    $dire('un modèle inconnu : on passe au suivant de la liste', $modele2, 'gemini-2.5-flash');
+    $dire('un modèle inconnu : on passe au suivant de la liste', $modele2, 'gemini-3.7-flash');
 
     echo "\n2. Les refus, dits pour ce qu’ils sont\n";
     $dire('clé refusée → « cle », et la clé n’est pas dans le message',
@@ -58,13 +58,17 @@ try {
     [$texteReprise] = Gemini::texte('cle-instable-0123456789', 'c', 'x');
     $dire('un service surchargé deux fois, puis rétabli : le résumé arrive (3 appels)',
         $oui(str_contains($texteReprise, 'Résumé bidon')) . ' · ' . $appels('cle-instable-0123456789'), 'oui · 3');
-    $dire('  une vraie panne : trois essais sur chaque modèle (deux), puis « service »',
-        substr($essai(fn () => Gemini::texte('cle-panne-0123456789', 'c', 'x')), 0, 7) . ' · ' . $appels('cle-panne-0123456789'), 'service · 6');
+    $dire('  une vraie panne : trois essais sur chacun des trois modèles, puis « service »',
+        substr($essai(fn () => Gemini::texte('cle-panne-0123456789', 'c', 'x')), 0, 7) . ' · ' . $appels('cle-panne-0123456789'), 'service · 9');
+    $messagePanne = $essai(fn () => Gemini::texte('cle-panne-0123456789', 'c', 'x'));
+    $dire('  et le message dit ce que chaque modèle a répondu (« HTTP 503 … [modèle] »), pour savoir lequel a manqué',
+        $oui(str_contains($messagePanne, '[gemini-3.8-flash]') && str_contains($messagePanne, '[gemini-3.7-flash]')
+            && str_contains($messagePanne, '[gemini-3.5-flash-lite]') && str_contains($messagePanne, 'HTTP 503')), 'oui');
     [$texteRepli, $modeleRepli] = Gemini::texte('cle-surchargee-0123456789', 'c', 'x');
     $dire('  un premier modèle saturé (503) : trois essais, puis le modèle suivant, qui répond',
-        $oui(str_contains($texteRepli, 'Résumé bidon')) . ' · ' . $modeleRepli . ' · ' . $appels('cle-surchargee-0123456789'), 'oui · gemini-2.5-flash · 4');
+        $oui(str_contains($texteRepli, 'Résumé bidon')) . ' · ' . $modeleRepli . ' · ' . $appels('cle-surchargee-0123456789'), 'oui · gemini-3.7-flash · 4');
     $dire('  la voix aussi : le modèle de voix saturé laisse la place au suivant',
-        (function () use ($appels) { [, , $m] = Gemini::voix('cle-surchargee-0123456789', 'bonjour', 'Kore'); return $m . ' · ' . $appels('cle-surchargee-0123456789'); })(), 'gemini-2.5-flash-preview-tts · 8');
+        (function () use ($appels) { [, , $m] = Gemini::voix('cle-surchargee-0123456789', 'bonjour', 'Kore'); return $m . ' · ' . $appels('cle-surchargee-0123456789'); })(), 'gemini-3.8-flash-lite-tts · 8');
     $retour504 = $essai(fn () => Gemini::texte('cle-delai-0123456789abc', 'c', 'x'));
     $dire('  un délai dépassé chez Google (504) ne se rappelle pas : un seul essai, et le code est dans le message',
         $oui(str_starts_with($retour504, 'service|') && str_contains($retour504, 'HTTP 504') && str_contains($retour504, 'timed out')) . ' · ' . $appels('cle-delai-0123456789abc'), 'oui · 1');
@@ -113,7 +117,7 @@ try {
     [$pcm2, $freq2] = Gemini::voix('cle-wav', 'Bonjour', 'Kore');
     $dire('  un WAV déjà fait (avec un bloc LIST avant « data ») se lit sans supposer 44 octets', strlen($pcm2) . ' · ' . $freq2, '12000 · 24000');
     [, , $modeleVoix2] = Gemini::voix('cle-modele', 'Bonjour', 'Kore');
-    $dire('  un modèle de voix inconnu : on passe au suivant', $modeleVoix2, 'gemini-2.5-flash-preview-tts');
+    $dire('  un modèle de voix inconnu : on passe au suivant', $modeleVoix2, 'gemini-3.8-flash-lite-tts');
     $wav = Gemini::wav($pcm, 24000);
     $en = unpack('a4riff/Vtaille/a4wave/a4fmt/Vlfmt/vformat/vcanaux/Vfreq/Voctets/valign/vbits/a4data/Vlongueur', $wav);
     $dire('un fichier WAV bien formé', $oui(strlen($wav) === 44 + 12000 && $en['riff'] === 'RIFF' && $en['taille'] === 36 + 12000
