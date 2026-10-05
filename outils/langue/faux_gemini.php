@@ -50,6 +50,12 @@ switch (true) {
         $erreur(429, 'RESOURCE_EXHAUSTED', 'You exceeded your current quota.');
     case str_starts_with($cle, 'cle-panne'):
         $erreur(503, 'UNAVAILABLE', 'The model is overloaded.');
+    case str_starts_with($cle, 'cle-surchargee'):
+        // Le premier modèle est saturé, pas le second : de quoi essayer le repli sur le modèle suivant.
+        if (in_array($modele, ['gemini-3.8-flash', 'gemini-3.8-flash-tts'], true)) {
+            $erreur(503, 'UNAVAILABLE', 'This model is currently experiencing high demand. Spikes in demand are usually temporary.');
+        }
+        break;
     case str_starts_with($cle, 'cle-delai'):
         $erreur(504, 'DEADLINE_EXCEEDED', 'The request timed out.');
     case str_starts_with($cle, 'cle-instable'):

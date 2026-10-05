@@ -177,23 +177,33 @@ final class Gemini
      * @param callable(array): mixed $lire  tire de la réponse ce qu'on cherche, ou lève GeminiErreur
      * @return array{0: mixed, 1: string}
      */
+    /**
+     * Essaie les modèles dans l'ordre. On passe au suivant quand le modèle est inconnu de la clé, ou quand il reste
+     * surchargé après ses reprises (500, 502, 503) : un modèle saturé ne l'est pas forcément son voisin, qui a sa
+     * propre capacité. Les autres refus (clé, limite, contenu bloqué, délai) se répéteraient à l'identique : on ne
+     * change pas de modèle pour eux.
+     */
     private static function essayer(string $cle, array $modeles, array $corps, callable $lire): array
     {
         $derniere = null;
+        $surcharge = null;
         foreach ($modeles as $modele) {
             try {
                 $reponse = self::appelerAvecReprises($cle, $modele, $corps);
 
                 return [$lire($reponse), $modele];
             } catch (GeminiErreur $e) {
-                if ($e->nature !== 'modele') {
+                $passager = $e->nature === 'service' && in_array($e->http, [500, 502, 503], true);
+                if ($e->nature !== 'modele' && !$passager) {
                     throw $e;
                 }
                 $derniere = $e;
+                $surcharge ??= $passager ? $e : null;
             }
         }
 
-        throw $derniere ?? new GeminiErreur('Aucun modèle disponible.', 'modele');
+        // Tous ont échoué : la surcharge, s'il y en a eu une, est ce qu'il faut dire (un modèle inconnu n'est qu'un détail).
+        throw $surcharge ?? $derniere ?? new GeminiErreur('Aucun modèle disponible.', 'modele');
     }
 
     /**
