@@ -87,12 +87,12 @@
                 <span class="pastille">
                   <?= e($jours <= 0 ? t('accueil.aujourdhui') : ($jours === 1 ? t('accueil.demain') : 'J-' . $jours)) ?>
                 </span>
-                <?php // Avant une échéance, on va au cours ou à sa fiche. ?>
+                <?php // Avant une échéance, on va au cours ou à sa fiche : dans une fenêtre, sans quitter l'accueil. ?>
                 <?php $coursId = (int) ($evt['cours_id'] ?? 0); ?>
                 <?php if ($coursId > 0): ?>
-                  <a class="bouton bouton--secondaire" href="<?= url('cours/' . $coursId) ?>"
+                  <a class="bouton bouton--secondaire" href="<?= url('cours/' . $coursId) ?>" data-fenetre
                      title="<?= e(t('kb.ouvrir_cours')) ?>"><?= e(t('accueil.cours')) ?></a>
-                  <a class="bouton bouton--secondaire" href="<?= url('revision/' . $coursId) ?>"
+                  <a class="bouton bouton--secondaire" href="<?= url('revision/' . $coursId) ?>" data-fenetre
                      title="<?= e(t('kb.ouvrir_fiche')) ?>"><?= e(t('accueil.fiche_revision')) ?></a>
                 <?php endif; ?>
                 <a class="bouton bouton--discret bouton--petit"
