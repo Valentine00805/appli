@@ -4390,6 +4390,8 @@ return [
     'pt.perso_trop_long' => 'Deine Notizen dürfen höchstens {max} Zeichen lang sein.',
     'pt.fl.perso_enregistre' => 'Deine Erinnerungen und Notizen sind gespeichert.',
     'evt.notes_de' => 'Notizen von {qui}',
+    'pt.fl.matiere_copies.un' => 'Es wurde auch auf deine Kopie übertragen.',
+    'pt.fl.matiere_copies.plusieurs' => 'Es wurde auch auf deine {n} Kopien übertragen.',
     'apps.lien_icone' => 'Symbol (optional: ein Emoji statt dem der Seite)',
     'apps.lien_enregistrer' => 'Speichern',
     'apps.lien_annuler' => 'Abbrechen',

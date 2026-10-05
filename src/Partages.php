@@ -519,28 +519,64 @@ final class Partages
      * Ajoute à ses matières celle d'un document partagé (cours, fiche ou évènement) : même nom, même couleur. Si elle y est déjà,
      * rien ne change.
      *
-     * @return array{0: ?string, 1: ?string} « ajoutee » ou « deja » avec le nom de la matière, ou la raison du refus
+     * Elle est aussi posée sur les copies qu'on a déjà faites de ce document (cours, fiche, évènement ; pour un évènement, de son
+     * cours lié aussi) qui n'ont pas de matière : une copie se reconnaît à `partage_de`, ou — pour celles d'avant — à son titre.
+     * Une copie qui a déjà une matière n'est jamais changée.
+     *
+     * @return array{0: ?string, 1: ?string, 2: int} « ajoutee » ou « deja » avec le nom de la matière, ou la raison du refus ;
+     *         et le nombre de copies qui l'ont reçue
      */
     public static function ajouterMatiere(int $moi, string $type, int $id): array
     {
         if (!in_array($type, ['cours', 'fiche', 'evenement'], true) || !self::peutVoir($type, $id, $moi)) {
-            return [null, t('pt.flash_pas_partage')];
+            return [null, t('pt.flash_pas_partage'), 0];
         }
         $cible = self::cible($type, $id);
         $nom = trim((string) ($cible['matiere_nom'] ?? ''));
         if ($nom === '') {
-            return [null, t('pt.matiere_aucune')];
+            return [null, t('pt.matiere_aucune'), 0];
         }
-        if (self::maMatiere($moi, $nom) !== null) {
-            return ['deja', $nom];
+        $etat = 'deja';
+        if (self::maMatiere($moi, $nom) === null) {
+            $couleur = (string) ($cible['matiere_couleur'] ?? '');
+            Database::run(
+                'INSERT IGNORE INTO matieres (user_id, nom, couleur) VALUES (?, ?, ?)',
+                [$moi, mb_substr($nom, 0, 120), preg_match('/^#[0-9a-fA-F]{6}$/', $couleur) === 1 ? $couleur : '#4f46e5']
+            );
+            $etat = 'ajoutee';
         }
-        $couleur = (string) ($cible['matiere_couleur'] ?? '');
-        Database::run(
-            'INSERT IGNORE INTO matieres (user_id, nom, couleur) VALUES (?, ?, ?)',
-            [$moi, mb_substr($nom, 0, 120), preg_match('/^#[0-9a-fA-F]{6}$/', $couleur) === 1 ? $couleur : '#4f46e5']
-        );
+        $matiere = self::maMatiere($moi, $nom);
 
-        return ['ajoutee', $nom];
+        return [$etat, $nom, $matiere === null ? 0 : self::matiereAuxCopies($moi, $matiere, $type, $id, $cible)];
+    }
+
+    /** Donne la matière aux copies de ce document qui n'en ont pas. @return int combien en ont reçu */
+    private static function matiereAuxCopies(int $moi, int $matiere, string $type, int $id, array $cible): int
+    {
+        $n = 0;
+        // Le cours lui-même (ou celui d'une fiche), et le cours lié d'un évènement : par son origine, ou par son titre pour les copies d'avant.
+        $coursSource = match ($type) {
+            'cours' => ['id' => $id, 'titre' => (string) $cible['titre']],
+            'fiche' => ['id' => $id, 'titre' => (string) $cible['titre_cours']],
+            'evenement' => (int) ($cible['cours_id'] ?? 0) > 0 && self::peutVoir('cours', (int) $cible['cours_id'], $moi)
+                ? ['id' => (int) $cible['cours_id'], 'titre' => (string) $cible['cours_titre']] : null,
+            default => null,
+        };
+        if ($coursSource !== null) {
+            $n += Database::run(
+                'UPDATE cours SET matiere_id = ? WHERE user_id = ? AND matiere_id IS NULL AND (partage_de = ? OR (partage_de IS NULL AND titre = ?))',
+                [$matiere, $moi, $coursSource['id'], $coursSource['titre']]
+            )->rowCount();
+        }
+        // Les copies de l'évènement dans mon calendrier.
+        if ($type === 'evenement') {
+            $n += Database::run(
+                'UPDATE evenements SET matiere_id = ? WHERE user_id = ? AND matiere_id IS NULL AND partage_de = ?',
+                [$matiere, $moi, $id]
+            )->rowCount();
+        }
+
+        return $n;
     }
 
     /** Le cours lié à un évènement partagé, s'il m'est lui aussi partagé : de quoi y aller. @return ?array{id: int, titre: string} */
@@ -2222,8 +2258,8 @@ final class Partages
 
         if ($type === 'cours') {
             Database::run(
-                'INSERT INTO cours (user_id, matiere_id, titre, contenu) VALUES (?, ?, ?, ?)',
-                [$moi, self::maMatiere($moi, $cible['matiere_nom'] ?? null), mb_substr((string) $cible['titre'], 0, 200), (string) $cible['contenu']]
+                'INSERT INTO cours (user_id, matiere_id, partage_de, titre, contenu) VALUES (?, ?, ?, ?, ?)',
+                [$moi, self::maMatiere($moi, $cible['matiere_nom'] ?? null), $id, mb_substr((string) $cible['titre'], 0, 200), (string) $cible['contenu']]
             );
             $nouveau = Database::dernierId();
             foreach (self::fichiersDuCours($id) as $f) {
@@ -2249,8 +2285,8 @@ final class Partages
                 $nouveaux[$groupe['id']] = self::creerDossier($moi, (string) $groupe['nom'], (string) $groupe['icone'], $parent);
                 foreach ($groupe['cours'] as $c) {
                     Database::run(
-                        'INSERT INTO cours (user_id, dossier_id, titre, contenu) VALUES (?, ?, ?, ?)',
-                        [$moi, $nouveaux[$groupe['id']], mb_substr((string) $c['titre'], 0, 200), (string) $c['contenu']]
+                        'INSERT INTO cours (user_id, dossier_id, partage_de, titre, contenu) VALUES (?, ?, ?, ?, ?)',
+                        [$moi, $nouveaux[$groupe['id']], (int) $c['id'], mb_substr((string) $c['titre'], 0, 200), (string) $c['contenu']]
                     );
                     $nouveauCours = Database::dernierId();
                     foreach (self::fichiersDuCours((int) $c['id']) as $f) {
@@ -2286,8 +2322,8 @@ final class Partages
         // Une fiche devient un cours à soi, dont c'est la fiche de révision.
         if ($type === 'fiche') {
             Database::run(
-                "INSERT INTO cours (user_id, matiere_id, titre, contenu, fiche_revision) VALUES (?, ?, ?, '', ?)",
-                [$moi, self::maMatiere($moi, $cible['matiere_nom'] ?? null), mb_substr((string) $cible['titre_cours'], 0, 200), (string) $cible['fiche_revision']]
+                "INSERT INTO cours (user_id, matiere_id, partage_de, titre, contenu, fiche_revision) VALUES (?, ?, ?, ?, '', ?)",
+                [$moi, self::maMatiere($moi, $cible['matiere_nom'] ?? null), $id, mb_substr((string) $cible['titre_cours'], 0, 200), (string) $cible['fiche_revision']]
             );
             $nouveau = Database::dernierId();
             foreach (self::fichiersDeLaFiche($id) as $f) {

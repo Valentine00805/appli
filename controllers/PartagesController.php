@@ -321,6 +321,11 @@ final class PartagesController
         }
         // L'ouvrir, c'est l'avoir vu : l'onglet ne le compte plus.
         Partages::marquerVus($moi, $type, $id);
+        // Sa matière est déjà chez moi (ajoutée un autre jour) : mes copies qui n'en ont pas la reçoivent, sans rien demander.
+        if (in_array($type, ['cours', 'fiche', 'evenement'], true) && (string) ($cible['matiere_nom'] ?? '') !== ''
+            && Partages::maMatiere($moi, $cible['matiere_nom']) !== null) {
+            Partages::ajouterMatiere($moi, $type, $id);
+        }
         $donnees = [
             'type' => $type,
             'cible' => $cible,
@@ -657,11 +662,13 @@ final class PartagesController
     {
         Auth::exiger();
         Session::verifierCsrf();
-        [$etat, $detail] = Partages::ajouterMatiere(Auth::id(), self::type($mot), $id);
+        [$etat, $detail, $copies] = Partages::ajouterMatiere(Auth::id(), self::type($mot), $id);
         if ($etat === null) {
             Session::flash('erreur', $detail);
         } else {
-            Session::flash($etat === 'ajoutee' ? 'succes' : 'info', t('pt.fl.matiere_' . $etat, ['nom' => $detail]));
+            // « Ajoutée », ou « déjà là » ; et, s'il y en avait, les copies qui l'ont reçue.
+            Session::flash($etat === 'ajoutee' || $copies > 0 ? 'succes' : 'info',
+                t('pt.fl.matiere_' . $etat, ['nom' => $detail]) . ($copies > 0 ? ' ' . tn('pt.fl.matiere_copies', $copies) : ''));
         }
         redirect('partages/' . $mot . '/' . $id);
     }

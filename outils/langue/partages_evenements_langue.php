@@ -89,7 +89,22 @@ try {
     [, $retour] = $appel('b', 'partages/cours/' . $cours . '/copier', ['_csrf' => $csrf['b']]);
     $copie1 = (int) bd_valeur('SELECT id FROM cours WHERE user_id = ? ORDER BY id DESC LIMIT 1', [$id('b')]);
     $dire('  copier le cours avant : la copie reste sans matière', $copie1 > 0 ? (string) bd_valeur('SELECT COALESCE(matiere_id, 0) FROM cours WHERE id = ?', [$copie1]) : 'pas de copie', '0');
+    // Des cours de B : une copie d'avant (même titre, sans origine), un cours sans rapport, et un cours de même titre qui a déjà une autre matière.
+    bd_run('INSERT INTO cours (user_id, titre, contenu) VALUES (?, ?, ?)', [$id('b'), 'DM pizzeria', 'Ancienne copie, faite avant la colonne d\'origine.']);
+    $ancienne = (int) bd_valeur('SELECT id FROM cours WHERE user_id = ? AND contenu LIKE ?', [$id('b'), 'Ancienne copie%']);
+    bd_run('INSERT INTO cours (user_id, titre, contenu) VALUES (?, ?, ?)', [$id('b'), 'Cours sans rapport', 'Autre chose.']);
+    $sansRapport = (int) bd_valeur('SELECT id FROM cours WHERE user_id = ? AND titre = ?', [$id('b'), 'Cours sans rapport']);
+    bd_run('INSERT INTO matieres (user_id, nom, couleur) VALUES (?, ?, ?)', [$id('b'), 'Autre matière', '#dc2626']);
+    $autreMatiere = (int) bd_valeur('SELECT id FROM matieres WHERE user_id = ? AND nom = ?', [$id('b'), 'Autre matière']);
+    bd_run('INSERT INTO cours (user_id, matiere_id, titre, contenu) VALUES (?, ?, ?, ?)', [$id('b'), $autreMatiere, 'DM pizzeria', 'Déjà rangé ailleurs.']);
+    $dejaRange = (int) bd_valeur('SELECT id FROM cours WHERE user_id = ? AND contenu LIKE ?', [$id('b'), 'Déjà rangé%']);
+    $nomMatiere = static fn (int $coursId): string => (string) (bd_valeur('SELECT m.nom FROM cours c JOIN matieres m ON m.id = c.matiere_id WHERE c.id = ?', [$coursId]) ?? 'aucune');
+    $dire('  la copie garde le souvenir de son origine', (string) bd_valeur('SELECT partage_de FROM cours WHERE id = ?', [$copie1]), (string) $cours);
     [, $apres] = $appel('b', 'partages/cours/' . $cours . '/matiere', ['_csrf' => $csrf['b']]);
+    $dire('  la matière ajoutée est posée aussitôt sur la copie faite avant', $nomMatiere($copie1), 'Architecture distribuée');
+    $dire('  et sur une copie d\'avant l\'origine gardée (même titre)', $nomMatiere($ancienne), 'Architecture distribuée');
+    $dire('  pas sur un cours sans rapport, ni sur celui qui avait déjà une matière', $nomMatiere($sansRapport) . ' · ' . $nomMatiere($dejaRange), 'aucune · Autre matière');
+    $dire('  le message le dit : « posée sur tes 2 copies »', $oui(str_contains($apres, 'posée sur tes 2 copies')), 'oui');
     $dire('le bouton : la matière est ajoutée, même nom et même couleur',
         bd_valeur('SELECT COUNT(*) FROM matieres WHERE user_id = ? AND nom = ?', [$id('b'), 'Architecture distribuée']) . ' · '
         . bd_valeur('SELECT couleur FROM matieres WHERE user_id = ?', [$id('b')]), '1 · #059669');
@@ -97,7 +112,7 @@ try {
         $oui(str_contains($apres, '✓ Dans tes matières') && !str_contains($apres, '/matiere"')), 'oui');
     $dire('  le message : « La matière … est ajoutée »', $oui(str_contains($apres, 'est ajoutée à tes matières')), 'oui');
     [, $encore] = $appel('b', 'partages/cours/' . $cours . '/matiere', ['_csrf' => $csrf['b']]);
-    $dire('  un second clic ne crée pas de doublon', $oui(str_contains($encore, 'déjà dans tes matières')) . ' · ' . bd_valeur('SELECT COUNT(*) FROM matieres WHERE user_id = ?', [$id('b')]), 'oui · 1');
+    $dire('  un second clic ne crée pas de doublon', $oui(str_contains($encore, 'déjà dans tes matières')) . ' · ' . bd_valeur('SELECT COUNT(*) FROM matieres WHERE user_id = ? AND nom = ?', [$id('b'), 'Architecture distribuée']), 'oui · 1');
     $appel('b', 'partages/cours/' . $cours . '/copier', ['_csrf' => $csrf['b']]);
     $copie2 = (int) bd_valeur('SELECT id FROM cours WHERE user_id = ? ORDER BY id DESC LIMIT 1', [$id('b')]);
     $dire('  copier le cours ensuite : la copie reçoit sa matière à lui', $copie2 !== $copie1
@@ -108,7 +123,11 @@ try {
     $dire('  sans le bon jeton CSRF : refusé', $oui($cod >= 400 || !str_contains($corps, 'est ajoutée')), 'oui');
 
     echo "\n2. L'évènement partagé : cours lié, matière\n";
+    // Une copie sans matière, faite avant : B a déjà la matière, ouvrir l'évènement la lui donne.
+    bd_run('INSERT INTO cours (user_id, titre, contenu) VALUES (?, ?, ?)', [$id('b'), 'DM pizzeria', 'Copie tardive.']);
+    $tardive = (int) bd_valeur('SELECT id FROM cours WHERE user_id = ? AND contenu = ?', [$id('b'), 'Copie tardive.']);
     [, $page] = $appel('b', 'partages/evenements/' . $evt);
+    $dire('B ouvre l’évènement alors qu’il a déjà la matière : sa copie tardive la reçoit', (string) (bd_valeur('SELECT m.nom FROM cours c JOIN matieres m ON m.id = c.matiere_id WHERE c.id = ?', [$tardive]) ?? 'aucune'), 'Architecture distribuée');
     $dire('B voit le lien vers le cours lié (partagé aussi)',
         $oui(preg_match('#COURS LIÉ|Cours lié#iu', $page) === 1 && str_contains($page, '/partages/cours/' . $cours . '"') && str_contains($page, '>DM pizzeria</a>')), 'oui');
     $dire('  sa matière : déjà chez lui, donc « ✓ Dans tes matières »', $oui(str_contains($page, '✓ Dans tes matières')), 'oui');
@@ -117,11 +136,14 @@ try {
         $oui(!str_contains($pageC, '/partages/cours/') && str_contains($pageC, 'Ajouter à mes matières')), 'oui');
     [, $pagePrive] = $appel('b', 'partages/evenements/' . $evtPrive);
     $dire('un cours que A garde pour lui n\'est pas dévoilé par son évènement', $oui(!str_contains($pagePrive, 'Cours gardé pour moi') && !str_contains($pagePrive, '/partages/cours/' . $coursPrive)), 'oui');
-    $appel('c', 'partages/evenements/' . $evt . '/matiere', ['_csrf' => $csrf['c']]);
-    $dire('C l\'ajoute à ses matières depuis l\'évènement', bd_valeur('SELECT COUNT(*) FROM matieres WHERE user_id = ? AND nom = ?', [$id('c'), 'Architecture distribuée']), '1');
     $appel('c', 'partages/evenements/' . $evt . '/copier', ['_csrf' => $csrf['c']]);
-    $dire('  puis « Ajouter à mon calendrier » : sa copie a la matière',
+    $dire('C ajoute l\'évènement à son calendrier avant d\'avoir la matière : sa copie n\'en a pas',
+        (string) (bd_valeur('SELECT COALESCE(matiere_id, 0) FROM evenements WHERE user_id = ? AND partage_de = ?', [$id('c'), $evt]) ?? 'pas de copie'), '0');
+    [, $apresC] = $appel('c', 'partages/evenements/' . $evt . '/matiere', ['_csrf' => $csrf['c']]);
+    $dire('  il ajoute la matière depuis l\'évènement : elle est dans ses matières', bd_valeur('SELECT COUNT(*) FROM matieres WHERE user_id = ? AND nom = ?', [$id('c'), 'Architecture distribuée']), '1');
+    $dire('  et aussitôt sur sa copie de l\'évènement',
         (string) (bd_valeur('SELECT m.nom FROM evenements e JOIN matieres m ON m.id = e.matiere_id WHERE e.user_id = ? AND e.partage_de = ?', [$id('c'), $evt]) ?? 'aucune'), 'Architecture distribuée');
+    $dire('  le message le dit : « posée sur ta copie »', $oui(str_contains($apresC, 'posée sur ta copie')), 'oui');
 
     echo "\n3. Mes rappels et mes notes sur l'évènement d'un ami\n";
     $dire('la section est là, pour B (pas de rappel, pas de note)', $oui(str_contains($page, 'Mes rappels et mes notes') && str_contains($page, '/perso"')

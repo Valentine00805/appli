@@ -1624,3 +1624,9 @@ CREATE TABLE IF NOT EXISTS `evenement_perso_amis` (
   CONSTRAINT `fk_evenement_perso_evenement` FOREIGN KEY (`evenement_id`) REFERENCES `evenements`(`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_evenement_perso_user`      FOREIGN KEY (`user_id`)      REFERENCES `users`(`id`)      ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Un cours copié depuis un partage se souvient du cours d'origine (la matière ajoutée ensuite lui est donnée aussi).
+
+ALTER TABLE `cours`
+  ADD COLUMN `partage_de` INT UNSIGNED NULL AFTER `dossier_id`,
+  ADD KEY `idx_cours_partage_de` (`partage_de`);

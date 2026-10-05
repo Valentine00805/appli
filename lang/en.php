@@ -4390,6 +4390,8 @@ return [
     'pt.perso_trop_long' => 'Your notes can be {max} characters at most.',
     'pt.fl.perso_enregistre' => 'Your reminders and notes are saved.',
     'evt.notes_de' => 'Notes from {qui}',
+    'pt.fl.matiere_copies.un' => 'It is also set on your copy.',
+    'pt.fl.matiere_copies.plusieurs' => 'It is also set on your {n} copies.',
     'apps.lien_icone' => 'Icon (optional: an emoji instead of the site’s own)',
     'apps.lien_enregistrer' => 'Save',
     'apps.lien_annuler' => 'Cancel',

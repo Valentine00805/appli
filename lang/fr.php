@@ -4402,6 +4402,8 @@ return [
     'pt.perso_trop_long' => 'Tes notes font {max} caractères au plus.',
     'pt.fl.perso_enregistre' => 'Tes rappels et tes notes sont enregistrés.',
     'evt.notes_de' => 'Notes de {qui}',
+    'pt.fl.matiere_copies.un' => 'Elle est aussi posée sur ta copie.',
+    'pt.fl.matiere_copies.plusieurs' => 'Elle est aussi posée sur tes {n} copies.',
     'apps.lien_icone' => 'Icône (facultatif : un emoji à la place de celle du site)',
     'apps.lien_enregistrer' => 'Enregistrer',
     'apps.lien_annuler' => 'Annuler',
