@@ -84,14 +84,15 @@ $actif = static function (string $prefixe) use ($route): string {
            * la fermeture au clic à côté, et l'édition des favoris.
            */
           $favorisMenu = Menu::favoris($utilisateur['menu_favoris'] ?? null);
+          $ordreMenu = Menu::ordre($utilisateur['menu_ordre'] ?? null);
           $compteursMenu = ['partages' => $nouveauxPartages, 'groupes' => $invitationsTravaux, 'amis' => $attenteAmis];
           $liensApps = LienApp::duUser((int) $utilisateur['id']);
-          $tuile = static function (string $cle) use ($actif, $compteursMenu): string {
+          $tuile = static function (string $cle) use ($actif, $compteursMenu, $ordreMenu): string {
               $s = Menu::SECTIONS[$cle];
               $n = (int) ($compteursMenu[$cle] ?? 0);
 
               return '<a class="apps__tuile" href="' . e(url($s['route'])) . '" data-cle="' . e($cle) . '" data-rang="'
-                  . (int) array_search($cle, array_keys(Menu::SECTIONS), true) . '"' . $actif($s['prefixe']) . '>'
+                  . (int) array_search($cle, $ordreMenu, true) . '"' . $actif($s['prefixe']) . '>'
                   . '<span class="apps__icone" aria-hidden="true">' . $s['icone'] . '</span>'
                   . '<span class="apps__nom">' . e(t($s['nom'])) . '</span>'
                   . ($n > 0 ? '<span class="compteur apps__compteur">' . ($n > 99 ? '99+' : $n) . '</span>' : '')
@@ -123,7 +124,7 @@ $actif = static function (string $prefixe) use ($route): string {
               <section class="apps__bloc">
                 <h2 class="apps__titre"><?= e(t('apps.toutes')) ?></h2>
                 <div class="apps__grille" data-apps-autres>
-                  <?php foreach (array_keys(Menu::SECTIONS) as $cle): ?>
+                  <?php foreach ($ordreMenu as $cle): ?>
                     <?php if (!in_array($cle, $favorisMenu, true)): ?><?= $tuile($cle) ?><?php endif; ?>
                   <?php endforeach; ?>
                 </div>

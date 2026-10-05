@@ -140,10 +140,26 @@
     // --- Les favoris ------------------------------------------------------------------------------------------------
     var majVide = function () { if (vide) { vide.hidden = favoris.children.length > 0; } };
 
+    /**
+     * L'ordre de toutes les tuiles. Celles de « Toutes les sections » ont pu être déplacées entre elles : elles se
+     * répartissent les places que ces tuiles occupaient (les favoris gardent la leur, pour le jour où ils reviennent), et
+     * chaque tuile reçoit son nouveau rang (data-rang), que « rangerDansLesAutres » lit.
+     */
+    var ordreComplet = function () {
+      var rang = function (t) { return parseInt(t.getAttribute('data-rang'), 10); };
+      var anciennes = Array.prototype.slice.call(racine.querySelectorAll('[data-cle]')).sort(function (a, b) { return rang(a) - rang(b); });
+      var rangees = Array.prototype.slice.call(autres.querySelectorAll('[data-cle]'));
+      var suivante = 0;
+      var complet = anciennes.map(function (t) { return t.parentNode === autres ? rangees[suivante++] : t; });
+      complet.forEach(function (t, i) { t.setAttribute('data-rang', String(i)); });
+      return complet.map(function (t) { return t.getAttribute('data-cle'); });
+    };
+
     var sauver = function () {
       var corps = new FormData();
       corps.append('_csrf', JETON);
       Array.prototype.forEach.call(favoris.querySelectorAll('[data-cle]'), function (t) { corps.append('favoris[]', t.getAttribute('data-cle')); });
+      ordreComplet().forEach(function (cle) { corps.append('ordre[]', cle); });
       fetch(URL_FAVORIS, { method: 'POST', body: corps, credentials: 'same-origin', keepalive: true })
         .then(function (r) {
           if (r.status !== 204) { throw new Error('http ' + r.status); }
@@ -171,7 +187,8 @@
 
     // En édition, on glisse les tuiles : dans les favoris pour les ordonner, et d'une zone à l'autre pour ajouter un
     // favori (depuis « Toutes les sections », à l'endroit où on le dépose) ou le retirer (il retourne à sa place du
-    // catalogue, dont l'ordre est fixe). L'ordre des favoris est celui de la grille (« sauver » l'envoie).
+    // catalogue, à la place que son rang lui donne). L'ordre des favoris et celui de « Toutes les sections » sont ceux des
+    // grilles (« sauver » les envoie).
     var triFavoris = null;
     if (favoris && autres) {
       var blocFavoris = favoris.closest('section') || favoris;
@@ -194,6 +211,10 @@
             }
           } else if (chezFavoris) {
             rangerDansLesAutres(tuile);
+          } else {
+            // Dans « Toutes les sections » : l'ordre est à chacun, comme celui des favoris.
+            var suitAutre = (tuile.compareDocumentPosition(autre) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+            autres.insertBefore(tuile, suitAutre ? autre.nextSibling : autre);
           }
           return;
         }
@@ -202,10 +223,7 @@
         if (!chezFavoris && blocFavoris.contains(cible)) { favoris.appendChild(tuile); }
         else if (chezFavoris && blocAutres.contains(cible)) { rangerDansLesAutres(tuile); }
       };
-      triFavoris = rendreTriable(racine, '[data-cle]', function () { return enEdition; }, function () { majVide(); sauver(); }, {
-        deplacer: deplacerTuile,
-        clavier: function (tuile) { return tuile.parentNode === favoris; },
-      });
+      triFavoris = rendreTriable(racine, '[data-cle]', function () { return enEdition; }, function () { majVide(); sauver(); }, { deplacer: deplacerTuile });
     }
 
     // --- Mes applications : des liens vers d'autres sites, ajoutés par chacun --------------------------------------

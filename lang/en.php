@@ -4333,7 +4333,7 @@ return [
     'apps.favoris' => 'Your favourites',
     'apps.toutes' => 'All sections',
     'apps.modifier' => 'Edit my favourites',
-    'apps.aide_edition' => 'Click a section to add it to or remove it from your favourites. The pencil ends editing. Drag a section into your favourites (or out of them), or a favourite to change its order.',
+    'apps.aide_edition' => 'Click a section to add it to or remove it from your favourites. The pencil ends editing. Drag a tile to change its order, or to put it in your favourites (or take it out).',
     'apps.aucun_favori' => 'No favourites: click the pencil to choose your preferred sections.',
     'js.apps.echec' => 'Could not save your favourites — check your connection.',
     'apps.liens' => 'My apps',

@@ -5,6 +5,7 @@
  */
 require __DIR__ . '/base.php';
 require_once dirname(__DIR__, 2) . '/src/LienApp.php';
+require_once dirname(__DIR__, 2) . '/src/Menu.php';
 
 $anomalies = 0;
 $termine = false;   // faux si le script s'arrête en route (erreur fatale) : le bilan ne doit pas dire « aucune anomalie »
@@ -121,6 +122,34 @@ try {
     $dire('  sans le bon jeton CSRF, rien n’est gardé', $oui(bd_valeur('SELECT menu_favoris FROM users WHERE id = ?', [$idA]) === $avant) . ' · ' . $oui($code !== 204), 'oui · oui');
     [, , $code] = $appel('visiteur', 'compte/menu-favoris', ['_csrf' => 'x', 'favoris' => ['budget']]);
     $dire('  sans compte, rien non plus', $oui(bd_valeur('SELECT COUNT(*) FROM users WHERE menu_favoris = ?', ['["budget"]']) === 0 || true) . ' · ' . $oui($code !== 204), 'oui · oui');
+
+    echo "\n   — ranger toutes les tuiles à sa façon\n";
+    $ranger = static fn (string $compte, string $csrf, array $favoris, array $ordre): array => $appel($compte, 'compte/menu-favoris', ['_csrf' => $csrf, 'favoris' => $favoris, 'ordre' => $ordre]);
+    $ordreBd = static fn (int $uid): string => (string) bd_valeur('SELECT menu_ordre FROM users WHERE id = ?', [$uid]);
+    $dire('  au départ, pas d\'ordre à soi : la colonne est vide', $oui(bd_valeur('SELECT menu_ordre FROM users WHERE id = ?', [$idA]) === null), 'oui');
+    [, , $code] = $ranger($a, $csrf, ['cours'], ['budget', 'amis', 'accueil']);
+    [$page] = $appel($a, 'calendrier');
+    $attendu = ['budget', 'amis', 'accueil', 'calendrier', 'partages', 'revision', 'cartes', 'resumes', 'taches', 'tableau', 'alternance', 'groupes', 'organisation', 'compte'];
+    $dire('  un ordre envoyé est gardé, complété des sections oubliées, et « Toutes les sections » le suit (les favoris en sont ôtés)',
+        $code . ' · ' . $oui(count(json_decode($ordreBd($idA), true)) === 15) . ' · ' . implode(',', $grille($page, 'autres')),
+        '204 · oui · ' . implode(',', $attendu));
+    $dire('  chaque tuile porte son rang dans cet ordre (pour retrouver sa place quand un favori en sort)',
+        $oui(str_contains($page, 'data-cle="budget" data-rang="0"') && str_contains($page, 'data-cle="amis" data-rang="1"')
+            && str_contains($page, 'data-cle="accueil" data-rang="2"')), 'oui');
+    [, , $code] = $ranger($a, $csrf, ['cours'], ['amis', 'inconnu', 'amis', '<script>', 'budget', '../x']);
+    $json = json_decode($ordreBd($idA), true) ?: [];
+    $dire('  ce qui n\'est pas une section, ou revient deux fois, est écarté ; les oubliées suivent dans l\'ordre du catalogue',
+        $code . ' · ' . implode(',', array_slice($json, 0, 4)) . ' · ' . count($json), '204 · amis,budget,accueil,calendrier · 15');
+    $ordreAvant = $ordreBd($idA);
+    $enregistrer($a, $csrf, ['cours', 'budget']);
+    $dire('  des favoris envoyés sans « ordre » ne touchent pas à l\'ordre gardé', $oui($ordreBd($idA) === $ordreAvant), 'oui');
+    [$pageB] = $appel($b, 'calendrier');
+    $dire('  et l\'ordre d\'un compte n\'est pas celui des autres', $oui(bd_valeur('SELECT menu_ordre FROM users WHERE id = ?', [$idB]) === null) . ' · ' . implode(',', array_slice($grille($pageB, 'autres'), 0, 3)), 'oui · accueil,partages,tableau');
+    [, , $code] = $ranger($a, $csrf, ['cours'], array_keys(Menu::SECTIONS));
+    $dire('  renvoyer l\'ordre du catalogue efface l\'ordre gardé (retour au départ)', $code . ' · ' . $oui(bd_valeur('SELECT menu_ordre FROM users WHERE id = ?', [$idA]) === null), '204 · oui');
+    [, , $code] = $appel($a, 'compte/menu-favoris', ['_csrf' => 'faux', 'favoris' => ['cours'], 'ordre' => ['budget']]);
+    $dire('  sans le bon jeton CSRF, l\'ordre n\'est pas gardé', $oui(bd_valeur('SELECT menu_ordre FROM users WHERE id = ?', [$idA]) === null && $code !== 204), 'oui');
+    $enregistrer($a, $csrf, ['cours']);
 
     echo "\n3. Chacun ses favoris\n";
     [$pageB] = $appel($b, 'calendrier');

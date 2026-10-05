@@ -374,6 +374,12 @@ final class AuthController
         Session::verifierCsrf();
         $favoris = Menu::nettoyer((array) ($_POST['favoris'] ?? []));
         Database::run('UPDATE users SET menu_favoris = ? WHERE id = ?', [json_encode($favoris), Auth::id()]);
+        // L'ordre de toutes les tuiles, s'il est envoyé : complété des sections oubliées ; l'ordre du catalogue n'est pas gardé.
+        if (array_key_exists('ordre', $_POST)) {
+            $ordre = Menu::completer(Menu::nettoyer((array) $_POST['ordre']));
+            Database::run('UPDATE users SET menu_ordre = ? WHERE id = ?',
+                [$ordre === array_keys(Menu::SECTIONS) ? null : json_encode($ordre), Auth::id()]);
+        }
         http_response_code(204);
         exit;
     }

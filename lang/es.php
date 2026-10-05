@@ -4333,7 +4333,7 @@ return [
     'apps.favoris' => 'Tus favoritos',
     'apps.toutes' => 'Todas las secciones',
     'apps.modifier' => 'Editar mis favoritos',
-    'apps.aide_edition' => 'Haz clic en una sección para añadirla a tus favoritos o quitarla. El lápiz termina la edición. Arrastra una sección a tus favoritos (o fuera de ellos), o un favorito para cambiar su orden.',
+    'apps.aide_edition' => 'Haz clic en una sección para añadirla a tus favoritos o quitarla. El lápiz termina la edición. Arrastra una ficha para cambiar su orden, o para ponerla en tus favoritos (o sacarla).',
     'apps.aucun_favori' => 'Ningún favorito: haz clic en el lápiz para elegir tus secciones preferidas.',
     'js.apps.echec' => 'No se pudieron guardar tus favoritos: comprueba tu conexión.',
     'apps.liens' => 'Mis aplicaciones',

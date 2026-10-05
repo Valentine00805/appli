@@ -7,7 +7,8 @@ declare(strict_types=1);
  *
  * Le catalogue est ici, une fois pour toutes : l'ordre des tuiles, leur icône, la phrase qui les nomme et la route qui les
  * rend « actives ». Les favoris d'un compte sont une liste de clés de ce catalogue (colonne users.menu_favoris, en JSON) ;
- * tout ce qui arrive du navigateur repasse par nettoyer(), qui ne garde que des clés connues, sans doublon.
+ * tout ce qui arrive du navigateur repasse par nettoyer(), qui ne garde que des clés connues, sans doublon. Chacun peut
+ * aussi ranger toutes les tuiles à sa façon (colonne users.menu_ordre, en JSON) : voir ordre().
  */
 final class Menu
 {
@@ -51,6 +52,30 @@ final class Menu
         $liste = json_decode($json, true);
 
         return is_array($liste) ? self::nettoyer($liste) : self::FAVORIS_PAR_DEFAUT;
+    }
+
+    /**
+     * L'ordre de toutes les sections pour un compte, d'après ce que la base garde : l'ordre choisi, puis les sections qu'il
+     * ne cite pas (une nouvelle section, par exemple) dans l'ordre du catalogue. Sans ordre choisi : celui du catalogue.
+     *
+     * @return list<string>
+     */
+    public static function ordre(?string $json): array
+    {
+        $choisi = ($json === null || trim($json) === '') ? [] : self::nettoyer(json_decode($json, true));
+
+        return self::completer($choisi);
+    }
+
+    /**
+     * Complète une liste de clés avec celles qui manquent, dans l'ordre du catalogue.
+     *
+     * @param list<string> $cles des clés déjà nettoyées
+     * @return list<string>
+     */
+    public static function completer(array $cles): array
+    {
+        return array_merge($cles, array_values(array_diff(array_keys(self::SECTIONS), $cles)));
     }
 
     /**

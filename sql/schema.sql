@@ -1535,6 +1535,11 @@ CREATE TABLE IF NOT EXISTS `diaporama_cours` (
 ALTER TABLE `users`
   ADD COLUMN `menu_favoris` VARCHAR(400) NULL DEFAULT NULL AFTER `langue`;
 
+-- L'ordre voulu de toutes les tuiles du menu en grille (JSON : ["accueil","calendrier",…]) ; NULL = ordre du catalogue.
+
+ALTER TABLE `users`
+  ADD COLUMN `menu_ordre` VARCHAR(400) NULL DEFAULT NULL AFTER `menu_favoris`;
+
 -- Les liens vers d'autres applications (YouTube, NotebookLM…) rangés par chacun dans le menu en grille.
 
 CREATE TABLE IF NOT EXISTS `liens_apps` (
