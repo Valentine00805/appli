@@ -1324,13 +1324,14 @@ final class CalendrierController
             );
         }
 
-        // Les tâches d'un travail de groupe qu'on m'a confiées, avec leur échéance : elles s'ouvrent dans la fenêtre du groupe.
+        // Les tâches d'un travail de groupe qu'on m'a confiées — et celles que personne n'a encore prises, pour tout le groupe —, avec
+        // leur échéance : elles s'ouvrent dans la fenêtre du groupe. Celles d'un autre membre ne sont pas les miennes.
         foreach (Database::all(
             "SELECT pt.id, pt.titre, pt.echeance, pt.statut, p.id AS projet_id, p.nom AS projet_nom
                FROM projet_taches pt
                JOIN projets p ON p.id = pt.projet_id
-               JOIN projet_membres pm ON pm.id = pt.membre_id AND pm.projet_id = p.id AND pm.user_id = ? AND pm.statut = 'membre'
-              WHERE pt.echeance BETWEEN ? AND ?",
+               JOIN projet_membres pm ON pm.projet_id = p.id AND pm.user_id = ? AND pm.statut = 'membre'
+              WHERE (pt.membre_id = pm.id OR pt.membre_id IS NULL) AND pt.echeance BETWEEN ? AND ?",
             $bornes
         ) as $tache) {
             $lignes[] = [

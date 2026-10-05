@@ -143,8 +143,9 @@ try {
         $oui(str_contains($calendrier, 'Mine due') && str_contains($calendrier, '/travaux/' . $projet . '"')), 'oui');
     $dire('  avec son type « Group task · le groupe », et les faites aussi (barrées)',
         $oui(str_contains($calendrier, 'Group task · Essai de langue') && str_contains($calendrier, 'Done due')), 'oui');
-    $dire('  pas celle d\'un autre membre, ni celle de personne, ni celle sans échéance',
-        $oui(!str_contains($calendrier, 'Alex due') && !str_contains($calendrier, 'Nobody due') && !str_contains($calendrier, 'Mine undated')), 'oui');
+    $dire('  celle que personne n\'a prise y est aussi (pour tout le groupe)', $oui(str_contains($calendrier, 'Nobody due')), 'oui');
+    $dire('  mais pas celle d\'un autre membre, ni celle sans échéance',
+        $oui(!str_contains($calendrier, 'Alex due') && !str_contains($calendrier, 'Mine undated')), 'oui');
     $demain = date('Y-m-d');
     bd_run('INSERT INTO projet_taches (projet_id, titre, membre_id, echeance, statut) VALUES (?, ?, ?, ?, ?)', [$projet, 'Due today', $moiMembre, $demain, 'a_faire']);
     $accueil = $appel('');
