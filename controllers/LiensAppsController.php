@@ -17,14 +17,14 @@ final class LiensAppsController
         if ((int) Database::valeur('SELECT COUNT(*) FROM liens_apps WHERE user_id = ?', [$userId]) >= LienApp::MAX) {
             $this->json(['ok' => false, 'message' => t('lia.err.max', ['n' => LienApp::MAX])], 422);
         }
-        [$lien, $erreur] = LienApp::valider((string) ($_POST['nom'] ?? ''), (string) ($_POST['url'] ?? ''), (string) ($_POST['icone'] ?? ''));
+        [$lien, $erreur] = LienApp::valider((string) ($_POST['nom'] ?? ''), (string) ($_POST['url'] ?? ''), (string) ($_POST['icone'] ?? ''), (string) ($_POST['logo'] ?? ''));
         if ($lien === null) {
             $this->json(['ok' => false, 'message' => t((string) $erreur)], 422);
         }
 
         $position = (int) Database::valeur('SELECT COALESCE(MAX(position), 0) + 1 FROM liens_apps WHERE user_id = ?', [$userId]);
-        Database::run('INSERT INTO liens_apps (user_id, nom, url, icone, position) VALUES (?, ?, ?, ?, ?)',
-            [$userId, $lien['nom'], $lien['url'], $lien['icone'], $position]);
+        Database::run('INSERT INTO liens_apps (user_id, nom, url, icone, logo, position) VALUES (?, ?, ?, ?, ?, ?)',
+            [$userId, $lien['nom'], $lien['url'], $lien['icone'], $lien['logo'], $position]);
 
         $this->json(['ok' => true, 'lien' => $this->pourLeScript(Database::dernierId(), $lien)]);
     }
@@ -36,12 +36,12 @@ final class LiensAppsController
         $userId = Auth::id();
         $this->possede($id, $userId);
 
-        [$lien, $erreur] = LienApp::valider((string) ($_POST['nom'] ?? ''), (string) ($_POST['url'] ?? ''), (string) ($_POST['icone'] ?? ''));
+        [$lien, $erreur] = LienApp::valider((string) ($_POST['nom'] ?? ''), (string) ($_POST['url'] ?? ''), (string) ($_POST['icone'] ?? ''), (string) ($_POST['logo'] ?? ''));
         if ($lien === null) {
             $this->json(['ok' => false, 'message' => t((string) $erreur)], 422);
         }
-        Database::run('UPDATE liens_apps SET nom = ?, url = ?, icone = ? WHERE id = ? AND user_id = ?',
-            [$lien['nom'], $lien['url'], $lien['icone'], $id, $userId]);
+        Database::run('UPDATE liens_apps SET nom = ?, url = ?, icone = ?, logo = ? WHERE id = ? AND user_id = ?',
+            [$lien['nom'], $lien['url'], $lien['icone'], $lien['logo'], $id, $userId]);
 
         $this->json(['ok' => true, 'lien' => $this->pourLeScript($id, $lien)]);
     }
@@ -64,7 +64,7 @@ final class LiensAppsController
     {
         return ['id' => $id, 'nom' => $lien['nom'], 'url' => $lien['url'],
                 'icone' => LienApp::icone($lien['icone'], $lien['url']), 'icone_choisie' => $lien['icone'],
-                'site_icone' => LienApp::iconeDuSite($lien['url'])];
+                'logo' => $lien['logo'], 'image' => LienApp::image($lien['url'], $lien['logo'], $lien['icone'])];
     }
 
     private function possede(int $id, int $userId): void

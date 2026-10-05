@@ -6,9 +6,10 @@ declare(strict_types=1);
  *
  * Une adresse vient de l'utilisateur et sera suivie d'un clic : seule une adresse http(s) y passe (jamais
  * « javascript: », « data: » ou autre), sans identifiants dans l'adresse, et elle s'ouvre toujours dans un nouvel onglet,
- * avec rel="noopener noreferrer" (voir le gabarit). Le serveur de l'application ne contacte jamais ces sites. L'icône
- * est celle du site, que le navigateur demande au service de favicons de Google (seul le nom du site part, sans référent) ;
- * si elle ne vient pas, ou si on a choisi un emoji, c'est l'emoji qui s'affiche — choisi, ou proposé d'après le site.
+ * avec rel="noopener noreferrer" (voir le gabarit). Le serveur de l'application ne contacte jamais ces sites. L'image
+ * de l'icône vient, par ordre de préférence : de l'adresse du logo qu'on a donnée (distincte de l'adresse du site) ; de
+ * l'icône du site, que le navigateur demande au service de favicons de Google (seul le nom du site part, sans référent),
+ * sauf si on a choisi un emoji. Si l'image ne vient pas, c'est l'emoji qui s'affiche — choisi, ou proposé d'après le site.
  */
 final class LienApp
 {
@@ -49,6 +50,22 @@ final class LienApp
         return $hote !== '' && !in_array($hote, self::SANS_ICONE_DE_SITE, true);
     }
 
+    /**
+     * L'image à poser sur l'emoji d'un lien, ou '' s'il n'y en a pas : le logo dont on a donné l'adresse ; sinon, à moins
+     * d'un emoji choisi, l'icône du site.
+     */
+    public static function image(string $url, string $logo, string $iconeChoisie): string
+    {
+        if ($logo !== '') {
+            return $logo;
+        }
+        if ($iconeChoisie === '' && self::iconeDuSite($url)) {
+            return self::favicon($url);
+        }
+
+        return '';
+    }
+
     /** L'adresse de l'icône du site d'un lien. */
     public static function favicon(string $url): string
     {
@@ -58,10 +75,10 @@ final class LienApp
     /**
      * Vérifie et nettoie ce que le formulaire envoie.
      *
-     * @return array{0: ?array{nom: string, url: string, icone: string}, 1: ?string} le lien propre, ou null et la clé de
+     * @return array{0: ?array{nom: string, url: string, icone: string, logo: string}, 1: ?string} le lien propre, ou null et la clé de
      *         traduction de ce qui ne va pas
      */
-    public static function valider(string $nom, string $url, string $icone): array
+    public static function valider(string $nom, string $url, string $icone, string $logo = ''): array
     {
         $nom = trim((string) preg_replace('/\s+/u', ' ', $nom));
         if ($nom === '' || mb_strlen($nom) > self::NOM_MAX) {
@@ -76,7 +93,16 @@ final class LienApp
             return [null, 'lia.err.icone'];
         }
 
-        return [['nom' => $nom, 'url' => $adresse, 'icone' => $icone], null];
+        // L'adresse du logo : vide, ou une adresse http(s) propre, comme celle du site.
+        $logo = trim($logo);
+        if ($logo !== '') {
+            $logo = self::adresse($logo);
+            if ($logo === null) {
+                return [null, 'lia.err.logo'];
+            }
+        }
+
+        return [['nom' => $nom, 'url' => $adresse, 'icone' => $icone, 'logo' => $logo], null];
     }
 
     /**
@@ -145,18 +171,21 @@ final class LienApp
     /**
      * Les liens d'un utilisateur, dans leur ordre, avec l'icône à montrer.
      *
-     * @return list<array{id: int, nom: string, url: string, icone: string, icone_choisie: string}>
+     * @return list<array{id: int, nom: string, url: string, icone: string, icone_choisie: string, logo: string, image: string}>
      */
     public static function duUser(int $userId): array
     {
         $liens = [];
-        foreach (Database::all('SELECT id, nom, url, icone FROM liens_apps WHERE user_id = ? ORDER BY position, id', [$userId]) as $l) {
+        foreach (Database::all('SELECT id, nom, url, icone, logo FROM liens_apps WHERE user_id = ? ORDER BY position, id', [$userId]) as $l) {
             // Une adresse abîmée en base (modifiée à la main) n'est pas suivie : la ligne est ignorée.
             if (self::adresse((string) $l['url']) === null) {
                 continue;
             }
+            // Une adresse de logo abîmée en base n'est pas suivie non plus : elle est ignorée, le lien reste.
+            $logo = (string) $l['logo'] !== '' && self::adresse((string) $l['logo']) !== null ? (string) $l['logo'] : '';
             $liens[] = ['id' => (int) $l['id'], 'nom' => (string) $l['nom'], 'url' => (string) $l['url'],
-                        'icone' => self::icone((string) $l['icone'], (string) $l['url']), 'icone_choisie' => (string) $l['icone']];
+                        'icone' => self::icone((string) $l['icone'], (string) $l['url']), 'icone_choisie' => (string) $l['icone'],
+                        'logo' => $logo, 'image' => self::image((string) $l['url'], $logo, (string) $l['icone'])];
         }
 
         return $liens;

@@ -151,8 +151,8 @@ try {
 
     echo "\n5. Mes applications (liens vers d’autres sites)\n";
     // Après la boucle des langues, A est en français ; B garde ses favoris abîmés : sans importance ici.
-    $lien = static function (string $compte, string $csrf, string $nom, string $url, string $icone = '', ?int $id = null) use ($appel): array {
-        [$corps, , $code] = $appel($compte, 'compte/liens-apps' . ($id === null ? '' : '/' . $id), ['_csrf' => $csrf, 'nom' => $nom, 'url' => $url, 'icone' => $icone]);
+    $lien = static function (string $compte, string $csrf, string $nom, string $url, string $icone = '', ?int $id = null, string $logo = '') use ($appel): array {
+        [$corps, , $code] = $appel($compte, 'compte/liens-apps' . ($id === null ? '' : '/' . $id), ['_csrf' => $csrf, 'nom' => $nom, 'url' => $url, 'icone' => $icone, 'logo' => $logo]);
         return [json_decode($corps, true) ?: [], $code];
     };
     $nbLiens = static fn (int $uid): int => (int) bd_valeur('SELECT COUNT(*) FROM liens_apps WHERE user_id = ?', [$uid]);
@@ -222,11 +222,30 @@ try {
             && ($p3 = strpos($page, 'href="https://moodle.exemple.fr/cours?id=3#haut"')) !== false && $p1 < $p2 && $p2 < $p3
             && $p3 < strpos($page, 'data-lien-ajout') && str_contains($page, 'data-liens-vide hidden')), 'oui');
     $dire('  et la tuile garde l’icône choisie pour préremplir l’édition (vide si c’est celle du site)',
-        $oui(preg_match('#data-lien-id="' . $idYoutube . '" data-nom="YouTube" data-icone-choisie="">#', $page) === 1
+        $oui(preg_match('#data-lien-id="' . $idYoutube . '" data-nom="YouTube" data-icone-choisie="" data-logo="">#', $page) === 1
             && str_contains($page, 'data-icone-choisie="🎓"')), 'oui');
     $dire('  sans icône choisie la tuile porte celle du site (le navigateur la demande), avec l’emoji en repli ; avec une icône choisie, pas d’image',
         $oui(str_contains($page, 'class="apps__favicon" src="https://www.google.com/s2/favicons?sz=64&amp;domain=youtube.com"')
             && !str_contains($page, '🎓<img') && !str_contains($page, 'domain=notebooklm.google.com') && str_contains($page, '📓</span>') && str_contains($page, '🔗<img') && str_contains($page, 'referrerpolicy="no-referrer"')), 'oui');
+
+    // L'adresse du logo, distincte de celle du site.
+    [$j, $code] = $lien($a, $csrf, 'Gemini Notebook', 'https://notebooklm.google.com', '', null, 'https://exemple.org/images/notebook.png');
+    $idLogo = (int) ($j['lien']['id'] ?? 0);
+    $dire('  un logo donné : gardé, et c’est lui l’image de la tuile (pas l’icône du site)',
+        $code . ' · ' . ($j['lien']['logo'] ?? '?') . ' · ' . ($j['lien']['image'] ?? '?'),
+        '200 · https://exemple.org/images/notebook.png · https://exemple.org/images/notebook.png');
+    [$page] = $appel($a, 'calendrier');
+    $dire('  la page le porte : l’image, et l’adresse pour préremplir l’édition',
+        $oui(str_contains($page, 'class="apps__favicon" src="https://exemple.org/images/notebook.png"')
+            && str_contains($page, 'data-logo="https://exemple.org/images/notebook.png"')), 'oui');
+    [$j, $code] = $lien($a, $csrf, 'Logo piégé', 'exemple.org', '', null, 'javascript:alert(1)');
+    [$j2, $code2] = $lien($a, $csrf, 'Logo piégé', 'exemple.org', '', null, 'data:image/png;base64,AAAA');
+    $dire('  un logo qui n’est pas une adresse http(s) est refusé (javascript:, data:)',
+        $code . ' ' . $oui(str_contains((string) ($j['message'] ?? ''), 'logo')) . ' · ' . $code2, '422 oui · 422');
+    [$j, $code] = $lien($a, $csrf, 'Gemini Notebook', 'https://notebooklm.google.com', '', $idLogo, '');
+    $dire('  logo effacé : on revient à l’emoji (NotebookLM n’a pas d’icône de site utilisable)',
+        $code . ' · [' . ($j['lien']['logo'] ?? '?') . '] · [' . ($j['lien']['image'] ?? '?') . ']', '200 · [] · []');
+    bd_run('DELETE FROM liens_apps WHERE id = ? AND user_id = ?', [$idLogo, $idA]);
 
     echo "\n   — modifier, supprimer, limite\n";
     [$j, $code] = $lien($a, $csrf, 'YouTube Music', 'music.youtube.com', '🎵', $idYoutube);

@@ -1543,6 +1543,7 @@ CREATE TABLE IF NOT EXISTS `liens_apps` (
   `nom`        VARCHAR(40)  NOT NULL,
   `url`        VARCHAR(500) NOT NULL,
   `icone`      VARCHAR(16)  NOT NULL DEFAULT '',
+  `logo`       VARCHAR(500) NOT NULL DEFAULT '',
   `position`   INT UNSIGNED NOT NULL DEFAULT 0,
   `created_at` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),

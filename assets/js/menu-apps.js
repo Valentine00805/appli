@@ -128,25 +128,20 @@
         tuile.setAttribute('data-lien-id', String(lien.id));
         tuile.setAttribute('data-nom', lien.nom);
         tuile.setAttribute('data-icone-choisie', lien.icone_choisie || '');
+        tuile.setAttribute('data-logo', lien.logo || '');
         var pastille = tuile.querySelector('.apps__icone');
         pastille.textContent = lien.icone;
         pastille.classList.remove('apps__icone--image');
-        // Pas d'emoji choisi : l'icône du site, l'emoji tenant sa place tant qu'elle n'est pas là (ou si elle ne vient pas).
-        var service = racine.getAttribute('data-favicon');
-        if (!lien.icone_choisie && lien.site_icone && service) {
-          var hote = '';
-          try { hote = new URL(lien.url).hostname; } catch (e) { hote = ''; }
-          if (hote) {
-            var image = document.createElement('img');
-            image.className = 'apps__favicon';
-            image.setAttribute('alt', '');
-            image.setAttribute('width', '32');
-            image.setAttribute('height', '32');
-            image.setAttribute('loading', 'lazy');
-            image.setAttribute('referrerpolicy', 'no-referrer');
-            image.setAttribute('src', service + encodeURIComponent(hote));
-            pastille.appendChild(image);
-          }
+        // L'image (le logo donné, ou l'icône du site) : l'emoji tient sa place tant qu'elle n'est pas là, ou si elle ne vient pas.
+        if (lien.image) {
+          var image = document.createElement('img');
+          image.className = 'apps__favicon';
+          image.setAttribute('alt', '');
+          image.setAttribute('width', '32');
+          image.setAttribute('height', '32');
+          image.setAttribute('referrerpolicy', 'no-referrer');
+          image.setAttribute('src', lien.image);
+          pastille.appendChild(image);
         }
         tuile.querySelector('.apps__nom').textContent = lien.nom;
       };
@@ -175,6 +170,7 @@
         titreFormulaire.textContent = tuile ? mot('apps.lien_modifier_titre') : mot('apps.lien_nouveau');
         formulaire.elements.nom.value = tuile ? tuile.getAttribute('data-nom') : '';
         formulaire.elements.url.value = tuile ? tuile.getAttribute('href') : '';
+        formulaire.elements.logo.value = tuile ? tuile.getAttribute('data-logo') : '';
         formulaire.elements.icone.value = tuile ? tuile.getAttribute('data-icone-choisie') : '';
         erreurLien.hidden = true;
         boutonSupprimer.hidden = !tuile;
