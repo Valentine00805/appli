@@ -7,9 +7,9 @@ declare(strict_types=1);
  * Une adresse vient de l'utilisateur et sera suivie d'un clic : seule une adresse http(s) y passe (jamais
  * « javascript: », « data: » ou autre), sans identifiants dans l'adresse, et elle s'ouvre toujours dans un nouvel onglet,
  * avec rel="noopener noreferrer" (voir le gabarit). Le serveur de l'application ne contacte jamais ces sites. L'image
- * de l'icône vient, par ordre de préférence : de l'adresse du logo qu'on a donnée (distincte de l'adresse du site) ; de
- * l'icône du site, que le navigateur demande au service de favicons de Google (seul le nom du site part, sans référent),
- * sauf si on a choisi un emoji. Si l'image ne vient pas, c'est l'emoji qui s'affiche — choisi, ou proposé d'après le site.
+ * de l'icône vient, par ordre de préférence : de l'adresse du logo qu'on a donnée (distincte de l'adresse du site) —
+ * celle d'une image, ou celle d'un site dont on prend l'icône ; de l'icône du site du lien, que le navigateur demande au
+ * service de favicons de Google (seul le nom du site part, sans référent), sauf si on a choisi un emoji. Si l'image ne vient pas, c'est l'emoji qui s'affiche — choisi, ou proposé d'après le site.
  */
 final class LienApp
 {
@@ -50,14 +50,23 @@ final class LienApp
         return $hote !== '' && !in_array($hote, self::SANS_ICONE_DE_SITE, true);
     }
 
+    /** L'adresse donnée pour le logo est-elle celle d'une image (une extension d'image au bout du chemin) ? */
+    public static function estUneImage(string $adresse): bool
+    {
+        $chemin = (string) (parse_url($adresse, PHP_URL_PATH) ?? '');
+
+        return preg_match('/\.(png|jpe?g|gif|svg|webp|avif|ico|bmp)$/i', $chemin) === 1;
+    }
+
     /**
-     * L'image à poser sur l'emoji d'un lien, ou '' s'il n'y en a pas : le logo dont on a donné l'adresse ; sinon, à moins
-     * d'un emoji choisi, l'icône du site.
+     * L'image à poser sur l'emoji d'un lien, ou '' s'il n'y en a pas : le logo dont on a donné l'adresse (l'image elle-même,
+     * ou, si c'est l'adresse d'un site, son icône — ce site-là peut montrer le bon logo quand celui du lien, derrière une
+     * connexion, ne le montre pas) ; sinon, à moins d'un emoji choisi, l'icône du site du lien.
      */
     public static function image(string $url, string $logo, string $iconeChoisie): string
     {
         if ($logo !== '') {
-            return $logo;
+            return self::estUneImage($logo) ? $logo : self::favicon($logo);
         }
         if ($iconeChoisie === '' && self::iconeDuSite($url)) {
             return self::favicon($url);

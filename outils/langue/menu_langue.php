@@ -238,6 +238,16 @@ try {
     $dire('  la page le porte : l’image, et l’adresse pour préremplir l’édition',
         $oui(str_contains($page, 'class="apps__favicon" src="https://exemple.org/images/notebook.png"')
             && str_contains($page, 'data-logo="https://exemple.org/images/notebook.png"')), 'oui');
+    // Le logo peut aussi être l'adresse d'un site : on en prend l'icône (sans « https:// » saisi, il est ajouté).
+    [$j, $code] = $lien($a, $csrf, 'Notebook (site)', 'https://notebooklm.google.com', '', null, 'notebooklm.google');
+    $idSite = (int) ($j['lien']['id'] ?? 0);
+    $dire('  un logo qui est l\'adresse d\'un site : son icône sert d\'image',
+        $code . ' · ' . ($j['lien']['logo'] ?? '?') . ' · ' . ($j['lien']['image'] ?? '?'),
+        '200 · https://notebooklm.google · https://www.google.com/s2/favicons?sz=64&domain=notebooklm.google');
+    $dire('  une adresse d\'image (extension) reste l\'image elle-même, même avec une requête ou en majuscules',
+        $oui(LienApp::estUneImage('https://exemple.org/a/Logo.PNG?v=2') && LienApp::estUneImage('https://exemple.org/i.svg')
+            && !LienApp::estUneImage('https://notebooklm.google') && !LienApp::estUneImage('https://exemple.org/page.html')), 'oui');
+    bd_run('DELETE FROM liens_apps WHERE id = ? AND user_id = ?', [$idSite, $idA]);
     [$j, $code] = $lien($a, $csrf, 'Logo piégé', 'exemple.org', '', null, 'javascript:alert(1)');
     [$j2, $code2] = $lien($a, $csrf, 'Logo piégé', 'exemple.org', '', null, 'data:image/png;base64,AAAA');
     $dire('  un logo qui n’est pas une adresse http(s) est refusé (javascript:, data:)',
