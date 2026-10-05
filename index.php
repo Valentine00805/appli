@@ -26,6 +26,7 @@ require __DIR__ . '/src/Langue.php';
 require __DIR__ . '/src/Auth.php';
 require __DIR__ . '/src/Menu.php';
 require __DIR__ . '/src/LienApp.php';
+require __DIR__ . '/src/Sondages.php';
 require __DIR__ . '/src/LimiteurConnexion.php';
 require __DIR__ . '/src/Courriel.php';
 require __DIR__ . '/src/Reinitialisation.php';
@@ -75,6 +76,7 @@ require __DIR__ . '/src/Vue.php';
 
 require __DIR__ . '/controllers/AuthController.php';
 require __DIR__ . '/controllers/LiensAppsController.php';
+require __DIR__ . '/controllers/SondagesController.php';
 require __DIR__ . '/controllers/AmisController.php';
 require __DIR__ . '/controllers/ConversationsController.php';
 require __DIR__ . '/controllers/PartagesController.php';
@@ -299,6 +301,9 @@ $routes = [
     ['POST', 'amis/messages/{id}/reaction', [AmisController::class, 'reagir']],
     ['POST', 'amis/messages/{id}/epingle', [AmisController::class, 'epingler']],
     ['POST', 'amis/{id}/messages',        [AmisController::class, 'envoyer']],
+    ['POST', 'amis/{id}/sondages',        [SondagesController::class, 'creerAmis']],
+    ['POST', 'groupes/{id}/sondages',     [SondagesController::class, 'creerGroupe']],
+    ['POST', 'sondages/{id}/voter',       [SondagesController::class, 'voter']],
 
     // Les discussions de groupe (à ne pas confondre avec les groupes de personnes du budget).
     ['GET',  'discussions/nouvelle',        [ConversationsController::class, 'nouvelleDiscussion']],

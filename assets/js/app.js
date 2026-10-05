@@ -2090,7 +2090,7 @@
         bulle.classList.remove('bulle--image');
         bulle.removeAttribute('data-piece');
         bulle.querySelectorAll('.bulle__vocal audio').forEach(function (a) { a.pause(); });
-        bulle.querySelectorAll('.bulle__image, .bulle__fichier, .bulle__partage, .bulle__vocal, .bulle__transcription, .bulle__texte, .bulle__citation, .bulle__modifie, .bulle__reactions').forEach(function (e) { e.remove(); });
+        bulle.querySelectorAll('.bulle__image, .bulle__fichier, .bulle__partage, .bulle__sondage, .bulle__vocal, .bulle__transcription, .bulle__texte, .bulle__citation, .bulle__modifie, .bulle__reactions').forEach(function (e) { e.remove(); });
         var efface = document.createElement('p');
         efface.className = 'bulle__texte';
         efface.textContent = mot('chat.message_supprime');
@@ -2186,7 +2186,8 @@
         menu.querySelectorAll('[data-reagir-emoji]').forEach(function (b) {
           b.classList.toggle('menu-message__reaction--moi', !!miennes && miennes.getAttribute('data-reaction') === b.getAttribute('data-reagir-emoji'));
         });
-        menu.querySelector('[data-action="modifier"]').hidden = !mien || efface;
+        // Un sondage ne se modifie pas : on le supprime et on en refait un.
+        menu.querySelector('[data-action="modifier"]').hidden = !mien || efface || !!bulle.querySelector('.bulle__sondage');
         bulleDuMenu = bulle;
         bulle.classList.add('bulle--menu');
         menu.hidden = false;
@@ -2327,7 +2328,12 @@
         var nomFichier = bulle.querySelector('.bulle__fichier-nom');
         var piece = bulle.querySelector('.bulle__image') ? mot('chat.piece_photo') : (nomFichier ? '📎 ' + nomFichier.textContent
           : (bulle.querySelector('.bulle__vocal') ? mot('chat.piece_vocal')
-          : (bulle.querySelector('.bulle__partage') ? mot('chat.piece_partage') : '')));
+          : (bulle.querySelector('.bulle__sondage') ? mot('chat.piece_sondage')
+          : (bulle.querySelector('.bulle__partage') ? mot('chat.piece_partage') : ''))));
+        if (piece === mot('chat.piece_sondage')) {
+          var question = bulle.querySelector('.sondage__question');
+          texte = question ? question.textContent.replace(/\s+/g, ' ').trim() : texte;
+        }
         var extrait = texte === '' ? piece : (piece === '' ? texte : piece + ' · ' + texte);
         return extrait.length > 120 ? extrait.slice(0, 119) + '…' : extrait;
       };
@@ -2782,7 +2788,7 @@
         bulle.id = 'message-' + message.id;
         bulle.tabIndex = 0;
         bulle.setAttribute('aria-haspopup', 'menu');
-        if (message.image || message.fichier || message.vocal || message.partage) { bulle.setAttribute('data-piece', ''); }
+        if (message.image || message.fichier || message.vocal || message.partage || message.sondage) { bulle.setAttribute('data-piece', ''); }
         // Dans un groupe, le nom de qui écrit, en tête d'une suite de ses messages.
         if (enGroupe) {
           var auteurId = String(message.auteur_id || '');
@@ -2858,6 +2864,13 @@
           carte.appendChild(carteTexte);
           bulle.appendChild(carte);
         }
+        // Un sondage : le script des sondages dessine les options et prend les votes (depuis « data-sondage »).
+        if (message.sondage) {
+          var blocSondage = document.createElement('div');
+          blocSondage.className = 'bulle__sondage';
+          blocSondage.setAttribute('data-sondage', JSON.stringify(message.sondage));
+          bulle.appendChild(blocSondage);
+        }
         if (message.vocal) {
           var lecteur = document.createElement('div');
           lecteur.className = 'bulle__vocal';
@@ -2931,7 +2944,7 @@
           carte.appendChild(telecharger);
           bulle.appendChild(carte);
         }
-        if (message.texte) {
+        if (message.texte && !message.sondage) {
           var texte = document.createElement('p');
           texte.className = 'bulle__texte';
           texte.textContent = message.texte;
@@ -2991,6 +3004,11 @@
           });
           (reponse.reactions || []).forEach(function (m) {
             dessinerReactions(fil.querySelector('[data-message="' + m.id + '"]'), m.reactions);
+            // Un vote : le sondage est redessiné par le script des sondages.
+            if (m.sondage) {
+              var bloc = fil.querySelector('[data-message="' + m.id + '"] .bulle__sondage');
+              if (bloc) { bloc.setAttribute('data-sondage', JSON.stringify(m.sondage)); }
+            }
           });
           if (reponse.maintenant) { chat.setAttribute('data-maintenant', reponse.maintenant); }
           if ('fond' in reponse) { poserFond(reponse.fond); }
@@ -3663,6 +3681,8 @@
       document.addEventListener('visibilitychange', function () {
         if (!document.hidden) { relever().then(planifier); }
       });
+      // Un sondage vient d'être envoyé (script des sondages) : on relève tout de suite, comme après un message.
+      chat.addEventListener('chat:relever', function () { relever().then(enBas).then(planifier); });
       planifier();
     })();
   }

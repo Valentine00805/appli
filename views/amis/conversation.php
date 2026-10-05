@@ -65,6 +65,7 @@ foreach ($messages as $m) {
            data-supprimer="<?= e(url($baseMessages . '/0/supprimer')) ?>"
            data-modifier="<?= e(url($baseMessages . '/0/modifier')) ?>"
            data-reagir="<?= e(url($baseMessages . '/0/reaction')) ?>"
+           data-sondages="<?= e(url($base . '/sondages')) ?>"
            data-epingler="<?= e(url($baseMessages . '/0/epingle')) ?>"
            data-conversation="<?= e(url($base)) ?>"
            data-rechercher="<?= e(url($base . '/recherche')) ?>"
@@ -152,7 +153,7 @@ foreach ($messages as $m) {
         <div class="bulle<?= $m['moi'] ? ' bulle--moi' : '' ?><?= $m['image'] !== null ? ' bulle--image' : '' ?><?= $m['supprime'] ? ' bulle--supprime' : '' ?><?= $m['epingle'] ? ' bulle--epingle' : '' ?>"
              data-message="<?= (int) $m['id'] ?>" id="message-<?= (int) $m['id'] ?>" tabindex="0" aria-haspopup="menu"
              <?= $enGroupe ? 'data-auteur="' . e($m['auteur']) . '" data-auteur-id="' . (int) $m['auteur_id'] . '"' : '' ?>
-             <?= $m['image'] !== null || $m['fichier'] !== null || $m['vocal'] !== null || $m['partage'] !== null ? 'data-piece' : '' ?>>
+             <?= $m['image'] !== null || $m['fichier'] !== null || $m['vocal'] !== null || $m['partage'] !== null || $m['sondage'] !== null ? 'data-piece' : '' ?>>
           <?php // Dans un groupe, le nom de qui écrit, en tête d'une suite de ses messages. ?>
           <?php if ($enGroupe && !$m['moi'] && $auteurPrecedent !== $m['auteur_id']): ?>
             <span class="bulle__auteur"><?= e($m['auteur']) ?></span>
@@ -177,6 +178,25 @@ foreach ($messages as $m) {
                 <span class="bulle__partage-detail"><?= Partages::icone(12) ?> <?= e($p['detail']) ?></span>
               </span>
             </<?= $p['url'] !== null ? 'a' : 'div' ?>>
+          <?php endif; ?>
+          <?php if ($m['sondage'] !== null): ?>
+            <?php
+            /*
+             * Un sondage : le script dessine les options et prend les votes (depuis « data-sondage »). Sans lui, la question
+             * et les résultats se lisent quand même.
+             */
+            $sondage = $m['sondage'];
+            ?>
+            <div class="bulle__sondage" data-sondage="<?= e((string) json_encode($sondage, JSON_UNESCAPED_UNICODE)) ?>">
+              <p class="sondage__question"><?= e($sondage['question']) ?></p>
+              <ul class="sondage__options">
+                <?php foreach ($sondage['options'] as $o): ?>
+                  <li class="sondage__option<?= $o['moi'] ? ' sondage__option--moi' : '' ?>">
+                    <span class="sondage__texte"><?= e($o['texte']) ?></span> <span class="sondage__nombre"><?= (int) $o['nombre'] ?></span>
+                  </li>
+                <?php endforeach; ?>
+              </ul>
+            </div>
           <?php endif; ?>
           <?php if ($m['image'] !== null): ?>
             <a class="bulle__image" href="<?= e($m['image']) ?>" target="_blank" rel="noopener" data-visionneuse>
@@ -210,7 +230,7 @@ foreach ($messages as $m) {
                  title="<?= e(t('commun.telecharger')) ?>" aria-label="<?= e(t('prf.telecharger_nom', ['nom' => $m['fichier']['nom']])) ?>">⬇</a>
             </div>
           <?php endif; ?>
-          <?php if ($m['texte'] !== ''): ?>
+          <?php if ($m['texte'] !== '' && $m['sondage'] === null): ?>
             <p class="bulle__texte"><?= nl2br(e($m['texte'])) ?></p>
           <?php endif; ?>
           <span class="bulle__heure"><span class="bulle__epingle" title="<?= e(t('chat.epingle')) ?>" aria-label="<?= e(t('chat.epingle')) ?>">📌 </span><?php if ($m['modifie']): ?><span class="bulle__modifie"><?= e(t('js.chat.modifie')) ?></span><?php endif; ?><?= e($m['heure']) ?></span>
@@ -278,6 +298,13 @@ foreach ($messages as $m) {
       <label class="chat__emoji-bouton chat__image-bouton" for="chat-image" title="<?= e(t('chat.joindre')) ?>" data-chat-image-bouton>
         <span aria-hidden="true">📎</span><span class="sr-only"><?= e(t('chat.joindre')) ?></span>
       </label>
+      <?php // Un sondage : le bouton n'apparaît que si le navigateur sait ouvrir la fenêtre (le script le montre). ?>
+      <button class="chat__emoji-bouton chat__sondage-bouton" type="button" data-sondage-ouvrir hidden
+              title="<?= e(t('son.titre')) ?>" aria-label="<?= e(t('son.titre')) ?>">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+          <path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20H2"/>
+        </svg>
+      </button>
       <?php // Un message vocal : le bouton n'apparaît que si le navigateur sait enregistrer. ?>
       <button class="chat__emoji-bouton chat__vocal-bouton" type="button" data-vocal-bouton hidden
               title="<?= e(t('chat.vocal_bouton')) ?>" aria-label="<?= e(t('chat.vocal_bouton')) ?>">
@@ -292,5 +319,38 @@ foreach ($messages as $m) {
       <div class="emojis" id="chat-emojis" data-emoji-panneau role="dialog" aria-label="<?= e(t('chat.emojis')) ?>" hidden></div>
     </form>
     <p class="chat__erreur" data-chat-erreur role="alert" hidden></p>
+
+    <?php // Créer un sondage : la fenêtre s'ouvre depuis le bouton de la saisie ; le script ajoute des options au fil de l'écriture. ?>
+    <dialog class="sondage-fenetre" id="sondage-dialogue" data-sondage-dialogue aria-labelledby="sondage-titre">
+      <form class="sondage-form" method="post" action="<?= e(url($base . '/sondages')) ?>" data-sondage-formulaire autocomplete="off">
+        <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+        <header class="sondage-form__entete">
+          <button type="button" class="sondage-form__fermer" data-sondage-fermer aria-label="<?= e(t('son.fermer')) ?>" title="<?= e(t('son.fermer')) ?>">✕</button>
+          <h2 class="sondage-form__titre-fenetre" id="sondage-titre"><?= e(t('son.titre')) ?></h2>
+        </header>
+        <div class="sondage-form__corps">
+          <h3 class="sondage-form__rubrique"><?= e(t('son.question')) ?></h3>
+          <input class="sondage-form__champ" type="text" name="question" maxlength="<?= Sondages::QUESTION_MAX ?>" required
+                 placeholder="<?= e(t('son.question_aide')) ?>" aria-label="<?= e(t('son.question')) ?>">
+          <h3 class="sondage-form__rubrique"><?= e(t('son.options')) ?></h3>
+          <div class="sondage-form__options" data-sondage-options>
+            <?php for ($i = 0; $i < 2; $i++): ?>
+              <input class="sondage-form__champ" type="text" name="options[]" maxlength="<?= Sondages::OPTION_MAX ?>" placeholder="<?= e(t('son.option_aide')) ?>">
+            <?php endfor; ?>
+          </div>
+          <label class="sondage-form__plusieurs">
+            <span><?= e(t('son.plusieurs')) ?></span>
+            <input type="checkbox" name="multiple" value="1" checked>
+          </label>
+          <p class="sondage-form__erreur" data-sondage-erreur role="alert" hidden></p>
+        </div>
+        <footer class="sondage-form__pied">
+          <button type="submit" class="sondage-form__envoyer" aria-label="<?= e(t('son.envoyer')) ?>" title="<?= e(t('son.envoyer')) ?>">
+            <svg viewBox="0 0 24 24" width="26" height="26" fill="currentColor" aria-hidden="true" focusable="false"><path d="M3 20.5v-6.7l9-1.8-9-1.8V3.5L22 12z"/></svg>
+          </button>
+        </footer>
+      </form>
+    </dialog>
   </section>
 </div>
+<script src="<?= asset('assets/js/sondages.js') ?>" defer></script>

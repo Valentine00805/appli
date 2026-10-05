@@ -4224,3 +4224,61 @@ summary.cal-volet__groupe:focus-visible {
 .apps .apps__tuile.apps__tuile--glisse { cursor: grabbing; opacity: .8; transform: scale(1.07); box-shadow: 0 6px 18px rgb(0 0 0 / 25%); background: var(--fond-carte); position: relative; z-index: 2; }
 .apps__indice { display: block; margin-top: .25rem; font-size: .78rem; line-height: 1.35; color: var(--texte-doux); }
 
+/* --- Les sondages des discussions ------------------------------------------------------------------------------------- */
+.bulle__sondage { display: grid; gap: .45rem; min-width: min(17rem, 72vw); margin: .15rem 0 .25rem; }
+.bulle__sondage--attente { opacity: .75; pointer-events: none; }
+.sondage__question { margin: 0; font-weight: 700; line-height: 1.3; overflow-wrap: anywhere; }
+.sondage__consigne { margin: 0; font-size: .78rem; color: var(--texte-doux); }
+.sondage__options { list-style: none; margin: .1rem 0 0; padding: 0; display: grid; gap: .1rem; }
+.sondage__ligne { margin: 0; }
+.sondage__option { display: grid; grid-template-columns: auto 1fr auto; align-items: center; column-gap: .55rem; row-gap: .25rem; width: 100%; padding: .4rem .1rem .3rem; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; border-radius: .5rem; }
+.sondage__option:hover { background: rgb(0 0 0 / 4%); }
+.sondage__option:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.sondage__case { width: 1.2rem; height: 1.2rem; border: 2px solid var(--bordure-forte); border-radius: 50%; display: grid; place-items: center; background: var(--fond-carte); }
+.sondage__case--carree { border-radius: .3rem; }
+.sondage__option--moi .sondage__case { background: var(--accent); border-color: var(--accent); }
+.sondage__option--moi .sondage__case::after { content: ''; width: .35rem; height: .6rem; border: solid #fff; border-width: 0 2px 2px 0; transform: translateY(-1px) rotate(45deg); }
+.sondage__texte { overflow-wrap: anywhere; line-height: 1.25; }
+.sondage__nombre { font-size: .85rem; color: var(--texte-doux); min-width: 1ch; text-align: right; }
+.sondage__barre { grid-column: 2 / -1; height: .32rem; border-radius: 999px; background: var(--fond-doux, rgb(0 0 0 / 8%)); overflow: hidden; }
+.sondage__rempli { display: block; height: 100%; border-radius: 999px; background: var(--accent); transition: width .25s ease; }
+.sondage__total { margin: 0; font-size: .8rem; color: var(--texte-doux); }
+.sondage__erreur { margin: 0; font-size: .8rem; color: var(--erreur); }
+
+/* La fenêtre « Créer un sondage » : la question, les options, le choix de plusieurs réponses, et le bouton d'envoi rond. */
+.sondage-fenetre { width: min(26rem, calc(100vw - 1.5rem)); max-height: calc(100vh - 2rem); padding: 0; border: 0; border-radius: 1.1rem; background: var(--fond-carte); color: var(--texte); box-shadow: 0 20px 60px rgb(0 0 0 / 30%); overflow: hidden; }
+.sondage-fenetre::backdrop { background: rgb(15 23 42 / 55%); }
+.sondage-form { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; max-height: calc(100vh - 2rem); }
+.sondage-form__entete { display: flex; align-items: center; gap: .8rem; padding: .9rem 1.1rem .4rem; }
+.sondage-form__titre-fenetre { margin: 0; font-size: 1rem; font-weight: 600; }
+.sondage-form__fermer { border: 0; background: none; color: var(--texte-doux); font-size: 1.1rem; line-height: 1; padding: .3rem; border-radius: 50%; cursor: pointer; }
+.sondage-form__fermer:hover { background: rgb(0 0 0 / 7%); }
+.sondage-form__corps { padding: .3rem 1.2rem 1rem; overflow-y: auto; display: grid; gap: .55rem; align-content: start; }
+.sondage-form__rubrique { margin: .6rem 0 0; font-size: 1rem; font-weight: 700; }
+.sondage-form__champ { width: 100%; padding: .6rem .1rem; border: 0; border-bottom: 2px solid var(--bordure-forte); background: transparent; color: inherit; font: inherit; border-radius: 0; }
+.sondage-form__champ:focus { outline: none; border-bottom-color: var(--accent); }
+.sondage-form__options { display: grid; gap: .4rem; }
+.sondage-form__ligne { display: flex; align-items: center; gap: .4rem; }
+.sondage-form__retirer { border: 0; background: none; color: var(--texte-doux); cursor: pointer; padding: .3rem .45rem; border-radius: 50%; line-height: 1; }
+.sondage-form__retirer:hover { background: rgb(0 0 0 / 7%); }
+.sondage-form__plusieurs { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-top: 1rem; cursor: pointer; }
+.sondage-form__plusieurs input { appearance: none; -webkit-appearance: none; flex: none; width: 2.6rem; height: 1.5rem; border-radius: 999px; background: var(--bordure-forte); position: relative; cursor: pointer; transition: background .15s; }
+.sondage-form__plusieurs input::after { content: ''; position: absolute; top: .15rem; left: .15rem; width: 1.2rem; height: 1.2rem; border-radius: 50%; background: #fff; transition: transform .15s; }
+.sondage-form__plusieurs input:checked { background: var(--accent); }
+.sondage-form__plusieurs input:checked::after { transform: translateX(1.1rem); }
+.sondage-form__plusieurs input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.sondage-form__erreur { margin: 0; color: var(--erreur); font-size: .88rem; }
+.sondage-form__pied { display: flex; justify-content: flex-end; padding: .6rem 1.1rem 1rem; background: var(--fond-doux, rgb(0 0 0 / 3%)); }
+.sondage-form__envoyer { width: 3.4rem; height: 3.4rem; border: 0; border-radius: 50%; background: var(--accent); color: #fff; display: grid; place-items: center; cursor: pointer; box-shadow: 0 4px 12px rgb(0 0 0 / 25%); }
+.sondage-form__envoyer:disabled { opacity: .6; cursor: progress; }
+.sondage-form__envoyer:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+/* Dans ma bulle (fond de couleur) : les mêmes éléments, en clair sur la couleur. */
+.bulle--moi .sondage__consigne, .bulle--moi .sondage__total, .bulle--moi .sondage__nombre { color: rgb(255 255 255 / 80%); }
+.bulle--moi .sondage__case { border-color: rgb(255 255 255 / 75%); background: transparent; }
+.bulle--moi .sondage__option--moi .sondage__case { background: #fff; border-color: #fff; }
+.bulle--moi .sondage__option--moi .sondage__case::after { border-color: var(--accent); }
+.bulle--moi .sondage__barre { background: rgb(255 255 255 / 28%); }
+.bulle--moi .sondage__rempli { background: #fff; }
+.bulle--moi .sondage__option:hover { background: rgb(255 255 255 / 12%); }
+.bulle--moi .sondage__option:focus-visible { outline-color: #fff; }
+.bulle--moi .sondage__erreur { color: #fecaca; }

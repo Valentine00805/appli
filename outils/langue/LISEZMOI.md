@@ -417,3 +417,9 @@ dans un navigateur (assets/js/menu-apps.js n'a pas de test automatique). Même s
 ajoutés par chacun : adresses acceptées (https ajouté, hôte en minuscules) et surtout REFUSÉES (javascript:, data:, ftp:, file:, identifiants dans
 l'adresse, vide…), limites (40 lettres, 24 liens), texte échappé, nouvel onglet sans opener, modifier / supprimer, cloisonnement entre comptes,
 ligne abîmée en base ignorée, sauvegarde du compte, quatre langues.
+
+**`sondages_langue.php`** — les sondages des discussions (entre amis et de groupe) : validation de ce qu'on envoie (question vide ou trop longue, moins de deux ou plus de douze options,
+option trop longue, doublons, caractères de contrôle, jeton CSRF), créer entre amis et dans un groupe, refus hors amitié et hors groupe, voter (plusieurs réponses ou
+une seule, changer d'avis, retirer son vote, réponse inexistante), le vote visible chez l'autre par le relevé des changements, qui a voté quoi, cloisonnement (un étranger,
+un message caché ou supprimé ne vote pas), sondage non modifiable, citation et aperçu de liste, suppression pour tous (options et votes effacés avec lui), quatre langues.
+Le dessin des options et la fenêtre de création (assets/js/sondages.js) se contrôlent dans un navigateur : ils n'ont pas de test automatique.
