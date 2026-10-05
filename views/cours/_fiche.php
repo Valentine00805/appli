@@ -167,7 +167,6 @@ $avancementFiche = avancement_anneaux(
         </div>
       <?php endforeach; ?>
     <?php endif; ?>
-    <p class="champ__aide"><a href="<?= url('resumes', ['cours' => $cours['id']]) ?>"><?= e(t('dia.aller_resumes')) ?></a></p>
   </div>
 
   <?php // --- Fichiers et images propres à la fiche ------------------- ?>
@@ -540,6 +539,8 @@ $avancementFiche = avancement_anneaux(
 
     <?php // Elles se créent dans « Résumés IA » (une case « Carte mentale », ou une carte vierge) ; ici, on les retrouve. ?>
     <p class="champ__aide"><a href="<?= url('resumes', ['cours' => $cours['id']]) ?>"><?= e(t('cm.aller_resumes')) ?></a></p>
+    <?php // Le lien pour créer un diaporama est ici, avec celui des cartes mentales : les deux se créent depuis « Résumés IA ». ?>
+    <p class="champ__aide"><a href="<?= url('resumes', ['cours' => $cours['id']]) ?>"><?= e(t('dia.aller_resumes')) ?></a></p>
   </div>
 
   <?php // --- Liens web ----------------------------------------------- ?>

@@ -297,6 +297,11 @@ try {
         $oui(($p1 = strpos($fiche, 'data-diaporamas-fiche')) !== false && ($p2 = strpos($fiche, 'Fichiers et images')) !== false
             && ($p3 = strpos($fiche, 'Déposez ici')) !== false && $p1 < $p2 && $p1 < $p3
             && strpos($fiche, 'data-cartes-mentales') > $p3), 'oui');
+    $dire('  « Créer un diaporama dans Résumés IA » n’est plus sous l’aperçu : il suit « Créer une carte mentale… », plus bas dans la fiche',
+        $oui(($q1 = strpos($fiche, 'Créer une carte mentale dans « Résumés IA » →')) !== false && ($q2 = strpos($fiche, 'Créer un diaporama dans « Résumés IA » →')) !== false
+            && $q2 > $q1 && $q2 > strpos($fiche, 'data-cartes-mentales') && $q2 > strpos($fiche, 'data-diaporamas-fiche')
+            && ($q3 = strpos($fiche, '🔗 Liens')) !== false && $q2 < $q3
+            && substr_count($fiche, 'Créer un diaporama dans « Résumés IA » →') === 1), 'oui');
     preg_match('/data-dia-apercu data-url="[^"]*"\s+data-diapos="([^"]*)"/', $fiche, $mApercu);
     $apercu = json_decode(html_entity_decode($mApercu[1] ?? '[]', ENT_QUOTES, 'UTF-8'), true) ?: [];
     $dire('  l’aperçu porte les titres et les points des 3 diapositives, pas leur commentaire (long : il se lit dans le lecteur)',
