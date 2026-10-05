@@ -102,7 +102,7 @@ final class Partages
     {
         if ($type === 'cours') {
             return Database::one(
-                "SELECT c.id, c.user_id, c.titre, c.contenu, c.updated_at, m.nom AS matiere_nom, COALESCE(u.pseudo, '') AS proprietaire,
+                "SELECT c.id, c.user_id, c.titre, c.contenu, c.updated_at, m.nom AS matiere_nom, m.couleur AS matiere_couleur, COALESCE(u.pseudo, '') AS proprietaire,
                         (SELECT COUNT(*) FROM fichiers f WHERE f.cours_id = c.id AND f.pour_fiche = 0) AS nb_fichiers
                    FROM cours c JOIN users u ON u.id = c.user_id LEFT JOIN matieres m ON m.id = c.matiere_id
                   WHERE c.id = ?",
@@ -111,7 +111,7 @@ final class Partages
         }
         if ($type === 'fiche') {
             $fiche = Database::one(
-                "SELECT c.id, c.user_id, c.titre AS titre_cours, c.fiche_revision, c.updated_at, m.nom AS matiere_nom, COALESCE(u.pseudo, '') AS proprietaire,
+                "SELECT c.id, c.user_id, c.titre AS titre_cours, c.fiche_revision, c.updated_at, m.nom AS matiere_nom, m.couleur AS matiere_couleur, COALESCE(u.pseudo, '') AS proprietaire,
                         (SELECT COUNT(*) FROM fichiers f WHERE f.cours_id = c.id AND f.pour_fiche = 1) AS nb_fichiers
                    FROM cours c JOIN users u ON u.id = c.user_id LEFT JOIN matieres m ON m.id = c.matiere_id
                   WHERE c.id = ?",
@@ -500,6 +500,111 @@ final class Partages
             'SELECT id, nom_origine, nom_stocke, mime, taille FROM fichiers WHERE cours_id = ? AND pour_fiche = 0 ORDER BY nom_origine',
             [$coursId]
         );
+    }
+
+    // --- La matière d'un document partagé : la voir, l'ajouter à ses matières ------------------------------------------------
+
+    /** Ma matière de ce nom (sans tenir compte des majuscules, comme la base), ou null. */
+    public static function maMatiere(int $moi, mixed $nom): ?int
+    {
+        if (!is_string($nom) || trim($nom) === '') {
+            return null;
+        }
+        $id = Database::valeur('SELECT id FROM matieres WHERE user_id = ? AND nom = ?', [$moi, trim($nom)]);
+
+        return $id === null || $id === false ? null : (int) $id;
+    }
+
+    /**
+     * Ajoute à ses matières celle d'un document partagé (cours, fiche ou évènement) : même nom, même couleur. Si elle y est déjà,
+     * rien ne change.
+     *
+     * @return array{0: ?string, 1: ?string} « ajoutee » ou « deja » avec le nom de la matière, ou la raison du refus
+     */
+    public static function ajouterMatiere(int $moi, string $type, int $id): array
+    {
+        if (!in_array($type, ['cours', 'fiche', 'evenement'], true) || !self::peutVoir($type, $id, $moi)) {
+            return [null, t('pt.flash_pas_partage')];
+        }
+        $cible = self::cible($type, $id);
+        $nom = trim((string) ($cible['matiere_nom'] ?? ''));
+        if ($nom === '') {
+            return [null, t('pt.matiere_aucune')];
+        }
+        if (self::maMatiere($moi, $nom) !== null) {
+            return ['deja', $nom];
+        }
+        $couleur = (string) ($cible['matiere_couleur'] ?? '');
+        Database::run(
+            'INSERT IGNORE INTO matieres (user_id, nom, couleur) VALUES (?, ?, ?)',
+            [$moi, mb_substr($nom, 0, 120), preg_match('/^#[0-9a-fA-F]{6}$/', $couleur) === 1 ? $couleur : '#4f46e5']
+        );
+
+        return ['ajoutee', $nom];
+    }
+
+    /** Le cours lié à un évènement partagé, s'il m'est lui aussi partagé : de quoi y aller. @return ?array{id: int, titre: string} */
+    public static function coursLie(array $evenement, int $moi): ?array
+    {
+        $coursId = (int) ($evenement['cours_id'] ?? 0);
+        if ($coursId <= 0 || (string) ($evenement['cours_titre'] ?? '') === '' || !self::peutVoir('cours', $coursId, $moi)) {
+            return null;
+        }
+
+        return ['id' => $coursId, 'titre' => (string) $evenement['cours_titre']];
+    }
+
+    // --- Mes rappels et mes notes sur l'évènement d'un ami --------------------------------------------------------------------
+
+    public const NOTE_MAX = 2000;
+
+    /** Ce que la personne a réglé sur cet évènement qu'on lui a partagé. @return array{rappels: list<int>, note: string} */
+    public static function persoEvenement(int $evenementId, int $moi): array
+    {
+        $ligne = Database::one('SELECT rappels, note FROM evenement_perso_amis WHERE evenement_id = ? AND user_id = ?', [$evenementId, $moi]);
+
+        return ['rappels' => Rappels::lire((string) ($ligne['rappels'] ?? '')), 'note' => (string) ($ligne['note'] ?? '')];
+    }
+
+    /**
+     * Enregistre ses rappels et ses notes sur l'évènement d'un ami. Le sien n'est pas concerné (il a son formulaire) ; il faut y
+     * avoir accès. Les rappels sont pour soi seul ; la note est lisible par le propriétaire.
+     *
+     * @return ?string la raison du refus
+     */
+    public static function enregistrerPerso(int $moi, int $evenementId, mixed $rappels, string $note): ?string
+    {
+        $cible = self::cible('evenement', $evenementId);
+        if ($cible === null || (int) $cible['user_id'] === $moi || !self::peutVoir('evenement', $evenementId, $moi)) {
+            return t('pt.flash_pas_partage');
+        }
+        $note = trim(str_replace(["\r\n", "\r"], "\n", $note));
+        if (mb_strlen($note) > self::NOTE_MAX) {
+            return t('pt.perso_trop_long', ['max' => self::NOTE_MAX]);
+        }
+        $delais = Rappels::ecrire(Rappels::depuisFormulaire($rappels));
+        if ($delais === '' && $note === '') {
+            Database::run('DELETE FROM evenement_perso_amis WHERE evenement_id = ? AND user_id = ?', [$evenementId, $moi]);
+
+            return null;
+        }
+        Database::run(
+            'INSERT INTO evenement_perso_amis (evenement_id, user_id, rappels, note, updated_at) VALUES (?, ?, ?, ?, NOW())
+             ON DUPLICATE KEY UPDATE rappels = VALUES(rappels), note = VALUES(note), updated_at = NOW()',
+            [$evenementId, $moi, $delais, $note === '' ? null : $note]
+        );
+
+        return null;
+    }
+
+    /** Les notes que des amis ont écrites sur mon évènement, pour moi seul. @return list<array{pseudo: string, note: string}> */
+    public static function notesDesAmis(int $evenementId, int $proprietaire): array
+    {
+        return array_map(static fn (array $l): array => ['pseudo' => (string) $l['pseudo'], 'note' => (string) $l['note']], Database::all(
+            "SELECT COALESCE(u.pseudo, '') AS pseudo, p.note FROM evenement_perso_amis p JOIN users u ON u.id = p.user_id
+              WHERE p.evenement_id = ? AND p.user_id <> ? AND p.note IS NOT NULL AND p.note <> '' ORDER BY p.updated_at, p.user_id",
+            [$evenementId, $proprietaire]
+        ));
     }
 
     /**
@@ -2117,8 +2222,8 @@ final class Partages
 
         if ($type === 'cours') {
             Database::run(
-                'INSERT INTO cours (user_id, titre, contenu) VALUES (?, ?, ?)',
-                [$moi, mb_substr((string) $cible['titre'], 0, 200), (string) $cible['contenu']]
+                'INSERT INTO cours (user_id, matiere_id, titre, contenu) VALUES (?, ?, ?, ?)',
+                [$moi, self::maMatiere($moi, $cible['matiere_nom'] ?? null), mb_substr((string) $cible['titre'], 0, 200), (string) $cible['contenu']]
             );
             $nouveau = Database::dernierId();
             foreach (self::fichiersDuCours($id) as $f) {
@@ -2167,9 +2272,9 @@ final class Partages
                 return [null, t('pt.copie.evenement_deja')];
             }
             Database::run(
-                'INSERT INTO evenements (user_id, partage_par, partage_de, titre, description, lieu, debut, fin, journee_entiere)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                [$moi, (int) $cible['user_id'], $id, (string) $cible['titre'], $cible['description'], $cible['lieu'],
+                'INSERT INTO evenements (user_id, matiere_id, partage_par, partage_de, titre, description, lieu, debut, fin, journee_entiere)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                [$moi, self::maMatiere($moi, $cible['matiere_nom'] ?? null), (int) $cible['user_id'], $id, (string) $cible['titre'], $cible['description'], $cible['lieu'],
                  (string) $cible['debut'], (string) $cible['fin'], (int) $cible['journee_entiere']]
             );
             $nouveau = Database::dernierId();
@@ -2181,8 +2286,8 @@ final class Partages
         // Une fiche devient un cours à soi, dont c'est la fiche de révision.
         if ($type === 'fiche') {
             Database::run(
-                "INSERT INTO cours (user_id, titre, contenu, fiche_revision) VALUES (?, ?, '', ?)",
-                [$moi, mb_substr((string) $cible['titre_cours'], 0, 200), (string) $cible['fiche_revision']]
+                "INSERT INTO cours (user_id, matiere_id, titre, contenu, fiche_revision) VALUES (?, ?, ?, '', ?)",
+                [$moi, self::maMatiere($moi, $cible['matiere_nom'] ?? null), mb_substr((string) $cible['titre_cours'], 0, 200), (string) $cible['fiche_revision']]
             );
             $nouveau = Database::dernierId();
             foreach (self::fichiersDeLaFiche($id) as $f) {

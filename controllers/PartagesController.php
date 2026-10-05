@@ -342,6 +342,12 @@ final class PartagesController
                 ? Database::valeur('SELECT id FROM evenements WHERE user_id = ? AND partage_de = ?', [$moi, $id])
                 : null,
             'mot' => $mot,
+            // Sa matière : la voir, et l'ajouter à mes matières si je ne l'ai pas.
+            'matiereAjoutable' => $type !== 'fichier' && $type !== 'dossier' && (string) ($cible['matiere_nom'] ?? '') !== ''
+                ? ['nom' => (string) $cible['matiere_nom'], 'deja' => Partages::maMatiere($moi, $cible['matiere_nom']) !== null] : null,
+            // L'évènement d'un ami : son cours lié (s'il m'est partagé), mes rappels et mes notes.
+            'coursLie' => $type === 'evenement' ? Partages::coursLie($cible, $moi) : null,
+            'perso' => $type === 'evenement' ? Partages::persoEvenement($id, $moi) : null,
         ];
         // Un cours ouvert depuis un dossier partagé : de quoi y revenir.
         if ($type === 'cours') {
@@ -644,6 +650,34 @@ final class PartagesController
             self::introuvable();
         }
         Fichiers::envoyer($fichier, isset($_GET['telecharger']));
+    }
+
+    /** Ajoute à mes matières celle d'un document partagé. */
+    public function ajouterMatiere(string $mot, int $id): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        [$etat, $detail] = Partages::ajouterMatiere(Auth::id(), self::type($mot), $id);
+        if ($etat === null) {
+            Session::flash('erreur', $detail);
+        } else {
+            Session::flash($etat === 'ajoutee' ? 'succes' : 'info', t('pt.fl.matiere_' . $etat, ['nom' => $detail]));
+        }
+        redirect('partages/' . $mot . '/' . $id);
+    }
+
+    /** Mes rappels et mes notes sur l'évènement d'un ami. */
+    public function perso(int $id): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $refus = Partages::enregistrerPerso(Auth::id(), $id, $_POST['rappels'] ?? [], (string) ($_POST['note'] ?? ''));
+        if ($refus !== null) {
+            Session::flash('erreur', $refus);
+        } else {
+            Session::flash('succes', t('pt.fl.perso_enregistre'));
+        }
+        redirect('partages/evenements/' . $id);
     }
 
     public function copier(string $mot, int $id): void

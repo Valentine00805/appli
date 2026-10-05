@@ -423,3 +423,8 @@ option trop longue, doublons, caractères de contrôle, jeton CSRF), créer entr
 une seule, changer d'avis, retirer son vote, réponse inexistante), le vote visible chez l'autre par le relevé des changements, qui a voté quoi, cloisonnement (un étranger,
 un message caché ou supprimé ne vote pas), sondage non modifiable, citation et aperçu de liste, suppression pour tous (options et votes effacés avec lui), quatre langues.
 Le dessin des options et la fenêtre de création (assets/js/sondages.js) se contrôlent dans un navigateur : ils n'ont pas de test automatique.
+
+**`partages_evenements_langue.php`** — l'évènement qu'un ami partage, et son cours : la matière d'un cours partagé (puce de sa couleur, bouton « Ajouter à mes matières », pas de doublon,
+inconnu refusé, jeton CSRF), la copie du cours ou de l'évènement qui reprend la matière quand on l'a déjà, le lien vers le cours lié (seulement s'il est partagé aussi, jamais un cours gardé
+pour soi), « Mes rappels et mes notes » (délais inconnus écartés, note trop longue refusée, le propriétaire et les inconnus exclus), la note lisible par le propriétaire mais pas par
+les autres amis, l'évènement du propriétaire intact, les rappels qui partent à l'heure (via notifications/battement avec un faux appareil abonné) et cessent quand l'accès est retiré, quatre langues.

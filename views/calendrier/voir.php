@@ -136,6 +136,13 @@ $ligne = static function (string $etiquette, string $valeur): string {
         <div class="texte-riche-affiche"><?= TexteRiche::versHtml($evenement['description']) ?></div>
       </div>
     <?php endif; ?>
+    <?php // Les notes que des amis ont écrites sur cet évènement (qu'ils ont reçu en partage) : lisibles par moi seul, avec eux. ?>
+    <?php foreach (Partages::notesDesAmis((int) $evenement['id'], (int) $evenement['user_id']) as $noteAmi): ?>
+      <div class="fiche__notes">
+        <span class="fiche__etiquette"><?= e(t('evt.notes_de', ['qui' => $noteAmi['pseudo']])) ?></span>
+        <p style="margin:.2rem 0 0"><?= nl2br(e($noteAmi['note'])) ?></p>
+      </div>
+    <?php endforeach; ?>
   </section>
 
   <?php

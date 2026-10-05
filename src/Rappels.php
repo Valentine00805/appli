@@ -225,14 +225,41 @@ final class Rappels
         $rappels = [];
 
         // --- Les évènements : d'un jour avant à huit jours après, de quoi couvrir les délais.
+        $du = $maintenant->modify('-1 day')->format('Y-m-d H:i:s');
+        $au = $maintenant->modify('+8 days')->format('Y-m-d H:i:s');
         $evenements = Database::all(
-            "SELECT id, titre, lieu, debut, fin, journee_entiere, rappels
+            "SELECT id, titre, lieu, debut, fin, journee_entiere, rappels, '' AS fuseau_source, 'evenements/' AS chemin
                FROM evenements
               WHERE user_id = ? AND rappels <> '' AND termine = 0 AND debut BETWEEN ? AND ?",
-            [$userId, $maintenant->modify('-1 day')->format('Y-m-d H:i:s'), $maintenant->modify('+8 days')->format('Y-m-d H:i:s')]
+            [$userId, $du, $au]
         );
+        // Ceux d'un ami, qu'il m'a partagés : mes rappels à moi (l'heure est dans son fuseau, large pour la marge).
+        foreach (Database::all(
+            "SELECT e.id, e.titre, e.lieu, e.debut, e.fin, e.journee_entiere, p.rappels, COALESCE(u.fuseau, '') AS fuseau_source, 'partages/evenements/' AS chemin
+               FROM evenement_perso_amis p
+               JOIN evenements e ON e.id = p.evenement_id AND e.user_id <> p.user_id
+               JOIN users u ON u.id = e.user_id
+              WHERE p.user_id = ? AND p.rappels <> '' AND e.termine = 0 AND e.debut BETWEEN ? AND ?",
+            [$userId, $maintenant->modify('-2 days')->format('Y-m-d H:i:s'), $maintenant->modify('+9 days')->format('Y-m-d H:i:s')]
+        ) as $partage) {
+            // Un accès retiré depuis : plus de rappel.
+            if (Partages::peutVoir('evenement', (int) $partage['id'], $userId)) {
+                $evenements[] = $partage;
+            }
+        }
         foreach ($evenements as $evt) {
             $debut = new DateTimeImmutable((string) $evt['debut'], $fuseau);
+            $fin = $evt['fin'] === null ? null : new DateTimeImmutable((string) $evt['fin'], $fuseau);
+            // L'heure d'un évènement d'ami est dans son fuseau : on la ramène au mien (un évènement « toute la journée » n'a pas d'heure).
+            if ((string) $evt['fuseau_source'] !== '' && (int) $evt['journee_entiere'] !== 1) {
+                try {
+                    $source = new DateTimeZone((string) $evt['fuseau_source']);
+                    $debut = (new DateTimeImmutable((string) $evt['debut'], $source))->setTimezone($fuseau);
+                    $fin = $evt['fin'] === null ? null : (new DateTimeImmutable((string) $evt['fin'], $source))->setTimezone($fuseau);
+                } catch (Throwable $e) {
+                    // Un fuseau inconnu : l'heure telle quelle.
+                }
+            }
 
             /*
              * Chaque délai donne un moment ; ceux qui sont passés sans que
@@ -267,10 +294,9 @@ final class Rappels
                     'aussi' => $moments,
                     'message' => [
                         'title' => '📅 ' . $evt['titre'],
-                        'body' => self::quand($debut, (int) $evt['journee_entiere'] === 1, $maintenant,
-                            $evt['fin'] === null ? null : new DateTimeImmutable((string) $evt['fin'], $fuseau))
+                        'body' => self::quand($debut, (int) $evt['journee_entiere'] === 1, $maintenant, $fin)
                             . ((string) ($evt['lieu'] ?? '') !== '' ? ' · ' . $evt['lieu'] : ''),
-                        'url' => url('evenements/' . (int) $evt['id']),
+                        'url' => url($evt['chemin'] . (int) $evt['id']),
                         'tag' => 'evenement-' . (int) $evt['id'],
                     ],
                 ];

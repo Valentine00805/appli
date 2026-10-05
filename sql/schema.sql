@@ -1610,3 +1610,17 @@ ALTER TABLE `conversation_messages`
   ADD COLUMN `sondage_id` INT UNSIGNED NULL AFTER `partage_id`,
   ADD KEY `idx_conversation_messages_sondage` (`sondage_id`),
   ADD CONSTRAINT `fk_conversation_messages_sondage` FOREIGN KEY (`sondage_id`) REFERENCES `sondages`(`id`) ON DELETE SET NULL;
+
+-- Les rappels et les notes d'un ami sur un évènement qu'on lui a partagé (sans toucher à l'évènement du propriétaire).
+
+CREATE TABLE IF NOT EXISTS `evenement_perso_amis` (
+  `evenement_id` INT UNSIGNED NOT NULL,
+  `user_id`      INT UNSIGNED NOT NULL,
+  `rappels`      VARCHAR(80)  NOT NULL DEFAULT '',
+  `note`         TEXT         NULL,
+  `updated_at`   DATETIME     NOT NULL,
+  PRIMARY KEY (`evenement_id`, `user_id`),
+  KEY `idx_evenement_perso_user` (`user_id`),
+  CONSTRAINT `fk_evenement_perso_evenement` FOREIGN KEY (`evenement_id`) REFERENCES `evenements`(`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_evenement_perso_user`      FOREIGN KEY (`user_id`)      REFERENCES `users`(`id`)      ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
