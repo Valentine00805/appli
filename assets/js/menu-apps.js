@@ -65,6 +65,69 @@
       }
     });
 
+    /**
+     * Rend les tuiles d'une grille déplaçables, tant que « actif() » est vrai : à la souris ou au doigt (événements
+     * « pointer »), ou au clavier avec Alt + flèches. La tuile attrapée prend la place de celle qu'elle survole ; quand
+     * l'ordre a changé, « apres() » est appelée (c'est là qu'on l'enregistre). Rend « vientDeGlisser() » : vrai juste après
+     * un glissement, pour que le clic qui le suit ne déclenche rien.
+     */
+    var rendreTriable = function (grille, selecteur, actif, apres) {
+      var apresGlisse = false;
+      var glisse = null;   // {tuile, x, y, pointeur, actif, avant}
+      var tuileDe = function (cible) { return cible && cible.closest ? cible.closest(selecteur) : null; };
+      var ordre = function () {
+        return Array.prototype.map.call(grille.querySelectorAll(selecteur), function (t) { return t.getAttribute('data-cle') || t.getAttribute('data-lien-id'); }).join(',');
+      };
+
+      grille.addEventListener('pointerdown', function (ev) {
+        var tuile = tuileDe(ev.target);
+        if (!actif() || !tuile || (ev.pointerType === 'mouse' && ev.button !== 0)) { return; }
+        glisse = { tuile: tuile, x: ev.clientX, y: ev.clientY, pointeur: ev.pointerId, actif: false, avant: ordre() };
+      });
+      document.addEventListener('pointermove', function (ev) {
+        if (!glisse || ev.pointerId !== glisse.pointeur) { return; }
+        if (!glisse.actif) {
+          if (Math.abs(ev.clientX - glisse.x) + Math.abs(ev.clientY - glisse.y) < 8) { return; }
+          glisse.actif = true;
+          glisse.tuile.classList.add('apps__tuile--glisse');
+          try { glisse.tuile.setPointerCapture(ev.pointerId); } catch (e) { /* sans capture, le glissement marche quand même */ }
+        }
+        ev.preventDefault();
+        var autre = tuileDe(document.elementFromPoint(ev.clientX, ev.clientY));
+        if (!autre || autre === glisse.tuile || !grille.contains(autre)) { return; }
+        // La tuile prend la place de celle qu'elle survole : après elle si elle la précédait, avant sinon.
+        var suit = (glisse.tuile.compareDocumentPosition(autre) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+        grille.insertBefore(glisse.tuile, suit ? autre.nextSibling : autre);
+      });
+      var fin = function (ev) {
+        if (!glisse || ev.pointerId !== glisse.pointeur) { return; }
+        var fini = glisse;
+        glisse = null;
+        if (!fini.actif) { return; }
+        fini.tuile.classList.remove('apps__tuile--glisse');
+        apresGlisse = true;
+        setTimeout(function () { apresGlisse = false; }, 0);
+        if (ordre() !== fini.avant) { apres(); }
+      };
+      document.addEventListener('pointerup', fin);
+      document.addEventListener('pointercancel', fin);
+      // Le navigateur ne doit pas faire glisser l'adresse ou l'image : c'est la tuile qui glisse.
+      grille.addEventListener('dragstart', function (ev) { if (actif()) { ev.preventDefault(); } });
+      grille.addEventListener('keydown', function (ev) {
+        var tuile = tuileDe(ev.target);
+        if (!actif() || !ev.altKey || !tuile) { return; }
+        var avance = ev.key === 'ArrowRight' || ev.key === 'ArrowDown';
+        if (!avance && ev.key !== 'ArrowLeft' && ev.key !== 'ArrowUp') { return; }
+        ev.preventDefault();
+        var voisin = avance ? tuile.nextElementSibling : tuile.previousElementSibling;
+        if (!voisin || !voisin.matches(selecteur)) { return; }
+        grille.insertBefore(tuile, avance ? voisin.nextSibling : voisin);
+        tuile.focus();
+        apres();
+      });
+      return { vientDeGlisser: function () { return apresGlisse; } };
+    };
+
     // --- Les favoris ------------------------------------------------------------------------------------------------
     var majVide = function () { if (vide) { vide.hidden = favoris.children.length > 0; } };
 
@@ -95,6 +158,9 @@
       majVide();
       sauver();
     };
+
+    // Les favoris se réorganisent en édition : leur ordre est celui de la grille (« sauver » l'envoie).
+    var triFavoris = favoris ? rendreTriable(favoris, '[data-cle]', function () { return enEdition; }, sauver) : null;
 
     // --- Mes applications : des liens vers d'autres sites, ajoutés par chacun --------------------------------------
     var blocLiens = racine.querySelector('[data-apps-liens]');
@@ -206,17 +272,12 @@
         crayonLiens.textContent = editionLiens ? '✓' : '✏️';
         if (aideLiens) { aideLiens.hidden = !editionLiens; }
       });
-      // --- Réorganiser : en édition, on glisse une application (souris ou doigt) ; Alt + flèches au clavier ---------
+      // --- Réorganiser : en édition, on glisse une application (voir « rendreTriable » plus haut) ----------------------
       var texteAideLiens = aideLiens ? aideLiens.textContent : '';
-      var apresGlisse = false;   // le clic qui suit un glissement n'ouvre pas le formulaire
-      var glisse = null;         // {tuile, x, y, pointeur, actif, avant}
-      var ordreDesLiens = function () {
-        return Array.prototype.map.call(tuilesLiens(), function (t) { return t.getAttribute('data-lien-id'); });
-      };
       var sauverOrdre = function () {
         var corps = new FormData();
         corps.append('_csrf', JETON);
-        ordreDesLiens().forEach(function (id) { corps.append('ids[]', id); });
+        Array.prototype.forEach.call(tuilesLiens(), function (t) { corps.append('ids[]', t.getAttribute('data-lien-id')); });
         fetch(URL_LIENS + '/ordre', { method: 'POST', body: corps, credentials: 'same-origin' })
           .then(function (r) { return r.json(); })
           .then(function (rep) {
@@ -225,59 +286,13 @@
           })
           .catch(function () { if (aideLiens) { aideLiens.hidden = false; aideLiens.textContent = mot('apps.lien_echec'); } });
       };
+      var triLiens = rendreTriable(grilleLiens, '[data-lien-id]', function () { return editionLiens; }, sauverOrdre);
       var tuileDe = function (cible) { return cible && cible.closest ? cible.closest('[data-lien-id]') : null; };
-
-      grilleLiens.addEventListener('pointerdown', function (ev) {
-        var tuile = tuileDe(ev.target);
-        if (!editionLiens || !tuile || (ev.pointerType === 'mouse' && ev.button !== 0)) { return; }
-        glisse = { tuile: tuile, x: ev.clientX, y: ev.clientY, pointeur: ev.pointerId, actif: false, avant: ordreDesLiens().join(',') };
-      });
-      document.addEventListener('pointermove', function (ev) {
-        if (!glisse || ev.pointerId !== glisse.pointeur) { return; }
-        if (!glisse.actif) {
-          if (Math.abs(ev.clientX - glisse.x) + Math.abs(ev.clientY - glisse.y) < 8) { return; }
-          glisse.actif = true;
-          glisse.tuile.classList.add('apps__tuile--glisse');
-          try { glisse.tuile.setPointerCapture(ev.pointerId); } catch (e) { /* sans capture, le glissement marche quand même */ }
-        }
-        ev.preventDefault();
-        var autre = tuileDe(document.elementFromPoint(ev.clientX, ev.clientY));
-        if (!autre || autre === glisse.tuile || !grilleLiens.contains(autre)) { return; }
-        // La tuile prend la place de celle qu'elle survole : après elle si elle la précédait, avant sinon.
-        var suit = (glisse.tuile.compareDocumentPosition(autre) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
-        grilleLiens.insertBefore(glisse.tuile, suit ? autre.nextSibling : autre);
-      });
-      var finGlisse = function (ev) {
-        if (!glisse || ev.pointerId !== glisse.pointeur) { return; }
-        var fini = glisse;
-        glisse = null;
-        if (!fini.actif) { return; }
-        fini.tuile.classList.remove('apps__tuile--glisse');
-        apresGlisse = true;
-        setTimeout(function () { apresGlisse = false; }, 0);
-        if (ordreDesLiens().join(',') !== fini.avant) { sauverOrdre(); }
-      };
-      document.addEventListener('pointerup', finGlisse);
-      document.addEventListener('pointercancel', finGlisse);
-      // Le navigateur ne doit pas faire glisser l'adresse ou l'image : c'est la tuile qui glisse.
-      grilleLiens.addEventListener('dragstart', function (ev) { if (editionLiens) { ev.preventDefault(); } });
-      grilleLiens.addEventListener('keydown', function (ev) {
-        var tuile = tuileDe(ev.target);
-        if (!editionLiens || !ev.altKey || !tuile) { return; }
-        var avance = ev.key === 'ArrowRight' || ev.key === 'ArrowDown';
-        if (!avance && ev.key !== 'ArrowLeft' && ev.key !== 'ArrowUp') { return; }
-        ev.preventDefault();
-        var voisin = avance ? tuile.nextElementSibling : tuile.previousElementSibling;
-        if (!voisin || !voisin.hasAttribute('data-lien-id')) { return; }
-        grilleLiens.insertBefore(tuile, avance ? voisin.nextSibling : voisin);
-        tuile.focus();
-        sauverOrdre();
-      });
 
       // En édition, un clic sur une application ne l'ouvre plus : il l'ouvre dans le formulaire.
       grilleLiens.addEventListener('click', function (ev) {
         var tuile = tuileDe(ev.target);
-        if (apresGlisse) { ev.preventDefault(); return; }
+        if (triLiens.vientDeGlisser()) { ev.preventDefault(); return; }
         if (!editionLiens || !tuile) { return; }
         ev.preventDefault();
         ouvrirFormulaire(tuile);
@@ -315,6 +330,7 @@
       if (aide) { aide.hidden = !enEdition; aide.textContent = texteAide; }
     });
     racine.addEventListener('click', function (ev) {
+      if (triFavoris && triFavoris.vientDeGlisser()) { ev.preventDefault(); return; }
       if (!enEdition) { return; }
       var tuile = ev.target.closest ? ev.target.closest('[data-cle]') : null;
       if (!tuile || !racine.contains(tuile)) { return; }

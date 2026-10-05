@@ -4333,7 +4333,7 @@ return [
     'apps.favoris' => 'Deine Favoriten',
     'apps.toutes' => 'Alle Bereiche',
     'apps.modifier' => 'Meine Favoriten bearbeiten',
-    'apps.aide_edition' => 'Klicke auf einen Bereich, um ihn zu den Favoriten hinzuzufügen oder zu entfernen. Der Stift beendet die Bearbeitung.',
+    'apps.aide_edition' => 'Klicke auf einen Bereich, um ihn zu den Favoriten hinzuzufügen oder zu entfernen. Der Stift beendet die Bearbeitung. Ziehe einen Favoriten, um seine Reihenfolge zu ändern.',
     'apps.aucun_favori' => 'Keine Favoriten: Klicke auf den Stift, um deine liebsten Bereiche zu wählen.',
     'js.apps.echec' => 'Deine Favoriten konnten nicht gespeichert werden – prüfe deine Verbindung.',
     'apps.liens' => 'Meine Apps',

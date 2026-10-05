@@ -4345,7 +4345,7 @@ return [
     'apps.favoris' => 'Vos favoris',
     'apps.toutes' => 'Toutes les sections',
     'apps.modifier' => 'Modifier mes favoris',
-    'apps.aide_edition' => 'Clique sur une section pour l’ajouter aux favoris ou l’en retirer. Le crayon termine la modification.',
+    'apps.aide_edition' => 'Clique sur une section pour l’ajouter aux favoris ou l’en retirer. Le crayon termine la modification. Glisse un favori pour changer son ordre.',
     'apps.aucun_favori' => 'Aucun favori : clique sur le crayon pour choisir tes sections préférées.',
     'js.apps.echec' => 'Impossible d’enregistrer tes favoris — vérifie ta connexion.',
     'apps.liens' => 'Mes applications',
