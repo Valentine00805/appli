@@ -4125,3 +4125,16 @@ summary.cal-volet__groupe:focus-visible {
 .diapo__phrase:hover { background: var(--accent-doux); }
 .diapo__phrase--dite, .diapo__phrase--dite:hover { background: color-mix(in srgb, var(--accent) 28%, transparent); }
 .fenetre--plein .diapo__trans-texte { max-height: calc(100vh - 22rem); font-size: 1.1rem; }
+
+/* --- L'aperçu d'un diaporama dans la fiche de révision --------------------------------------------------------- */
+.diapo-apercu { margin: 0 0 1rem; }
+.diapo-apercu__scene { position: relative; display: block; padding: 1rem 1.1rem 2.4rem; border-radius: var(--rayon-s); background: linear-gradient(135deg, #1e3a8a, #2563eb); color: #fff; text-decoration: none; overflow: hidden; }
+.diapo-apercu__scene:hover { filter: brightness(1.08); }
+.diapo-apercu__scene:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.diapo-apercu__compteur { display: block; margin-bottom: .35rem; font-size: .72rem; opacity: .8; }
+.diapo-apercu__titre { display: block; margin-bottom: .5rem; font-size: 1.05rem; line-height: 1.25; color: #fff; }
+.diapo-apercu__points { margin: 0; padding-left: 1.1rem; display: grid; gap: .2rem; font-size: .85rem; color: #fff; }
+.diapo-apercu__jouer { position: absolute; right: .7rem; bottom: .55rem; padding: .15rem .6rem; border-radius: 999px; background: rgb(255 255 255 / 20%); font-size: .75rem; font-weight: 600; }
+.diapo-apercu__pied { display: flex; flex-wrap: wrap; align-items: center; gap: .25rem .6rem; margin-top: .45rem; }
+.diapo-apercu__nav { display: inline-flex; align-items: center; gap: .25rem; }
+.diapo-apercu__nav[hidden] { display: none; }

@@ -289,6 +289,26 @@ try {
     $dire('  la fiche de révision a son rayon « Diaporamas » : le lien s’ouvre en fenêtre, avec le nombre de diapositives',
         $oui(str_contains($fiche, 'data-diaporamas-fiche') && preg_match('#<a href="[^"]*/diaporamas/' . $id . '" data-fenetre>Diaporama commenté — Cyber</a>#', $fiche) === 1
             && str_contains($fiche, '3 diapositives') && str_contains($fiche, 'name="retour" value="fiche"')), 'oui');
+    $dire('  chaque diaporama y a un aperçu : sa première diapositive (titre et points), « Lecture commentée », ◀ ▶ pour feuilleter',
+        $oui(str_contains($fiche, 'data-dia-apercu') && str_contains($fiche, 'Pourquoi chiffrer ?') && str_contains($fiche, '<li>Confidentialité</li>')
+            && str_contains($fiche, 'Diapositive 1 sur 3') && str_contains($fiche, '▶ Lecture commentée')
+            && str_contains($fiche, 'data-dia-apercu-action="suivant"') && str_contains($fiche, 'data-dia-apercu-action="precedent"')), 'oui');
+    preg_match('/data-dia-apercu data-url="[^"]*"\s+data-diapos="([^"]*)"/', $fiche, $mApercu);
+    $apercu = json_decode(html_entity_decode($mApercu[1] ?? '[]', ENT_QUOTES, 'UTF-8'), true) ?: [];
+    $dire('  l’aperçu porte les titres et les points des 3 diapositives, pas leur commentaire (long : il se lit dans le lecteur)',
+        count($apercu) . ' · ' . ($apercu[1]['t'] ?? '?') . ' · ' . $oui(!str_contains(json_encode($apercu, JSON_UNESCAPED_UNICODE), 'Sans clé, elles restent illisibles')
+            && !isset($apercu[0]['c'])), '3 · Le pare-feu · oui');
+    $ouvertures = [];
+    foreach (['2' => '2', '99' => '2', '-5' => '0', 'abc' => '0', '' => '0'] as $demande => $attendu) {
+        [$p] = $appel($a, 'diaporamas/' . $id . '?fenetre=1&diapo=' . $demande);
+        $ouvertures[] = $oui(str_contains($p, 'data-debut="' . $attendu . '"'));
+    }
+    $dire('  un clic sur l’aperçu ouvre le lecteur à la diapositive montrée (?diapo=N), bornée à ce qui existe',
+        implode(' ', $ouvertures), 'oui oui oui oui oui');
+    [$jsDia2] = $appel($a, 'assets/js/diaporama.js');
+    $dire('  le script feuillette l’aperçu sur place et met le lien à jour (page de la fiche ou fenêtre : même initialiseur)',
+        $oui(str_contains($jsDia2, 'initialiserApercu') && str_contains($jsDia2, "'?diapo=' + i") && str_contains($jsDia2, '[data-dia-apercu]')
+            && str_contains($jsDia2, "data-debut")), 'oui');
     [$popup] = $appel($a, 'diaporamas/' . $id . '?fenetre=1');
     $dire('  et la page du diaporama dit où il est rangé, avec « Retirer de la fiche » (plus de bouton « Ajouter »)',
         $oui(str_contains($popup, 'Dans la fiche de') && str_contains($popup, 'Retirer de la fiche') && !str_contains($popup, 'Ajouter à la fiche de révision')), 'oui');

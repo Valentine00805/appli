@@ -23,6 +23,8 @@ final class DiaporamasController
             'diapos'    => Diaporama::diapos($ligne),
             'cleFin'    => CleApi::fin($userId, CleApi::GEMINI),
             'coursFiche' => Diaporama::coursDeLaFiche($ligne, $userId),
+            // Ouvert depuis l'aperçu de la fiche, à la diapositive qu'on y regardait.
+            'debut'     => max(0, min(count(Diaporama::diapos($ligne)) - 1, (int) (entier_ou_null($_GET['diapo'] ?? null) ?? 0))),
         ];
         // Demandé depuis une liste, il s'ouvre dans une fenêtre, par-dessus la page où l'on était.
         if (Vue::enFenetre()) {

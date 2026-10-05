@@ -6,6 +6,7 @@
  * @var array $diapos     ses diapositives : [{t, p: [points], c: commentaire, a?: nom du fichier voix}]
  * @var ?string $cleFin   la fin de la clé Gemini de l'utilisateur, ou null
  * @var list<array{id: int, cours: string, lie: bool}> $coursFiche  les cours qu'il a lus, et s'il est déjà dans leur fiche
+ * @var int $debut       la diapositive par laquelle commencer (0 : la première)
  * @var bool $dansUneFenetre  rendu seul, pour être posé dans une fenêtre
  */
 $id = (int) $diaporama['id'];
@@ -35,6 +36,7 @@ $voixChoisie = in_array((string) ($diaporama['voix'] ?? ''), Gemini::VOIX, true)
 <section class="carte diapo" data-diaporama
          data-diapos="<?= e((string) json_encode($pourLeScript, JSON_UNESCAPED_UNICODE)) ?>"
          data-langue="<?= e((string) $diaporama['langue']) ?>"
+         data-debut="<?= (int) ($debut ?? 0) ?>"
          data-titre="<?= e((string) $diaporama['titre']) ?>"
          data-nom-fichier="<?= e(preg_replace('/[^\p{L}\p{N}._-]+/u', '_', (string) $diaporama['titre']) ?: 'diaporama') ?>"
          data-url-audio="<?= url('diaporamas/' . $id . '/audio') ?>"

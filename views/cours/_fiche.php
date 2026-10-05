@@ -500,10 +500,34 @@ $avancementFiche = avancement_anneaux(
     <?php if ($diaporamasFiche === []): ?>
       <p class="discret fiche__vide"><?= e(t('dia.fiche_aucun')) ?></p>
     <?php else: ?>
-      <ul class="fiche__cartes-mentales">
-        <?php foreach ($diaporamasFiche as $dia): ?>
-          <li>
-            <a href="<?= url('diaporamas/' . $dia['id']) ?>" <?= $dansUneFenetre ? 'data-fenetre-dessus' : 'data-fenetre' ?>><?= e($dia['titre']) ?></a>
+      <?php
+      /*
+       * Un aperçu par diaporama : sa première diapositive en miniature (le script permet d'en feuilleter les autres sur
+       * place), et un clic l'ouvre dans une fenêtre, à la diapositive montrée, avec sa lecture commentée. Sans script,
+       * c'est la première diapositive, et le lien l'ouvre.
+       */
+      $ouverture = $dansUneFenetre ? 'data-fenetre-dessus' : 'data-fenetre';
+      ?>
+      <?php foreach ($diaporamasFiche as $dia): ?>
+        <?php $premiere = $dia['apercu'][0] ?? ['t' => (string) $dia['titre'], 'p' => []]; ?>
+        <div class="diapo-apercu" data-dia-apercu data-url="<?= url('diaporamas/' . $dia['id']) ?>"
+             data-diapos="<?= e((string) json_encode($dia['apercu'], JSON_UNESCAPED_UNICODE)) ?>">
+          <a class="diapo-apercu__scene" href="<?= url('diaporamas/' . $dia['id']) ?>" <?= $ouverture ?> data-dia-apercu-lien
+             title="<?= e(t('dia.lire')) ?>">
+            <span class="diapo-apercu__compteur" data-dia-apercu-compteur><?= e(t('js.dia.diapo', ['i' => 1, 'n' => $dia['nombre']])) ?></span>
+            <strong class="diapo-apercu__titre" data-dia-apercu-titre><?= e($premiere['t']) ?></strong>
+            <ul class="diapo-apercu__points" data-dia-apercu-points>
+              <?php foreach (array_slice($premiere['p'], 0, 4) as $point): ?><li><?= e($point) ?></li><?php endforeach; ?>
+            </ul>
+            <span class="diapo-apercu__jouer">▶ <?= e(t('dia.lire')) ?></span>
+          </a>
+          <div class="diapo-apercu__pied">
+            <span class="diapo-apercu__nav" data-dia-apercu-nav hidden>
+              <button type="button" class="bouton bouton--discret bouton--petit" data-dia-apercu-action="precedent" title="<?= e(t('dia.precedent')) ?>">◀</button>
+              <span class="discret" data-dia-apercu-position>1 / <?= (int) $dia['nombre'] ?></span>
+              <button type="button" class="bouton bouton--discret bouton--petit" data-dia-apercu-action="suivant" title="<?= e(t('dia.suivant')) ?>">▶</button>
+            </span>
+            <a href="<?= url('diaporamas/' . $dia['id']) ?>" <?= $ouverture ?>><?= e($dia['titre']) ?></a>
             <span class="discret"><?= e(tn('dia.nb_diapos', $dia['nombre'])) ?></span>
             <form<?= $surPlace ?> method="post" action="<?= url('diaporamas/' . $dia['id'] . '/fiche/retirer') ?>" class="en-ligne">
               <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
@@ -511,9 +535,9 @@ $avancementFiche = avancement_anneaux(
               <input type="hidden" name="retour" value="<?= $surPage ? 'fiche' : 'volet' ?>">
               <button class="bouton bouton--discret bouton--petit" type="submit" title="<?= e(t('dia.fiche_retirer')) ?>">✕</button>
             </form>
-          </li>
-        <?php endforeach; ?>
-      </ul>
+          </div>
+        </div>
+      <?php endforeach; ?>
     <?php endif; ?>
     <p class="champ__aide"><a href="<?= url('resumes', ['cours' => $cours['id']]) ?>"><?= e(t('dia.aller_resumes')) ?></a></p>
   </div>

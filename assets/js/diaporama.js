@@ -71,7 +71,8 @@
     var LANGUE = LANGUES[racine.getAttribute('data-langue')] || 'fr-FR';
     var voixNavigateur = 'speechSynthesis' in window && typeof window.SpeechSynthesisUtterance === 'function';
 
-    var i = 0;
+    // Ouvert depuis l'aperçu de la fiche : on commence à la diapositive qu'on y regardait.
+    var i = Math.max(0, Math.min(diapos.length - 1, parseInt(racine.getAttribute('data-debut'), 10) || 0));
     var lecture = false;
     var generation = 0;            // change à chaque (re)lancement : les fins de lectures périmées s'ignorent
     var minuteur = null;
@@ -459,8 +460,55 @@
     surveiller({ racine: racine, arreter: function () { arreter(); arretDemande = true; } });
   };
 
+  /**
+   * L'aperçu d'un diaporama dans la fiche de révision : la diapositive en miniature, qu'on feuillette sur place avec ◀ ▶.
+   * Le clic sur la miniature ouvre le lecteur (lien « data-fenetre », posé par la page) à la diapositive montrée.
+   */
+  var initialiserApercu = function (bloc) {
+    if (bloc.hasAttribute('data-dia-apercu-pret')) { return; }
+    var diapos;
+    try { diapos = JSON.parse(bloc.getAttribute('data-diapos')); } catch (e) { return; }
+    if (!Array.isArray(diapos) || diapos.length < 1) { return; }
+    bloc.setAttribute('data-dia-apercu-pret', '1');
+
+    var lien = bloc.querySelector('[data-dia-apercu-lien]');
+    var compteur = bloc.querySelector('[data-dia-apercu-compteur]');
+    var titre = bloc.querySelector('[data-dia-apercu-titre]');
+    var points = bloc.querySelector('[data-dia-apercu-points]');
+    var nav = bloc.querySelector('[data-dia-apercu-nav]');
+    var position = bloc.querySelector('[data-dia-apercu-position]');
+    var base = bloc.getAttribute('data-url');
+    var i = 0;
+
+    var afficher = function () {
+      var d = diapos[i];
+      compteur.textContent = mot('dia.diapo', { i: i + 1, n: diapos.length });
+      titre.textContent = d.t;
+      points.innerHTML = '';
+      d.p.slice(0, 4).forEach(function (p) {
+        var li = document.createElement('li');
+        li.textContent = p;
+        points.appendChild(li);
+      });
+      position.textContent = (i + 1) + ' / ' + diapos.length;
+      lien.setAttribute('href', i === 0 ? base : base + '?diapo=' + i);
+      bloc.querySelector('[data-dia-apercu-action="precedent"]').disabled = i === 0;
+      bloc.querySelector('[data-dia-apercu-action="suivant"]').disabled = i === diapos.length - 1;
+    };
+
+    nav.addEventListener('click', function (ev) {
+      var bouton = ev.target.closest ? ev.target.closest('[data-dia-apercu-action]') : null;
+      if (!bouton) { return; }
+      i = Math.max(0, Math.min(diapos.length - 1, i + (bouton.getAttribute('data-dia-apercu-action') === 'suivant' ? 1 : -1)));
+      afficher();
+    });
+    nav.hidden = diapos.length < 2;
+    afficher();
+  };
+
   window.initialiserDiaporama = function (zone) {
     Array.prototype.forEach.call((zone || document).querySelectorAll('[data-diaporama]'), initialiser);
+    Array.prototype.forEach.call((zone || document).querySelectorAll('[data-dia-apercu]'), initialiserApercu);
   };
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function () { window.initialiserDiaporama(document); });

@@ -154,7 +154,7 @@ final class Diaporama
     /**
      * Les diaporamas rangés dans la fiche de révision d'un cours, du plus récemment rangé au plus ancien.
      *
-     * @return list<array{id: int, titre: string, created_at: string, nombre: int}>
+     * @return list<array{id: int, titre: string, created_at: string, nombre: int, apercu: list<array{t: string, p: list<string>}>}>
      */
     public static function duCours(int $coursId, int $userId): array
     {
@@ -165,8 +165,12 @@ final class Diaporama
               WHERE dc.cours_id = ? AND d.user_id = ? ORDER BY dc.created_at DESC, d.id DESC',
             [$coursId, $userId]
         ) as $ligne) {
+            $diapos = self::diapos($ligne);
             $liste[] = ['id' => (int) $ligne['id'], 'titre' => (string) $ligne['titre'],
-                        'created_at' => (string) $ligne['created_at'], 'nombre' => count(self::diapos($ligne))];
+                        'created_at' => (string) $ligne['created_at'], 'nombre' => count($diapos),
+                        // De quoi montrer chaque diapositive dans la fiche : son titre et ses points (pas le commentaire,
+                        // long, qui se lit dans le lecteur).
+                        'apercu' => array_map(static fn (array $d): array => ['t' => $d['t'], 'p' => $d['p']], $diapos)];
         }
 
         return $liste;
