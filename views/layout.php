@@ -77,6 +77,57 @@ $actif = static function (string $prefixe) use ($route): string {
 
       <div class="nav__compte">
         <?php if ($utilisateur !== null): ?>
+          <?php
+          /*
+           * Le menu en grille, comme celui des applications de Google : toutes les sections en tuiles, les favoris en
+           * tête (au choix de chacun : le crayon les modifie). Un « details » : il s'ouvre sans script ; le script ajoute
+           * la fermeture au clic à côté, et l'édition des favoris.
+           */
+          $favorisMenu = Menu::favoris($utilisateur['menu_favoris'] ?? null);
+          $compteursMenu = ['partages' => $nouveauxPartages, 'groupes' => $invitationsTravaux, 'amis' => $attenteAmis];
+          $tuile = static function (string $cle) use ($actif, $compteursMenu): string {
+              $s = Menu::SECTIONS[$cle];
+              $n = (int) ($compteursMenu[$cle] ?? 0);
+
+              return '<a class="apps__tuile" href="' . e(url($s['route'])) . '" data-cle="' . e($cle) . '" data-rang="'
+                  . (int) array_search($cle, array_keys(Menu::SECTIONS), true) . '"' . $actif($s['prefixe']) . '>'
+                  . '<span class="apps__icone" aria-hidden="true">' . $s['icone'] . '</span>'
+                  . '<span class="apps__nom">' . e(t($s['nom'])) . '</span>'
+                  . ($n > 0 ? '<span class="compteur apps__compteur">' . ($n > 99 ? '99+' : $n) . '</span>' : '')
+                  . '<span class="apps__etoile" aria-hidden="true"></span></a>';
+          };
+          ?>
+          <details class="apps" data-apps data-url-favoris="<?= e(url('compte/menu-favoris')) ?>" data-jeton="<?= e(Session::jetonCsrf()) ?>">
+            <summary class="apps__bouton" title="<?= e(t('nav.apps')) ?>" aria-label="<?= e(t('nav.apps')) ?>">
+              <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false">
+                <?php foreach ([4, 12, 20] as $cy): foreach ([4, 12, 20] as $cx): ?>
+                  <circle cx="<?= $cx ?>" cy="<?= $cy ?>" r="2.1" fill="currentColor"/>
+                <?php endforeach; endforeach; ?>
+              </svg>
+            </summary>
+            <div class="apps__panneau" role="region" aria-label="<?= e(t('nav.apps')) ?>">
+              <section class="apps__bloc apps__bloc--favoris">
+                <div class="apps__entete">
+                  <h2 class="apps__titre"><?= e(t('apps.favoris')) ?></h2>
+                  <button type="button" class="apps__crayon" data-apps-edition aria-pressed="false" hidden
+                          title="<?= e(t('apps.modifier')) ?>" aria-label="<?= e(t('apps.modifier')) ?>">✏️</button>
+                </div>
+                <p class="apps__aide" data-apps-aide hidden><?= e(t('apps.aide_edition')) ?></p>
+                <div class="apps__grille" data-apps-favoris>
+                  <?php foreach ($favorisMenu as $cle): ?><?= $tuile($cle) ?><?php endforeach; ?>
+                </div>
+                <p class="apps__vide" data-apps-vide<?= $favorisMenu === [] ? '' : ' hidden' ?>><?= e(t('apps.aucun_favori')) ?></p>
+              </section>
+              <section class="apps__bloc">
+                <h2 class="apps__titre"><?= e(t('apps.toutes')) ?></h2>
+                <div class="apps__grille" data-apps-autres>
+                  <?php foreach (array_keys(Menu::SECTIONS) as $cle): ?>
+                    <?php if (!in_array($cle, $favorisMenu, true)): ?><?= $tuile($cle) ?><?php endif; ?>
+                  <?php endforeach; ?>
+                </div>
+              </section>
+            </div>
+          </details>
           <a class="nav__utilisateur" href="<?= url('compte') ?>" title="<?= e(t('nav.compte')) ?>">
             <?= Amis::avatar((int) $utilisateur['id'], Auth::nomAffiche($utilisateur)) ?>
             <span class="nav__utilisateur-nom"><?= e(Auth::nomAffiche($utilisateur)) ?></span>
@@ -160,5 +211,6 @@ if ($utilisateur !== null
 <script src="<?= asset('assets/js/carte-mentale.js') ?>" defer></script>
 <script src="<?= asset('assets/js/zoom-image.js') ?>" defer></script>
 <script src="<?= asset('assets/js/diaporama.js') ?>" defer></script>
+<script src="<?= asset('assets/js/menu-apps.js') ?>" defer></script>
 </body>
 </html>

@@ -4329,4 +4329,11 @@ return [
     'dia.fl.fiche_retire' => 'Presentación quitada de la ficha de «{cours}» (no se elimina).',
     'dia.fl.fiche_impossible' => 'No es posible: elige uno de los cursos de los que se escribió esta presentación.',
     'fiche.resumer_ia' => '✨ Resumir con IA',
+    'nav.apps' => 'Todas las secciones',
+    'apps.favoris' => 'Tus favoritos',
+    'apps.toutes' => 'Todas las secciones',
+    'apps.modifier' => 'Editar mis favoritos',
+    'apps.aide_edition' => 'Haz clic en una sección para añadirla a tus favoritos o quitarla. El lápiz termina la edición.',
+    'apps.aucun_favori' => 'Ningún favorito: haz clic en el lápiz para elegir tus secciones preferidas.',
+    'js.apps.echec' => 'No se pudieron guardar tus favoritos: comprueba tu conexión.',
 ];

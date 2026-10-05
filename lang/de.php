@@ -4329,4 +4329,11 @@ return [
     'dia.fl.fiche_retire' => 'Präsentation aus dem Lernblatt von „{cours}“ entfernt (sie wird nicht gelöscht).',
     'dia.fl.fiche_impossible' => 'Nicht möglich: Wähle einen der Kurse, aus denen diese Präsentation erstellt wurde.',
     'fiche.resumer_ia' => '✨ Mit KI zusammenfassen',
+    'nav.apps' => 'Alle Bereiche',
+    'apps.favoris' => 'Deine Favoriten',
+    'apps.toutes' => 'Alle Bereiche',
+    'apps.modifier' => 'Meine Favoriten bearbeiten',
+    'apps.aide_edition' => 'Klicke auf einen Bereich, um ihn zu den Favoriten hinzuzufügen oder zu entfernen. Der Stift beendet die Bearbeitung.',
+    'apps.aucun_favori' => 'Keine Favoriten: Klicke auf den Stift, um deine liebsten Bereiche zu wählen.',
+    'js.apps.echec' => 'Deine Favoriten konnten nicht gespeichert werden – prüfe deine Verbindung.',
 ];

@@ -363,6 +363,21 @@ final class AuthController
     }
 
     /** L'apparence : claire, sombre, ou celle de l'appareil. */
+    /**
+     * Garde les favoris du menu en grille (la liste des sections, dans l'ordre). Appelée par le script à chaque
+     * changement, sans recharger la page : elle ne répond rien, sinon un code (204 si c'est gardé). Seules les clés
+     * connues du catalogue sont retenues (voir Menu::nettoyer).
+     */
+    public function menuFavoris(): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $favoris = Menu::nettoyer((array) ($_POST['favoris'] ?? []));
+        Database::run('UPDATE users SET menu_favoris = ? WHERE id = ?', [json_encode($favoris), Auth::id()]);
+        http_response_code(204);
+        exit;
+    }
+
     public function changerTheme(): void
     {
         Auth::exiger();

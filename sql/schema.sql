@@ -1529,3 +1529,8 @@ CREATE TABLE IF NOT EXISTS `diaporama_cours` (
   CONSTRAINT `fk_dc_cours`     FOREIGN KEY (`cours_id`)     REFERENCES `cours`(`id`)      ON DELETE CASCADE,
   CONSTRAINT `fk_dc_user`      FOREIGN KEY (`user_id`)      REFERENCES `users`(`id`)      ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Les favoris du menu en grille de la barre de navigation (JSON : ["calendrier","cours",…]) ; NULL = favoris de départ.
+
+ALTER TABLE `users`
+  ADD COLUMN `menu_favoris` VARCHAR(400) NULL DEFAULT NULL AFTER `langue`;

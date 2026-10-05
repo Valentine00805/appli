@@ -409,3 +409,8 @@ effacé), le cloisonnement entre comptes, une limite atteinte ou une réponse en
 celui des voix sur le disque, et le rangement dans la fiche de révision (rayon « Diaporamas », ajout / retrait, refus des cours non lus
 ou d'un autre compte, PDF téléchargé et joint, quatre langues, disparition avec le diaporama). Le lecteur (assets/js/diaporama.js : lecture par la voix du navigateur, repli sans voix,
 boucle de fabrication) se contrôle dans un navigateur : il n'a pas de test automatique.
+
+**`menu_langue.php`** — le menu en grille de la barre (comme les applications de Google) : ses 15 tuiles (chacune mène à la route de
+l'onglet du même nom), les favoris de départ, les favoris choisis (ordre gardé, clés inconnues et doublons écartés, JSON abîmé sans
+conséquence), le jeton CSRF, le cloisonnement entre comptes, les quatre langues. L'édition au crayon et la fermeture se contrôlent
+dans un navigateur (assets/js/menu-apps.js n'a pas de test automatique).

@@ -4329,4 +4329,11 @@ return [
     'dia.fl.fiche_retire' => 'Slideshow removed from the sheet of “{cours}” (it is not deleted).',
     'dia.fl.fiche_impossible' => 'Not possible: choose one of the courses this slideshow was written from.',
     'fiche.resumer_ia' => '✨ Summarise with AI',
+    'nav.apps' => 'All sections',
+    'apps.favoris' => 'Your favourites',
+    'apps.toutes' => 'All sections',
+    'apps.modifier' => 'Edit my favourites',
+    'apps.aide_edition' => 'Click a section to add it to or remove it from your favourites. The pencil ends editing.',
+    'apps.aucun_favori' => 'No favourites: click the pencil to choose your preferred sections.',
+    'js.apps.echec' => 'Could not save your favourites — check your connection.',
 ];

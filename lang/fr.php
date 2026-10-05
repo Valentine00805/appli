@@ -4341,4 +4341,11 @@ return [
     'dia.fl.fiche_retire' => 'Diaporama retiré de la fiche de « {cours} » (il n’est pas supprimé).',
     'dia.fl.fiche_impossible' => 'Impossible : choisissez un des cours que ce diaporama a lus.',
     'fiche.resumer_ia' => '✨ Résumer par IA',
+    'nav.apps' => 'Toutes les sections',
+    'apps.favoris' => 'Vos favoris',
+    'apps.toutes' => 'Toutes les sections',
+    'apps.modifier' => 'Modifier mes favoris',
+    'apps.aide_edition' => 'Clique sur une section pour l’ajouter aux favoris ou l’en retirer. Le crayon termine la modification.',
+    'apps.aucun_favori' => 'Aucun favori : clique sur le crayon pour choisir tes sections préférées.',
+    'js.apps.echec' => 'Impossible d’enregistrer tes favoris — vérifie ta connexion.',
 ];

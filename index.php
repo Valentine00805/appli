@@ -24,6 +24,7 @@ require __DIR__ . '/src/Depot.php';
 require __DIR__ . '/src/Session.php';
 require __DIR__ . '/src/Langue.php';
 require __DIR__ . '/src/Auth.php';
+require __DIR__ . '/src/Menu.php';
 require __DIR__ . '/src/LimiteurConnexion.php';
 require __DIR__ . '/src/Courriel.php';
 require __DIR__ . '/src/Reinitialisation.php';
@@ -259,6 +260,7 @@ $routes = [
     ['POST', 'compte/mot-de-passe',       [AuthController::class, 'changerMotDePasse']],
     ['POST', 'compte/fuseau',            [AuthController::class, 'changerFuseau']],
     ['POST', 'compte/theme',             [AuthController::class, 'changerTheme']],
+    ['POST', 'compte/menu-favoris',      [AuthController::class, 'menuFavoris']],
     ['POST', 'compte/langue',            [AuthController::class, 'changerLangue']],
     ['POST', 'compte/gemini',            [AuthController::class, 'enregistrerCleGemini']],
     ['POST', 'compte/gemini/retirer',    [AuthController::class, 'retirerCleGemini']],
