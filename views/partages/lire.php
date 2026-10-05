@@ -34,6 +34,9 @@ $estEvenement = $type === 'evenement';
 // Déjà dans mon calendrier — ajouté par moi, ou affiché d'office : rien à y ajouter.
 $maCopie = $maCopie ?? null;
 $dejaDansCalendrier = $estEvenement && !$public && ($maCopie !== null || !empty($afficheDOffice));
+// Un cours, une fiche ou un dossier que j'ai déjà copié chez moi : plus de copie à proposer, mais de quoi ouvrir la mienne.
+$dejaCopie = !$estEvenement && !$public && !$fichierSeul && $maCopie !== null;
+$urlMaCopie = !$dejaCopie ? null : ($estDossier ? url('cours', ['dossier' => (int) $maCopie]) : ($estFiche ? url('revision/' . (int) $maCopie) : url('cours/' . (int) $maCopie)));
 $liens = $liens ?? [];
 $groupes = $groupes ?? [];
 $matiereAjoutable = $matiereAjoutable ?? null;
@@ -110,7 +113,10 @@ $nom = $fichierSeul ? (string) $cible['nom_origine'] : '';
       <a class="bouton bouton--secondaire" href="<?= e($urlDuMien) ?>"><?= e(t('pt.ouvrir_le_mien')) ?></a>
     <?php endif; ?>
     <?php if (!$public && !$apercuProprio): ?>
-      <?php if (!$fichierSeul && !$dejaDansCalendrier): ?>
+      <?php if ($dejaCopie): ?>
+        <span class="pastille pastille--ok"><?= e(t($estDossier ? 'pt.deja_copie_dossier' : 'pt.deja_copie')) ?></span>
+        <a class="bouton bouton--secondaire" href="<?= e((string) $urlMaCopie) ?>"><?= e(t('pt.ouvrir_ma_copie')) ?></a>
+      <?php elseif (!$fichierSeul && !$dejaDansCalendrier): ?>
         <form method="post" action="<?= url($base . '/copier') ?>" class="en-ligne"<?= $dansUneFenetre ? ' data-envoi-fenetre' : '' ?>>
           <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
           <button class="bouton bouton--secondaire" type="submit"><?= e(t($estEvenement ? 'pt.ajouter_calendrier' : ($estDossier ? 'pt.copier_dossier' : 'pt.copier_cours'))) ?></button>

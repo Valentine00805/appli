@@ -892,9 +892,9 @@ final class Travaux
      * Les cours et dossiers liés au groupe, avec ce qu'il faut pour les montrer. Une cible effacée n'y figure plus.
      *
      * @return list<array{id: int, type: string, cible_id: int, titre: string, icone: string, matiere: ?string, couleur: ?string,
-     *                    proprietaire_id: int, proprietaire: string, ajoute_par: ?int, par: string, created_at: string}>
+     *                    proprietaire_id: int, ma_copie: ?int, proprietaire: string, ajoute_par: ?int, par: string, created_at: string}>
      */
-    public static function liens(int $projet): array
+    public static function liens(int $projet, int $moi = 0): array
     {
         $lignes = Database::all(
             "SELECT l.id, l.type, l.cible_id, l.ajoute_par, l.created_at, COALESCE(u.pseudo, u.nom, '') AS par,
@@ -924,6 +924,8 @@ final class Travaux
                 'matiere' => $cours && $l['matiere_nom'] !== null ? (string) $l['matiere_nom'] : null,
                 'couleur' => $cours && $l['matiere_couleur'] !== null ? (string) $l['matiere_couleur'] : null,
                 'proprietaire_id' => (int) ($cours ? $l['cours_user'] : $l['dossier_user']),
+                // Ce que j'en ai déjà copié chez moi : de quoi ne pas le proposer une seconde fois.
+                'ma_copie' => $moi > 0 ? Partages::maCopie($moi, $cours ? 'cours' : 'dossier', (int) $l['cible_id']) : null,
                 'ajoute_par' => $l['ajoute_par'] === null ? null : (int) $l['ajoute_par'],
                 'par' => (string) $l['par'],
                 'created_at' => (string) $l['created_at'],

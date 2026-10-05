@@ -1647,3 +1647,12 @@ CREATE TABLE IF NOT EXISTS `projet_liens` (
   CONSTRAINT `fk_projet_liens_projet` FOREIGN KEY (`projet_id`)  REFERENCES `projets`(`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_projet_liens_par`    FOREIGN KEY (`ajoute_par`) REFERENCES `users`(`id`)   ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Reconnaître ce qu'on a déjà copié depuis un partage : la copie garde l'identifiant de son origine.
+
+ALTER TABLE `cours`
+  ADD COLUMN `partage_nature` ENUM('cours', 'fiche') NULL AFTER `partage_de`;
+
+ALTER TABLE `dossiers`
+  ADD COLUMN `partage_de` INT UNSIGNED NULL AFTER `parent_id`,
+  ADD KEY `idx_dossiers_partage_de` (`partage_de`);

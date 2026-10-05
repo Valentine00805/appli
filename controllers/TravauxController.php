@@ -103,7 +103,7 @@ final class TravauxController
     {
         $projet = $this->projet($id);
         $this->afficher('travaux/cours', $projet, [
-            'liens' => Travaux::liens($id),
+            'liens' => Travaux::liens($id, Auth::id()),
             'aLier' => Travaux::aLier($id, Auth::id()),
         ], 'cours');
     }

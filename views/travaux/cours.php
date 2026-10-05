@@ -48,7 +48,11 @@ $moi = Auth::id();
                 </span>
               </span>
               <span class="fichier__actions">
-                <?php if (!$le_mien): ?>
+                <?php if (!$le_mien && $l['ma_copie'] !== null): ?>
+                  <?php // Déjà copié chez moi : on le dit, et on mène à ma copie au lieu de reproposer l'ajout. ?>
+                  <span class="pastille pastille--ok"><?= e(t($dossier ? 'pt.deja_copie_dossier' : 'pt.deja_copie')) ?></span>
+                  <a class="bouton bouton--discret bouton--petit" href="<?= url($dossier ? 'cours' : 'cours/' . $l['ma_copie'], $dossier ? ['dossier' => $l['ma_copie']] : []) ?>"><?= e(t('pt.ouvrir_ma_copie')) ?></a>
+                <?php elseif (!$le_mien): ?>
                   <form method="post"<?= $envoi ?> action="<?= url('partages/' . $mot . '/' . $l['cible_id'] . '/copier') ?>" class="en-ligne">
                     <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
                     <button class="bouton bouton--secondaire bouton--petit" type="submit"><?= e(t($dossier ? 'tr.co.ajouter_dossier' : 'tr.co.ajouter_cours')) ?></button>

@@ -113,8 +113,13 @@ try {
     $dire('  le message : « La matière … est ajoutée »', $oui(str_contains($apres, 'est ajoutée à tes matières')), 'oui');
     [, $encore] = $appel('b', 'partages/cours/' . $cours . '/matiere', ['_csrf' => $csrf['b']]);
     $dire('  un second clic ne crée pas de doublon', $oui(str_contains($encore, 'déjà dans tes matières')) . ' · ' . bd_valeur('SELECT COUNT(*) FROM matieres WHERE user_id = ? AND nom = ?', [$id('b'), 'Architecture distribuée']), 'oui · 1');
+    $avant = (int) bd_valeur('SELECT COUNT(*) FROM cours WHERE user_id = ?', [$id('b')]);
     $appel('b', 'partages/cours/' . $cours . '/copier', ['_csrf' => $csrf['b']]);
-    $copie2 = (int) bd_valeur('SELECT id FROM cours WHERE user_id = ? ORDER BY id DESC LIMIT 1', [$id('b')]);
+    $dire('  recopier un cours déjà copié : refusé, aucune seconde copie', $avant . ' · ' . bd_valeur('SELECT COUNT(*) FROM cours WHERE user_id = ?', [$id('b')]), $avant . ' · ' . $avant);
+    // B se défait de sa copie, puis recopie : la nouvelle reçoit sa matière à lui.
+    bd_run('DELETE FROM cours WHERE id = ? AND user_id = ?', [$copie1, $id('b')]);
+    $appel('b', 'partages/cours/' . $cours . '/copier', ['_csrf' => $csrf['b']]);
+    $copie2 = (int) bd_valeur('SELECT id FROM cours WHERE user_id = ? AND partage_de = ?', [$id('b'), $cours]);
     $dire('  copier le cours ensuite : la copie reçoit sa matière à lui', $copie2 !== $copie1
         ? (bd_valeur('SELECT m.nom FROM cours c JOIN matieres m ON m.id = c.matiere_id WHERE c.id = ?', [$copie2]) ?? 'aucune') : 'pas de copie', 'Architecture distribuée');
     [$cod] = $appel('d', 'partages/cours/' . $cours . '/matiere', ['_csrf' => $csrf['d']]);

@@ -2234,8 +2234,61 @@ final class Partages
      *
      * @return array{0: ?int, 1: ?string} le cours où la copie se trouve, ou la raison du refus
      */
+    /**
+     * Ma copie de ce cours, de cette fiche ou de ce dossier partagé, si j'en ai déjà fait une : de quoi ne plus la proposer, et mener à
+     * celle qui existe. Une copie se reconnaît à l'identifiant de son origine (`partage_de`). Celles d'avant cette colonne se retrouvent
+     * à leur titre et à leur texte — identiques à l'origine —, et reçoivent alors son identifiant, pour ne plus dépendre du titre.
+     * Un document à soi n'a pas de copie à soi.
+     */
+    public static function maCopie(int $moi, string $type, int $id): ?int
+    {
+        if (!in_array($type, ['cours', 'fiche', 'dossier'], true)) {
+            return null;
+        }
+        $cible = self::cible($type, $id);
+        if ($cible === null || (int) $cible['user_id'] === $moi) {
+            return null;
+        }
+        if ($type === 'dossier') {
+            $trouve = Database::valeur('SELECT id FROM dossiers WHERE user_id = ? AND partage_de = ? ORDER BY id LIMIT 1', [$moi, $id]);
+            if ($trouve === null || $trouve === false) {
+                // Une copie d'avant : même nom (ou « nom (2) »…), sans origine.
+                $nom = (string) $cible['titre'];
+                $trouve = Database::valeur(
+                    "SELECT id FROM dossiers WHERE user_id = ? AND partage_de IS NULL
+                        AND (nom = ? OR LEFT(nom, CHAR_LENGTH(?) + 2) = CONCAT(?, ' (')) ORDER BY id LIMIT 1",
+                    [$moi, $nom, $nom, $nom]
+                );
+                if ($trouve !== null && $trouve !== false) {
+                    Database::run('UPDATE dossiers SET partage_de = ? WHERE id = ?', [$id, (int) $trouve]);
+                }
+            }
+
+            return $trouve === null || $trouve === false ? null : (int) $trouve;
+        }
+        $trouve = Database::valeur('SELECT id FROM cours WHERE user_id = ? AND partage_de = ? AND partage_nature = ? ORDER BY id LIMIT 1', [$moi, $id, $type]);
+        if ($trouve === null || $trouve === false) {
+            $trouve = $type === 'cours'
+                ? Database::valeur(
+                    "SELECT id FROM cours WHERE user_id = ? AND partage_de IS NULL AND titre = ? AND COALESCE(contenu, '') = ? ORDER BY id LIMIT 1",
+                    [$moi, (string) $cible['titre'], (string) $cible['contenu']])
+                : Database::valeur(
+                    "SELECT id FROM cours WHERE user_id = ? AND partage_de IS NULL AND titre = ? AND COALESCE(contenu, '') = '' AND COALESCE(fiche_revision, '') = ? ORDER BY id LIMIT 1",
+                    [$moi, (string) $cible['titre_cours'], (string) $cible['fiche_revision']]);
+            if ($trouve !== null && $trouve !== false) {
+                Database::run('UPDATE cours SET partage_de = ?, partage_nature = ? WHERE id = ?', [$id, $type, (int) $trouve]);
+            }
+        }
+
+        return $trouve === null || $trouve === false ? null : (int) $trouve;
+    }
+
     public static function copier(int $moi, string $type, int $id, ?int $coursCible = null): array
     {
+        // Déjà copié : pas deux fois la même chose.
+        if (self::maCopie($moi, $type, $id) !== null) {
+            return [null, t('pt.copie.deja_' . $type)];
+        }
         [$ou, $refus] = self::faireCopie($moi, $type, $id, $coursCible);
 
         // Le propriétaire sait qu'on a fait sa propre copie de son document.
@@ -2267,7 +2320,7 @@ final class Partages
 
         if ($type === 'cours') {
             Database::run(
-                'INSERT INTO cours (user_id, matiere_id, partage_de, titre, contenu) VALUES (?, ?, ?, ?, ?)',
+                'INSERT INTO cours (user_id, matiere_id, partage_de, partage_nature, titre, contenu) VALUES (?, ?, ?, \'cours\', ?, ?)',
                 [$moi, self::maMatiere($moi, $cible['matiere_nom'] ?? null), $id, mb_substr((string) $cible['titre'], 0, 200), (string) $cible['contenu']]
             );
             $nouveau = Database::dernierId();
@@ -2291,10 +2344,10 @@ final class Partages
             $nouveaux = [];
             foreach ($groupes as $groupe) {
                 $parent = $nouveaux[self::parentDe($groupe['id'], (int) $cible['user_id'])] ?? null;
-                $nouveaux[$groupe['id']] = self::creerDossier($moi, (string) $groupe['nom'], (string) $groupe['icone'], $parent);
+                $nouveaux[$groupe['id']] = self::creerDossier($moi, (string) $groupe['nom'], (string) $groupe['icone'], $parent, $groupe['id'] === $id ? $id : null);
                 foreach ($groupe['cours'] as $c) {
                     Database::run(
-                        'INSERT INTO cours (user_id, dossier_id, partage_de, titre, contenu) VALUES (?, ?, ?, ?, ?)',
+                        'INSERT INTO cours (user_id, dossier_id, partage_de, partage_nature, titre, contenu) VALUES (?, ?, ?, \'cours\', ?, ?)',
                         [$moi, $nouveaux[$groupe['id']], (int) $c['id'], mb_substr((string) $c['titre'], 0, 200), (string) $c['contenu']]
                     );
                     $nouveauCours = Database::dernierId();
@@ -2331,7 +2384,7 @@ final class Partages
         // Une fiche devient un cours à soi, dont c'est la fiche de révision.
         if ($type === 'fiche') {
             Database::run(
-                "INSERT INTO cours (user_id, matiere_id, partage_de, titre, contenu, fiche_revision) VALUES (?, ?, ?, ?, '', ?)",
+                "INSERT INTO cours (user_id, matiere_id, partage_de, partage_nature, titre, contenu, fiche_revision) VALUES (?, ?, ?, 'fiche', ?, '', ?)",
                 [$moi, self::maMatiere($moi, $cible['matiere_nom'] ?? null), $id, mb_substr((string) $cible['titre_cours'], 0, 200), (string) $cible['fiche_revision']]
             );
             $nouveau = Database::dernierId();
@@ -2370,7 +2423,7 @@ final class Partages
      * Crée un dossier à soi. Un compte ne peut avoir deux dossiers du même
      * nom : la copie d'un dossier déjà nommé ainsi prend « (2) », « (3) »…
      */
-    private static function creerDossier(int $moi, string $nom, string $icone, ?int $parent): int
+    private static function creerDossier(int $moi, string $nom, string $icone, ?int $parent, ?int $origine = null): int
     {
         $nom = mb_substr(trim($nom) === '' ? t('pt.libelle_dossier') : trim($nom), 0, 110);
         $essai = $nom;
@@ -2382,8 +2435,8 @@ final class Partages
             $parent === null ? [$moi] : [$moi, $parent]
         );
         Database::run(
-            'INSERT INTO dossiers (user_id, parent_id, nom, icone, position) VALUES (?, ?, ?, ?, ?)',
-            [$moi, $parent, $essai, $icone === '' ? '📁' : $icone, $position]
+            'INSERT INTO dossiers (user_id, parent_id, partage_de, nom, icone, position) VALUES (?, ?, ?, ?, ?, ?)',
+            [$moi, $parent, $origine, $essai, $icone === '' ? '📁' : $icone, $position]
         );
 
         return Database::dernierId();

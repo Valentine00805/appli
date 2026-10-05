@@ -345,10 +345,10 @@ final class PartagesController
             'commentaires' => Partages::commentaires($type, $id, $moi),
             'adresseIcs' => url('partages/evenements/' . $id . '/ics'),
             'afficheDOffice' => $type === 'evenement' && Partages::afficheDOffice($moi, (int) $cible['user_id']),
-            // Ma copie de cet évènement, si je l'ai ajouté à mon calendrier.
+            // Ma copie de cet évènement (ajouté à mon calendrier), ou de ce cours, cette fiche, ce dossier (déjà chez moi) : on ne la propose plus.
             'maCopie' => $type === 'evenement'
                 ? Database::valeur('SELECT id FROM evenements WHERE user_id = ? AND partage_de = ?', [$moi, $id])
-                : null,
+                : ($leMien ? null : Partages::maCopie($moi, $type, $id)),
             'mot' => $mot,
             // L'aperçu de mon propre document : pas de copie à proposer, mais de quoi ouvrir le vrai.
             'apercuProprio' => $apercuProprio,

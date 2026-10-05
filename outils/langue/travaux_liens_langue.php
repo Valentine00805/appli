@@ -145,6 +145,62 @@ try {
     $appel('d', 'partages/cours/' . $coursA . '/copier', ['_csrf' => $csrf['d']]);
     $dire('un étranger ne peut pas l\'ajouter', bd_valeur('SELECT COUNT(*) FROM cours WHERE user_id = ?', [$id('d')]), '0');
 
+    echo "\n   — ce qui est déjà copié n'est plus proposé\n";
+    $copieDuCours = (int) bd_valeur('SELECT id FROM cours WHERE user_id = ? AND partage_de = ?', [$id('b'), $coursA]);
+    $dire('la copie garde l\'identifiant de son origine (et sa nature)', $oui($copieDuCours > 0) . ' · ' . bd_valeur('SELECT partage_nature FROM cours WHERE id = ?', [$copieDuCours]), 'oui · cours');
+    [, $pageB] = $appel('b', 'travaux/' . $projet . '/cours');
+    $dire('onglet « Cours » de B : « ✓ Déjà dans tes cours » + « Ouvrir ma copie », plus de bouton d\'ajout pour ce qu\'il a copié',
+        $oui(substr_count($pageB, '✓ Déjà dans tes cours') === 1 && substr_count($pageB, '✓ Dossier déjà chez toi') === 1
+            && str_contains($pageB, '/cours/' . $copieDuCours . '"') && !str_contains($pageB, 'Ajouter à mes cours')), 'oui');
+    [, $lu] = $appel('b', 'partages/cours/' . $coursA);
+    $dire('la page du cours partagé : le même constat, sans « Copier dans mes cours »',
+        $oui(str_contains($lu, '✓ Déjà dans tes cours') && str_contains($lu, 'Ouvrir ma copie') && str_contains($lu, '/cours/' . $copieDuCours . '"') && !str_contains($lu, 'Copier dans mes cours')), 'oui');
+    [, $lu] = $appel('b', 'partages/dossiers/' . $dossierA);
+    $dire('  et celle du dossier', $oui(str_contains($lu, '✓ Dossier déjà chez toi') && !str_contains($lu, 'Copier le dossier chez moi')), 'oui');
+    [, $retour] = $appel('b', 'partages/cours/' . $coursA . '/copier', ['_csrf' => $csrf['b']]);
+    $dire('recopier quand même (formulaire ancien ou forcé) : refusé, pas de doublon',
+        bd_valeur('SELECT COUNT(*) FROM cours WHERE user_id = ? AND titre = ?', [$id('b'), 'Cours du groupe']) . ' · ' . $oui(str_contains($retour, 'déjà dans tes cours')), '1 · oui');
+    $appel('b', 'partages/dossiers/' . $dossierA . '/copier', ['_csrf' => $csrf['b']]);
+    $dire('  idem pour le dossier', (string) bd_valeur('SELECT COUNT(*) FROM dossiers WHERE user_id = ? AND nom LIKE ?', [$id('b'), 'Dossier du groupe%']), '1');
+    $dire('  le dossier copié garde son origine ; son cours aussi', bd_valeur('SELECT COUNT(*) FROM dossiers WHERE user_id = ? AND partage_de = ?', [$id('b'), $dossierA]) . ' · '
+        . bd_valeur('SELECT COUNT(*) FROM cours WHERE user_id = ? AND partage_de = ?', [$id('b'), $coursDansDossier]), '1 · 1');
+    // Une copie d'avant la colonne : même titre et même texte, sans origine → reconnue, et l'identifiant lui est donné.
+    bd_run('INSERT INTO cours (user_id, titre, contenu) VALUES (?, ?, ?)', [$id('b'), 'Cours du groupe lié 2', 'Texte recopié à la main.']);
+    $ancien = (int) bd_valeur('SELECT id FROM cours WHERE user_id = ? AND titre = ?', [$id('b'), 'Cours du groupe lié 2']);
+    bd_run('INSERT INTO cours (user_id, titre, contenu) VALUES (?, ?, ?)', [$id('a'), 'Cours du groupe lié 2', 'Texte recopié à la main.']);
+    $coursA2 = (int) bd_valeur('SELECT id FROM cours WHERE user_id = ? AND titre = ?', [$id('a'), 'Cours du groupe lié 2']);
+    bd_run('INSERT INTO cours (user_id, titre, contenu) VALUES (?, ?, ?)', [$id('a'), 'Cours du groupe lié 3', 'Un texte différent.']);
+    $coursA3 = (int) bd_valeur('SELECT id FROM cours WHERE user_id = ? AND titre = ?', [$id('a'), 'Cours du groupe lié 3']);
+    bd_run('INSERT INTO cours (user_id, titre, contenu) VALUES (?, ?, ?)', [$id('b'), 'Cours du groupe lié 3', 'Mon propre cours, de même titre.']);
+    $homonyme = (int) bd_valeur('SELECT id FROM cours WHERE user_id = ? AND contenu = ?', [$id('b'), 'Mon propre cours, de même titre.']);
+    $lier('a', 'cours:' . $coursA2);
+    $lier('a', 'cours:' . $coursA3);
+    [, $pageB] = $appel('b', 'travaux/' . $projet . '/cours');
+    $dire('une copie d\'avant (même titre, même texte, sans origine) est reconnue ; un homonyme au texte différent ne l\'est pas',
+        $oui(substr_count($pageB, '✓ Déjà dans tes cours') === 2 && substr_count($pageB, 'Ajouter à mes cours') === 1 && str_contains($pageB, '/cours/' . $ancien . '"')), 'oui');
+    $dire('  elle reçoit l\'identifiant de l\'origine (plus de dépendance au titre) ; l\'homonyme reste libre',
+        bd_valeur('SELECT partage_de FROM cours WHERE id = ?', [$ancien]) . ' · ' . $oui(bd_valeur('SELECT partage_de FROM cours WHERE id = ?', [$homonyme]) === null), $coursA2 . ' · oui');
+    $dire('  et l\'ayant modifiée depuis, elle reste reconnue', $oui((function () use ($ancien, $appel, $projet): bool {
+        bd_run('UPDATE cours SET titre = ?, contenu = ? WHERE id = ?', ['Renommé chez B', 'Autre texte', $ancien]);
+        [, $p] = $appel('b', 'travaux/' . $projet . '/cours');
+        return substr_count($p, '✓ Déjà dans tes cours') === 2;
+    })()), 'oui');
+    // Une fiche copiée est distincte du cours copié de la même origine.
+    bd_run('UPDATE cours SET fiche_revision = ? WHERE id = ?', ['La fiche de A.', $coursA]);
+    bd_run('INSERT INTO partages_amis (proprietaire_id, destinataire_id, cible_type, cible_id, droit) VALUES (?, ?, ?, ?, ?)', [$id('a'), $id('b'), 'fiche', $coursA, 'lecture']);
+    [, $fiche] = $appel('b', 'partages/fiches/' . $coursA);
+    $dire('la fiche du même cours reste à copier (ce n\'est pas la même chose que le cours)', $oui(str_contains($fiche, 'Copier dans mes cours') && !str_contains($fiche, '✓ Déjà dans tes cours')), 'oui');
+    $appel('b', 'partages/fiches/' . $coursA . '/copier', ['_csrf' => $csrf['b']]);
+    [, $fiche] = $appel('b', 'partages/fiches/' . $coursA);
+    $dire('  copiée, elle le dit à son tour, et ouvre la fiche copiée',
+        bd_valeur('SELECT partage_nature FROM cours WHERE user_id = ? AND partage_de = ? AND partage_nature = ?', [$id('b'), $coursA, 'fiche']) . ' · '
+        . $oui(str_contains($fiche, '✓ Déjà dans tes cours') && str_contains($fiche, '/revision/')), 'fiche · oui');
+    [, $hors] = $appel('d', 'partages/cours/' . $coursA);
+    $dire('un étranger au groupe, lui, ne voit toujours rien', $oui(!str_contains($hors, 'Ouvrir ma copie') && !str_contains($hors, 'Le sujet du cours lié.')), 'oui');
+    // Les deux cours liés pour ces essais ne comptent pas dans la suite.
+    bd_run('DELETE FROM projet_liens WHERE projet_id = ? AND type = ? AND cible_id IN (?, ?)', [$projet, 'cours', $coursA2, $coursA3]);
+    bd_run('DELETE FROM partages_amis WHERE cible_type = ? AND cible_id = ?', ['fiche', $coursA]);
+
     echo "\n   — l'aperçu de ses propres éléments, tel que le voient les autres\n";
     [, $page] = $appel('a', 'travaux/' . $projet . '/cours');
     $dire('dans la liste, mes éléments s\'ouvrent en aperçu (« apercu=1 »), ceux des autres normalement',
@@ -163,7 +219,7 @@ try {
     $dire('  l\'aperçu du dossier : son contenu, dont les cours restent en aperçu', $oui(str_contains($dossierApercu, 'Cours dans le dossier')
         && str_contains($dossierApercu, '/partages/cours/' . $coursDansDossier . '?apercu=1') && !str_contains($dossierApercu, 'Copier le dossier chez moi')), 'oui');
     [, $autre] = $appel('b', 'partages/cours/' . $coursA . '?apercu=1&fenetre=1');
-    $dire('  B avec le même paramètre : sa vue normale (avec la copie)', $oui(str_contains($autre, 'Copier dans mes cours') && !str_contains($autre, 'Ouvrir le mien')), 'oui');
+    $dire('  B avec le même paramètre : sa vue normale (qui dit qu\x27il l\x27a déjà copié)', $oui(str_contains($autre, '✓ Déjà dans tes cours') && !str_contains($autre, 'Copier dans mes cours') && !str_contains($autre, 'Ouvrir le mien')), 'oui');
 
     echo "\n5. Retirer un lien\n";
     $lier('b', 'cours:' . $coursB);
@@ -191,10 +247,10 @@ try {
     $appel('b', 'travaux/' . $projet . '/quitter', ['_csrf' => $csrf['b']]);
     [, $lu] = $appel('b', 'partages/cours/' . $coursA);
     $dire('B quitte le groupe : il ne lit plus le cours lié', $oui(!str_contains($lu, 'Le sujet du cours lié.')), 'oui');
-    $dire('  mais ce qu\'il a ajouté à son espace lui reste', bd_valeur('SELECT COUNT(*) FROM cours WHERE user_id = ? AND titre = ?', [$id('b'), 'Cours du groupe']), '1');
+    $dire('  mais ce qu\'il a ajouté à son espace lui reste', bd_valeur('SELECT COUNT(*) FROM cours WHERE user_id = ? AND titre = ? AND partage_nature = ?', [$id('b'), 'Cours du groupe', 'cours']), '1');
     bd_run('DELETE FROM cours WHERE id = ?', [$coursA]);
     [$cod, $page] = $appel('a', 'travaux/' . $projet . '/cours');
-    $dire('un cours supprimé disparaît de la liste, sans erreur', $cod . ' · ' . $oui(!str_contains($page, 'Cours du groupe') && str_contains($page, 'Dossier du groupe')), '200 · oui');
+    $dire('un cours supprimé disparaît de la liste, sans erreur', $cod . ' · ' . $oui(preg_match('#class="fichier__nom"[^>]*>Cours du groupe</a>#', $page) !== 1 && str_contains($page, 'Dossier du groupe')), '200 · oui');
 
     echo "\n7. Les quatre langues\n";
     foreach ([
