@@ -145,6 +145,26 @@ try {
     $appel('d', 'partages/cours/' . $coursA . '/copier', ['_csrf' => $csrf['d']]);
     $dire('un étranger ne peut pas l\'ajouter', bd_valeur('SELECT COUNT(*) FROM cours WHERE user_id = ?', [$id('d')]), '0');
 
+    echo "\n   — l'aperçu de ses propres éléments, tel que le voient les autres\n";
+    [, $page] = $appel('a', 'travaux/' . $projet . '/cours');
+    $dire('dans la liste, mes éléments s\'ouvrent en aperçu (« apercu=1 »), ceux des autres normalement',
+        $oui(str_contains($page, '/partages/cours/' . $coursA . '?apercu=1') && str_contains($page, '/partages/dossiers/' . $dossierA . '?apercu=1')), 'oui');
+    [, $pageB] = $appel('b', 'travaux/' . $projet . '/cours');
+    $dire('  B n\'a pas ce paramètre sur les éléments de A', $oui(!str_contains($pageB, 'apercu=1')), 'oui');
+    [, $apercu] = $appel('a', 'partages/cours/' . $coursA . '?apercu=1&fenetre=1');
+    $dire('A ouvre son cours en aperçu : le rendu d\'un cours partagé, en lecture seule, de quoi ouvrir le vrai',
+        $oui(str_contains($apercu, 'Le sujet du cours lié.') && str_contains($apercu, 'Partagé par') && str_contains($apercu, 'Ouvrir le mien')
+            && !str_contains($apercu, '<header class="entete"')), 'oui');
+    $dire('  sans éditeur, sans « Copier dans mes cours », sans « Supprimer ce cours »',
+        $oui(!str_contains($apercu, 'edition-contenu') && !str_contains($apercu, 'Copier dans mes cours') && !str_contains($apercu, 'Supprimer ce cours')), 'oui');
+    [, $reel] = $appel('a', 'partages/cours/' . $coursA);
+    $dire('  sans « apercu », ouvrir son propre document mène toujours à sa vraie page', $oui(str_contains($reel, 'Supprimer ce cours')), 'oui');
+    [, $dossierApercu] = $appel('a', 'partages/dossiers/' . $dossierA . '?apercu=1&fenetre=1');
+    $dire('  l\'aperçu du dossier : son contenu, dont les cours restent en aperçu', $oui(str_contains($dossierApercu, 'Cours dans le dossier')
+        && str_contains($dossierApercu, '/partages/cours/' . $coursDansDossier . '?apercu=1') && !str_contains($dossierApercu, 'Copier le dossier chez moi')), 'oui');
+    [, $autre] = $appel('b', 'partages/cours/' . $coursA . '?apercu=1&fenetre=1');
+    $dire('  B avec le même paramètre : sa vue normale (avec la copie)', $oui(str_contains($autre, 'Copier dans mes cours') && !str_contains($autre, 'Ouvrir le mien')), 'oui');
+
     echo "\n5. Retirer un lien\n";
     $lier('b', 'cours:' . $coursB);
     $dire('B lie un de ses cours', (string) $nbLiens(), '3');

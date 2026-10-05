@@ -39,7 +39,7 @@ $moi = Auth::id();
             <li class="fichier">
               <span class="fichier__icone" aria-hidden="true"><?= e($l['icone']) ?></span>
               <span style="min-width:0">
-                <a class="fichier__nom" href="<?= url('partages/' . $mot . '/' . $l['cible_id']) ?>"<?= $ouvre ?>><?= e($l['titre']) ?></a>
+                <a class="fichier__nom" href="<?= url('partages/' . $mot . '/' . $l['cible_id'], $le_mien ? ['apercu' => 1] : []) ?>"<?= $ouvre ?>><?= e($l['titre']) ?></a>
                 <?php if ($l['matiere'] !== null): ?>
                   <span class="pastille" style="background:<?= e($l['couleur'] ?: '#94a3b8') ?>;color:<?= e(couleur_texte($l['couleur'] ?: '#94a3b8')) ?>"><?= e($l['matiere']) ?></span>
                 <?php endif; ?><br>

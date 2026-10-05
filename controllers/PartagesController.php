@@ -303,7 +303,10 @@ final class PartagesController
         $moi = Auth::id();
         $type = self::type($mot);
         $cible = Partages::cible($type, $id);
-        if ($cible !== null && (int) $cible['user_id'] === $moi) {
+        $leMien = $cible !== null && (int) $cible['user_id'] === $moi;
+        // L'aperçu de ce que je partage, tel que le voient les autres (lecture seule) : depuis la liste d'un groupe, par exemple.
+        $apercuProprio = $leMien && (string) ($_GET['apercu'] ?? '') === '1' && in_array($type, ['cours', 'fiche', 'dossier'], true);
+        if ($leMien && !$apercuProprio) {
             // Le sien : sa vraie page.
             if ($type === 'dossier') {
                 redirect('cours', ['dossier' => $id]);
@@ -322,7 +325,7 @@ final class PartagesController
         // L'ouvrir, c'est l'avoir vu : l'onglet ne le compte plus.
         Partages::marquerVus($moi, $type, $id);
         // Sa matière est déjà chez moi (ajoutée un autre jour) : mes copies qui n'en ont pas la reçoivent, sans rien demander.
-        if (in_array($type, ['cours', 'fiche', 'evenement'], true) && (string) ($cible['matiere_nom'] ?? '') !== ''
+        if (!$leMien && in_array($type, ['cours', 'fiche', 'evenement'], true) && (string) ($cible['matiere_nom'] ?? '') !== ''
             && Partages::maMatiere($moi, $cible['matiere_nom']) !== null) {
             Partages::ajouterMatiere($moi, $type, $id);
         }
@@ -333,12 +336,12 @@ final class PartagesController
             'fichiers' => match ($type) { 'cours' => Partages::fichiersDuCours($id), 'fiche' => Partages::fichiersDeLaFiche($id), default => [] },
             'liens' => $type === 'fiche' ? Partages::liensDeLaFiche($id) : [],
             'groupes' => $type === 'dossier' ? Partages::contenuDuDossier($id, (int) $cible['user_id']) : [],
-            'adresseCours' => static fn (int $c): string => url('partages/cours/' . $c),
+            'adresseCours' => static fn (int $c): string => url('partages/cours/' . $c, $apercuProprio ? ['apercu' => 1] : []),
             'adresseFichier' => static fn (int $f, bool $telecharger = false): string => url('partages/fichiers/' . $f . '/contenu', $telecharger ? ['telecharger' => 1] : []),
             'mesCours' => $type === 'fichier'
                 ? Database::all('SELECT id, titre FROM cours WHERE user_id = ? ORDER BY titre', [$moi]) : [],
             'recu' => Database::valeur('SELECT 1 FROM partages_amis WHERE destinataire_id = ? AND cible_type = ? AND cible_id = ?', [$moi, $type, $id]) !== null,
-            'droit' => Partages::droit($type, $id, $moi) ?? 'lecture',
+            'droit' => $apercuProprio ? 'lecture' : (Partages::droit($type, $id, $moi) ?? 'lecture'),
             'commentaires' => Partages::commentaires($type, $id, $moi),
             'adresseIcs' => url('partages/evenements/' . $id . '/ics'),
             'afficheDOffice' => $type === 'evenement' && Partages::afficheDOffice($moi, (int) $cible['user_id']),
@@ -347,8 +350,15 @@ final class PartagesController
                 ? Database::valeur('SELECT id FROM evenements WHERE user_id = ? AND partage_de = ?', [$moi, $id])
                 : null,
             'mot' => $mot,
+            // L'aperçu de mon propre document : pas de copie à proposer, mais de quoi ouvrir le vrai.
+            'apercuProprio' => $apercuProprio,
+            'urlDuMien' => $apercuProprio ? match ($type) {
+                'dossier' => url('cours', ['dossier' => $id]),
+                'fiche' => url('revision/' . $id),
+                default => url('cours/' . $id),
+            } : null,
             // Sa matière : la voir, et l'ajouter à mes matières si je ne l'ai pas.
-            'matiereAjoutable' => $type !== 'fichier' && $type !== 'dossier' && (string) ($cible['matiere_nom'] ?? '') !== ''
+            'matiereAjoutable' => !$leMien && $type !== 'fichier' && $type !== 'dossier' && (string) ($cible['matiere_nom'] ?? '') !== ''
                 ? ['nom' => (string) $cible['matiere_nom'], 'deja' => Partages::maMatiere($moi, $cible['matiere_nom']) !== null] : null,
             // L'évènement d'un ami : son cours lié (s'il m'est partagé), mes rappels et mes notes.
             'coursLie' => $type === 'evenement' ? Partages::coursLie($cible, $moi) : null,

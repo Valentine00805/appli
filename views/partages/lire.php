@@ -37,6 +37,8 @@ $dejaDansCalendrier = $estEvenement && !$public && ($maCopie !== null || !empty(
 $liens = $liens ?? [];
 $groupes = $groupes ?? [];
 $matiereAjoutable = $matiereAjoutable ?? null;
+$apercuProprio = $apercuProprio ?? false;
+$urlDuMien = $urlDuMien ?? null;
 $coursLie = $coursLie ?? null;
 $perso = $perso ?? null;
 /** Le bouton « Ajouter à mes matières » (ou « ✓ Dans tes matières ») : la matière de son auteur, reprise chez soi d'un clic. */
@@ -103,7 +105,11 @@ $nom = $fichierSeul ? (string) $cible['nom_origine'] : '';
       <a class="bouton bouton--secondaire" href="<?= e((string) ($adresseIcs ?? '')) ?>"
          title="<?= e(t('pt.ics_titre')) ?>"><?= e(t('pt.ajouter_agenda')) ?></a>
     <?php endif; ?>
-    <?php if (!$public): ?>
+    <?php if ($apercuProprio && $urlDuMien !== null): ?>
+      <?php // L'aperçu de mon propre document, tel que le voient les autres : de quoi ouvrir le vrai. ?>
+      <a class="bouton bouton--secondaire" href="<?= e($urlDuMien) ?>"><?= e(t('pt.ouvrir_le_mien')) ?></a>
+    <?php endif; ?>
+    <?php if (!$public && !$apercuProprio): ?>
       <?php if (!$fichierSeul && !$dejaDansCalendrier): ?>
         <form method="post" action="<?= url($base . '/copier') ?>" class="en-ligne"<?= $dansUneFenetre ? ' data-envoi-fenetre' : '' ?>>
           <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
