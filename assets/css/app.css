@@ -4111,3 +4111,17 @@ summary.cal-volet__groupe:focus-visible {
 .fenetre--plein .diapo__scene { min-height: calc(100vh - 17rem); display: flex; flex-direction: column; justify-content: center; padding: 2.5rem 3rem; }
 .fenetre--plein .diapo__titre { font-size: clamp(2rem, 4.5vw, 3.2rem); }
 .fenetre--plein .diapo__points { font-size: clamp(1.3rem, 2.8vw, 2rem); gap: .9rem; }
+
+/* --- La transcription d'un diaporama --------------------------------------------------------------------------- */
+.diapo__trans[hidden] { display: none; }
+.diapo__trans { margin: .6rem 0; }
+.diapo__trans-texte { position: relative; max-height: 18rem; overflow-y: auto; padding: .8rem 1rem; border: 1px solid var(--bordure); border-radius: var(--rayon-s); background: var(--fond-doux); }
+.diapo__trans-diapo { margin: 0 0 1rem; padding-left: .7rem; border-left: 3px solid transparent; }
+.diapo__trans-diapo h3 { margin: 0 0 .25rem; font-size: .95rem; color: var(--texte-doux); }
+.diapo__trans-diapo p { margin: 0; line-height: 1.6; }
+.diapo__trans-diapo--courante { border-left-color: var(--accent); }
+.diapo__trans-diapo--courante h3 { color: var(--accent); }
+.diapo__phrase { cursor: pointer; border-radius: 3px; transition: background .15s; }
+.diapo__phrase:hover { background: var(--accent-doux); }
+.diapo__phrase--dite, .diapo__phrase--dite:hover { background: color-mix(in srgb, var(--accent) 28%, transparent); }
+.fenetre--plein .diapo__trans-texte { max-height: calc(100vh - 22rem); font-size: 1.1rem; }

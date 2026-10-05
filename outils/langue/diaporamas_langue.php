@@ -142,10 +142,16 @@ try {
         $oui(str_contains($popup, 'Pourquoi chiffrer ?') && str_contains($popup, 'Le pare-feu') && str_contains($popup, 'Un pare-feu filtre le trafic réseau')), 'oui');
     $dire('  le script reçoit « a : false » (pas encore de voix Gemini) et ne reçoit pas de nom de fichier',
         $oui(str_contains($popup, '&quot;a&quot;:false') && !str_contains($popup, '.wav')), 'oui');
-    $dire('  boutons : précédente, lecture commentée, suivante, voix (navigateur / Gemini), vitesse, commentaire',
+    $dire('  boutons : précédente, lecture commentée, suivante, voix (navigateur / Gemini), vitesse, transcription',
         $oui(str_contains($popup, 'data-dia-action="precedent"') && str_contains($popup, 'data-dia-action="lire"') && str_contains($popup, 'data-dia-action="suivant"')
             && str_contains($popup, 'value="navigateur"') && str_contains($popup, 'value="gemini"') && str_contains($popup, 'data-dia-vitesse')
-            && str_contains($popup, 'data-dia-action="commentaire"') && str_contains($popup, 'Lecture commentée')), 'oui');
+            && str_contains($popup, 'data-dia-action="transcription"') && str_contains($popup, 'Lecture commentée')), 'oui');
+    $dire('  la transcription : un panneau (caché jusqu’au clic) avec « Copier le texte », « Télécharger (.txt) », son aide et le cadre du texte',
+        $oui(str_contains($popup, 'data-dia-trans hidden') && str_contains($popup, 'data-dia-trans-texte') && str_contains($popup, 'data-dia-action="copier"')
+            && str_contains($popup, 'data-dia-action="telecharger"') && str_contains($popup, 'Copier le texte') && str_contains($popup, 'Télécharger (.txt)')
+            && str_contains($popup, 'phrase dite est surlignée') && !str_contains($popup, 'data-dia-commentaire')), 'oui');
+    $dire('  le lecteur reçoit le titre et un nom de fichier propre pour la transcription',
+        $oui(str_contains($popup, 'data-titre="Diaporama commenté — Cyber"') && str_contains($popup, 'data-nom-fichier="Diaporama_commenté_Cyber"')), 'oui');
     $dire('  avec une clé : le choix de la voix Gemini et « Fabriquer la voix Gemini »',
         $oui(substr_count($popup, '<option value="Kore"') === 1 && str_contains($popup, 'Fabriquer la voix Gemini')), 'oui');
     [$entier] = $appel($a, 'diaporamas/' . $id);
@@ -157,6 +163,9 @@ try {
             && str_contains($jsApp, 'window.initialiserDiaporama(corpsDessus)') && !str_contains($entier, 'data-envoi-fenetre')), 'oui');
     $dire('  le script lit phrase par phrase, a un repli sans voix, et fait taire un lecteur dont la fenêtre se ferme',
         $oui(str_contains($jsDia, 'SpeechSynthesisUtterance') && str_contains($jsDia, 'attendre(') && str_contains($jsDia, 'MutationObserver')), 'oui');
+    $dire('  et la transcription : surlignage de la phrase dite, copie (presse-papiers), téléchargement .txt, départ à une phrase',
+        $oui(str_contains($jsDia, 'surligner(') && str_contains($jsDia, 'clipboard.writeText') && str_contains($jsDia, "type: 'text/plain;charset=utf-8'")
+            && str_contains($jsDia, 'phrasePourFraction') && str_contains($jsDia, 'jouer(k)') && str_contains($jsDia, 'ontimeupdate')), 'oui');
 
     echo "\n4. Le cloisonnement entre comptes\n";
     [$pageB] = $appel($b, 'resumes');
@@ -230,10 +239,10 @@ try {
 
     echo "\n7. Les quatre langues\n";
     foreach ([
-        'en' => [['Narrated slideshow', 'slides, read aloud', 'My slideshows'], ['Narrated playback', 'Browser (free, instant)', 'Make the Gemini voice', 'Speed']],
-        'es' => [['Presentación comentada', 'diapositivas, leídas en voz alta', 'Mis presentaciones'], ['Lectura comentada', 'Navegador (gratuita, inmediata)', 'Crear la voz de Gemini', 'Velocidad']],
-        'de' => [['Kommentierte Präsentation', 'Folien, die laut vorgelesen werden', 'Meine Präsentationen'], ['Kommentierte Wiedergabe', 'Browser (kostenlos, sofort)', 'Gemini-Stimme erzeugen', 'Tempo']],
-        'fr' => [['Diaporama commenté', 'des diapositives, lues à voix haute', 'Mes diaporamas'], ['Lecture commentée', 'Navigateur (gratuite, immédiate)', 'Fabriquer la voix Gemini', 'Vitesse']],
+        'en' => [['Narrated slideshow', 'slides, read aloud', 'My slideshows'], ['Narrated playback', 'Browser (free, instant)', 'Make the Gemini voice', 'Speed', 'Transcript', 'Copy the text', 'Download (.txt)']],
+        'es' => [['Presentación comentada', 'diapositivas, leídas en voz alta', 'Mis presentaciones'], ['Lectura comentada', 'Navegador (gratuita, inmediata)', 'Crear la voz de Gemini', 'Velocidad', 'Transcripción', 'Copiar el texto', 'Descargar (.txt)']],
+        'de' => [['Kommentierte Präsentation', 'Folien, die laut vorgelesen werden', 'Meine Präsentationen'], ['Kommentierte Wiedergabe', 'Browser (kostenlos, sofort)', 'Gemini-Stimme erzeugen', 'Tempo', 'Transkript', 'Text kopieren', 'Herunterladen (.txt)']],
+        'fr' => [['Diaporama commenté', 'des diapositives, lues à voix haute', 'Mes diaporamas'], ['Lecture commentée', 'Navigateur (gratuite, immédiate)', 'Fabriquer la voix Gemini', 'Vitesse', 'Transcription', 'Copier le texte', 'Télécharger (.txt)']],
     ] as $langue => [$motsListe, $motsLecteur]) {
         $appel($a, 'compte/langue', ['_csrf' => $csrf, 'langue' => $langue]);
         [$page] = $appel($a, 'resumes');

@@ -52,7 +52,9 @@
     var compteur = racine.querySelector('[data-dia-compteur]');
     var titre = racine.querySelector('[data-dia-titre]');
     var points = racine.querySelector('[data-dia-points]');
-    var commentaire = racine.querySelector('[data-dia-commentaire]');
+    var transcription = racine.querySelector('[data-dia-trans]');
+    var transTexte = racine.querySelector('[data-dia-trans-texte]');
+    var transEtat = racine.querySelector('[data-dia-trans-etat]');
     var etat = racine.querySelector('[data-dia-etat]');
     var plan = racine.querySelector('[data-dia-plan]');
     var blocGemini = racine.querySelector('[data-dia-gemini]');
@@ -61,7 +63,7 @@
     var choixSource = racine.querySelector('[data-dia-source]');
     var choixVitesse = racine.querySelector('[data-dia-vitesse]');
     var choixVoixGemini = racine.querySelector('[data-dia-voix-gemini]');
-    var boutonCommentaire = racine.querySelector('[data-dia-action="commentaire"]');
+    var boutonTranscription = racine.querySelector('[data-dia-action="transcription"]');
 
     var URL_AUDIO = racine.getAttribute('data-url-audio');
     var URL_VOIX = racine.getAttribute('data-url-voix');
@@ -76,7 +78,10 @@
     var veille = null;             // la voix du navigateur n'a pas démarré : on s'en passe
     var garde = null;              // et si elle ne se termine jamais : on passe à la suite
     var audio = new Audio();
-    var commentaireVisible = false;
+    var transVisible = false;
+    var phrasesDe = [];            // le commentaire de chaque diapositive, coupé en phrases (comme la voix le dit)
+    var spans = [];                // et l'élément de la transcription qui porte chaque phrase
+    var phraseCourante = null;
     var enFabrication = false;
     var arretDemande = false;
 
@@ -94,10 +99,120 @@
         li.textContent = p;
         points.appendChild(li);
       });
-      commentaire.textContent = d.c;
-      commentaire.hidden = !commentaireVisible;
+      majTranscription(true);
       racine.querySelector('[data-dia-action="precedent"]').disabled = i === 0;
       racine.querySelector('[data-dia-action="suivant"]').disabled = i === diapos.length - 1;
+    };
+
+    // --- La transcription : tout ce qui est dit, la phrase dite surlignée --------------------------------------
+    var coupe = function (texte) { return texte.match(/[^.!?…]+[.!?…]*\s*/g) || (texte ? [texte] : []); };
+
+    var construire = function () {
+      transTexte.innerHTML = '';
+      diapos.forEach(function (d, rang) {
+        phrasesDe[rang] = coupe(d.c);
+        spans[rang] = [];
+        var section = document.createElement('section');
+        section.className = 'diapo__trans-diapo';
+        section.setAttribute('data-trans-diapo', String(rang));
+        var entete = document.createElement('h3');
+        entete.textContent = (rang + 1) + '. ' + d.t;
+        section.appendChild(entete);
+        var paragraphe = document.createElement('p');
+        phrasesDe[rang].forEach(function (phrase, k) {
+          var span = document.createElement('span');
+          span.className = 'diapo__phrase';
+          span.setAttribute('data-phrase', String(k));
+          span.textContent = phrase;
+          paragraphe.appendChild(span);
+          spans[rang].push(span);
+        });
+        section.appendChild(paragraphe);
+        transTexte.appendChild(section);
+      });
+    };
+
+    /** Fait voir l'élément dans le cadre de la transcription, sans faire défiler la page ni la fenêtre. */
+    var montrer = function (element, centrer) {
+      if (!transVisible || !element) { return; }
+      var haut = element.offsetTop, bas = haut + element.offsetHeight;
+      if (centrer || haut < transTexte.scrollTop || bas > transTexte.scrollTop + transTexte.clientHeight) {
+        transTexte.scrollTop = Math.max(0, haut - transTexte.clientHeight / 3);
+      }
+    };
+
+    /** La diapositive en cours est marquée ; la phrase dite aussi (le temps de la dire). */
+    var majTranscription = function (changementDeDiapo) {
+      var sections = transTexte.children;
+      for (var k = 0; k < sections.length; k++) {
+        sections[k].classList.toggle('diapo__trans-diapo--courante', k === i);
+      }
+      if (changementDeDiapo) {
+        if (phraseCourante) { phraseCourante.classList.remove('diapo__phrase--dite'); phraseCourante = null; }
+        montrer(sections[i], true);
+      }
+    };
+
+    var surligner = function (rangDiapo, k) {
+      if (phraseCourante) { phraseCourante.classList.remove('diapo__phrase--dite'); }
+      phraseCourante = spans[rangDiapo] && spans[rangDiapo][k] ? spans[rangDiapo][k] : null;
+      if (phraseCourante) {
+        phraseCourante.classList.add('diapo__phrase--dite');
+        montrer(phraseCourante, false);
+      }
+    };
+
+    /** Avec la voix Gemini, pas de repère par phrase : on le déduit de l'avancée dans le son (au prorata des lettres). */
+    var phrasePourFraction = function (rangDiapo, fraction) {
+      var total = diapos[rangDiapo].c.length || 1;
+      var cible = fraction * total, cumul = 0;
+      for (var k = 0; k < phrasesDe[rangDiapo].length; k++) {
+        cumul += phrasesDe[rangDiapo][k].length;
+        if (cible < cumul) { return k; }
+      }
+      return Math.max(0, phrasesDe[rangDiapo].length - 1);
+    };
+
+    var texteComplet = function () {
+      return (racine.getAttribute('data-titre') || '') + '\n\n'
+        + diapos.map(function (d, k) { return (k + 1) + '. ' + d.t + '\n' + d.c; }).join('\n\n') + '\n';
+    };
+
+    var copier = function () {
+      var texte = texteComplet();
+      var reussi = function () { transEtat.textContent = mot('dia.copie'); };
+      var repli = function () {
+        // Sans l'API du presse-papiers (page non sécurisée, autorisation refusée) : la copie « à l'ancienne ».
+        var zone = document.createElement('textarea');
+        zone.value = texte;
+        zone.setAttribute('readonly', '');
+        zone.style.position = 'fixed';
+        zone.style.opacity = '0';
+        document.body.appendChild(zone);
+        zone.select();
+        var ok = false;
+        try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+        zone.remove();
+        transEtat.textContent = ok ? mot('dia.copie') : mot('dia.copie_echec');
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(texte).then(reussi, repli);
+      } else {
+        repli();
+      }
+    };
+
+    var telecharger = function () {
+      // Un BOM en tête : le Bloc-notes de Windows lit ainsi les accents sans se tromper d'encodage.
+      var fichier = new Blob(['\ufeff' + texteComplet()], { type: 'text/plain;charset=utf-8' });
+      var lien = document.createElement('a');
+      lien.href = URL.createObjectURL(fichier);
+      lien.download = (racine.getAttribute('data-nom-fichier') || 'diaporama') + '-' + mot('dia.nom_transcription') + '.txt';
+      document.body.appendChild(lien);
+      lien.click();
+      lien.remove();
+      setTimeout(function () { URL.revokeObjectURL(lien.href); }, 1000);
+      transEtat.textContent = mot('dia.telecharge');
     };
 
     // --- Lire ---------------------------------------------------------------------------------------------------
@@ -113,6 +228,8 @@
       clearTimeout(garde);
       audio.onended = null;
       audio.onerror = null;
+      audio.ontimeupdate = null;
+      audio.onloadedmetadata = null;
       audio.pause();
       if (voixNavigateur) { window.speechSynthesis.cancel(); }
     };
@@ -142,9 +259,10 @@
       minuteur = setTimeout(function () { if (jeton === generation) { suite(); } }, duree * 1000);
     };
 
-    var direAuNavigateur = function (jeton) {
+    var direAuNavigateur = function (jeton, debut) {
       var vitesse = parseFloat(choixVitesse.value) || 1;
-      var phrases = diapos[i].c.match(/[^.!?…]+[.!?…]*\s*/g) || [diapos[i].c];
+      var phrases = phrasesDe[i].length ? phrasesDe[i] : [diapos[i].c];
+      var depart = Math.max(0, Math.min(phrases.length - 1, debut || 0));
       var mots = diapos[i].c.split(/\s+/).length;
       var demarre = false;
       window.speechSynthesis.cancel();
@@ -160,10 +278,11 @@
         if (jeton === generation) { window.speechSynthesis.cancel(); suite(); }
       }, (2 * mots / (2.5 * vitesse) + 15) * 1000);
       phrases.forEach(function (phrase, rang) {
+        if (rang < depart) { return; }
         var u = new window.SpeechSynthesisUtterance(phrase);
         u.lang = LANGUE;
         u.rate = vitesse;
-        u.onstart = function () { demarre = true; };
+        u.onstart = function () { demarre = true; if (jeton === generation) { surligner(i, rang); } };
         if (rang === phrases.length - 1) {
           u.onend = function () { if (jeton === generation) { suite(); } };
         }
@@ -176,7 +295,7 @@
       });
     };
 
-    var jouer = function () {
+    var jouer = function (debut) {
       taire();
       var jeton = generation;
       var d = diapos[i];
@@ -185,16 +304,27 @@
         audio.src = URL_AUDIO + '/' + i;
         audio.playbackRate = vitesse;
         audio.onended = function () { if (jeton === generation) { suite(); } };
+        audio.ontimeupdate = function () {
+          if (jeton === generation && audio.duration) { surligner(i, phrasePourFraction(i, audio.currentTime / audio.duration)); }
+        };
+        // Partir d'une phrase : on se place au prorata des lettres qui la précèdent, dès que la durée est connue.
+        if (debut) {
+          audio.onloadedmetadata = function () {
+            var avant = 0;
+            for (var k = 0; k < debut; k++) { avant += phrasesDe[i][k].length; }
+            audio.currentTime = audio.duration * avant / (diapos[i].c.length || 1);
+          };
+        }
         var repli = function () {
           if (jeton !== generation) { return; }
-          if (voixNavigateur) { direAuNavigateur(jeton); } else { attendre(jeton); }
+          if (voixNavigateur) { direAuNavigateur(jeton, debut); } else { attendre(jeton); }
         };
         audio.onerror = repli;
         var essai = audio.play();
         if (essai && essai.catch) { essai.catch(repli); }
         return;
       }
-      if (voixNavigateur && d.c) { direAuNavigateur(jeton); return; }
+      if (voixNavigateur && d.c) { direAuNavigateur(jeton, debut); return; }
       dire(mot('dia.pas_de_voix'));
       attendre(jeton);
     };
@@ -270,11 +400,32 @@
       else if (action === 'lire') {
         if (lecture) { arreter(); }
         else { lecture = true; majBouton(); dire(''); jouer(); }
-      } else if (action === 'commentaire') {
-        commentaireVisible = !commentaireVisible;
-        boutonCommentaire.setAttribute('aria-pressed', commentaireVisible ? 'true' : 'false');
-        commentaire.hidden = !commentaireVisible;
+      } else if (action === 'transcription') {
+        transVisible = !transVisible;
+        boutonTranscription.setAttribute('aria-pressed', transVisible ? 'true' : 'false');
+        transcription.hidden = !transVisible;
+        majTranscription(true);
+        if (transVisible && phraseCourante) { montrer(phraseCourante, true); }
       }
+    });
+    transcription.addEventListener('click', function (ev) {
+      var bouton = ev.target.closest ? ev.target.closest('[data-dia-action]') : null;
+      if (bouton) {
+        var geste = bouton.getAttribute('data-dia-action');
+        if (geste === 'copier') { copier(); } else if (geste === 'telecharger') { telecharger(); }
+        return;
+      }
+      // Un clic sur une phrase : on va à sa diapositive, et si la lecture est en cours, elle repart de cette phrase.
+      var phrase = ev.target.closest ? ev.target.closest('[data-phrase]') : null;
+      var section = ev.target.closest ? ev.target.closest('[data-trans-diapo]') : null;
+      if (!section) { return; }
+      var rangDiapo = parseInt(section.getAttribute('data-trans-diapo'), 10);
+      var k = phrase ? parseInt(phrase.getAttribute('data-phrase'), 10) : 0;
+      var change = rangDiapo !== i;
+      i = rangDiapo;
+      afficher();
+      if (lecture) { jouer(k); } else if (!change) { surligner(i, k); }
+      if (!lecture && change) { surligner(i, k); }
     });
     if (boutonGenerer) { boutonGenerer.addEventListener('click', fabriquer); }
     choixSource.addEventListener('change', function () { if (lecture) { jouer(); } });
@@ -297,6 +448,7 @@
     majSource();
     // La voix Gemini d'abord, quand elle existe pour toutes les diapositives ; sinon celle du navigateur.
     choixSource.value = nbVoix() === diapos.length ? 'gemini' : 'navigateur';
+    construire();
     racine.setAttribute('tabindex', '0');
     scene.hidden = false;
     barre.hidden = false;

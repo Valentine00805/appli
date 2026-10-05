@@ -34,6 +34,8 @@ $voixChoisie = in_array((string) ($diaporama['voix'] ?? ''), Gemini::VOIX, true)
 <section class="carte diapo" data-diaporama
          data-diapos="<?= e((string) json_encode($pourLeScript, JSON_UNESCAPED_UNICODE)) ?>"
          data-langue="<?= e((string) $diaporama['langue']) ?>"
+         data-titre="<?= e((string) $diaporama['titre']) ?>"
+         data-nom-fichier="<?= e(preg_replace('/[^\p{L}\p{N}._-]+/u', '_', (string) $diaporama['titre']) ?: 'diaporama') ?>"
          data-url-audio="<?= url('diaporamas/' . $id . '/audio') ?>"
          data-url-voix="<?= url('diaporamas/' . $id . '/voix') ?>"
          data-jeton="<?= e(Session::jetonCsrf()) ?>">
@@ -64,10 +66,25 @@ $voixChoisie = in_array((string) ($diaporama['voix'] ?? ''), Gemini::VOIX, true)
         <?php endforeach; ?>
       </select>
     </label>
-    <button type="button" class="bouton bouton--discret bouton--petit" data-dia-action="commentaire" aria-pressed="false"><?= e(t('dia.commentaire')) ?></button>
+    <button type="button" class="bouton bouton--secondaire bouton--petit" data-dia-action="transcription" aria-pressed="false">📄 <?= e(t('dia.transcription')) ?></button>
   </div>
 
-  <p class="diapo__commentaire" data-dia-commentaire hidden></p>
+  <?php
+  /*
+   * La transcription : tout ce qui est dit, diapositive par diapositive. Pendant la lecture, la diapositive en cours est
+   * marquée et la phrase dite surlignée ; un clic sur une phrase y emmène. Le texte peut se copier ou se télécharger.
+   * Le script la remplit (et la montre) ; sans lui, le texte complet est dans le plan, plus bas.
+   */
+  ?>
+  <div class="diapo__trans" data-dia-trans hidden>
+    <div class="actions">
+      <button type="button" class="bouton bouton--secondaire bouton--petit" data-dia-action="copier">⧉ <?= e(t('dia.trans_copier')) ?></button>
+      <button type="button" class="bouton bouton--secondaire bouton--petit" data-dia-action="telecharger">⬇ <?= e(t('dia.trans_telecharger')) ?></button>
+      <span class="cm__etat" role="status" aria-live="polite" data-dia-trans-etat></span>
+    </div>
+    <p class="champ__aide"><?= e(t('dia.trans_aide')) ?></p>
+    <div class="diapo__trans-texte" data-dia-trans-texte tabindex="0"></div>
+  </div>
 
   <?php // La voix Gemini : une par diapositive, fabriquée à la demande, et gardée. Sans clé : un renvoi vers « Mon compte ». ?>
   <div class="diapo__gemini" data-dia-gemini hidden>
