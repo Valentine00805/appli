@@ -3,6 +3,7 @@
 require __DIR__ . '/base.php';
 
 $anomalies = 0;
+$termine = false;   // faux si le script s'arrête en route : le bilan ne doit pas dire « aucune anomalie »
 $dire = static function (string $quoi, string $obtenu, string $attendu) use (&$anomalies): void {
     $bon = $obtenu === $attendu;
     if (!$bon) { $anomalies++; }
@@ -110,13 +111,54 @@ try {
     $dire('sans destinataire : « Choose at least one friend or group. »',
         $oui(str_contains($refus, 'Choose at least one friend or group.')), 'oui');
 
+    echo "\n   — un évènement lié à un cours : partager aussi le cours, au choix\n";
+    // Repartir de zéro : le cours a été partagé plus haut dans cette suite.
+    bd_run('DELETE FROM partages_amis WHERE cible_type = ? AND cible_id = ?', ['cours', $cours]);
+    bd_run('DELETE FROM messages WHERE partage_type IS NOT NULL AND expediteur_id = ?', [$comptes['a']['id']]);
+    bd_run('INSERT INTO evenements (user_id, cours_id, titre, debut, fin) VALUES (?, ?, ?, ?, ?)',
+        [$comptes['a']['id'], $cours, 'DM lié au cours', '2030-05-10 08:00:00', '2030-05-10 09:00:00']);
+    $evtLie = (int) bd_valeur('SELECT id FROM evenements WHERE user_id = ? AND titre = ?', [$comptes['a']['id'], 'DM lié au cours']);
+    bd_run('INSERT INTO evenements (user_id, titre, debut, fin) VALUES (?, ?, ?, ?)',
+        [$comptes['a']['id'], 'Évènement sans cours', '2030-05-11 08:00:00', '2030-05-11 09:00:00']);
+    $evtLibre = (int) bd_valeur('SELECT id FROM evenements WHERE user_id = ? AND titre = ?', [$comptes['a']['id'], 'Évènement sans cours']);
+    [, $fen] = $appel('a', 'partager/evenements/' . $evtLie);
+    $dire('la fenêtre d\'un évènement lié propose de partager aussi le cours (case décochée)',
+        $oui(str_contains($fen, 'name="avec_cours"') && str_contains($fen, 'Also share the course “Cours d’essai langue”')
+            && !preg_match('/name="avec_cours"[^>]*checked/', $fen)), 'oui');
+    [, $fen] = $appel('a', 'partager/evenements/' . $evtLibre);
+    $dire('  pas de case pour un évènement sans cours', $oui(!str_contains($fen, 'avec_cours')), 'oui');
+    [, $fen] = $appel('a', 'partager/cours/' . $cours);
+    $dire('  ni dans la fenêtre d\'un cours', $oui(!str_contains($fen, 'avec_cours')), 'oui');
+    $nombrePartages = static fn (string $type, int $cible): int => (int) bd_valeur(
+        'SELECT COUNT(*) FROM partages_amis WHERE cible_type = ? AND cible_id = ? AND destinataire_id = ?', [$type, $cible, $comptes['b']['id']]);
+    $envoi = ['_csrf' => $csrf['a'], 'amis' => [(string) $comptes['b']['id']], 'droit' => 'lecture', 'texte' => ''];
+    $appel('a', 'partager/evenements/' . $evtLie . '/amis', $envoi);
+    $dire('sans cocher la case : seul l\'évènement est partagé', $nombrePartages('evenement', $evtLie) . ' · ' . $nombrePartages('cours', $cours), '1 · 0');
+    $cartes = static fn (): string => implode(',', array_column(bd_all(
+        'SELECT partage_type FROM messages WHERE expediteur_id = ? AND destinataire_id = ? AND partage_type IS NOT NULL ORDER BY id', [$comptes['a']['id'], $comptes['b']['id']]), 'partage_type'));
+    $dire('  une seule carte dans la discussion', $cartes(), 'evenement');
+    [, $retour] = $appel('a', 'partager/evenements/' . $evtLie . '/amis', $envoi + ['avec_cours' => '1']);
+    $dire('case cochée : le cours est partagé aussi, avec le même droit', $nombrePartages('evenement', $evtLie) . ' · ' . $nombrePartages('cours', $cours) . ' · '
+        . bd_valeur('SELECT droit FROM partages_amis WHERE cible_type = ? AND cible_id = ? AND destinataire_id = ?', ['cours', $cours, $comptes['b']['id']]), '1 · 1 · lecture');
+    $dire('  deux cartes : l\'évènement, puis le cours', $cartes(), 'evenement,evenement,cours');
+    [, $chez] = $appel('b', 'partages/cours/' . $cours);
+    $dire('  l\'ami lit le cours', $oui(str_contains($chez, 'Du texte.')), 'oui');
+    $appel('a', 'partager/evenements/' . $evtLibre . '/amis', $envoi + ['avec_cours' => '1']);
+    $dire('case forcée sur un évènement sans cours : rien de plus n\'est partagé', $nombrePartages('evenement', $evtLibre) . ' · ' . $nombrePartages('cours', $cours), '1 · 1');
+    bd_run('DELETE FROM partages_amis WHERE cible_type = ? AND cible_id IN (?, ?)', ['evenement', $evtLie, $evtLibre]);
+    bd_run('DELETE FROM evenements WHERE id IN (?, ?) AND user_id = ?', [$evtLie, $evtLibre, $comptes['a']['id']]);
+
     echo "\n7. Le français revient\n";
     $appel('b', 'compte/langue', ['_csrf' => $csrf['b'], 'langue' => 'fr']);
     [, $fr] = $appel('b', 'partages/cours/' . $cours);
     $dire('les mêmes pages, en français',
         $oui(str_contains($fr, 'Partagé par') && str_contains($fr, 'Fichiers joints')
             && str_contains($fr, 'Copier dans mes cours')), 'oui');
+    $termine = true;
 } finally {
+    if (!$termine) { $anomalies++; echo "
+   ✗ le script s'est arrêté avant la fin
+"; }
     // Ménage : le cours d'essai, ses partages, puis les deux comptes.
     if ($cours !== null && $cours > 0) {
         bd_run('DELETE FROM commentaires_partage WHERE cible_type = ? AND cible_id = ?', ['cours', $cours]);

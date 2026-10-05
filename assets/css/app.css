@@ -4282,3 +4282,6 @@ summary.cal-volet__groupe:focus-visible {
 .bulle--moi .sondage__option:hover { background: rgb(255 255 255 / 12%); }
 .bulle--moi .sondage__option:focus-visible { outline-color: #fff; }
 .bulle--moi .sondage__erreur { color: #fecaca; }
+
+/* La case « partager aussi le cours » d'un évènement : comme un choix de droit, la case à gauche du texte. */
+.partage-cours input[type="checkbox"] { width: auto; flex: none; margin: .2rem 0 0; }

@@ -199,10 +199,31 @@ final class PartagesController
             (string) ($_POST['texte'] ?? ''),
             Partages::droitValide($_POST['droit'] ?? null)
         );
+        $succes = tn('pt.flash_un', $nombre);
+        // Un évènement lié à un cours : le cours part aussi si on l'a demandé (même droit, mêmes destinataires, sans message).
+        if ($refus === null && $type === 'evenement' && (string) ($_POST['avec_cours'] ?? '') === '1') {
+            $evenement = Partages::mienne('evenement', $id, Auth::id());
+            $coursId = (int) ($evenement['cours_id'] ?? 0);
+            if ($coursId > 0) {
+                [$nombreCours, $refusCours, $notificationsCours] = Partages::partagerAvecAmis(
+                    Auth::id(), 'cours', $coursId,
+                    is_array($_POST['amis'] ?? null) ? $_POST['amis'] : [],
+                    is_array($_POST['groupes'] ?? null) ? $_POST['groupes'] : [],
+                    '',
+                    Partages::droitValide($_POST['droit'] ?? null)
+                );
+                if ($refusCours === null) {
+                    $succes .= ' ' . t('pt.flash_avec_cours', ['titre' => (string) $evenement['cours_titre']]);
+                    array_push($notifications, ...$notificationsCours);
+                } else {
+                    $refus = $refusCours;
+                }
+            }
+        }
         if ($refus !== null) {
             Session::flash('erreur', $refus);
         } else {
-            Session::flash('succes', tn('pt.flash_un', $nombre));
+            Session::flash('succes', $succes);
         }
         $this->retourPuisEnvoyer('partager/' . $mot . '/' . $id, $notifications);
     }

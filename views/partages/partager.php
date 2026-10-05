@@ -84,6 +84,22 @@ $icone = match ($type) {
           </label>
         <?php endforeach; ?>
       </fieldset>
+      <?php
+      /*
+       * Un évènement lié à un cours : on choisit de partager ou non le cours avec lui. Le cours n'est jamais envoyé sans
+       * qu'on le demande — il peut contenir des notes qu'on ne veut pas donner. Même droit, mêmes destinataires.
+       */
+      if ($type === 'evenement' && !empty($cible['cours_id']) && (string) $cible['cours_titre'] !== ''): ?>
+        <div class="champ partage-droits" style="margin-top:.75rem">
+        <label class="partage-droits__choix partage-cours">
+          <input type="checkbox" name="avec_cours" value="1">
+          <span>
+            <strong><?= e(t('pt.avec_cours', ['titre' => mb_strimwidth((string) $cible['cours_titre'], 0, 60, '…')])) ?></strong>
+            <span class="discret"><?= e(t('pt.avec_cours_aide')) ?></span>
+          </span>
+        </label>
+        </div>
+      <?php endif; ?>
       <div class="champ" style="margin-top:.75rem">
         <label for="partage-texte"><?= e(t('pt.message_facultatif')) ?></label>
         <textarea id="partage-texte" name="texte" rows="2" maxlength="<?= Amis::MESSAGE_MAX ?>" placeholder="<?= e(t('pt.exemple_' . (in_array($type, ['cours', 'fiche', 'dossier', 'evenement'], true) ? $type : 'fichier'))) ?>"></textarea>
