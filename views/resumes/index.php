@@ -10,10 +10,12 @@
  * @var array $historique        les résumés déjà écrits
  * @var ?array $aOuvrir          le résumé qui vient d'être écrit, à ouvrir aussitôt
  * @var ?array $carteAOuvrir     la carte mentale qui vient d'être écrite ou créée, à ouvrir aussitôt
+ * @var ?array $diaporamaAOuvrir le diaporama qui vient d'être écrit, à ouvrir aussitôt
+ * @var array $diaporamas        ses diaporamas commentés
  * @var array $cartesMentales    ses cartes mentales (elles se retrouvent aussi dans la fiche de chaque cours)
  */
 // La carte mentale n'est pas un résumé : elle se range dans la fiche du cours, mais se demande ici, avec les autres.
-$genres = [...ResumeIa::GENRES, 'carte'];
+$genres = [...ResumeIa::GENRES, 'carte', 'diaporama'];
 $longueurs = ['court', 'moyen', 'long'];
 $pret = $cleConfiguree && $cleFin !== null;
 ?>
@@ -46,6 +48,12 @@ $pret = $cleConfiguree && $cleFin !== null;
 ?>
 <div class="ria-page">
 <div class="ria-page__principal">
+<?php if ($diaporamaAOuvrir !== null): ?>
+  <?php // Comme le résumé et la carte : le script clique ici tout seul, et le diaporama s'ouvre en fenêtre. ?>
+  <p class="carte"><a href="<?= url('diaporamas/' . (int) $diaporamaAOuvrir['id']) ?>" data-fenetre data-ouvrir-auto>
+    <?= e(t('dia.ouvrir', ['titre' => (string) $diaporamaAOuvrir['titre']])) ?></a></p>
+<?php endif; ?>
+
 <section class="carte fabrique">
   <h2><?= e(t('ria.demander')) ?></h2>
 
@@ -171,6 +179,21 @@ $pret = $cleConfiguree && $cleFin !== null;
 </div>
 
 <aside class="ria-page__liste">
+<section class="carte">
+  <h2><?= e(t('dia.titre_liste')) ?></h2>
+  <?php if ($diaporamas === []): ?>
+    <p class="discret"><?= e(t('dia.aucun_liste')) ?></p>
+  <?php else: ?>
+    <ul class="ria-liste">
+      <?php foreach ($diaporamas as $d): ?>
+        <li>
+          <a href="<?= url('diaporamas/' . (int) $d['id']) ?>" data-fenetre><strong><?= e($d['titre']) ?></strong></a>
+          <span class="discret"><?= e(tn('dia.nb_diapos', (int) $d['nombre'])) ?> · <?= e(date_fr((string) $d['created_at'])) ?></span>
+        </li>
+      <?php endforeach; ?>
+    </ul>
+  <?php endif; ?>
+</section>
 <section class="carte">
   <h2><?= e(t('cm.titre_liste')) ?></h2>
   <?php if ($cartesMentales === []): ?>

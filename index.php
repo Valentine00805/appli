@@ -33,6 +33,7 @@ require __DIR__ . '/src/Gemini.php';
 require __DIR__ . '/src/Markdown.php';
 require __DIR__ . '/src/ResumeIa.php';
 require __DIR__ . '/src/CarteMentale.php';
+require __DIR__ . '/src/Diaporama.php';
 require __DIR__ . '/src/Fichiers.php';
 require __DIR__ . '/src/ApercuDocument.php';
 require __DIR__ . '/src/ImagesDocument.php';
@@ -94,6 +95,7 @@ require __DIR__ . '/controllers/TableauBordController.php';
 require __DIR__ . '/controllers/CartesController.php';
 require __DIR__ . '/controllers/ResumesController.php';
 require __DIR__ . '/controllers/CartesMentalesController.php';
+require __DIR__ . '/controllers/DiaporamasController.php';
 require __DIR__ . '/controllers/NotificationsController.php';
 require __DIR__ . '/controllers/HorsLigneController.php';
 require __DIR__ . '/controllers/FocusController.php';
@@ -599,6 +601,10 @@ $routes = [
     ['POST', 'cartes-mentales/{id}',              [CartesMentalesController::class, 'enregistrer']],
     ['POST', 'cartes-mentales/{id}/image',        [CartesMentalesController::class, 'imageVersLaFiche']],
     ['POST', 'cartes-mentales/{id}/supprimer',    [CartesMentalesController::class, 'supprimer']],
+    ['GET',  'diaporamas/{id}',                   [DiaporamasController::class, 'voir']],
+    ['POST', 'diaporamas/{id}/voix',              [DiaporamasController::class, 'voix']],
+    ['GET',  'diaporamas/{id}/audio/{id}',        [DiaporamasController::class, 'audio']],
+    ['POST', 'diaporamas/{id}/supprimer',         [DiaporamasController::class, 'supprimer']],
     ['POST', 'resumes/{id}/pdf-fiche',      [ResumesController::class, 'pdfVersLaFiche']],
     ['POST', 'resumes/{id}/supprimer',      [ResumesController::class, 'supprimer']],
     // Depuis l'onglet, le cours est dans le formulaire et non dans l'adresse.

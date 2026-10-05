@@ -4093,3 +4093,21 @@ summary.cal-volet__groupe:focus-visible {
   .ria-page { grid-template-columns: minmax(0, 1fr); }
   .ria-page__liste { position: static; max-height: none; overflow: visible; }
 }
+
+/* --- Le diaporama commenté ------------------------------------------------------------------------------------ */
+.diapo__scene { min-height: 14rem; padding: 1.5rem 1.75rem; border-radius: var(--rayon-s); background: linear-gradient(135deg, #1e3a8a, #2563eb); color: #fff; }
+.diapo__compteur { margin: 0 0 .75rem; font-size: .85rem; opacity: .8; }
+.diapo__titre { margin: 0 0 1rem; font-size: clamp(1.4rem, 3.2vw, 2.1rem); line-height: 1.2; color: #fff; }
+.diapo__points { margin: 0; padding-left: 1.3rem; display: grid; gap: .55rem; font-size: clamp(1rem, 2.1vw, 1.35rem); }
+.diapo__barre { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .75rem; margin: .8rem 0 .4rem; }
+.diapo__barre[hidden], .diapo__scene[hidden], .diapo__gemini[hidden], .diapo__plan[hidden], .diapo__commentaire[hidden] { display: none; }
+.diapo__choix { display: inline-flex; align-items: center; gap: .4rem; font-size: .85rem; color: var(--texte-doux); }
+.diapo__choix select { max-width: 15rem; }
+.diapo__commentaire { margin: .5rem 0; padding: .7rem .9rem; border-left: 3px solid var(--accent); background: var(--fond-doux); border-radius: 0 var(--rayon-s) var(--rayon-s) 0; }
+.diapo__gemini { margin: .6rem 0; }
+.diapo__plan ol { margin: .25rem 0 0; padding-left: 1.3rem; display: grid; gap: .6rem; }
+.diapo:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+/* En plein écran, la diapositive prend la place : texte plus grand, plus haute. */
+.fenetre--plein .diapo__scene { min-height: calc(100vh - 17rem); display: flex; flex-direction: column; justify-content: center; padding: 2.5rem 3rem; }
+.fenetre--plein .diapo__titre { font-size: clamp(2rem, 4.5vw, 3.2rem); }
+.fenetre--plein .diapo__points { font-size: clamp(1.3rem, 2.8vw, 2rem); gap: .9rem; }

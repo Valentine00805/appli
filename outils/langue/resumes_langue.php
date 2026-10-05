@@ -89,8 +89,8 @@ try {
         $oui(strpos($page, 'est envoyé à Google') !== false && strpos($page, 'est envoyé à Google') < strpos($page, '>Générer</button>')), 'oui');
     $dire('  mes cours sont proposés, pas ceux d’un autre',
         $oui(str_contains($page, 'Cyber') && !str_contains($page, 'Cours secret de B')), 'oui');
-    $dire('  quatre genres à cocher (résumé, points, flash cards, carte mentale ; le premier d’avance), trois longueurs',
-        $oui(substr_count($page, 'name="genres[]"') === 4 && substr_count($page, 'type="radio"') === 0 && substr_count($page, 'name="genres[]" value="resume" checked') === 1 && substr_count($page, 'name="genres[]" value="carte"') === 1 && str_contains($page, 'Flash cards') && str_contains($page, '>Détaillé</option>')), 'oui');
+    $dire('  cinq genres à cocher (résumé, points, flash cards, carte mentale, diaporama ; le premier d’avance), trois longueurs',
+        $oui(substr_count($page, 'name="genres[]"') === 5 && substr_count($page, 'type="radio"') === 0 && substr_count($page, 'name="genres[]" value="resume" checked') === 1 && substr_count($page, 'name="genres[]" value="carte"') === 1 && str_contains($page, 'Flash cards') && str_contains($page, '>Détaillé</option>')), 'oui');
     [$r] = $appel($a, 'resumes?cours=' . $coursA);
     $dire('  ?cours=… coche le cours d’avance', $oui(preg_match('/value="' . $coursA . '"\s+data-choix-cours checked/', $r) === 1), 'oui');
 

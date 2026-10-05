@@ -40,9 +40,17 @@ final class ResumesController
         if ($demandee !== null && $aOuvrir === null) {
             $carteAOuvrir = Database::one('SELECT id, titre FROM cartes_mentales WHERE id = ? AND user_id = ?', [$demandee, $userId]);
         }
+        // Un diaporama qui vient d'être écrit : de même, en fenêtre.
+        $diaporamaAOuvrir = null;
+        $demande = entier_ou_null($_GET['diaporama'] ?? null);
+        if ($demande !== null && $aOuvrir === null && $carteAOuvrir === null) {
+            $diaporamaAOuvrir = Database::one('SELECT id, titre FROM diaporamas WHERE id = ? AND user_id = ?', [$demande, $userId]);
+        }
         Vue::afficher('resumes/index', [
             'aOuvrir'       => $aOuvrir,
             'carteAOuvrir'  => $carteAOuvrir,
+            'diaporamaAOuvrir' => $diaporamaAOuvrir,
+            'diaporamas'    => Diaporama::duUser($userId, self::HISTORIQUE_MAX),
             'cleConfiguree' => CleApi::configure(),
             'cleFin'        => CleApi::fin($userId, CleApi::GEMINI),
             'documentsParCours' => $documentsParCours,
@@ -107,8 +115,10 @@ final class ResumesController
         $demandes = array_map('strval', (array) ($_POST['genres'] ?? []));
         $genres = array_values(array_intersect(ResumeIa::GENRES, $demandes));
         $avecCarte = in_array('carte', $demandes, true);
-        // Rien d'autre de coché : un résumé simple — sauf si la carte mentale est la seule demande (l'audio, lui, lit un résumé).
-        if ($genres === [] && (!$avecCarte || !empty($_POST['audio']))) {
+        $avecDiaporama = in_array('diaporama', $demandes, true);
+        // Rien d'autre de coché : un résumé simple — sauf si la carte mentale ou le diaporama est la seule demande
+        // (l'audio, lui, lit un résumé).
+        if ($genres === [] && ((!$avecCarte && !$avecDiaporama) || !empty($_POST['audio']))) {
             $genres = ['resume'];
         }
         $longueur = in_array($_POST['longueur'] ?? '', ResumeIa::LONGUEURS, true) ? (string) $_POST['longueur'] : 'moyen';
@@ -214,8 +224,14 @@ final class ResumesController
 
         // Les cartes mentales : une par cours coché, rangée dans sa fiche de révision.
         $cartesIds = $avecCarte ? $this->ecrireLesCartes($userId, $cle, $coursIds, $parts, $langue) : [];
+        // Le diaporama : un seul, à partir de tout ce qui est coché (comme un résumé).
+        $diaporamaId = $avecDiaporama ? $this->ecrireLeDiaporama($userId, $cle, $lu, $contenu, $longueur, $langue) : null;
 
-        if ($ids === [] && count($cartesIds) === 1) {
+        if ($ids === [] && $cartesIds === [] && $diaporamaId !== null) {
+            // Rien d'autre que le diaporama : la liste l'ouvre aussitôt, dans une fenêtre.
+            redirect('resumes', ['diaporama' => $diaporamaId]);
+        }
+        if ($ids === [] && count($cartesIds) === 1 && $diaporamaId === null) {
             // Une seule carte et rien d'autre : la liste l'ouvre aussitôt, à relire (elle est aussi dans la fiche du cours).
             redirect('resumes', ['carte' => $cartesIds[0]]);
         }
@@ -224,6 +240,44 @@ final class ResumesController
         }
         // Un seul : la liste l'ouvre aussitôt dans une fenêtre. Plusieurs : la liste, où ils sont tous.
         redirect('resumes', count($ids) === 1 ? ['ouvrir' => $ids[0]] : []);
+    }
+
+    /**
+     * Demande à Gemini un diaporama commenté à partir de ce qui a été lu (tous les cours cochés ensemble, comme un
+     * résumé). Garde les diapositives ; la voix, elle, se fabrique ensuite depuis le diaporama lui-même.
+     *
+     * @return ?int le diaporama écrit, ou null
+     */
+    private function ecrireLeDiaporama(int $userId, string $cle, array $lu, string $contenu, string $longueur, string $langue): ?int
+    {
+        try {
+            [$texte, $modele] = $this->sansVerrou(static fn (): array => Gemini::texte(
+                $cle, Diaporama::consigne($longueur, $langue), $contenu, Diaporama::schema()));
+        } catch (GeminiErreur $e) {
+            Session::flash('erreur', $this->messageDErreur($e));
+
+            return null;
+        }
+        $noms = array_column($lu['sources'], 'cours');
+        $ecrit = Diaporama::depuisIa($texte, count($noms) === 1 ? (string) $noms[0] : tn('ria.n_cours', count($noms)));
+        if ($ecrit === null) {
+            Session::flash('erreur', t('dia.fl.vide'));
+
+            return null;
+        }
+
+        $titre = t('ria.genre.diaporama') . ' — ' . (count($noms) === 1 ? $noms[0] : tn('ria.n_cours', count($noms)));
+        Database::run(
+            'INSERT INTO diaporamas (user_id, titre, langue, sources, diapos, modele) VALUES (?, ?, ?, ?, ?, ?)',
+            [$userId, mb_substr($titre, 0, 190), $langue, json_encode($lu['sources'], JSON_UNESCAPED_UNICODE),
+             json_encode($ecrit['diapos'], JSON_UNESCAPED_UNICODE), $modele]
+        );
+        if ($lu['tronque']) {
+            Session::flash('info', t('ria.fl.tronque'));
+        }
+        Session::flash('succes', tn('dia.fl.cree', count($ecrit['diapos'])));
+
+        return Database::dernierId();
     }
 
     /**
@@ -594,7 +648,7 @@ final class ResumesController
      * @throws GeminiErreur  « delai » si la limite de temps est passée avant la fin : un son coupé en route
      *                       serait pire que pas de son
      */
-    private static function sonDe(string $cle, string $aLire, string $voix, int $limite): array
+    public static function sonDe(string $cle, string $aLire, string $voix, int $limite): array
     {
         $morceaux = ResumeIa::morceauxDeVoix($aLire);
         if ($morceaux === []) {
@@ -614,7 +668,7 @@ final class ResumesController
     }
 
     /** Range un son dans un fichier WAV : son nom, ou null si l'écriture échoue. */
-    private static function ranger(string $pcm, int $frequence): ?string
+    public static function ranger(string $pcm, int $frequence): ?string
     {
         $dossier = self::dossier();
         if (!is_dir($dossier) && !mkdir($dossier, 0775, true) && !is_dir($dossier)) {
@@ -663,7 +717,7 @@ final class ResumesController
     }
 
     /** Fait quelque chose de long sans tenir la session : les autres onglets restent libres. */
-    private function sansVerrou(callable $travail): mixed
+    public function sansVerrou(callable $travail): mixed
     {
         @set_time_limit(600);
         session_write_close();
@@ -696,7 +750,7 @@ final class ResumesController
         }
     }
 
-    private function messageDErreur(GeminiErreur $e): string
+    public function messageDErreur(GeminiErreur $e): string
     {
         return match ($e->nature) {
             'quota'   => t('ria.err.quota'),

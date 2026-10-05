@@ -1220,6 +1220,8 @@
         if (window.initialiserCarteMentale) { window.initialiserCarteMentale(corps); }
         // Le zoom d'une image (assets/js/zoom-image.js), pour la même raison.
         if (window.initialiserZoomImage) { window.initialiserZoomImage(corps); }
+        // Le lecteur de diaporama commenté (assets/js/diaporama.js).
+        if (window.initialiserDiaporama) { window.initialiserDiaporama(corps); }
     };
 
     var ouvrir = function (adresse) {
@@ -1389,6 +1391,7 @@
       // Une carte mentale ou une image ouverte par-dessus la fiche (même raison que dans la fenêtre principale).
       if (window.initialiserCarteMentale) { window.initialiserCarteMentale(corpsDessus); }
       if (window.initialiserZoomImage) { window.initialiserZoomImage(corpsDessus); }
+      if (window.initialiserDiaporama) { window.initialiserDiaporama(corpsDessus); }
     };
     var ouvrirDessus = function (adresse) {
       adresseDessus = adresse;

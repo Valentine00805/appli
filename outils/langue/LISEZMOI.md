@@ -400,3 +400,11 @@ cloisonnement entre comptes, les cartes écrites par l'IA (ce que Gemini reçoit
 échappé, une carte seule, avec un résumé, pour deux cours, un modèle qui répond en prose, une clé refusée), la suppression (et en cascade avec le cours), l'aller-retour par
 la sauvegarde du compte, les quatre langues. L'éditeur lui-même (assets/js/carte-mentale.js) se contrôle dans un navigateur :
 il n'a pas de test automatique.
+
+**`diaporamas_langue.php`** — les diaporamas commentés, de bout en bout contre le faux serveur : sans clé, l'écriture depuis
+« Résumés IA » (case « Diaporama commenté », ce que Gemini reçoit, le schéma, la longueur → nombre de diapositives, la
+diapositive vide écartée, le HTML glissé réduit à du texte, avec un résumé dans la même demande), le lecteur (page entière et
+fenêtre, plan en texte sans JavaScript), la voix fabriquée une diapositive à la fois (fichier WAV, remplacement, l'ancien
+effacé), le cloisonnement entre comptes, une limite atteinte ou une réponse en prose, les quatre langues, l'effacement et
+celui des voix sur le disque. Le lecteur (assets/js/diaporama.js : lecture par la voix du navigateur, repli sans voix,
+boucle de fabrication) se contrôle dans un navigateur : il n'a pas de test automatique.

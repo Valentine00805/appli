@@ -107,6 +107,19 @@ if ($voix) {
 // Le mode JSON (responseSchema) : trois flash cards, dont une paire vide qu'il faut écarter — sauf pour la clé
 // « cle-sans-json », qui répond en prose comme un modèle qui n'aurait pas suivi le format.
 $demande = json_decode($corps, true);
+// Un diaporama commenté : un OBJET dont le schéma a des « diapositives ». Trois diapositives, dont une vide à écarter.
+if (isset($demande['generationConfig']['responseSchema']['properties']['diapositives']) && !str_starts_with($cle, 'cle-sans-json')) {
+    echo json_encode(['candidates' => [['content' => ['parts' => [['text' => json_encode([
+        'titre' => 'Cybersécurité en bref',
+        'diapositives' => [
+            ['titre' => 'Pourquoi chiffrer ?', 'points' => ['Confidentialité', 'Intégrité <b>des données</b>'], 'commentaire' => 'Le chiffrement protège la confidentialité des données. Sans clé, elles restent illisibles.'],
+            ['titre' => '', 'points' => [], 'commentaire' => ''],
+            ['titre' => 'Le pare-feu', 'points' => ['Filtre le trafic', '<script>alert(1)</script>'], 'commentaire' => 'Un pare-feu filtre le trafic réseau entrant et sortant.'],
+            ['titre' => 'En conclusion', 'points' => ['Défense en profondeur'], 'commentaire' => ''],
+        ],
+    ], JSON_UNESCAPED_UNICODE)]]]]]]);
+    exit;
+}
 // Une carte mentale : le schéma est un OBJET (les flash cards sont une LISTE). Une idée centrale, trois branches.
 if (($demande['generationConfig']['responseSchema']['type'] ?? '') === 'OBJECT' && !str_starts_with($cle, 'cle-sans-json')) {
     echo json_encode(['candidates' => [['content' => ['parts' => [['text' => json_encode([
