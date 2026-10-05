@@ -7,6 +7,7 @@
 --   mysql -u root < sql/migration-types-evenement.sql
 
 USE `mon_appli_cours`;
+SET NAMES utf8mb4;
 
 -- 1. La table des types ------------------------------------------------------
 
