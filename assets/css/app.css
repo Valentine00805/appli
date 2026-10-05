@@ -4169,7 +4169,19 @@ summary.cal-volet__groupe:focus-visible {
 .apps--edition .apps__tuile { cursor: pointer; outline: 1px dashed var(--bordure-forte); outline-offset: -2px; }
 .apps--edition [data-apps-favoris] .apps__etoile::before { content: '★'; }
 .apps--edition [data-apps-autres] .apps__etoile::before { content: '☆'; }
-@media (max-width: 760px) {
+/* Sur la barre déployée, le bouton est à l'écart des onglets : dans l'angle haut-droit du bloc des onglets, sur la première
+   ligne, à droite de « Budget ». La place est réservée à droite des onglets pour qu'aucun ne passe dessous. */
+@media (min-width: 781px) {
+  .nav { position: relative; padding-right: 3.4rem; }
+  /* Un peu moins d'air entre les onglets, pour que le bouton à l'écart ne fasse pas passer le dernier à la ligne. */
+  .nav > a { padding-left: .66rem; padding-right: .66rem; }
+  /* Seul le bouton est posé dans l'angle : le panneau, lui, se range sous toute la barre (le bloc des onglets) plutôt que de
+     recouvrir sa deuxième ligne. */
+  .apps { position: static; }
+  .apps > summary { position: absolute; top: 0; right: 0; }
+  .apps__bouton { background: var(--fond-doux); border: 1px solid var(--bordure); }
+}
+@media (max-width: 780px) {
   /* Dans le menu replié, le panneau prend la largeur de l'écran plutôt que de déborder à gauche. */
   .apps { position: static; }
   .apps__panneau { position: fixed; left: .75rem; right: .75rem; top: 4.2rem; width: auto; }
