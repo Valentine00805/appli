@@ -84,6 +84,10 @@
       grille.addEventListener('pointerdown', function (ev) {
         var tuile = tuileDe(ev.target);
         if (!actif() || !tuile || (ev.pointerType === 'mouse' && ev.button !== 0)) { return; }
+        // Une tuile est un lien : le navigateur voudrait la faire glisser lui-même (adresse, image), et un glissement natif
+        // interrompt les événements « pointer » (Firefox, Edge…). On l'en empêche avant qu'il commence.
+        tuile.setAttribute('draggable', 'false');
+        Array.prototype.forEach.call(tuile.querySelectorAll('img, a'), function (e) { e.setAttribute('draggable', 'false'); });
         glisse = { tuile: tuile, x: ev.clientX, y: ev.clientY, pointeur: ev.pointerId, actif: false, avant: ordre() };
       });
       document.addEventListener('pointermove', function (ev) {
@@ -114,8 +118,10 @@
       };
       document.addEventListener('pointerup', fin);
       document.addEventListener('pointercancel', fin);
-      // Le navigateur ne doit pas faire glisser l'adresse ou l'image : c'est la tuile qui glisse.
+      // Le navigateur ne doit pas faire glisser l'adresse ou l'image : c'est la tuile qui glisse. (Le clic, lui, reste.)
       grille.addEventListener('dragstart', function (ev) { if (actif()) { ev.preventDefault(); } });
+      grille.addEventListener('mousedown', function (ev) { if (actif() && tuileDe(ev.target) && ev.button === 0) { ev.preventDefault(); } });
+      grille.addEventListener('selectstart', function (ev) { if (actif() && glisse) { ev.preventDefault(); } });
       grille.addEventListener('keydown', function (ev) {
         var tuile = tuileDe(ev.target);
         if (!actif() || !ev.altKey || !tuile || (options.clavier && !options.clavier(tuile))) { return; }
