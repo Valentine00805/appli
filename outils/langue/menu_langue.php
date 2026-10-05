@@ -148,6 +148,136 @@ try {
             $oui(array_reduce($mots, static fn (bool $ok, string $m): bool => $ok && str_contains($page, $m), true)
                 && str_contains($page, '"apps.echec":') && !preg_match('/>\s*(apps|nav)\.[a-z_]+\s*</', $page)), 'oui');
     }
+
+    echo "\n5. Mes applications (liens vers d’autres sites)\n";
+    // Après la boucle des langues, A est en français ; B garde ses favoris abîmés : sans importance ici.
+    $lien = static function (string $compte, string $csrf, string $nom, string $url, string $icone = '', ?int $id = null) use ($appel): array {
+        [$corps, , $code] = $appel($compte, 'compte/liens-apps' . ($id === null ? '' : '/' . $id), ['_csrf' => $csrf, 'nom' => $nom, 'url' => $url, 'icone' => $icone]);
+        return [json_decode($corps, true) ?: [], $code];
+    };
+    $nbLiens = static fn (int $uid): int => (int) bd_valeur('SELECT COUNT(*) FROM liens_apps WHERE user_id = ?', [$uid]);
+    [$page] = $appel($a, 'calendrier');
+    $dire('sans lien : « Mes applications », « Ajouter » (caché sans script) et le message « Aucune application »',
+        $oui(str_contains($page, 'Mes applications') && str_contains($page, 'data-lien-ajout hidden') && str_contains($page, 'Aucune application')
+            && str_contains($page, 'data-liens-vide>') && !str_contains($page, 'data-liens-vide hidden')), 'oui');
+
+    [$j, $code] = $lien($a, $csrf, 'YouTube', 'youtube.com');
+    $dire('« YouTube », « youtube.com » : 200, https ajouté, icône proposée d’après le site, rien d’imposé',
+        $code . ' · ' . ($j['lien']['url'] ?? '?') . ' · ' . ($j['lien']['icone'] ?? '?') . ' · [' . ($j['lien']['icone_choisie'] ?? '?') . ']', '200 · https://youtube.com · ▶️ · []');
+    $idYoutube = (int) ($j['lien']['id'] ?? 0);
+    [$j] = $lien($a, $csrf, 'NotebookLM', 'notebooklm.google.com/');
+    $dire('  « NotebookLM » : 📓', ($j['lien']['url'] ?? '?') . ' · ' . ($j['lien']['icone'] ?? '?'), 'https://notebooklm.google.com/ · 📓');
+    [$j] = $lien($a, $csrf, 'Moodle', 'https://moodle.exemple.fr/cours?id=3#haut', '🎓');
+    $dire('  une icône choisie est gardée, et le chemin, la requête et l’ancre aussi', ($j['lien']['url'] ?? '?') . ' · ' . ($j['lien']['icone'] ?? '?'), 'https://moodle.exemple.fr/cours?id=3#haut · 🎓');
+    [$j] = $lien($a, $csrf, 'Un site au hasard', 'exemple.org');
+    $dire('  un site inconnu : le maillon de chaîne 🔗', $j['lien']['icone'] ?? '?', '🔗');
+    foreach ([['localhost:8080/page', 'https://localhost:8080/page'], ['http://192.168.1.10:3000', 'http://192.168.1.10:3000'], ['HTTPS://YouTube.COM/Watch', 'https://youtube.com/Watch'],
+              ['  https://exemple.org/a?b=c  ', 'https://exemple.org/a?b=c']] as [$entree, $attendu]) {
+        [$j] = $lien($a, $csrf, 'Essai', $entree);
+        $dire("  adresse acceptée : « " . trim($entree) . " »", $j['lien']['url'] ?? ($j['message'] ?? '?'), $attendu);
+    }
+
+    $avant = $nbLiens($idA);
+    foreach (['javascript:alert(1)', 'JaVaScRiPt:alert(1)', 'data:text/html,<script>alert(1)</script>', 'vbscript:msgbox(1)', 'ftp://exemple.org', 'file:///etc/passwd',
+              '//exemple.org', 'http://nom:mot@exemple.org', 'http://exemple', 'pas une adresse', 'exemple.org/avec espace', "https://exemple.org/\x01", '',
+              'a' . str_repeat('b', 600) . '.com', 'https://', 'http:///x.com', 'mailto:x@exemple.org', 'tel:+33123456789'] as $mauvaise) {
+        [$j, $code] = $lien($a, $csrf, 'Pirate', $mauvaise);
+        $ok = $code === 422 && ($j['ok'] ?? true) === false && str_contains((string) ($j['message'] ?? ''), 'Adresse refusée');
+        if (!$ok) { $dire('  adresse refusée : « ' . substr($mauvaise, 0, 40) . ' »', $code . ' · ' . json_encode($j, JSON_UNESCAPED_UNICODE), '422 · refus'); }
+    }
+    $dire('  dix-huit adresses dangereuses ou absurdes (javascript:, data:, ftp:, file:, identifiants, vide…) : toutes refusées, rien de gardé',
+        (string) ($nbLiens($idA) - $avant), '0');
+    [$j, $code] = $lien($a, $csrf, '', 'exemple.org');
+    [$j2, $code2] = $lien($a, $csrf, str_repeat('n', 41), 'exemple.org');
+    [$j3, $code3] = $lien($a, $csrf, str_repeat('n', 40), 'exemple.org');
+    $dire('  le nom : vide refusé, 41 lettres refusé, 40 acceptées',
+        $code . ' ' . $oui(str_contains((string) ($j['message'] ?? ''), 'Donne un nom')) . ' · ' . $code2 . ' · ' . $code3, '422 oui · 422 · 200');
+    [$j, $code] = $lien($a, $csrf, 'Icône trop longue', 'exemple.org', 'abcdefg');
+    [$j2, $code2] = $lien($a, $csrf, 'Icône piégée', 'exemple.org', '<b>');
+    $dire('  l’icône : plus de 4 caractères refusée, du HTML refusé', $code . ' ' . $oui(str_contains((string) ($j['message'] ?? ''), 'L’icône doit être')) . ' · ' . $code2, '422 oui · 422');
+
+    [$j] = $lien($a, $csrf, '<b>gras</b> & "co"', 'https://exemple.org/?a=1&b="2"');
+    [$page] = $appel($a, 'calendrier');
+    $dire('les liens sont des vrais liens : nouvel onglet, sans « opener » ni « referrer », texte et adresse échappés',
+        $oui(str_contains($page, '<a class="apps__tuile apps__tuile--lien" href="https://youtube.com" target="_blank" rel="noopener noreferrer"')
+            && str_contains($page, '&lt;b&gt;gras&lt;/b&gt; &amp; &quot;co&quot;') && !str_contains($page, '<b>gras</b>')
+            && !str_contains($page, 'b="2"')), 'oui');
+    $dire('  « Mes applications » les liste dans l’ordre où on les a ajoutés, avant le bouton « Ajouter »',
+        $oui(($p1 = strpos($page, 'href="https://youtube.com"')) !== false && ($p2 = strpos($page, 'href="https://notebooklm.google.com/"')) !== false
+            && ($p3 = strpos($page, 'href="https://moodle.exemple.fr/cours?id=3#haut"')) !== false && $p1 < $p2 && $p2 < $p3
+            && $p3 < strpos($page, 'data-lien-ajout') && str_contains($page, 'data-liens-vide hidden')), 'oui');
+    $dire('  et la tuile garde l’icône choisie pour préremplir l’édition (vide si c’est celle du site)',
+        $oui(preg_match('#data-lien-id="' . $idYoutube . '" data-nom="YouTube" data-icone-choisie="">#', $page) === 1
+            && str_contains($page, 'data-icone-choisie="🎓"')), 'oui');
+
+    echo "\n   — modifier, supprimer, limite\n";
+    [$j, $code] = $lien($a, $csrf, 'YouTube Music', 'music.youtube.com', '🎵', $idYoutube);
+    $dire('modifier : nom, adresse et icône changent', $code . ' · ' . bd_valeur('SELECT nom FROM liens_apps WHERE id = ?', [$idYoutube]) . ' · '
+        . bd_valeur('SELECT url FROM liens_apps WHERE id = ?', [$idYoutube]) . ' · ' . bd_valeur('SELECT icone FROM liens_apps WHERE id = ?', [$idYoutube]),
+        '200 · YouTube Music · https://music.youtube.com · 🎵');
+    [$j, $code] = $lien($a, $csrf, 'Piraté', 'javascript:alert(1)', '', $idYoutube);
+    $dire('  une modification invalide est refusée, le lien reste tel quel', $code . ' · ' . bd_valeur('SELECT nom FROM liens_apps WHERE id = ?', [$idYoutube]), '422 · YouTube Music');
+    [$jb, $codeB] = $lien($b, $jeton($appel($b, 'calendrier')[0]), 'Volé', 'exemple.org', '', $idYoutube);
+    [, , $codeB2] = $appel($b, 'compte/liens-apps/' . $idYoutube . '/supprimer', ['_csrf' => $jeton($appel($b, 'calendrier')[0])]);
+    $dire('  un autre compte ne le modifie pas, ne le supprime pas (404)', $codeB . ' · ' . $codeB2 . ' · ' . bd_valeur('SELECT nom FROM liens_apps WHERE id = ?', [$idYoutube]), '404 · 404 · YouTube Music');
+    [$pageB] = $appel($b, 'calendrier');
+    $dire('  et ne les voit pas dans son menu', $oui(!str_contains($pageB, 'music.youtube.com') && !str_contains($pageB, 'moodle.exemple.fr') && str_contains($pageB, 'data-liens-vide>')), 'oui');
+    $avant = $nbLiens($idA);
+    [, , $codeC] = $appel($a, 'compte/liens-apps', ['_csrf' => 'faux', 'nom' => 'X', 'url' => 'exemple.org']);
+    $dire('  sans le bon jeton CSRF, rien n’est créé', $oui($nbLiens($idA) === $avant) . ' · ' . $oui($codeC !== 200), 'oui · oui');
+    [, $urlV] = $appel('visiteur', 'compte/liens-apps', ['_csrf' => 'x', 'nom' => 'Visiteur-pirate', 'url' => 'exemple.org']);
+    $dire('  sans compte non plus : renvoyé à la connexion, rien d’écrit',
+        $oui(str_contains($urlV, '/connexion')) . ' · ' . bd_valeur('SELECT COUNT(*) FROM liens_apps WHERE nom = ?', ['Visiteur-pirate']), 'oui · 0');
+
+    bd_run('INSERT INTO liens_apps (user_id, nom, url, icone, position) VALUES (?, ?, ?, ?, 99)', [$idA, 'Abîmé', 'javascript:alert(document.cookie)', '']);
+    [$page] = $appel($a, 'calendrier');
+    $dire('une adresse abîmée en base (javascript:) n’est jamais suivie : la ligne est ignorée', $oui(!str_contains($page, 'javascript:alert') && !str_contains($page, 'Abîmé')), 'oui');
+    bd_run('DELETE FROM liens_apps WHERE user_id = ? AND nom = ?', [$idA, 'Abîmé']);
+
+    [$j, $code] = $lien($a, $csrf, 'À supprimer', 'exemple.net');
+    $idSuppr = (int) ($j['lien']['id'] ?? 0);
+    [$corps, , $code] = $appel($a, 'compte/liens-apps/' . $idSuppr . '/supprimer', ['_csrf' => $csrf]);
+    $dire('supprimer : le lien disparaît', $code . ' · ' . $oui((json_decode($corps, true)['ok'] ?? false) === true) . ' · ' . bd_valeur('SELECT COUNT(*) FROM liens_apps WHERE id = ?', [$idSuppr]), '200 · oui · 0');
+    for ($i = $nbLiens($idA); $i < 24; $i++) { bd_run('INSERT INTO liens_apps (user_id, nom, url, position) VALUES (?, ?, ?, ?)', [$idA, 'Rempli ' . $i, 'https://exemple.org/' . $i, 200 + $i]); }
+    [$j, $code] = $lien($a, $csrf, 'Le vingt-cinquième', 'exemple.org');
+    $dire('la limite : 24 applications au plus, la 25e est refusée avec un message qui le dit',
+        $nbLiens($idA) . ' · ' . $code . ' · ' . $oui(str_contains((string) ($j['message'] ?? ''), 'limite de 24 applications')), '24 · 422 · oui');
+    [$page] = $appel($a, 'calendrier');
+    $dire('  et le bouton « Ajouter » se cache côté script (data-liens-max)', $oui(str_contains($page, 'data-liens-max="24"')), 'oui');
+    [$js] = $appel($a, 'assets/js/menu-apps.js');
+    $dire('  le script ajoute, modifie, supprime sans « innerHTML » pour ce qui vient de l’utilisateur',
+        $oui(str_contains($js, 'data-lien-ajout') && str_contains($js, 'textContent = lien.nom') && str_contains($js, "/supprimer'")
+            && !str_contains($js, '.innerHTML') && str_contains($js, "'noopener noreferrer'")), 'oui');
+
+    echo "\n   — sauvegarde et langues\n";
+    $h = curl_init('http://localhost/mon_appli/appli/compte/sauvegarde/export');
+    curl_setopt_array($h, [CURLOPT_RETURNTRANSFER => true, CURLOPT_COOKIEFILE => $cookies[$a], CURLOPT_COOKIEJAR => $cookies[$a]]);
+    $zipOctets = (string) curl_exec($h);
+    unset($h);
+    $zipChemin = tempnam(sys_get_temp_dir(), 'ml') . '.zip';
+    file_put_contents($zipChemin, $zipOctets);
+    $zip = new ZipArchive();
+    $donnees = $zip->open($zipChemin) === true ? json_decode((string) $zip->getFromName('donnees.json'), true) : [];
+    $zip->close();
+    @unlink($zipChemin);
+    $dire('l’archive de sauvegarde du compte contient les liens', (string) count($donnees['tables']['liens_apps'] ?? []), (string) $nbLiens($idA));
+
+    bd_run('DELETE FROM liens_apps WHERE user_id = ? AND nom LIKE ?', [$idA, 'Rempli %']);
+    foreach ([
+        'en' => ['My apps', 'Add', 'Edit my apps', 'Site address', 'Icon (an emoji, optional)', 'Address refused: a website address is needed'],
+        'es' => ['Mis aplicaciones', 'Añadir', 'Editar mis aplicaciones', 'Dirección del sitio', 'Icono (un emoji, opcional)', 'Dirección rechazada: hace falta la dirección de un sitio'],
+        'de' => ['Meine Apps', 'Hinzufügen', 'Meine Apps bearbeiten', 'Adresse der Website', 'Symbol (ein Emoji, optional)', 'Adresse abgelehnt: Es wird eine Website-Adresse benötigt'],
+        'fr' => ['Mes applications', 'Ajouter', 'Modifier mes applications', 'Adresse du site', 'Icône (un emoji, facultatif)', 'Adresse refusée : il faut une adresse de site'],
+    ] as $langue => $mots) {
+        $appel($a, 'compte/langue', ['_csrf' => $csrf, 'langue' => $langue]);
+        [$page] = $appel($a, 'calendrier');
+        [$j] = $lien($a, $csrf, 'X', 'javascript:alert(1)');
+        $dire("$langue : le bloc, ses libellés et le message d’erreur du serveur parlent la langue",
+            $oui(str_contains($page, $mots[0]) && str_contains($page, '>' . $mots[1] . '<') && str_contains($page, $mots[2]) && str_contains($page, $mots[3])
+                && str_contains($page, $mots[4]) && str_contains((string) ($j['message'] ?? ''), $mots[5])
+                && str_contains($page, '"apps.lien_echec":') && str_contains($page, '"apps.lien_nouveau":')
+                && !preg_match('/>\s*(apps|lia)\.[a-z_.]+\s*</', $page)), 'oui');
+    }
 } finally {
     foreach ($cookies as $f) { @unlink($f); }
     foreach ($emails as $a) { bd_run('DELETE FROM users WHERE email = ? AND email LIKE ?', [$a, '%@exemple-test.fr']); }

@@ -413,4 +413,7 @@ boucle de fabrication) se contrôle dans un navigateur : il n'a pas de test auto
 **`menu_langue.php`** — le menu en grille de la barre (comme les applications de Google) : ses 15 tuiles (chacune mène à la route de
 l'onglet du même nom), les favoris de départ, les favoris choisis (ordre gardé, clés inconnues et doublons écartés, JSON abîmé sans
 conséquence), le jeton CSRF, le cloisonnement entre comptes, les quatre langues. L'édition au crayon et la fermeture se contrôlent
-dans un navigateur (assets/js/menu-apps.js n'a pas de test automatique).
+dans un navigateur (assets/js/menu-apps.js n'a pas de test automatique). Même suite : la section « Mes applications » — liens vers d'autres sites
+ajoutés par chacun : adresses acceptées (https ajouté, hôte en minuscules) et surtout REFUSÉES (javascript:, data:, ftp:, file:, identifiants dans
+l'adresse, vide…), limites (40 lettres, 24 liens), texte échappé, nouvel onglet sans opener, modifier / supprimer, cloisonnement entre comptes,
+ligne abîmée en base ignorée, sauvegarde du compte, quatre langues.

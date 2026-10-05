@@ -25,6 +25,7 @@ require __DIR__ . '/src/Session.php';
 require __DIR__ . '/src/Langue.php';
 require __DIR__ . '/src/Auth.php';
 require __DIR__ . '/src/Menu.php';
+require __DIR__ . '/src/LienApp.php';
 require __DIR__ . '/src/LimiteurConnexion.php';
 require __DIR__ . '/src/Courriel.php';
 require __DIR__ . '/src/Reinitialisation.php';
@@ -73,6 +74,7 @@ require __DIR__ . '/src/helpers.php';
 require __DIR__ . '/src/Vue.php';
 
 require __DIR__ . '/controllers/AuthController.php';
+require __DIR__ . '/controllers/LiensAppsController.php';
 require __DIR__ . '/controllers/AmisController.php';
 require __DIR__ . '/controllers/ConversationsController.php';
 require __DIR__ . '/controllers/PartagesController.php';
@@ -261,6 +263,9 @@ $routes = [
     ['POST', 'compte/fuseau',            [AuthController::class, 'changerFuseau']],
     ['POST', 'compte/theme',             [AuthController::class, 'changerTheme']],
     ['POST', 'compte/menu-favoris',      [AuthController::class, 'menuFavoris']],
+    ['POST', 'compte/liens-apps',        [LiensAppsController::class, 'creer']],
+    ['POST', 'compte/liens-apps/{id}',   [LiensAppsController::class, 'modifier']],
+    ['POST', 'compte/liens-apps/{id}/supprimer', [LiensAppsController::class, 'supprimer']],
     ['POST', 'compte/langue',            [AuthController::class, 'changerLangue']],
     ['POST', 'compte/gemini',            [AuthController::class, 'enregistrerCleGemini']],
     ['POST', 'compte/gemini/retirer',    [AuthController::class, 'retirerCleGemini']],

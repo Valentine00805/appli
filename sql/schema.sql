@@ -1534,3 +1534,18 @@ CREATE TABLE IF NOT EXISTS `diaporama_cours` (
 
 ALTER TABLE `users`
   ADD COLUMN `menu_favoris` VARCHAR(400) NULL DEFAULT NULL AFTER `langue`;
+
+-- Les liens vers d'autres applications (YouTube, NotebookLM…) rangés par chacun dans le menu en grille.
+
+CREATE TABLE IF NOT EXISTS `liens_apps` (
+  `id`         INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `user_id`    INT UNSIGNED NOT NULL,
+  `nom`        VARCHAR(40)  NOT NULL,
+  `url`        VARCHAR(500) NOT NULL,
+  `icone`      VARCHAR(16)  NOT NULL DEFAULT '',
+  `position`   INT UNSIGNED NOT NULL DEFAULT 0,
+  `created_at` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_liens_apps_user` (`user_id`, `position`, `id`),
+  CONSTRAINT `fk_liens_apps_user` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

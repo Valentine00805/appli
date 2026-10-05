@@ -4186,3 +4186,21 @@ summary.cal-volet__groupe:focus-visible {
   .apps { position: static; }
   .apps__panneau { position: fixed; left: .75rem; right: .75rem; top: 4.2rem; width: auto; }
 }
+
+/* --- « Mes applications » : des liens vers d'autres sites, dans le menu en grille ---------------------------------- */
+.apps__tuile--lien .apps__etoile--lien::before { content: '✎'; }
+.apps--edition-liens .apps__etoile--lien { display: block; }
+.apps--edition-liens .apps__tuile--lien { cursor: pointer; outline: 1px dashed var(--bordure-forte); outline-offset: -2px; }
+.apps__tuile--ajout { border: 0; background: none; font: inherit; cursor: pointer; }
+.apps__tuile--ajout[hidden] { display: none; }
+.apps__tuile--ajout .apps__icone { background: none; box-shadow: none; border: 2px dashed var(--bordure-forte); color: var(--texte-doux); font-size: 1.4rem; }
+.apps__tuile--ajout:hover .apps__icone { border-color: var(--accent); color: var(--accent); }
+.apps__form { margin: .6rem .3rem .2rem; padding: .7rem; border: 1px solid var(--bordure); border-radius: 14px; background: var(--fond-doux); display: grid; gap: .5rem; }
+.apps__form[hidden], .apps__erreur[hidden], .apps__supprimer[hidden] { display: none; }
+.apps__sous-titre { margin: 0; font-size: .9rem; }
+.apps__form label { display: grid; gap: .2rem; font-size: .8rem; color: var(--texte-doux); }
+.apps__form input { width: 100%; box-sizing: border-box; padding: .4rem .55rem; border: 1px solid var(--bordure); border-radius: 8px; background: var(--fond-carte); color: var(--texte); font: inherit; font-size: .9rem; }
+.apps__form input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+.apps__form-actions { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; }
+.apps__erreur { margin: 0; padding: .4rem .55rem; border-radius: 8px; background: var(--erreur-doux); color: var(--erreur); font-size: .8rem; }
+.apps__supprimer { margin-left: auto; color: var(--erreur); }

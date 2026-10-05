@@ -85,6 +85,7 @@ $actif = static function (string $prefixe) use ($route): string {
            */
           $favorisMenu = Menu::favoris($utilisateur['menu_favoris'] ?? null);
           $compteursMenu = ['partages' => $nouveauxPartages, 'groupes' => $invitationsTravaux, 'amis' => $attenteAmis];
+          $liensApps = LienApp::duUser((int) $utilisateur['id']);
           $tuile = static function (string $cle) use ($actif, $compteursMenu): string {
               $s = Menu::SECTIONS[$cle];
               $n = (int) ($compteursMenu[$cle] ?? 0);
@@ -97,7 +98,8 @@ $actif = static function (string $prefixe) use ($route): string {
                   . '<span class="apps__etoile" aria-hidden="true"></span></a>';
           };
           ?>
-          <details class="apps" data-apps data-url-favoris="<?= e(url('compte/menu-favoris')) ?>" data-jeton="<?= e(Session::jetonCsrf()) ?>">
+          <details class="apps" data-apps data-url-favoris="<?= e(url('compte/menu-favoris')) ?>" data-url-liens="<?= e(url('compte/liens-apps')) ?>"
+                   data-liens-max="<?= LienApp::MAX ?>" data-jeton="<?= e(Session::jetonCsrf()) ?>">
             <summary class="apps__bouton" title="<?= e(t('nav.apps')) ?>" aria-label="<?= e(t('nav.apps')) ?>">
               <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false">
                 <?php foreach ([4, 12, 20] as $cy): foreach ([4, 12, 20] as $cx): ?>
@@ -125,6 +127,57 @@ $actif = static function (string $prefixe) use ($route): string {
                     <?php if (!in_array($cle, $favorisMenu, true)): ?><?= $tuile($cle) ?><?php endif; ?>
                   <?php endforeach; ?>
                 </div>
+              </section>
+              <?php
+              /*
+               * Mes applications : des liens vers d'autres sites (YouTube, NotebookLM…), ajoutés par chacun. Ils s'ouvrent
+               * dans un nouvel onglet. Les tuiles sont de vrais liens (sans script, ils marchent) ; ajouter, modifier et
+               * supprimer demandent le script. L'icône est un emoji : l'application ne contacte jamais ces sites.
+               */
+              ?>
+              <section class="apps__bloc" data-apps-liens>
+                <div class="apps__entete">
+                  <h2 class="apps__titre"><?= e(t('apps.liens')) ?></h2>
+                  <button type="button" class="apps__crayon" data-liens-edition aria-pressed="false" hidden
+                          title="<?= e(t('apps.liens_modifier')) ?>" aria-label="<?= e(t('apps.liens_modifier')) ?>">✏️</button>
+                </div>
+                <p class="apps__aide" data-liens-aide hidden><?= e(t('apps.liens_aide')) ?></p>
+                <div class="apps__grille" data-liens-grille>
+                  <?php foreach ($liensApps as $lien): ?>
+                    <a class="apps__tuile apps__tuile--lien" href="<?= e($lien['url']) ?>" target="_blank" rel="noopener noreferrer"
+                       data-lien-id="<?= (int) $lien['id'] ?>" data-nom="<?= e($lien['nom']) ?>" data-icone-choisie="<?= e($lien['icone_choisie']) ?>">
+                      <span class="apps__icone" aria-hidden="true"><?= e($lien['icone']) ?></span>
+                      <span class="apps__nom"><?= e($lien['nom']) ?></span>
+                      <span class="apps__etoile apps__etoile--lien" aria-hidden="true">✎</span>
+                    </a>
+                  <?php endforeach; ?>
+                  <button type="button" class="apps__tuile apps__tuile--ajout" data-lien-ajout hidden>
+                    <span class="apps__icone" aria-hidden="true">＋</span>
+                    <span class="apps__nom"><?= e(t('apps.lien_ajouter')) ?></span>
+                  </button>
+                </div>
+                <p class="apps__vide" data-liens-vide<?= $liensApps === [] ? '' : ' hidden' ?>><?= e(t('apps.liens_vide')) ?></p>
+                <form class="apps__form" data-lien-form hidden autocomplete="off">
+                  <h3 class="apps__sous-titre" data-lien-form-titre><?= e(t('apps.lien_nouveau')) ?></h3>
+                  <label>
+                    <span><?= e(t('apps.lien_nom')) ?></span>
+                    <input type="text" name="nom" maxlength="<?= LienApp::NOM_MAX ?>" required placeholder="YouTube">
+                  </label>
+                  <label>
+                    <span><?= e(t('apps.lien_adresse')) ?></span>
+                    <input type="text" name="url" inputmode="url" maxlength="<?= LienApp::URL_MAX ?>" required placeholder="youtube.com">
+                  </label>
+                  <label>
+                    <span><?= e(t('apps.lien_icone')) ?></span>
+                    <input type="text" name="icone" maxlength="<?= LienApp::ICONE_MAX ?>" placeholder="▶️">
+                  </label>
+                  <p class="apps__erreur" role="alert" data-lien-erreur hidden></p>
+                  <div class="apps__form-actions">
+                    <button type="submit" class="bouton bouton--petit"><?= e(t('apps.lien_enregistrer')) ?></button>
+                    <button type="button" class="bouton bouton--discret bouton--petit" data-lien-annuler><?= e(t('apps.lien_annuler')) ?></button>
+                    <button type="button" class="bouton bouton--discret bouton--petit apps__supprimer" data-lien-supprimer hidden><?= e(t('apps.lien_supprimer')) ?></button>
+                  </div>
+                </form>
               </section>
             </div>
           </details>
