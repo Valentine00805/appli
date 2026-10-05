@@ -4431,6 +4431,7 @@ return [
     'tr.err.trop_de_liens' => 'Un groupe lie {max} éléments au plus.',
     'tr.err.delier' => 'Seul celui qui l’a lié, ou un administrateur du groupe, peut le retirer.',
     'cal.tache_groupe' => 'Tâche de groupe · {projet}',
+    'cal.tache_sans_personne' => '{titre} (sans personne)',
     'apps.lien_icone' => 'Icône (facultatif : un emoji à la place de celle du site)',
     'apps.lien_enregistrer' => 'Enregistrer',
     'apps.lien_annuler' => 'Annuler',

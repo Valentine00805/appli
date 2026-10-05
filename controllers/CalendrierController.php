@@ -1327,7 +1327,7 @@ final class CalendrierController
         // Les tâches d'un travail de groupe qu'on m'a confiées — et celles que personne n'a encore prises, pour tout le groupe —, avec
         // leur échéance : elles s'ouvrent dans la fenêtre du groupe. Celles d'un autre membre ne sont pas les miennes.
         foreach (Database::all(
-            "SELECT pt.id, pt.titre, pt.echeance, pt.statut, p.id AS projet_id, p.nom AS projet_nom
+            "SELECT pt.id, pt.titre, pt.echeance, pt.statut, pt.membre_id, p.id AS projet_id, p.nom AS projet_nom
                FROM projet_taches pt
                JOIN projets p ON p.id = pt.projet_id
                JOIN projet_membres pm ON pm.projet_id = p.id AND pm.user_id = ? AND pm.statut = 'membre'
@@ -1337,7 +1337,9 @@ final class CalendrierController
             $lignes[] = [
                 // Un identifiant à part : celui d'un évènement ne doit pas le recouvrir dans les vues.
                 'id'              => 1000000000 + (int) $tache['id'],
-                'titre'           => (string) $tache['titre'],
+                // Que personne n'ait prise : le titre le dit, pour qu'on la repère dans la grille.
+                'titre'           => $tache['membre_id'] === null
+                    ? t('cal.tache_sans_personne', ['titre' => (string) $tache['titre']]) : (string) $tache['titre'],
                 'debut'           => $tache['echeance'] . ' 00:00:00',
                 'fin'             => $tache['echeance'] . ' 23:59:59',
                 'journee_entiere' => 1,

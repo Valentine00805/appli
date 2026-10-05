@@ -4419,6 +4419,7 @@ return [
     'tr.err.trop_de_liens' => 'A group can link {max} items at most.',
     'tr.err.delier' => 'Only the person who linked it, or a group administrator, can remove it.',
     'cal.tache_groupe' => 'Group task · {projet}',
+    'cal.tache_sans_personne' => '{titre} (unassigned)',
     'apps.lien_icone' => 'Icon (optional: an emoji instead of the site’s own)',
     'apps.lien_enregistrer' => 'Save',
     'apps.lien_annuler' => 'Cancel',

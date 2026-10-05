@@ -143,7 +143,8 @@ try {
         $oui(str_contains($calendrier, 'Mine due') && str_contains($calendrier, '/travaux/' . $projet . '"')), 'oui');
     $dire('  avec son type « Group task · le groupe », et les faites aussi (barrées)',
         $oui(str_contains($calendrier, 'Group task · Essai de langue') && str_contains($calendrier, 'Done due')), 'oui');
-    $dire('  celle que personne n\'a prise y est aussi (pour tout le groupe)', $oui(str_contains($calendrier, 'Nobody due')), 'oui');
+    $dire('  celle que personne n\'a prise y est aussi (pour tout le groupe), et son titre le précise',
+        $oui(str_contains($calendrier, 'Nobody due (unassigned)') && !str_contains($calendrier, 'Mine due (unassigned)')), 'oui');
     $dire('  mais pas celle d\'un autre membre, ni celle sans échéance',
         $oui(!str_contains($calendrier, 'Alex due') && !str_contains($calendrier, 'Mine undated')), 'oui');
     $demain = date('Y-m-d');
