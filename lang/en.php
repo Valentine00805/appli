@@ -4256,7 +4256,6 @@ return [
     'cm.vierge_aide' => 'Start from an empty map whose central idea is the course title, and add your ideas by hand. No Gemini key needed.',
     'cm.titre_liste' => 'My mind maps',
     'cm.aucune_liste' => 'No mind map yet.',
-    'cm.aller_resumes' => 'Create a mind map in “AI summaries” →',
     'cm.ouvrir' => 'Open the mind map “{titre}”',
     'cm.b.fiche' => 'Add to the revision sheet',
     'cm.b.fiche_aide' => 'Attaches the map, as an image, to the files of the revision sheet of “{cours}”',
@@ -4320,7 +4319,6 @@ return [
     'js.dia.nom_transcription' => 'transcript',
     'fiche.diaporamas' => '🎞️ Slideshows',
     'dia.fiche_aucun' => 'No slideshow in this sheet.',
-    'dia.aller_resumes' => 'Create a slideshow in “AI summaries” →',
     'dia.fiche_titre' => 'Revision sheet',
     'dia.fiche_aide' => 'File the slideshow in a course’s revision sheet: it reopens there with its voice. The PDF (titles, points and commentary) is attached there as a file.',
     'dia.fiche_ajouter' => 'Add to the revision sheet',
@@ -4330,4 +4328,5 @@ return [
     'dia.fl.fiche_deja' => 'This slideshow is already in the sheet of “{cours}”.',
     'dia.fl.fiche_retire' => 'Slideshow removed from the sheet of “{cours}” (it is not deleted).',
     'dia.fl.fiche_impossible' => 'Not possible: choose one of the courses this slideshow was written from.',
+    'fiche.resumer_ia' => '✨ Summarise with AI',
 ];

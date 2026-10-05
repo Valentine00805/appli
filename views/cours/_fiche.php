@@ -538,9 +538,16 @@ $avancementFiche = avancement_anneaux(
     <?php endif; ?>
 
     <?php // Elles se créent dans « Résumés IA » (une case « Carte mentale », ou une carte vierge) ; ici, on les retrouve. ?>
-    <p class="champ__aide"><a href="<?= url('resumes', ['cours' => $cours['id']]) ?>"><?= e(t('cm.aller_resumes')) ?></a></p>
-    <?php // Le lien pour créer un diaporama est ici, avec celui des cartes mentales : les deux se créent depuis « Résumés IA ». ?>
-    <p class="champ__aide"><a href="<?= url('resumes', ['cours' => $cours['id']]) ?>"><?= e(t('dia.aller_resumes')) ?></a></p>
+    <?php
+    /*
+     * Tout ce que l'IA écrit à partir du cours — résumé, points clés, flash cards, carte mentale, diaporama — se demande
+     * depuis « Résumés IA », où ce cours est déjà coché : un seul bouton y mène.
+     */
+    ?>
+    <p class="actions">
+      <a class="bouton bouton--secondaire bouton--petit" data-resumer-ia
+         href="<?= url('resumes', ['cours' => $cours['id']]) ?>"><?= e(t('fiche.resumer_ia')) ?></a>
+    </p>
   </div>
 
   <?php // --- Liens web ----------------------------------------------- ?>

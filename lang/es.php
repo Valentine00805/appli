@@ -4256,7 +4256,6 @@ return [
     'cm.vierge_aide' => 'Parte de un mapa vacío cuya idea central es el título del curso y añade tus ideas a mano. No hace falta ninguna clave de Gemini.',
     'cm.titre_liste' => 'Mis mapas mentales',
     'cm.aucune_liste' => 'Aún no hay mapas mentales.',
-    'cm.aller_resumes' => 'Crear un mapa mental en «Resúmenes con IA» →',
     'cm.ouvrir' => 'Abrir el mapa mental «{titre}»',
     'cm.b.fiche' => 'Añadir a la ficha de repaso',
     'cm.b.fiche_aide' => 'Adjunta el mapa, como imagen, a los archivos de la ficha de repaso de «{cours}»',
@@ -4320,7 +4319,6 @@ return [
     'js.dia.nom_transcription' => 'transcripcion',
     'fiche.diaporamas' => '🎞️ Presentaciones',
     'dia.fiche_aucun' => 'Ninguna presentación en esta ficha.',
-    'dia.aller_resumes' => 'Crear una presentación en «Resúmenes con IA» →',
     'dia.fiche_titre' => 'Ficha de repaso',
     'dia.fiche_aide' => 'Guarda la presentación en la ficha de repaso de un curso: allí se reabre con su voz. El PDF (títulos, puntos y comentarios) se adjunta allí como archivo.',
     'dia.fiche_ajouter' => 'Añadir a la ficha de repaso',
@@ -4330,4 +4328,5 @@ return [
     'dia.fl.fiche_deja' => 'Esta presentación ya está en la ficha de «{cours}».',
     'dia.fl.fiche_retire' => 'Presentación quitada de la ficha de «{cours}» (no se elimina).',
     'dia.fl.fiche_impossible' => 'No es posible: elige uno de los cursos de los que se escribió esta presentación.',
+    'fiche.resumer_ia' => '✨ Resumir con IA',
 ];

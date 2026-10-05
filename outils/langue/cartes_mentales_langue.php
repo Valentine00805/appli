@@ -284,13 +284,13 @@ try {
 
     echo "\n8. Les quatre langues\n";
     foreach ([
-        'en' => [['Mind maps', 'No mind map for this course yet.', 'Create a mind map in “AI summaries” →'],
+        'en' => [['Mind maps', 'No mind map for this course yet.', '✨ Summarise with AI'],
                  ['A mind map to fill in yourself', 'filed in its revision sheet', 'New mind map']],
-        'es' => [['Mapas mentales', 'Aún no hay mapas mentales para este curso.', 'Crear un mapa mental en «Resúmenes con IA» →'],
+        'es' => [['Mapas mentales', 'Aún no hay mapas mentales para este curso.', '✨ Resumir con IA'],
                  ['Un mapa mental para rellenar tú mismo', 'guardado en su ficha de repaso', 'Nuevo mapa mental']],
-        'de' => [['Mindmaps', 'Noch keine Mindmap für diesen Kurs.', 'Eine Mindmap unter „KI-Zusammenfassungen“ erstellen →'],
+        'de' => [['Mindmaps', 'Noch keine Mindmap für diesen Kurs.', '✨ Mit KI zusammenfassen'],
                  ['Eine Mindmap zum Selbstausfüllen', 'abgelegt in seinem Lernblatt', 'Neue Mindmap']],
-        'fr' => [['Cartes mentales', 'Aucune carte mentale pour ce cours.', 'Créer une carte mentale dans « Résumés IA » →'],
+        'fr' => [['Cartes mentales', 'Aucune carte mentale pour ce cours.', '✨ Résumer par IA'],
                  ['Une carte mentale à remplir soi-même', 'rangée dans sa fiche de révision', 'Nouvelle carte mentale']],
     ] as $langue => [$motsFiche, $motsResumes]) {
         $appel($a, 'compte/langue', ['_csrf' => $csrf, 'langue' => $langue]);

@@ -4268,7 +4268,6 @@ return [
     'cm.vierge_aide' => 'Pars d’une carte vide, dont l’idée centrale est le titre du cours, et ajoute tes idées à la main. Aucune clé Gemini n’est nécessaire.',
     'cm.titre_liste' => 'Mes cartes mentales',
     'cm.aucune_liste' => 'Aucune carte mentale pour l’instant.',
-    'cm.aller_resumes' => 'Créer une carte mentale dans « Résumés IA » →',
     'cm.ouvrir' => 'Ouvrir la carte mentale « {titre} »',
     'cm.b.fiche' => 'Ajouter à la fiche de révision',
     'cm.b.fiche_aide' => 'Joint la carte, en image, aux fichiers de la fiche de révision de « {cours} »',
@@ -4332,7 +4331,6 @@ return [
     'js.dia.nom_transcription' => 'transcription',
     'fiche.diaporamas' => '🎞️ Diaporamas',
     'dia.fiche_aucun' => 'Aucun diaporama dans cette fiche.',
-    'dia.aller_resumes' => 'Créer un diaporama dans « Résumés IA » →',
     'dia.fiche_titre' => 'Fiche de révision',
     'dia.fiche_aide' => 'Range le diaporama dans la fiche de révision d’un cours : il s’y rouvre avec sa voix. Le PDF (titres, points et commentaires) s’y joint comme un fichier.',
     'dia.fiche_ajouter' => 'Ajouter à la fiche de révision',
@@ -4342,4 +4340,5 @@ return [
     'dia.fl.fiche_deja' => 'Ce diaporama est déjà dans la fiche de « {cours} ».',
     'dia.fl.fiche_retire' => 'Diaporama retiré de la fiche de « {cours} » (il n’est pas supprimé).',
     'dia.fl.fiche_impossible' => 'Impossible : choisissez un des cours que ce diaporama a lus.',
+    'fiche.resumer_ia' => '✨ Résumer par IA',
 ];

@@ -264,10 +264,10 @@ try {
     $nbLiens = static fn (): int => (int) bd_valeur('SELECT COUNT(*) FROM diaporama_cours WHERE diaporama_id = ?', [$id]);
 
     foreach ([
-        'en' => ['Revision sheet', 'Add to the revision sheet', '🎞️ Slideshows', 'No slideshow in this sheet.', 'Create a slideshow in “AI summaries” →'],
-        'es' => ['Ficha de repaso', 'Añadir a la ficha de repaso', '🎞️ Presentaciones', 'Ninguna presentación en esta ficha.', 'Crear una presentación en «Resúmenes con IA» →'],
-        'de' => ['Lernblatt', 'Zum Lernblatt hinzufügen', '🎞️ Präsentationen', 'Keine Präsentation in diesem Lernblatt.', 'Eine Präsentation unter „KI-Zusammenfassungen“ erstellen →'],
-        'fr' => ['Fiche de révision', 'Ajouter à la fiche de révision', '🎞️ Diaporamas', 'Aucun diaporama dans cette fiche.', 'Créer un diaporama dans « Résumés IA » →'],
+        'en' => ['Revision sheet', 'Add to the revision sheet', '🎞️ Slideshows', 'No slideshow in this sheet.', '✨ Summarise with AI'],
+        'es' => ['Ficha de repaso', 'Añadir a la ficha de repaso', '🎞️ Presentaciones', 'Ninguna presentación en esta ficha.', '✨ Resumir con IA'],
+        'de' => ['Lernblatt', 'Zum Lernblatt hinzufügen', '🎞️ Präsentationen', 'Keine Präsentation in diesem Lernblatt.', '✨ Mit KI zusammenfassen'],
+        'fr' => ['Fiche de révision', 'Ajouter à la fiche de révision', '🎞️ Diaporamas', 'Aucun diaporama dans cette fiche.', '✨ Résumer par IA'],
     ] as $langue => $mots) {
         $appel($a, 'compte/langue', ['_csrf' => $csrf, 'langue' => $langue]);
         [$popup] = $appel($a, 'diaporamas/' . $id . '?fenetre=1');
@@ -297,11 +297,11 @@ try {
         $oui(($p1 = strpos($fiche, 'data-diaporamas-fiche')) !== false && ($p2 = strpos($fiche, 'Fichiers et images')) !== false
             && ($p3 = strpos($fiche, 'Déposez ici')) !== false && $p1 < $p2 && $p1 < $p3
             && strpos($fiche, 'data-cartes-mentales') > $p3), 'oui');
-    $dire('  « Créer un diaporama dans Résumés IA » n’est plus sous l’aperçu : il suit « Créer une carte mentale… », plus bas dans la fiche',
-        $oui(($q1 = strpos($fiche, 'Créer une carte mentale dans « Résumés IA » →')) !== false && ($q2 = strpos($fiche, 'Créer un diaporama dans « Résumés IA » →')) !== false
-            && $q2 > $q1 && $q2 > strpos($fiche, 'data-cartes-mentales') && $q2 > strpos($fiche, 'data-diaporamas-fiche')
-            && ($q3 = strpos($fiche, '🔗 Liens')) !== false && $q2 < $q3
-            && substr_count($fiche, 'Créer un diaporama dans « Résumés IA » →') === 1), 'oui');
+    $dire('  un seul bouton « ✨ Résumer par IA » (vers « Résumés IA », ce cours déjà coché) remplace les liens de création : il est sous les cartes mentales, avant « Liens »',
+        $oui(substr_count($fiche, 'data-resumer-ia') === 1 && preg_match('#<a class="bouton bouton--secondaire bouton--petit" data-resumer-ia\s+href="[^"]*/resumes\?cours=' . $coursA . '">✨ Résumer par IA</a>#', $fiche) === 1
+            && !str_contains($fiche, 'Créer un diaporama dans') && !str_contains($fiche, 'Créer une carte mentale dans')
+            && ($q = strpos($fiche, 'data-resumer-ia')) > strpos($fiche, 'data-cartes-mentales') && $q > strpos($fiche, 'data-diaporamas-fiche')
+            && $q < (int) strpos($fiche, '🔗 Liens')), 'oui');
     preg_match('/data-dia-apercu data-url="[^"]*"\s+data-diapos="([^"]*)"/', $fiche, $mApercu);
     $apercu = json_decode(html_entity_decode($mApercu[1] ?? '[]', ENT_QUOTES, 'UTF-8'), true) ?: [];
     $dire('  l’aperçu porte les titres et les points des 3 diapositives, pas leur commentaire (long : il se lit dans le lecteur)',

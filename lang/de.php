@@ -4256,7 +4256,6 @@ return [
     'cm.vierge_aide' => 'Beginne mit einer leeren Mindmap, deren zentrale Idee der Kurstitel ist, und füge deine Ideen von Hand hinzu. Es ist kein Gemini-Schlüssel nötig.',
     'cm.titre_liste' => 'Meine Mindmaps',
     'cm.aucune_liste' => 'Noch keine Mindmap.',
-    'cm.aller_resumes' => 'Eine Mindmap unter „KI-Zusammenfassungen“ erstellen →',
     'cm.ouvrir' => 'Mindmap „{titre}“ öffnen',
     'cm.b.fiche' => 'Zum Lernblatt hinzufügen',
     'cm.b.fiche_aide' => 'Hängt die Mindmap als Bild an die Dateien des Lernblatts von „{cours}“ an',
@@ -4320,7 +4319,6 @@ return [
     'js.dia.nom_transcription' => 'transkript',
     'fiche.diaporamas' => '🎞️ Präsentationen',
     'dia.fiche_aucun' => 'Keine Präsentation in diesem Lernblatt.',
-    'dia.aller_resumes' => 'Eine Präsentation unter „KI-Zusammenfassungen“ erstellen →',
     'dia.fiche_titre' => 'Lernblatt',
     'dia.fiche_aide' => 'Lege die Präsentation im Lernblatt eines Kurses ab: Dort öffnet sie sich mit ihrer Stimme. Das PDF (Titel, Punkte und Kommentare) wird dort als Datei angehängt.',
     'dia.fiche_ajouter' => 'Zum Lernblatt hinzufügen',
@@ -4330,4 +4328,5 @@ return [
     'dia.fl.fiche_deja' => 'Diese Präsentation ist schon im Lernblatt von „{cours}“.',
     'dia.fl.fiche_retire' => 'Präsentation aus dem Lernblatt von „{cours}“ entfernt (sie wird nicht gelöscht).',
     'dia.fl.fiche_impossible' => 'Nicht möglich: Wähle einen der Kurse, aus denen diese Präsentation erstellt wurde.',
+    'fiche.resumer_ia' => '✨ Mit KI zusammenfassen',
 ];
