@@ -4218,8 +4218,8 @@ summary.cal-volet__groupe:focus-visible {
 /* Réorganiser les applications : la tuile attrapée se soulève ; le doigt ne fait pas défiler le panneau à sa place. */
 .apps--edition-liens .apps__tuile--lien { cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; }
 .apps--edition-liens .apps__tuile--lien .apps__favicon { pointer-events: none; }
-.apps--edition [data-apps-favoris] .apps__tuile { cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; }
-.apps--edition [data-apps-favoris] .apps__icone { pointer-events: none; }
+.apps--edition [data-apps-favoris] .apps__tuile, .apps--edition [data-apps-autres] .apps__tuile { cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; }
+.apps--edition [data-apps-favoris] .apps__icone, .apps--edition [data-apps-autres] .apps__icone { pointer-events: none; }
 .apps .apps__tuile.apps__tuile--glisse { cursor: grabbing; opacity: .8; transform: scale(1.07); box-shadow: 0 6px 18px rgb(0 0 0 / 25%); background: var(--fond-carte); position: relative; z-index: 2; }
 .apps__indice { display: block; margin-top: .25rem; font-size: .78rem; line-height: 1.35; color: var(--texte-doux); }
 

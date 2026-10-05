@@ -69,9 +69,11 @@
      * Rend les tuiles d'une grille déplaçables, tant que « actif() » est vrai : à la souris ou au doigt (événements
      * « pointer »), ou au clavier avec Alt + flèches. La tuile attrapée prend la place de celle qu'elle survole ; quand
      * l'ordre a changé, « apres() » est appelée (c'est là qu'on l'enregistre). Rend « vientDeGlisser() » : vrai juste après
-     * un glissement, pour que le clic qui le suit ne déclenche rien.
+     * un glissement, pour que le clic qui le suit ne déclenche rien. Options : « deplacer(tuile, ev) » remplace la règle
+     * de placement (pour passer d'une grille à l'autre) ; « clavier(tuile) » dit si Alt + flèches peut la déplacer.
      */
-    var rendreTriable = function (grille, selecteur, actif, apres) {
+    var rendreTriable = function (grille, selecteur, actif, apres, options) {
+      options = options || {};
       var apresGlisse = false;
       var glisse = null;   // {tuile, x, y, pointeur, actif, avant}
       var tuileDe = function (cible) { return cible && cible.closest ? cible.closest(selecteur) : null; };
@@ -93,6 +95,7 @@
           try { glisse.tuile.setPointerCapture(ev.pointerId); } catch (e) { /* sans capture, le glissement marche quand même */ }
         }
         ev.preventDefault();
+        if (options.deplacer) { options.deplacer(glisse.tuile, ev); return; }
         var autre = tuileDe(document.elementFromPoint(ev.clientX, ev.clientY));
         if (!autre || autre === glisse.tuile || !grille.contains(autre)) { return; }
         // La tuile prend la place de celle qu'elle survole : après elle si elle la précédait, avant sinon.
@@ -115,7 +118,7 @@
       grille.addEventListener('dragstart', function (ev) { if (actif()) { ev.preventDefault(); } });
       grille.addEventListener('keydown', function (ev) {
         var tuile = tuileDe(ev.target);
-        if (!actif() || !ev.altKey || !tuile) { return; }
+        if (!actif() || !ev.altKey || !tuile || (options.clavier && !options.clavier(tuile))) { return; }
         var avance = ev.key === 'ArrowRight' || ev.key === 'ArrowDown';
         if (!avance && ev.key !== 'ArrowLeft' && ev.key !== 'ArrowUp') { return; }
         ev.preventDefault();
@@ -143,24 +146,61 @@
         .catch(function () { if (aide) { aide.hidden = false; aide.textContent = mot('apps.echec'); } });
     };
 
+    /** Une tuile retourne dans « Toutes les sections », à sa place dans le catalogue (son rang). */
+    var rangerDansLesAutres = function (tuile) {
+      var rang = parseInt(tuile.getAttribute('data-rang'), 10);
+      var avant = null;
+      Array.prototype.forEach.call(autres.children, function (t) {
+        if (avant === null && parseInt(t.getAttribute('data-rang'), 10) > rang) { avant = t; }
+      });
+      autres.insertBefore(tuile, avant);
+    };
+
     /** Une tuile passe des favoris aux autres (à sa place dans le catalogue), ou des autres aux favoris (à la fin). */
     var basculer = function (tuile) {
-      if (tuile.parentNode === favoris) {
-        var rang = parseInt(tuile.getAttribute('data-rang'), 10);
-        var avant = null;
-        Array.prototype.forEach.call(autres.children, function (t) {
-          if (avant === null && parseInt(t.getAttribute('data-rang'), 10) > rang) { avant = t; }
-        });
-        autres.insertBefore(tuile, avant);
-      } else {
-        favoris.appendChild(tuile);
-      }
+      if (tuile.parentNode === favoris) { rangerDansLesAutres(tuile); } else { favoris.appendChild(tuile); }
       majVide();
       sauver();
     };
 
-    // Les favoris se réorganisent en édition : leur ordre est celui de la grille (« sauver » l'envoie).
-    var triFavoris = favoris ? rendreTriable(favoris, '[data-cle]', function () { return enEdition; }, sauver) : null;
+    // En édition, on glisse les tuiles : dans les favoris pour les ordonner, et d'une zone à l'autre pour ajouter un
+    // favori (depuis « Toutes les sections », à l'endroit où on le dépose) ou le retirer (il retourne à sa place du
+    // catalogue, dont l'ordre est fixe). L'ordre des favoris est celui de la grille (« sauver » l'envoie).
+    var triFavoris = null;
+    if (favoris && autres) {
+      var blocFavoris = favoris.closest('section') || favoris;
+      var blocAutres = autres.closest('section') || autres;
+      var deplacerTuile = function (tuile, ev) {
+        var cible = document.elementFromPoint(ev.clientX, ev.clientY);
+        if (!cible || !cible.closest) { return; }
+        var autre = cible.closest('[data-cle]');
+        var chezFavoris = tuile.parentNode === favoris;
+        if (autre && autre !== tuile) {
+          if (autre.parentNode === favoris) {
+            if (chezFavoris) {
+              // Dans les favoris : la tuile prend la place de celle qu'elle survole.
+              var suit = (tuile.compareDocumentPosition(autre) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+              favoris.insertBefore(tuile, suit ? autre.nextSibling : autre);
+            } else {
+              // Venue du catalogue : avant ou après la tuile survolée, selon le côté.
+              var zone = autre.getBoundingClientRect();
+              favoris.insertBefore(tuile, ev.clientX < zone.left + zone.width / 2 ? autre : autre.nextSibling);
+            }
+          } else if (chezFavoris) {
+            rangerDansLesAutres(tuile);
+          }
+          return;
+        }
+        if (autre) { return; }
+        // Ni sur une tuile : sur le fond d'une des deux zones.
+        if (!chezFavoris && blocFavoris.contains(cible)) { favoris.appendChild(tuile); }
+        else if (chezFavoris && blocAutres.contains(cible)) { rangerDansLesAutres(tuile); }
+      };
+      triFavoris = rendreTriable(racine, '[data-cle]', function () { return enEdition; }, function () { majVide(); sauver(); }, {
+        deplacer: deplacerTuile,
+        clavier: function (tuile) { return tuile.parentNode === favoris; },
+      });
+    }
 
     // --- Mes applications : des liens vers d'autres sites, ajoutés par chacun --------------------------------------
     var blocLiens = racine.querySelector('[data-apps-liens]');
