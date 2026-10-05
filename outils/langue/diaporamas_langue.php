@@ -293,6 +293,10 @@ try {
         $oui(str_contains($fiche, 'data-dia-apercu') && str_contains($fiche, 'Pourquoi chiffrer ?') && str_contains($fiche, '<li>Confidentialité</li>')
             && str_contains($fiche, 'Diapositive 1 sur 3') && str_contains($fiche, '▶ Lecture commentée')
             && str_contains($fiche, 'data-dia-apercu-action="suivant"') && str_contains($fiche, 'data-dia-apercu-action="precedent"')), 'oui');
+    $dire('  le rayon « Diaporamas » est en tête des éléments rattachés : au-dessus de « Fichiers et images » et de sa zone « Déposez ici »',
+        $oui(($p1 = strpos($fiche, 'data-diaporamas-fiche')) !== false && ($p2 = strpos($fiche, 'Fichiers et images')) !== false
+            && ($p3 = strpos($fiche, 'Déposez ici')) !== false && $p1 < $p2 && $p1 < $p3
+            && strpos($fiche, 'data-cartes-mentales') > $p3), 'oui');
     preg_match('/data-dia-apercu data-url="[^"]*"\s+data-diapos="([^"]*)"/', $fiche, $mApercu);
     $apercu = json_decode(html_entity_decode($mApercu[1] ?? '[]', ENT_QUOTES, 'UTF-8'), true) ?: [];
     $dire('  l’aperçu porte les titres et les points des 3 diapositives, pas leur commentaire (long : il se lit dans le lecteur)',
