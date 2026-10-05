@@ -66,6 +66,18 @@ try {
     [$js] = $appel($a, 'assets/js/app.js');
     $dire('  le script de la fenêtre sait ouvrir un lien « data-fenetre » posé dans une fenêtre',
         $oui(str_contains($js, "closest('[data-fenetre]')")), 'oui');
+
+    echo "\n2. L'évènement d'un cours, depuis le cours\n";
+    [$coursPage] = $appel($a, 'cours/' . $coursA);
+    $dire('la liste « Au calendrier » du cours ouvre l’évènement dans une fenêtre (lien « data-fenetre »)',
+        $oui(preg_match('#<a class="evt-ligne" href="[^"]*/evenements/' . $evenement . '/modifier" data-fenetre>#', $coursPage) === 1), 'oui');
+    bd_run('INSERT INTO fiche_elements (user_id, cours_id, type, cible_evenement_id) VALUES (?, ?, \'evenement\', ?)', [$idA, $coursA, $evenement]);
+    [$fiche] = $appel($a, 'revision/' . $coursA);
+    $dire('  et celle de sa fiche de révision aussi',
+        $oui(preg_match('#<a href="[^"]*/evenements/' . $evenement . '/modifier" data-fenetre>#', $fiche) === 1), 'oui');
+    [$form, , $code] = $appel($a, 'evenements/' . $evenement . '/modifier?fenetre=1');
+    $dire('  le formulaire de l’évènement répond en fragment (sans bandeau ni menu)',
+        $code . ' · ' . $oui(!str_contains($form, '<header class="entete"') && str_contains($form, 'Rendre le DM')), '200 · oui');
 } finally {
     foreach ($cookies as $f) { @unlink($f); }
     foreach ($emails as $a) { bd_run('DELETE FROM users WHERE email = ? AND email LIKE ?', [$a, '%@exemple-test.fr']); }

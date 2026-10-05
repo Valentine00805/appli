@@ -584,7 +584,7 @@ $avancementFiche = avancement_anneaux(
       <ul class="fiche__liste">
         <?php foreach ($parType['evenement'] as $renvoi): ?>
           <li>
-            <a href="<?= url('evenements/' . (int) $renvoi['cible_evenement_id'] . '/modifier') ?>">
+            <a href="<?= url('evenements/' . (int) $renvoi['cible_evenement_id'] . '/modifier') ?>" data-fenetre>
               <?= e(($renvoi['type_icone'] ?? '📌') . ' ' . (string) $renvoi['evenement_titre']) ?>
             </a>
             <span class="fiche__url discret">
