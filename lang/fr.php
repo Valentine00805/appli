@@ -4404,6 +4404,7 @@ return [
     'evt.notes_de' => 'Notes de {qui}',
     'pt.fl.matiere_copies.un' => 'Elle est aussi posée sur ta copie.',
     'pt.fl.matiere_copies.plusieurs' => 'Elle est aussi posée sur tes {n} copies.',
+    'tr.li.ouvrir' => 'Ouvrir le groupe « {nom} »',
     'apps.lien_icone' => 'Icône (facultatif : un emoji à la place de celle du site)',
     'apps.lien_enregistrer' => 'Enregistrer',
     'apps.lien_annuler' => 'Annuler',

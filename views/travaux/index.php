@@ -5,7 +5,9 @@
  * @var list<array> $projets
  * @var list<array> $invitations
  * @var list<array> $mesTaches  mes tâches à faire, tous projets confondus
+ * @var ?array $aOuvrir  le groupe à ouvrir aussitôt dans une fenêtre (une invitation vient d'être acceptée)
  */
+$aOuvrir = $aOuvrir ?? null;
 $csrf = Session::jetonCsrf();
 ?>
 <div class="entete-page">
@@ -15,6 +17,12 @@ $csrf = Session::jetonCsrf();
   </div>
   <a class="bouton" href="<?= url('travaux/nouveau') ?>" data-fenetre><?= e(t('tr.li.nouveau')) ?></a>
 </div>
+
+<?php if ($aOuvrir !== null): ?>
+  <?php // Le script clique ici tout seul : le groupe s'ouvre en fenêtre. Sans script, le lien reste, à cliquer. ?>
+  <p class="carte"><a href="<?= url('travaux/' . (int) $aOuvrir['id']) ?>" data-fenetre data-ouvrir-auto>
+    <?= e(t('tr.li.ouvrir', ['nom' => (string) $aOuvrir['nom']])) ?></a></p>
+<?php endif; ?>
 
 <?php if ($invitations !== []): ?>
   <section class="carte" style="margin-bottom:1.25rem">

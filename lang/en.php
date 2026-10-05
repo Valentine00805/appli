@@ -4392,6 +4392,7 @@ return [
     'evt.notes_de' => 'Notes from {qui}',
     'pt.fl.matiere_copies.un' => 'It is also set on your copy.',
     'pt.fl.matiere_copies.plusieurs' => 'It is also set on your {n} copies.',
+    'tr.li.ouvrir' => 'Open the group “{nom}”',
     'apps.lien_icone' => 'Icon (optional: an emoji instead of the site’s own)',
     'apps.lien_enregistrer' => 'Save',
     'apps.lien_annuler' => 'Cancel',

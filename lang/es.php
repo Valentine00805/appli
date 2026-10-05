@@ -4392,6 +4392,7 @@ return [
     'evt.notes_de' => 'Notas de {qui}',
     'pt.fl.matiere_copies.un' => 'También se ha puesto en tu copia.',
     'pt.fl.matiere_copies.plusieurs' => 'También se ha puesto en tus {n} copias.',
+    'tr.li.ouvrir' => 'Abrir el grupo «{nom}»',
     'apps.lien_icone' => 'Icono (opcional: un emoji en lugar del del sitio)',
     'apps.lien_enregistrer' => 'Guardar',
     'apps.lien_annuler' => 'Cancelar',

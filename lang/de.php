@@ -4392,6 +4392,7 @@ return [
     'evt.notes_de' => 'Notizen von {qui}',
     'pt.fl.matiere_copies.un' => 'Es wurde auch auf deine Kopie übertragen.',
     'pt.fl.matiere_copies.plusieurs' => 'Es wurde auch auf deine {n} Kopien übertragen.',
+    'tr.li.ouvrir' => 'Gruppe „{nom}“ öffnen',
     'apps.lien_icone' => 'Symbol (optional: ein Emoji statt dem der Seite)',
     'apps.lien_enregistrer' => 'Speichern',
     'apps.lien_annuler' => 'Abbrechen',

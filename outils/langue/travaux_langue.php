@@ -3,6 +3,7 @@
 require __DIR__ . '/base.php';
 
 $anomalies = 0;
+$termine = false;   // faux si le script s'arrête en route : le bilan ne doit pas dire « aucune anomalie »
 $dire = static function (string $quoi, string $obtenu, string $attendu) use (&$anomalies): void {
     $bon = $obtenu === $attendu;
     if (!$bon) { $anomalies++; }
@@ -30,6 +31,7 @@ $appel = static function (string $chemin, ?array $post = null) use ($ck): string
 $jeton = static fn (string $h): string => preg_match('/name="_csrf" value="([^"]+)"/', $h, $m) ? $m[1] : '';
 
 $projet = null;
+$invitation = null;
 try {
     $appel('connexion', ['_csrf' => $jeton($appel('connexion')), 'identifiant' => $email, 'mot_de_passe' => $mdp]);
     $csrf = $jeton($appel('compte'));
@@ -111,13 +113,35 @@ try {
     $dire('sans nom : « Give the person’s name. »',
         $oui(str_contains($sansNom, 'Give the person’s name.')), 'oui');
 
+    echo "\n   — accepter une invitation : le groupe s'ouvre dans une fenêtre\n";
+    bd_run('INSERT INTO projets (nom, cree_par) VALUES (?, ?)', ['Invitation d’essai', $id]);
+    $invitation = (int) bd_valeur('SELECT id FROM projets WHERE cree_par = ? AND nom = ?', [$id, 'Invitation d’essai']);
+    bd_run('INSERT INTO projet_membres (projet_id, user_id, role, statut, invite_par) VALUES (?, ?, ?, ?, ?)', [$invitation, $id, 'membre', 'invite', $id]);
+    $apres = $appel('travaux/' . $invitation . '/rejoindre', ['_csrf' => $csrf]);
+    $dire('accepter : on reste sur la liste, qui rouvre le groupe dans une fenêtre (« data-ouvrir-auto »)',
+        $oui(str_contains($apres, 'data-fenetre data-ouvrir-auto') && str_contains($apres, '/travaux/' . $invitation . '"')
+            && str_contains($apres, 'Open the group “Invitation d’essai”')), 'oui');
+    $dire('  et il est bien membre', (string) bd_valeur('SELECT statut FROM projet_membres WHERE projet_id = ? AND user_id = ?', [$invitation, $id]), 'membre');
+    $sans = $appel('travaux');
+    $dire('  la liste seule (sans « ouvrir ») ne rouvre rien', $oui(!str_contains($sans, 'data-ouvrir-auto')), 'oui');
+    $etranger = $appel('travaux?ouvrir=999999999');
+    $dire('  « ouvrir » pour un groupe qui n\'est pas à moi : rien ne s\'ouvre', $oui(!str_contains($etranger, 'data-ouvrir-auto')), 'oui');
+    $dejaFait = $appel('travaux/' . $invitation . '/rejoindre', ['_csrf' => $csrf]);
+    $dire('  accepter deux fois : refusé, rien ne s\'ouvre', $oui(!str_contains($dejaFait, 'data-ouvrir-auto')), 'oui');
+
     echo "\n7. Le français revient\n";
     $appel('compte/langue', ['_csrf' => $csrf, 'langue' => 'fr']);
     $fr = $appel('travaux/' . $projet);
     $dire('les mêmes pages, en français',
         $oui(str_contains($fr, 'Qui fait quoi') && str_contains($fr, '>À faire')
             && str_contains($fr, 'Répartition')), 'oui');
+    $termine = true;
 } finally {
+    if (!$termine) { $anomalies++; echo "\n   ✗ le script s'est arrêté avant la fin\n"; }
+    if ($invitation !== null && $invitation > 0) {
+        bd_run('DELETE FROM projet_membres WHERE projet_id = ?', [$invitation]);
+        bd_run('DELETE FROM projets WHERE id = ? AND cree_par = ?', [$invitation, $id]);
+    }
     // Ménage : ce projet d'essai et son compte, rien d'autre.
     if ($projet !== null && $projet > 0) {
         bd_run('DELETE FROM projet_taches WHERE projet_id = ?', [$projet]);
