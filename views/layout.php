@@ -99,7 +99,7 @@ $actif = static function (string $prefixe) use ($route): string {
           };
           ?>
           <details class="apps" data-apps data-url-favoris="<?= e(url('compte/menu-favoris')) ?>" data-url-liens="<?= e(url('compte/liens-apps')) ?>"
-                   data-liens-max="<?= LienApp::MAX ?>" data-lien-dialogue="apps-lien-dialogue" data-jeton="<?= e(Session::jetonCsrf()) ?>">
+                   data-liens-max="<?= LienApp::MAX ?>" data-lien-dialogue="apps-lien-dialogue" data-favicon="<?= e(LienApp::FAVICON) ?>" data-jeton="<?= e(Session::jetonCsrf()) ?>">
             <summary class="apps__bouton" title="<?= e(t('nav.apps')) ?>" aria-label="<?= e(t('nav.apps')) ?>">
               <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false">
                 <?php foreach ([4, 12, 20] as $cy): foreach ([4, 12, 20] as $cx): ?>
@@ -132,7 +132,8 @@ $actif = static function (string $prefixe) use ($route): string {
               /*
                * Mes applications : des liens vers d'autres sites (YouTube, NotebookLM…), ajoutés par chacun. Ils s'ouvrent
                * dans un nouvel onglet. Les tuiles sont de vrais liens (sans script, ils marchent) ; ajouter, modifier et
-               * supprimer demandent le script. L'icône est un emoji : l'application ne contacte jamais ces sites.
+               * supprimer demandent le script. L'icône est celle du site (le navigateur la demande à un service de favicons),
+               * avec l'emoji en repli, ou à la place si on en a choisi un.
                */
               ?>
               <section class="apps__bloc" data-apps-liens>
@@ -146,7 +147,7 @@ $actif = static function (string $prefixe) use ($route): string {
                   <?php foreach ($liensApps as $lien): ?>
                     <a class="apps__tuile apps__tuile--lien" href="<?= e($lien['url']) ?>" target="_blank" rel="noopener noreferrer"
                        data-lien-id="<?= (int) $lien['id'] ?>" data-nom="<?= e($lien['nom']) ?>" data-icone-choisie="<?= e($lien['icone_choisie']) ?>">
-                      <span class="apps__icone" aria-hidden="true"><?= e($lien['icone']) ?></span>
+                      <span class="apps__icone" aria-hidden="true"><?= e($lien['icone']) ?><?php if ($lien['icone_choisie'] === ''): ?><img class="apps__favicon" src="<?= e(LienApp::favicon($lien['url'])) ?>" alt="" width="32" height="32" loading="lazy" decoding="async" referrerpolicy="no-referrer"><?php endif; ?></span>
                       <span class="apps__nom"><?= e($lien['nom']) ?></span>
                       <span class="apps__etoile apps__etoile--lien" aria-hidden="true">✎</span>
                     </a>

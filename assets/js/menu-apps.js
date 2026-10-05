@@ -32,6 +32,23 @@
     var enEdition = false;
     var texteAide = aide ? aide.textContent : '';
 
+    // --- Les icônes des sites : l'emoji laisse la place à l'image quand elle est là, et la reprend si elle ne vient pas ---
+    // (« load » et « error » ne remontent pas : on les écoute à la descente.)
+    var imageArrivee = function (image) {
+      if (image.naturalWidth > 0 && image.parentNode) { image.parentNode.classList.add('apps__icone--image'); }
+    };
+    racine.addEventListener('load', function (ev) {
+      if (ev.target && ev.target.classList && ev.target.classList.contains('apps__favicon')) { imageArrivee(ev.target); }
+    }, true);
+    racine.addEventListener('error', function (ev) {
+      var cible = ev.target;
+      if (cible && cible.classList && cible.classList.contains('apps__favicon') && cible.parentNode) {
+        cible.parentNode.classList.remove('apps__icone--image');
+        cible.parentNode.removeChild(cible);
+      }
+    }, true);
+    Array.prototype.forEach.call(racine.querySelectorAll('.apps__favicon'), function (image) { if (image.complete) { imageArrivee(image); } });
+
     // --- Fermer : un clic à côté, ou Échap ------------------------------------------------------------------------
     var fenetreDesLiens = function () { return document.getElementById(racine.getAttribute('data-lien-dialogue') || ''); };
     document.addEventListener('click', function (ev) {
@@ -111,7 +128,26 @@
         tuile.setAttribute('data-lien-id', String(lien.id));
         tuile.setAttribute('data-nom', lien.nom);
         tuile.setAttribute('data-icone-choisie', lien.icone_choisie || '');
-        tuile.querySelector('.apps__icone').textContent = lien.icone;
+        var pastille = tuile.querySelector('.apps__icone');
+        pastille.textContent = lien.icone;
+        pastille.classList.remove('apps__icone--image');
+        // Pas d'emoji choisi : l'icône du site, l'emoji tenant sa place tant qu'elle n'est pas là (ou si elle ne vient pas).
+        var service = racine.getAttribute('data-favicon');
+        if (!lien.icone_choisie && service) {
+          var hote = '';
+          try { hote = new URL(lien.url).hostname; } catch (e) { hote = ''; }
+          if (hote) {
+            var image = document.createElement('img');
+            image.className = 'apps__favicon';
+            image.setAttribute('alt', '');
+            image.setAttribute('width', '32');
+            image.setAttribute('height', '32');
+            image.setAttribute('loading', 'lazy');
+            image.setAttribute('referrerpolicy', 'no-referrer');
+            image.setAttribute('src', service + encodeURIComponent(hote));
+            pastille.appendChild(image);
+          }
+        }
         tuile.querySelector('.apps__nom').textContent = lien.nom;
       };
       var creer = function (lien) {

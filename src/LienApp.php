@@ -6,8 +6,9 @@ declare(strict_types=1);
  *
  * Une adresse vient de l'utilisateur et sera suivie d'un clic : seule une adresse http(s) y passe (jamais
  * « javascript: », « data: » ou autre), sans identifiants dans l'adresse, et elle s'ouvre toujours dans un nouvel onglet,
- * avec rel="noopener noreferrer" (voir le gabarit). L'application ne contacte jamais ces sites : l'icône est un emoji,
- * proposé d'après le nom du site ou choisi à la main — pas de récupération de favicon, qui dirait à un tiers où l'on va.
+ * avec rel="noopener noreferrer" (voir le gabarit). Le serveur de l'application ne contacte jamais ces sites. L'icône
+ * est celle du site, que le navigateur demande au service de favicons de Google (seul le nom du site part, sans référent) ;
+ * si elle ne vient pas, ou si on a choisi un emoji, c'est l'emoji qui s'affiche — choisi, ou proposé d'après le site.
  */
 final class LienApp
 {
@@ -27,6 +28,14 @@ final class LienApp
         'deepl.com' => '🔤', 'moodle' => '🎓', 'pronote' => '🏫',
     ];
     public const ICONE_PAR_DEFAUT = '🔗';
+    /** Le service d'icônes de sites : on lui ajoute le nom d'hôte (encodé). */
+    public const FAVICON = 'https://www.google.com/s2/favicons?sz=64&domain=';
+
+    /** L'adresse de l'icône du site d'un lien. */
+    public static function favicon(string $url): string
+    {
+        return self::FAVICON . rawurlencode((string) (parse_url($url, PHP_URL_HOST) ?? ''));
+    }
 
     /**
      * Vérifie et nettoie ce que le formulaire envoie.

@@ -4210,3 +4210,10 @@ summary.cal-volet__groupe:focus-visible {
 .apps-fenetre .apps__form { margin: 0; padding: 0; border: 0; background: none; }
 .apps-fenetre .apps__sous-titre { font-size: 1.15rem; }
 .apps-fenetre .apps__form input { font-size: 1rem; padding: .5rem .65rem; }
+
+/* L'icône d'un lien du menu en grille : celle du site, posée sur l'emoji, qui reste en repli tant qu'elle n'est pas là. */
+.apps__tuile--lien .apps__icone { position: relative; }
+.apps__favicon { position: absolute; inset: 0; margin: auto; width: 1.7rem; height: 1.7rem; border-radius: 4px; object-fit: contain; opacity: 0; }
+.apps__icone--image { color: transparent; }
+.apps__icone--image .apps__favicon { opacity: 1; }
+

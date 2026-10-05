@@ -224,6 +224,9 @@ try {
     $dire('  et la tuile garde l’icône choisie pour préremplir l’édition (vide si c’est celle du site)',
         $oui(preg_match('#data-lien-id="' . $idYoutube . '" data-nom="YouTube" data-icone-choisie="">#', $page) === 1
             && str_contains($page, 'data-icone-choisie="🎓"')), 'oui');
+    $dire('  sans icône choisie la tuile porte celle du site (le navigateur la demande), avec l’emoji en repli ; avec une icône choisie, pas d’image',
+        $oui(str_contains($page, 'class="apps__favicon" src="https://www.google.com/s2/favicons?sz=64&amp;domain=youtube.com"')
+            && !str_contains($page, '🎓<img') && str_contains($page, '🔗<img') && str_contains($page, 'referrerpolicy="no-referrer"')), 'oui');
 
     echo "\n   — modifier, supprimer, limite\n";
     [$j, $code] = $lien($a, $csrf, 'YouTube Music', 'music.youtube.com', '🎵', $idYoutube);
@@ -279,10 +282,10 @@ try {
 
     bd_run('DELETE FROM liens_apps WHERE user_id = ? AND nom LIKE ?', [$idA, 'Rempli %']);
     foreach ([
-        'en' => ['My apps', 'Add', 'Edit my apps', 'Site address', 'Icon (an emoji, optional)', 'Address refused: a website address is needed'],
-        'es' => ['Mis aplicaciones', 'Añadir', 'Editar mis aplicaciones', 'Dirección del sitio', 'Icono (un emoji, opcional)', 'Dirección rechazada: hace falta la dirección de un sitio'],
-        'de' => ['Meine Apps', 'Hinzufügen', 'Meine Apps bearbeiten', 'Adresse der Website', 'Symbol (ein Emoji, optional)', 'Adresse abgelehnt: Es wird eine Website-Adresse benötigt'],
-        'fr' => ['Mes applications', 'Ajouter', 'Modifier mes applications', 'Adresse du site', 'Icône (un emoji, facultatif)', 'Adresse refusée : il faut une adresse de site'],
+        'en' => ['My apps', 'Add', 'Edit my apps', 'Site address', 'Icon (optional: an emoji instead of the site’s own)', 'Address refused: a website address is needed'],
+        'es' => ['Mis aplicaciones', 'Añadir', 'Editar mis aplicaciones', 'Dirección del sitio', 'Icono (opcional: un emoji en lugar del del sitio)', 'Dirección rechazada: hace falta la dirección de un sitio'],
+        'de' => ['Meine Apps', 'Hinzufügen', 'Meine Apps bearbeiten', 'Adresse der Website', 'Symbol (optional: ein Emoji statt dem der Seite)', 'Adresse abgelehnt: Es wird eine Website-Adresse benötigt'],
+        'fr' => ['Mes applications', 'Ajouter', 'Modifier mes applications', 'Adresse du site', 'Icône (facultatif : un emoji à la place de celle du site)', 'Adresse refusée : il faut une adresse de site'],
     ] as $langue => $mots) {
         $appel($a, 'compte/langue', ['_csrf' => $csrf, 'langue' => $langue]);
         [$page] = $appel($a, 'calendrier');

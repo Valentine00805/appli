@@ -4344,7 +4344,7 @@ return [
     'apps.lien_nouveau' => 'Neue App',
     'apps.lien_nom' => 'Name',
     'apps.lien_adresse' => 'Adresse der Website',
-    'apps.lien_icone' => 'Symbol (ein Emoji, optional)',
+    'apps.lien_icone' => 'Symbol (optional: ein Emoji statt dem der Seite)',
     'apps.lien_enregistrer' => 'Speichern',
     'apps.lien_annuler' => 'Abbrechen',
     'apps.lien_supprimer' => 'Löschen',

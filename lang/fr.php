@@ -4356,7 +4356,7 @@ return [
     'apps.lien_nouveau' => 'Nouvelle application',
     'apps.lien_nom' => 'Nom',
     'apps.lien_adresse' => 'Adresse du site',
-    'apps.lien_icone' => 'Icône (un emoji, facultatif)',
+    'apps.lien_icone' => 'Icône (facultatif : un emoji à la place de celle du site)',
     'apps.lien_enregistrer' => 'Enregistrer',
     'apps.lien_annuler' => 'Annuler',
     'apps.lien_supprimer' => 'Supprimer',
