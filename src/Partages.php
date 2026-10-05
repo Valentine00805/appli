@@ -435,15 +435,24 @@ final class Partages
         return self::droitDirect($type, $id, $moi) !== null;
     }
 
-    /** Le droit reçu sur ce document même, s'il y en a un. */
+    /**
+     * Le droit reçu sur ce document même, s'il y en a un : donné à un ami, ou — pour un cours ou un dossier — parce qu'il est lié à
+     * un travail de groupe dont on est membre (lecture seule : quitter le groupe retire l'accès).
+     */
     private static function droitDirect(string $type, int $id, int $moi): ?string
     {
         $droit = Database::valeur(
             'SELECT droit FROM partages_amis WHERE destinataire_id = ? AND cible_type = ? AND cible_id = ?',
             [$moi, $type, $id]
         );
+        if ($droit !== null && $droit !== false) {
+            return self::droitValide($droit);
+        }
+        if (in_array($type, ['cours', 'dossier'], true) && Travaux::lieAUnGroupeDe($type, $id, $moi)) {
+            return 'lecture';
+        }
 
-        return $droit === null || $droit === false ? null : self::droitValide($droit);
+        return null;
     }
 
     /**

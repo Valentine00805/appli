@@ -428,3 +428,7 @@ Le dessin des options et la fenêtre de création (assets/js/sondages.js) se con
 inconnu refusé, jeton CSRF), la copie du cours ou de l'évènement qui reprend la matière quand on l'a déjà, le lien vers le cours lié (seulement s'il est partagé aussi, jamais un cours gardé
 pour soi), « Mes rappels et mes notes » (délais inconnus écartés, note trop longue refusée, le propriétaire et les inconnus exclus), la note lisible par le propriétaire mais pas par
 les autres amis, l'évènement du propriétaire intact, les rappels qui partent à l'heure (via notifications/battement avec un faux appareil abonné) et cessent quand l'accès est retiré, quatre langues.
+
+**`travaux_liens_langue.php`** — les cours et dossiers liés à un travail de groupe (onglet « Cours ») : lier (les siens seulement, une fois ; type inconnu, identifiant illisible, étranger, invité et jeton CSRF refusés), la lecture par les membres
+— pas par un étranger ni un invité qui n'a pas accepté, pas ce qui n'est pas lié, mais le contenu d'un dossier lié oui —, le lien de groupe absent de « Partagés avec moi », l'ajout à son espace (copie d'un cours, d'un dossier avec son contenu),
+retirer un lien (celui qui l'a fait ou un administrateur), l'accès qui s'en va quand on quitte le groupe (la copie déjà faite reste), un cours supprimé qui disparaît de la liste, quatre langues.

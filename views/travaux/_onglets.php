@@ -3,7 +3,7 @@
  * L'en-tête d'un travail de groupe et ses onglets.
  *
  * @var array $projet
- * @var string $onglet  taches | echeances | fichiers | document | membres
+ * @var string $onglet  taches | echeances | fichiers | cours | document | membres
  * @var bool $dansUneFenetre  ouvert depuis la liste : les onglets restent dans la fenêtre
  */
 $dansUneFenetre = $dansUneFenetre ?? false;
@@ -11,6 +11,7 @@ $onglets = [
     'taches'    => ['', '✅', t('tr.on.qui_fait_quoi')],
     'echeances' => ['/echeances', '📅', t('tr.on.echeances')],
     'fichiers'  => ['/fichiers', '📎', t('tr.on.fichiers')],
+    'cours'     => ['/cours', '📘', t('tr.on.cours')],
     'document'  => ['/document', '📝', t('tr.on.document')],
     'membres'   => ['/membres', '👥', t('tr.on.membres')],
 ];

@@ -98,6 +98,38 @@ final class TravauxController
         $this->afficher('travaux/fichiers', $projet, ['fichiers' => Travaux::fichiers($id)], 'fichiers');
     }
 
+    /** Les cours et dossiers liés : les lire, les ajouter à son espace, et en lier un des siens. */
+    public function cours(int $id): void
+    {
+        $projet = $this->projet($id);
+        $this->afficher('travaux/cours', $projet, [
+            'liens' => Travaux::liens($id),
+            'aLier' => Travaux::aLier($id, Auth::id()),
+        ], 'cours');
+    }
+
+    /** Lie un de ses cours ou dossiers au groupe (« lien » : « cours:12 » ou « dossier:3 »). */
+    public function lier(int $id): void
+    {
+        $this->exigerPost();
+        $choix = explode(':', (string) ($_POST['lien'] ?? ''), 2);
+        $type = $choix[0];
+        $refus = Travaux::lier(Auth::id(), $id, $type, (int) ($choix[1] ?? 0));
+        $this->finir($refus, t($type === 'dossier' ? 'tr.fl.dossier_lie' : 'tr.fl.cours_lie'), 'travaux/' . $id . '/cours');
+    }
+
+    public function delier(int $id): void
+    {
+        $this->exigerPost();
+        $projet = Travaux::delier(Auth::id(), $id);
+        if ($projet === null) {
+            Session::flash('erreur', t('tr.err.delier'));
+            redirect('travaux');
+        }
+        Session::flash('succes', t('tr.fl.delie'));
+        redirect('travaux/' . $projet . '/cours');
+    }
+
     public function document(int $id): void
     {
         $projet = $this->projet($id);

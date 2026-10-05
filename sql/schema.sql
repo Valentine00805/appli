@@ -1630,3 +1630,20 @@ CREATE TABLE IF NOT EXISTS `evenement_perso_amis` (
 ALTER TABLE `cours`
   ADD COLUMN `partage_de` INT UNSIGNED NULL AFTER `dossier_id`,
   ADD KEY `idx_cours_partage_de` (`partage_de`);
+
+-- Les cours et dossiers liés à un travail de groupe : les membres les lisent et peuvent les ajouter à leur espace.
+
+CREATE TABLE IF NOT EXISTS `projet_liens` (
+  `id`         INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `projet_id`  INT UNSIGNED NOT NULL,
+  `type`       ENUM('cours', 'dossier') NOT NULL,
+  `cible_id`   INT UNSIGNED NOT NULL,
+  `ajoute_par` INT UNSIGNED NULL,
+  `created_at` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_projet_liens_cible` (`projet_id`, `type`, `cible_id`),
+  KEY `idx_projet_liens_cible` (`type`, `cible_id`),
+  KEY `idx_projet_liens_par` (`ajoute_par`),
+  CONSTRAINT `fk_projet_liens_projet` FOREIGN KEY (`projet_id`)  REFERENCES `projets`(`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_projet_liens_par`    FOREIGN KEY (`ajoute_par`) REFERENCES `users`(`id`)   ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

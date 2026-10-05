@@ -869,6 +869,133 @@ final class Travaux
               WHERE f.projet_id = ? ORDER BY f.created_at DESC, f.id DESC', [$projet]);
     }
 
+    // --- Les cours et dossiers liés ----------------------------------------------------------------------------------------
+
+    /** Au plus autant d'éléments liés par groupe. */
+    public const LIENS_MAX = 60;
+
+    /** Ce cours ou ce dossier est-il lié à un groupe dont la personne est membre ? (L'accès en lecture en découle : voir Partages.) */
+    public static function lieAUnGroupeDe(string $type, int $id, int $moi): bool
+    {
+        return Database::valeur(
+            "SELECT 1 FROM projet_liens l
+               JOIN projet_membres m ON m.projet_id = l.projet_id AND m.user_id = ? AND m.statut = 'membre'
+              WHERE l.type = ? AND l.cible_id = ? LIMIT 1",
+            [$moi, $type, $id]
+        ) !== null;
+    }
+
+    /**
+     * Les cours et dossiers liés au groupe, avec ce qu'il faut pour les montrer. Une cible effacée n'y figure plus.
+     *
+     * @return list<array{id: int, type: string, cible_id: int, titre: string, icone: string, matiere: ?string, couleur: ?string,
+     *                    proprietaire_id: int, proprietaire: string, ajoute_par: ?int, par: string, created_at: string}>
+     */
+    public static function liens(int $projet): array
+    {
+        $lignes = Database::all(
+            "SELECT l.id, l.type, l.cible_id, l.ajoute_par, l.created_at, COALESCE(u.pseudo, u.nom, '') AS par,
+                    c.titre AS cours_titre, c.user_id AS cours_user, m.nom AS matiere_nom, m.couleur AS matiere_couleur,
+                    d.nom AS dossier_nom, d.icone AS dossier_icone, d.user_id AS dossier_user
+               FROM projet_liens l
+               LEFT JOIN users u ON u.id = l.ajoute_par
+               LEFT JOIN cours c ON l.type = 'cours' AND c.id = l.cible_id
+               LEFT JOIN matieres m ON m.id = c.matiere_id
+               LEFT JOIN dossiers d ON l.type = 'dossier' AND d.id = l.cible_id
+              WHERE l.projet_id = ?
+              ORDER BY l.created_at DESC, l.id DESC",
+            [$projet]
+        );
+        $liens = [];
+        foreach ($lignes as $l) {
+            $cours = $l['type'] === 'cours';
+            if (($cours ? $l['cours_titre'] : $l['dossier_nom']) === null) {
+                continue;
+            }
+            $liens[] = [
+                'id' => (int) $l['id'],
+                'type' => (string) $l['type'],
+                'cible_id' => (int) $l['cible_id'],
+                'titre' => (string) ($cours ? $l['cours_titre'] : $l['dossier_nom']),
+                'icone' => $cours ? '📘' : ((string) $l['dossier_icone'] !== '' ? (string) $l['dossier_icone'] : '📁'),
+                'matiere' => $cours && $l['matiere_nom'] !== null ? (string) $l['matiere_nom'] : null,
+                'couleur' => $cours && $l['matiere_couleur'] !== null ? (string) $l['matiere_couleur'] : null,
+                'proprietaire_id' => (int) ($cours ? $l['cours_user'] : $l['dossier_user']),
+                'ajoute_par' => $l['ajoute_par'] === null ? null : (int) $l['ajoute_par'],
+                'par' => (string) $l['par'],
+                'created_at' => (string) $l['created_at'],
+            ];
+        }
+
+        return $liens;
+    }
+
+    /**
+     * Les cours et dossiers de la personne qu'elle peut encore lier à ce groupe (pas déjà liés).
+     *
+     * @return array{cours: list<array{id: int, titre: string}>, dossiers: list<array{id: int, nom: string, icone: string, profondeur: int}>}
+     */
+    public static function aLier(int $projet, int $moi): array
+    {
+        $deja = static fn (string $type): array => array_map('intval', array_column(
+            Database::all('SELECT cible_id FROM projet_liens WHERE projet_id = ? AND type = ?', [$projet, $type]), 'cible_id'));
+        $coursLies = $deja('cours');
+        $dossiersLies = $deja('dossier');
+
+        return [
+            'cours' => array_values(array_filter(
+                Database::all('SELECT id, titre FROM cours WHERE user_id = ? ORDER BY titre', [$moi]),
+                static fn (array $c): bool => !in_array((int) $c['id'], $coursLies, true))),
+            'dossiers' => array_values(array_filter(
+                DossiersController::pourUtilisateur($moi),
+                static fn (array $d): bool => !in_array((int) $d['id'], $dossiersLies, true))),
+        ];
+    }
+
+    /**
+     * Lie un de ses cours ou dossiers au groupe. Il faut en être membre et que l'élément soit à soi ; une seule fois.
+     *
+     * @return ?string la raison du refus
+     */
+    public static function lier(int $moi, int $projet, string $type, int $cibleId): ?string
+    {
+        if (self::projet($projet, $moi) === null) {
+            return t('tr.err.pas_membre');
+        }
+        if (!in_array($type, ['cours', 'dossier'], true) || Partages::mienne($type, $cibleId, $moi) === null) {
+            return t('tr.err.pas_a_vous');
+        }
+        if ((int) Database::valeur('SELECT COUNT(*) FROM projet_liens WHERE projet_id = ?', [$projet]) >= self::LIENS_MAX) {
+            return t('tr.err.trop_de_liens', ['max' => self::LIENS_MAX]);
+        }
+        $neuf = Database::run(
+            'INSERT IGNORE INTO projet_liens (projet_id, type, cible_id, ajoute_par) VALUES (?, ?, ?, ?)',
+            [$projet, $type, $cibleId, $moi]
+        )->rowCount() > 0;
+
+        return $neuf ? null : t('tr.err.deja_lie');
+    }
+
+    /**
+     * Retire un lien (l'élément reste chez son propriétaire) : qui l'a fait, ou un administrateur du groupe.
+     *
+     * @return ?int le groupe d'où le lien est retiré, ou null s'il n'est pas à retirer par cette personne
+     */
+    public static function delier(int $moi, int $lienId): ?int
+    {
+        $lien = Database::one('SELECT projet_id, ajoute_par FROM projet_liens WHERE id = ?', [$lienId]);
+        if ($lien === null) {
+            return null;
+        }
+        $projet = self::projet((int) $lien['projet_id'], $moi);
+        if ($projet === null || ((int) ($lien['ajoute_par'] ?? 0) !== $moi && $projet['role'] !== 'admin')) {
+            return null;
+        }
+        Database::run('DELETE FROM projet_liens WHERE id = ?', [$lienId]);
+
+        return (int) $lien['projet_id'];
+    }
+
     /** @return string[] les erreurs rencontrées */
     public static function deposer(array $fichiers, int $moi, int $projet): array
     {
