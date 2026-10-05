@@ -4420,6 +4420,7 @@ return [
     'tr.err.delier' => 'Only the person who linked it, or a group administrator, can remove it.',
     'cal.tache_groupe' => 'Group task · {projet}',
     'cal.tache_sans_personne' => '{titre} (unassigned)',
+    'tr.li.le_projet' => 'The group project',
     'apps.lien_icone' => 'Icon (optional: an emoji instead of the site’s own)',
     'apps.lien_enregistrer' => 'Save',
     'apps.lien_annuler' => 'Cancel',

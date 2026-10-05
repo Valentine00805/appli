@@ -4420,6 +4420,7 @@ return [
     'tr.err.delier' => 'Solo quien lo vinculó, o un administrador del grupo, puede quitarlo.',
     'cal.tache_groupe' => 'Tarea de grupo · {projet}',
     'cal.tache_sans_personne' => '{titre} (sin asignar)',
+    'tr.li.le_projet' => 'El grupo de trabajo',
     'apps.lien_icone' => 'Icono (opcional: un emoji en lugar del del sitio)',
     'apps.lien_enregistrer' => 'Guardar',
     'apps.lien_annuler' => 'Cancelar',

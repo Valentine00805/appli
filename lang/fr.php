@@ -4432,6 +4432,7 @@ return [
     'tr.err.delier' => 'Seul celui qui l’a lié, ou un administrateur du groupe, peut le retirer.',
     'cal.tache_groupe' => 'Tâche de groupe · {projet}',
     'cal.tache_sans_personne' => '{titre} (sans personne)',
+    'tr.li.le_projet' => 'Le groupe de travail',
     'apps.lien_icone' => 'Icône (facultatif : un emoji à la place de celle du site)',
     'apps.lien_enregistrer' => 'Enregistrer',
     'apps.lien_annuler' => 'Annuler',

@@ -4420,6 +4420,7 @@ return [
     'tr.err.delier' => 'Nur wer es verknüpft hat oder ein Administrator der Gruppe kann es entfernen.',
     'cal.tache_groupe' => 'Gruppenaufgabe · {projet}',
     'cal.tache_sans_personne' => '{titre} (niemandem zugewiesen)',
+    'tr.li.le_projet' => 'Das Gruppenprojekt',
     'apps.lien_icone' => 'Symbol (optional: ein Emoji statt dem der Seite)',
     'apps.lien_enregistrer' => 'Speichern',
     'apps.lien_annuler' => 'Abbrechen',

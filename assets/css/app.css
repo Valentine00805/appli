@@ -4285,3 +4285,6 @@ summary.cal-volet__groupe:focus-visible {
 
 /* La case « partager aussi le cours » d'un évènement : comme un choix de droit, la case à gauche du texte. */
 .partage-cours input[type="checkbox"] { width: auto; flex: none; margin: .2rem 0 0; }
+
+/* Le nom du groupe d'une tâche de groupe, bien lisible : une pastille de la couleur d'accent, pas un mot grisé. */
+.travaux-projet { display: inline-flex; align-items: center; gap: .25rem; padding: .08rem .55rem; border-radius: 999px; background: var(--accent-doux); color: var(--accent-fonce); font-size: .88rem; font-weight: 650; }
