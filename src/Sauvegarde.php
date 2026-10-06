@@ -66,6 +66,9 @@ final class Sauvegarde
         // ne les contient pas, et se restaure quand même (facultative).
         'cartes_mentales'    => ['portee' => 'user', 'liens' => ['cours_id' => 'cours'], 'facultative' => true],
         'liens_apps'         => ['portee' => 'user', 'liens' => [], 'facultative' => true],
+        // Les discussions avec l'IA : la discussion est au compte, ses tours passent par elle (portée « discussion »).
+        'assistant_conversations' => ['portee' => 'user', 'liens' => ['cours_id' => 'cours'], 'facultative' => true],
+        'assistant_messages'      => ['portee' => 'discussion', 'liens' => ['conversation_id' => 'assistant_conversations'], 'facultative' => true],
         'alternance_contrat'   => ['portee' => 'user', 'liens' => [], 'facultative' => true],
         'alternance_notes'     => ['portee' => 'user', 'liens' => [], 'facultative' => true],
         'alternance_periodes'  => ['portee' => 'user', 'liens' => [], 'facultative' => true],
@@ -267,14 +270,29 @@ final class Sauvegarde
 
     // --- Interne -------------------------------------------------------------
 
+    /**
+     * Une table sans « user_id » propre passe par sa table parente : les liaisons de cours (« cours »), les tours d'une
+     * discussion avec l'IA (« discussion »). Rend [table parente, colonne qui y renvoie], ou null pour une table du compte.
+     *
+     * @return ?array{0: string, 1: string}
+     */
+    private static function parente(string $table): ?array
+    {
+        return match (self::TABLES[$table]['portee']) {
+            'cours'      => ['cours', 'cours_id'],
+            'discussion' => ['assistant_conversations', 'conversation_id'],
+            default       => null,
+        };
+    }
+
     private static function lire(string $table, int $userId): array
     {
-        if (self::TABLES[$table]['portee'] === 'cours') {
-            // Table de liaison : on passe par les cours du compte.
+        if ($parente = self::parente($table)) {
+            // Table de liaison : on passe par la table parente du compte.
             return Database::all(
                 "SELECT t.* FROM `$table` t
-                 JOIN cours c ON c.id = t.cours_id
-                 WHERE c.user_id = ?",
+                 JOIN `{$parente[0]}` c ON c.id = t.`{$parente[1]}`
+                 WHERE c.user_id = ?" . ($table === 'assistant_messages' ? ' ORDER BY t.id' : ''),
                 [$userId]
             );
         }
@@ -333,9 +351,9 @@ final class Sauvegarde
     private static function vider(int $userId): void
     {
         foreach (array_reverse(array_keys(self::TABLES)) as $table) {
-            if (self::TABLES[$table]['portee'] === 'cours') {
+            if ($parente = self::parente($table)) {
                 Database::run(
-                    "DELETE t FROM `$table` t JOIN cours c ON c.id = t.cours_id WHERE c.user_id = ?",
+                    "DELETE t FROM `$table` t JOIN `{$parente[0]}` c ON c.id = t.`{$parente[1]}` WHERE c.user_id = ?",
                     [$userId]
                 );
                 continue;
@@ -390,7 +408,7 @@ final class Sauvegarde
         );
         Database::run($sql, array_values($ligne));
 
-        return $reglage['portee'] === 'cours' ? null : Database::dernierId();
+        return $reglage['portee'] === 'user' ? Database::dernierId() : null;
     }
 
     /**

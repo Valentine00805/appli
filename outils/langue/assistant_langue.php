@@ -217,6 +217,71 @@ try {
     [, , $code] = $appel($a, 'assistant/' . $idDiscussion);
     $dire('  et son adresse n\'existe plus', (string) $code, '404');
 
+    echo "\n8 bis. La sauvegarde du compte\n";
+    $appel($a, 'compte/langue', ['_csrf' => $csrf, 'langue' => 'fr']);
+    bd_run('DELETE FROM assistant_conversations WHERE user_id = ?', [$idA]);
+    // Deux discussions : l'une sur un cours, l'autre libre ; B en a une aussi (elle ne doit pas bouger).
+    $appel($a, 'assistant/envoyer', ['_csrf' => $csrf, 'cours' => (string) $coursA, 'message' => 'Première discussion, sur le cours'], $json);
+    $appel($a, 'assistant/envoyer', ['_csrf' => $csrf, 'message' => 'Seconde discussion'], $json);
+    $appel($a, 'assistant/envoyer', ['_csrf' => $csrf, 'discussion' => (string) bd_valeur('SELECT id FROM assistant_conversations WHERE user_id = ? AND titre = ?', [$idA, 'Première discussion, sur le cours']), 'message' => 'Et la suite'], $json);
+    $appel($b, 'compte/gemini', ['_csrf' => $csrfB, 'cle_gemini' => 'cle-bonne-0123456789abcdef']);
+    $appel($b, 'assistant/envoyer', ['_csrf' => $csrfB, 'message' => 'Discussion de B'], $json);
+    $zipDe = static function (string $compte) use ($cookies): string {
+        $h = curl_init('http://localhost/mon_appli/appli/compte/sauvegarde/export');
+        curl_setopt_array($h, [CURLOPT_RETURNTRANSFER => true, CURLOPT_COOKIEFILE => $cookies[$compte], CURLOPT_COOKIEJAR => $cookies[$compte]]);
+        $octets = (string) curl_exec($h);
+        unset($h);
+        $chemin = tempnam(sys_get_temp_dir(), 'ia') . '.zip';
+        file_put_contents($chemin, $octets);
+
+        return $chemin;
+    };
+    $lireZip = static function (string $chemin): array {
+        $zip = new ZipArchive();
+        $d = $zip->open($chemin) === true ? json_decode((string) $zip->getFromName('donnees.json'), true) : [];
+        $zip->close();
+
+        return is_array($d) ? $d : [];
+    };
+    $restaurer = static function (string $compte, string $chemin) use ($cookies, $jeton): string {
+        $h = curl_init('http://localhost/mon_appli/appli/compte/sauvegarde');
+        curl_setopt_array($h, [CURLOPT_RETURNTRANSFER => true, CURLOPT_FOLLOWLOCATION => true, CURLOPT_COOKIEFILE => $cookies[$compte], CURLOPT_COOKIEJAR => $cookies[$compte]]);
+        $page = (string) curl_exec($h);
+        curl_setopt_array($h, [CURLOPT_URL => 'http://localhost/mon_appli/appli/compte/sauvegarde/restaurer', CURLOPT_POST => true, CURLOPT_TIMEOUT => 120,
+            CURLOPT_POSTFIELDS => ['_csrf' => $jeton($page), 'confirmation' => '1', 'archive' => new CURLFile($chemin, 'application/zip', 'sauvegarde.zip')]]);
+        $r = (string) curl_exec($h);
+        unset($h);
+
+        return $r;
+    };
+    $chemin = $zipDe($a);
+    $donnees = $lireZip($chemin);
+    $dire('l\'archive contient les discussions et leurs tours (ceux de A seulement)',
+        count($donnees['tables']['assistant_conversations'] ?? []) . ' · ' . count($donnees['tables']['assistant_messages'] ?? []) . ' · ' . $oui(!str_contains(json_encode($donnees), 'Discussion de B')), '2 · 6 · oui');
+    $avantTitres = implode('|', array_column(bd_all('SELECT titre FROM assistant_conversations WHERE user_id = ? ORDER BY titre', [$idA]), 'titre'));
+    $avantTours = implode('|', array_column(bd_all('SELECT m.role FROM assistant_messages m JOIN assistant_conversations c ON c.id = m.conversation_id WHERE c.user_id = ? AND c.titre = ? ORDER BY m.id', [$idA, 'Première discussion, sur le cours']), 'role'));
+    bd_run('DELETE FROM assistant_conversations WHERE user_id = ?', [$idA]);
+    $restaurer($a, $chemin);
+    $dire('restaurée : les deux discussions reviennent, avec leurs titres', $nbDiscussions($idA) . ' · ' . implode('|', array_column(bd_all('SELECT titre FROM assistant_conversations WHERE user_id = ? ORDER BY titre', [$idA]), 'titre')), '2 · ' . $avantTitres);
+    $dire('  leurs tours aussi, dans l\'ordre', implode('|', array_column(bd_all('SELECT m.role FROM assistant_messages m JOIN assistant_conversations c ON c.id = m.conversation_id WHERE c.user_id = ? AND c.titre = ? ORDER BY m.id', [$idA, 'Première discussion, sur le cours']), 'role')), $avantTours);
+    $dire('  et le cours de la discussion suit le cours restauré (nouvel identifiant)',
+        (string) bd_valeur('SELECT c.titre FROM assistant_conversations d JOIN cours c ON c.id = d.cours_id WHERE d.user_id = ? AND d.titre = ?', [$idA, 'Première discussion, sur le cours']), 'Réseaux');
+    $dire('  la discussion de B n\'a pas bougé', $nbDiscussions($idB) . ' · ' . $nbMessages($idB), '1 · 2');
+    [$vue] = $appel($a, 'assistant');
+    $dire('  elles se rouvrent dans la page', $oui(str_contains($vue, 'Seconde discussion') && str_contains($vue, 'Première discussion')), 'oui');
+    // Une archive d'avant les discussions : elle se restaure quand même (et ne laisse pas les discussions d'aujourd'hui).
+    $ancienne = $lireZip($chemin);
+    unset($ancienne['tables']['assistant_conversations'], $ancienne['tables']['assistant_messages']);
+    $zip = new ZipArchive();
+    $cheminAncien = tempnam(sys_get_temp_dir(), 'ia') . '.zip';
+    $zip->open($cheminAncien, ZipArchive::CREATE | ZipArchive::OVERWRITE);
+    $zip->addFromString('donnees.json', json_encode($ancienne, JSON_UNESCAPED_UNICODE));
+    $zip->close();
+    $r = $restaurer($a, $cheminAncien);
+    $dire('une archive sans discussions se restaure sans erreur', $oui(!str_contains($r, 'manquante') && (int) bd_valeur('SELECT COUNT(*) FROM cours WHERE user_id = ? AND titre = ?', [$idA, 'Réseaux']) === 1), 'oui');
+    @unlink($chemin);
+    @unlink($cheminAncien);
+
     echo "\n9. Les quatre langues\n";
     foreach ([
         'en' => ['AI assistant', 'What would you like to know?', 'Talk about a course', 'Write a message before sending.'],
