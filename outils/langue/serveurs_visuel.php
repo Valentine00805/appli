@@ -1,6 +1,6 @@
 <?php
 /*
- * Prépare le contrôle visuel des serveurs : deux comptes d'essai amis, un serveur garni (trois salons, un message, B invité à un second),
+ * Prépare le contrôle visuel des serveurs : deux comptes d'essai amis, un groupe, un message, deux serveurs dont un garni (trois salons, un message, B invité à un second),
  * et la session de A, que le navigateur reprend (aucun mot de passe n'est saisi).
  *
  *     php outils/langue/serveurs_visuel.php            prépare et affiche l'identifiant de session de A et celui de B
@@ -50,4 +50,7 @@ $appelA("serveurs/$s/salons", ['_csrf' => $csrfA, 'nom' => 'projets']);
 $appelA("serveurs/$s/inviter", ['_csrf' => $csrfA, 'amis' => [$b]]);
 $general = (int) bd_valeur('SELECT id FROM conversations WHERE serveur_id = ? AND nom = ?', [$s, 'général']);
 $appelA("groupes/$general/messages", ['_csrf' => $csrfA, 'texte' => 'Bienvenue sur le serveur !']);
+$appelA('groupes', ['_csrf' => $csrfA, 'nom' => 'Projet C#', 'membres' => [$b]]);
+$appelA("amis/$b/messages", ['_csrf' => $csrfA, 'texte' => 'Salut Bastien']);
+$appelA('serveurs', ['_csrf' => $csrfA, 'nom' => 'Club de jeux', 'icone' => '🎮']);
 echo "serveur $s, salon général $general\nA : $idSessionA\nB : $idSessionB\n";

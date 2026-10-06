@@ -317,7 +317,7 @@ textarea { min-height: 260px; resize: vertical; line-height: 1.65; }
 .discussions-recherche input[type="search"] {
   flex: 1; min-width: 0; border: 0; background: transparent; padding: .6rem 0; font: inherit; color: var(--texte); box-shadow: none; outline: none;
 }
-.discussions-entete__titres { display: flex; align-items: baseline; justify-content: space-between; gap: .5rem; padding: .9rem .35rem .3rem; }
+.discussions-entete__titres { display: flex; align-items: baseline; justify-content: flex-end; gap: .5rem; padding: .9rem .35rem .3rem; }
 .discussions-entete__titres h2 { margin: 0; font-size: 1.05rem; }
 .discussions-entete__titres a { font-size: .9rem; font-weight: 600; color: var(--texte-doux); text-decoration: none; }
 .discussions-entete__titres a:hover { color: var(--texte); }
@@ -4343,18 +4343,6 @@ summary.cal-volet__groupe:focus-visible {
 @media (prefers-reduced-motion: reduce) { .ia__bulle--attente { animation: none; } }
 
 /* Les serveurs : un espace avec des salons et des membres, façon Discord. */
-.discussions-entete__serveurs {
-  display: flex; align-items: center; gap: .45rem; margin: 0 .1rem .1rem; padding: .5rem .6rem;
-  border-radius: var(--rayon-s); background: var(--accent-doux); color: var(--accent-fonce); font-weight: 650; font-size: .92rem; text-decoration: none;
-}
-.discussions-entete__serveurs:hover, .discussions-entete__serveurs:focus-visible { background: var(--fond-doux); outline: none; }
-.serveurs__actions { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
-.serveurs__liste { list-style: none; margin: 0; padding: 0; display: grid; gap: .6rem; grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr)); }
-.serveurs__invitations { border-color: var(--accent); }
-.serveur-carte {
-  display: flex; align-items: center; gap: .8rem; padding: .8rem .9rem; border: 1px solid var(--bordure); border-radius: var(--rayon);
-  background: var(--fond-carte); color: inherit; text-decoration: none;
-}
 a.serveur-carte:hover, a.serveur-carte:focus-visible { border-color: var(--accent); background: var(--accent-doux); outline: none; }
 .serveur-carte__texte { display: grid; gap: .1rem; min-width: 0; flex: 1; }
 .serveur-carte__texte strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -4405,4 +4393,59 @@ a.serveur-carte:hover, a.serveur-carte:focus-visible { border-color: var(--accen
   .chat__serveur .serveur-salons { display: flex; overflow-x: auto; gap: .3rem; }
   .chat__serveur .serveur-salons a { white-space: nowrap; }
   .chat__serveur + .chat__fil { height: calc(100vh - 11rem); }
+}
+
+/* La barre des serveurs, façon Discord : une colonne sombre d'icônes arrondies à gauche de la messagerie. */
+.avec-barre { display: flex; align-items: flex-start; gap: 1rem; }
+.avec-barre__page { flex: 1; min-width: 0; }
+.barre-serveurs {
+  position: sticky; top: .75rem; flex: none; display: flex; flex-direction: column; align-items: center; gap: .55rem; width: 4.1rem; padding: .7rem 0;
+  max-height: calc(100vh - 1.5rem); overflow-y: auto; scrollbar-width: none; border-radius: var(--rayon); background: #1e1f22;
+}
+.barre-serveurs::-webkit-scrollbar { display: none; }
+.barre-serveurs__bouton {
+  position: relative; display: grid; place-items: center; width: 2.9rem; height: 2.9rem; flex: none; border-radius: 50%; background: #313338; color: #f2f3f5;
+  font-size: 1.45rem; line-height: 1; text-decoration: none; transition: border-radius .15s, background .15s, transform .15s;
+}
+.barre-serveurs__bouton:hover, .barre-serveurs__bouton:focus-visible { border-radius: 30%; background: var(--accent); outline: none; }
+.barre-serveurs__bouton--actif { border-radius: 30%; background: var(--accent); }
+/* Le trait blanc à gauche : plein pour le serveur ouvert, un point pour ce qui n'est pas lu. */
+.barre-serveurs__bouton--actif::before, .barre-serveurs__bouton--non-lu::before, .barre-serveurs__bouton:hover::before {
+  content: ""; position: absolute; left: -.62rem; top: 50%; width: .3rem; height: .5rem; border-radius: 0 4px 4px 0; background: #fff; transform: translateY(-50%);
+}
+.barre-serveurs__bouton--non-lu::before { height: .3rem; }
+.barre-serveurs__bouton--actif::before { height: 1.8rem; }
+.barre-serveurs__bouton:hover:not(.barre-serveurs__bouton--actif)::before { height: 1rem; }
+.barre-serveurs__bouton--ajout { background: #313338; color: #23a55a; font-size: 1.5rem; }
+.barre-serveurs__bouton--ajout:hover { background: #23a55a; color: #fff; }
+.barre-serveurs__bouton--liste { font-size: 1.25rem; }
+.barre-serveurs__bouton--messages { font-size: 1.3rem; background: #5865f2; }
+.barre-serveurs__separateur { width: 1.8rem; height: 2px; border-radius: 1px; background: #3f4147; flex: none; }
+.barre-serveurs__pastille {
+  position: absolute; right: -.3rem; bottom: -.25rem; min-width: 1.15rem; padding: 0 .3rem; border: 3px solid #1e1f22; border-radius: 999px; box-sizing: content-box;
+  background: #f23f42; color: #fff; font-size: .68rem; font-weight: 700; line-height: 1.1rem; text-align: center;
+}
+
+/* Les sections pliables de la liste des discussions : « Messages » et « Groupes ». */
+.liste-section { margin: 0 0 .3rem; }
+.liste-section[hidden] { display: none; }
+.liste-section__titre {
+  display: flex; align-items: center; gap: .4rem; padding: .5rem .35rem; border-radius: var(--rayon-s); cursor: pointer; list-style: none; user-select: none;
+  font-size: .8rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--texte-doux);
+}
+.liste-section__titre::-webkit-details-marker { display: none; }
+.liste-section__titre:hover { background: var(--fond-doux); color: var(--texte); }
+.liste-section__fleche { width: .45rem; height: .45rem; flex: none; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(-45deg); transition: transform .15s; margin: 0 .15rem; }
+.liste-section[open] > .liste-section__titre .liste-section__fleche { transform: rotate(45deg); }
+.liste-section__nom { flex: 1; }
+.liste-section__nombre { font-weight: 600; opacity: .7; }
+.liste-section[open] .liste-section__non-lus { display: none; }
+.liste-section__vide { margin: .2rem .6rem .6rem; font-size: .88rem; }
+
+@media (max-width: 780px) {
+  /* Sur un petit écran, la barre des serveurs devient une bande horizontale au-dessus de la page. */
+  .avec-barre { flex-direction: column; align-items: stretch; gap: .6rem; }
+  .barre-serveurs { position: static; flex-direction: row; width: auto; max-height: none; padding: .5rem .7rem; overflow-x: auto; overflow-y: hidden; }
+  .barre-serveurs__separateur { width: 2px; height: 1.8rem; }
+  .barre-serveurs__bouton::before { display: none; }
 }

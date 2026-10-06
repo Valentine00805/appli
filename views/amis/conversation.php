@@ -52,7 +52,9 @@ foreach ($messages as $m) {
 }
 ?>
 
-<div class="chat">
+<div class="avec-barre">
+<?= Vue::rendre('serveurs/_barre', ['barreActive' => $enSalon ? (int) $serveur['id'] : 'messages']) ?>
+<div class="chat avec-barre__page">
   <?php if ($enSalon): ?>
     <?= Vue::rendre('serveurs/_rail', ['serveur' => $serveur, 'salons' => $salons, 'membresServeur' => $membresServeur, 'salonActif' => $groupeActif]) ?>
   <?php else: ?>
@@ -358,5 +360,6 @@ foreach ($messages as $m) {
       </form>
     </dialog>
   </section>
+</div>
 </div>
 <script src="<?= asset('assets/js/sondages.js') ?>" defer></script>

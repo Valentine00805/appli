@@ -42,7 +42,9 @@ $geste = static function (string $action, int $compte, string $libelle, string $
   </div>
 <?php endif; ?>
 
-<div class="colonnes">
+<div class="avec-barre">
+<?= Vue::rendre('serveurs/_barre', ['barreActive' => 'messages']) ?>
+<div class="colonnes avec-barre__page">
   <section class="carte">
     <?php $lienDemandes = '#demandes'; require __DIR__ . '/_entete_discussions.php'; ?>
     <?php require __DIR__ . '/_liste.php'; ?>
@@ -172,4 +174,5 @@ $geste = static function (string $action, int $compte, string $libelle, string $
       </section>
     <?php endif; ?>
   </div>
+</div>
 </div>

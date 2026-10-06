@@ -61,37 +61,65 @@ foreach ($groupes as $g) {
 // La plus récente en tête ; une discussion encore vide, après, par nom.
 usort($discussions, static fn (array $x, array $y): int => [$y['tri'], $x['nom']] <=> [$x['tri'], $y['nom']]);
 ?>
-<?php if ($discussions === []): ?>
-  <p class="discret" style="margin:0"><?= e(t('ami.pas_encore_amis')) ?></p>
-<?php else: ?>
-  <ul class="amis-liste" data-liste-discussions>
-    <?php foreach ($discussions as $d): ?>
-      <li data-nom="<?= e(mb_strtolower($d['nom'])) ?>">
-        <a class="ami<?= $d['actif'] ? ' ami--actif' : '' ?><?= $d['non_lus'] > 0 ? ' ami--non-lu' : '' ?>"
-           href="<?= e($d['url']) ?>"<?= $d['actif'] ? ' aria-current="page"' : '' ?>>
-          <?php if (isset($d['avatar_html'])): ?>
-            <?= $d['avatar_html'] ?>
-          <?php else: ?>
-            <span class="avatar" aria-hidden="true"><?= e($d['avatar']) ?></span>
-          <?php endif; ?>
-          <span class="ami__texte">
-            <span class="ami__ligne">
-              <span class="ami__pseudo"><?= e($d['nom']) ?></span>
-              <?php if ($d['quand'] !== null): ?>
-                <span class="ami__quand"><?= e(Amis::quand($d['quand'])) ?></span>
+<?php
+/*
+ * Deux sections pliables : « Messages » (une personne) et « Groupes ». Chacune garde son état d'ouverture (voir app.js,
+ * [data-memoire]) ; fermée, elle montre ce qu'elle cache de non lu. La discussion ouverte garde sa section ouverte.
+ */
+$sections = [
+    ['cle' => 'messages', 'titre' => t('ami.messages'), 'lignes' => array_values(array_filter($discussions, static fn (array $d): bool => !$d['groupe'])),
+     'vide' => t('ami.pas_encore_amis')],
+    ['cle' => 'groupes', 'titre' => t('ami.groupes_section'), 'lignes' => array_values(array_filter($discussions, static fn (array $d): bool => $d['groupe'])),
+     'vide' => t('ami.aucun_groupe')],
+];
+?>
+<?php foreach ($sections as $section): ?>
+  <?php
+  $nonLus = array_sum(array_column($section['lignes'], 'non_lus'));
+  $contientActif = in_array(true, array_column($section['lignes'], 'actif'), true);
+  ?>
+  <details class="liste-section" data-memoire="amis-<?= e($section['cle']) ?>" open<?= $contientActif ? ' data-garder-ouvert' : '' ?>>
+    <summary class="liste-section__titre">
+      <span class="liste-section__fleche" aria-hidden="true"></span>
+      <span class="liste-section__nom"><?= e($section['titre']) ?></span>
+      <span class="liste-section__nombre"><?= count($section['lignes']) ?></span>
+      <?php if ($nonLus > 0): ?>
+        <span class="compteur liste-section__non-lus" title="<?= e(tn('ami.non_lus', (int) $nonLus)) ?>"><?= $nonLus > 99 ? '99+' : $nonLus ?></span>
+      <?php endif; ?>
+    </summary>
+    <?php if ($section['lignes'] === []): ?>
+      <p class="discret liste-section__vide"><?= e($section['vide']) ?></p>
+    <?php else: ?>
+      <ul class="amis-liste" data-liste-discussions>
+        <?php foreach ($section['lignes'] as $d): ?>
+          <li data-nom="<?= e(mb_strtolower($d['nom'])) ?>">
+            <a class="ami<?= $d['actif'] ? ' ami--actif' : '' ?><?= $d['non_lus'] > 0 ? ' ami--non-lu' : '' ?>"
+               href="<?= e($d['url']) ?>"<?= $d['actif'] ? ' aria-current="page"' : '' ?>>
+              <?php if (isset($d['avatar_html'])): ?>
+                <?= $d['avatar_html'] ?>
+              <?php else: ?>
+                <span class="avatar" aria-hidden="true"><?= e($d['avatar']) ?></span>
               <?php endif; ?>
-            </span>
-            <span class="ami__ligne">
-              <?php // Un message vocal : le micro dessiné, comme sur le bouton d'enregistrement. ?>
-              <span class="ami__apercu"><?= str_replace(e('🎤 '), Amis::micro() . ' ', e(mb_strimwidth($d['apercu'], 0, 80, '…'))) ?></span>
-              <?php if ($d['non_lus'] > 0): ?>
-                <span class="compteur" title="<?= e(tn('ami.non_lus', (int) $d['non_lus'])) ?>"><?= $d['non_lus'] > 99 ? '99+' : $d['non_lus'] ?></span>
-              <?php endif; ?>
-            </span>
-          </span>
-        </a>
-      </li>
-    <?php endforeach; ?>
-  </ul>
-  <p class="discret" data-filtre-vide hidden style="margin:.5rem .6rem 0"><?= e(t('ami.aucune_discussion')) ?></p>
-<?php endif; ?>
+              <span class="ami__texte">
+                <span class="ami__ligne">
+                  <span class="ami__pseudo"><?= e($d['nom']) ?></span>
+                  <?php if ($d['quand'] !== null): ?>
+                    <span class="ami__quand"><?= e(Amis::quand($d['quand'])) ?></span>
+                  <?php endif; ?>
+                </span>
+                <span class="ami__ligne">
+                  <?php // Un message vocal : le micro dessiné, comme sur le bouton d'enregistrement. ?>
+                  <span class="ami__apercu"><?= str_replace(e('🎤 '), Amis::micro() . ' ', e(mb_strimwidth($d['apercu'], 0, 80, '…'))) ?></span>
+                  <?php if ($d['non_lus'] > 0): ?>
+                    <span class="compteur" title="<?= e(tn('ami.non_lus', (int) $d['non_lus'])) ?>"><?= $d['non_lus'] > 99 ? '99+' : $d['non_lus'] ?></span>
+                  <?php endif; ?>
+                </span>
+              </span>
+            </a>
+          </li>
+        <?php endforeach; ?>
+      </ul>
+    <?php endif; ?>
+  </details>
+<?php endforeach; ?>
+<p class="discret" data-filtre-vide hidden style="margin:.5rem .6rem 0"><?= e(t('ami.aucune_discussion')) ?></p>

@@ -8,7 +8,6 @@
  */
 $moiEntete = Auth::utilisateur();
 $demandesEnAttente = count(Amis::demandesRecues(Auth::id())) + Conversations::nombreInvitations(Auth::id());
-$invitationsServeurs = Serveurs::nombreInvitations(Auth::id());
 ?>
 <div class="discussions-entete">
   <div class="discussions-entete__haut">
@@ -30,12 +29,7 @@ $invitationsServeurs = Serveurs::nombreInvitations(Auth::id());
     <input type="search" placeholder="<?= e(t('ami.rechercher')) ?>" autocomplete="off" data-filtre-liste="[data-liste-discussions]">
   </label>
 
-  <a class="discussions-entete__serveurs" href="<?= url('serveurs') ?>">
-    <span aria-hidden="true">🏰</span> <?= e(t('srv.titre')) ?><?php if ($invitationsServeurs > 0): ?> <span class="compteur" title="<?= e(tn('srv.invitations_n', $invitationsServeurs)) ?>"><?= $invitationsServeurs ?></span><?php endif; ?>
-  </a>
-
   <div class="discussions-entete__titres">
-    <h2><?= e(t('ami.messages')) ?></h2>
     <a href="<?= e($lienDemandes ?? url('amis')) ?>"><?= e(t('ami.demandes')) ?><?php if ($demandesEnAttente > 0): ?> <span class="compteur"><?= $demandesEnAttente > 99 ? '99+' : $demandesEnAttente ?></span><?php endif; ?></a>
   </div>
 </div>

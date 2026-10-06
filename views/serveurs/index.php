@@ -7,6 +7,9 @@
  */
 $csrf = Session::jetonCsrf();
 ?>
+<div class="avec-barre">
+<?= Vue::rendre('serveurs/_barre', ['barreActive' => 'serveurs']) ?>
+<div class="avec-barre__page">
 <div class="entete-page">
   <div>
     <h1>🏰 <?= e(t('srv.titre')) ?></h1>
@@ -71,3 +74,5 @@ $csrf = Session::jetonCsrf();
     </ul>
   <?php endif; ?>
 </section>
+</div>
+</div>

@@ -3735,14 +3735,28 @@
     var champ = evenement.target;
     if (!champ.matches || !champ.matches('[data-filtre-liste]')) { return; }
     var portee = champ.closest('.fenetre__corps, .carte') || document;
-    var liste = portee.querySelector(champ.getAttribute('data-filtre-liste'));
-    if (!liste) { return; }
+    var listes = portee.querySelectorAll(champ.getAttribute('data-filtre-liste'));
+    if (listes.length === 0) { return; }
     var cherche = sansAccents(champ.value.trim());
     var visibles = 0;
-    Array.prototype.forEach.call(liste.children, function (ligne) {
-      var garde = cherche === '' || sansAccents(ligne.getAttribute('data-nom') || '').indexOf(cherche) !== -1;
-      ligne.hidden = !garde;
-      if (garde) { visibles++; }
+    Array.prototype.forEach.call(listes, function (liste) {
+      var dedans = 0;
+      Array.prototype.forEach.call(liste.children, function (ligne) {
+        var garde = cherche === '' || sansAccents(ligne.getAttribute('data-nom') || '').indexOf(cherche) !== -1;
+        ligne.hidden = !garde;
+        if (garde) { visibles++; dedans++; }
+      });
+      // Une section « Messages » ou « Groupes » où rien ne correspond s'efface le temps de la recherche.
+      var section = liste.closest('.liste-section');
+      if (section) {
+        section.hidden = cherche !== '' && dedans === 0;
+        // Une section fermée qui a des résultats s'ouvre le temps de la recherche, sans changer ce qu'on avait choisi.
+        if (cherche !== '' && dedans > 0 && !section.open) {
+          section.setAttribute('data-force', '1');
+          section.open = true;
+          window.setTimeout(function () { section.removeAttribute('data-force'); }, 50);
+        }
+      }
     });
     var vide = portee.querySelector('[data-filtre-vide]');
     if (vide) { vide.hidden = visibles > 0; }
@@ -7202,4 +7216,25 @@
       window.location.replace(window.location.href);
     })
     .catch(function () { /* silence : rien n'était promis à l'écran */ });
+})();
+
+/* ==========================================================================
+   Les sections pliables (« <details data-memoire="…"> ») : la page se rouvre comme on l'a laissée.
+   L'état tient dans le navigateur (localStorage) ; sans lui, la section reste ouverte. Une section qui porte
+   « data-garder-ouvert » (la discussion ouverte y est) s'ouvre quoi qu'on ait gardé.
+   ========================================================================== */
+(function () {
+  var sections = document.querySelectorAll("details[data-memoire]");
+  if (!sections.length) { return; }
+  var lire = function (cle) { try { return window.localStorage.getItem(cle); } catch (e) { return null; } };
+  var ecrire = function (cle, valeur) { try { window.localStorage.setItem(cle, valeur); } catch (e) { /* tant pis */ } };
+  Array.prototype.forEach.call(sections, function (section) {
+    var cle = "mesCoursSection:" + section.getAttribute("data-memoire");
+    if (lire(cle) === "ferme" && !section.hasAttribute("data-garder-ouvert")) { section.open = false; }
+    section.addEventListener("toggle", function () {
+      // Une ouverture forcée (recherche, discussion ouverte) ne remplace pas ce que la personne a choisi.
+      if (section.hasAttribute("data-force")) { return; }
+      ecrire(cle, section.open ? "ouvert" : "ferme");
+    });
+  });
 })();
