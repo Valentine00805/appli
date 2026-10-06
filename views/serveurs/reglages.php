@@ -109,7 +109,8 @@ $photo = Serveurs::adressePhoto($id, $serveur['photo_nom']);
 </section>
 <?php endif; ?>
 
-<section class="carte profil-ami__section" id="salons">
+<?php // Arrivé par le « ＋ » des salons : la fenêtre s'ouvre sur cette carte (un « # » dans l'adresse perdrait le marquage « fenetre »). ?>
+<section class="carte profil-ami__section" id="salons"<?= isset($_GET['salons']) ? ' data-fenetre-defiler' : '' ?>>
   <h2 style="margin-top:0"><?= e(t('srv.salons')) ?> <span class="discret profil-ami__nombre"><?= count($salons) ?></span></h2>
   <ul class="groupe-membres">
     <?php foreach ($salons as $s): ?>

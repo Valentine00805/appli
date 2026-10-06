@@ -91,6 +91,10 @@ try {
     $dire('le propriétaire est membre du salon', $oui($dansSalon($general, $idA)), 'oui');
     $dire('la page du salon montre le côté du serveur (nom, salons, membres)', $oui(str_contains($adresse . '', 'groupes') && str_contains($page = $appel($a, 'groupes/' . $general)[0], 'chat__serveur')
         && str_contains($page, '# général') && str_contains($page, 'Licence 2') && str_contains($page, 'Serveur_0')), 'oui');
+    $dire('le « ＋ » des salons ouvre les réglages par un paramètre, pas par un « # » (qui perdrait le marquage de la fenêtre)',
+        $oui(str_contains($page, "reglages?salons=1") && !str_contains($page, 'reglages#salons')), 'oui');
+    [$fragment] = $appel($a, "serveurs/$s/reglages?salons=1&fenetre=1");
+    $dire('la fenêtre répond par un fragment, qui demande à s\'ouvrir sur les salons', $oui(!str_contains($fragment, '<html') && str_contains($fragment, 'data-fenetre-defiler')), 'oui');
     $dire('le salon n\'apparaît pas dans la liste des discussions de groupe', $oui(!str_contains($appel($a, 'amis')[0], 'groupes/' . $general)), 'oui');
     $dire('l\'entrée « Serveurs » est dans la page Messages', $oui(str_contains($appel($a, 'amis')[0], 'href="http://localhost/mon_appli/appli/serveurs"')
         || str_contains($appel($a, 'amis')[0], '/serveurs"')), 'oui');
