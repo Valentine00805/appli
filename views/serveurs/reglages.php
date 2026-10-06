@@ -109,44 +109,17 @@ $photo = Serveurs::adressePhoto($id, $serveur['photo_nom']);
 </section>
 <?php endif; ?>
 
-<?php // Arrivé par le « ＋ » des salons : la fenêtre s'ouvre sur cette carte (un « # » dans l'adresse perdrait le marquage « fenetre »). ?>
-<section class="carte profil-ami__section" id="salons"<?= isset($_GET['salons']) ? ' data-fenetre-defiler' : '' ?>>
+<section class="carte profil-ami__section" id="salons">
   <h2 style="margin-top:0"><?= e(t('srv.salons')) ?> <span class="discret profil-ami__nombre"><?= count($salons) ?></span></h2>
-  <ul class="groupe-membres">
+  <ul class="serveur-salons-lecture">
     <?php foreach ($salons as $s): ?>
-      <li class="groupe-membres__ligne">
-        <span class="groupe-membres__nom"><a href="<?= url('groupes/' . (int) $s['id']) ?>"># <?= e($s['nom']) ?></a></span>
-        <?php if ($gere): ?>
-          <span class="groupe-membres__actions">
-            <form method="post" action="<?= url($base . '/salons/' . (int) $s['id'] . '/renommer') ?>" class="serveur-salon-renommer"<?= $envoi ?>>
-              <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
-              <label class="sr-only" for="salon-nom-<?= (int) $s['id'] ?>"><?= e(t('srv.renommer_salon')) ?></label>
-              <input type="text" id="salon-nom-<?= (int) $s['id'] ?>" name="nom" required maxlength="<?= Serveurs::SALON_MAX ?>" value="<?= e($s['nom']) ?>" autocomplete="off">
-              <button class="bouton bouton--secondaire bouton--petit" type="submit"><?= e(t('srv.renommer')) ?></button>
-            </form>
-            <?php if (count($salons) > 1): ?>
-              <form method="post" action="<?= url($base . '/salons/' . (int) $s['id'] . '/supprimer') ?>"<?= $envoi ?>
-                    data-confirmation="<?= e(t('srv.supprimer_salon_confirmation', ['nom' => $s['nom']])) ?>">
-                <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
-                <button class="bouton bouton--danger bouton--petit" type="submit"><?= e(t('srv.supprimer')) ?></button>
-              </form>
-            <?php endif; ?>
-          </span>
-        <?php endif; ?>
-      </li>
+      <li><a href="<?= url('groupes/' . (int) $s['id']) ?>"># <?= e($s['nom']) ?></a></li>
     <?php endforeach; ?>
   </ul>
-  <?php if ($gere && count($salons) < Serveurs::SALONS_MAX): ?>
-    <form method="post" action="<?= url($base . '/salons') ?>" class="fuseau-choix" style="margin-top:.8rem"<?= $envoi ?>>
-      <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
-      <label class="sr-only" for="salon-nouveau"><?= e(t('srv.ajouter_salon')) ?></label>
-      <input type="text" id="salon-nouveau" name="nom" required maxlength="<?= Serveurs::SALON_MAX ?>" placeholder="<?= e(t('srv.salon_exemple')) ?>" autocomplete="off">
-      <button class="bouton" type="submit"><?= e(t('srv.ajouter_salon')) ?></button>
-    </form>
-    <p class="champ__aide"><?= e(t('srv.salon_aide_nom')) ?></p>
+  <?php if ($gere): ?>
+    <p style="margin:.8rem 0 0"><a class="bouton bouton--secondaire" href="<?= url($base . '/salons') ?>" data-fenetre><?= e(t('srv.gerer_salons')) ?></a></p>
   <?php endif; ?>
 </section>
-
 <section class="carte profil-ami__section" id="serveur-membres">
   <h2 style="margin-top:0"><?= e(t('srv.membres')) ?> <span class="discret profil-ami__nombre"><?= count($membres) ?></span></h2>
   <ul class="groupe-membres">

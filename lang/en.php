@@ -4588,6 +4588,7 @@ return [
     'srv.couleur_aide' => 'This is the background of the initials, when the server has no photo.',
     'srv.fl.couleur_changee' => 'Logo colour updated.',
     'srv.err.couleur' => 'This colour is not valid.',
+    'srv.gerer_salons' => 'Manage channels',
     'apps.lien_icone' => 'Icon (optional: an emoji instead of the site’s own)',
     'apps.lien_enregistrer' => 'Save',
     'apps.lien_annuler' => 'Cancel',

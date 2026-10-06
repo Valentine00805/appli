@@ -4600,6 +4600,7 @@ return [
     'srv.couleur_aide' => 'C’est le fond des initiales, quand le serveur n’a pas de photo.',
     'srv.fl.couleur_changee' => 'Couleur du logo mise à jour.',
     'srv.err.couleur' => 'Cette couleur n’est pas valide.',
+    'srv.gerer_salons' => 'Gérer les salons',
     'apps.lien_icone' => 'Icône (facultatif : un emoji à la place de celle du site)',
     'apps.lien_enregistrer' => 'Enregistrer',
     'apps.lien_annuler' => 'Annuler',

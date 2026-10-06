@@ -1197,9 +1197,6 @@
          * où il doit, la fenêtre reste en haut.
          */
         corps.scrollTop = 0;
-        // Une page qui veut s'ouvrir plus bas (« data-fenetre-defiler ») : on y amène la fenêtre.
-        var versLa = corps.querySelector('[data-fenetre-defiler]');
-        if (versLa) { corps.scrollTop += versLa.getBoundingClientRect().top - corps.getBoundingClientRect().top - 8; }
 
         /*
          * Et seulement s'il est sous les yeux. Sur une page de réglages, le

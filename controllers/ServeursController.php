@@ -83,6 +83,24 @@ final class ServeursController
         Vue::afficher('serveurs/reglages', $donnees, t('srv.reglages_de', ['nom' => (string) $serveur['nom']]));
     }
 
+    /** Les salons, dans leur propre fenêtre. */
+    public function salons(int $id): void
+    {
+        Auth::exiger();
+        $moi = Auth::id();
+        $serveur = Serveurs::serveur($id, $moi);
+        if ($serveur === null) {
+            Session::flash('erreur', t('srv.fl.introuvable'));
+            redirect('serveurs');
+        }
+        $donnees = ['serveur' => $serveur, 'gere' => Serveurs::gere((string) $serveur['role']), 'salons' => Serveurs::salons($id, $moi)];
+        if (Vue::enFenetre()) {
+            Vue::fragment('serveurs/salons', $donnees);
+            return;
+        }
+        Vue::afficher('serveurs/salons', $donnees, t('srv.salons_de', ['nom' => (string) $serveur['nom']]));
+    }
+
     public function modifier(int $id): void
     {
         $this->poster();
@@ -148,21 +166,21 @@ final class ServeursController
     {
         $this->poster();
         [, $refus] = Serveurs::ajouterSalon(Auth::id(), $id, (string) ($_POST['nom'] ?? ''));
-        $this->retourReglages($id, $refus, t('srv.fl.salon_cree'));
+        $this->retourReglages($id, $refus, t('srv.fl.salon_cree'), 'salons');
     }
 
     public function renommerSalon(int $id, int $salon): void
     {
         $this->poster();
         $refus = Serveurs::renommerSalon(Auth::id(), $id, $salon, (string) ($_POST['nom'] ?? ''));
-        $this->retourReglages($id, $refus, t('srv.fl.salon_renomme'));
+        $this->retourReglages($id, $refus, t('srv.fl.salon_renomme'), 'salons');
     }
 
     public function supprimerSalon(int $id, int $salon): void
     {
         $this->poster();
         $refus = Serveurs::supprimerSalon(Auth::id(), $id, $salon);
-        $this->retourReglages($id, $refus, t('srv.fl.salon_supprime'));
+        $this->retourReglages($id, $refus, t('srv.fl.salon_supprime'), 'salons');
     }
 
     public function inviter(int $id): void
@@ -289,15 +307,15 @@ final class ServeursController
         redirect($salon === null || $salon === false ? 'serveurs' : 'groupes/' . (int) $salon);
     }
 
-    /** Revient aux réglages (la fenêtre reste ouverte) avec le message qui convient. */
-    private function retourReglages(int $serveur, ?string $refus, string $succes): never
+    /** Revient aux réglages — ou à la page « $page » (les salons) —, la fenêtre restant ouverte, avec le message qui convient. */
+    private function retourReglages(int $serveur, ?string $refus, string $succes, string $page = 'reglages'): never
     {
         if ($refus !== null) {
             Session::flash('erreur', $refus);
         } elseif ($succes !== '') {
             Session::flash('succes', $succes);
         }
-        redirect(Serveurs::role($serveur, Auth::id()) === null ? 'serveurs' : 'serveurs/' . $serveur . '/reglages');
+        redirect(Serveurs::role($serveur, Auth::id()) === null ? 'serveurs' : 'serveurs/' . $serveur . '/' . $page);
     }
 
     /** Renvoie vers une page, puis envoie les notifications en file. */

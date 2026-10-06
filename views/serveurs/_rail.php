@@ -21,7 +21,7 @@ $gere = Serveurs::gere((string) $serveur['role']);
 
   <h2 class="serveur-sous-titre"><?= e(t('srv.salons')) ?>
     <?php if ($gere): ?>
-      <a class="serveur-sous-titre__ajout" href="<?= url('serveurs/' . (int) $serveur['id'] . '/reglages', ['salons' => 1]) ?>" data-fenetre
+      <a class="serveur-sous-titre__ajout" href="<?= url('serveurs/' . (int) $serveur['id'] . '/salons') ?>" data-fenetre
          title="<?= e(t('srv.ajouter_salon')) ?>" aria-label="<?= e(t('srv.ajouter_salon')) ?>">＋</a>
     <?php endif; ?>
   </h2>

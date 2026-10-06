@@ -4588,6 +4588,7 @@ return [
     'srv.couleur_aide' => 'Es el fondo de las iniciales, cuando el servidor no tiene foto.',
     'srv.fl.couleur_changee' => 'Color del logo actualizado.',
     'srv.err.couleur' => 'Este color no es válido.',
+    'srv.gerer_salons' => 'Gestionar canales',
     'apps.lien_icone' => 'Icono (opcional: un emoji en lugar del del sitio)',
     'apps.lien_enregistrer' => 'Guardar',
     'apps.lien_annuler' => 'Cancelar',

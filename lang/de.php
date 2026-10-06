@@ -4588,6 +4588,7 @@ return [
     'srv.couleur_aide' => 'Das ist der Hintergrund der Initialen, wenn der Server kein Foto hat.',
     'srv.fl.couleur_changee' => 'Logo-Farbe aktualisiert.',
     'srv.err.couleur' => 'Diese Farbe ist nicht gültig.',
+    'srv.gerer_salons' => 'Kanäle verwalten',
     'apps.lien_icone' => 'Symbol (optional: ein Emoji statt dem der Seite)',
     'apps.lien_enregistrer' => 'Speichern',
     'apps.lien_annuler' => 'Abbrechen',
