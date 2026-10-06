@@ -25,7 +25,7 @@ $photo = Serveurs::adressePhoto($id, $serveur['photo_nom']);
 ?>
 <div class="entete-page profil-ami"<?= $dansUneFenetre ? ' data-large' : '' ?>>
   <div class="profil-ami__identite">
-    <?= Serveurs::pastille($nom, $photo, 'serveur-icone serveur-icone--enorme') ?>
+    <?= Serveurs::pastille($nom, $photo, 'serveur-icone serveur-icone--enorme', $serveur['couleur']) ?>
     <div>
       <?php if (!$dansUneFenetre): ?>
         <p class="discret" style="margin:0 0 .2rem"><a href="<?= url($base) ?>"><?= e(t('srv.retour_serveur')) ?></a></p>
@@ -42,7 +42,7 @@ $photo = Serveurs::adressePhoto($id, $serveur['photo_nom']);
   <h2 style="margin-top:0"><?= e(t('srv.logo')) ?></h2>
   <div class="photo-groupe">
     <span class="photo-groupe__apercu" data-photo-apercu>
-      <?= Serveurs::pastille($nom, $photo, 'avatar avatar--apercu serveur-apercu' . ($photo !== null ? ' avatar--photo' : '')) ?>
+      <?= Serveurs::pastille($nom, $photo, 'avatar avatar--apercu serveur-apercu' . ($photo !== null ? ' avatar--photo' : ''), $serveur['couleur']) ?>
     </span>
     <div class="fond-reglage__infos">
       <form method="post" action="<?= url($base . '/photo') ?>" enctype="multipart/form-data" class="fond-reglage__choix" data-photo-formulaire<?= $envoi ?>>
@@ -65,6 +65,18 @@ $photo = Serveurs::adressePhoto($id, $serveur['photo_nom']);
     </div>
   </div>
 </section>
+
+<?php if ($photo === null): ?>
+<?php // La couleur du fond des initiales (sans photo) : l'aperçu du logo, plus haut, change aussitôt. ?>
+<section class="carte profil-ami__section" id="serveur-couleur">
+  <h2 style="margin-top:0"><?= e(t('srv.couleur')) ?></h2>
+  <form method="post" action="<?= url($base . '/couleur') ?>"<?= $envoi ?>>
+    <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+    <?= Vue::rendre('serveurs/_couleurs', ['choisie' => $serveur['couleur'], 'automatique' => Serveurs::couleur($nom)]) ?>
+    <div class="actions"><button class="bouton" type="submit"><?= e(t('commun.enregistrer')) ?></button></div>
+  </form>
+</section>
+<?php endif; ?>
 
 <section class="carte profil-ami__section" id="serveur-nom">
   <h2 style="margin-top:0"><?= e(t('srv.nom_titre')) ?></h2>

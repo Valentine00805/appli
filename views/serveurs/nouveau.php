@@ -47,6 +47,10 @@ $dansUneFenetre = $dansUneFenetre ?? false;
         </div>
       </div>
     </div>
+    <div class="champ">
+      <span class="legende"><?= e(t('srv.couleur')) ?></span>
+      <?= Vue::rendre('serveurs/_couleurs', ['choisie' => null, 'automatique' => 'var(--accent)']) ?>
+    </div>
     <p class="champ__aide"><?= e(t('srv.nouveau_aide', ['salon' => Serveurs::SALON_PAR_DEFAUT])) ?></p>
     <div class="actions">
       <button class="bouton" type="submit"><?= e(t('srv.creer_bouton')) ?></button>

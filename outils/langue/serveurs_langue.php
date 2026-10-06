@@ -333,6 +333,32 @@ try {
     $dire('un fichier qui n\'est pas une image refuse la création (rien n\'est créé)', (string) bd_valeur('SELECT COUNT(*) FROM serveurs WHERE nom = ?', ['Faux logo']), '0');
     @unlink($png2);
     @unlink($faux);
+    // La couleur du fond des initiales
+    $couleur = static fn (int $srv): string => (string) bd_valeur('SELECT COALESCE(couleur, \'auto\') FROM serveurs WHERE id = ?', [$srv]);
+    [$reg] = $appel($a, "serveurs/$s3/reglages?fenetre=1");
+    $dire('les réglages proposent la couleur (sans photo) : automatique, pastilles, couleur libre', $oui(str_contains($reg, 'data-couleurs') && substr_count($reg, 'name="couleur"') === 14 && str_contains($reg, 'name="couleur_perso"')), 'oui');
+    $dire('par défaut la couleur est automatique', $couleur($s3), 'auto');
+    $poster($a, "serveurs/$s3/couleur", ['couleur' => '#ff0000']);
+    $dire('une pastille choisie est enregistrée', $couleur($s3), '#ff0000');
+    $poster($a, "serveurs/$s3/couleur", ['couleur' => 'perso', 'couleur_perso' => '#00FF88']);
+    $dire('une couleur libre aussi (ramenée en minuscules)', $couleur($s3), '#00ff88');
+    $poster($a, "serveurs/$s3/couleur", ['couleur' => 'perso', 'couleur_perso' => 'javascript:alert(1)']);
+    $poster($a, "serveurs/$s3/couleur", ['couleur' => 'rouge']);
+    $dire('une valeur qui n\'est pas une couleur est refusée', $couleur($s3), '#00ff88');
+    $poster($b, "serveurs/$s3/couleur", ['couleur' => '#000000']);
+    $dire('un simple membre ne change pas la couleur', $couleur($s3), '#00ff88');
+    [$barre] = $appel($a, 'amis');
+    $dire('la barre des serveurs porte la couleur choisie', $oui(str_contains($barre, '--couleur: #00ff88')), 'oui');
+    $poster($a, "serveurs/$s3/couleur", ['couleur' => '#f1c40f']);
+    [$barre] = $appel($a, 'amis');
+    $dire('sur un fond clair, le texte devient sombre (lisible)', $oui(str_contains($barre, '--couleur: #f1c40f; --texte-logo: #1f2937')), 'oui');
+    $poster($a, "serveurs/$s3/couleur", ['couleur' => '#2c3e50']);
+    [$barre] = $appel($a, 'amis');
+    $dire('sur un fond sombre, le texte reste blanc', $oui(str_contains($barre, '--couleur: #2c3e50; --texte-logo: #fff')), 'oui');
+    $poster($a, "serveurs/$s3/couleur", ['couleur' => '']);
+    $dire('« automatique » rend la couleur du nom', $couleur($s3), 'auto');
+    $poster($a, 'serveurs', ['nom' => 'Coloré', 'couleur' => 'perso', 'couleur_perso' => '#123456']);
+    $dire('on choisit la couleur dès la création', (string) bd_valeur('SELECT couleur FROM serveurs WHERE nom = ? AND cree_par = ?', ['Coloré', $idA]), '#123456');
     foreach (['Maths', 'Cours de maths', 'élèves', 'Licence 2 — groupe A'] as $n) { $poster($a, 'serveurs', ['nom' => $n]); }
     [$barre] = $appel($a, 'amis');
     foreach ([

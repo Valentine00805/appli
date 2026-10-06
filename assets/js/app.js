@@ -7268,3 +7268,37 @@
     apercu.className = apercu.className.replace(/serveur-logo--n\d/, "serveur-logo--n" + Math.min(4, Array.from(texte).length));
   });
 })();
+/* ==========================================================================
+   Le logo d'un serveur : choisir une couleur de fond colore l'aperçu aussitôt (mêmes règles de contraste que
+   Serveurs::texteSur côté serveur). La couleur n'est enregistrée qu'avec le formulaire.
+   ========================================================================== */
+(function () {
+  var texteSur = function (hex) {
+    var m = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex || "");
+    if (!m) { return "#fff"; }
+    var l = 0.299 * parseInt(m[1], 16) + 0.587 * parseInt(m[2], 16) + 0.114 * parseInt(m[3], 16);
+    return l > 170 ? "#1f2937" : "#fff";
+  };
+  var appliquer = function (groupe) {
+    var apercu = document.querySelector("[data-photo-apercu] .serveur-logo--initiales");
+    if (!apercu) { return; }
+    var radio = groupe.querySelector('input[name="couleur"]:checked');
+    var valeur = radio ? radio.value : "";
+    if (valeur === "perso") { valeur = groupe.querySelector('input[name="couleur_perso"]').value; }
+    var fond = valeur === "" ? groupe.getAttribute("data-automatique") : valeur;
+    apercu.style.setProperty("--couleur", fond);
+    apercu.style.setProperty("--texte-logo", valeur === "" ? "#fff" : texteSur(valeur));
+  };
+  document.addEventListener("input", function (evenement) {
+    var cible = evenement.target;
+    var groupe = cible.closest ? cible.closest("[data-couleurs]") : null;
+    if (!groupe) { return; }
+    // Toucher la couleur libre la choisit.
+    if (cible.name === "couleur_perso") { groupe.querySelector('input[name="couleur"][value="perso"]').checked = true; }
+    appliquer(groupe);
+  });
+  document.addEventListener("change", function (evenement) {
+    var groupe = evenement.target.closest ? evenement.target.closest("[data-couleurs]") : null;
+    if (groupe) { appliquer(groupe); }
+  });
+})();

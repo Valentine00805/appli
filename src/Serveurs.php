@@ -26,6 +26,8 @@ final class Serveurs
     /** Serveurs au plus par personne (qu'elle y soit propriétaire ou simple membre). */
     public const SERVEURS_MAX = 20;
     public const SALON_PAR_DEFAUT = 'général';
+    /** Les couleurs proposées pour le fond des initiales (on peut aussi en choisir une autre). */
+    public const COULEURS = ['#5865f2', '#3ba55d', '#ed4245', '#f59e0b', '#eb459e', '#9b59b6', '#14b8a6', '#e67e22', '#3498db', '#607d8b', '#2c3e50', '#f1c40f'];
 
     // --- Lire ----------------------------------------------------------------------------------------------------------
 
@@ -61,14 +63,14 @@ final class Serveurs
     {
         $serveurs = [];
         foreach (Database::all(
-            'SELECT s.id, s.nom, s.icone, s.photo_nom, m.role,
+            'SELECT s.id, s.nom, s.icone, s.photo_nom, s.couleur, m.role,
                     (SELECT COUNT(*) FROM serveur_membres x WHERE x.serveur_id = s.id) AS membres,
                     (SELECT c.id FROM conversations c WHERE c.serveur_id = s.id ORDER BY c.position, c.id LIMIT 1) AS premier_salon
                FROM serveur_membres m JOIN serveurs s ON s.id = m.serveur_id
               WHERE m.user_id = ? ORDER BY s.nom, s.id',
             [$moi]
         ) as $l) {
-            $serveurs[] = ['id' => (int) $l['id'], 'nom' => (string) $l['nom'], 'icone' => (string) $l['icone'], 'photo' => self::adressePhoto((int) $l['id'], $l['photo_nom']), 'role' => (string) $l['role'],
+            $serveurs[] = ['id' => (int) $l['id'], 'nom' => (string) $l['nom'], 'icone' => (string) $l['icone'], 'photo' => self::adressePhoto((int) $l['id'], $l['photo_nom']), 'couleur' => $l['couleur'], 'role' => (string) $l['role'],
                            'membres' => (int) $l['membres'], 'non_lus' => array_sum(array_column(self::salons((int) $l['id'], $moi), 'non_lus')),
                            'premier_salon' => $l['premier_salon'] === null ? null : (int) $l['premier_salon']];
         }
@@ -125,9 +127,9 @@ final class Serveurs
     /** Les invitations que j'ai reçues. @return list<array{id: int, nom: string, icone: string, par: string, membres: int}> */
     public static function invitations(int $moi): array
     {
-        return array_map(static fn (array $l): array => ['id' => (int) $l['id'], 'nom' => (string) $l['nom'], 'icone' => (string) $l['icone'], 'photo' => self::adressePhoto((int) $l['id'], $l['photo_nom']),
+        return array_map(static fn (array $l): array => ['id' => (int) $l['id'], 'nom' => (string) $l['nom'], 'icone' => (string) $l['icone'], 'photo' => self::adressePhoto((int) $l['id'], $l['photo_nom']), 'couleur' => $l['couleur'],
             'par' => (string) $l['par'], 'membres' => (int) $l['membres']], Database::all(
-            "SELECT s.id, s.nom, s.icone, s.photo_nom, COALESCE(u.pseudo, '') AS par,
+            "SELECT s.id, s.nom, s.icone, s.photo_nom, s.couleur, COALESCE(u.pseudo, '') AS par,
                     (SELECT COUNT(*) FROM serveur_membres x WHERE x.serveur_id = s.id) AS membres
                FROM serveur_invitations i JOIN serveurs s ON s.id = i.serveur_id LEFT JOIN users u ON u.id = i.invite_par
               WHERE i.user_id = ? ORDER BY i.created_at DESC",
@@ -174,7 +176,24 @@ final class Serveurs
         return mb_strtoupper(implode('', array_map(static fn (string $m): string => mb_substr($m, 0, 1), $mots)));
     }
 
-    /** Une couleur propre au serveur (la même à chaque affichage) pour le fond de ses initiales. */
+    /** Une couleur « #rrggbb » bien formée (en minuscules), ou null. */
+    public static function couleurValide(mixed $couleur): ?string
+    {
+        return is_string($couleur) && preg_match('/^#[0-9a-fA-F]{6}$/', $couleur) === 1 ? strtolower($couleur) : null;
+    }
+
+    /** La couleur du texte qui se lit sur ce fond : blanc, ou presque noir sur un fond clair (la couleur déduite du nom est toujours sombre). */
+    public static function texteSur(?string $fond): string
+    {
+        if ($fond === null) {
+            return '#fff';
+        }
+        $luminance = 0.299 * hexdec(substr($fond, 1, 2)) + 0.587 * hexdec(substr($fond, 3, 2)) + 0.114 * hexdec(substr($fond, 5, 2));
+
+        return $luminance > 170 ? '#1f2937' : '#fff';
+    }
+
+    /** Une couleur propre au serveur (la même à chaque affichage) pour le fond de ses initiales, tant qu'on n'en a pas choisi. */
     public static function couleur(string $nom): string
     {
         return 'hsl(' . (crc32(mb_strtolower($nom)) % 360) . ' 52% 40%)';
@@ -183,7 +202,7 @@ final class Serveurs
     /**
      * Le logo d'un serveur, dans son cadre : la photo, ou les initiales sur fond coloré. « $classes » dit la taille et la forme du cadre.
      */
-    public static function pastille(string $nom, ?string $photo, string $classes = ''): string
+    public static function pastille(string $nom, ?string $photo, string $classes = '', ?string $couleur = null): string
     {
         $initiales = self::initiales($nom);
         if ($photo !== null) {
@@ -191,7 +210,7 @@ final class Serveurs
         }
 
         return '<span class="serveur-logo serveur-logo--initiales serveur-logo--n' . min(4, mb_strlen($initiales)) . ' ' . e($classes)
-            . '" style="--couleur: ' . e(self::couleur($nom)) . '" aria-hidden="true">' . e($initiales) . '</span>';
+            . '" style="--couleur: ' . e(self::couleurValide($couleur) ?? self::couleur($nom)) . '; --texte-logo: ' . self::texteSur(self::couleurValide($couleur)) . '" aria-hidden="true">' . e($initiales) . '</span>';
     }
     /** Le logo, pour les membres et ceux qui sont invités. */
     public static function photo(int $serveur, int $moi): ?array
@@ -285,7 +304,7 @@ final class Serveurs
     // --- Créer, régler -------------------------------------------------------------------------------------------------
 
     /** @return array{0: ?int, 1: ?string} le serveur, ou la raison du refus ; « $image » : le logo, facultatif */
-    public static function creer(int $moi, string $nom, ?array $image = null): array
+    public static function creer(int $moi, string $nom, ?array $image = null, ?string $couleur = null): array
     {
         if ((string) (Amis::compte($moi)['pseudo'] ?? '') === '') {
             return [null, t('grp.pseudo_avant')];
@@ -310,7 +329,7 @@ final class Serveurs
         $pdo = Database::pdo();
         $pdo->beginTransaction();
         try {
-            Database::run('INSERT INTO serveurs (nom, photo_nom, photo_mime, cree_par) VALUES (?, ?, ?, ?)', [$nom, $rangee['nom'] ?? null, $rangee['mime'] ?? null, $moi]);
+            Database::run('INSERT INTO serveurs (nom, photo_nom, photo_mime, couleur, cree_par) VALUES (?, ?, ?, ?, ?)', [$nom, $rangee['nom'] ?? null, $rangee['mime'] ?? null, self::couleurValide($couleur), $moi]);
             $id = Database::dernierId();
             Database::run("INSERT INTO serveur_membres (serveur_id, user_id, role) VALUES (?, ?, 'proprietaire')", [$id, $moi]);
             self::insererSalon($id, self::SALON_PAR_DEFAUT, 0, $moi);
@@ -335,6 +354,21 @@ final class Serveurs
             return $probleme;
         }
         Database::run('UPDATE serveurs SET nom = ? WHERE id = ?', [$nom, $serveur]);
+
+        return null;
+    }
+
+    /** Change la couleur du fond des initiales (administrateurs) ; vide : la couleur redevient celle du nom. */
+    public static function changerCouleur(int $moi, int $serveur, ?string $couleur): ?string
+    {
+        if (!self::gere(self::role($serveur, $moi))) {
+            return t('srv.err.admins');
+        }
+        $couleur = $couleur === null ? '' : trim($couleur);
+        if ($couleur !== '' && self::couleurValide($couleur) === null) {
+            return t('srv.err.couleur');
+        }
+        Database::run('UPDATE serveurs SET couleur = ? WHERE id = ?', [$couleur === '' ? null : self::couleurValide($couleur), $serveur]);
 
         return null;
     }

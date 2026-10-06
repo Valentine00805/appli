@@ -27,7 +27,7 @@ $csrf = Session::jetonCsrf();
     <ul class="serveurs__liste">
       <?php foreach ($invitations as $inv): ?>
         <li class="serveur-carte serveur-carte--invitation">
-          <?= Serveurs::pastille($inv['nom'], $inv['photo'], 'serveur-icone serveur-icone--grand') ?>
+          <?= Serveurs::pastille($inv['nom'], $inv['photo'], 'serveur-icone serveur-icone--grand', $inv['couleur']) ?>
           <span class="serveur-carte__texte">
             <strong><?= e($inv['nom']) ?></strong>
             <span class="discret"><?= e(t('srv.invite_par', ['qui' => $inv['par'] !== '' ? $inv['par'] : t('grp.quelquun'), 'membres' => tn('srv.membres_n', $inv['membres'])])) ?></span>
@@ -60,7 +60,7 @@ $csrf = Session::jetonCsrf();
       <?php foreach ($serveurs as $s): ?>
         <li>
           <a class="serveur-carte" href="<?= url('serveurs/' . $s['id']) ?>">
-            <?= Serveurs::pastille($s['nom'], $s['photo'], 'serveur-icone serveur-icone--grand') ?>
+            <?= Serveurs::pastille($s['nom'], $s['photo'], 'serveur-icone serveur-icone--grand', $s['couleur']) ?>
             <span class="serveur-carte__texte">
               <strong><?= e($s['nom']) ?></strong>
               <span class="discret"><?= e(tn('srv.membres_n', $s['membres'])) ?><?php if ($s['role'] === 'proprietaire'): ?> · 👑 <?= e(t('srv.role_proprietaire')) ?><?php elseif ($s['role'] === 'admin'): ?> · 🛡️ <?= e(t('srv.role_admin')) ?><?php endif; ?></span>

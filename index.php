@@ -352,6 +352,7 @@ $routes = [
     ['POST', 'serveurs/{id}/modifier',                [ServeursController::class, 'modifier']],
     ['GET',  'serveurs/{id}/photo',                   [ServeursController::class, 'photo']],
     ['POST', 'serveurs/{id}/photo',                   [ServeursController::class, 'changerPhoto']],
+    ['POST', 'serveurs/{id}/couleur',                 [ServeursController::class, 'changerCouleur']],
     ['POST', 'serveurs/{id}/photo/retirer',           [ServeursController::class, 'retirerPhoto']],
     ['POST', 'serveurs/{id}/salons',                  [ServeursController::class, 'ajouterSalon']],
     ['POST', 'serveurs/{id}/salons/{id}/renommer',    [ServeursController::class, 'renommerSalon']],

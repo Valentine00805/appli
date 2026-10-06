@@ -1693,6 +1693,8 @@ CREATE TABLE IF NOT EXISTS `serveurs` (
   -- Le logo : une image rangée comme les photos des groupes ; sans elle, l'icône.
   `photo_nom`  VARCHAR(64)  NULL,
   `photo_mime` VARCHAR(40)  NULL,
+  -- La couleur du fond des initiales (#rrggbb) ; NULL : une couleur déduite du nom.
+  `couleur`    CHAR(7)      NULL,
   `cree_par`   INT UNSIGNED NULL,
   `created_at` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),

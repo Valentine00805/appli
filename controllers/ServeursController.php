@@ -37,7 +37,7 @@ final class ServeursController
         Auth::exiger();
         Session::verifierCsrf();
         $image = isset($_FILES['photo']) && is_array($_FILES['photo']) && !is_array($_FILES['photo']['name'] ?? null) ? $_FILES['photo'] : null;
-        [$id, $refus] = Serveurs::creer(Auth::id(), (string) ($_POST['nom'] ?? ''), $image);
+        [$id, $refus] = Serveurs::creer(Auth::id(), (string) ($_POST['nom'] ?? ''), $image, self::couleurChoisie());
         if ($id === null) {
             Session::flash('erreur', $refus);
             redirect('serveurs');
@@ -127,6 +127,21 @@ final class ServeursController
             $this->retourReglages($id, $retiree, '');
         }
         $this->retourReglages($id, null, t($retiree ? 'srv.fl.photo_retiree' : 'srv.fl.photo_absente'));
+    }
+
+    public function changerCouleur(int $id): void
+    {
+        $this->poster();
+        $refus = Serveurs::changerCouleur(Auth::id(), $id, self::couleurChoisie());
+        $this->retourReglages($id, $refus, t('srv.fl.couleur_changee'));
+    }
+
+    /** La couleur du formulaire : une pastille choisie, la couleur personnalisée, ou rien (la couleur du nom). */
+    private static function couleurChoisie(): ?string
+    {
+        $choix = (string) ($_POST['couleur'] ?? '');
+
+        return $choix === 'perso' ? (string) ($_POST['couleur_perso'] ?? '') : $choix;
     }
 
     public function ajouterSalon(int $id): void
