@@ -3901,6 +3901,9 @@
       return;
     }
     edition.reset();
+    // La couleur d'un serveur s'essaie dans l'aperçu du logo : en annulant, il reprend la couleur enregistrée.
+    var couleurs = edition.querySelector('[data-couleurs]');
+    if (couleurs) { couleurs.dispatchEvent(new Event('change', { bubbles: true })); }
     // Après un refus, le champ montrait la saisie : on revient à ce qui est enregistré.
     edition.querySelectorAll('[data-valeur-actuelle]').forEach(function (c) {
       c.value = c.getAttribute('data-valeur-actuelle');

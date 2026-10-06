@@ -4494,3 +4494,5 @@ a.serveur-carte:hover, a.serveur-carte:focus-visible { border-color: var(--accen
 .serveur-couleurs__choix--libre input[type="color"]::-webkit-color-swatch { border: 1px solid var(--bordure); border-radius: 50%; }
 .serveur-couleurs__choix--libre > input[type="radio"] { inset: auto; width: 1px; height: 1px; }
 .serveur-couleurs__choix--libre:has(> input[type="radio"]:checked) input[type="color"] { box-shadow: 0 0 0 3px var(--accent); }
+.serveur-couleur-lecture { display: flex; align-items: center; gap: .6rem; }
+.serveur-couleur-lecture__pastille { width: 1.6rem; height: 1.6rem; flex: none; border-radius: 50%; box-shadow: 0 0 0 1px var(--bordure); }

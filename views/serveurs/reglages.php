@@ -68,25 +68,43 @@ $photo = Serveurs::adressePhoto($id, $serveur['photo_nom']);
 
 <?php if ($photo === null): ?>
 <?php // La couleur du fond des initiales (sans photo) : l'aperçu du logo, plus haut, change aussitôt. ?>
-<section class="carte profil-ami__section" id="serveur-couleur">
+<?php // La couleur se lit d'abord ; « Modifier » ouvre le choix, qui s'enregistre ou s'annule. ?>
+<section class="carte profil-ami__section" id="serveur-couleur" data-reglage>
   <h2 style="margin-top:0"><?= e(t('srv.couleur')) ?></h2>
-  <form method="post" action="<?= url($base . '/couleur') ?>"<?= $envoi ?>>
+  <div class="reglage-lecture" data-reglage-lecture>
+    <p class="reglage-lecture__valeur serveur-couleur-lecture">
+      <span class="serveur-couleur-lecture__pastille" style="background: <?= e(Serveurs::couleurValide($serveur['couleur']) ?? Serveurs::couleur($nom)) ?>" aria-hidden="true"></span>
+      <?= e($serveur['couleur'] === null ? t('srv.couleur_auto') : (string) $serveur['couleur']) ?>
+    </p>
+    <button class="bouton bouton--secondaire" type="button" data-reglage-modifier><?= e(t('commun.modifier')) ?></button>
+  </div>
+  <form method="post" action="<?= url($base . '/couleur') ?>" data-reglage-edition hidden<?= $envoi ?>>
     <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
     <?= Vue::rendre('serveurs/_couleurs', ['choisie' => $serveur['couleur'], 'automatique' => Serveurs::couleur($nom)]) ?>
-    <div class="actions"><button class="bouton" type="submit"><?= e(t('commun.enregistrer')) ?></button></div>
+    <div class="actions">
+      <button class="bouton" type="submit"><?= e(t('commun.enregistrer')) ?></button>
+      <button class="bouton bouton--discret" type="button" data-reglage-annuler><?= e(t('commun.annuler')) ?></button>
+    </div>
   </form>
 </section>
 <?php endif; ?>
 
-<section class="carte profil-ami__section" id="serveur-nom">
+<?php // Le nom se lit d'abord ; « Modifier » ouvre le champ, qui s'enregistre ou s'annule (revient au nom enregistré). ?>
+<section class="carte profil-ami__section" id="serveur-nom" data-reglage>
   <h2 style="margin-top:0"><?= e(t('srv.nom_titre')) ?></h2>
-  <form method="post" action="<?= url($base . '/modifier') ?>"<?= $envoi ?>>
+  <div class="reglage-lecture" data-reglage-lecture>
+    <p class="reglage-lecture__valeur"><?= e($nom) ?></p>
+    <button class="bouton bouton--secondaire" type="button" data-reglage-modifier><?= e(t('commun.modifier')) ?></button>
+  </div>
+  <form method="post" action="<?= url($base . '/modifier') ?>" data-reglage-edition hidden<?= $envoi ?>>
     <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
-    <div class="champ">
-      <label for="serveur-renommer"><?= e(t('srv.nom')) ?></label>
-      <input type="text" id="serveur-renommer" name="nom" required maxlength="<?= Serveurs::NOM_MAX ?>" value="<?= e($nom) ?>" autocomplete="off">
+    <label class="legende" for="serveur-renommer"><?= e(t('srv.nom')) ?></label>
+    <div class="fuseau-choix">
+      <input type="text" id="serveur-renommer" name="nom" required maxlength="<?= Serveurs::NOM_MAX ?>"
+             value="<?= e($nom) ?>" data-valeur-actuelle="<?= e($nom) ?>" autocomplete="off">
+      <button class="bouton" type="submit"><?= e(t('commun.enregistrer')) ?></button>
+      <button class="bouton bouton--discret" type="button" data-reglage-annuler><?= e(t('commun.annuler')) ?></button>
     </div>
-    <div class="actions"><button class="bouton" type="submit"><?= e(t('commun.enregistrer')) ?></button></div>
   </form>
 </section>
 <?php endif; ?>
