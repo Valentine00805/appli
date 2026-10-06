@@ -177,7 +177,8 @@ final class ServeursController
         if ($refus !== null) {
             Session::flash('erreur', $refus);
         }
-        $this->redirigerPuisEnvoyer(url('serveurs/' . $id . '/reglages'), $notifications);
+        // Envoyé depuis la fenêtre : on y reste (redirect() fait de même, mais ici la réponse part avant les notifications).
+        $this->redirigerPuisEnvoyer(url('serveurs/' . $id . '/reglages', ($_POST['fenetre'] ?? '') === '1' ? ['fenetre' => 1] : []), $notifications);
     }
 
     public function annulerInvitation(int $id, int $membre): void

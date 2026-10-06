@@ -273,6 +273,9 @@ try {
     $photoNom = static fn (int $srv): ?string => bd_valeur('SELECT photo_nom FROM serveurs WHERE id = ?', [$srv]);
     $poster($a, "serveurs/$s3/inviter", ['amis' => [$idB]]);
     $poster($b, "serveurs/$s3/accepter");
+    [$corpsInv, $adresseInv] = $poster($a, "serveurs/$s3/inviter", ['amis' => [$idC], 'fenetre' => '1']);
+    $dire('inviter depuis la fenêtre y reste (fragment, pas la page entière)', $oui(str_contains($adresseInv, 'fenetre=1') && !str_contains($corpsInv, '<html') && str_contains($corpsInv, 'Invitations en attente')), 'oui');
+    $poster($a, "serveurs/$s3/invitations/$idC/annuler");
     $envoyer($b, "serveurs/$s3/photo", $png);
     $dire('un simple membre ne change pas le logo', $oui($photoNom($s3) === null), 'oui');
     $envoyer($a, "serveurs/$s3/photo", $png);
