@@ -28,26 +28,36 @@ $base = 'serveurs/' . $id;
 </div>
 
 <section class="carte profil-ami__section" id="salons">
-  <ul class="groupe-membres">
+  <?php // Chaque salon se lit d'abord ; « Modifier » ouvre son champ, qui s'enregistre ou s'annule. ?>
+  <ul class="serveur-salons-gestion">
     <?php foreach ($salons as $s): ?>
-      <li class="groupe-membres__ligne">
-        <span class="groupe-membres__nom"><a href="<?= url('groupes/' . (int) $s['id']) ?>"># <?= e($s['nom']) ?></a></span>
+      <li class="serveur-salon" data-reglage>
+        <div class="reglage-lecture" data-reglage-lecture>
+          <span class="groupe-membres__nom"><a href="<?= url('groupes/' . (int) $s['id']) ?>"># <?= e($s['nom']) ?></a></span>
+          <?php if ($gere): ?>
+            <span class="groupe-membres__actions">
+              <button class="bouton bouton--secondaire bouton--petit" type="button" data-reglage-modifier><?= e(t('commun.modifier')) ?></button>
+              <?php if (count($salons) > 1): ?>
+                <form method="post" action="<?= url($base . '/salons/' . (int) $s['id'] . '/supprimer') ?>"<?= $envoi ?>
+                      data-confirmation="<?= e(t('srv.supprimer_salon_confirmation', ['nom' => $s['nom']])) ?>">
+                  <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+                  <button class="bouton bouton--danger bouton--petit" type="submit"><?= e(t('srv.supprimer')) ?></button>
+                </form>
+              <?php endif; ?>
+            </span>
+          <?php endif; ?>
+        </div>
         <?php if ($gere): ?>
-          <span class="groupe-membres__actions">
-            <form method="post" action="<?= url($base . '/salons/' . (int) $s['id'] . '/renommer') ?>" class="serveur-salon-renommer"<?= $envoi ?>>
-              <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
-              <label class="sr-only" for="salon-nom-<?= (int) $s['id'] ?>"><?= e(t('srv.renommer_salon')) ?></label>
-              <input type="text" id="salon-nom-<?= (int) $s['id'] ?>" name="nom" required maxlength="<?= Serveurs::SALON_MAX ?>" value="<?= e($s['nom']) ?>" autocomplete="off">
-              <button class="bouton bouton--secondaire bouton--petit" type="submit"><?= e(t('srv.renommer')) ?></button>
-            </form>
-            <?php if (count($salons) > 1): ?>
-              <form method="post" action="<?= url($base . '/salons/' . (int) $s['id'] . '/supprimer') ?>"<?= $envoi ?>
-                    data-confirmation="<?= e(t('srv.supprimer_salon_confirmation', ['nom' => $s['nom']])) ?>">
-                <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
-                <button class="bouton bouton--danger bouton--petit" type="submit"><?= e(t('srv.supprimer')) ?></button>
-              </form>
-            <?php endif; ?>
-          </span>
+          <form method="post" action="<?= url($base . '/salons/' . (int) $s['id'] . '/renommer') ?>" data-reglage-edition hidden<?= $envoi ?>>
+            <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+            <label class="legende" for="salon-nom-<?= (int) $s['id'] ?>"><?= e(t('srv.renommer_salon')) ?></label>
+            <div class="fuseau-choix">
+              <input type="text" id="salon-nom-<?= (int) $s['id'] ?>" name="nom" required maxlength="<?= Serveurs::SALON_MAX ?>"
+                     value="<?= e($s['nom']) ?>" data-valeur-actuelle="<?= e($s['nom']) ?>" autocomplete="off">
+              <button class="bouton" type="submit"><?= e(t('commun.enregistrer')) ?></button>
+              <button class="bouton bouton--discret" type="button" data-reglage-annuler><?= e(t('commun.annuler')) ?></button>
+            </div>
+          </form>
         <?php endif; ?>
       </li>
     <?php endforeach; ?>

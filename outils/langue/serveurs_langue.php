@@ -97,6 +97,9 @@ try {
     $dire('cette fenêtre ne montre que les salons : liste, renommer, supprimer, ajouter (un fragment, sans le reste des réglages)',
         $oui(!str_contains($fragment, '<html') && str_contains($fragment, 'name="nom"') && str_contains($fragment, '/renommer')
             && !str_contains($fragment, 'data-photo-carte') && !str_contains($fragment, 'serveur-couleur') && !str_contains($fragment, 'groupe-formulaire')), 'oui');
+    $dire('chaque salon se lit d\'abord : « Modifier » ouvre le champ, qui s\'enregistre ou s\'annule',
+        $oui(str_contains($fragment, 'data-reglage-modifier') && str_contains($fragment, 'data-reglage-edition hidden') && str_contains($fragment, 'data-reglage-annuler')
+            && str_contains($fragment, 'data-valeur-actuelle="général"')), 'oui');
     [$reglagesA] = $appel($a, "serveurs/$s/reglages?fenetre=1");
     $dire('les réglages ne gardent des salons que la liste et un bouton « Gérer les salons »', $oui(str_contains($reglagesA, "serveurs/$s/salons\"") && !str_contains($reglagesA, '/renommer')), 'oui');
     $dire('le salon n\'apparaît pas dans la liste des discussions de groupe', $oui(!str_contains($appel($a, 'amis')[0], 'groupes/' . $general)), 'oui');

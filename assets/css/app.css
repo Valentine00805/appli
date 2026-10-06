@@ -4498,3 +4498,11 @@ a.serveur-carte:hover, a.serveur-carte:focus-visible { border-color: var(--accen
 .serveur-couleur-lecture__pastille { width: 1.6rem; height: 1.6rem; flex: none; border-radius: 50%; box-shadow: 0 0 0 1px var(--bordure); }
 
 .serveur-salons-lecture { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: .4rem .9rem; }
+
+/* La gestion des salons : chaque ligne se lit, puis « Modifier » ouvre son champ. */
+.serveur-salons-gestion { list-style: none; margin: 0; padding: 0; }
+.serveur-salon { padding: .6rem 0; border-top: 1px solid var(--bordure); }
+.serveur-salon:first-child { border-top: 0; padding-top: 0; }
+.serveur-salon .reglage-lecture { margin-bottom: 0; flex-wrap: nowrap; }
+.serveur-salon .groupe-membres__actions { display: flex; gap: .4rem; align-items: center; }
+.serveur-salon [data-reglage-edition] { margin-top: .5rem; }
