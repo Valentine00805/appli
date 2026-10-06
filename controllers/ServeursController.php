@@ -89,6 +89,45 @@ final class ServeursController
         $this->retourReglages($id, $refus, t('srv.fl.modifie'));
     }
 
+    /** Le logo, pour les membres et les invités. */
+    public function photo(int $id): void
+    {
+        Auth::exiger();
+        session_write_close();
+        $photo = Serveurs::photo($id, Auth::id());
+        $chemin = $photo === null ? null : Amis::dossierImages() . DIRECTORY_SEPARATOR . basename((string) $photo['photo_nom']);
+        if ($chemin === null || !is_file($chemin) || !in_array($photo['photo_mime'], array_column(Amis::IMAGE_TYPES, 0), true)) {
+            http_response_code(404);
+            exit(t('corps.photo_introuvable'));
+        }
+        header('Content-Type: ' . $photo['photo_mime']);
+        header('Content-Length: ' . (string) filesize($chemin));
+        header('X-Content-Type-Options: nosniff');
+        header("Content-Security-Policy: default-src 'none'; img-src 'self'; style-src 'unsafe-inline'");
+        header('Content-Disposition: inline; filename="logo-serveur.' . pathinfo($chemin, PATHINFO_EXTENSION) . '"');
+        header('Cache-Control: private, max-age=604800, immutable');
+        readfile($chemin);
+        exit;
+    }
+
+    public function changerPhoto(int $id): void
+    {
+        $this->poster();
+        $image = isset($_FILES['photo']) && is_array($_FILES['photo']) && !is_array($_FILES['photo']['name'] ?? null) ? $_FILES['photo'] : null;
+        $refus = Serveurs::changerPhoto(Auth::id(), $id, $image);
+        $this->retourReglages($id, $refus, t('srv.fl.photo_changee'));
+    }
+
+    public function retirerPhoto(int $id): void
+    {
+        $this->poster();
+        $retiree = Serveurs::retirerPhoto(Auth::id(), $id);
+        if (is_string($retiree)) {
+            $this->retourReglages($id, $retiree, '');
+        }
+        $this->retourReglages($id, null, t($retiree ? 'srv.fl.photo_retiree' : 'srv.fl.photo_absente'));
+    }
+
     public function ajouterSalon(int $id): void
     {
         $this->poster();

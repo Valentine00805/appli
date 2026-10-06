@@ -26,7 +26,7 @@ foreach ($serveursBarre as $sb) { $nonLusMessages -= $sb['non_lus']; }
     <?php $ouvert = (string) $barreActive === (string) $sb['id']; ?>
     <a class="barre-serveurs__bouton<?= $ouvert ? ' barre-serveurs__bouton--actif' : '' ?><?= !$ouvert && $sb['non_lus'] > 0 ? ' barre-serveurs__bouton--non-lu' : '' ?>"
        href="<?= url('serveurs/' . $sb['id']) ?>" title="<?= e($sb['nom']) ?>" aria-label="<?= e($sb['nom']) ?>"<?= $ouvert ? ' aria-current="page"' : '' ?>>
-      <span aria-hidden="true"><?= e($sb['icone']) ?></span>
+      <span class="barre-serveurs__visuel" aria-hidden="true"><?= Serveurs::visuel($sb['icone'], $sb['photo']) ?></span>
       <?php if ($sb['non_lus'] > 0 && !$ouvert): ?><span class="barre-serveurs__pastille"><?= $sb['non_lus'] > 99 ? '99+' : $sb['non_lus'] ?></span><?php endif; ?>
     </a>
   <?php endforeach; ?>

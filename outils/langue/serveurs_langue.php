@@ -253,6 +253,59 @@ try {
     $s3 = $serveur();
     $dire('on peut en créer d\'autres', $oui($s3 > 0 && $role($s3, $idA) === 'proprietaire'), 'oui');
 
+    echo "\n8 bis. Le logo\n";
+    $dossier = dirname(__DIR__, 2) . '/storage/messages/';
+    $png = tempnam(sys_get_temp_dir(), 'logo') . '.png';
+    $image = imagecreatetruecolor(60, 60);
+    imagefill($image, 0, 0, imagecolorallocate($image, 200, 40, 90));
+    imagepng($image, $png);
+    unset($image);
+    $envoyer = static function (string $compte, string $chemin, string $fichier) use ($cookies, $csrf): array {
+        $h = curl_init('http://localhost/mon_appli/appli/' . $chemin);
+        curl_setopt_array($h, [CURLOPT_RETURNTRANSFER => true, CURLOPT_FOLLOWLOCATION => true, CURLOPT_TIMEOUT => 60, CURLOPT_COOKIEJAR => $cookies[$compte],
+            CURLOPT_COOKIEFILE => $cookies[$compte], CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => ['_csrf' => $csrf[$compte], 'photo' => new CURLFile($fichier, 'image/png', 'logo.png')]]);
+        $corps = (string) curl_exec($h);
+        $code = (int) curl_getinfo($h, CURLINFO_RESPONSE_CODE);
+        unset($h);
+        return [$corps, $code];
+    };
+    $photoNom = static fn (int $srv): ?string => bd_valeur('SELECT photo_nom FROM serveurs WHERE id = ?', [$srv]);
+    $poster($a, "serveurs/$s3/inviter", ['amis' => [$idB]]);
+    $poster($b, "serveurs/$s3/accepter");
+    $envoyer($b, "serveurs/$s3/photo", $png);
+    $dire('un simple membre ne change pas le logo', $oui($photoNom($s3) === null), 'oui');
+    $envoyer($a, "serveurs/$s3/photo", $png);
+    $nom = (string) $photoNom($s3);
+    $dire('un administrateur pose un logo, rangé sur le disque', $oui($nom !== '' && is_file($dossier . $nom)), 'oui');
+    $h = curl_init("http://localhost/mon_appli/appli/serveurs/$s3/photo");
+    curl_setopt_array($h, [CURLOPT_RETURNTRANSFER => true, CURLOPT_COOKIEJAR => $cookies[$b], CURLOPT_COOKIEFILE => $cookies[$b]]);
+    $contenu = (string) curl_exec($h);
+    $type = (string) curl_getinfo($h, CURLINFO_CONTENT_TYPE);
+    unset($h);
+    $dire('un membre lit le logo (une image)', $oui(str_starts_with($type, 'image/') && strlen($contenu) > 50), 'oui');
+    [, , $codeD] = $appel($d, "serveurs/$s3/photo");
+    $dire('un étranger ne le lit pas (404)', (string) $codeD, '404');
+    [$barre] = $appel($b, 'amis');
+    $dire('la barre des serveurs montre le logo à la place de l\'icône', $oui(str_contains($barre, "serveurs/$s3/photo")), 'oui');
+    [$reg] = $appel($a, "serveurs/$s3/reglages?fenetre=1");
+    $dire('les réglages le montrent et proposent de le retirer', $oui(str_contains($reg, "serveurs/$s3/photo/retirer")), 'oui');
+    $ancien = $nom;
+    $envoyer($a, "serveurs/$s3/photo", $png);
+    $dire('un nouveau logo remplace l\'ancien, dont le fichier est effacé', $oui($photoNom($s3) !== $ancien && !is_file($dossier . $ancien)), 'oui');
+    $poster($b, "serveurs/$s3/photo/retirer");
+    $dire('un membre ne retire pas le logo', $oui($photoNom($s3) !== null), 'oui');
+    $nom = (string) $photoNom($s3);
+    $poster($a, "serveurs/$s3/photo/retirer");
+    $dire('le propriétaire le retire : l\'icône revient, le fichier part', $oui($photoNom($s3) === null && !is_file($dossier . $nom)), 'oui');
+    $envoyer($a, "serveurs/$s3/photo", $png);
+    $nom = (string) $photoNom($s3);
+    $poster($a, "serveurs/$s3/supprimer");
+    $dire('supprimer le serveur efface aussi le fichier du logo', $oui($nom !== '' && !is_file($dossier . $nom)), 'oui');
+    @unlink($png);
+    $poster($a, 'serveurs', ['nom' => 'Troisième bis', 'icone' => '🎵']);
+    $s3 = $serveur();
+
     echo "\n9. Les quatre langues\n";
     foreach ([
         'en' => ['Servers', 'My servers', 'Create a server'],

@@ -4449,3 +4449,9 @@ a.serveur-carte:hover, a.serveur-carte:focus-visible { border-color: var(--accen
   .barre-serveurs__separateur { width: 2px; height: 1.8rem; }
   .barre-serveurs__bouton::before { display: none; }
 }
+
+/* Le logo d'un serveur : une photo à la place de l'icône, dans le même cadre arrondi. */
+.barre-serveurs__visuel { display: grid; place-items: center; width: 100%; height: 100%; border-radius: inherit; overflow: hidden; }
+.barre-serveurs__visuel img, .serveur-icone img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.serveur-icone { overflow: hidden; }
+.serveur-apercu { border-radius: 30%; }

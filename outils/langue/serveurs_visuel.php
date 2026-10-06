@@ -39,9 +39,9 @@ $session = static function (string $email) use ($base): array {
     $csrf = $jeton($appel('serveurs'));
     $id = '';
     foreach (file($jar) as $l) { if (str_contains($l, 'MESCOURS_SESSID')) { $id = trim(substr($l, strrpos($l, "\t") + 1)); } }
-    return [$appel, $csrf, $id];
+    return [$appel, $csrf, $id, $jar];
 };
-[$appelA, $csrfA, $idSessionA] = $session($emails[0]);
+[$appelA, $csrfA, $idSessionA, $jarA] = $session($emails[0]);
 [, , $idSessionB] = $session($emails[1]);
 $appelA('serveurs', ['_csrf' => $csrfA, 'nom' => 'Licence 2 — groupe A', 'icone' => '🎓']);
 $s = (int) bd_valeur('SELECT id FROM serveurs WHERE cree_par = ?', [$a]);
@@ -50,6 +50,17 @@ $appelA("serveurs/$s/salons", ['_csrf' => $csrfA, 'nom' => 'projets']);
 $appelA("serveurs/$s/inviter", ['_csrf' => $csrfA, 'amis' => [$b]]);
 $general = (int) bd_valeur('SELECT id FROM conversations WHERE serveur_id = ? AND nom = ?', [$s, 'général']);
 $appelA("groupes/$general/messages", ['_csrf' => $csrfA, 'texte' => 'Bienvenue sur le serveur !']);
+// Un logo (une image unie) sur le premier serveur.
+$png = tempnam(sys_get_temp_dir(), 'logo') . '.png';
+$im = imagecreatetruecolor(80, 80);
+imagefill($im, 0, 0, imagecolorallocate($im, 220, 60, 100));
+imagefilledellipse($im, 40, 40, 40, 40, imagecolorallocate($im, 255, 255, 255));
+imagepng($im, $png);
+$h = curl_init($base . "serveurs/$s/photo");
+curl_setopt_array($h, [CURLOPT_RETURNTRANSFER => true, CURLOPT_FOLLOWLOCATION => true, CURLOPT_COOKIEFILE => $jarA, CURLOPT_COOKIEJAR => $jarA, CURLOPT_POST => true,
+    CURLOPT_POSTFIELDS => ['_csrf' => $csrfA, 'photo' => new CURLFile($png, 'image/png', 'logo.png')]]);
+curl_exec($h);
+@unlink($png);
 $appelA('groupes', ['_csrf' => $csrfA, 'nom' => 'Projet C#', 'membres' => [$b]]);
 $appelA("amis/$b/messages", ['_csrf' => $csrfA, 'texte' => 'Salut Bastien']);
 $appelA('serveurs', ['_csrf' => $csrfA, 'nom' => 'Club de jeux', 'icone' => '🎮']);

@@ -21,10 +21,11 @@ $csrf = Session::jetonCsrf();
 $moi = Auth::id();
 $envoi = $dansUneFenetre ? ' data-envoi-fenetre' : '';
 $base = 'serveurs/' . $id;
+$photo = Serveurs::adressePhoto($id, $serveur['photo_nom']);
 ?>
 <div class="entete-page profil-ami"<?= $dansUneFenetre ? ' data-large' : '' ?>>
   <div class="profil-ami__identite">
-    <span class="serveur-icone serveur-icone--enorme" aria-hidden="true"><?= e((string) $serveur['icone']) ?></span>
+    <span class="serveur-icone serveur-icone--enorme" aria-hidden="true"><?= Serveurs::visuel((string) $serveur['icone'], $photo) ?></span>
     <div>
       <?php if (!$dansUneFenetre): ?>
         <p class="discret" style="margin:0 0 .2rem"><a href="<?= url($base) ?>"><?= e(t('srv.retour_serveur')) ?></a></p>
@@ -36,6 +37,35 @@ $base = 'serveurs/' . $id;
 </div>
 
 <?php if ($gere): ?>
+<?php // Le logo : essayé dans l'aperçu, envoyé seulement avec « Enregistrer » (le script des photos de groupe s'en charge). ?>
+<section class="carte profil-ami__section" id="serveur-logo" data-photo-carte>
+  <h2 style="margin-top:0"><?= e(t('srv.logo')) ?></h2>
+  <div class="photo-groupe">
+    <span class="photo-groupe__apercu" data-photo-apercu>
+      <span class="avatar avatar--apercu serveur-apercu<?= $photo !== null ? ' avatar--photo' : '' ?>" aria-hidden="true"><?= Serveurs::visuel((string) $serveur['icone'], $photo) ?></span>
+    </span>
+    <div class="fond-reglage__infos">
+      <form method="post" action="<?= url($base . '/photo') ?>" enctype="multipart/form-data" class="fond-reglage__choix" data-photo-formulaire<?= $envoi ?>>
+        <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+        <input type="file" name="photo" id="serveur-logo-fichier" class="sr-only" required
+               accept="image/jpeg,image/png,image/gif,image/webp" data-photo-fichier>
+        <label class="bouton bouton--secondaire" for="serveur-logo-fichier">📷 <?= e(t($photo === null ? 'srv.logo_choisir' : 'srv.logo_changer')) ?></label>
+        <span class="fond-reglage__nouveau" data-photo-nouveau hidden>
+          <button class="bouton" type="submit"><?= e(t('commun.enregistrer')) ?></button>
+          <button class="bouton bouton--discret" type="button" data-photo-annuler><?= e(t('commun.annuler')) ?></button>
+        </span>
+      </form>
+      <?php if ($photo !== null): ?>
+        <form method="post" action="<?= url($base . '/photo/retirer') ?>" style="margin-top:.5rem"<?= $envoi ?>>
+          <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+          <button class="bouton bouton--discret" type="submit"><?= e(t('srv.logo_retirer')) ?></button>
+        </form>
+      <?php endif; ?>
+      <p class="champ__aide" style="margin-bottom:0"><?= e(t('srv.logo_aide', ['mo' => intdiv(Amis::IMAGE_MAX_OCTETS, 1024 * 1024)])) ?></p>
+    </div>
+  </div>
+</section>
+
 <section class="carte profil-ami__section" id="serveur-nom-icone">
   <h2 style="margin-top:0"><?= e(t('srv.nom_icone')) ?></h2>
   <form method="post" action="<?= url($base . '/modifier') ?>"<?= $envoi ?>>

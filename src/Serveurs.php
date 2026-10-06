@@ -56,20 +56,20 @@ final class Serveurs
     /**
      * Mes serveurs, avec le nombre de membres, ce qui n'est pas lu, et le premier salon (où l'on arrive).
      *
-     * @return list<array{id: int, nom: string, icone: string, role: string, membres: int, non_lus: int, premier_salon: ?int}>
+     * @return list<array{id: int, nom: string, icone: string, photo: ?string, role: string, membres: int, non_lus: int, premier_salon: ?int}>
      */
     public static function liste(int $moi): array
     {
         $serveurs = [];
         foreach (Database::all(
-            'SELECT s.id, s.nom, s.icone, m.role,
+            'SELECT s.id, s.nom, s.icone, s.photo_nom, m.role,
                     (SELECT COUNT(*) FROM serveur_membres x WHERE x.serveur_id = s.id) AS membres,
                     (SELECT c.id FROM conversations c WHERE c.serveur_id = s.id ORDER BY c.position, c.id LIMIT 1) AS premier_salon
                FROM serveur_membres m JOIN serveurs s ON s.id = m.serveur_id
               WHERE m.user_id = ? ORDER BY s.nom, s.id',
             [$moi]
         ) as $l) {
-            $serveurs[] = ['id' => (int) $l['id'], 'nom' => (string) $l['nom'], 'icone' => (string) $l['icone'], 'role' => (string) $l['role'],
+            $serveurs[] = ['id' => (int) $l['id'], 'nom' => (string) $l['nom'], 'icone' => (string) $l['icone'], 'photo' => self::adressePhoto((int) $l['id'], $l['photo_nom']), 'role' => (string) $l['role'],
                            'membres' => (int) $l['membres'], 'non_lus' => array_sum(array_column(self::salons((int) $l['id'], $moi), 'non_lus')),
                            'premier_salon' => $l['premier_salon'] === null ? null : (int) $l['premier_salon']];
         }
@@ -126,9 +126,9 @@ final class Serveurs
     /** Les invitations que j'ai reçues. @return list<array{id: int, nom: string, icone: string, par: string, membres: int}> */
     public static function invitations(int $moi): array
     {
-        return array_map(static fn (array $l): array => ['id' => (int) $l['id'], 'nom' => (string) $l['nom'], 'icone' => (string) $l['icone'],
+        return array_map(static fn (array $l): array => ['id' => (int) $l['id'], 'nom' => (string) $l['nom'], 'icone' => (string) $l['icone'], 'photo' => self::adressePhoto((int) $l['id'], $l['photo_nom']),
             'par' => (string) $l['par'], 'membres' => (int) $l['membres']], Database::all(
-            "SELECT s.id, s.nom, s.icone, COALESCE(u.pseudo, '') AS par,
+            "SELECT s.id, s.nom, s.icone, s.photo_nom, COALESCE(u.pseudo, '') AS par,
                     (SELECT COUNT(*) FROM serveur_membres x WHERE x.serveur_id = s.id) AS membres
                FROM serveur_invitations i JOIN serveurs s ON s.id = i.serveur_id LEFT JOIN users u ON u.id = i.invite_par
               WHERE i.user_id = ? ORDER BY i.created_at DESC",
@@ -148,6 +148,75 @@ final class Serveurs
         $invites = array_map('intval', array_column(Database::all('SELECT user_id FROM serveur_invitations WHERE serveur_id = ?', [$serveur]), 'user_id'));
 
         return array_values(array_filter(Amis::liste($moi), static fn (array $a): bool => !in_array((int) $a['id'], $dedans, true) && !in_array((int) $a['id'], $invites, true)));
+    }
+
+    // --- Le logo --------------------------------------------------------------------------------------------------------
+
+    /** L'adresse du logo, qui change avec l'image (le navigateur garde l'ancienne sinon). */
+    public static function adressePhoto(int $serveur, ?string $nomPhoto): ?string
+    {
+        return $nomPhoto === null ? null : url('serveurs/' . $serveur . '/photo', ['v' => substr($nomPhoto, 0, 12)]);
+    }
+
+    /** Ce que montre un serveur en petit : son logo, ou son icône. À poser dans un cadre (le HTML est prêt, échappé). */
+    public static function visuel(string $icone, ?string $photo): string
+    {
+        return $photo === null ? e($icone) : '<img src="' . e($photo) . '" alt="">';
+    }
+
+    /** Le logo, pour les membres et ceux qui sont invités. */
+    public static function photo(int $serveur, int $moi): ?array
+    {
+        return Database::one(
+            'SELECT s.photo_nom, s.photo_mime FROM serveurs s
+              WHERE s.id = ? AND s.photo_nom IS NOT NULL
+                AND (EXISTS (SELECT 1 FROM serveur_membres m WHERE m.serveur_id = s.id AND m.user_id = ?)
+                  OR EXISTS (SELECT 1 FROM serveur_invitations i WHERE i.serveur_id = s.id AND i.user_id = ?))',
+            [$serveur, $moi, $moi]
+        );
+    }
+
+    /** Pose un logo (administrateurs). */
+    public static function changerPhoto(int $moi, int $serveur, ?array $image): ?string
+    {
+        if (!self::gere(self::role($serveur, $moi))) {
+            return t('srv.err.admins');
+        }
+        if ($image === null || ($image['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) {
+            return t('msg.choisir_image');
+        }
+        $rangee = Amis::rangerImage($image);
+        if (is_string($rangee)) {
+            return $rangee;
+        }
+        $avant = Database::valeur('SELECT photo_nom FROM serveurs WHERE id = ?', [$serveur]);
+        Database::run('UPDATE serveurs SET photo_nom = ?, photo_mime = ? WHERE id = ?', [$rangee['nom'], $rangee['mime'], $serveur]);
+        self::effacerFichier(is_string($avant) ? $avant : null);
+
+        return null;
+    }
+
+    /** Retire le logo : l'icône reprend sa place. Vrai s'il y en avait un ; un texte si c'est refusé. */
+    public static function retirerPhoto(int $moi, int $serveur): bool|string
+    {
+        if (!self::gere(self::role($serveur, $moi))) {
+            return t('srv.err.admins');
+        }
+        $avant = Database::valeur('SELECT photo_nom FROM serveurs WHERE id = ?', [$serveur]);
+        if (!is_string($avant)) {
+            return false;
+        }
+        Database::run('UPDATE serveurs SET photo_nom = NULL, photo_mime = NULL WHERE id = ? AND photo_nom = ?', [$serveur, $avant]);
+        self::effacerFichier($avant);
+
+        return true;
+    }
+
+    private static function effacerFichier(?string $nom): void
+    {
+        if ($nom !== null && preg_match('/^[0-9a-f]{32}\.[a-z0-9]{1,8}$/', $nom)) {
+            @unlink(Amis::dossierImages() . DIRECTORY_SEPARATOR . $nom);
+        }
     }
 
     /** Le serveur d'un salon (ou null si la conversation n'est pas un salon). */
@@ -254,7 +323,9 @@ final class Serveurs
         foreach (Database::all('SELECT id FROM conversations WHERE serveur_id = ?', [$serveur]) as $salon) {
             Conversations::effacer((int) $salon['id']);
         }
+        $photo = Database::valeur('SELECT photo_nom FROM serveurs WHERE id = ?', [$serveur]);
         Database::run('DELETE FROM serveurs WHERE id = ?', [$serveur]);
+        self::effacerFichier(is_string($photo) ? $photo : null);
     }
 
     // --- Les salons ----------------------------------------------------------------------------------------------------

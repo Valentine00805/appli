@@ -1690,6 +1690,9 @@ CREATE TABLE IF NOT EXISTS `serveurs` (
   `id`         INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `nom`        VARCHAR(60)  NOT NULL,
   `icone`      VARCHAR(16)  NOT NULL DEFAULT '🏰',
+  -- Le logo : une image rangée comme les photos des groupes ; sans elle, l'icône.
+  `photo_nom`  VARCHAR(64)  NULL,
+  `photo_mime` VARCHAR(40)  NULL,
   `cree_par`   INT UNSIGNED NULL,
   `created_at` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
