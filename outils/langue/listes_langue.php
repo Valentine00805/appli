@@ -20,8 +20,6 @@ foreach (['Config', 'Depot', 'Session', 'Langue', 'Auth', 'Requete', 'helpers', 
     require_once $racine . '/src/' . $classe . '.php';
 }
 Config::charger([
-    'db' => ['host' => '127.0.0.1', 'port' => 3306, 'name' => 'mon_appli_cours',
-             'user' => 'root', 'pass' => '', 'charset' => 'utf8mb4'],
     'app' => ['nom' => 'Mes Cours', 'dossier_uploads' => $racine . '/storage/uploads'],
 ]);
 

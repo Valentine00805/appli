@@ -6,6 +6,22 @@ final class Config
 {
     private static ?array $valeurs = null;
 
+    /** Le nom du fichier de réglages rangé hors du dossier publié (dans le dossier parent de l'application). */
+    public const FICHIER_HORS_PUBLIC = 'mes-cours-parametres.php';
+
+    /**
+     * Où lire les réglages locaux : « mes-cours-parametres.php » dans le dossier PARENT de l'application s'il existe, sinon
+     * « config/parametres.php ». Sur un hébergeur, l'application est dans le dossier publié (public_html) et son parent ne l'est
+     * pas : les clés secrètes (Google, Outlook, mot de passe de la base, clé de chiffrement) y sont hors de portée d'une adresse,
+     * même si la protection du dossier config/ venait à manquer. En local, ce fichier n'existe pas : rien ne change.
+     */
+    public static function fichierLocal(string $racine): string
+    {
+        $horsPublic = dirname($racine) . DIRECTORY_SEPARATOR . self::FICHIER_HORS_PUBLIC;
+
+        return is_file($horsPublic) ? $horsPublic : $racine . '/config/parametres.php';
+    }
+
     /**
      * Charge la configuration : le fichier local s'il existe, les réglages par
      * défaut sinon.

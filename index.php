@@ -118,16 +118,12 @@ require __DIR__ . '/controllers/TravauxController.php';
  * application Microsoft —, créez config/parametres.php : il n'a besoin d'y
  * écrire que ce qu'il change, le reste vient d'ici. Il a la priorité et
  * reste hors du dépôt.
+ *
+ * Sur un hébergeur, mieux vaut le ranger HORS du dossier que le serveur web publie : un fichier nommé
+ * « mes-cours-parametres.php », posé dans le dossier parent de l'application (voir Config::fichierLocal), est lu
+ * à la place de config/parametres.php — aucune adresse ne peut l'atteindre.
  */
 Config::charger([
-    'db' => [
-        'host'    => '127.0.0.1',
-        'port'    => 3306,
-        'name'    => 'mon_appli_cours',
-        'user'    => 'root',
-        'pass'    => '',
-        'charset' => 'utf8mb4',
-    ],
     'app' => [
         'nom'                 => 'Mes Cours',
         'inscription_ouverte' => true,
@@ -213,7 +209,7 @@ Config::charger([
         'secret'         => '',
         'adresse_retour' => '',
     ],
-], __DIR__ . '/config/parametres.php');
+], Config::fichierLocal(__DIR__));
 
 /* --- Où l'application est installée, et ce qui lui est demandé --- */
 define('BASE_PATH_BRUT', Requete::baseBrute());

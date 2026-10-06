@@ -40,6 +40,12 @@ PHP 8 + MySQL, sans aucune dépendance externe : pas de Composer, pas de CDN, to
    ];
    ```
 
+   **Sur un hébergeur**, rangez plutôt ce fichier *hors* du dossier que le serveur web publie : sous le nom
+   `mes-cours-parametres.php`, dans le dossier **parent** de l'application (par exemple à côté de `public_html`, pas dedans).
+   Il est lu à la place de `config/parametres.php` (voir `Config::fichierLocal`) et aucune adresse ne peut l'atteindre — c'est
+   l'endroit à préférer pour les clés secrètes (Google, Outlook, mot de passe de la base, clé de chiffrement). Le dossier
+   `config/` reste de toute façon fermé par le `.htaccess`.
+
 4. **Ouvrir l'application** : <http://localhost/mon_appli/appli/>
 
 5. **Créer son compte** depuis la page d'inscription. Quatre matières d'exemple sont
