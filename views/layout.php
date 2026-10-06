@@ -54,6 +54,7 @@ $actif = static function (string $prefixe) use ($route): string {
       <a href="<?= url('revision') ?>"<?= $actif('revision') ?>><?= e(t('nav.revision')) ?></a>
       <a href="<?= url('cartes') ?>"<?= $actif('cartes') ?>><?= e(t('nav.cartes')) ?></a>
       <a href="<?= url('resumes') ?>"<?= $actif('resumes') ?>><?= e(t('nav.resumes')) ?></a>
+      <a href="<?= url('assistant') ?>"<?= $actif('assistant') ?>><?= e(t('nav.assistant')) ?></a>
       <a href="<?= url('taches') ?>"<?= $actif('taches') ?>><?= e(t('nav.taches')) ?></a>
       <a href="<?= url('tableau') ?>"<?= $actif('tableau') ?>><?= e(t('nav.tableau')) ?></a>
       <a href="<?= url('alternance') ?>"<?= $actif('alternance') ?>><?= e(t('nav.alternance')) ?></a>

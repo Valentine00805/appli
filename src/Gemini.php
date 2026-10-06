@@ -65,21 +65,47 @@ final class Gemini
         }
 
         return self::essayer($cle, self::modeles('modele_texte', self::MODELES_TEXTE), $corps,
-            static function (array $reponse): string {
-                $texte = '';
-                foreach ((array) ($reponse['candidates'][0]['content']['parts'] ?? []) as $partie) {
-                    $texte .= (string) ($partie['text'] ?? '');
-                }
-                if (trim($texte) === '') {
-                    $motif = (string) ($reponse['promptFeedback']['blockReason'] ?? $reponse['candidates'][0]['finishReason'] ?? '');
-                    throw new GeminiErreur(
-                        $motif !== '' ? $motif : 'Réponse vide.',
-                        in_array($motif, ['SAFETY', 'PROHIBITED_CONTENT', 'BLOCKLIST', 'OTHER', 'RECITATION'], true) ? 'refus' : 'vide'
-                    );
-                }
+            static fn (array $reponse): string => self::texteDe($reponse));
+    }
 
-                return $texte;
-            });
+    /**
+     * Poursuit une discussion : tous les tours depuis le début, pour que le modèle se souvienne de ce qui s'est dit.
+     *
+     * @param list<array{role: string, texte: string}> $tours  « user » ou « model », en alternance, le dernier de la personne
+     * @return array{0: string, 1: string}  la réponse, et le modèle qui l'a écrite
+     * @throws GeminiErreur
+     */
+    public static function discussion(string $cle, string $consigne, array $tours): array
+    {
+        $corps = [
+            'systemInstruction' => ['parts' => [['text' => $consigne]]],
+            'contents' => array_map(static fn (array $t): array => [
+                'role' => $t['role'] === 'model' ? 'model' : 'user',
+                'parts' => [['text' => (string) $t['texte']]],
+            ], $tours),
+            'generationConfig' => ['temperature' => 0.7],
+        ];
+
+        return self::essayer($cle, self::modeles('modele_texte', self::MODELES_TEXTE), $corps,
+            static fn (array $reponse): string => self::texteDe($reponse));
+    }
+
+    /** Le texte d'une réponse, ou l'erreur qui dit pourquoi il n'y en a pas (contenu refusé, réponse vide). */
+    private static function texteDe(array $reponse): string
+    {
+        $texte = '';
+        foreach ((array) ($reponse['candidates'][0]['content']['parts'] ?? []) as $partie) {
+            $texte .= (string) ($partie['text'] ?? '');
+        }
+        if (trim($texte) === '') {
+            $motif = (string) ($reponse['promptFeedback']['blockReason'] ?? $reponse['candidates'][0]['finishReason'] ?? '');
+            throw new GeminiErreur(
+                $motif !== '' ? $motif : 'Réponse vide.',
+                in_array($motif, ['SAFETY', 'PROHIBITED_CONTENT', 'BLOCKLIST', 'OTHER', 'RECITATION'], true) ? 'refus' : 'vide'
+            );
+        }
+
+        return $texte;
     }
 
     /**

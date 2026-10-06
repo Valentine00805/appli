@@ -25,6 +25,7 @@ final class Menu
         'revision'     => ['route' => 'revision',              'icone' => '📝', 'nom' => 'nav.revision',     'prefixe' => 'revision'],
         'cartes'       => ['route' => 'cartes',                'icone' => '🃏', 'nom' => 'nav.cartes',       'prefixe' => 'cartes'],
         'resumes'      => ['route' => 'resumes',               'icone' => '✨', 'nom' => 'nav.resumes',      'prefixe' => 'resumes'],
+        'assistant'    => ['route' => 'assistant',             'icone' => '🤖', 'nom' => 'nav.assistant',    'prefixe' => 'assistant'],
         'taches'       => ['route' => 'taches',                'icone' => '✅', 'nom' => 'nav.taches',       'prefixe' => 'taches'],
         'tableau'      => ['route' => 'tableau',               'icone' => '📋', 'nom' => 'nav.tableau',      'prefixe' => 'tableau'],
         'alternance'   => ['route' => 'alternance',            'icone' => '💼', 'nom' => 'nav.alternance',   'prefixe' => 'alternance'],

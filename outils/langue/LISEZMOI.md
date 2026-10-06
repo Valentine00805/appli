@@ -410,7 +410,7 @@ celui des voix sur le disque, et le rangement dans la fiche de révision (rayon 
 ou d'un autre compte, PDF téléchargé et joint, quatre langues, disparition avec le diaporama). Le lecteur (assets/js/diaporama.js : lecture par la voix du navigateur, repli sans voix,
 boucle de fabrication) se contrôle dans un navigateur : il n'a pas de test automatique.
 
-**`menu_langue.php`** — le menu en grille de la barre (comme les applications de Google) : ses 15 tuiles (chacune mène à la route de
+**`menu_langue.php`** — le menu en grille de la barre (comme les applications de Google) : ses 16 tuiles (chacune mène à la route de
 l'onglet du même nom), les favoris de départ, les favoris choisis (ordre gardé, clés inconnues et doublons écartés, JSON abîmé sans
 conséquence), le jeton CSRF, le cloisonnement entre comptes, les quatre langues. L'édition au crayon et la fermeture se contrôlent
 dans un navigateur (assets/js/menu-apps.js n'a pas de test automatique). Même suite : la section « Mes applications » — liens vers d'autres sites
@@ -434,3 +434,8 @@ les autres amis, l'évènement du propriétaire intact, les rappels qui partent 
 retirer un lien (celui qui l'a fait ou un administrateur), l'accès qui s'en va quand on quitte le groupe (la copie déjà faite reste), un cours supprimé qui disparaît de la liste, quatre langues.
 Même suite : ce qui est déjà copié n'est plus proposé (« ✓ Déjà dans tes cours » + « Ouvrir ma copie », sur la page du document et dans l'onglet du groupe) — la copie garde l'identifiant de son origine (`partage_de`, et sa nature cours ou fiche),
 une copie d'avant la colonne est reconnue à son titre et à son texte puis reçoit l'identifiant, un homonyme au texte différent ne l'est pas, recopier de force est refusé, la fiche reste distincte du cours.
+
+**`assistant_langue.php`** — l'assistant IA (discuter avec Gemini, avec la clé de la personne), contre le FAUX Gemini : sans clé (page, formulaire grisé, envoi refusé), la première question (titre, deux tours gardés, ce que Gemini reçoit : clé en en-tête, question, consigne),
+la suite (tout l'historique part, en alternance), le cours dont on parle (texte et fiche dans des balises « document » ; celui d'un autre n'est ni lu ni envoyé ; « aucun cours » le retire), les refus (vide, trop long, jeton, discussion d'un autre : 404),
+les pannes de Gemini (clé refusée, limite, contenu bloqué, surcharge : rien d'écrit, pas de question sans réponse), les bornes (40 derniers tours, 60 000 caractères, 300 messages), renommer, supprimer, HTML échappé, quatre langues.
+Le script (assets/js/assistant.js : question affichée aussitôt, « l'IA réfléchit », discussion nouvelle ajoutée à la liste) se contrôle dans un navigateur.

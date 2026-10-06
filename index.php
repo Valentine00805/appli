@@ -77,6 +77,7 @@ require __DIR__ . '/src/Vue.php';
 require __DIR__ . '/controllers/AuthController.php';
 require __DIR__ . '/controllers/LiensAppsController.php';
 require __DIR__ . '/controllers/SondagesController.php';
+require __DIR__ . '/controllers/AssistantController.php';
 require __DIR__ . '/controllers/AmisController.php';
 require __DIR__ . '/controllers/ConversationsController.php';
 require __DIR__ . '/controllers/PartagesController.php';
@@ -604,6 +605,11 @@ $routes = [
     // pris pour un identifiant.
     ['GET',  'cartes',                       [CartesController::class, 'index']],
     ['GET',  'cartes/seance',                [CartesController::class, 'seance']],
+    ['GET',  'assistant',                   [AssistantController::class, 'index']],
+    ['POST', 'assistant/envoyer',           [AssistantController::class, 'envoyer']],
+    ['GET',  'assistant/{id}',              [AssistantController::class, 'index']],
+    ['POST', 'assistant/{id}/renommer',     [AssistantController::class, 'renommer']],
+    ['POST', 'assistant/{id}/supprimer',    [AssistantController::class, 'supprimer']],
     ['GET',  'resumes',                     [ResumesController::class, 'index']],
     ['POST', 'resumes/generer',             [ResumesController::class, 'generer']],
     ['GET',  'resumes/{id}',                [ResumesController::class, 'voir']],

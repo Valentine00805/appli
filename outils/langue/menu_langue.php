@@ -50,7 +50,7 @@ $enregistrer = static function (string $compte, string $csrf, array $favoris) us
     return $code;
 };
 $base = bd_valeur('SELECT 1') === null ? '' : '';
-$catalogue = ['accueil', 'calendrier', 'cours', 'partages', 'revision', 'cartes', 'resumes', 'taches', 'tableau', 'alternance', 'groupes', 'budget', 'organisation', 'amis', 'compte'];
+$catalogue = ['accueil', 'calendrier', 'cours', 'partages', 'revision', 'cartes', 'resumes', 'assistant', 'taches', 'tableau', 'alternance', 'groupes', 'budget', 'organisation', 'amis', 'compte'];
 $parDefaut = ['calendrier', 'cours', 'revision', 'cartes', 'resumes', 'taches'];
 
 try {
@@ -70,9 +70,9 @@ try {
             && str_contains($page, 'Vos favoris') && str_contains($page, 'Toutes les sections')), 'oui');
     $dire('  les favoris de départ, dans l’ordre', implode(',', $grille($page, 'favoris')), implode(',', $parDefaut));
     $dire('  les autres sections, dans l’ordre du catalogue', implode(',', $grille($page, 'autres')), implode(',', array_values(array_diff($catalogue, $parDefaut))));
-    $dire('  les 15 sections sont là, une seule fois chacune', (string) substr_count($page, 'class="apps__tuile"'), '15');
+    $dire('  les 16 sections sont là, une seule fois chacune', (string) substr_count($page, 'class="apps__tuile"'), '16');
     $liens = [];
-    foreach (['accueil' => '', 'calendrier' => 'calendrier', 'cours' => 'cours', 'partages' => 'partages', 'revision' => 'revision', 'cartes' => 'cartes', 'resumes' => 'resumes',
+    foreach (['accueil' => '', 'calendrier' => 'calendrier', 'cours' => 'cours', 'partages' => 'partages', 'revision' => 'revision', 'cartes' => 'cartes', 'resumes' => 'resumes', 'assistant' => 'assistant',
               'taches' => 'taches', 'tableau' => 'tableau', 'alternance' => 'alternance', 'groupes' => 'travaux', 'budget' => 'budget',
               'organisation' => 'organisation/matieres', 'amis' => 'amis', 'compte' => 'compte'] as $cle => $route) {
         $adresse = '/mon_appli/appli/' . $route;
@@ -86,7 +86,7 @@ try {
         $oui(preg_match('#<a class="apps__tuile" href="[^"]*/calendrier" data-cle="calendrier" data-rang="\d+" aria-current="page">#', $page) === 1
             && substr_count($page, 'class="apps__tuile"') - substr_count($page, 'class="apps__tuile" href') === 0), 'oui');
     $dire('  chaque tuile a son rang dans le catalogue (pour retrouver sa place quand on la retire des favoris)',
-        $oui(preg_match_all('#data-rang="(\d+)"#', $page, $rangs) === 15 && count(array_unique($rangs[1])) === 15), 'oui');
+        $oui(preg_match_all('#data-rang="(\d+)"#', $page, $rangs) === 16 && count(array_unique($rangs[1])) === 16), 'oui');
     $dire('  le crayon, caché sans script : pas de bouton qui ne fait rien', $oui(str_contains($page, 'data-apps-edition aria-pressed="false" hidden')), 'oui');
     [$js] = $appel($a, 'assets/js/menu-apps.js');
     $dire('  le script est chargé avec les pages, ferme au clic à côté et sur Échap, et envoie les favoris',
@@ -98,9 +98,9 @@ try {
     [$page] = $appel($a, 'calendrier');
     $dire('trois favoris choisis (204) : la base les garde, le panneau les montre dans CET ordre, les autres suivent',
         $code . ' · ' . bd_valeur('SELECT menu_favoris FROM users WHERE id = ?', [$idA]) . ' · ' . implode(',', $grille($page, 'favoris')) . ' · ' . count($grille($page, 'autres')),
-        '204 · ["resumes","accueil","budget"] · resumes,accueil,budget · 12');
+        '204 · ["resumes","accueil","budget"] · resumes,accueil,budget · 13');
     $dire('  ni la barre d’onglets ni le reste de la page n’en sont changés',
-        $oui(substr_count($page, 'class="apps__tuile"') === 15 && str_contains($page, '<nav class="nav"')), 'oui');
+        $oui(substr_count($page, 'class="apps__tuile"') === 16 && str_contains($page, '<nav class="nav"')), 'oui');
     $enregistrer($a, $csrf, ['budget', 'accueil', 'resumes']);
     [$page] = $appel($a, 'calendrier');
     $dire('  l’ordre choisi est gardé tel quel', implode(',', $grille($page, 'favoris')), 'budget,accueil,resumes');
@@ -112,7 +112,7 @@ try {
     $enregistrer($a, $csrf, []);
     [$page] = $appel($a, 'calendrier');
     $dire('  aucun favori choisi : la liste est vide, et le panneau le dit',
-        $oui($grille($page, 'favoris') === [] && !str_contains($page, 'data-apps-vide hidden') && str_contains($page, 'Aucun favori')) . ' · ' . count($grille($page, 'autres')), 'oui · 15');
+        $oui($grille($page, 'favoris') === [] && !str_contains($page, 'data-apps-vide hidden') && str_contains($page, 'Aucun favori')) . ' · ' . count($grille($page, 'autres')), 'oui · 16');
     $enregistrer($a, $csrf, ['cours']);
     [$page] = $appel($a, 'calendrier');
     $dire('  un favori, et le message « aucun favori » se cache', $oui($grille($page, 'favoris') === ['cours'] && str_contains($page, 'data-apps-vide hidden')), 'oui');
@@ -129,9 +129,9 @@ try {
     $dire('  au départ, pas d\'ordre à soi : la colonne est vide', $oui(bd_valeur('SELECT menu_ordre FROM users WHERE id = ?', [$idA]) === null), 'oui');
     [, , $code] = $ranger($a, $csrf, ['cours'], ['budget', 'amis', 'accueil']);
     [$page] = $appel($a, 'calendrier');
-    $attendu = ['budget', 'amis', 'accueil', 'calendrier', 'partages', 'revision', 'cartes', 'resumes', 'taches', 'tableau', 'alternance', 'groupes', 'organisation', 'compte'];
+    $attendu = ['budget', 'amis', 'accueil', 'calendrier', 'partages', 'revision', 'cartes', 'resumes', 'assistant', 'taches', 'tableau', 'alternance', 'groupes', 'organisation', 'compte'];
     $dire('  un ordre envoyé est gardé, complété des sections oubliées, et « Toutes les sections » le suit (les favoris en sont ôtés)',
-        $code . ' · ' . $oui(count(json_decode($ordreBd($idA), true)) === 15) . ' · ' . implode(',', $grille($page, 'autres')),
+        $code . ' · ' . $oui(count(json_decode($ordreBd($idA), true)) === 16) . ' · ' . implode(',', $grille($page, 'autres')),
         '204 · oui · ' . implode(',', $attendu));
     $dire('  chaque tuile porte son rang dans cet ordre (pour retrouver sa place quand un favori en sort)',
         $oui(str_contains($page, 'data-cle="budget" data-rang="0"') && str_contains($page, 'data-cle="amis" data-rang="1"')
@@ -139,12 +139,12 @@ try {
     [, , $code] = $ranger($a, $csrf, ['cours'], ['amis', 'inconnu', 'amis', '<script>', 'budget', '../x']);
     $json = json_decode($ordreBd($idA), true) ?: [];
     $dire('  ce qui n\'est pas une section, ou revient deux fois, est écarté ; les oubliées suivent dans l\'ordre du catalogue',
-        $code . ' · ' . implode(',', array_slice($json, 0, 4)) . ' · ' . count($json), '204 · amis,budget,accueil,calendrier · 15');
+        $code . ' · ' . implode(',', array_slice($json, 0, 4)) . ' · ' . count($json), '204 · amis,budget,accueil,calendrier · 16');
     $ordreAvant = $ordreBd($idA);
     $enregistrer($a, $csrf, ['cours', 'budget']);
     $dire('  des favoris envoyés sans « ordre » ne touchent pas à l\'ordre gardé', $oui($ordreBd($idA) === $ordreAvant), 'oui');
     [$pageB] = $appel($b, 'calendrier');
-    $dire('  et l\'ordre d\'un compte n\'est pas celui des autres', $oui(bd_valeur('SELECT menu_ordre FROM users WHERE id = ?', [$idB]) === null) . ' · ' . implode(',', array_slice($grille($pageB, 'autres'), 0, 3)), 'oui · accueil,partages,tableau');
+    $dire('  et l\'ordre d\'un compte n\'est pas celui des autres', $oui(bd_valeur('SELECT menu_ordre FROM users WHERE id = ?', [$idB]) === null) . ' · ' . implode(',', array_slice($grille($pageB, 'autres'), 0, 3)), 'oui · accueil,partages,assistant');
     [, , $code] = $ranger($a, $csrf, ['cours'], array_keys(Menu::SECTIONS));
     $dire('  renvoyer l\'ordre du catalogue efface l\'ordre gardé (retour au départ)', $code . ' · ' . $oui(bd_valeur('SELECT menu_ordre FROM users WHERE id = ?', [$idA]) === null), '204 · oui');
     [, , $code] = $appel($a, 'compte/menu-favoris', ['_csrf' => 'faux', 'favoris' => ['cours'], 'ordre' => ['budget']]);
