@@ -140,6 +140,23 @@ try {
     [$salonB] = $appel($b, 'groupes/' . $general);
     $dire('B voit le salon, la note en français, et le serveur', $oui(str_contains($salonB, 'rejoint le serveur') && str_contains($salonB, 'chat__serveur')), 'oui');
 
+    // La colonne du serveur
+    [$pageA] = $appel($a, 'groupes/' . $general);
+    [$pageB] = $appel($b, 'groupes/' . $general);
+    $dire('la colonne du serveur n\'a plus de lien « ← Mes serveurs »', $oui(!str_contains($pageA, '← Mes serveurs')), 'oui');
+    $dire('l\'administrateur a un « ＋ » à côté des membres, avec leur nombre ; le simple membre n\'en a pas',
+        $oui(str_contains($pageA, "serveurs/$s/inviter\"") && str_contains($pageA, 'serveur-sous-titre__nombre') && !str_contains($pageB, "serveurs/$s/inviter\"")), 'oui');
+    [$fenInviter] = $appel($a, "serveurs/$s/inviter?fenetre=1");
+    $dire('ce « ＋ » ouvre une fenêtre d\'invitation : les amis à inviter, rien d\'autre', $oui(!str_contains($fenInviter, '<html') && str_contains($fenInviter, 'name="amis[]"')
+        && str_contains($fenInviter, 'name="retour"') && !str_contains($fenInviter, 'data-photo-carte') && !str_contains($fenInviter, 'serveur-couleur')), 'oui');
+    [$fenB] = $appel($b, "serveurs/$s/inviter?fenetre=1");
+    $dire('un simple membre n\'y accède pas', $oui(!str_contains($fenB, 'name="amis[]"')), 'oui');
+    [$corpsInv, $adresseInv] = $poster($a, "serveurs/$s/inviter", ['amis' => [$idC], 'retour' => 'inviter', 'fenetre' => '1']);
+    $dire('inviter depuis cette fenêtre y reste, avec la liste des invitations en attente', $oui(str_contains($adresseInv, "serveurs/$s/inviter") && str_contains($adresseInv, 'fenetre=1')
+        && str_contains($corpsInv, 'Invitations en attente') && !str_contains($corpsInv, '<html')), 'oui');
+    [, $adresseAnnul] = $poster($a, "serveurs/$s/invitations/$idC/annuler", ['retour' => 'inviter', 'fenetre' => '1']);
+    $dire('annuler une invitation y reste aussi', $oui(str_contains($adresseAnnul, "serveurs/$s/inviter") && $role($s, $idC) === ''), 'oui');
+
     echo "\n3. Les salons\n";
     $poster($b, "serveurs/$s/salons", ['nom' => 'Pirate']);
     $dire('un simple membre ne crée pas de salon', implode(',', $salons($s)), 'général');

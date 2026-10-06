@@ -101,6 +101,24 @@ final class ServeursController
         Vue::afficher('serveurs/salons', $donnees, t('srv.salons_de', ['nom' => (string) $serveur['nom']]));
     }
 
+    /** Inviter des amis, dans leur propre fenêtre (administrateurs). */
+    public function fenetreInviter(int $id): void
+    {
+        Auth::exiger();
+        $moi = Auth::id();
+        $serveur = Serveurs::serveur($id, $moi);
+        if ($serveur === null || !Serveurs::gere((string) $serveur['role'])) {
+            Session::flash('erreur', $serveur === null ? t('srv.fl.introuvable') : t('srv.err.admins'));
+            redirect($serveur === null ? 'serveurs' : 'serveurs/' . $id);
+        }
+        $donnees = ['serveur' => $serveur, 'aInviter' => Serveurs::aInviter($id, $moi), 'invites' => Serveurs::invites($id), 'membres' => count(Serveurs::membres($id))];
+        if (Vue::enFenetre()) {
+            Vue::fragment('serveurs/inviter', $donnees);
+            return;
+        }
+        Vue::afficher('serveurs/inviter', $donnees, t('srv.inviter'));
+    }
+
     public function modifier(int $id): void
     {
         $this->poster();
@@ -154,6 +172,12 @@ final class ServeursController
         $this->retourReglages($id, $refus, t('srv.fl.couleur_changee'));
     }
 
+    /** La page où revenir après une invitation : la fenêtre d'invitation si c'est d'elle qu'on vient, sinon les réglages. */
+    private static function pageDeRetour(): string
+    {
+        return ($_POST['retour'] ?? '') === 'inviter' ? 'inviter' : 'reglages';
+    }
+
     /** La couleur du formulaire : une pastille choisie, la couleur personnalisée, ou rien (la couleur du nom). */
     private static function couleurChoisie(): ?string
     {
@@ -189,7 +213,7 @@ final class ServeursController
         $moi = Auth::id();
         $ids = is_array($_POST['amis'] ?? null) ? array_values(array_unique(array_map('intval', $_POST['amis']))) : [];
         if ($ids === []) {
-            $this->retourReglages($id, t('srv.err.choisir_ami'), '');
+            $this->retourReglages($id, t('srv.err.choisir_ami'), '', self::pageDeRetour());
         }
         $notifications = [];
         $faits = 0;
@@ -212,14 +236,14 @@ final class ServeursController
             Session::flash('erreur', $refus);
         }
         // Envoyé depuis la fenêtre : on y reste (redirect() fait de même, mais ici la réponse part avant les notifications).
-        $this->redirigerPuisEnvoyer(url('serveurs/' . $id . '/reglages', ($_POST['fenetre'] ?? '') === '1' ? ['fenetre' => 1] : []), $notifications);
+        $this->redirigerPuisEnvoyer(url('serveurs/' . $id . '/' . self::pageDeRetour(), ($_POST['fenetre'] ?? '') === '1' ? ['fenetre' => 1] : []), $notifications);
     }
 
     public function annulerInvitation(int $id, int $membre): void
     {
         $this->poster();
         $refus = Serveurs::annulerInvitation(Auth::id(), $id, $membre);
-        $this->retourReglages($id, $refus, t('srv.fl.invitation_annulee'));
+        $this->retourReglages($id, $refus, t('srv.fl.invitation_annulee'), self::pageDeRetour());
     }
 
     public function accepter(int $id): void

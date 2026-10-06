@@ -358,6 +358,7 @@ $routes = [
     ['POST', 'serveurs/{id}/salons',                  [ServeursController::class, 'ajouterSalon']],
     ['POST', 'serveurs/{id}/salons/{id}/renommer',    [ServeursController::class, 'renommerSalon']],
     ['POST', 'serveurs/{id}/salons/{id}/supprimer',   [ServeursController::class, 'supprimerSalon']],
+    ['GET',  'serveurs/{id}/inviter',                 [ServeursController::class, 'fenetreInviter']],
     ['POST', 'serveurs/{id}/inviter',                 [ServeursController::class, 'inviter']],
     ['POST', 'serveurs/{id}/invitations/{id}/annuler', [ServeursController::class, 'annulerInvitation']],
     ['POST', 'serveurs/{id}/accepter',                [ServeursController::class, 'accepter']],

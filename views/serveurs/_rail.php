@@ -11,7 +11,6 @@ $moi = Auth::id();
 $gere = Serveurs::gere((string) $serveur['role']);
 ?>
 <aside class="carte chat__amis chat__serveur" aria-label="<?= e(t('srv.aside', ['nom' => (string) $serveur['nom']])) ?>">
-  <p class="serveur-retour"><a href="<?= url('serveurs') ?>"><?= e(t('srv.retour')) ?></a></p>
   <div class="serveur-entete">
     <?= Serveurs::pastille((string) $serveur['nom'], Serveurs::adressePhoto((int) $serveur['id'], $serveur['photo_nom']), 'serveur-icone', $serveur['couleur']) ?>
     <strong class="serveur-entete__nom"><?= e((string) $serveur['nom']) ?></strong>
@@ -19,7 +18,8 @@ $gere = Serveurs::gere((string) $serveur['role']);
        title="<?= e(t('srv.reglages')) ?>" aria-label="<?= e(t('srv.reglages')) ?>">⚙️</a>
   </div>
 
-  <h2 class="serveur-sous-titre"><?= e(t('srv.salons')) ?>
+  <h2 class="serveur-sous-titre">
+    <span><?= e(t('srv.salons')) ?></span>
     <?php if ($gere): ?>
       <a class="serveur-sous-titre__ajout" href="<?= url('serveurs/' . (int) $serveur['id'] . '/salons') ?>" data-fenetre
          title="<?= e(t('srv.ajouter_salon')) ?>" aria-label="<?= e(t('srv.ajouter_salon')) ?>">＋</a>
@@ -39,7 +39,13 @@ $gere = Serveurs::gere((string) $serveur['role']);
     <?php endforeach; ?>
   </ul>
 
-  <h2 class="serveur-sous-titre"><?= e(t('srv.membres')) ?> <span class="discret"><?= count($membresServeur) ?></span></h2>
+  <h2 class="serveur-sous-titre">
+    <span><?= e(t('srv.membres')) ?> <span class="serveur-sous-titre__nombre"><?= count($membresServeur) ?></span></span>
+    <?php if ($gere): ?>
+      <a class="serveur-sous-titre__ajout" href="<?= url('serveurs/' . (int) $serveur['id'] . '/inviter') ?>" data-fenetre
+         title="<?= e(t('srv.inviter')) ?>" aria-label="<?= e(t('srv.inviter')) ?>">＋</a>
+    <?php endif; ?>
+  </h2>
   <ul class="serveur-membres">
     <?php foreach ($membresServeur as $m): ?>
       <li>
