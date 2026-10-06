@@ -4341,3 +4341,68 @@ summary.cal-volet__groupe:focus-visible {
   .ia__messages { max-height: none; }
 }
 @media (prefers-reduced-motion: reduce) { .ia__bulle--attente { animation: none; } }
+
+/* Les serveurs : un espace avec des salons et des membres, façon Discord. */
+.discussions-entete__serveurs {
+  display: flex; align-items: center; gap: .45rem; margin: 0 .1rem .1rem; padding: .5rem .6rem;
+  border-radius: var(--rayon-s); background: var(--accent-doux); color: var(--accent-fonce); font-weight: 650; font-size: .92rem; text-decoration: none;
+}
+.discussions-entete__serveurs:hover, .discussions-entete__serveurs:focus-visible { background: var(--fond-doux); outline: none; }
+.serveurs__actions { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+.serveurs__liste { list-style: none; margin: 0; padding: 0; display: grid; gap: .6rem; grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr)); }
+.serveurs__invitations { border-color: var(--accent); }
+.serveur-carte {
+  display: flex; align-items: center; gap: .8rem; padding: .8rem .9rem; border: 1px solid var(--bordure); border-radius: var(--rayon);
+  background: var(--fond-carte); color: inherit; text-decoration: none;
+}
+a.serveur-carte:hover, a.serveur-carte:focus-visible { border-color: var(--accent); background: var(--accent-doux); outline: none; }
+.serveur-carte__texte { display: grid; gap: .1rem; min-width: 0; flex: 1; }
+.serveur-carte__texte strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.serveur-carte__actions { display: flex; gap: .35rem; flex-wrap: wrap; }
+.serveur-icone {
+  display: inline-grid; place-items: center; width: 2rem; height: 2rem; flex: none; border-radius: 30%; background: var(--accent-doux); font-size: 1.15rem; line-height: 1;
+}
+.serveur-icone--grand { width: 2.9rem; height: 2.9rem; font-size: 1.6rem; }
+.serveur-icone--enorme { width: 4rem; height: 4rem; font-size: 2.2rem; }
+.serveur-icones { margin: 0 0 1rem; padding: 0; border: 0; min-width: 0; }
+.serveur-icones__liste { display: flex; flex-wrap: wrap; gap: .4rem; }
+.serveur-icones__choix { position: relative; cursor: pointer; }
+.serveur-icones__choix input { position: absolute; opacity: 0; inset: 0; cursor: pointer; }
+.serveur-icones__choix > span[aria-hidden] {
+  display: grid; place-items: center; width: 2.6rem; height: 2.6rem; border: 2px solid var(--bordure); border-radius: var(--rayon-s); font-size: 1.4rem;
+}
+.serveur-icones__choix input:checked + span { border-color: var(--accent); background: var(--accent-doux); }
+.serveur-icones__choix input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.chat__serveur { padding: .75rem; }
+.serveur-retour { margin: 0 0 .5rem; font-size: .85rem; }
+.serveur-entete { display: flex; align-items: center; gap: .55rem; padding-bottom: .6rem; border-bottom: 1px solid var(--bordure); }
+.serveur-entete__nom { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.serveur-sous-titre {
+  display: flex; align-items: center; justify-content: space-between; gap: .4rem; margin: 1rem 0 .35rem; font-size: .78rem; letter-spacing: .04em;
+  text-transform: uppercase; color: var(--texte-doux);
+}
+.serveur-sous-titre__ajout { font-size: 1.1rem; line-height: 1; color: var(--texte-doux); text-decoration: none; }
+.serveur-sous-titre__ajout:hover { color: var(--accent); }
+.serveur-salons, .serveur-membres { list-style: none; margin: 0; padding: 0; display: grid; gap: .1rem; }
+.serveur-salons a {
+  display: flex; align-items: center; justify-content: space-between; gap: .4rem; padding: .4rem .55rem; border-radius: var(--rayon-s);
+  color: var(--texte-doux); text-decoration: none; font-weight: 550;
+}
+.serveur-salons a:hover { background: var(--fond-doux); color: var(--texte); }
+.serveur-salons a[aria-current] { background: var(--accent-doux); color: var(--accent-fonce); font-weight: 700; }
+.serveur-salons__non-lu { color: var(--texte); font-weight: 750; }
+.serveur-salons__nom { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.serveur-membres li { display: flex; align-items: center; gap: .5rem; padding: .25rem .35rem; font-size: .9rem; }
+.serveur-membres__nom { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.serveur-salon-renommer { display: flex; gap: .3rem; align-items: center; }
+.serveur-salon-renommer input { width: 9rem; }
+@media (max-width: 780px) {
+  /* Sur un petit écran, le côté du serveur se réduit à la bande de ses salons, au-dessus du fil. */
+  .chat__serveur { display: block; padding: .5rem .6rem; }
+  .chat__serveur .serveur-sous-titre, .chat__serveur .serveur-membres, .chat__serveur .serveur-retour { display: none; }
+  .chat__serveur .serveur-entete { border-bottom: 0; padding-bottom: .3rem; }
+  .chat__serveur .serveur-salons { display: flex; overflow-x: auto; gap: .3rem; }
+  .chat__serveur .serveur-salons a { white-space: nowrap; }
+  .chat__serveur + .chat__fil { height: calc(100vh - 11rem); }
+}

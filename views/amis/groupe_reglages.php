@@ -21,8 +21,11 @@
  * @var bool $muette  ai-je coupé les notifications du groupe ?
  * @var string|null|false $coupure  la fin de la coupure (UTC), null sans fin, false sans coupure
  * @var bool $dansUneFenetre
+ * @var bool $salon  est-ce un salon de serveur ? Il n'a alors ni nom, ni photo, ni membres, ni départ à régler ici : c'est le serveur qui décide.
+ * @var ?array $serveur  le serveur du salon
  */
 $dansUneFenetre = $dansUneFenetre ?? false;
+$salon = $salon ?? false;
 $id = (int) $groupe['id'];
 $nom = (string) $groupe['nom'];
 $csrf = Session::jetonCsrf();
@@ -31,20 +34,25 @@ $moi = Auth::id();
 
 <div class="entete-page profil-ami"<?= $dansUneFenetre ? ' data-large' : '' ?>>
   <div class="profil-ami__identite">
-    <?= Conversations::avatar($id, $groupe['photo_nom'], 'avatar--grand', true) ?>
+    <?= $salon ? '<span class="avatar avatar--grand avatar--groupe" aria-hidden="true">#</span>' : Conversations::avatar($id, $groupe['photo_nom'], 'avatar--grand', true) ?>
     <div>
       <?php if (!$dansUneFenetre): ?>
         <p class="discret" style="margin:0 0 .2rem"><a href="<?= url('groupes/' . $id) ?>"><?= e(t('prf.retour_discussion')) ?></a></p>
       <?php endif; ?>
-      <h1 style="margin:0"><?= e($nom) ?></h1>
+      <h1 style="margin:0"><?= $salon ? '# ' : '' ?><?= e($nom) ?></h1>
+      <?php if ($salon): ?>
+        <p class="discret" style="margin:.15rem 0 0"><?= e((string) $serveur['icone']) ?> <a href="<?= url('serveurs/' . (int) $serveur['id'] . '/reglages') ?>"<?= $dansUneFenetre ? ' data-fenetre' : '' ?>><?= e(t('srv.salon_de', ['nom' => (string) $serveur['nom']])) ?></a></p>
+      <?php else: ?>
       <p class="discret" style="margin:.15rem 0 0"><?= e(t('grp.membres_cree', [
           'n' => count($membres),
           'date' => date_fr(Amis::local((string) $groupe['created_at'])->format('Y-m-d H:i:s'), false),
       ])) ?></p>
+      <?php endif; ?>
     </div>
   </div>
 </div>
 
+<?php if (!$salon): ?>
 <?php // La photo du groupe : chacun peut la changer ; tout le groupe la voit. ?>
 <section class="carte profil-ami__section" id="photo-groupe" data-photo-carte>
   <h2 style="margin-top:0"><?= e(t('grp.photo')) ?></h2>
@@ -92,6 +100,8 @@ $moi = Auth::id();
     </div>
   </form>
 </section>
+
+<?php endif; // fin photo et nom : un salon n'a ni l'un ni l'autre, le serveur les gouverne ?>
 
 <?php // Recevoir, ou non, les notifications de ce groupe : un choix de chacun. ?>
 <?= Vue::rendre('amis/_notifications_conversation', [
@@ -141,6 +151,7 @@ $moi = Auth::id();
   </div>
 </section>
 
+<?php if (!$salon): ?>
 <section class="carte profil-ami__section" id="groupe-membres">
   <h2 style="margin-top:0"><?= e(t('grp.membres_titre')) ?> <span class="discret profil-ami__nombre"><?= count($membres) ?></span></h2>
   <ul class="groupe-membres">
@@ -254,6 +265,8 @@ $moi = Auth::id();
   <?php endif; ?>
 </section>
 
+<?php endif; // fin des membres ?>
+
 <section class="carte profil-ami__section">
   <h2 style="margin-top:0"><?= e(t('prf.photos')) ?> <span class="discret profil-ami__nombre"><?= count($photos) ?></span></h2>
   <?php if ($photos === []): ?>
@@ -291,6 +304,7 @@ $moi = Auth::id();
   <?php endif; ?>
 </section>
 
+<?php if (!$salon): ?>
 <section class="carte profil-ami__section profil-ami__danger">
   <button class="bouton bouton--danger" type="button" data-ouvrir-dialogue="confirmer-depart-groupe"><?= e(t('grp.quitter')) ?></button>
 </section>
@@ -308,3 +322,4 @@ $moi = Auth::id();
     <button class="bouton bouton--discret" type="button" data-fermer-dialogue><?= e(t('commun.annuler')) ?></button>
   </form>
 </dialog>
+<?php endif; // fin du départ ?>

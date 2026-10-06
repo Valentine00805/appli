@@ -152,7 +152,7 @@ final class TravauxController
             'discussions'   => Database::all(
                 'SELECT c.id, c.nom FROM conversations c
                    JOIN conversation_membres mb ON mb.conversation_id = c.id AND mb.user_id = ?
-                  ORDER BY c.nom', [Auth::id()]),
+                  WHERE c.serveur_id IS NULL ORDER BY c.nom', [Auth::id()]),
         ], 'membres');
     }
 

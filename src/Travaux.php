@@ -1168,7 +1168,7 @@ final class Travaux
             if ($refus !== null) {
                 return $refus;
             }
-        } elseif (Conversations::membre($conversation, $moi) === null) {
+        } elseif (Conversations::membre($conversation, $moi) === null || Serveurs::dUnSalon($conversation) !== null) {
             return t('tr.msg.pas_dans_discussion');
         } else {
             foreach ($comptes as $userId) {

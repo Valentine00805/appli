@@ -16,21 +16,23 @@
  * @var array<int, array> $derniers
  * @var list<array> $epingles  mes messages épinglés dans cette conversation
  * @var ?int $cible  le message sur lequel ouvrir la conversation
+ * @var ?array $serveur  le serveur, quand la discussion est l'un de ses salons (alors $salons et $membresServeur sont là aussi)
  */
 $csrf = Session::jetonCsrf();
 $enGroupe = isset($groupe);
+$enSalon = isset($serveur);
 // Tout ce qui diffère entre une discussion à deux et un groupe : les adresses et les titres.
 if ($enGroupe) {
     $actif = null;
     $groupeActif = (int) $groupe['id'];
     $base = 'groupes/' . $groupeActif;
     $baseMessages = 'groupes/messages';
-    $titre = (string) $groupe['nom'];
-    $aide = t('chat.membres_reglages', ['n' => $nombreMembres]);
+    $titre = ($enSalon ? '# ' : '') . (string) $groupe['nom'];
+    $aide = $enSalon ? t('srv.salon_aide', ['serveur' => (string) $serveur['nom'], 'membres' => tn('srv.membres_n', $nombreMembres)]) : t('chat.membres_reglages', ['n' => $nombreMembres]);
     $lienInfo = url($base . '/reglages');
     $libelleInfo = t('chat.reglages');
     $initiale = '👥';
-    $destinataire = t('chat.au_groupe');
+    $destinataire = $enSalon ? t('srv.vers_salon', ['nom' => (string) $groupe['nom']]) : t('chat.au_groupe');
 } else {
     $actif = (int) $ami['id'];
     $groupeActif = null;
@@ -51,10 +53,14 @@ foreach ($messages as $m) {
 ?>
 
 <div class="chat">
+  <?php if ($enSalon): ?>
+    <?= Vue::rendre('serveurs/_rail', ['serveur' => $serveur, 'salons' => $salons, 'membresServeur' => $membresServeur, 'salonActif' => $groupeActif]) ?>
+  <?php else: ?>
   <aside class="carte chat__amis" aria-label="<?= e(t('chat.mes_discussions')) ?>">
     <?php require __DIR__ . '/_entete_discussions.php'; ?>
     <?php require __DIR__ . '/_liste.php'; ?>
   </aside>
+  <?php endif; ?>
 
   <section class="carte chat__fil"
            data-chat
@@ -77,11 +83,11 @@ foreach ($messages as $m) {
            data-transcription="<?= (int) (Auth::utilisateur()['transcription_vocale'] ?? 1) ?>"
            data-vu="<?= (int) $vuJusqua ?>">
     <header class="chat__entete">
-      <a class="chat__retour" href="<?= url('amis') ?>" aria-label="<?= e(t('chat.retour_amis')) ?>">←</a>
+      <a class="chat__retour" href="<?= url($enSalon ? 'serveurs' : 'amis') ?>" aria-label="<?= e(t('chat.retour_amis')) ?>">←</a>
       <?php // Le profil de l'ami, ou les réglages du groupe, en fenêtre. ?>
       <a class="chat__profil" href="<?= e($lienInfo) ?>" data-fenetre title="<?= e(t($enGroupe ? 'chat.reglages_groupe' : 'chat.voir_profil')) ?>">
         <?php if ($enGroupe): ?>
-          <?= Conversations::avatar($groupeActif, $groupe['photo_nom']) ?>
+          <?= $enSalon ? '<span class="avatar avatar--groupe" aria-hidden="true">#</span>' : Conversations::avatar($groupeActif, $groupe['photo_nom']) ?>
         <?php else: ?>
           <?= Amis::avatar($actif, $titre) ?>
         <?php endif; ?>

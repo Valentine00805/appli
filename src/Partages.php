@@ -1155,6 +1155,7 @@ final class Partages
     {
         return Database::valeur(
             'SELECT 1 FROM conversation_membres x JOIN conversation_membres y ON y.conversation_id = x.conversation_id
+              JOIN conversations c ON c.id = x.conversation_id AND c.serveur_id IS NULL
               WHERE x.user_id = ? AND y.user_id = ? LIMIT 1',
             [$a, $b]
         ) !== null;

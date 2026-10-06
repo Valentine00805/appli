@@ -56,6 +56,7 @@ require __DIR__ . '/src/Rappels.php';
 require __DIR__ . '/src/FileNotifications.php';
 require __DIR__ . '/src/Amis.php';
 require __DIR__ . '/src/Conversations.php';
+require __DIR__ . '/src/Serveurs.php';
 require __DIR__ . '/src/Partages.php';
 require __DIR__ . '/src/Difference.php';
 require __DIR__ . '/src/PlanningJour.php';
@@ -80,6 +81,7 @@ require __DIR__ . '/controllers/SondagesController.php';
 require __DIR__ . '/controllers/AssistantController.php';
 require __DIR__ . '/controllers/AmisController.php';
 require __DIR__ . '/controllers/ConversationsController.php';
+require __DIR__ . '/controllers/ServeursController.php';
 require __DIR__ . '/controllers/PartagesController.php';
 require __DIR__ . '/controllers/CoursController.php';
 require __DIR__ . '/controllers/CalendrierController.php';
@@ -340,6 +342,26 @@ $routes = [
     ['POST', 'groupes/messages/{id}/modifier',  [ConversationsController::class, 'modifierMessage']],
     ['POST', 'groupes/messages/{id}/reaction',  [ConversationsController::class, 'reagir']],
     ['POST', 'groupes/messages/{id}/epingle',   [ConversationsController::class, 'epingler']],
+
+    // Les serveurs : des espaces avec des gens et des salons (les salons sont des discussions de groupe, « groupes/{salon} »).
+    ['GET',  'serveurs',                              [ServeursController::class, 'index']],
+    ['GET',  'serveurs/nouveau',                      [ServeursController::class, 'nouveau']],
+    ['POST', 'serveurs',                              [ServeursController::class, 'creer']],
+    ['GET',  'serveurs/{id}',                         [ServeursController::class, 'voir']],
+    ['GET',  'serveurs/{id}/reglages',                [ServeursController::class, 'reglages']],
+    ['POST', 'serveurs/{id}/modifier',                [ServeursController::class, 'modifier']],
+    ['POST', 'serveurs/{id}/salons',                  [ServeursController::class, 'ajouterSalon']],
+    ['POST', 'serveurs/{id}/salons/{id}/renommer',    [ServeursController::class, 'renommerSalon']],
+    ['POST', 'serveurs/{id}/salons/{id}/supprimer',   [ServeursController::class, 'supprimerSalon']],
+    ['POST', 'serveurs/{id}/inviter',                 [ServeursController::class, 'inviter']],
+    ['POST', 'serveurs/{id}/invitations/{id}/annuler', [ServeursController::class, 'annulerInvitation']],
+    ['POST', 'serveurs/{id}/accepter',                [ServeursController::class, 'accepter']],
+    ['POST', 'serveurs/{id}/refuser',                 [ServeursController::class, 'refuser']],
+    ['POST', 'serveurs/{id}/membres/{id}/retirer',    [ServeursController::class, 'retirerMembre']],
+    ['POST', 'serveurs/{id}/membres/{id}/admin',      [ServeursController::class, 'nommerAdmin']],
+    ['POST', 'serveurs/{id}/membres/{id}/membre',     [ServeursController::class, 'retirerAdmin']],
+    ['POST', 'serveurs/{id}/quitter',                 [ServeursController::class, 'quitter']],
+    ['POST', 'serveurs/{id}/supprimer',               [ServeursController::class, 'supprimer']],
     /*
      * Les agendas distants. Le fournisseur est dans l'adresse : chacun a
      * ainsi sa page et son retour d'autorisation, sans une ligne de plus.

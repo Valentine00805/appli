@@ -72,6 +72,13 @@ final class ConversationsController
         $messages = Conversations::fil($moi, $id, 0, $cible);
         Conversations::regarder($moi, $id);
 
+        $idServeur = Serveurs::dUnSalon($id);
+        $contexte = $idServeur === null ? [] : [
+            'serveur' => Serveurs::serveur($idServeur, $moi),
+            'salons' => Serveurs::salons($idServeur, $moi),
+            'membresServeur' => Serveurs::membres($idServeur),
+        ];
+
         Vue::afficher('amis/conversation', [
             'groupe' => $groupe,
             'nombreMembres' => count(Conversations::membres($id)),
@@ -81,7 +88,7 @@ final class ConversationsController
             'epingles' => Conversations::epingles($moi, $id),
             'adresseFond' => Conversations::adresseFond($id, $groupe['fond_nom']),
             'cible' => $cible,
-        ] + self::liste($moi), $groupe['nom']);
+        ] + $contexte + self::liste($moi), $idServeur === null ? $groupe['nom'] : '# ' . $groupe['nom']);
     }
 
     /** De quoi dessiner la liste des discussions : amis et groupes. */
@@ -108,11 +115,14 @@ final class ConversationsController
             Session::flash('erreur', t('grp.fl.introuvable'));
             redirect('amis');
         }
+        $idServeur = Serveurs::dUnSalon($id);
         $membres = Conversations::membres($id);
         $dans = array_flip(array_column($membres, 'id'));
         $partages = Conversations::partages($moi, $id);
         $donnees = [
             'groupe' => $groupe,
+            'salon' => $idServeur !== null,
+            'serveur' => $idServeur === null ? null : Serveurs::serveur($idServeur, $moi),
             'membres' => $membres,
             'admin' => $groupe['role'] === 'admin',
             'nombreAdmins' => count(array_filter($membres, static fn (array $m): bool => $m['role'] === 'admin')),
@@ -159,7 +169,7 @@ final class ConversationsController
             'reactions' => Conversations::reactionsModifiees($moi, $id, $depuis),
             'maintenant' => $maintenant,
             'fond' => Conversations::adresseFond($id, $groupe['fond_nom']),
-            'titre' => (string) $groupe['nom'],
+            'titre' => (Serveurs::dUnSalon($id) === null ? '' : '# ') . $groupe['nom'],
             'photo' => Conversations::adressePhoto($id, $groupe['photo_nom']),
         ] + Conversations::changements($moi, $id, $apres));
     }
@@ -219,6 +229,7 @@ final class ConversationsController
     {
         Auth::exiger();
         Session::verifierCsrf();
+        $this->pasUnSalon($id);
         $refus = Conversations::renommer(Auth::id(), $id, (string) ($_POST['nom'] ?? ''));
         Session::flash($refus === null ? 'succes' : 'erreur', $refus ?? t('grp.fl.renomme'));
         $this->retour($id);
@@ -253,6 +264,7 @@ final class ConversationsController
     {
         Auth::exiger();
         Session::verifierCsrf();
+        $this->pasUnSalon($id);
         $moi = Auth::id();
         [$ajoutes, $refus] = Conversations::ajouter($moi, $id, is_array($_POST['membres'] ?? null) ? $_POST['membres'] : []);
         if ($refus !== null) {
@@ -267,6 +279,7 @@ final class ConversationsController
     {
         Auth::exiger();
         Session::verifierCsrf();
+        $this->pasUnSalon($id);
         $pseudo = (string) (Amis::compte($membre)['pseudo'] ?? '');
         $refus = Conversations::retirer(Auth::id(), $id, $membre);
         Session::flash($refus === null ? 'succes' : 'erreur', $refus ?? t('grp.fl.membre_retire', ['qui' => $pseudo]));
@@ -277,6 +290,7 @@ final class ConversationsController
     {
         Auth::exiger();
         Session::verifierCsrf();
+        $this->pasUnSalon($id);
         $pseudo = (string) (Amis::compte($membre)['pseudo'] ?? '');
         $refus = Conversations::nommerAdmin(Auth::id(), $id, $membre);
         Session::flash($refus === null ? 'succes' : 'erreur', $refus ?? t('grp.fl.nomme_admin', ['qui' => $pseudo]));
@@ -287,6 +301,7 @@ final class ConversationsController
     {
         Auth::exiger();
         Session::verifierCsrf();
+        $this->pasUnSalon($id);
         $moi = Auth::id();
         $pseudo = (string) (Amis::compte($membre)['pseudo'] ?? '');
         $refus = Conversations::retirerAdmin($moi, $id, $membre);
@@ -314,6 +329,7 @@ final class ConversationsController
     {
         Auth::exiger();
         Session::verifierCsrf();
+        $this->pasUnSalon($id);
         $moi = Auth::id();
         $cible = (int) ($_POST['compte'] ?? 0);
         $pseudo = (string) (Amis::compte($cible)['pseudo'] ?? '');
@@ -335,6 +351,7 @@ final class ConversationsController
     {
         Auth::exiger();
         Session::verifierCsrf();
+        $this->pasUnSalon($id);
         $pseudo = (string) (Amis::compte($membre)['pseudo'] ?? '');
         $refus = Conversations::annulerInvitation(Auth::id(), $id, $membre);
         Session::flash($refus === null ? 'succes' : 'erreur',
@@ -369,6 +386,7 @@ final class ConversationsController
     {
         Auth::exiger();
         Session::verifierCsrf();
+        $this->pasUnSalon($id);
         $nom = (string) (Conversations::conversation($id, Auth::id())['nom'] ?? '');
         if (Conversations::quitter(Auth::id(), $id)) {
             Session::flash('succes', t('grp.fl.quitte', ['nom' => $nom]));
@@ -395,6 +413,7 @@ final class ConversationsController
     {
         Auth::exiger();
         Session::verifierCsrf();
+        $this->pasUnSalon($id);
         $image = isset($_FILES['photo']) && is_array($_FILES['photo']) && !is_array($_FILES['photo']['name'] ?? null) ? $_FILES['photo'] : null;
         $refus = Conversations::changerPhoto(Auth::id(), $id, $image);
         Session::flash($refus === null ? 'succes' : 'erreur', $refus ?? t('grp.fl.photo_changee'));
@@ -405,6 +424,7 @@ final class ConversationsController
     {
         Auth::exiger();
         Session::verifierCsrf();
+        $this->pasUnSalon($id);
         $retiree = Conversations::retirerPhoto(Auth::id(), $id);
         Session::flash($retiree ? 'succes' : 'info',
             $retiree ? t('grp.fl.photo_retiree') : t('grp.fl.photo_absente'));
@@ -558,6 +578,15 @@ final class ConversationsController
         header('Cache-Control: private, max-age=604800, immutable');
         readfile($chemin);
         exit;
+    }
+
+    /** Un salon n'a ni membres, ni nom, ni photo, ni départ à lui : le serveur les gouverne. */
+    private function pasUnSalon(int $id): void
+    {
+        if (Serveurs::dUnSalon($id) !== null) {
+            Session::flash('erreur', t('srv.err.salon_reglage'));
+            $this->retour($id);
+        }
     }
 
     /** Revient à la conversation, ou à « Amis » si on n'en fait plus partie. */

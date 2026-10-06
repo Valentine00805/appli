@@ -505,7 +505,7 @@ final class Conversations
     }
 
     /** Retire un compte de la conversation, avec ses épingles et ce qu'il y avait caché. */
-    private static function oublier(int $conversation, int $userId): void
+    public static function oublier(int $conversation, int $userId): void
     {
         Database::run(
             'DELETE e FROM conversation_epingles e JOIN conversation_messages m ON m.id = e.message_id
@@ -521,7 +521,7 @@ final class Conversations
     }
 
     /** Efface une conversation sans membres : ses fichiers, puis tout le reste. */
-    private static function effacer(int $conversation): void
+    public static function effacer(int $conversation): void
     {
         $noms = Database::all(
             'SELECT image_nom AS nom FROM conversation_messages WHERE conversation_id = ? AND image_nom IS NOT NULL
@@ -680,7 +680,7 @@ final class Conversations
     }
 
     /** Écrit une note dans la conversation. */
-    private static function noter(int $conversation, ?int $auteur, string $evenement, ?int $cible = null, ?string $texte = null): void
+    public static function noter(int $conversation, ?int $auteur, string $evenement, ?int $cible = null, ?string $texte = null): void
     {
         Database::run(
             "INSERT INTO conversation_messages (conversation_id, expediteur_id, texte, evenement, evenement_cible, evenement_texte, created_at)
@@ -721,6 +721,9 @@ final class Conversations
                     : t('grpevt.admin_retire', ['qui' => $qui, 'cible' => $pseudo($cible)])),
             'invitation' => $geste('invitation'),
             'rejoint' => t('grpevt.rejoint', ['qui' => $qui]),
+            'srv_rejoint' => t('grpevt.srv_rejoint', ['qui' => $qui]),
+            'srv_depart' => t('grpevt.srv_depart', ['qui' => $qui]),
+            'srv_retrait' => $geste('srv_retrait'),
             'fond' => t('grpevt.fond', ['qui' => $qui]),
             'fond_retire' => t('grpevt.fond_retire', ['qui' => $qui]),
             'photo' => t('grpevt.photo', ['qui' => $qui]),
@@ -747,7 +750,7 @@ final class Conversations
                         AND NOT EXISTS (SELECT 1 FROM conversation_masques x WHERE x.message_id = m.id AND x.user_id = ?)
                       ORDER BY m.id DESC LIMIT 1) AS dernier_id
                FROM conversation_membres mb JOIN conversations c ON c.id = mb.conversation_id
-              WHERE mb.user_id = ?
+              WHERE mb.user_id = ? AND c.serveur_id IS NULL
               ORDER BY c.id DESC",
             [$moi, $moi, $moi, $moi]
         );
@@ -1323,6 +1326,9 @@ final class Conversations
         };
         $pseudoBrut = Amis::compte($expediteur)['pseudo'] ?? null;
         $nom = self::nom($conversation);
+        // Un salon : « 🏰 Le serveur · #salon » ; un groupe : « 👥 Le groupe ».
+        $serveur = Database::valeur('SELECT s.nom FROM conversations c JOIN serveurs s ON s.id = c.serveur_id WHERE c.id = ?', [$conversation]);
+        $titre = is_string($serveur) ? '🏰 ' . $serveur . ' · #' . $nom : '👥 ' . $nom;
 
         $ids = [];
         // Qui a coupé la conversation n'est pas prévenu.
@@ -1332,7 +1338,7 @@ final class Conversations
                 continue;
             }
             $id = FileNotifications::ajouter($membre, 'message', fn (): array => [
-                'title' => '👥 ' . $nom,
+                'title' => $titre,
                 'body' => mb_strimwidth(
                     ((string) ($pseudoBrut ?? t('grp.un_membre'))) . ' : ' . $apercu(),
                     0, Amis::APERCU_NOTIFICATION, '…'
