@@ -214,7 +214,10 @@
     if (!annuler) { return; }
     var carte = annuler.closest('[data-photo-carte]');
     var avatar = carte.querySelector('[data-photo-apercu] .avatar');
-    carte.querySelector('[data-photo-formulaire]').reset();
+    var formulairePhoto = carte.querySelector('[data-photo-formulaire]');
+    if (formulairePhoto && typeof formulairePhoto.reset === 'function') { formulairePhoto.reset(); }
+    var fichierPhoto = carte.querySelector('[data-photo-fichier]');
+    if (fichierPhoto) { fichierPhoto.value = ''; }
     carte.querySelector('[data-photo-nouveau]').hidden = true;
     if (carte.hasAttribute('data-avant')) {
       avatar.innerHTML = carte.getAttribute('data-avant');
@@ -7236,5 +7239,32 @@
       if (section.hasAttribute("data-force")) { return; }
       ecrire(cle, section.open ? "ouvert" : "ferme");
     });
+  });
+})();
+
+/* ==========================================================================
+   Création d'un serveur : l'aperçu du logo montre les initiales du nom pendant qu'on le tape (mêmes règles que
+   Serveurs::initiales côté serveur) — tant qu'aucune photo n'est choisie.
+   ========================================================================== */
+(function () {
+  var champ = document.querySelector("[data-serveur-nom]");
+  var apercu = document.querySelector("[data-serveur-initiales]");
+  if (!champ || !apercu) { return; }
+  var initiales = function (nom) {
+    var mots = nom.split(/[^\p{L}\p{N}]+/u).filter(function (m) { return m !== ""; });
+    var lettres = function (m) { return Array.from(m); };
+    if (mots.length === 0) { return "Ab"; }
+    if (mots.length === 1) {
+      var l = lettres(mots[0]);
+      return l[0].toUpperCase() + (l[1] ? l[1].toLowerCase() : "");
+    }
+    return mots.map(function (m) { return lettres(m)[0]; }).join("").toUpperCase();
+  };
+  champ.addEventListener("input", function () {
+    // Une photo choisie prend la place des initiales : on n'y touche plus.
+    if (apercu.querySelector("img")) { return; }
+    var texte = initiales(champ.value);
+    apercu.textContent = texte;
+    apercu.className = apercu.className.replace(/serveur-logo--n\d/, "serveur-logo--n" + Math.min(4, Array.from(texte).length));
   });
 })();

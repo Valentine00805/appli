@@ -25,7 +25,7 @@ $photo = Serveurs::adressePhoto($id, $serveur['photo_nom']);
 ?>
 <div class="entete-page profil-ami"<?= $dansUneFenetre ? ' data-large' : '' ?>>
   <div class="profil-ami__identite">
-    <span class="serveur-icone serveur-icone--enorme" aria-hidden="true"><?= Serveurs::visuel((string) $serveur['icone'], $photo) ?></span>
+    <?= Serveurs::pastille($nom, $photo, 'serveur-icone serveur-icone--enorme') ?>
     <div>
       <?php if (!$dansUneFenetre): ?>
         <p class="discret" style="margin:0 0 .2rem"><a href="<?= url($base) ?>"><?= e(t('srv.retour_serveur')) ?></a></p>
@@ -42,7 +42,7 @@ $photo = Serveurs::adressePhoto($id, $serveur['photo_nom']);
   <h2 style="margin-top:0"><?= e(t('srv.logo')) ?></h2>
   <div class="photo-groupe">
     <span class="photo-groupe__apercu" data-photo-apercu>
-      <span class="avatar avatar--apercu serveur-apercu<?= $photo !== null ? ' avatar--photo' : '' ?>" aria-hidden="true"><?= Serveurs::visuel((string) $serveur['icone'], $photo) ?></span>
+      <?= Serveurs::pastille($nom, $photo, 'avatar avatar--apercu serveur-apercu' . ($photo !== null ? ' avatar--photo' : '')) ?>
     </span>
     <div class="fond-reglage__infos">
       <form method="post" action="<?= url($base . '/photo') ?>" enctype="multipart/form-data" class="fond-reglage__choix" data-photo-formulaire<?= $envoi ?>>
@@ -66,15 +66,14 @@ $photo = Serveurs::adressePhoto($id, $serveur['photo_nom']);
   </div>
 </section>
 
-<section class="carte profil-ami__section" id="serveur-nom-icone">
-  <h2 style="margin-top:0"><?= e(t('srv.nom_icone')) ?></h2>
+<section class="carte profil-ami__section" id="serveur-nom">
+  <h2 style="margin-top:0"><?= e(t('srv.nom_titre')) ?></h2>
   <form method="post" action="<?= url($base . '/modifier') ?>"<?= $envoi ?>>
     <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
     <div class="champ">
       <label for="serveur-renommer"><?= e(t('srv.nom')) ?></label>
       <input type="text" id="serveur-renommer" name="nom" required maxlength="<?= Serveurs::NOM_MAX ?>" value="<?= e($nom) ?>" autocomplete="off">
     </div>
-    <?= Vue::rendre('serveurs/_icones', ['choisie' => (string) $serveur['icone'], 'idPrefixe' => 'reglages']) ?>
     <div class="actions"><button class="bouton" type="submit"><?= e(t('commun.enregistrer')) ?></button></div>
   </form>
 </section>

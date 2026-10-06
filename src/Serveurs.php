@@ -26,7 +26,6 @@ final class Serveurs
     /** Serveurs au plus par personne (qu'elle y soit propriétaire ou simple membre). */
     public const SERVEURS_MAX = 20;
     public const SALON_PAR_DEFAUT = 'général';
-    public const ICONES = ['🏰', '📚', '🎓', '💻', '🎮', '🎵', '🎨', '🔬', '⚽', '🌍', '💡', '🚀'];
 
     // --- Lire ----------------------------------------------------------------------------------------------------------
 
@@ -158,12 +157,42 @@ final class Serveurs
         return $nomPhoto === null ? null : url('serveurs/' . $serveur . '/photo', ['v' => substr($nomPhoto, 0, 12)]);
     }
 
-    /** Ce que montre un serveur en petit : son logo, ou son icône. À poser dans un cadre (le HTML est prêt, échappé). */
-    public static function visuel(string $icone, ?string $photo): string
+    /**
+     * Les initiales d'un serveur, quand il n'a pas de logo : un seul mot, ses deux premières lettres (« Maths » → « Ma ») ;
+     * plusieurs mots, la première lettre de chacun (« Licence 2 — groupe A » → « L2GA »). Ce qui n'est ni lettre ni chiffre ne compte pas.
+     */
+    public static function initiales(string $nom): string
     {
-        return $photo === null ? e($icone) : '<img src="' . e($photo) . '" alt="">';
+        $mots = preg_split('/[^\p{L}\p{N}]+/u', $nom, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        if ($mots === []) {
+            return '?';
+        }
+        if (count($mots) === 1) {
+            return mb_strtoupper(mb_substr($mots[0], 0, 1)) . mb_strtolower(mb_substr($mots[0], 1, 1));
+        }
+
+        return mb_strtoupper(implode('', array_map(static fn (string $m): string => mb_substr($m, 0, 1), $mots)));
     }
 
+    /** Une couleur propre au serveur (la même à chaque affichage) pour le fond de ses initiales. */
+    public static function couleur(string $nom): string
+    {
+        return 'hsl(' . (crc32(mb_strtolower($nom)) % 360) . ' 52% 40%)';
+    }
+
+    /**
+     * Le logo d'un serveur, dans son cadre : la photo, ou les initiales sur fond coloré. « $classes » dit la taille et la forme du cadre.
+     */
+    public static function pastille(string $nom, ?string $photo, string $classes = ''): string
+    {
+        $initiales = self::initiales($nom);
+        if ($photo !== null) {
+            return '<span class="serveur-logo ' . e($classes) . '" aria-hidden="true"><img src="' . e($photo) . '" alt=""></span>';
+        }
+
+        return '<span class="serveur-logo serveur-logo--initiales serveur-logo--n' . min(4, mb_strlen($initiales)) . ' ' . e($classes)
+            . '" style="--couleur: ' . e(self::couleur($nom)) . '" aria-hidden="true">' . e($initiales) . '</span>';
+    }
     /** Le logo, pour les membres et ceux qui sont invités. */
     public static function photo(int $serveur, int $moi): ?array
     {
@@ -244,11 +273,6 @@ final class Serveurs
         return mb_substr($nom, 0, self::SALON_MAX);
     }
 
-    public static function iconeValide(mixed $icone): string
-    {
-        return is_string($icone) && in_array($icone, self::ICONES, true) ? $icone : self::ICONES[0];
-    }
-
     private static function problemeNom(string $nom): ?string
     {
         if ($nom === '') {
@@ -260,8 +284,8 @@ final class Serveurs
 
     // --- Créer, régler -------------------------------------------------------------------------------------------------
 
-    /** @return array{0: ?int, 1: ?string} le serveur, ou la raison du refus */
-    public static function creer(int $moi, string $nom, mixed $icone): array
+    /** @return array{0: ?int, 1: ?string} le serveur, ou la raison du refus ; « $image » : le logo, facultatif */
+    public static function creer(int $moi, string $nom, ?array $image = null): array
     {
         if ((string) (Amis::compte($moi)['pseudo'] ?? '') === '') {
             return [null, t('grp.pseudo_avant')];
@@ -274,24 +298,34 @@ final class Serveurs
             return [null, t('srv.err.trop_de_serveurs', ['max' => self::SERVEURS_MAX])];
         }
 
+        // Le logo est facultatif : sans fichier choisi, on n'en parle pas ; un fichier refusé arrête la création.
+        $rangee = null;
+        if ($image !== null && ($image['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
+            $rangee = Amis::rangerImage($image);
+            if (is_string($rangee)) {
+                return [null, $rangee];
+            }
+        }
+
         $pdo = Database::pdo();
         $pdo->beginTransaction();
         try {
-            Database::run('INSERT INTO serveurs (nom, icone, cree_par) VALUES (?, ?, ?)', [$nom, self::iconeValide($icone), $moi]);
+            Database::run('INSERT INTO serveurs (nom, photo_nom, photo_mime, cree_par) VALUES (?, ?, ?, ?)', [$nom, $rangee['nom'] ?? null, $rangee['mime'] ?? null, $moi]);
             $id = Database::dernierId();
             Database::run("INSERT INTO serveur_membres (serveur_id, user_id, role) VALUES (?, ?, 'proprietaire')", [$id, $moi]);
             self::insererSalon($id, self::SALON_PAR_DEFAUT, 0, $moi);
             $pdo->commit();
         } catch (Throwable $e) {
             $pdo->rollBack();
+            self::effacerFichier($rangee['nom'] ?? null);
             throw $e;
         }
 
         return [$id, null];
     }
 
-    /** Renomme le serveur et change son icône (administrateurs). */
-    public static function modifier(int $moi, int $serveur, string $nom, mixed $icone): ?string
+    /** Renomme le serveur (administrateurs). */
+    public static function modifier(int $moi, int $serveur, string $nom): ?string
     {
         if (!self::gere(self::role($serveur, $moi))) {
             return t('srv.err.admins');
@@ -300,7 +334,7 @@ final class Serveurs
         if (($probleme = self::problemeNom($nom)) !== null) {
             return $probleme;
         }
-        Database::run('UPDATE serveurs SET nom = ?, icone = ? WHERE id = ?', [$nom, self::iconeValide($icone), $serveur]);
+        Database::run('UPDATE serveurs SET nom = ? WHERE id = ?', [$nom, $serveur]);
 
         return null;
     }

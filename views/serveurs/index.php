@@ -2,8 +2,8 @@
 /**
  * Mes serveurs : ceux où je suis, les invitations reçues, et de quoi en créer un.
  *
- * @var list<array{id: int, nom: string, icone: string, role: string, membres: int, non_lus: int, premier_salon: ?int}> $serveurs
- * @var list<array{id: int, nom: string, icone: string, par: string, membres: int}> $invitations
+ * @var list<array{id: int, nom: string, photo: ?string, role: string, membres: int, non_lus: int, premier_salon: ?int}> $serveurs
+ * @var list<array{id: int, nom: string, photo: ?string, par: string, membres: int}> $invitations
  */
 $csrf = Session::jetonCsrf();
 ?>
@@ -27,7 +27,7 @@ $csrf = Session::jetonCsrf();
     <ul class="serveurs__liste">
       <?php foreach ($invitations as $inv): ?>
         <li class="serveur-carte serveur-carte--invitation">
-          <span class="serveur-icone serveur-icone--grand" aria-hidden="true"><?= Serveurs::visuel($inv['icone'], $inv['photo']) ?></span>
+          <?= Serveurs::pastille($inv['nom'], $inv['photo'], 'serveur-icone serveur-icone--grand') ?>
           <span class="serveur-carte__texte">
             <strong><?= e($inv['nom']) ?></strong>
             <span class="discret"><?= e(t('srv.invite_par', ['qui' => $inv['par'] !== '' ? $inv['par'] : t('grp.quelquun'), 'membres' => tn('srv.membres_n', $inv['membres'])])) ?></span>
@@ -60,7 +60,7 @@ $csrf = Session::jetonCsrf();
       <?php foreach ($serveurs as $s): ?>
         <li>
           <a class="serveur-carte" href="<?= url('serveurs/' . $s['id']) ?>">
-            <span class="serveur-icone serveur-icone--grand" aria-hidden="true"><?= Serveurs::visuel($s['icone'], $s['photo']) ?></span>
+            <?= Serveurs::pastille($s['nom'], $s['photo'], 'serveur-icone serveur-icone--grand') ?>
             <span class="serveur-carte__texte">
               <strong><?= e($s['nom']) ?></strong>
               <span class="discret"><?= e(tn('srv.membres_n', $s['membres'])) ?><?php if ($s['role'] === 'proprietaire'): ?> · 👑 <?= e(t('srv.role_proprietaire')) ?><?php elseif ($s['role'] === 'admin'): ?> · 🛡️ <?= e(t('srv.role_admin')) ?><?php endif; ?></span>

@@ -75,15 +75,15 @@ try {
     [$page] = $appel($a, 'serveurs');
     $dire('la page « Serveurs » s\'ouvre, vide, avec le bouton de création', $oui(str_contains($page, 'Mes serveurs') && str_contains($page, 'serveurs/nouveau')), 'oui');
     [$fenetre] = $appel($a, 'serveurs/nouveau?fenetre=1');
-    $dire('le formulaire de création propose un nom et des icônes', $oui(str_contains($fenetre, 'name="nom"') && substr_count($fenetre, 'name="icone"') === 12), 'oui');
-    $poster($a, 'serveurs', ['nom' => '   ', 'icone' => '🏰']);
+    $dire('le formulaire de création propose un nom et une photo facultative, sans icônes', $oui(str_contains($fenetre, 'name="nom"') && str_contains($fenetre, 'name="photo"') && !str_contains($fenetre, 'name="icone"') && !preg_match('/name="photo"[^>]*required/', $fenetre)), 'oui');
+    $poster($a, 'serveurs', ['nom' => '   ']);
     $dire('un nom vide est refusé', (string) bd_valeur('SELECT COUNT(*) FROM serveurs WHERE cree_par = ?', [$idA]), '0');
-    $poster($a, 'serveurs', ['nom' => str_repeat('x', 61), 'icone' => '🏰']);
+    $poster($a, 'serveurs', ['nom' => str_repeat('x', 61)]);
     $dire('un nom de plus de 60 caractères est refusé', (string) bd_valeur('SELECT COUNT(*) FROM serveurs WHERE cree_par = ?', [$idA]), '0');
-    [, $adresse] = $poster($a, 'serveurs', ['nom' => "  Licence   2  ", 'icone' => 'pas-une-icone']);
+    [, $adresse] = $poster($a, 'serveurs', ['nom' => "  Licence   2  "]);
     $s = $serveur();
     $dire('le serveur est créé, son nom nettoyé', (string) bd_valeur('SELECT nom FROM serveurs WHERE id = ?', [$s]), 'Licence 2');
-    $dire('une icône inconnue donne l\'icône par défaut', (string) bd_valeur('SELECT icone FROM serveurs WHERE id = ?', [$s]), '🏰');
+    $dire('sans photo, aucun fichier n\'est gardé', (string) bd_valeur('SELECT COUNT(*) FROM serveurs WHERE id = ? AND photo_nom IS NOT NULL', [$s]), '0');
     $dire('le créateur en est le propriétaire', $role($s, $idA), 'proprietaire');
     $dire('il naît avec un seul salon « général »', implode(',', $salons($s)), 'général');
     $general = $salonId($s, 'général');
@@ -236,8 +236,8 @@ try {
     $dire('ni y agir', implode(',', $salons($s)), 'général');
 
     echo "\n8. Régler le serveur, le supprimer\n";
-    $poster($b, "serveurs/$s/modifier", ['nom' => 'Master 1', 'icone' => '🎓']);
-    $dire('un administrateur renomme le serveur et change l\'icône', (string) bd_valeur('SELECT CONCAT(nom, icone) FROM serveurs WHERE id = ?', [$s]), 'Master 1🎓');
+    $poster($b, "serveurs/$s/modifier", ['nom' => 'Master 1']);
+    $dire('un administrateur renomme le serveur', (string) bd_valeur('SELECT nom FROM serveurs WHERE id = ?', [$s]), 'Master 1');
     $poster($b, "serveurs/$s/membres/$idB/membre");
     $dire('un administrateur ne se retire pas son rôle seul', $role($s, $idB), 'admin');
     $poster($b, "serveurs/$s/quitter");
@@ -245,11 +245,11 @@ try {
     $poster($a, "serveurs/$s/supprimer");
     $dire('le propriétaire supprime le serveur', (string) bd_valeur('SELECT COUNT(*) FROM serveurs WHERE id = ?', [$s]), '0');
     $dire('ses salons et ses membres partent avec', (string) bd_valeur('SELECT COUNT(*) FROM conversations WHERE id = ?', [$general]) . bd_valeur('SELECT COUNT(*) FROM serveur_membres WHERE serveur_id = ?', [$s]), '00');
-    $poster($a, 'serveurs', ['nom' => 'Solo', 'icone' => '🎮']);
+    $poster($a, 'serveurs', ['nom' => 'Solo']);
     $s2 = $serveur();
     $poster($a, "serveurs/$s2/quitter");
     $dire('un propriétaire seul qui quitte efface le serveur', (string) bd_valeur('SELECT COUNT(*) FROM serveurs WHERE id = ?', [$s2]), '0');
-    $poster($a, 'serveurs', ['nom' => 'Troisième', 'icone' => '🎵']);
+    $poster($a, 'serveurs', ['nom' => 'Troisième']);
     $s3 = $serveur();
     $dire('on peut en créer d\'autres', $oui($s3 > 0 && $role($s3, $idA) === 'proprietaire'), 'oui');
 
@@ -290,7 +290,7 @@ try {
     [, , $codeD] = $appel($d, "serveurs/$s3/photo");
     $dire('un étranger ne le lit pas (404)', (string) $codeD, '404');
     [$barre] = $appel($b, 'amis');
-    $dire('la barre des serveurs montre le logo à la place de l\'icône', $oui(str_contains($barre, "serveurs/$s3/photo")), 'oui');
+    $dire('la barre des serveurs montre le logo à la place des initiales', $oui(str_contains($barre, "serveurs/$s3/photo")), 'oui');
     [$reg] = $appel($a, "serveurs/$s3/reglages?fenetre=1");
     $dire('les réglages le montrent et proposent de le retirer', $oui(str_contains($reg, "serveurs/$s3/photo/retirer")), 'oui');
     $ancien = $nom;
@@ -300,14 +300,53 @@ try {
     $dire('un membre ne retire pas le logo', $oui($photoNom($s3) !== null), 'oui');
     $nom = (string) $photoNom($s3);
     $poster($a, "serveurs/$s3/photo/retirer");
-    $dire('le propriétaire le retire : l\'icône revient, le fichier part', $oui($photoNom($s3) === null && !is_file($dossier . $nom)), 'oui');
+    $dire('le propriétaire le retire : les initiales reviennent, le fichier part', $oui($photoNom($s3) === null && !is_file($dossier . $nom)), 'oui');
     $envoyer($a, "serveurs/$s3/photo", $png);
     $nom = (string) $photoNom($s3);
     $poster($a, "serveurs/$s3/supprimer");
     $dire('supprimer le serveur efface aussi le fichier du logo', $oui($nom !== '' && !is_file($dossier . $nom)), 'oui');
     @unlink($png);
-    $poster($a, 'serveurs', ['nom' => 'Troisième bis', 'icone' => '🎵']);
+    $poster($a, 'serveurs', ['nom' => 'Troisième bis']);
     $s3 = $serveur();
+
+    echo "\n8 ter. Photo à la création, initiales sans photo\n";
+    $creerAvecFichier = static function (string $nom, string $fichier, string $mime) use ($cookies, $csrf, $a): string {
+        $h = curl_init('http://localhost/mon_appli/appli/serveurs');
+        curl_setopt_array($h, [CURLOPT_RETURNTRANSFER => true, CURLOPT_FOLLOWLOCATION => true, CURLOPT_TIMEOUT => 60, CURLOPT_COOKIEJAR => $cookies[$a],
+            CURLOPT_COOKIEFILE => $cookies[$a], CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => ['_csrf' => $csrf[$a], 'nom' => $nom, 'photo' => new CURLFile($fichier, $mime, 'logo.png')]]);
+        $corps = (string) curl_exec($h);
+        unset($h);
+        return $corps;
+    };
+    $png2 = tempnam(sys_get_temp_dir(), 'logo') . '.png';
+    $im = imagecreatetruecolor(50, 50);
+    imagepng($im, $png2);
+    unset($im);
+    $creerAvecFichier('Avec logo', $png2, 'image/png');
+    $avecLogo = (int) bd_valeur('SELECT id FROM serveurs WHERE nom = ? AND cree_par = ?', ['Avec logo', $idA]);
+    $nomLogo = (string) bd_valeur('SELECT photo_nom FROM serveurs WHERE id = ?', [$avecLogo]);
+    $dire('une photo choisie à la création est gardée', $oui($avecLogo > 0 && $nomLogo !== '' && is_file($dossier . $nomLogo)), 'oui');
+    $faux = tempnam(sys_get_temp_dir(), 'faux') . '.png';
+    file_put_contents($faux, "ceci n'est pas une image");
+    $creerAvecFichier('Faux logo', $faux, 'image/png');
+    $dire('un fichier qui n\'est pas une image refuse la création (rien n\'est créé)', (string) bd_valeur('SELECT COUNT(*) FROM serveurs WHERE nom = ?', ['Faux logo']), '0');
+    @unlink($png2);
+    @unlink($faux);
+    foreach (['Maths', 'Cours de maths', 'élèves', 'Licence 2 — groupe A'] as $n) { $poster($a, 'serveurs', ['nom' => $n]); }
+    [$barre] = $appel($a, 'amis');
+    foreach ([
+        'un seul mot : ses deux premières lettres (Maths → Ma)' => '>Ma<',
+        'plusieurs mots : la première lettre de chacun (Cours de maths → CDM)' => '>CDM<',
+        'les accents suivent (élèves → Él)' => '>Él<',
+        'les signes ne comptent pas (Licence 2 — groupe A → L2GA)' => '>L2GA<',
+    ] as $quoi => $attendu) {
+        $dire($quoi, $oui(str_contains($barre, $attendu)), 'oui');
+    }
+    $dire('le logo avec photo montre l\'image, pas des initiales', $oui(str_contains($barre, "serveurs/$avecLogo/photo")), 'oui');
+    $dire('chaque serveur sans photo a sa couleur', $oui((bool) preg_match_all('/--couleur: hsl\(\d+ 52% 40%\)/', $barre) >= 4), 'oui');
+    $poster($a, "serveurs/$avecLogo/supprimer");
+    $dire('supprimer le serveur efface le fichier de la photo choisie à la création', $oui(!is_file($dossier . $nomLogo)), 'oui');
 
     echo "\n9. Les quatre langues\n";
     foreach ([

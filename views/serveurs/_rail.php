@@ -2,7 +2,7 @@
 /**
  * Le côté d'un serveur, à gauche d'un salon : son nom et ses réglages, ses salons, ses membres.
  *
- * @var array $serveur  id, nom, icone, role
+ * @var array $serveur  id, nom, photo_nom, role
  * @var list<array{id: int, nom: string, non_lus: int}> $salons
  * @var list<array{id: int, pseudo: string, role: string}> $membresServeur
  * @var int $salonActif
@@ -13,7 +13,7 @@ $gere = Serveurs::gere((string) $serveur['role']);
 <aside class="carte chat__amis chat__serveur" aria-label="<?= e(t('srv.aside', ['nom' => (string) $serveur['nom']])) ?>">
   <p class="serveur-retour"><a href="<?= url('serveurs') ?>"><?= e(t('srv.retour')) ?></a></p>
   <div class="serveur-entete">
-    <span class="serveur-icone" aria-hidden="true"><?= Serveurs::visuel((string) $serveur['icone'], Serveurs::adressePhoto((int) $serveur['id'], $serveur['photo_nom'])) ?></span>
+    <?= Serveurs::pastille((string) $serveur['nom'], Serveurs::adressePhoto((int) $serveur['id'], $serveur['photo_nom']), 'serveur-icone') ?>
     <strong class="serveur-entete__nom"><?= e((string) $serveur['nom']) ?></strong>
     <a class="bouton bouton--discret bouton--petit" href="<?= url('serveurs/' . (int) $serveur['id'] . '/reglages') ?>" data-fenetre
        title="<?= e(t('srv.reglages')) ?>" aria-label="<?= e(t('srv.reglages')) ?>">⚙️</a>

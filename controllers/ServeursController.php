@@ -36,7 +36,8 @@ final class ServeursController
     {
         Auth::exiger();
         Session::verifierCsrf();
-        [$id, $refus] = Serveurs::creer(Auth::id(), (string) ($_POST['nom'] ?? ''), $_POST['icone'] ?? null);
+        $image = isset($_FILES['photo']) && is_array($_FILES['photo']) && !is_array($_FILES['photo']['name'] ?? null) ? $_FILES['photo'] : null;
+        [$id, $refus] = Serveurs::creer(Auth::id(), (string) ($_POST['nom'] ?? ''), $image);
         if ($id === null) {
             Session::flash('erreur', $refus);
             redirect('serveurs');
@@ -85,7 +86,7 @@ final class ServeursController
     public function modifier(int $id): void
     {
         $this->poster();
-        $refus = Serveurs::modifier(Auth::id(), $id, (string) ($_POST['nom'] ?? ''), $_POST['icone'] ?? null);
+        $refus = Serveurs::modifier(Auth::id(), $id, (string) ($_POST['nom'] ?? ''));
         $this->retourReglages($id, $refus, t('srv.fl.modifie'));
     }
 

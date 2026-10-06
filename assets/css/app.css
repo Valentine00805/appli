@@ -4455,3 +4455,23 @@ a.serveur-carte:hover, a.serveur-carte:focus-visible { border-color: var(--accen
 .barre-serveurs__visuel img, .serveur-icone img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .serveur-icone { overflow: hidden; }
 .serveur-apercu { border-radius: 30%; }
+
+/* Le logo d'un serveur sans photo : ses initiales, blanches sur une couleur propre au serveur. */
+.serveur-logo { display: inline-grid; place-items: center; overflow: hidden; }
+.serveur-logo img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.serveur-logo--initiales { background: var(--couleur, var(--accent)); color: #fff; font-size: .7em; font-weight: 700; line-height: 1; letter-spacing: -.02em; }
+.serveur-logo--n3 { font-size: .58em; }
+.serveur-logo--n4 { font-size: .46em; }
+/* Là où le cadre fixe lui-même sa taille de police (et non son parent), les initiales ont leurs tailles propres. */
+.serveur-icone.serveur-logo--initiales { font-size: .72rem; }
+.serveur-icone.serveur-logo--n3 { font-size: .6rem; }
+.serveur-icone.serveur-logo--n4 { font-size: .5rem; }
+.serveur-icone--grand.serveur-logo--initiales { font-size: 1.05rem; }
+.serveur-icone--grand.serveur-logo--n3 { font-size: .85rem; }
+.serveur-icone--grand.serveur-logo--n4 { font-size: .7rem; }
+.serveur-icone--enorme.serveur-logo--initiales { font-size: 1.4rem; }
+.serveur-icone--enorme.serveur-logo--n3 { font-size: 1.15rem; }
+.serveur-icone--enorme.serveur-logo--n4 { font-size: .95rem; }
+.avatar--apercu.serveur-logo--initiales { font-size: 1.9rem; }
+.avatar--apercu.serveur-logo--n3 { font-size: 1.55rem; }
+.avatar--apercu.serveur-logo--n4 { font-size: 1.3rem; }

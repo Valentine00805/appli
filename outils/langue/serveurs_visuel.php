@@ -43,7 +43,7 @@ $session = static function (string $email) use ($base): array {
 };
 [$appelA, $csrfA, $idSessionA, $jarA] = $session($emails[0]);
 [, , $idSessionB] = $session($emails[1]);
-$appelA('serveurs', ['_csrf' => $csrfA, 'nom' => 'Licence 2 — groupe A', 'icone' => '🎓']);
+$appelA('serveurs', ['_csrf' => $csrfA, 'nom' => 'Licence 2 — groupe A']);
 $s = (int) bd_valeur('SELECT id FROM serveurs WHERE cree_par = ?', [$a]);
 $appelA("serveurs/$s/salons", ['_csrf' => $csrfA, 'nom' => 'Cours de maths']);
 $appelA("serveurs/$s/salons", ['_csrf' => $csrfA, 'nom' => 'projets']);
@@ -63,5 +63,5 @@ curl_exec($h);
 @unlink($png);
 $appelA('groupes', ['_csrf' => $csrfA, 'nom' => 'Projet C#', 'membres' => [$b]]);
 $appelA("amis/$b/messages", ['_csrf' => $csrfA, 'texte' => 'Salut Bastien']);
-$appelA('serveurs', ['_csrf' => $csrfA, 'nom' => 'Club de jeux', 'icone' => '🎮']);
+$appelA('serveurs', ['_csrf' => $csrfA, 'nom' => 'Club de jeux']);
 echo "serveur $s, salon général $general\nA : $idSessionA\nB : $idSessionB\n";
