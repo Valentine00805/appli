@@ -20,6 +20,19 @@ final class ServeursController
         ], t('srv.titre'));
     }
 
+    /**
+     * Garde l'ordre de mes serveurs dans la barre (appelée par le script à chaque glissement, sans recharger la page) :
+     * elle ne répond rien, sinon un code (204 si c'est gardé).
+     */
+    public function ordonner(): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        Serveurs::ordonner(Auth::id(), (array) ($_POST['serveurs'] ?? []));
+        http_response_code(204);
+        exit;
+    }
+
     /** Le formulaire de création, en fenêtre. */
     public function nouveau(): void
     {

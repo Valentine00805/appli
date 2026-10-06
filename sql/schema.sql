@@ -1706,6 +1706,8 @@ CREATE TABLE IF NOT EXISTS `serveur_membres` (
   `serveur_id` INT UNSIGNED NOT NULL,
   `user_id`    INT UNSIGNED NOT NULL,
   `role`       ENUM('proprietaire', 'admin', 'membre') NOT NULL DEFAULT 'membre',
+  -- L'ordre de ce serveur dans la barre de ce membre (glisser-déposer) ; 0 : pas encore rangé, par nom.
+  `position`   SMALLINT UNSIGNED NOT NULL DEFAULT 0,
   `rejoint_le` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`serveur_id`, `user_id`),
   KEY `idx_serveur_membres_user` (`user_id`),

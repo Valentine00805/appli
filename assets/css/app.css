@@ -4509,3 +4509,7 @@ a.serveur-carte:hover, a.serveur-carte:focus-visible { border-color: var(--accen
 .serveur-sous-titre__nombre { margin-left: .25rem; font-weight: 600; opacity: .75; }
 .serveur-salon .groupe-membres__nom a { font-size: 1.05rem; font-weight: 700; color: var(--texte); text-decoration: none; }
 .serveur-salon .groupe-membres__nom a:hover { color: var(--accent); text-decoration: underline; }
+/* Réorganiser les serveurs : celui qu'on tient se soulève, la barre ne sélectionne rien en glissant. */
+.barre-serveurs [data-serveur] { cursor: grab; touch-action: manipulation; }
+.barre-serveurs--tri, .barre-serveurs--tri * { cursor: grabbing !important; user-select: none; }
+.barre-serveurs__bouton--glisse { opacity: .75; transform: scale(1.08); box-shadow: 0 6px 16px rgba(20, 25, 50, .25); z-index: 1; transition: none; }

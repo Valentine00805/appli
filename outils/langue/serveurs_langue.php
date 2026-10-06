@@ -402,6 +402,35 @@ try {
     $poster($a, "serveurs/$avecLogo/supprimer");
     $dire('supprimer le serveur efface le fichier de la photo choisie à la création', $oui(!is_file($dossier . $nomLogo)), 'oui');
 
+    echo "\n8 quater. L'ordre des serveurs (glisser-déposer)\n";
+    $ordreBarre = static function (string $compte) use ($appel): array {
+        [$html] = $appel($compte, 'amis');
+        return preg_match_all('/data-serveur="(\d+)"/', $html, $m) ? array_map('intval', $m[1]) : [];
+    };
+    [$htmlBarre] = $appel($a, 'amis');
+    $dire('la barre est prête pour le glisser-déposer (adresse, jeton, script, un identifiant par serveur)',
+        $oui(str_contains($htmlBarre, 'data-ordonner="') && str_contains($htmlBarre, 'data-jeton="') && str_contains($htmlBarre, 'barre-serveurs.js') && count($ordreBarre($a)) >= 5), 'oui');
+    $avant = $ordreBarre($a);
+    $positionsB = bd_valeur('SELECT GROUP_CONCAT(position ORDER BY serveur_id) FROM serveur_membres WHERE user_id = ?', [$idB]);
+    $poster($a, 'serveurs/ordre', ['serveurs' => array_reverse($avant)]);
+    $dire('renverser l\'ordre : la barre suit', $oui($ordreBarre($a) === array_reverse($avant)), 'oui');
+    [$pageServeurs] = $appel($a, 'serveurs');
+    preg_match_all('/class="serveur-carte"\s+href="[^"]*serveurs\/(\d+)"/', $pageServeurs, $cartes);
+    $dire('la page « Serveurs » suit le même ordre', $oui(array_map('intval', $cartes[1]) === array_reverse($avant)), 'oui');
+    $dernierAvant = $avant[count($avant) - 1];
+    $poster($a, 'serveurs/ordre', ['serveurs' => [$dernierAvant, 999999999]]);
+    $apres = $ordreBarre($a);
+    $dire('une liste partielle (avec un serveur qui n\'existe pas) : ceux de la liste d\'abord, les autres à la suite', $oui($apres[0] === $dernierAvant && count($apres) === count($avant) && count(array_unique($apres)) === count($avant)), 'oui');
+    $poster($a, 'serveurs/ordre', ['serveurs' => $avant]);
+    $dire('on rétablit l\'ordre voulu', $oui($ordreBarre($a) === $avant), 'oui');
+    $dire('l\'ordre est personnel : celui d\'un autre membre ne bouge pas', (string) bd_valeur('SELECT GROUP_CONCAT(position ORDER BY serveur_id) FROM serveur_membres WHERE user_id = ?', [$idB]), (string) $positionsB);
+    $poster($d, 'serveurs/ordre', ['serveurs' => array_reverse($avant)]);
+    $dire('quelqu\'un qui n\'est dans aucun de ces serveurs ne change rien à mon ordre', $oui($ordreBarre($a) === $avant), 'oui');
+    $poster($a, 'serveurs', ['nom' => 'Aaa dernier arrivé']);
+    $dire('un serveur qu\'on crée se met à la fin, quel que soit son nom', $oui(((static function (array $o): int { return $o[count($o) - 1]; })($ordreBarre($a))) === (int) bd_valeur('SELECT id FROM serveurs WHERE nom = ?', ['Aaa dernier arrivé'])), 'oui');
+    $poster($a, 'serveurs/ordre', ['serveurs' => []]);
+    $dire('une liste vide ne perd aucun serveur', $oui(count($ordreBarre($a)) === count($avant) + 1), 'oui');
+
     echo "\n9. Les quatre langues\n";
     foreach ([
         'en' => ['Servers', 'My servers', 'Create a server'],

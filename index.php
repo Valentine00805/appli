@@ -346,6 +346,7 @@ $routes = [
     // Les serveurs : des espaces avec des gens et des salons (les salons sont des discussions de groupe, « groupes/{salon} »).
     ['GET',  'serveurs',                              [ServeursController::class, 'index']],
     ['GET',  'serveurs/nouveau',                      [ServeursController::class, 'nouveau']],
+    ['POST', 'serveurs/ordre',                        [ServeursController::class, 'ordonner']],
     ['POST', 'serveurs',                              [ServeursController::class, 'creer']],
     ['GET',  'serveurs/{id}',                         [ServeursController::class, 'voir']],
     ['GET',  'serveurs/{id}/reglages',                [ServeursController::class, 'reglages']],

@@ -67,7 +67,7 @@ final class Serveurs
                     (SELECT COUNT(*) FROM serveur_membres x WHERE x.serveur_id = s.id) AS membres,
                     (SELECT c.id FROM conversations c WHERE c.serveur_id = s.id ORDER BY c.position, c.id LIMIT 1) AS premier_salon
                FROM serveur_membres m JOIN serveurs s ON s.id = m.serveur_id
-              WHERE m.user_id = ? ORDER BY s.nom, s.id',
+              WHERE m.user_id = ? ORDER BY m.position, s.nom, s.id',
             [$moi]
         ) as $l) {
             $serveurs[] = ['id' => (int) $l['id'], 'nom' => (string) $l['nom'], 'icone' => (string) $l['icone'], 'photo' => self::adressePhoto((int) $l['id'], $l['photo_nom']), 'couleur' => $l['couleur'], 'role' => (string) $l['role'],
@@ -267,6 +267,28 @@ final class Serveurs
         }
     }
 
+    /** La place suivante dans ma barre : un serveur qu'on crée ou qu'on rejoint va à la fin. */
+    private static function prochainePosition(int $moi): int
+    {
+        return (int) Database::valeur('SELECT COALESCE(MAX(position), 0) + 1 FROM serveur_membres WHERE user_id = ?', [$moi]);
+    }
+
+    /**
+     * Range mes serveurs dans l'ordre donné (le glisser-déposer de la barre). Ne comptent que ceux dont je suis membre ; ceux que la
+     * liste oublie suivent, dans leur ordre actuel. L'ordre est le mien : il ne change rien pour les autres membres.
+     *
+     * @param list<int|string> $ids
+     */
+    public static function ordonner(int $moi, array $ids): void
+    {
+        $miens = array_map(static fn (array $l): int => (int) $l['id'], self::liste($moi));
+        $voulus = array_values(array_unique(array_filter(array_map('intval', $ids), static fn (int $id): bool => in_array($id, $miens, true))));
+        $ordre = array_merge($voulus, array_values(array_diff($miens, $voulus)));
+        foreach ($ordre as $rang => $id) {
+            Database::run('UPDATE serveur_membres SET position = ? WHERE serveur_id = ? AND user_id = ?', [$rang + 1, $id, $moi]);
+        }
+    }
+
     /** Le serveur d'un salon (ou null si la conversation n'est pas un salon). */
     public static function dUnSalon(int $conversation): ?int
     {
@@ -331,7 +353,7 @@ final class Serveurs
         try {
             Database::run('INSERT INTO serveurs (nom, photo_nom, photo_mime, couleur, cree_par) VALUES (?, ?, ?, ?, ?)', [$nom, $rangee['nom'] ?? null, $rangee['mime'] ?? null, self::couleurValide($couleur), $moi]);
             $id = Database::dernierId();
-            Database::run("INSERT INTO serveur_membres (serveur_id, user_id, role) VALUES (?, ?, 'proprietaire')", [$id, $moi]);
+            Database::run("INSERT INTO serveur_membres (serveur_id, user_id, role, position) VALUES (?, ?, 'proprietaire', ?)", [$id, $moi, self::prochainePosition($moi)]);
             self::insererSalon($id, self::SALON_PAR_DEFAUT, 0, $moi);
             $pdo->commit();
         } catch (Throwable $e) {
@@ -544,7 +566,7 @@ final class Serveurs
         $pdo->beginTransaction();
         try {
             Database::run('DELETE FROM serveur_invitations WHERE serveur_id = ? AND user_id = ?', [$serveur, $moi]);
-            Database::run("INSERT IGNORE INTO serveur_membres (serveur_id, user_id, role) VALUES (?, ?, 'membre')", [$serveur, $moi]);
+            Database::run("INSERT IGNORE INTO serveur_membres (serveur_id, user_id, role, position) VALUES (?, ?, 'membre', ?)", [$serveur, $moi, self::prochainePosition($moi)]);
             foreach (Database::all('SELECT id FROM conversations WHERE serveur_id = ? ORDER BY position, id', [$serveur]) as $salon) {
                 Database::run(
                     "INSERT IGNORE INTO conversation_membres (conversation_id, user_id, role, rejoint_le) VALUES (?, ?, 'membre', UTC_TIMESTAMP())",

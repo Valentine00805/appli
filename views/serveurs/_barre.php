@@ -2,7 +2,7 @@
 /**
  * La barre des serveurs, à gauche de la messagerie, façon Discord : un bouton « Messages », mes serveurs en icônes (le serveur
  * ouvert est marqué, un point signale ce qui n'est pas lu, une pastille rouge le compte), « ＋ » pour en créer un, et l'accès à
- * la liste de mes serveurs et de mes invitations.
+ * la liste de mes serveurs et de mes invitations. Les serveurs se réorganisent par glisser-déposer (assets/js/barre-serveurs.js).
  *
  * @var string|int $barreActive  « messages », « serveurs » ou l'identifiant du serveur ouvert
  */
@@ -14,7 +14,7 @@ $invitationsBarre = Serveurs::nombreInvitations($moiBarre);
 $nonLusMessages = Amis::enAttente($moiBarre) - $invitationsBarre;
 foreach ($serveursBarre as $sb) { $nonLusMessages -= $sb['non_lus']; }
 ?>
-<nav class="barre-serveurs" aria-label="<?= e(t('srv.barre')) ?>">
+<nav class="barre-serveurs" aria-label="<?= e(t('srv.barre')) ?>" data-ordonner="<?= e(url('serveurs/ordre')) ?>" data-jeton="<?= e(Session::jetonCsrf()) ?>">
   <a class="barre-serveurs__bouton barre-serveurs__bouton--messages<?= $barreActive === 'messages' ? ' barre-serveurs__bouton--actif' : '' ?>"
      href="<?= url('amis') ?>" title="<?= e(t('srv.barre_messages')) ?>" aria-label="<?= e(t('srv.barre_messages')) ?>"<?= $barreActive === 'messages' ? ' aria-current="page"' : '' ?>>
     <span aria-hidden="true">💬</span>
@@ -25,7 +25,7 @@ foreach ($serveursBarre as $sb) { $nonLusMessages -= $sb['non_lus']; }
   <?php foreach ($serveursBarre as $sb): ?>
     <?php $ouvert = (string) $barreActive === (string) $sb['id']; ?>
     <a class="barre-serveurs__bouton<?= $ouvert ? ' barre-serveurs__bouton--actif' : '' ?><?= !$ouvert && $sb['non_lus'] > 0 ? ' barre-serveurs__bouton--non-lu' : '' ?>"
-       href="<?= url('serveurs/' . $sb['id']) ?>" title="<?= e($sb['nom']) ?>" aria-label="<?= e($sb['nom']) ?>"<?= $ouvert ? ' aria-current="page"' : '' ?>>
+       data-serveur="<?= (int) $sb['id'] ?>" href="<?= url('serveurs/' . $sb['id']) ?>" title="<?= e($sb['nom']) ?>" aria-label="<?= e($sb['nom']) ?>"<?= $ouvert ? ' aria-current="page"' : '' ?>>
       <?= Serveurs::pastille($sb['nom'], $sb['photo'], 'barre-serveurs__visuel', $sb['couleur']) ?>
       <?php if ($sb['non_lus'] > 0 && !$ouvert): ?><span class="barre-serveurs__pastille"><?= $sb['non_lus'] > 99 ? '99+' : $sb['non_lus'] ?></span><?php endif; ?>
     </a>
@@ -39,3 +39,4 @@ foreach ($serveursBarre as $sb) { $nonLusMessages -= $sb['non_lus']; }
     <?php if ($invitationsBarre > 0): ?><span class="barre-serveurs__pastille"><?= $invitationsBarre ?></span><?php endif; ?>
   </a>
 </nav>
+<script src="<?= asset('assets/js/barre-serveurs.js') ?>" defer></script>
