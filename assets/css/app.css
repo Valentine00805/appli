@@ -4411,7 +4411,7 @@ a.serveur-carte:hover, a.serveur-carte:focus-visible { border-color: var(--accen
 .barre-serveurs__bouton--actif { border-radius: 30%; background: var(--accent); }
 /* Le trait blanc à gauche : plein pour le serveur ouvert, un point pour ce qui n'est pas lu. */
 .barre-serveurs__bouton--actif::before, .barre-serveurs__bouton--non-lu::before, .barre-serveurs__bouton:hover::before {
-  content: ""; position: absolute; left: -.62rem; top: 50%; width: .3rem; height: .5rem; border-radius: 0 4px 4px 0; background: var(--texte); transform: translateY(-50%);
+  content: ""; position: absolute; left: -.62rem; top: 50%; width: .3rem; height: .5rem; border-radius: 0 4px 4px 0; background: var(--accent); transform: translateY(-50%);
 }
 .barre-serveurs__bouton--non-lu::before { height: .3rem; }
 .barre-serveurs__bouton--actif::before { height: 1.8rem; }
