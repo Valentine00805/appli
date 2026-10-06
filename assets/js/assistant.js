@@ -1,6 +1,6 @@
 /*
  * L'assistant IA : le formulaire s'envoie sans recharger la page. La question s'affiche aussitôt, « l'IA réfléchit » tient la
- * place de la réponse, puis la réponse (déjà mise en forme par le serveur, qui échappe le HTML) la remplace. La discussion
+ * place de la réponse (le champ est déjà vide), puis la réponse (déjà mise en forme par le serveur, qui échappe le HTML) la remplace. La discussion
  * nouvelle prend son adresse dans la barre, et rejoint la liste de gauche. Entrée envoie ; Maj+Entrée va à la ligne.
  *
  * Sans ce script, le formulaire s'envoie normalement et la page se relit sur la discussion : rien n'est perdu.
@@ -92,7 +92,10 @@
     attente.bulle.textContent = mot('ia.reflechit');
     enBas();
 
+    // Le message part : le champ se vide tout de suite (il revient si l'envoi échoue).
     var donnees = new FormData(formulaire);
+    champ.value = '';
+    ajusterChamp();
     fetch(formulaire.action, { method: 'POST', body: donnees, credentials: 'same-origin', headers: { Accept: 'application/json' } })
       .then(function (r) { return r.json().catch(function () { return { fait: false }; }); })
       .then(function (reponse) {
@@ -100,14 +103,13 @@
         question.bulle.innerHTML = reponse.questionHtml;
         attente.bulle.classList.remove('ia__bulle--attente');
         attente.bulle.innerHTML = reponse.reponseHtml;
-        champ.value = '';
-        ajusterChamp();
         if (reponse.nouvelle) { adopter(reponse); }
       })
       .catch(function (e) {
         // La question n'est pas perdue : elle revient dans le champ, et la réponse en attente disparaît.
         question.article.remove();
         attente.article.remove();
+        if (champ.value.trim() === '') { champ.value = texte; ajusterChamp(); }
         dire(e && e.message && e.message !== 'Failed to fetch' ? e.message : '');
       })
       .then(function () {
