@@ -19,7 +19,7 @@ final class Config
     {
         $horsPublic = dirname($racine) . DIRECTORY_SEPARATOR . self::FICHIER_HORS_PUBLIC;
 
-        return is_file($horsPublic) ? $horsPublic : $racine . '/config/parametres.php';
+        return is_file($horsPublic) ? $horsPublic : $racine . '../../config_parametre.php';
     }
 
     /**
