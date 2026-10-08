@@ -135,6 +135,9 @@ Config::charger([
     'app' => [
         'nom'                 => 'Mes Cours',
         'inscription_ouverte' => true,
+        // Les adresses e-mail des administrateurs du site : eux seuls voient l'adresse d'envoi des rappels (celle du cron). Sans
+        // liste, elle n'est montrée qu'à l'ordinateur qui fait tourner l'application — jamais en ligne.
+        'administrateurs'     => [],
         // Code à fournir pour créer un compte. Vide, l'inscription est libre —
         // ce qui ne convient qu'en local : depuis le réseau, l'application la
         // refuse et le dit.

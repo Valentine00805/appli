@@ -24,7 +24,8 @@ final class NotificationsController
                 [$userId]
             ),
             'clePublique' => WebPush::clesVapid()['publique'],
-            'adresseEnvoi' => self::adresseAbsolue(url('notifications/envoyer', ['cle' => self::cleEnvoi()])),
+            // L'adresse qu'appelle le cron porte la clé du site : seuls les administrateurs la voient (voir Auth::peutVoirReglagesDuSite).
+            'adresseEnvoi' => Auth::peutVoirReglagesDuSite() ? self::adresseAbsolue(url('notifications/envoyer', ['cle' => self::cleEnvoi()])) : null,
             // Les sortes de notifications que le compte a choisi de ne pas recevoir.
             'coupures' => FileNotifications::coupures($userId),
         ];

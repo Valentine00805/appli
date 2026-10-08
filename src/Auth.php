@@ -36,6 +36,36 @@ final class Auth
         self::$utilisateur = null;
     }
 
+    /**
+     * Le compte connecté est-il l'un des administrateurs du site ? Ce sont les adresses e-mail listées dans le réglage
+     * « app.administrateurs » du fichier de réglages (en minuscules ou non). Sans liste, personne ne l'est : ce qui est réservé
+     * aux administrateurs n'est alors montré qu'à l'ordinateur qui fait tourner l'application (voir peutVoirReglagesDuSite).
+     */
+    public static function estAdministrateur(): bool
+    {
+        $courriel = mb_strtolower((string) (self::utilisateur()['email'] ?? ''));
+        if ($courriel === '') {
+            return false;
+        }
+        $liste = Config::get('app', 'administrateurs');
+
+        return is_array($liste) && in_array($courriel, array_map(static fn ($a): string => mb_strtolower(trim((string) $a)), $liste), true);
+    }
+
+    /**
+     * Ce qui concerne le site entier (l'adresse d'envoi des rappels, par exemple) : visible des administrateurs s'il y en a de
+     * déclarés ; sinon seulement de l'ordinateur qui fait tourner l'application, jamais d'un compte qui se connecte par Internet.
+     */
+    public static function peutVoirReglagesDuSite(): bool
+    {
+        $liste = Config::get('app', 'administrateurs');
+        if (is_array($liste) && $liste !== []) {
+            return self::estAdministrateur();
+        }
+
+        return in_array((string) ($_SERVER['REMOTE_ADDR'] ?? ''), ['127.0.0.1', '::1', ''], true);
+    }
+
     public static function utilisateur(): ?array
     {
         if (self::$utilisateur !== null) {

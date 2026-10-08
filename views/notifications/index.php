@@ -8,7 +8,7 @@
  *
  * @var list<array> $appareils
  * @var string $clePublique  la clé VAPID de l'application, en base64url
- * @var string $adresseEnvoi l'adresse que la tâche planifiée appelle chaque minute
+ * @var ?string $adresseEnvoi l'adresse que la tâche planifiée appelle chaque minute ; null pour qui n'administre pas le site
  * @var array<string, ?string> $coupures  les sortes coupées, et la fin de chacune (UTC ; null : sans fin)
  * @var bool $dansUneFenetre  rendue seule, pour être posée dans une fenêtre
  */
@@ -140,6 +140,7 @@ $dansUneFenetre = $dansUneFenetre ?? false;
       <?php endif; ?>
     </section>
 
+    <?php if ($adresseEnvoi !== null): ?>
     <section class="carte">
       <h2 style="margin-top:0"><?= e(t('notif.appli_fermee')) ?></h2>
       <p class="discret" style="margin-top:0">
@@ -148,5 +149,6 @@ $dansUneFenetre = $dansUneFenetre ?? false;
       <label class="legende" for="adresse-envoi"><?= e(t('notif.adresse_envoi')) ?></label>
       <input type="text" id="adresse-envoi" readonly value="<?= e($adresseEnvoi) ?>" onclick="this.select()">
     </section>
+    <?php endif; ?>
   </div>
 </div>
