@@ -82,6 +82,7 @@ require __DIR__ . '/controllers/AssistantController.php';
 require __DIR__ . '/controllers/AmisController.php';
 require __DIR__ . '/controllers/ConversationsController.php';
 require __DIR__ . '/controllers/ServeursController.php';
+require __DIR__ . '/controllers/AideController.php';
 require __DIR__ . '/controllers/PartagesController.php';
 require __DIR__ . '/controllers/CoursController.php';
 require __DIR__ . '/controllers/CalendrierController.php';
@@ -281,6 +282,7 @@ $routes = [
     ['POST', 'compte/liens-apps/{id}/supprimer', [LiensAppsController::class, 'supprimer']],
     ['POST', 'compte/langue',            [AuthController::class, 'changerLangue']],
     ['POST', 'compte/gemini',            [AuthController::class, 'enregistrerCleGemini']],
+    ['GET',  'aide/gemini',              [AideController::class, 'gemini']],
     ['POST', 'compte/gemini/retirer',    [AuthController::class, 'retirerCleGemini']],
     ['POST', 'compte/pseudo',            [AuthController::class, 'changerPseudo']],
     ['POST', 'compte/transcription',     [AuthController::class, 'changerTranscription']],

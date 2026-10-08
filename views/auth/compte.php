@@ -149,9 +149,12 @@ $geminiFin = CleApi::configure() ? CleApi::fin((int) Auth::id(), CleApi::GEMINI)
       <p class="reglage-lecture__valeur">
         <?= $geminiFin === null ? e(t('gemini.aucune')) : e(t('gemini.enregistree_fin', ['fin' => $geminiFin])) ?>
       </p>
-      <button class="bouton bouton--secondaire" type="button" data-reglage-modifier>
-        <?= e($geminiFin === null ? t('gemini.ajouter') : t('commun.modifier')) ?>
-      </button>
+      <span class="gemini-actions">
+        <a class="bouton bouton--discret" href="<?= url('aide/gemini') ?>" data-fenetre>📖 <?= e(t('aide.gemini.bouton')) ?></a>
+        <button class="bouton bouton--secondaire" type="button" data-reglage-modifier>
+          <?= e($geminiFin === null ? t('gemini.ajouter') : t('commun.modifier')) ?>
+        </button>
+      </span>
     </div>
 
     <form method="post" action="<?= url('compte/gemini') ?>" data-reglage-edition hidden autocomplete="off">
@@ -162,6 +165,7 @@ $geminiFin = CleApi::configure() ? CleApi::fin((int) Auth::id(), CleApi::GEMINI)
              placeholder="<?= e(t('gemini.placeholder')) ?>">
       <p class="champ__aide">
         <?= e(t('gemini.aide')) ?>
+        <a href="<?= url('aide/gemini') ?>" data-fenetre><?= e(t('aide.gemini.bouton')) ?></a> ·
         <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer"><?= e(t('gemini.lien')) ?></a>
       </p>
       <p class="actions" style="margin:.4rem 0 0">

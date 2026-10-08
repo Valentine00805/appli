@@ -4513,3 +4513,34 @@ a.serveur-carte:hover, a.serveur-carte:focus-visible { border-color: var(--accen
 .barre-serveurs [data-serveur] { cursor: grab; touch-action: manipulation; }
 .barre-serveurs--tri, .barre-serveurs--tri * { cursor: grabbing !important; user-select: none; }
 .barre-serveurs__bouton--glisse { opacity: .75; transform: scale(1.08); box-shadow: 0 6px 16px rgba(20, 25, 50, .25); z-index: 1; transition: none; }
+/* Le mode d'emploi illustré (aide/gemini) et le bouton de la carte « Clé API Gemini ». */
+.gemini-actions { display: flex; flex-wrap: wrap; gap: .5rem; justify-content: flex-end; }
+.guide h2 { margin-top: 0; font-size: 1.1rem; }
+.guide__etapes { list-style: none; margin: 1rem 0; padding: 0; display: grid; gap: 1rem; counter-reset: etape; }
+.guide__etapes > li { counter-increment: etape; margin: 0; }
+.guide__etapes > li > h2::before {
+  content: counter(etape); display: inline-grid; place-items: center; width: 1.7rem; height: 1.7rem; margin-right: .55rem; border-radius: 50%;
+  background: var(--accent); color: #fff; font-size: .95rem; vertical-align: .05rem;
+}
+.guide__alerte { margin: .8rem 0 0; padding: .7rem .9rem; border-left: 4px solid #d97706; border-radius: 0 var(--rayon-s) var(--rayon-s) 0; background: #fff4de; color: #4a3200; }
+.guide__alerte strong { display: block; margin-bottom: .15rem; }
+.guide__alerte--danger { border-color: var(--erreur); background: var(--erreur-doux); color: #5b1212; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .guide__alerte { background: #3a2a0a; color: #fbe7bf; } :root:not([data-theme="light"]) .guide__alerte--danger { background: #3b1717; color: #fbd0d0; } }
+:root[data-theme="dark"] .guide__alerte { background: #3a2a0a; color: #fbe7bf; } :root[data-theme="dark"] .guide__alerte--danger { background: #3b1717; color: #fbd0d0; }
+.guide__fig { display: block; width: 100%; max-width: 38rem; height: auto; margin: .6rem 0; border: 1px solid var(--bordure); border-radius: var(--rayon-s); background: var(--fond-doux); }
+.guide__sous { margin: .4rem 0 .8rem; padding-left: 1.3rem; }
+.guide__faq dt { margin-top: .8rem; font-weight: 650; }
+.guide__faq dd { margin: .15rem 0 0; color: var(--texte-doux); }
+.g-fenetre { fill: var(--fond-carte); stroke: var(--bordure-forte); stroke-width: 1.5; }
+.g-barre { fill: var(--fond-doux); stroke: var(--bordure-forte); stroke-width: 1.5; }
+.g-lateral { fill: var(--fond-doux); }
+.g-champ { fill: var(--fond-carte); }
+.g-ligne { fill: var(--bordure); }
+.g-texte { fill: var(--texte); font: 600 14px system-ui, sans-serif; }
+.g-titre { fill: var(--texte); font: 600 22px system-ui, sans-serif; }
+.g-doux { fill: var(--texte-doux); font: 12px system-ui, sans-serif; }
+.g-bouton { fill: #1a73e8; }
+.g-bouton-texte { fill: #fff; font: 600 13px system-ui, sans-serif; }
+.g-accent { fill: none; stroke: #e11d48; stroke-width: 3; stroke-dasharray: 7 5; }
+.g-pastille { fill: #e11d48; }
+.g-pastille-texte { fill: #fff; font: 700 14px system-ui, sans-serif; }
