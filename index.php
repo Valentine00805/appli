@@ -124,6 +124,14 @@ require __DIR__ . '/controllers/TravauxController.php';
  * à la place de config/parametres.php — aucune adresse ne peut l'atteindre.
  */
 Config::charger([
+    /*
+     * La base : seuls le port et le jeu de caractères ont une valeur par défaut. L'hôte, le nom, l'utilisateur et le mot de passe
+     * ne sont écrits NULLE PART dans le dépôt : ils vont dans config/parametres.php (section « db »).
+     */
+    'db' => [
+        'port'    => 3306,
+        'charset' => 'utf8mb4',
+    ],
     'app' => [
         'nom'                 => 'Mes Cours',
         'inscription_ouverte' => true,

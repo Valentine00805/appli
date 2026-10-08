@@ -17,19 +17,21 @@ final class Database
         $cfg = Config::get('db');
         $dsn = sprintf(
             'mysql:host=%s;port=%d;dbname=%s;charset=%s',
-            $cfg['host'],
-            $cfg['port'],
-            $cfg['name'],
-            $cfg['charset']
+            $cfg['host'] ?? 'localhost',
+            $cfg['port'] ?? 3306,
+            $cfg['name'] ?? '',
+            $cfg['charset'] ?? 'utf8mb4'
         );
 
         try {
-            self::$pdo = new PDO($dsn, $cfg['user'], $cfg['pass'], [
+            self::$pdo = new PDO($dsn, (string) ($cfg['user'] ?? ''), (string) ($cfg['pass'] ?? ''), [
                 PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
                 PDO::ATTR_EMULATE_PREPARES   => false,
             ]);
         } catch (PDOException $e) {
+            // La cause exacte (identifiants, hôte, base inconnue…) va au journal d'erreurs : la page, elle, n'en montre rien.
+            error_log('Base de données : connexion impossible — ' . $e->getMessage());
             http_response_code(500);
             require __DIR__ . '/../views/erreurs/base.php';
             exit;
