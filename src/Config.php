@@ -7,7 +7,7 @@ final class Config
     private static ?array $valeurs = null;
 
     /** Le nom du fichier de réglages rangé hors du dossier publié (dans le dossier parent de l'application). */
-    public const FICHIER_HORS_PUBLIC = 'parametres.php';
+    public const FICHIER_HORS_PUBLIC = 'mes-cours-parametres.php';
 
     /**
      * Où lire les réglages locaux : « mes-cours-parametres.php » dans le dossier PARENT de l'application s'il existe, sinon
