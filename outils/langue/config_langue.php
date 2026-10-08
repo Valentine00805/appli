@@ -22,9 +22,9 @@ $norm = static fn (string $chemin): string => str_replace('\\', '/', $chemin);
 $base = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'cfg_essai_' . getmypid();
 $journal = $base . DIRECTORY_SEPARATOR . 'journal.txt';
 $nettoyer = static function () use ($base): void {
-    foreach (glob($base . '/*/config/*') ?: [] as $f) { @unlink($f); }
-    foreach (glob($base . '/*/config') ?: [] as $d) { @rmdir($d); }
-    foreach (glob($base . '/*') ?: [] as $f) { is_dir($f) ? @rmdir($f) : @unlink($f); }
+    if (!is_dir($base) || !str_contains($base, 'cfg_essai_')) { return; }   // jamais ailleurs que dans le dossier d'essai
+    $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($base, FilesystemIterator::SKIP_DOTS), RecursiveIteratorIterator::CHILD_FIRST);
+    foreach ($it as $element) { $element->isDir() ? @rmdir($element->getPathname()) : @unlink($element->getPathname()); }
     @rmdir($base);
 };
 
@@ -42,6 +42,22 @@ try {
     $dire('avec « mes-cours-parametres.php » dans le dossier parent : c\'est lui', $f, $norm($base) . '/mes-cours-parametres.php');
     unlink($base . '/mes-cours-parametres.php');
 
+    // Application dans un sous-dossier (public_html/appli) : le parent est public_html, publié ; le fichier se range un cran plus haut.
+    $sous = $base . '/site/public_html/appli';
+    mkdir($sous . '/config', 0777, true);
+    $f = $norm(Config::fichierLocal($sous));
+    $dire('application dans un sous-dossier, sans fichier hors public : config/parametres.php', $f, $norm($sous) . '/config/parametres.php');
+    file_put_contents($base . '/site/mes-cours-parametres.php', '<?php return [];');
+    $dire('… avec le fichier au-dessus de public_html : il est trouvé (deux niveaux plus haut)', $norm(Config::fichierLocal($sous)), $norm($base) . '/site/mes-cours-parametres.php');
+    file_put_contents($base . '/site/public_html/mes-cours-parametres.php', '<?php return [];');
+    $dire('s\'il y en a un aussi dans le parent immédiat, le plus proche l\'emporte', $norm(Config::fichierLocal($sous)), $norm($base) . '/site/public_html/mes-cours-parametres.php');
+    unlink($base . '/site/public_html/mes-cours-parametres.php');
+    unlink($base . '/site/mes-cours-parametres.php');
+    $profond = $base . '/a/b/c/d/appli';
+    mkdir($profond, 0777, true);
+    file_put_contents($base . '/mes-cours-parametres.php', '<?php return [];');
+    $dire('on ne remonte pas plus de trois dossiers (un fichier plus loin est ignoré)', $norm(Config::fichierLocal($profond)), $norm($profond) . '/config/parametres.php');
+    unlink($base . '/mes-cours-parametres.php');
     echo "\n2. Le fichier se fond dans les valeurs par défaut\n";
     file_put_contents($app . '/config/parametres.php',
         '<?php return ["db" => ["host" => "localhost", "name" => "b", "user" => "u", "pass" => "p"], "app" => ["code_inscription" => "abc"]];');

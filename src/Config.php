@@ -6,20 +6,38 @@ final class Config
 {
     private static ?array $valeurs = null;
 
-    /** Le nom du fichier de réglages rangé hors du dossier publié (dans le dossier parent de l'application). */
+    /** Le nom du fichier de réglages rangé hors du dossier publié (au-dessus de l'application). */
     public const FICHIER_HORS_PUBLIC = 'mes-cours-parametres.php';
 
+    /** Combien de dossiers au-dessus de l'application on cherche ce fichier : le parent, le grand-parent, l'arrière-grand-parent. */
+    private const NIVEAUX_HORS_PUBLIC = 3;
+
     /**
-     * Où lire les réglages locaux : « mes-cours-parametres.php » dans le dossier PARENT de l'application s'il existe, sinon
-     * « config/parametres.php ». Sur un hébergeur, l'application est dans le dossier publié (public_html) et son parent ne l'est
-     * pas : les clés secrètes (Google, Outlook, mot de passe de la base, clé de chiffrement) y sont hors de portée d'une adresse,
-     * même si la protection du dossier config/ venait à manquer. En local, ce fichier n'existe pas : rien ne change.
+     * Où lire les réglages locaux : « mes-cours-parametres.php » dans un dossier AU-DESSUS de l'application s'il existe — le plus
+     * proche d'abord —, sinon « config/parametres.php ».
+     *
+     * Sur un hébergeur, seul « public_html » est publié ; ses dossiers parents ne le sont pas. Application à la racine de
+     * public_html : le fichier va dans le parent (domains/<site>/). Application dans un sous-dossier (public_html/appli) : le
+     * parent est public_html, publié — on le range donc un cran plus haut, et c'est pourquoi la recherche remonte de trois niveaux.
+     * Les clés secrètes (Google, Outlook, mot de passe de la base, clé de chiffrement) y sont hors de portée d'une adresse, même si
+     * la protection du dossier config/ venait à manquer. En local, ce fichier n'existe pas : rien ne change.
      */
     public static function fichierLocal(string $racine): string
     {
-        $horsPublic = dirname($racine) . DIRECTORY_SEPARATOR . self::FICHIER_HORS_PUBLIC;
+        $dossier = $racine;
+        for ($niveau = 0; $niveau < self::NIVEAUX_HORS_PUBLIC; $niveau++) {
+            $parent = dirname($dossier);
+            if ($parent === $dossier) {
+                break;
+            }
+            $candidat = $parent . DIRECTORY_SEPARATOR . self::FICHIER_HORS_PUBLIC;
+            if (is_file($candidat)) {
+                return $candidat;
+            }
+            $dossier = $parent;
+        }
 
-        return is_file($horsPublic) ? $horsPublic : $racine . '/config/parametres.php';
+        return $racine . '/config/parametres.php';
     }
 
     /**
