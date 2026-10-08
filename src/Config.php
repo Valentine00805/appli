@@ -48,6 +48,8 @@ final class Config
     {
         $locaux = $fichier !== null && is_file($fichier) ? require $fichier : [];
         if (!is_array($locaux)) {
+            // Un fichier qui ne « return » pas un tableau (le « return » oublié) serait ignoré sans un mot : on le dit au journal d'erreurs.
+            error_log('Config : le fichier de réglages ' . basename((string) $fichier) . ' ne renvoie pas un tableau (il manque « return [ … ]; » ?) : il est ignoré.');
             $locaux = [];
         }
 
