@@ -4544,3 +4544,55 @@ a.serveur-carte:hover, a.serveur-carte:focus-visible { border-color: var(--accen
 .g-accent { fill: none; stroke: #e11d48; stroke-width: 3; stroke-dasharray: 7 5; }
 .g-pastille { fill: #e11d48; }
 .g-pastille-texte { fill: #fff; font: 700 14px system-ui, sans-serif; }
+
+/* ==========================================================================
+   Les calendriers partagés entre amis : la section du volet, la liste, la fiche d'un calendrier.
+   ========================================================================== */
+.cal-volet__outil {
+  flex: none;
+  padding: 0 .25rem;
+  color: var(--texte-doux);
+  text-decoration: none;
+  line-height: 1.4;
+  border-radius: 6px;
+}
+.cal-volet__outil:hover, .cal-volet__outil:focus-visible { color: var(--texte); background: var(--fond-doux); }
+.cal-volet__ajout { margin: .35rem 0 0; font-size: .85rem; display: flex; flex-wrap: wrap; gap: .1rem .6rem; align-items: baseline; }
+
+.cam-pastille { display: inline-block; flex: none; width: .9rem; height: .9rem; border-radius: 50%; }
+.cam-pastille--grande { width: 1.6rem; height: 1.6rem; }
+
+.cam-liste { list-style: none; margin: 0; padding: 0; display: grid; gap: .6rem; }
+.cam-liste__ligne { display: flex; align-items: center; gap: .8rem; flex-wrap: wrap; padding: .8rem 1rem; }
+.cam-liste__texte { flex: 1; min-width: 12rem; display: grid; gap: .1rem; }
+
+.cam-evenements { list-style: none; margin: 0; padding: 0; display: grid; gap: .15rem; }
+.cam-evenements a { display: flex; gap: .7rem; padding: .35rem .5rem; border-radius: var(--rayon-s); color: inherit; text-decoration: none; }
+.cam-evenements a:hover, .cam-evenements a:focus-visible { background: var(--fond-doux); }
+.cam-evenements__quand { flex: none; min-width: 6.5rem; color: var(--texte-doux); font-variant-numeric: tabular-nums; }
+
+/* Le bouton « Nouveau calendrier » du volet : une case en pointillés, comme un emplacement à remplir. */
+.cal-volet__vide { margin: .2rem 0 .5rem; font-size: .85rem; color: var(--texte-doux); }
+.cal-volet__nouveau {
+  display: flex; align-items: center; justify-content: center; gap: .45rem; margin-top: .4rem; padding: .5rem .7rem;
+  border: 1.5px dashed var(--accent); border-radius: var(--rayon-s); background: var(--accent-doux); color: var(--accent);
+  font-weight: 600; font-size: .88rem; text-decoration: none; transition: background .15s, color .15s, transform .15s;
+}
+.cal-volet__nouveau:hover, .cal-volet__nouveau:focus-visible { background: var(--accent); color: #fff; border-style: solid; text-decoration: none; }
+.cal-volet__nouveau:active { transform: scale(.98); }
+.cal-volet__nouveau-icone {
+  display: inline-grid; place-items: center; width: 1.3rem; height: 1.3rem; border-radius: 50%;
+  background: var(--accent); color: #fff; line-height: 1; transition: background .15s, color .15s;
+}
+.cal-volet__nouveau:hover .cal-volet__nouveau-icone, .cal-volet__nouveau:focus-visible .cal-volet__nouveau-icone { background: #fff; color: var(--accent); }
+
+/* Le choix de couleur d'un calendrier : la couleur libre porte un anneau en arc-en-ciel et son nom, pour qu'on sache qu'elle ouvre le nuancier. */
+.cam-libre { display: inline-flex; align-items: center; gap: .5rem; padding-right: .4rem; }
+.cam-libre__anneau {
+  display: grid; place-items: center; width: 2.5rem; height: 2.5rem; border-radius: 50%;
+  background: conic-gradient(#f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00);
+}
+.cam-libre__anneau input[type="color"] { width: 1.75rem; height: 1.75rem; border: 2px solid var(--fond-carte); box-shadow: none; }
+.cam-couleurs .cam-libre:has(> input[type="radio"]:checked) .cam-libre__anneau { box-shadow: 0 0 0 3px var(--accent); }
+.cam-couleurs .cam-libre:has(> input[type="radio"]:checked) input[type="color"] { box-shadow: none; }
+.cam-libre__texte { font-size: .88rem; color: var(--texte-doux); }

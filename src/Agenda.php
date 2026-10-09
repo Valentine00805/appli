@@ -64,9 +64,6 @@ final class Agenda
     public static function sourcesDuCalendrier(int $userId): array
     {
         $relies = self::relies($userId);
-        if ($relies === []) {
-            return [];
-        }
 
         $moi = Database::one(
             'SELECT afficher_miens, couleur_miens, volet_replie FROM users WHERE id = ?', [$userId]);
@@ -113,6 +110,15 @@ final class Agenda
                 ];
             }
         }
+
+        // Les calendriers partagés avec des amis : la section est toujours là, pour qu'on puisse en créer un.
+        $sections[] = [
+            'titre'   => t('cam.section'),
+            'cle'     => 'calendriersamis',
+            'replie'  => isset($replies['calendriersamis']),
+            'sources' => CalendriersAmis::sourcesDuVolet($userId),
+            'amis'    => true,
+        ];
 
         return $sections;
     }

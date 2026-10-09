@@ -148,9 +148,11 @@ final class CalendrierController
 
         $coches = $_POST['sources'] ?? [];
         Agenda::montrer(Auth::id(), is_array($coches) ? $coches : []);
+        CalendriersAmis::montrer(Auth::id(), is_array($coches) ? $coches : []);
 
         $couleurs = $_POST['couleur'] ?? [];
         Agenda::colorier(Auth::id(), is_array($couleurs) ? $couleurs : []);
+        CalendriersAmis::colorier(Auth::id(), is_array($couleurs) ? $couleurs : []);
 
         repartir_vers('calendrier');
     }
@@ -321,6 +323,10 @@ final class CalendrierController
                 : Database::one('SELECT * FROM series_evenements WHERE id = ? AND user_id = ?',
                     [(int) $evenement['serie_id'], $userId]),
             'ouEnvoyer'  => Agenda::ouEnvoyer($userId),
+            // Un évènement qu'on crée peut partir dans un calendrier partagé avec des amis ; celui qu'on modifie ne change pas de calendrier.
+            'calendriersAmis' => $evenement === null ? CalendriersAmis::liste($userId) : [],
+            // Ouvert depuis un calendrier partagé (« ＋ » du volet) : c'est lui qu'on coche d'avance, à la place de « Mes évènements ».
+            'agendaCoche' => $evenement === null ? (CalendriersAmis::cibles($userId, [(string) ($_GET['agenda'] ?? '')])[0] ?? null) : null,
             'vises'      => $evenement === null
                 ? [Agenda::DEFAUT] : Agenda::ciblesDe((int) $evenement['id']),
             'venuDAilleurs' => $evenement !== null && $this->venuDAilleurs($userId, (int) $evenement['id']),
@@ -365,8 +371,18 @@ final class CalendrierController
             redirect('evenements/nouveau');
         }
 
+        /*
+         * Les calendriers partagés cochés (« ca12 ») ne sont pas des agendas où envoyer : ils reçoivent leur propre copie, écrite par le
+         * même formulaire. Coché seul, l'évènement n'est pas ajouté à « Mes évènements » ; avec « Mes évènements » ou un autre agenda, il
+         * l'est aussi.
+         */
+        $choisis = is_array($_POST['agendas'] ?? null) ? $_POST['agendas'] : [];
+        $partages = CalendriersAmis::cibles($userId, $choisis);
+        $autres = array_filter($choisis, static fn (mixed $v): bool => !(is_string($v) && preg_match('/^ca[0-9]+$/', $v) === 1));
+        $gardeLesMiens = $partages === [] || $autres !== [];
+
         $serieId = null;
-        if ($quand !== null) {
+        if ($quand !== null && $gardeLesMiens) {
             Database::run(
                 'INSERT INTO series_evenements
                      (user_id, frequence, jours, jusqu_au, nombre_voulu, occurrences)
@@ -378,12 +394,24 @@ final class CalendrierController
         }
 
         foreach ($quand === null ? [null] : $quand['dates'] as $decalage) {
-            $this->poser($userId, $donnees, $serieId, $decalage);
+            if ($gardeLesMiens) {
+                $this->poser($userId, $donnees, $serieId, $decalage);
+            }
+            foreach ($partages as $calendrierId) {
+                CalendriersAmis::creerEvenement($userId, $calendrierId, [
+                    'titre'           => $donnees['titre'],
+                    'description'     => $donnees['description'],
+                    'lieu'            => $donnees['lieu'],
+                    'debut'           => $decalage === null ? $donnees['debut'] : $decalage['debut']->format('Y-m-d H:i:s'),
+                    'fin'             => $decalage === null ? $donnees['fin'] : $decalage['fin']->format('Y-m-d H:i:s'),
+                    'journee_entiere' => $donnees['journee_entiere'],
+                ]);
+            }
         }
 
         $combien = $quand === null ? 1 : count($quand['dates']);
         Session::flash('succes', $combien === 1
-            ? t('flash.evt_ajoute')
+            ? ($gardeLesMiens ? t('flash.evt_ajoute') : t('cam.fl.evt_cree'))
             : t('flash.evt_occurrences_ajoutees', [
                 'n' => $combien, 'date' => date_numerique($quand['jusqu_au']),
               ]));
@@ -1152,7 +1180,11 @@ final class CalendrierController
         // d'office. Un filtre par matière ou par type les écarte : ce sont
         // les leurs, pas les miens.
         if ($matiereId === null && $typeId === null) {
-            $partages = Partages::evenementsAffiches($userId, $debut, $fin);
+            // Les évènements des calendriers partagés entre amis que je laisse cochés dans le volet.
+            $partages = array_merge(
+                Partages::evenementsAffiches($userId, $debut, $fin),
+                CalendriersAmis::evenementsAffiches($userId, $debut, $fin)
+            );
             if ($partages !== []) {
                 $evenements = array_merge($evenements, $partages);
                 usort($evenements, static fn (array $a, array $b): int => [$a['debut'], $a['fin']] <=> [$b['debut'], $b['fin']]);

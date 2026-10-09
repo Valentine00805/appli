@@ -254,6 +254,13 @@ $puce = static function (array $evt) use ($destination): string {
                      value="<?= e($source['cle']) ?>"<?= $source['affiche'] ? ' checked' : '' ?>>
               <span><?= e($source['nom']) ?></span>
             </label>
+            <?php if (isset($source['calendrier_id'])): ?>
+              <?php // Un calendrier partagé : ses réglages et ses membres, et un évènement à y ajouter. ?>
+              <a class="cal-volet__outil" href="<?= url('evenements/nouveau', ['agenda' => CalendriersAmis::cle((int) $source['calendrier_id'])]) ?>" data-fenetre
+                 title="<?= e(t('cam.evt_ajouter')) ?>" aria-label="<?= e(t('cam.evt_ajouter')) ?>">＋</a>
+              <a class="cal-volet__outil" href="<?= url('calendriers-amis/' . (int) $source['calendrier_id']) ?>" data-fenetre
+                 title="<?= e(t('cam.gerer')) ?>" aria-label="<?= e(t('cam.gerer')) ?>">⚙</a>
+            <?php endif; ?>
             <?php
             /*
              * Le nuancier du navigateur, celui-là même que l'éditeur de
@@ -269,6 +276,12 @@ $puce = static function (array $evt) use ($destination): string {
           </li>
         <?php endforeach; ?>
         </ul>
+        <?php if (!empty($section['amis'])): ?>
+          <?php if ($section['sources'] === []): ?><p class="cal-volet__vide"><?= e(t('cam.volet_vide')) ?></p><?php endif; ?>
+          <a class="cal-volet__nouveau" href="<?= url('calendriers-amis/nouveau') ?>" data-fenetre>
+            <span class="cal-volet__nouveau-icone" aria-hidden="true">＋</span> <?= e(t('cam.nouveau')) ?>
+          </a>
+        <?php endif; ?>
       </details>
       <?php endforeach; ?>
       <noscript>

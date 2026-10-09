@@ -57,6 +57,7 @@ require __DIR__ . '/src/FileNotifications.php';
 require __DIR__ . '/src/Amis.php';
 require __DIR__ . '/src/Conversations.php';
 require __DIR__ . '/src/Serveurs.php';
+require __DIR__ . '/src/CalendriersAmis.php';
 require __DIR__ . '/src/Partages.php';
 require __DIR__ . '/src/Difference.php';
 require __DIR__ . '/src/PlanningJour.php';
@@ -82,6 +83,7 @@ require __DIR__ . '/controllers/AssistantController.php';
 require __DIR__ . '/controllers/AmisController.php';
 require __DIR__ . '/controllers/ConversationsController.php';
 require __DIR__ . '/controllers/ServeursController.php';
+require __DIR__ . '/controllers/CalendriersAmisController.php';
 require __DIR__ . '/controllers/AideController.php';
 require __DIR__ . '/controllers/PartagesController.php';
 require __DIR__ . '/controllers/CoursController.php';
@@ -378,6 +380,23 @@ $routes = [
     ['POST', 'serveurs/{id}/membres/{id}/membre',     [ServeursController::class, 'retirerAdmin']],
     ['POST', 'serveurs/{id}/quitter',                 [ServeursController::class, 'quitter']],
     ['POST', 'serveurs/{id}/supprimer',               [ServeursController::class, 'supprimer']],
+
+    // Les calendriers partagés : un calendrier à part, ouvert aux seuls amis que son créateur choisit.
+    ['GET',  'calendriers-amis',                                [CalendriersAmisController::class, 'index']],
+    ['GET',  'calendriers-amis/nouveau',                        [CalendriersAmisController::class, 'nouveau']],
+    ['POST', 'calendriers-amis',                                [CalendriersAmisController::class, 'creer']],
+    ['GET',  'calendriers-amis/evenements/{id}',                [CalendriersAmisController::class, 'evenement']],
+    ['GET',  'calendriers-amis/evenements/{id}/modifier',       [CalendriersAmisController::class, 'modifierEvenementForm']],
+    ['POST', 'calendriers-amis/evenements/{id}',                [CalendriersAmisController::class, 'modifierEvenement']],
+    ['POST', 'calendriers-amis/evenements/{id}/supprimer',      [CalendriersAmisController::class, 'supprimerEvenement']],
+    ['GET',  'calendriers-amis/{id}',                           [CalendriersAmisController::class, 'reglages']],
+    ['POST', 'calendriers-amis/{id}/modifier',                  [CalendriersAmisController::class, 'modifier']],
+    ['POST', 'calendriers-amis/{id}/membres',                   [CalendriersAmisController::class, 'ajouterMembres']],
+    ['POST', 'calendriers-amis/{id}/membres/{id}/retirer',      [CalendriersAmisController::class, 'retirerMembre']],
+    ['POST', 'calendriers-amis/{id}/quitter',                   [CalendriersAmisController::class, 'quitter']],
+    ['POST', 'calendriers-amis/{id}/supprimer',                 [CalendriersAmisController::class, 'supprimer']],
+    ['GET',  'calendriers-amis/{id}/evenements/nouveau',        [CalendriersAmisController::class, 'nouvelEvenement']],
+    ['POST', 'calendriers-amis/{id}/evenements',                [CalendriersAmisController::class, 'creerEvenement']],
     /*
      * Les agendas distants. Le fournisseur est dans l'adresse : chacun a
      * ainsi sa page et son retour d'autorisation, sans une ligne de plus.

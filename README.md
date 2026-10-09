@@ -40,6 +40,9 @@ allemand) et avec un thème clair ou sombre.
   « terminées » sans disparaître.
 - **Tableau** — un kanban en quatre colonnes qui relit vos sous-tâches et vos évènements (rien n'est recopié, donc rien
   ne se désynchronise).
+- **Calendriers partagés** — des calendriers à part, ouverts aux seuls amis que vous choisissez : chacun y ajoute ses
+  évènements (et modifie les siens), le créateur gère les membres, et chaque membre affiche ou masque le calendrier, et
+  lui donne sa couleur, depuis le volet du calendrier.
 - **Agendas externes** — **Outlook (Microsoft)** et **Google Agenda** se relient chacun à votre compte, et la
   synchronisation se fait dans les deux sens.
 - **Rappels et notifications** — notifications du navigateur ou du téléphone (même application fermée, avec la tâche

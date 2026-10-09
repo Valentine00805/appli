@@ -402,9 +402,26 @@ $matiereActive = $edition ? entier_ou_null($evenement['matiere_id']) : null;
           $vises,
           static fn (string $v): bool => $v === Agenda::DEFAUT || in_array($v, $connus, true)
       ));
-      if (!$venuDAilleurs && $coches === []) { $coches = [Agenda::DEFAUT]; }
+      // Ouvert depuis un calendrier partagé : c'est lui qui est coché, « Mes évènements » ne l'est pas.
+      if (($agendaCoche ?? null) !== null) { $coches = []; }
+      if (!$venuDAilleurs && $coches === [] && ($agendaCoche ?? null) === null) { $coches = [Agenda::DEFAUT]; }
       ?>
-      <?php if ($ouEnvoyer !== [] && $venuDAilleurs && $copie !== null): ?>
+      <?php if (($agendaCoche ?? null) !== null): ?>
+        <?php // Ouvert depuis le « ＋ » d'un calendrier partagé : pas de choix, l'évènement y va d'office. ?>
+        <?php $ici = current(array_filter($calendriersAmis, static fn (array $c): bool => $c['id'] === $agendaCoche)); ?>
+        <div class="carte">
+          <input type="hidden" name="agendas[]" value="<?= e(CalendriersAmis::cle((int) $agendaCoche)) ?>">
+          <div class="champ">
+            <span class="legende"><?= e(t('cam.destination_fixe')) ?></span>
+            <span style="display:flex;align-items:center;gap:.5rem;font-weight:600">
+              <span class="cam-pastille" style="background:<?= e($ici['couleur']) ?>" aria-hidden="true"></span>
+              <?= e($ici['nom']) ?>
+            </span>
+            <span class="champ__aide"><?= e(tn('cam.membres_n', (int) $ici['membres'])) ?> · <?= e(t('cam.destination_fixe_aide')) ?></span>
+          </div>
+        </div>
+
+      <?php elseif ($ouEnvoyer !== [] && $venuDAilleurs && $copie !== null): ?>
         <div class="carte">
           <div class="champ">
             <span class="legende"><?= e(t('evtf.autre_agenda')) ?></span>
@@ -444,7 +461,7 @@ $matiereActive = $edition ? entier_ou_null($evenement['matiere_id']) : null;
           </div>
         </div>
 
-      <?php elseif ($ouEnvoyer !== []): ?>
+      <?php elseif ($ouEnvoyer !== [] || $calendriersAmis !== []): ?>
         <div class="carte">
           <div class="champ">
             <span class="legende"><?= e(t('evtf.ou_envoyer')) ?></span>
@@ -467,8 +484,19 @@ $matiereActive = $edition ? entier_ou_null($evenement['matiere_id']) : null;
               </label>
             <?php endforeach; ?>
 
+            <?php // Les calendriers partagés avec des amis : l'évènement y est ajouté pour tous leurs membres. ?>
+            <?php foreach ($calendriersAmis as $cal): ?>
+              <label class="case" style="display:block">
+                <input type="checkbox" name="agendas[]" value="<?= e(CalendriersAmis::cle($cal['id'])) ?>"<?= ($agendaCoche ?? null) === $cal['id'] ? ' checked' : '' ?>>
+                <span class="cam-pastille" style="background:<?= e($cal['couleur']) ?>" aria-hidden="true"></span>
+                <?= e($cal['nom']) ?>
+                <span class="discret">(<?= e(t('cam.destination', ['n' => $cal['membres']])) ?>)</span>
+              </label>
+            <?php endforeach; ?>
+
             <span class="champ__aide">
-              <?= e(t('evtf.ou_envoyer_aide')) ?>
+              <?= e($ouEnvoyer !== [] ? t('evtf.ou_envoyer_aide') : t('cam.destination_aide_seul')) ?>
+              <?php if ($calendriersAmis !== []): ?><?= e(t('cam.destination_aide')) ?><?php endif; ?>
             </span>
           </div>
         </div>
