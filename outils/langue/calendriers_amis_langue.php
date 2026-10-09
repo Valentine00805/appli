@@ -11,6 +11,10 @@
  */
 require __DIR__ . '/base.php';
 
+// Les dates de l'essai sont celles de l'application (le fuseau des comptes neufs), pas celles du poste en ligne de commande : après minuit à Paris,
+// ce poste (en UTC) est encore la veille, et « aujourd'hui » ne serait plus le même des deux côtés.
+date_default_timezone_set('Europe/Paris');
+
 $anomalies = 0;
 $termine = false;   // faux si le script s'arrête en route (erreur fatale) : le bilan ne doit pas dire « aucune anomalie »
 $dire = static function (string $quoi, string $obtenu, string $attendu) use (&$anomalies): void {
@@ -31,7 +35,11 @@ sleep(3);   // le serveur web garde le fichier compilé quelques secondes (OPcac
 
 $emails = ['cam-a@exemple-test.fr', 'cam-b@exemple-test.fr', 'cam-c@exemple-test.fr', 'cam-d@exemple-test.fr'];
 $nettoyer = static function () use ($emails): void {
-    foreach ($emails as $e) { bd_run('DELETE FROM users WHERE email = ? AND email LIKE ?', [$e, '%@exemple-test.fr']); }
+    foreach ($emails as $e) {
+        // Les travaux de groupe d'abord : leur calendrier commun part avec eux.
+        bd_run('DELETE p FROM projets p JOIN users u ON u.id = p.cree_par WHERE u.email = ? AND u.email LIKE ?', [$e, '%@exemple-test.fr']);
+        bd_run('DELETE FROM users WHERE email = ? AND email LIKE ?', [$e, '%@exemple-test.fr']);
+    }
 };
 $nettoyer();
 foreach ($emails as $i => $e) {
@@ -206,6 +214,207 @@ try {
     $poster($a, 'calendriers-amis/' . $cal . '/supprimer');
     $dire('A supprime le calendrier', (string) bd_valeur('SELECT COUNT(*) FROM calendriers_amis WHERE id = ?', [$cal]), '0');
     $dire('ses membres et ses évènements partent avec lui', (string) bd_valeur('SELECT (SELECT COUNT(*) FROM calendrier_amis_membres WHERE calendrier_id = ?) + (SELECT COUNT(*) FROM calendrier_amis_evenements WHERE calendrier_id = ?)', [$cal, $cal]), '0');
+
+    echo "\n8 bis. Le calendrier commun d'un travail de groupe\n";
+    $poster($a, 'travaux', ['nom' => 'Rapport de labo', 'amis' => [$idB]]);
+    $projet = (int) bd_valeur('SELECT id FROM projets WHERE cree_par = ? ORDER BY id DESC LIMIT 1', [$idA]);
+    $calP = static fn (): int => (int) bd_valeur('SELECT id FROM calendriers_amis WHERE projet_id = ?', [$projet]);
+    [$membresProjet] = $appel($a, 'travaux/' . $projet . '/membres?fenetre=1');
+    $dire('l\'onglet Membres propose de créer le calendrier commun', $oui(str_contains($membresProjet, 'travaux/' . $projet . '/calendrier')), 'oui');
+    $poster($b, 'travaux/' . $projet . '/calendrier');
+    $dire('un simple invité (pas encore membre) ne peut pas le créer', (string) $calP(), '0');
+    $poster($a, 'travaux/' . $projet . '/calendrier');
+    $dire('A, membre du projet, le crée', $oui($calP() > 0), 'oui');
+    $dire('il porte le nom du projet, et seuls les membres du projet y sont (B n\'a pas encore accepté)',
+        (string) bd_valeur('SELECT nom FROM calendriers_amis WHERE projet_id = ?', [$projet]) . '|' . implode(',', $membres($calP())), 'Rapport de labo|' . $idA);
+    $poster($a, 'travaux/' . $projet . '/calendrier');
+    $dire('un projet n\'a qu\'un calendrier', (string) bd_valeur('SELECT COUNT(*) FROM calendriers_amis WHERE projet_id = ?', [$projet]), '1');
+    $poster($b, 'travaux/' . $projet . '/rejoindre');
+    $dire('B accepte l\'invitation : il entre dans le calendrier', implode(',', $membres($calP())), implode(',', [$idA, $idB]));
+    [$membresProjet] = $appel($b, 'travaux/' . $projet . '/membres?fenetre=1');
+    $dire('l\'onglet Membres le montre, avec ses boutons', $oui(str_contains($membresProjet, 'calendriers-amis/' . $calP()) && str_contains($membresProjet, 'evenements/nouveau?agenda=ca' . $calP()) && !str_contains($membresProjet, 'travaux/' . $projet . '/calendrier')), 'oui');
+    $poster($b, 'calendriers-amis/' . $calP() . '/evenements', ['titre' => 'Séance de labo', 'date_debut' => $aujourdhui]);
+    [$page] = $appel($a, 'calendrier?vue=liste&date=' . $aujourdhui);
+    $dire('un évènement de B est dans le calendrier de A', $oui(str_contains($page, 'Séance de labo')), 'oui');
+    $poster($a, 'travaux/' . $projet . '/taches', ['titre' => 'Rédiger la conclusion', 'membre_id' => '', 'echeance' => $aujourdhui]);
+    $poster($a, 'travaux/' . $projet . '/taches', ['titre' => 'Relire le plan', 'membre_id' => (string) bd_valeur('SELECT id FROM projet_membres WHERE projet_id = ? AND user_id = ?', [$projet, $idB]), 'echeance' => $aujourdhui]);
+    $poster($a, 'travaux/' . $projet . '/taches', ['titre' => 'Sans date', 'membre_id' => '', 'echeance' => '']);
+    foreach ([1, 2, 3] as $n) {
+        $poster($a, 'travaux/' . $projet . '/taches', ['titre' => 'Extra ' . $n, 'membre_id' => '', 'echeance' => '']);
+    }
+    [$accueil] = $appel($a, '');
+    $dire('l\'accueil montre quatre tâches de groupe, et déroule les suivantes sous « ＋ 1 autre tâche »',
+        $oui(substr_count($accueil, 'travaux-mes-taches') === 2 && str_contains($accueil, 'travaux-suite') && str_contains($accueil, '＋ 1 autre tâche')), 'oui');
+    foreach ([[$a, 'A'], [$b, 'B']] as [$compte, $qui]) {
+        [$page] = $appel($compte, 'calendrier?vue=liste&date=' . $aujourdhui);
+        $dire("les tâches du projet qui ont une échéance sont dans le calendrier de $qui, une seule fois",
+            $oui(substr_count($page, 'Relire le plan') === 1 && str_contains($page, 'Rédiger la conclusion (sans personne)') && substr_count($page, 'Rédiger la conclusion') === 1 && !str_contains($page, 'Sans date')), 'oui');
+    }
+    [$accueil] = $appel($b, '');
+    $dire('la tâche confiée à B (sans être la sienne pour A) est aussi sur l\'accueil de B', $oui(str_contains($accueil, 'Relire le plan')), 'oui');
+    [$page] = $appel($c, 'calendrier?vue=liste&date=' . $aujourdhui);
+    $dire('un non-membre ne les voit pas', $oui(!str_contains($page, 'Relire le plan')), 'oui');
+    $poster($b, 'calendrier/agendas', ['sources' => ['miens']]);
+    [$page] = $appel($b, 'calendrier?vue=liste&date=' . $aujourdhui);
+    $dire('B masque le calendrier : les tâches disparaissent avec lui', $oui(!str_contains($page, 'Relire le plan') && !str_contains($page, 'Rédiger la conclusion')), 'oui');
+    $poster($b, 'calendrier/agendas', ['sources' => ['miens', 'ca' . $calP()]]);
+    $poster($b, 'calendriers-amis/' . $calP() . '/modifier', ['nom' => 'Renommé par B']);
+    $dire('B, simple membre du projet, ne gère pas le calendrier', (string) bd_valeur('SELECT nom FROM calendriers_amis WHERE projet_id = ?', [$projet]), 'Rapport de labo');
+    $poster($a, 'calendriers-amis/' . $calP() . '/modifier', ['nom' => 'Labo — agenda', 'couleur' => '#14b8a6']);
+    $dire('A, administrateur du projet, le renomme', (string) bd_valeur('SELECT nom FROM calendriers_amis WHERE projet_id = ?', [$projet]), 'Labo — agenda');
+    $poster($a, 'calendriers-amis/' . $calP() . '/membres', ['amis' => [$idC]]);
+    $dire('on n\'y ajoute personne à la main : les membres sont ceux du projet', implode(',', $membres($calP())), implode(',', [$idA, $idB]));
+    $poster($a, 'calendriers-amis/' . $calP() . '/membres/' . $idB . '/retirer');
+    $dire('on n\'y retire personne non plus', implode(',', $membres($calP())), implode(',', [$idA, $idB]));
+    $poster($b, 'calendriers-amis/' . $calP() . '/quitter');
+    $dire('ni ne le quitte sans quitter le projet', implode(',', $membres($calP())), implode(',', [$idA, $idB]));
+    [$reglages] = $appel($a, 'calendriers-amis/' . $calP() . '?fenetre=1');
+    $dire('ses réglages renvoient au projet, sans ajout d\'amis ni départ', $oui(str_contains($reglages, 'travaux/' . $projet . '/membres') && !str_contains($reglages, 'name="amis[]"') && !str_contains($reglages, '/quitter')), 'oui');
+    echo "\n8 ter. Les documents du projet liés à un évènement\n";
+    $evLabo = (int) bd_valeur('SELECT id FROM calendrier_amis_evenements WHERE calendrier_id = ? AND titre = ?', [$calP(), 'Séance de labo']);
+    // Un évènement qui n'est pas encore passé, quelle que soit l'heure de l'essai : l'onglet Échéances ne montre que ce qui vient.
+    bd_run('UPDATE calendrier_amis_evenements SET fin = ? WHERE id = ?', [date('Y-m-d', strtotime('+1 day')) . ' 23:00:00', $evLabo]);
+    bd_run("INSERT INTO cours (user_id, titre) VALUES (?, 'Cours de chimie')", [$idA]);
+    $coursProjet = (int) bd_valeur('SELECT id FROM cours WHERE user_id = ? AND titre = ?', [$idA, 'Cours de chimie']);
+    bd_run("INSERT INTO cours (user_id, titre) VALUES (?, 'Cours hors projet')", [$idA]);
+    $coursHors = (int) bd_valeur('SELECT id FROM cours WHERE user_id = ? AND titre = ?', [$idA, 'Cours hors projet']);
+    $poster($a, 'travaux/' . $projet . '/liens', ['lien' => 'cours:' . $coursProjet]);
+    bd_run("INSERT INTO projet_fichiers (projet_id, user_id, nom_origine, nom_stocke, mime, taille) VALUES (?, ?, 'protocole.pdf', 'xx-essai', 'application/pdf', 10)", [$projet, $idA]);
+    $fichierProjet = (int) bd_valeur('SELECT id FROM projet_fichiers WHERE projet_id = ?', [$projet]);
+    bd_run("INSERT INTO projet_echeances (projet_id, titre, debut, fin, cree_par) VALUES (?, 'Rendu du compte-rendu', ?, ?, ?)", [$projet, $aujourdhui . ' 18:00:00', $aujourdhui . ' 19:00:00', $idA]);
+    $echeance = (int) bd_valeur('SELECT id FROM projet_echeances WHERE projet_id = ?', [$projet]);
+    $liens = static fn (): int => (int) bd_valeur('SELECT COUNT(*) FROM projet_evenement_liens WHERE projet_id = ?', [$projet]);
+
+    [$fiche] = $appel($b, 'calendriers-amis/evenements/' . $evLabo . '?fenetre=1');
+    $dire('la fiche d\'un évènement du calendrier commun propose de lier un document du projet (cours, fichier — pas un cours hors projet)',
+        $oui(str_contains($fiche, 'value="cours:' . $coursProjet . '"') && str_contains($fiche, 'value="fichier:' . $fichierProjet . '"') && !str_contains($fiche, 'value="cours:' . $coursHors . '"')), 'oui');
+    $poster($b, 'travaux/' . $projet . '/evenements-liens', ['evenement_type' => 'evenement', 'evenement_id' => $evLabo, 'lien' => 'cours:' . $coursProjet]);
+    $poster($a, 'travaux/' . $projet . '/evenements-liens', ['evenement_type' => 'evenement', 'evenement_id' => $evLabo, 'lien' => 'fichier:' . $fichierProjet]);
+    $dire('B lie le cours, A lie le fichier', (string) $liens(), '2');
+    $poster($b, 'travaux/' . $projet . '/evenements-liens', ['evenement_type' => 'evenement', 'evenement_id' => $evLabo, 'lien' => 'cours:' . $coursProjet]);
+    $dire('le même document ne se lie pas deux fois', (string) $liens(), '2');
+    $poster($a, 'travaux/' . $projet . '/evenements-liens', ['evenement_type' => 'evenement', 'evenement_id' => $evLabo, 'lien' => 'cours:' . $coursHors]);
+    $dire('un cours qui n\'est pas dans le projet ne se lie pas', (string) $liens(), '2');
+    $poster($c, 'travaux/' . $projet . '/evenements-liens', ['evenement_type' => 'evenement', 'evenement_id' => $evLabo, 'lien' => 'fichier:' . $fichierProjet]);
+    $dire('un non-membre du projet ne lie rien', (string) $liens(), '2');
+    [$fiche] = $appel($a, 'calendriers-amis/evenements/' . $evLabo . '?fenetre=1');
+    $dire('la fiche liste les deux documents liés', $oui(str_contains($fiche, 'Cours de chimie') && str_contains($fiche, 'protocole.pdf')), 'oui');
+
+    [$ongletCours] = $appel($a, 'travaux/' . $projet . '/cours?fenetre=1');
+    $dire('l\'onglet Cours dit à quel évènement le cours est lié', $oui(str_contains($ongletCours, 'Lié à') && str_contains($ongletCours, 'Séance de labo')), 'oui');
+    [$ongletFichiers] = $appel($a, 'travaux/' . $projet . '/fichiers?fenetre=1');
+    $dire('l\'onglet Fichiers, pour le fichier', $oui(str_contains($ongletFichiers, 'Lié à') && str_contains($ongletFichiers, 'Séance de labo')), 'oui');
+    [$ongletEcheances] = $appel($a, 'travaux/' . $projet . '/echeances?fenetre=1');
+    $dire('l\'onglet Échéances montre l\'évènement du calendrier commun, avec ses 2 documents', $oui(str_contains($ongletEcheances, 'Séance de labo') && str_contains($ongletEcheances, '2 documents')), 'oui');
+
+    $poster($a, 'travaux/' . $projet . '/evenements-liens', ['evenement_type' => 'echeance', 'evenement_id' => $echeance, 'lien' => 'fichier:' . $fichierProjet]);
+    [$pageEcheance] = $appel($b, 'travaux/echeances/' . $echeance . '/modifier?fenetre=1');
+    $dire('une échéance du projet se lie aussi, et sa page liste le fichier', $oui(str_contains($pageEcheance, 'protocole.pdf') && $liens() === 3), 'oui');
+    [$ongletFichiers] = $appel($a, 'travaux/' . $projet . '/fichiers?fenetre=1');
+    $dire('le fichier dit alors ses deux évènements', $oui(str_contains($ongletFichiers, 'Séance de labo') && str_contains($ongletFichiers, 'Rendu du compte-rendu')), 'oui');
+
+    // Écrire dans le calendrier commun depuis « ＋ » : on ne choisit que les documents du projet.
+    [$formulaire] = $appel($a, 'evenements/nouveau?fenetre=1&agenda=ca' . $calP());
+    $dire('le formulaire du « ＋ » du calendrier d\'un projet ne propose que les documents du projet (pas mes autres cours)',
+        $oui(str_contains($formulaire, 'value="cours:' . $coursProjet . '"') && str_contains($formulaire, 'value="fichier:' . $fichierProjet . '"')
+            && !str_contains($formulaire, ':' . $coursHors . '"') && !str_contains($formulaire, 'name="cours_id"')), 'oui');
+    $poster($a, 'evenements/nouveau', ['titre' => 'Réunion de rendu', 'date_debut' => date('Y-m-d', strtotime('+2 day')), 'heure_debut' => '10:00', 'heure_fin' => '11:00',
+        'agendas' => ['ca' . $calP()], 'documents' => ['cours:' . $coursProjet, 'cours:' . $coursHors, 'fichier:' . $fichierProjet]]);
+    $evRendu = (int) bd_valeur('SELECT id FROM calendrier_amis_evenements WHERE calendrier_id = ? AND titre = ?', [$calP(), 'Réunion de rendu']);
+    $dire('créé ainsi, l\'évènement est lié aux documents cochés du projet — pas à un cours hors projet glissé à la main',
+        implode(',', array_column(bd_all("SELECT CONCAT(cible_type, ':', cible_id) AS c FROM projet_evenement_liens WHERE projet_id = ? AND evenement_type = 'evenement' AND evenement_id = ? ORDER BY id", [$projet, $evRendu]), 'c')),
+        'cours:' . $coursProjet . ',fichier:' . $fichierProjet);
+    $poster($a, 'calendriers-amis/evenements/' . $evRendu . '/supprimer');
+
+    // « Partager » un cours : le mettre dans le projet, ou l'en retirer.
+    [$partage] = $appel($a, 'partager/cours/' . $coursHors . '?fenetre=1');
+    $dire('la fenêtre « Partager » d\'un cours propose le projet de groupe', $oui(str_contains($partage, 'Dans un projet de groupe') && str_contains($partage, 'value="' . $projet . '"')), 'oui');
+    $poster($a, 'partager/cours/' . $coursHors . '/projets', ['projets' => [$projet]]);
+    $dire('le cours est dans le projet', (string) bd_valeur("SELECT COUNT(*) FROM projet_liens WHERE projet_id = ? AND type = 'cours' AND cible_id = ?", [$projet, $coursHors]), '1');
+    [$partage] = $appel($a, 'partager/cours/' . $coursHors . '?fenetre=1');
+    $dire('la fenêtre dit qu\'il y est déjà, avec de quoi l\'en retirer', $oui(str_contains($partage, 'Déjà dans') && str_contains($partage, '/projets/') && !str_contains($partage, 'name="projets[]" value="' . $projet . '"')), 'oui');
+    [$ongletCours] = $appel($b, 'travaux/' . $projet . '/cours?fenetre=1');
+    $dire('B, membre du projet, le voit dans l\'onglet Cours', $oui(str_contains($ongletCours, 'Cours hors projet')), 'oui');
+    // Lié à un projet, le cours se modifie par tout le groupe — sur l'original, que chacun voit changer.
+    $contenuDe = static fn (): string => (string) bd_valeur('SELECT COALESCE(contenu, \'\') FROM cours WHERE id = ?', [$coursHors]);
+    $poster($b, 'partages/cours/' . $coursHors . '/contenu', ['contenu' => 'Écrit par B dans le projet']);
+    $dire('B, membre du projet, modifie le cours de A (l\'original)', $contenuDe(), 'Écrit par B dans le projet');
+    [$lu] = $appel($b, 'partages/cours/' . $coursHors . '?fenetre=1');
+    $dire('sa page dit que tout le groupe peut le modifier ici', $oui(str_contains($lu, 'tout le groupe peut le modifier ici') && str_contains($lu, 'name="contenu"')), 'oui');
+    $poster($c, 'partages/cours/' . $coursHors . '/contenu', ['contenu' => 'Écrit par un intrus']);
+    $dire('un compte hors du projet ne le modifie pas', $contenuDe(), 'Écrit par B dans le projet');
+    // Deux personnes écrivent en même temps : la seconde à enregistrer n'écrase pas la première.
+    $baseLue = static function (string $html): string { return preg_match('/name="base" value="([0-9a-f]{32})"/', $html, $m) === 1 ? $m[1] : ''; };
+    [$luParB] = $appel($b, 'partages/cours/' . $coursHors . '?fenetre=1');
+    $baseB = $baseLue($luParB);
+    $dire('l\'éditeur d\'un cours partagé porte l\'empreinte du texte lu', $oui($baseB === md5($contenuDe())), 'oui');
+    $poster($a, 'cours/' . $coursHors . '/contenu', ['contenu' => 'Version de A']);
+    $dire('A (propriétaire, sans empreinte : ancien formulaire) enregistre', $contenuDe(), 'Version de A');
+    // L'envoi suit la redirection : la réponse EST la page rouverte, avec le message et le texte gardé (montrés une seule fois).
+    [$luParB] = $poster($b, 'partages/cours/' . $coursHors . '/contenu', ['contenu' => 'Version de B', 'base' => $baseB]);
+    $dire('B enregistre avec l\'empreinte d\'avant la modification de A : rien n\'est écrit', $contenuDe(), 'Version de A');
+    $dire('sa page dit pourquoi, montre le texte actuel et SA version gardée dessous', $oui(str_contains($luParB, 'pendant que vous l’éditiez') && str_contains($luParB, 'Votre version, non enregistrée') && str_contains($luParB, 'Version de B') && str_contains($luParB, 'Version de A')), 'oui');
+    [$luParB] = $appel($b, 'partages/cours/' . $coursHors . '?fenetre=1');
+    $dire('et ne la montre qu\'une fois', $oui(!str_contains($luParB, 'Votre version, non enregistrée')), 'oui');
+    $poster($b, 'partages/cours/' . $coursHors . '/contenu', ['contenu' => 'Version de B, reprise', 'base' => $baseLue($luParB)]);
+    $dire('repris avec l\'empreinte à jour, B enregistre', $contenuDe(), 'Version de B, reprise');
+    // Dans l'autre sens : le propriétaire écrit après qu'un ami a enregistré.
+    [$pageA] = $appel($a, 'cours/' . $coursHors . '?fenetre=1');
+    $baseA = $baseLue($pageA);
+    $dire('la page du propriétaire porte, elle aussi, l\'empreinte', $oui($baseA === md5($contenuDe())), 'oui');
+    $poster($b, 'partages/cours/' . $coursHors . '/contenu', ['contenu' => 'B change encore', 'base' => $baseA]);
+    [$pageA] = $poster($a, 'cours/' . $coursHors . '/contenu', ['contenu' => 'A écrase ?', 'base' => $baseA]);
+    $dire('A, qui avait lu avant le dernier changement de B, ne l\'écrase pas', $contenuDe(), 'B change encore');
+    $dire('sa page garde ce qu\'il avait tapé, à côté du texte actuel', $oui(str_contains($pageA, 'Votre version, non enregistrée') && str_contains($pageA, 'A écrase ?') && str_contains($pageA, 'B change encore')), 'oui');
+    $poster($a, 'cours/' . $coursHors . '/contenu', ['contenu' => 'Écrit par B dans le projet']);
+
+    // La fiche de révision partagée en modification suit la même règle.
+    bd_run("INSERT INTO partages_amis (proprietaire_id, destinataire_id, cible_type, cible_id, droit) VALUES (?, ?, 'fiche', ?, 'modification')", [$idA, $idB, $coursHors]);
+    $ficheDe = static fn (): string => (string) bd_valeur('SELECT COALESCE(fiche_revision, \'\') FROM cours WHERE id = ?', [$coursHors]);
+    $poster($a, 'cours/' . $coursHors . '/revision', ['fiche_revision' => 'Fiche de A']);
+    [$ficheB] = $appel($b, 'partages/fiches/' . $coursHors . '?fenetre=1');
+    $baseFiche = $baseLue($ficheB);
+    $poster($a, 'cours/' . $coursHors . '/revision', ['fiche_revision' => 'Fiche de A, mise à jour']);
+    [$ficheB] = $poster($b, 'partages/fiches/' . $coursHors . '/contenu', ['contenu' => 'Fiche de B', 'base' => $baseFiche]);
+    $dire('fiche : B, qui avait lu avant la mise à jour de A, ne l\'écrase pas, et retrouve ce qu\'il avait tapé', $ficheDe() . '|' . $oui(str_contains($ficheB, 'Votre version, non enregistrée') && str_contains($ficheB, 'Fiche de B')), 'Fiche de A, mise à jour|oui');
+    [$pageFiche] = $appel($a, 'revision/' . $coursHors . '?fenetre=1');
+    $baseFicheA = $baseLue($pageFiche);
+    $poster($b, 'partages/fiches/' . $coursHors . '/contenu', ['contenu' => 'Fiche de B v2', 'base' => $baseLue($ficheB)]);
+    [$pageFiche] = $poster($a, 'cours/' . $coursHors . '/revision', ['fiche_revision' => 'Fiche de A écrase ?', 'base' => $baseFicheA]);
+    $dire('fiche : le propriétaire, lui non plus, n\'écrase pas le texte d\'un ami, et garde le sien à côté', $ficheDe() . '|' . $oui(str_contains($pageFiche, 'Votre version, non enregistrée') && str_contains($pageFiche, 'Fiche de A écrase ?')), 'Fiche de B v2|oui');
+    bd_run("DELETE FROM partages_amis WHERE cible_type = 'fiche' AND cible_id = ?", [$coursHors]);
+
+    $poster($c, 'partager/cours/' . $coursHors . '/projets', ['projets' => [$projet]]);
+    $dire('un autre compte ne partage pas le cours de A', (string) bd_valeur("SELECT COUNT(*) FROM projet_liens WHERE projet_id = ? AND type = 'cours'", [$projet]), '2');
+    $lienCours = (int) bd_valeur("SELECT id FROM projet_liens WHERE projet_id = ? AND type = 'cours' AND cible_id = ?", [$projet, $coursHors]);
+    $poster($a, 'partager/cours/' . $coursProjet . '/projets/' . $lienCours . '/retirer');
+    $dire('le numéro d\'un lien d\'un autre cours ne retire rien', (string) bd_valeur("SELECT COUNT(*) FROM projet_liens WHERE projet_id = ? AND type = 'cours'", [$projet]), '2');
+    $poster($a, 'partager/cours/' . $coursHors . '/projets/' . $lienCours . '/retirer');
+    $dire('A retire le cours du projet', (string) bd_valeur("SELECT COUNT(*) FROM projet_liens WHERE projet_id = ? AND type = 'cours' AND cible_id = ?", [$projet, $coursHors]), '0');
+    $poster($b, 'partages/cours/' . $coursHors . '/contenu', ['contenu' => 'Encore B, hors projet']);
+    $dire('retiré du projet, B ne peut plus le modifier', $contenuDe(), 'Écrit par B dans le projet');
+
+    $lienA = (int) bd_valeur("SELECT id FROM projet_evenement_liens WHERE projet_id = ? AND evenement_type = 'evenement' AND cible_type = 'fichier'", [$projet]);
+    $poster($b, 'travaux/evenements-liens/' . $lienA . '/supprimer');
+    $dire('B (ni l\'auteur du lien ni administrateur) ne le retire pas', (string) $liens(), '3');
+    $poster($a, 'travaux/evenements-liens/' . $lienA . '/supprimer');
+    $dire('A le retire', (string) $liens(), '2');
+    $poster($a, 'calendriers-amis/evenements/' . $evLabo . '/supprimer');
+    $dire('supprimer l\'évènement efface aussi ses liens', (string) bd_valeur("SELECT COUNT(*) FROM projet_evenement_liens WHERE projet_id = ? AND evenement_type = 'evenement' AND evenement_id = ?", [$projet, $evLabo]), '0');
+    $nbEvenements = static fn (int $c): int => (int) bd_valeur('SELECT COUNT(*) FROM calendrier_amis_evenements WHERE calendrier_id = ?', [$c]);
+    $poster($b, 'calendriers-amis/' . $calP() . '/evenements', ['titre' => 'Séance de labo', 'date_debut' => $aujourdhui]);
+
+    $poster($a, 'travaux/' . $projet . '/inviter', ['amis' => [$idC]]);
+    $poster($c, 'travaux/' . $projet . '/rejoindre');
+    $dire('un nouveau membre du projet entre dans le calendrier', implode(',', $membres($calP())), implode(',', [$idA, $idB, $idC]));
+    $membreC = (int) bd_valeur('SELECT id FROM projet_membres WHERE projet_id = ? AND user_id = ?', [$projet, $idC]);
+    $poster($a, 'travaux/membres/' . $membreC . '/retirer');
+    $dire('retiré du projet, il sort du calendrier', implode(',', $membres($calP())), implode(',', [$idA, $idB]));
+    $poster($a, 'travaux/' . $projet . '/quitter');
+    $dire('le créateur quitte le projet : le calendrier reste, et passe à B', implode(',', $membres($calP())) . '|' . (int) bd_valeur('SELECT proprietaire_id FROM calendriers_amis WHERE projet_id = ?', [$projet]), $idB . '|' . $idB);
+    $dire('ses évènements restent', (string) bd_valeur('SELECT COUNT(*) FROM calendrier_amis_evenements WHERE calendrier_id = ?', [$calP()]), '1');
+    $poster($b, 'travaux/' . $projet . '/supprimer');
+    $dire('le projet supprimé, son calendrier et ses évènements partent avec lui', (string) bd_valeur('SELECT (SELECT COUNT(*) FROM calendriers_amis WHERE projet_id = ?) + (SELECT COUNT(*) FROM calendrier_amis_evenements e JOIN calendriers_amis c ON c.id = e.calendrier_id WHERE c.projet_id = ?)', [$projet, $projet]), '0');
 
     echo "\n9. Quand un compte disparaît\n";
     $poster($a, 'calendriers-amis', ['nom' => 'Projet', 'amis' => [$idB]]);

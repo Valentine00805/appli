@@ -437,7 +437,8 @@ final class Partages
 
     /**
      * Le droit reçu sur ce document même, s'il y en a un : donné à un ami, ou — pour un cours ou un dossier — parce qu'il est lié à
-     * un travail de groupe dont on est membre (lecture seule : quitter le groupe retire l'accès).
+     * un travail de groupe dont on est membre. Dans un groupe, on travaille ensemble sur le même document : tous ses membres peuvent le
+     * modifier, et chacun voit les changements des autres (quitter le groupe retire l'accès).
      */
     private static function droitDirect(string $type, int $id, int $moi): ?string
     {
@@ -449,7 +450,7 @@ final class Partages
             return self::droitValide($droit);
         }
         if (in_array($type, ['cours', 'dossier'], true) && Travaux::lieAUnGroupeDe($type, $id, $moi)) {
-            return 'lecture';
+            return 'modification';
         }
 
         return null;
@@ -1609,7 +1610,40 @@ final class Partages
      * Écrit dans un document partagé : le texte d'un cours, ou celui d'une
      * fiche. Rend la raison d'un refus.
      */
-    public static function ecrire(int $moi, string $type, int $id, string $texte): ?string
+    /** Ce que "ecrire" rend quand quelqu'un a modifié le texte depuis qu'on l'a lu : rien n'est écrit. */
+    public const CONFLIT = 'conflit';
+
+    /**
+     * L'empreinte d'un texte : le formulaire d'édition porte celle du texte qu'il a lu, et l'enregistrement la compare à celle du texte
+     * d'alors. Elle ne dit pas « quelque chose a changé » (modifier le titre, mettre en favori n'y touche pas) mais « ce texte-là a changé ».
+     */
+    public static function empreinte(?string $texte): string
+    {
+        return md5((string) $texte);
+    }
+
+    /** Met de côté ce qu'on avait tapé, pour le montrer à côté de l'éditeur au prochain affichage (voir Partages::brouillon). */
+    public static function garderBrouillon(string $type, int $id, string $texte): void
+    {
+        Session::garder('brouillon-' . $type . '-' . $id, $texte);
+    }
+
+    /** Ce qu'on avait tapé quand quelqu'un a écrit en même temps, une seule fois. */
+    public static function brouillon(string $type, int $id): ?string
+    {
+        $texte = Session::reprendre('brouillon-' . $type . '-' . $id);
+
+        return is_string($texte) ? $texte : null;
+    }
+
+    /**
+     * Enregistre le texte d'un cours ou d'une fiche (droit de modification).
+     *
+     * $base est l'empreinte du texte que l'éditeur avait lu : si le texte a changé depuis — quelqu'un d'autre a enregistré entre-temps —,
+     * rien n'est écrit et le résultat est « Partages::CONFLIT » ; l'appelant garde alors ce qui avait été tapé. Sans empreinte (null), on
+     * écrase, comme avant.
+     */
+    public static function ecrire(int $moi, string $type, int $id, string $texte, ?string $base = null): ?string
     {
         if (!in_array($type, ['cours', 'fiche'], true)) {
             return t('pt.pas_ecrivable');
@@ -1617,11 +1651,17 @@ final class Partages
         if (!self::permet(self::droit($type, $id, $moi), 'modification')) {
             return t('pt.modifier_interdit');
         }
+        $brut = $texte;
         $texte = TexteRiche::depuisFormulaire($texte);
         $avant = (string) Database::valeur(
             'SELECT COALESCE(' . ($type === 'cours' ? 'contenu' : 'fiche_revision') . ", '') FROM cours WHERE id = ?",
             [$id]
         );
+        if ($base !== null && $base !== self::empreinte($avant)) {
+            self::garderBrouillon($type, $id, $brut);
+
+            return self::CONFLIT;
+        }
         Database::run(
             'UPDATE cours SET ' . ($type === 'cours' ? 'contenu' : 'fiche_revision') . ' = ? WHERE id = ?',
             [$texte === '' ? null : $texte, $id]

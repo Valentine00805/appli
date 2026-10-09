@@ -88,8 +88,13 @@ final class TravauxController
     public function echeances(int $id): void
     {
         $projet = $this->projet($id);
-        $this->afficher('travaux/echeances', $projet,
-            ['echeances' => Travaux::echeances($id), 'types' => Travaux::types($id)], 'echeances');
+        $this->afficher('travaux/echeances', $projet, [
+            'echeances' => Travaux::echeances($id),
+            'types' => Travaux::types($id),
+            // Le calendrier commun du projet, et ses prochains évènements : ils se lisent ici avec les échéances.
+            'calendrier' => CalendriersAmis::duProjet($id, Auth::id()),
+            'evenementsCalendrier' => CalendriersAmis::aVenirDuProjet($id),
+        ], 'echeances');
     }
 
     public function fichiers(int $id): void
@@ -147,6 +152,8 @@ final class TravauxController
         $dedans = array_filter(array_map(static fn (array $m): ?int => $m['user_id'] === null ? null : (int) $m['user_id'], $membres));
         $this->afficher('travaux/membres', $projet, [
             'membres'       => $membres,
+            // Le calendrier commun du projet, s'il en a un.
+            'calendrier'    => CalendriersAmis::duProjet($id, Auth::id()),
             'amisAInviter'  => array_values(array_filter(Amis::liste(Auth::id()),
                 static fn (array $a): bool => !in_array((int) $a['id'], $dedans, true))),
             'discussions'   => Database::all(
@@ -334,6 +341,13 @@ final class TravauxController
             'echeance' => $echeance,
             'projet' => Travaux::projet((int) $echeance['projet_id'], Auth::id()),
             'types' => Travaux::types((int) $echeance['projet_id']),
+            'liensEvenement' => [
+                'projet' => (int) $echeance['projet_id'],
+                'type' => 'echeance',
+                'id' => $id,
+                'liens' => LiensEvenements::liensDe((int) $echeance['projet_id'], Auth::id(), 'echeance', $id),
+                'aLier' => LiensEvenements::aLier((int) $echeance['projet_id'], Auth::id(), 'echeance', $id),
+            ],
         ], t('titre.tr_modifier_echeance'));
     }
 
@@ -356,6 +370,7 @@ final class TravauxController
         $this->exigerPost();
         $echeance = Travaux::echeance(Auth::id(), $id) ?? $this->introuvable();
         Database::run('DELETE FROM projet_echeances WHERE id = ?', [$id]);
+        LiensEvenements::oublier('echeance', $id);
         Session::flash('succes', t('tr.fl.echeance_retiree', ['titre' => (string) $echeance['titre']]));
         redirect('travaux/' . (int) $echeance['projet_id'] . '/echeances');
     }
@@ -520,6 +535,45 @@ final class TravauxController
         $this->exigerPost();
         $this->finir(Travaux::delierDiscussion(Auth::id(), $id) ? null : t('tr.fl.admins_delier'),
             t('tr.fl.discussion_deliee'), 'travaux/' . $id . '/membres');
+    }
+
+    /** Lie un cours, un dossier ou un fichier du projet à un de ses évènements (calendrier commun ou échéance). */
+    public function lierEvenement(int $id): void
+    {
+        $this->exigerPost();
+        $this->projet($id);
+        $type = (string) ($_POST['evenement_type'] ?? '');
+        $evenement = (int) ($_POST['evenement_id'] ?? 0);
+        [$typeCible, $cible] = array_pad(explode(':', (string) ($_POST['lien'] ?? ''), 2), 2, '');
+        $refus = LiensEvenements::lier(Auth::id(), $id, $type, $evenement, $typeCible, (int) $cible);
+        // On revient sur la carte encore ouverte à la modification : on en lie souvent plusieurs d'affilée.
+        Session::flash($refus === null ? 'succes' : 'erreur', $refus ?? t('cam.fl.lien_ajoute'));
+        redirect(self::pageEvenement($type, $evenement), ['liens' => 1]);
+    }
+
+    public function delierEvenement(int $id): void
+    {
+        $this->exigerPost();
+        $evenement = LiensEvenements::delier(Auth::id(), $id);
+        if ($evenement === null) {
+            $this->finir(t('cam.err.lien_pas_a_vous'), '', 'calendrier');
+        }
+        Session::flash('succes', t('cam.fl.lien_retire'));
+        redirect(self::pageEvenement($evenement['evenement_type'], $evenement['evenement_id']), ['liens' => 1]);
+    }
+
+    /** La page d'un évènement du projet, où l'on revient après avoir lié ou délié un document. */
+    private static function pageEvenement(string $type, int $id): string
+    {
+        return $type === 'echeance' ? 'travaux/echeances/' . $id . '/modifier' : 'calendriers-amis/evenements/' . $id;
+    }
+
+    /** Crée le calendrier commun du projet : un calendrier partagé dont les membres sont ceux du projet. */
+    public function creerCalendrier(int $id): void
+    {
+        $this->exigerPost();
+        [$calendrier, $refus] = CalendriersAmis::creerPourProjet(Auth::id(), $id);
+        $this->finir($calendrier === null ? $refus : null, t('cam.fl.projet_cree'), 'travaux/' . $id . '/membres');
     }
 
     public function ouvrirLien(int $id): void

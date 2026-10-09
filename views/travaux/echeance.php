@@ -32,6 +32,8 @@ $retour = url('travaux/' . (int) $projet['id'] . '/echeances');
   </p>
 </form>
 
+<?= Vue::rendre('travaux/_liens_evenement', $liensEvenement + ['dansUneFenetre' => $dansUneFenetre]) ?>
+
 <form method="post"<?= $envoi ?> action="<?= url('travaux/echeances/' . $id . '/supprimer') ?>" style="margin-top:.75rem"
       data-confirmation="<?= e(t('tr.ec.supprimer_confirmation', ['titre' => (string) $echeance['titre']])) ?>">
   <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">

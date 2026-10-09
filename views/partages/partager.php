@@ -9,6 +9,7 @@
  * @var list<array> $amis
  * @var list<array> $groupes
  * @var list<array{id: int, pseudo: string, droit: string}> $destinataires
+ * @var ?list<array{id: int, nom: string, lien_id: ?int}> $projets  mes travaux de groupe (cours et dossiers seulement), null sinon
  * @var list<array> $commentaires  ce qu'on a écrit sous ce document
  * @var ?string $lien
  * @var int $vues
@@ -139,6 +140,52 @@ $icone = match ($type) {
     </ul>
   <?php endif; ?>
 </section>
+
+<?php if (($projets ?? null) !== null): ?>
+  <?php // Un cours ou un dossier se met aussi dans un travail de groupe : ses membres le lisent. ?>
+  <section class="carte partage-section">
+    <h2 style="margin-top:0">👥 <?= e(t('pt.avec_projet')) ?></h2>
+    <p class="discret" style="margin-top:0"><?= e(t('pt.projets_aide')) ?></p>
+    <?php if ($projets === []): ?>
+      <p class="discret" style="margin:0"><?= e(t('pt.projets_aucun')) ?> <a href="<?= url('travaux') ?>"><?= e(t('pt.projets_creer')) ?></a></p>
+    <?php else: ?>
+      <?php $libres = array_filter($projets, static fn (array $p): bool => $p['lien_id'] === null); ?>
+      <?php $dedans = array_filter($projets, static fn (array $p): bool => $p['lien_id'] !== null); ?>
+      <?php if ($libres !== []): ?>
+        <form method="post" action="<?= url($base . '/projets') ?>"<?= $surPlace ?>>
+          <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+          <ul class="groupe-choix__liste">
+            <?php foreach ($libres as $p): ?>
+              <li>
+                <label class="groupe-choix__ami">
+                  <input type="checkbox" name="projets[]" value="<?= (int) $p['id'] ?>">
+                  <span class="avatar avatar--mini" aria-hidden="true">👥</span>
+                  <span class="partage-liste__nom"><?= e($p['nom']) ?></span>
+                </label>
+              </li>
+            <?php endforeach; ?>
+          </ul>
+          <button class="bouton" type="submit"><?= e(t('pt.projets_ajouter')) ?></button>
+        </form>
+      <?php endif; ?>
+      <?php if ($dedans !== []): ?>
+        <h3 class="groupe-sous-titre"><?= e(t('pt.projets_deja')) ?></h3>
+        <ul class="groupe-membres">
+          <?php foreach ($dedans as $p): ?>
+            <li class="groupe-membres__ligne">
+              <span class="avatar avatar--mini" aria-hidden="true">👥</span>
+              <span class="groupe-membres__nom"><?= e($p['nom']) ?></span>
+              <form method="post" action="<?= url($base . '/projets/' . (int) $p['lien_id'] . '/retirer') ?>"<?= $surPlace ?>>
+                <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+                <button class="bouton bouton--discret bouton--petit" type="submit"><?= e(t('pt.projets_retirer')) ?></button>
+              </form>
+            </li>
+          <?php endforeach; ?>
+        </ul>
+      <?php endif; ?>
+    <?php endif; ?>
+  </section>
+<?php endif; ?>
 
 <?php if ($commentaires !== []): ?>
   <?php // Les commentaires ont leur propre fenêtre, qui s'ouvre par-dessus. ?>

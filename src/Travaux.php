@@ -273,6 +273,7 @@ final class Travaux
         if ($conversation > 0) {
             Conversations::ajouterDepuisProjet($conversation, $moi, null);
         }
+        CalendriersAmis::synchroniserProjet($projet);
 
         return true;
     }
@@ -306,6 +307,7 @@ final class Travaux
         self::retirerCopies($projet, $moi);
         Database::run('DELETE FROM projet_membres WHERE projet_id = ? AND user_id = ?', [$projet, $moi]);
         self::garderUnAdmin($projet);
+        CalendriersAmis::synchroniserProjet($projet);
 
         return true;
     }
@@ -346,6 +348,7 @@ final class Travaux
             self::retirerCopies((int) $membre['projet_id'], (int) $membre['user_id']);
         }
         Database::run('DELETE FROM projet_membres WHERE id = ?', [$membreId]);
+        CalendriersAmis::synchroniserProjet((int) $membre['projet_id']);
 
         return null;
     }
@@ -979,6 +982,44 @@ final class Travaux
         )->rowCount() > 0;
 
         return $neuf ? null : t('tr.err.deja_lie');
+    }
+
+    /**
+     * Les travaux de groupe dont je suis membre et où ce cours ou dossier est lié.
+     *
+     * @return list<array{id: int, nom: string}>
+     */
+    public static function projetsDuDocument(int $moi, string $type, int $cibleId): array
+    {
+        return array_map(static fn (array $p): array => ['id' => (int) $p['id'], 'nom' => (string) $p['nom']], Database::all(
+            "SELECT DISTINCT p.id, p.nom FROM projet_liens l
+               JOIN projets p ON p.id = l.projet_id
+               JOIN projet_membres pm ON pm.projet_id = p.id AND pm.user_id = ? AND pm.statut = 'membre'
+              WHERE l.type = ? AND l.cible_id = ? ORDER BY p.nom",
+            [$moi, $type, $cibleId]
+        ));
+    }
+
+    /**
+     * Mes travaux de groupe, avec pour chacun le lien de ce cours ou dossier s'il y est déjà (l'identifiant du lien), sinon null. Pour la
+     * fenêtre « Partager » : on y met un cours dans un projet, ou on l'en retire.
+     *
+     * @return list<array{id: int, nom: string, lien_id: ?int}>
+     */
+    public static function projetsPourPartage(int $moi, string $type, int $cibleId): array
+    {
+        $lignes = Database::all(
+            "SELECT p.id, p.nom,
+                    (SELECT l.id FROM projet_liens l WHERE l.projet_id = p.id AND l.type = ? AND l.cible_id = ?) AS lien_id
+               FROM projets p
+               JOIN projet_membres pm ON pm.projet_id = p.id AND pm.user_id = ? AND pm.statut = 'membre'
+              ORDER BY p.nom, p.id",
+            [$type, $cibleId, $moi]
+        );
+
+        return array_map(static fn (array $l): array => [
+            'id' => (int) $l['id'], 'nom' => (string) $l['nom'], 'lien_id' => $l['lien_id'] === null ? null : (int) $l['lien_id'],
+        ], $lignes);
     }
 
     /**

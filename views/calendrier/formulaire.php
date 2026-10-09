@@ -350,6 +350,31 @@ $matiereActive = $edition ? entier_ou_null($evenement['matiere_id']) : null;
     </div>
 
     <div class="pile">
+      <?php if (($documentsProjet ?? null) !== null): ?>
+        <?php // Le calendrier commun d'un projet : ni matière ni cours à soi (ils sont personnels), mais les documents du projet. ?>
+        <div class="carte">
+          <div class="champ">
+            <span class="legende">🔗 <?= e(t('cam.liens_titre')) ?></span>
+            <?php if ($documentsProjet['cours'] === [] && $documentsProjet['dossiers'] === [] && $documentsProjet['fichiers'] === []): ?>
+              <span class="champ__aide"><?= e(t('cam.liens_rien_a_lier')) ?></span>
+            <?php else: ?>
+              <?php foreach (array_merge($documentsProjet['dossiers'], $documentsProjet['cours']) as $d): ?>
+                <label class="case" style="display:block">
+                  <input type="checkbox" name="documents[]" value="<?= e($d['type'] . ':' . $d['cible_id']) ?>">
+                  <?= e(trim($d['icone'] . ' ' . $d['titre'])) ?>
+                </label>
+              <?php endforeach; ?>
+              <?php foreach ($documentsProjet['fichiers'] as $f): ?>
+                <label class="case" style="display:block">
+                  <input type="checkbox" name="documents[]" value="fichier:<?= (int) $f['id'] ?>">
+                  📎 <?= e((string) $f['nom_origine']) ?>
+                </label>
+              <?php endforeach; ?>
+              <span class="champ__aide"><?= e(t('cam.liens_aide_creation')) ?></span>
+            <?php endif; ?>
+          </div>
+        </div>
+      <?php else: ?>
       <div class="carte">
         <div class="champ">
           <label for="matiere_id"><?= e(t('cours.matiere')) ?></label>
@@ -377,6 +402,7 @@ $matiereActive = $edition ? entier_ou_null($evenement['matiere_id']) : null;
           <span class="champ__aide"><?= e(t('evtf.cours_aide')) ?></span>
         </div>
       </div>
+      <?php endif; ?>
 
       <?php
       /*

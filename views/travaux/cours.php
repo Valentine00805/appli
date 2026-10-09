@@ -46,13 +46,16 @@ $moi = Auth::id();
                 <span class="fichier__meta">
                   <?= e(t('tr.co.lie_par', ['qui' => $l['par'] !== '' ? $l['par'] : t('tr.ancien_membre'), 'date' => date_fr($l['created_at'], false)])) ?>
                 </span>
+                <?= Vue::rendre('travaux/_evenements_lies', ['evenements' => LiensEvenements::evenementsDe((int) $projet['id'], $l['type'], (int) $l['cible_id']), 'ouvre' => $ouvre]) ?>
               </span>
               <span class="fichier__actions">
                 <?php if (!$le_mien && $l['ma_copie'] !== null): ?>
-                  <?php // Déjà copié chez moi : on le dit, et on mène à ma copie au lieu de reproposer l'ajout. ?>
+                  <?php // Déjà copié chez moi : on le dit, et on mène à ma copie au lieu de reproposer l'ajout. La copie est à part : ses changements ne sont pas ceux du groupe. ?>
+                  <span class="pastille pastille--ok" title="<?= e(t('tr.co.modifiable_aide')) ?>">✎ <?= e(t('tr.co.modifiable')) ?></span>
                   <span class="pastille pastille--ok"><?= e(t($dossier ? 'pt.deja_copie_dossier' : 'pt.deja_copie')) ?></span>
                   <a class="bouton bouton--discret bouton--petit" href="<?= url($dossier ? 'cours' : 'cours/' . $l['ma_copie'], $dossier ? ['dossier' => $l['ma_copie']] : []) ?>"><?= e(t('pt.ouvrir_ma_copie')) ?></a>
                 <?php elseif (!$le_mien): ?>
+                  <span class="pastille pastille--ok" title="<?= e(t('tr.co.modifiable_aide')) ?>">✎ <?= e(t('tr.co.modifiable')) ?></span>
                   <form method="post"<?= $envoi ?> action="<?= url('partages/' . $mot . '/' . $l['cible_id'] . '/copier') ?>" class="en-ligne">
                     <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
                     <button class="bouton bouton--secondaire bouton--petit" type="submit"><?= e(t($dossier ? 'tr.co.ajouter_dossier' : 'tr.co.ajouter_cours')) ?></button>

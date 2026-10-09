@@ -13,3 +13,4 @@
 /storage/resumes/*
 !/storage/resumes/.gitignore
 /config/parametres.test.php
+/storage/travaux/*

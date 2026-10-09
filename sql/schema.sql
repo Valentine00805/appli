@@ -1739,12 +1739,16 @@ ALTER TABLE `conversations`
 CREATE TABLE IF NOT EXISTS `calendriers_amis` (
   `id`             INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `proprietaire_id` INT UNSIGNED NOT NULL,
+  -- Le travail de groupe dont c'est le calendrier commun (voir migration-calendriers-projet.sql).
+  `projet_id`      INT UNSIGNED NULL,
   `nom`            VARCHAR(80)  NOT NULL,
   `couleur`        CHAR(7)      NOT NULL DEFAULT '#6d5dfc',
   `created_at`     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `idx_calendriers_amis_proprietaire` (`proprietaire_id`),
-  CONSTRAINT `fk_calendriers_amis_proprietaire` FOREIGN KEY (`proprietaire_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
+  UNIQUE KEY `uniq_calendriers_amis_projet` (`projet_id`),
+  CONSTRAINT `fk_calendriers_amis_proprietaire` FOREIGN KEY (`proprietaire_id`) REFERENCES `users`(`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_calendriers_amis_projet` FOREIGN KEY (`projet_id`) REFERENCES `projets`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `calendrier_amis_membres` (
@@ -1777,4 +1781,21 @@ CREATE TABLE IF NOT EXISTS `calendrier_amis_evenements` (
   KEY `idx_cae_calendrier_debut` (`calendrier_id`, `debut`),
   CONSTRAINT `fk_cae_calendrier` FOREIGN KEY (`calendrier_id`) REFERENCES `calendriers_amis`(`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_cae_auteur`     FOREIGN KEY (`auteur_id`)     REFERENCES `users`(`id`)           ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Les documents du projet liés à un de ses évènements (voir migration-projet-evenement-liens.sql).
+CREATE TABLE IF NOT EXISTS `projet_evenement_liens` (
+  `id`             INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `projet_id`      INT UNSIGNED NOT NULL,
+  `evenement_type` ENUM('evenement', 'echeance') NOT NULL,
+  `evenement_id`   INT UNSIGNED NOT NULL,
+  `cible_type`     ENUM('cours', 'dossier', 'fichier') NOT NULL,
+  `cible_id`       INT UNSIGNED NOT NULL,
+  `ajoute_par`     INT UNSIGNED NULL,
+  `created_at`     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_projet_evenement_liens` (`evenement_type`, `evenement_id`, `cible_type`, `cible_id`),
+  KEY `idx_projet_evenement_liens_cible` (`projet_id`, `cible_type`, `cible_id`),
+  CONSTRAINT `fk_projet_evenement_liens_projet` FOREIGN KEY (`projet_id`) REFERENCES `projets`(`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_projet_evenement_liens_par`    FOREIGN KEY (`ajoute_par`) REFERENCES `users`(`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

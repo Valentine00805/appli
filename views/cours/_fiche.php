@@ -71,6 +71,8 @@ $avancementFiche = avancement_anneaux(
     <div class="fiche-grille__note">
   <form<?= $surPlace ?> method="post" action="<?= url('cours/' . $cours['id'] . '/revision') ?>" style="margin-top:1rem">
     <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>"><?= $champPage ?>
+    <?php // Le texte lu : si un ami le modifie entre-temps (fiche partagée en modification), le nôtre ne l'écrase pas. ?>
+    <input type="hidden" name="base" value="<?= e(Partages::empreinte($fiche)) ?>">
 
     <div class="champ">
       <label for="fiche_revision"><?= e(t('fiche.a_retenir')) ?></label>
@@ -101,6 +103,7 @@ $avancementFiche = avancement_anneaux(
       <?php endif; ?>
     </div>
   </form>
+  <?= Vue::rendre('partages/_brouillon', ['brouillon' => Partages::brouillon('fiche', (int) $cours['id'])]) ?>
 
     </div>
 

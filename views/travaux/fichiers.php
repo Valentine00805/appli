@@ -39,6 +39,7 @@ $admin = $projet['role'] === 'admin';
                       'date' => date_fr((string) $f['created_at'], false),
                   ])) ?>
                 </span>
+                <?= Vue::rendre('travaux/_evenements_lies', ['evenements' => LiensEvenements::evenementsDe((int) $projet['id'], 'fichier', (int) $f['id']), 'ouvre' => $dansUneFenetre ? ' data-fenetre' : '']) ?>
               </span>
               <span class="fichier__actions">
                 <a class="bouton bouton--discret bouton--petit"

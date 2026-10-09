@@ -4596,3 +4596,22 @@ a.serveur-carte:hover, a.serveur-carte:focus-visible { border-color: var(--accen
 .cam-couleurs .cam-libre:has(> input[type="radio"]:checked) .cam-libre__anneau { box-shadow: 0 0 0 3px var(--accent); }
 .cam-couleurs .cam-libre:has(> input[type="radio"]:checked) input[type="color"] { box-shadow: none; }
 .cam-libre__texte { font-size: .88rem; color: var(--texte-doux); }
+
+/* L'accueil, carte « Travaux de groupe » : les tâches au-delà des quatre premières se déroulent sous la liste. */
+.travaux-suite { margin-top: .35rem; }
+.travaux-suite > summary { list-style: none; cursor: pointer; display: inline-flex; align-items: center; gap: .3rem; padding: .15rem .1rem; color: var(--accent); font-weight: 600; font-size: .9rem; }
+.travaux-suite > summary::-webkit-details-marker { display: none; }
+.travaux-suite > summary:hover, .travaux-suite > summary:focus-visible { text-decoration: underline; }
+.travaux-suite > summary::after { content: "▾"; transition: transform .15s; }
+.travaux-suite[open] > summary::after { transform: rotate(180deg); }
+.travaux-suite__moins, .travaux-suite[open] .travaux-suite__plus { display: none; }
+.travaux-suite[open] .travaux-suite__moins { display: inline; }
+.travaux-suite > ul { margin-top: .4rem; }
+
+/* Les évènements du projet auxquels un document est lié, sous le document (onglets Cours et Fichiers). */
+.evenements-lies { display: flex; flex-wrap: wrap; align-items: center; gap: .3rem .4rem; margin-top: .3rem; font-size: .88rem; }
+.evenements-lies__evt { text-decoration: none; background: var(--accent-doux); color: var(--accent-fonce); font-weight: 600; }
+.evenements-lies__evt:hover, .evenements-lies__evt:focus-visible { background: var(--accent); color: #fff; }
+
+/* « hidden » doit l'emporter sur l'affichage des boutons et des actions de la carte des documents liés. */
+[data-liens] [hidden] { display: none !important; }

@@ -70,6 +70,10 @@ $ligne = static function (string $etiquette, string $valeur): string {
     <?php endif; ?>
   </section>
 
+  <?php if (($liensEvenement ?? null) !== null): ?>
+    <?= Vue::rendre('travaux/_liens_evenement', $liensEvenement + ['dansUneFenetre' => $dansUneFenetre]) ?>
+  <?php endif; ?>
+
   <?php if ($evenement['peut_modifier']): ?>
     <form method="post" action="<?= url('calendriers-amis/evenements/' . $id . '/supprimer') ?>"<?= $envoi ?>
           data-confirmation="<?= e(t('cam.evt_supprimer_confirmation', ['titre' => (string) $evenement['titre']])) ?>">

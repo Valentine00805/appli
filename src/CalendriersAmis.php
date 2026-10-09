@@ -23,6 +23,8 @@ final class CalendriersAmis
     public const COULEUR_DEFAUT = '#6d5dfc';
     /** Les évènements d'un calendrier partagé portent un identifiant à part dans les vues : jamais celui d'un évènement personnel. */
     public const DECALAGE_ID = 2000000000;
+    /** Idem pour les tâches d'un travail de groupe affichées dans son calendrier commun. */
+    public const DECALAGE_TACHE = 2100000000;
 
     public const COULEURS = ['#6d5dfc', '#3ba55d', '#ed4245', '#f59e0b', '#eb459e', '#14b8a6', '#3498db', '#e67e22', '#9b59b6', '#607d8b'];
 
@@ -48,12 +50,13 @@ final class CalendriersAmis
     public static function calendrier(int $id, int $moi): ?array
     {
         $ligne = Database::one(
-            "SELECT c.id, c.proprietaire_id, c.nom, c.couleur AS couleur_calendrier, m.affiche, m.couleur AS couleur_perso,
+            "SELECT c.id, c.proprietaire_id, c.projet_id, p.nom AS projet_nom, c.nom, c.couleur AS couleur_calendrier, m.affiche, m.couleur AS couleur_perso,
                     COALESCE(u.pseudo, '') AS proprietaire_pseudo,
                     (SELECT COUNT(*) FROM calendrier_amis_membres x WHERE x.calendrier_id = c.id) AS membres
                FROM calendriers_amis c
                JOIN calendrier_amis_membres m ON m.calendrier_id = c.id AND m.user_id = ?
                JOIN users u ON u.id = c.proprietaire_id
+               LEFT JOIN projets p ON p.id = c.projet_id
               WHERE c.id = ?",
             [$moi, $id]
         );
@@ -72,12 +75,13 @@ final class CalendriersAmis
     public static function liste(int $moi): array
     {
         $lignes = Database::all(
-            "SELECT c.id, c.proprietaire_id, c.nom, c.couleur AS couleur_calendrier, m.affiche, m.couleur AS couleur_perso,
+            "SELECT c.id, c.proprietaire_id, c.projet_id, p.nom AS projet_nom, c.nom, c.couleur AS couleur_calendrier, m.affiche, m.couleur AS couleur_perso,
                     COALESCE(u.pseudo, '') AS proprietaire_pseudo,
                     (SELECT COUNT(*) FROM calendrier_amis_membres x WHERE x.calendrier_id = c.id) AS membres
                FROM calendrier_amis_membres m
                JOIN calendriers_amis c ON c.id = m.calendrier_id
                JOIN users u ON u.id = c.proprietaire_id
+               LEFT JOIN projets p ON p.id = c.projet_id
               WHERE m.user_id = ?
               ORDER BY (c.proprietaire_id = m.user_id) DESC, c.nom, c.id",
             [$moi]
@@ -91,12 +95,18 @@ final class CalendriersAmis
     {
         $couleur = Serveurs::couleurValide($l['couleur_perso'] ?? null) ?? Serveurs::couleurValide($l['couleur_calendrier']) ?? self::COULEUR_DEFAUT;
 
+        $projet = $l['projet_id'] === null ? null : (int) $l['projet_id'];
+
         return [
             'id' => (int) $l['id'],
             'nom' => (string) $l['nom'],
             'proprietaire_id' => (int) $l['proprietaire_id'],
             'proprietaire_pseudo' => (string) $l['proprietaire_pseudo'],
-            'est_proprietaire' => (int) $l['proprietaire_id'] === $moi,
+            // Le calendrier commun d'un travail de groupe : son projet (null pour un calendrier entre amis), dont les membres sont les siens.
+            'projet_id' => $projet,
+            'projet_nom' => $projet === null ? null : (string) $l['projet_nom'],
+            // Gérer le calendrier : son créateur ; pour celui d'un projet, aussi les administrateurs du projet.
+            'est_proprietaire' => (int) $l['proprietaire_id'] === $moi || ($projet !== null && Travaux::estAdmin($projet, $moi)),
             'membres' => (int) $l['membres'],
             'affiche' => (int) $l['affiche'] !== 0,
             'couleur' => $couleur,
@@ -201,6 +211,89 @@ final class CalendriersAmis
         return [$id, null];
     }
 
+    // --- Le calendrier commun d'un travail de groupe ---------------------------------------------------------------------
+
+    /** Le calendrier commun du projet, s'il en a un et que j'en suis membre. @return ?array<string, mixed> */
+    public static function duProjet(int $projet, int $moi): ?array
+    {
+        $id = Database::valeur('SELECT id FROM calendriers_amis WHERE projet_id = ?', [$projet]);
+
+        return $id === null || $id === false ? null : self::calendrier((int) $id, $moi);
+    }
+
+    /**
+     * Crée le calendrier commun du projet (tout membre du projet) : son nom est celui du projet, et tous les membres du projet — avec un
+     * compte — y entrent. Un projet n'en a qu'un.
+     *
+     * @return array{0: ?int, 1: ?string}
+     */
+    public static function creerPourProjet(int $moi, int $projet): array
+    {
+        $p = Travaux::projet($projet, $moi);
+        if ($p === null) {
+            return [null, t('cam.err.projet_introuvable')];
+        }
+        $existe = Database::valeur('SELECT id FROM calendriers_amis WHERE projet_id = ?', [$projet]);
+        if ($existe !== null && $existe !== false) {
+            return [null, t('cam.err.deja_calendrier_projet')];
+        }
+        Database::run(
+            'INSERT INTO calendriers_amis (proprietaire_id, projet_id, nom, couleur) VALUES (?, ?, ?, ?)',
+            [$moi, $projet, mb_substr(self::nettoyerNom((string) $p['nom']), 0, self::NOM_MAX), self::COULEUR_DEFAUT]
+        );
+        $id = Database::dernierId();
+        self::synchroniserProjet($projet);
+
+        return [$id, null];
+    }
+
+    /**
+     * Met les membres du calendrier du projet d'accord avec ceux du projet : tout membre (invitation acceptée, avec un compte) y est, et
+     * qui a quitté ou été retiré n'y est plus. Si son créateur n'est plus du projet, le calendrier passe à un administrateur du projet.
+     * À appeler quand les membres du projet changent ; sans effet pour un projet sans calendrier (ou effacé).
+     */
+    public static function synchroniserProjet(int $projet): void
+    {
+        $calendrier = Database::one('SELECT id, proprietaire_id FROM calendriers_amis WHERE projet_id = ?', [$projet]);
+        if ($calendrier === null) {
+            return;
+        }
+        $id = (int) $calendrier['id'];
+        $voulus = array_map('intval', array_column(Database::all(
+            "SELECT user_id FROM projet_membres WHERE projet_id = ? AND user_id IS NOT NULL AND statut = 'membre'
+              ORDER BY (role = 'admin') DESC, created_at, id", [$projet]), 'user_id'));
+        if ($voulus === []) {
+            return;
+        }
+        foreach ($voulus as $u) {
+            Database::run('INSERT IGNORE INTO calendrier_amis_membres (calendrier_id, user_id) VALUES (?, ?)', [$id, $u]);
+        }
+        $trous = implode(', ', array_fill(0, count($voulus), '?'));
+        Database::run('DELETE FROM calendrier_amis_membres WHERE calendrier_id = ? AND user_id NOT IN (' . $trous . ')', array_merge([$id], $voulus));
+        if (!in_array((int) $calendrier['proprietaire_id'], $voulus, true)) {
+            Database::run('UPDATE calendriers_amis SET proprietaire_id = ? WHERE id = ?', [$voulus[0], $id]);
+        }
+    }
+
+    /**
+     * Les prochains évènements du calendrier commun d'un projet (pour l'onglet « Échéances »), avec le nombre de documents liés.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public static function aVenirDuProjet(int $projet, int $limite = 30): array
+    {
+        return Database::all(
+            "SELECT e.id, e.titre, e.debut, e.fin, e.journee_entiere, e.lieu, COALESCE(u.pseudo, '') AS auteur_pseudo,
+                    (SELECT COUNT(*) FROM projet_evenement_liens l WHERE l.evenement_type = 'evenement' AND l.evenement_id = e.id) AS nb_liens
+               FROM calendrier_amis_evenements e
+               JOIN calendriers_amis c ON c.id = e.calendrier_id AND c.projet_id = ?
+               LEFT JOIN users u ON u.id = e.auteur_id
+              WHERE e.fin >= NOW()
+              ORDER BY e.debut, e.id LIMIT " . max(1, $limite),
+            [$projet]
+        );
+    }
+
     /** Renomme et recolore le calendrier (son créateur). */
     public static function modifier(int $moi, int $id, string $nom, ?string $couleur): ?string
     {
@@ -229,7 +322,8 @@ final class CalendriersAmis
     public static function ajouterMembres(int $moi, int $id, array $ids): int
     {
         $calendrier = self::calendrier($id, $moi);
-        if ($calendrier === null || !$calendrier['est_proprietaire']) {
+        // Les membres du calendrier d'un projet sont ceux du projet : on les invite là-bas.
+        if ($calendrier === null || !$calendrier['est_proprietaire'] || $calendrier['projet_id'] !== null) {
             return 0;
         }
         $ajoutes = 0;
@@ -257,6 +351,9 @@ final class CalendriersAmis
         if (!$calendrier['est_proprietaire']) {
             return t('cam.err.createur_seul');
         }
+        if ($calendrier['projet_id'] !== null) {
+            return t('cam.err.membres_du_projet');
+        }
         if ($membre === $moi) {
             return t('cam.err.createur_reste');
         }
@@ -271,6 +368,9 @@ final class CalendriersAmis
         $calendrier = self::calendrier($id, $moi);
         if ($calendrier === null) {
             return t('cam.err.introuvable');
+        }
+        if ($calendrier['projet_id'] !== null) {
+            return t('cam.err.membres_du_projet');
         }
         if ($calendrier['est_proprietaire']) {
             return t('cam.err.createur_reste');
@@ -404,6 +504,50 @@ final class CalendriersAmis
                 'est_partage' => true,
                 'lien' => url('calendriers-amis/evenements/' . (int) $l['id']),
             ];
+        }
+
+        // Le calendrier commun d'un travail de groupe montre aussi les tâches du projet qui ont une échéance, de tous ses membres.
+        $taches = Database::all(
+            "SELECT pt.id, pt.titre, pt.echeance, pt.statut, pt.membre_id, pt.projet_id, COALESCE(u.pseudo, pm.nom, '') AS qui,
+                    c.nom AS calendrier_nom, c.couleur AS couleur_calendrier, m.couleur AS couleur_perso
+               FROM calendrier_amis_membres m
+               JOIN calendriers_amis c ON c.id = m.calendrier_id AND c.projet_id IS NOT NULL
+               JOIN projet_taches pt ON pt.projet_id = c.projet_id
+               LEFT JOIN projet_membres pm ON pm.id = pt.membre_id
+               LEFT JOIN users u ON u.id = pm.user_id
+              WHERE m.user_id = ? AND m.affiche = 1 AND pt.echeance BETWEEN ? AND ?
+              ORDER BY pt.echeance, pt.id",
+            [$moi, $debut->format('Y-m-d'), $fin->format('Y-m-d')]
+        );
+        foreach ($taches as $t) {
+            $couleur = Serveurs::couleurValide($t['couleur_perso']) ?? Serveurs::couleurValide($t['couleur_calendrier']) ?? self::COULEUR_DEFAUT;
+            $evenements[] = [
+                // Un identifiant à part : ni celui d'un évènement, ni celui d'un évènement partagé.
+                'id' => self::DECALAGE_TACHE + (int) $t['id'],
+                'titre' => $t['membre_id'] === null ? t('cal.tache_sans_personne', ['titre' => (string) $t['titre']]) : (string) $t['titre'],
+                'description' => $t['membre_id'] !== null && $t['qui'] !== '' ? t('cam.tache_confiee', ['qui' => (string) $t['qui']]) : null,
+                'lieu' => null,
+                'debut' => $t['echeance'] . ' 00:00:00',
+                'fin' => $t['echeance'] . ' 23:59:59',
+                'journee_entiere' => 1,
+                'termine' => $t['statut'] === 'fait' ? 1 : 0,
+                'type_nom' => (string) $t['calendrier_nom'],
+                'type_icone' => '✅',
+                'type_couleur' => $couleur,
+                'agenda_nom' => (string) $t['calendrier_nom'],
+                'agenda_couleur' => $couleur,
+                'matiere_id' => null, 'matiere_nom' => null, 'matiere_couleur' => null,
+                'cours_id' => null, 'cours_titre' => null, 'serie_id' => null,
+                'est_echeance' => 0,
+                'outlook_calendrier' => null,
+                'est_tache' => false,
+                'est_partage' => true,
+                // Une tâche se lit et se change dans son projet.
+                'lien' => url('travaux/' . (int) $t['projet_id']),
+            ];
+        }
+        if ($taches !== []) {
+            usort($evenements, static fn (array $a, array $b): int => [$a['debut'], $a['fin']] <=> [$b['debut'], $b['fin']]);
         }
 
         return $evenements;
@@ -558,6 +702,7 @@ final class CalendriersAmis
             return t('cam.err.pas_le_votre');
         }
         Database::run('DELETE FROM calendrier_amis_evenements WHERE id = ?', [$id]);
+        LiensEvenements::oublier('evenement', $id);
 
         return null;
     }

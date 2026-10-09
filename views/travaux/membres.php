@@ -1,8 +1,9 @@
 <?php
 /**
- * Les membres du projet, la discussion du groupe, le lien public, et les
+ * Les membres du projet, la discussion du groupe, le calendrier commun, le lien public, et les
  * réglages du projet.
  *
+ * @var ?array $calendrier  le calendrier commun du projet, s'il en a un
  * @var array $projet
  * @var list<array> $membres
  * @var list<array> $amisAInviter
@@ -138,6 +139,28 @@ $jeton = $projet['jeton'] === null ? null : (string) $projet['jeton'];
             <button class="bouton bouton--secondaire bouton--petit" type="submit"><?= e(t('tr.me.relier')) ?></button>
           </form>
         <?php endif; ?>
+      <?php endif; ?>
+    </section>
+
+    <section class="carte">
+      <h2>📅 <?= e(t('cam.projet_titre')) ?></h2>
+      <?php if ($calendrier === null): ?>
+        <p class="discret"><?= e(t('cam.projet_aide')) ?></p>
+        <form method="post"<?= $envoi ?> action="<?= url('travaux/' . (int) $projet['id'] . '/calendrier') ?>">
+          <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+          <button class="bouton bouton--secondaire bouton--bloc" type="submit"><?= e(t('cam.projet_creer')) ?></button>
+        </form>
+      <?php else: ?>
+        <p style="display:flex;align-items:center;gap:.5rem;margin:.2rem 0">
+          <span class="cam-pastille" style="background:<?= e($calendrier['couleur']) ?>" aria-hidden="true"></span>
+          <strong><?= e($calendrier['nom']) ?></strong>
+          <span class="discret"><?= e(tn('cam.membres_n', (int) $calendrier['membres'])) ?></span>
+        </p>
+        <p class="champ__aide"><?= e(t('cam.projet_existe')) ?></p>
+        <div class="actions">
+          <a class="bouton bouton--petit" href="<?= url('evenements/nouveau', ['agenda' => CalendriersAmis::cle((int) $calendrier['id'])]) ?>" data-fenetre>＋ <?= e(t('cam.evt_ajouter')) ?></a>
+          <a class="bouton bouton--discret bouton--petit" href="<?= url('calendriers-amis/' . (int) $calendrier['id']) ?>" data-fenetre><?= e(t('cam.ouvrir')) ?></a>
+        </div>
       <?php endif; ?>
     </section>
 

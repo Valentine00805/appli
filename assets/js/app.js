@@ -3919,6 +3919,22 @@
     modifier.focus();
   });
 
+  /*
+   * Les documents liés à un évènement du projet : la carte se lit, « Modifier » l'ouvre (retirer un lien, en ajouter un), « Terminer » la
+   * referme. Écouté sur le document, comme les autres réglages, pour marcher aussi dans une fenêtre ouverte après coup.
+   */
+  document.addEventListener('click', function (evenement) {
+    var bouton = evenement.target.closest && evenement.target.closest('[data-liens-modifier], [data-liens-terminer]');
+    if (!bouton) { return; }
+    var carte = bouton.closest('[data-liens]');
+    if (!carte) { return; }
+    var ouvre = bouton.hasAttribute('data-liens-modifier');
+    carte.querySelectorAll('[data-liens-edition]').forEach(function (zone) { zone.hidden = !ouvre; });
+    carte.querySelector('[data-liens-modifier]').hidden = ouvre;
+    carte.querySelector('[data-liens-terminer]').hidden = !ouvre;
+    var suite = carte.querySelector(ouvre ? '[data-liens-edition] select' : '[data-liens-modifier]');
+    if (suite) { suite.focus(); }
+  });
   // Édition rapide d'une matière
   document.querySelectorAll('[data-bascule]').forEach(function (bouton) {
     bouton.addEventListener('click', function () {

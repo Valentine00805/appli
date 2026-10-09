@@ -41,6 +41,7 @@ $liens = $liens ?? [];
 $groupes = $groupes ?? [];
 $matiereAjoutable = $matiereAjoutable ?? null;
 $apercuProprio = $apercuProprio ?? false;
+$projetsDuDocument = $projetsDuDocument ?? [];
 $urlDuMien = $urlDuMien ?? null;
 $coursLie = $coursLie ?? null;
 $perso = $perso ?? null;
@@ -132,6 +133,14 @@ $nom = $fichierSeul ? (string) $cible['nom_origine'] : '';
     <?php endif; ?>
   </div>
 </div>
+
+<?php if (!$public && $projetsDuDocument !== []): ?>
+  <?php // Lié à un travail de groupe : on le modifie ici, ensemble ; une copie à soi n'a plus rien à voir avec lui. ?>
+  <div class="flash flash--info" style="margin-bottom:1rem">
+    <strong>✎ <?= e(t($estDossier ? 'pt.projet_modifiable_dossier' : 'pt.projet_modifiable', ['projets' => implode(', ', array_column($projetsDuDocument, 'nom'))])) ?></strong>
+    <?php if ($dejaCopie): ?><br><?= e(t('pt.projet_copie_independante')) ?><?php endif; ?>
+  </div>
+<?php endif; ?>
 
 <?php if ($fichierSeul): ?>
   <?php // Ce que le navigateur sait montrer ; le reste se télécharge. ?>
@@ -310,6 +319,8 @@ $nom = $fichierSeul ? (string) $cible['nom_origine'] : '';
   <?php endforeach; ?>
 <?php else: ?>
   <?php $texte = (string) ($estFiche ? $cible['fiche_revision'] : $cible['contenu']); ?>
+  <?php // Ce qu'on avait tapé quand quelqu'un a enregistré avant nous : à côté de l'éditeur, qui s'ouvre. ?>
+  <?php $brouillon = $peutEcrire ? Partages::brouillon($type, (int) $cible['id']) : null; ?>
   <div class="colonnes">
     <article class="carte">
       <?php if (trim($texte) === ''): ?>
@@ -325,12 +336,14 @@ $nom = $fichierSeul ? (string) $cible['nom_origine'] : '';
           </p>
         <?php endif; ?>
         <?php // On m'a donné le droit d'écrire : le même éditeur que chez moi. ?>
-        <details class="edition-contenu"<?= trim($texte) === '' ? ' open' : '' ?>>
+        <details class="edition-contenu"<?= trim($texte) === '' || $brouillon !== null ? ' open' : '' ?>>
           <summary class="edition-contenu__ouvrir">
             ✏️ <?= e(t(trim($texte) === '' ? 'pt.ecrire' : 'pt.modifier_texte')) ?>
           </summary>
           <form method="post" action="<?= url($base . '/contenu') ?>"<?= $surPlace ?>>
             <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+            <?php // Le texte lu : si quelqu'un l'enregistre entre-temps, le nôtre ne l'écrase pas. ?>
+            <input type="hidden" name="base" value="<?= e(Partages::empreinte($texte)) ?>">
             <div class="champ">
               <label class="legende" for="partage-contenu"><?= e(t($estFiche ? 'pt.la_fiche' : 'pt.le_cours')) ?></label>
               <textarea id="partage-contenu" name="contenu" class="edition-contenu__texte" data-texte-riche="complet"
@@ -341,6 +354,7 @@ $nom = $fichierSeul ? (string) $cible['nom_origine'] : '';
             </p>
           </form>
         </details>
+        <?= Vue::rendre('partages/_brouillon', ['brouillon' => $brouillon]) ?>
       <?php endif; ?>
     </article>
     <div class="pile">

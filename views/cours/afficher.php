@@ -107,13 +107,17 @@ $nbElements = count($elements) + count($fichiersFiche);
           <?= e(t('cours.commentaires_suite')) ?>
         </p>
       <?php endif; ?>
-      <details class="edition-contenu"<?= $sansContenu ? ' open' : '' ?>>
+      <?php // Ce qu'on avait tapé quand un ami a enregistré le cours avant nous : gardé à côté de l'éditeur, qui s'ouvre. ?>
+      <?php $brouillon = Partages::brouillon('cours', (int) $cours['id']); ?>
+      <details class="edition-contenu"<?= $sansContenu || $brouillon !== null ? ' open' : '' ?>>
         <summary class="edition-contenu__ouvrir">
           ✏️ <?= e($sansContenu ? t('cours.ecrire_contenu') : t('cours.modifier_contenu')) ?>
         </summary>
 
         <form method="post" action="<?= url('cours/' . $cours['id'] . '/contenu') ?>"<?= $surPlace ?>>
           <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
+          <?php // Le texte lu : si un ami le modifie entre-temps (cours partagé en modification), le nôtre ne l'écrase pas. ?>
+          <input type="hidden" name="base" value="<?= e(Partages::empreinte((string) $cours['contenu'])) ?>">
           <?php // Revenir là où l'on était : le volet de révision reste ouvert. ?>
           <?php if ($revision): ?>
             <input type="hidden" name="revision" value="1">
@@ -130,6 +134,7 @@ $nbElements = count($elements) + count($fichiersFiche);
           </p>
         </form>
       </details>
+      <?= Vue::rendre('partages/_brouillon', ['brouillon' => $brouillon]) ?>
     </article>
 
     <div class="pile">

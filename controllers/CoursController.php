@@ -182,6 +182,14 @@ final class CoursController
         $contenu = TexteRiche::depuisFormulaire((string) ($_POST['contenu'] ?? ''));
         $avant = (string) Database::valeur("SELECT COALESCE(contenu, '') FROM cours WHERE id = ?", [$id]);
 
+        // Un ami a pu enregistrer le cours pendant qu'on l'éditait : on ne l'écrase pas, on garde ce qu'on avait tapé à côté.
+        $base = $_POST['base'] ?? null;
+        if (is_string($base) && $base !== Partages::empreinte($avant)) {
+            Partages::garderBrouillon('cours', $id, (string) ($_POST['contenu'] ?? ''));
+            Session::flash('erreur', t('pt.conflit'));
+            redirect('cours/' . $id, ($_POST['revision'] ?? '') === '1' ? ['revision' => 1] : []);
+        }
+
         Database::run(
             'UPDATE cours SET contenu = ? WHERE id = ? AND user_id = ?',
             // Un texte effacé redevient absent, comme une fiche vidée.
@@ -208,6 +216,13 @@ final class CoursController
 
         $fiche = TexteRiche::depuisFormulaire((string) ($_POST['fiche_revision'] ?? ''));
         $avant = (string) Database::valeur("SELECT COALESCE(fiche_revision, '') FROM cours WHERE id = ?", [$id]);
+
+        $base = $_POST['base'] ?? null;
+        if (is_string($base) && $base !== Partages::empreinte($avant)) {
+            Partages::garderBrouillon('fiche', $id, (string) ($_POST['fiche_revision'] ?? ''));
+            Session::flash('erreur', t('pt.conflit'));
+            $this->retourFiche($id);
+        }
 
         Database::run(
             'UPDATE cours SET fiche_revision = ? WHERE id = ? AND user_id = ?',

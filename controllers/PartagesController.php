@@ -176,6 +176,8 @@ final class PartagesController
             'amis' => Amis::liste($moi),
             'groupes' => Conversations::liste($moi),
             'destinataires' => Partages::destinataires($moi, $type, $id),
+            // Un cours ou un dossier peut aussi se mettre dans un travail de groupe, dont les membres le lisent.
+            'projets' => in_array($type, ['cours', 'dossier'], true) ? Travaux::projetsPourPartage($moi, $type, $id) : null,
             'commentaires' => Partages::commentaires($type, $id),
             'lien' => $lien === null ? null : Partages::adresseLien((string) $lien['jeton']),
             'vues' => $lien === null ? 0 : (int) $lien['vues'],
@@ -226,6 +228,58 @@ final class PartagesController
             Session::flash('succes', $succes);
         }
         $this->retourPuisEnvoyer('partager/' . $mot . '/' . $id, $notifications);
+    }
+
+    /** Met ce cours ou dossier dans des travaux de groupe : leurs membres le lisent (et peuvent l'ajouter à leur espace). */
+    public function envoyerProjets(string $mot, int $id): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $type = self::type($mot);
+        if (!in_array($type, ['cours', 'dossier'], true) || Partages::mienne($type, $id, Auth::id()) === null) {
+            self::introuvable();
+        }
+        $ids = is_array($_POST['projets'] ?? null) ? array_values(array_unique(array_map('intval', $_POST['projets']))) : [];
+        if ($ids === []) {
+            Session::flash('erreur', t('pt.projets_choisir'));
+            redirect('partager/' . $mot . '/' . $id);
+        }
+        $faits = 0;
+        $refus = null;
+        foreach ($ids as $projet) {
+            $probleme = Travaux::lier(Auth::id(), $projet, $type, $id);
+            if ($probleme === null) {
+                $faits++;
+            } else {
+                $refus = $probleme;
+            }
+        }
+        if ($faits > 0) {
+            Session::flash('succes', tn('pt.flash_projets', $faits));
+        }
+        if ($refus !== null) {
+            Session::flash('erreur', $refus);
+        }
+        redirect('partager/' . $mot . '/' . $id);
+    }
+
+    /** Retire ce cours ou dossier d'un travail de groupe (il reste chez son propriétaire). */
+    public function retirerDuProjet(string $mot, int $id, int $lien): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $type = self::type($mot);
+        if (Partages::mienne($type, $id, Auth::id()) === null) {
+            self::introuvable();
+        }
+        // Le lien doit bien être celui de ce document : un numéro quelconque ne retire pas autre chose.
+        $estLeSien = Database::valeur('SELECT 1 FROM projet_liens WHERE id = ? AND type = ? AND cible_id = ?', [$lien, $type, $id]);
+        if ($estLeSien !== null && $estLeSien !== false && Travaux::delier(Auth::id(), $lien) !== null) {
+            Session::flash('succes', t('pt.flash_projet_retire'));
+        } else {
+            Session::flash('erreur', t('pt.projets_pas_a_vous'));
+        }
+        redirect('partager/' . $mot . '/' . $id);
     }
 
     public function retirerAcces(string $mot, int $id, int $destinataire): void
@@ -350,6 +404,8 @@ final class PartagesController
                 ? Database::valeur('SELECT id FROM evenements WHERE user_id = ? AND partage_de = ?', [$moi, $id])
                 : ($leMien ? null : Partages::maCopie($moi, $type, $id)),
             'mot' => $mot,
+            // Dans un travail de groupe : le document se modifie ici, par tout le groupe ; une copie à soi reste indépendante.
+            'projetsDuDocument' => !$leMien && in_array($type, ['cours', 'dossier'], true) ? Travaux::projetsDuDocument($moi, $type, $id) : [],
             // L'aperçu de mon propre document : pas de copie à proposer, mais de quoi ouvrir le vrai.
             'apercuProprio' => $apercuProprio,
             'urlDuMien' => $apercuProprio ? match ($type) {
@@ -520,8 +576,9 @@ final class PartagesController
         Auth::exiger();
         Session::verifierCsrf();
         $type = self::type($mot);
-        $refus = Partages::ecrire(Auth::id(), $type, $id, (string) ($_POST['contenu'] ?? ''));
-        Session::flash($refus === null ? 'succes' : 'erreur', $refus ?? t('pt.flash_enregistre'));
+        $base = isset($_POST['base']) && is_string($_POST['base']) ? $_POST['base'] : null;
+        $refus = Partages::ecrire(Auth::id(), $type, $id, (string) ($_POST['contenu'] ?? ''), $base);
+        Session::flash($refus === null ? 'succes' : 'erreur', $refus === Partages::CONFLIT ? t('pt.conflit') : ($refus ?? t('pt.flash_enregistre')));
         $this->retourDocument($type, $id);
     }
 

@@ -14,6 +14,8 @@ $id = (int) $calendrier['id'];
 $base = 'calendriers-amis/' . $id;
 $csrf = Session::jetonCsrf();
 $gere = (bool) $calendrier['est_proprietaire'];
+// Le calendrier commun d'un projet : ses membres sont ceux du projet, on ne les gère pas ici.
+$duProjet = $calendrier['projet_id'] !== null;
 ?>
 <div class="entete-page"<?= $dansUneFenetre ? ' data-large' : '' ?>>
   <div style="display:flex;align-items:center;gap:.7rem">
@@ -25,7 +27,8 @@ $gere = (bool) $calendrier['est_proprietaire'];
       <h1 style="margin:0"><?= e($calendrier['nom']) ?></h1>
       <p class="discret" style="margin:.15rem 0 0">
         <?= e(tn('cam.membres_n', (int) $calendrier['membres'])) ?>
-        · <?= e($gere ? t('cam.cree_par_moi') : t('cam.cree_par', ['qui' => $calendrier['proprietaire_pseudo']])) ?>
+        · <?php if ($duProjet): ?><?= e(t('cam.du_projet', ['nom' => (string) $calendrier['projet_nom']])) ?>
+        <?php else: ?><?= e($gere ? t('cam.cree_par_moi') : t('cam.cree_par', ['qui' => $calendrier['proprietaire_pseudo']])) ?><?php endif; ?>
       </p>
     </div>
   </div>
@@ -82,9 +85,9 @@ $gere = (bool) $calendrier['est_proprietaire'];
       <li class="groupe-membres__ligne">
         <?= Amis::avatar($m['id'], $m['pseudo']) ?>
         <span class="groupe-membres__nom"><?= e($m['pseudo']) ?></span>
-        <?php if ($m['proprietaire']): ?>
+        <?php if ($m['proprietaire'] && !$duProjet): ?>
           <span class="discret"><?= e(t('cam.createur')) ?></span>
-        <?php elseif ($gere): ?>
+        <?php elseif ($gere && !$duProjet): ?>
           <span class="groupe-membres__actions">
             <form method="post" action="<?= url($base . '/membres/' . $m['id'] . '/retirer') ?>"<?= $envoi ?>
                   data-confirmation="<?= e(t('cam.retirer_confirmation', ['qui' => $m['pseudo']])) ?>">
@@ -97,7 +100,10 @@ $gere = (bool) $calendrier['est_proprietaire'];
     <?php endforeach; ?>
   </ul>
 
-  <?php if ($gere): ?>
+  <?php if ($duProjet): ?>
+    <p class="champ__aide" style="margin-top:.8rem"><?= e(t('cam.membres_du_projet_aide', ['nom' => (string) $calendrier['projet_nom']])) ?></p>
+    <a class="bouton bouton--discret bouton--petit" href="<?= url('travaux/' . (int) $calendrier['projet_id'] . '/membres') ?>" <?= $dansUneFenetre ? 'data-fenetre' : '' ?>><?= e(t('cam.voir_projet')) ?></a>
+  <?php elseif ($gere): ?>
     <h3 class="groupe-sous-titre"><?= e(t('cam.ajouter_amis')) ?></h3>
     <?php if ($aAjouter === []): ?>
       <p class="discret" style="margin:0"><?= e(t('cam.plus_d_amis')) ?></p>
@@ -129,7 +135,7 @@ $gere = (bool) $calendrier['est_proprietaire'];
       <button class="bouton bouton--danger" type="submit"><?= e(t('cam.supprimer')) ?></button>
     </form>
     <p class="champ__aide"><?= e(t('cam.supprimer_aide')) ?></p>
-  <?php else: ?>
+  <?php elseif (!$duProjet): ?>
     <form method="post" action="<?= url($base . '/quitter') ?>"<?= $envoi ?>
           data-confirmation="<?= e(t('cam.quitter_confirmation', ['nom' => $calendrier['nom']])) ?>">
       <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">

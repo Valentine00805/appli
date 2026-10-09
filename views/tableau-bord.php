@@ -112,8 +112,9 @@
           <p style="margin:0 0 .5rem">✉️ <a href="<?= url('travaux') ?>"><?= e(tn('accueil.invitations_travaux', (int) $travaux['invitations'])) ?></a></p>
         <?php endif; ?>
         <?php if ($travaux['taches'] !== []): ?>
-          <ul class="travaux-mes-taches">
-            <?php foreach ($travaux['taches'] as $t): ?>
+          <?php
+          // Quatre tâches se lisent d'un coup d'œil ; les suivantes se déroulent sous la carte, d'un clic.
+          $ligne = static function (array $t): void { ?>
               <li>
                 <a href="<?= url('travaux/' . (int) $t['projet_id']) ?>" data-fenetre><?= e($t['membre_id'] === null ? t('cal.tache_sans_personne', ['titre' => (string) $t['titre']]) : (string) $t['titre']) ?></a>
                 <span class="travaux-projet" title="<?= e(t('tr.li.le_projet')) ?>">👥 <?= e((string) $t['projet_nom']) ?></span>
@@ -122,8 +123,24 @@
                   <span class="echeance echeance--<?= e(echeance_etat($t['echeance'])) ?>"><?= e($texte) ?></span>
                 <?php endif; ?>
               </li>
-            <?php endforeach; ?>
+          <?php };
+          $visibles = array_slice($travaux['taches'], 0, 4);
+          $suite = array_slice($travaux['taches'], 4);
+          ?>
+          <ul class="travaux-mes-taches">
+            <?php foreach ($visibles as $t) { $ligne($t); } ?>
           </ul>
+          <?php if ($suite !== []): ?>
+            <details class="travaux-suite">
+              <summary>
+                <span class="travaux-suite__plus"><?= e(tn('accueil.travaux_autres', count($suite))) ?></span>
+                <span class="travaux-suite__moins"><?= e(t('accueil.travaux_reduire')) ?></span>
+              </summary>
+              <ul class="travaux-mes-taches">
+                <?php foreach ($suite as $t) { $ligne($t); } ?>
+              </ul>
+            </details>
+          <?php endif; ?>
         <?php endif; ?>
       </section>
     <?php endif; ?>

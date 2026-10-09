@@ -327,6 +327,8 @@ final class CalendrierController
             'calendriersAmis' => $evenement === null ? CalendriersAmis::liste($userId) : [],
             // Ouvert depuis un calendrier partagé (« ＋ » du volet) : c'est lui qu'on coche d'avance, à la place de « Mes évènements ».
             'agendaCoche' => $evenement === null ? (CalendriersAmis::cibles($userId, [(string) ($_GET['agenda'] ?? '')])[0] ?? null) : null,
+            // Dans le calendrier commun d'un projet : on ne lie que les cours, dossiers et fichiers de ce projet (voir « documentsProjet »).
+            'documentsProjet' => null,
             'vises'      => $evenement === null
                 ? [Agenda::DEFAUT] : Agenda::ciblesDe((int) $evenement['id']),
             'venuDAilleurs' => $evenement !== null && $this->venuDAilleurs($userId, (int) $evenement['id']),
@@ -335,6 +337,14 @@ final class CalendrierController
                                   WHERE copie_de = ? AND user_id = ?',
                     [(int) $evenement['id'], $userId]),
         ];
+
+        // Ouvert depuis le « ＋ » du calendrier commun d'un projet : les documents de ce projet, et eux seuls, sont à lier.
+        if ($donnees['agendaCoche'] !== null) {
+            $projetCalendrier = CalendriersAmis::calendrier((int) $donnees['agendaCoche'], $userId)['projet_id'] ?? null;
+            if ($projetCalendrier !== null) {
+                $donnees['documentsProjet'] = LiensEvenements::aLier((int) $projetCalendrier, $userId, 'evenement', 0);
+            }
+        }
 
         // Comme la fiche : demandé en fragment, le formulaire part seul et
         // c'est le script qui l'enveloppe. Sans lui, la page entière répond.
@@ -398,7 +408,7 @@ final class CalendrierController
                 $this->poser($userId, $donnees, $serieId, $decalage);
             }
             foreach ($partages as $calendrierId) {
-                CalendriersAmis::creerEvenement($userId, $calendrierId, [
+                [$nouveau] = CalendriersAmis::creerEvenement($userId, $calendrierId, [
                     'titre'           => $donnees['titre'],
                     'description'     => $donnees['description'],
                     'lieu'            => $donnees['lieu'],
@@ -406,6 +416,15 @@ final class CalendrierController
                     'fin'             => $decalage === null ? $donnees['fin'] : $decalage['fin']->format('Y-m-d H:i:s'),
                     'journee_entiere' => $donnees['journee_entiere'],
                 ]);
+                // Les documents du projet cochés (calendrier commun d'un projet) : liés à chaque évènement créé. La vérification qu'ils sont
+                // bien dans le projet est celle de LiensEvenements::lier.
+                $projetDuCalendrier = $nouveau === null ? null : (CalendriersAmis::calendrier($calendrierId, $userId)['projet_id'] ?? null);
+                if ($projetDuCalendrier !== null) {
+                    foreach ((array) ($_POST['documents'] ?? []) as $document) {
+                        [$typeDoc, $idDoc] = array_pad(explode(':', (string) $document, 2), 2, '');
+                        LiensEvenements::lier($userId, $projetDuCalendrier, 'evenement', $nouveau, $typeDoc, (int) $idDoc);
+                    }
+                }
             }
         }
 
@@ -1363,7 +1382,9 @@ final class CalendrierController
                FROM projet_taches pt
                JOIN projets p ON p.id = pt.projet_id
                JOIN projet_membres pm ON pm.projet_id = p.id AND pm.user_id = ? AND pm.statut = 'membre'
-              WHERE (pt.membre_id = pm.id OR pt.membre_id IS NULL) AND pt.echeance BETWEEN ? AND ?",
+              WHERE (pt.membre_id = pm.id OR pt.membre_id IS NULL) AND pt.echeance BETWEEN ? AND ?
+                -- Un projet qui a son calendrier commun y montre déjà ses tâches (CalendriersAmis::evenementsAffiches).
+                AND NOT EXISTS (SELECT 1 FROM calendriers_amis ca WHERE ca.projet_id = p.id)",
             $bornes
         ) as $tache) {
             $lignes[] = [

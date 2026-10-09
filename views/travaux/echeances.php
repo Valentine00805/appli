@@ -6,6 +6,8 @@
  * @var array $projet
  * @var list<array> $echeances
  * @var list<array> $types  les types d'échéance du projet
+ * @var ?array $calendrier  le calendrier commun du projet, s'il en a un
+ * @var list<array> $evenementsCalendrier  ses prochains évènements
  * @var string $onglet
  */
 $dansUneFenetre = $dansUneFenetre ?? false;
@@ -50,6 +52,38 @@ $ligne = static function (array $e) use ($csrf, $envoi, $types): string {
       <p class="discret"><?= e(t('tr.ec.aucune')) ?></p>
     <?php else: ?>
       <ul class="travaux-echeances"><?php foreach ($avenir as $e) { echo $ligne($e); } ?></ul>
+    <?php endif; ?>
+  </section>
+  <section class="carte">
+    <h2>📅 <?= e(t('cam.cal_commun')) ?></h2>
+    <?php if ($calendrier === null): ?>
+      <p class="discret"><?= e(t('cam.cal_commun_aucun')) ?></p>
+      <a class="bouton bouton--secondaire bouton--petit" href="<?= url('travaux/' . (int) $projet['id'] . '/membres') ?>" <?= $dansUneFenetre ? 'data-fenetre' : '' ?>><?= e(t('cam.projet_creer')) ?></a>
+    <?php else: ?>
+      <?php if ($evenementsCalendrier === []): ?>
+        <p class="discret"><?= e(t('cam.rien_a_venir')) ?></p>
+      <?php else: ?>
+        <ul class="cam-evenements">
+          <?php foreach ($evenementsCalendrier as $evt): ?>
+            <?php
+            $debut = strtotime((string) $evt['debut']);
+            $quand = date(t('date.jour_mois'), $debut) . ((int) $evt['journee_entiere'] === 1 ? '' : ' · ' . date('H:i', $debut));
+            ?>
+            <li>
+              <a href="<?= url('calendriers-amis/evenements/' . (int) $evt['id']) ?>" data-fenetre>
+                <span class="cam-evenements__quand"><?= e($quand) ?></span>
+                <span><?= e((string) $evt['titre']) ?>
+                  <?php if ((int) $evt['nb_liens'] > 0): ?><span class="discret">· 🔗 <?= e(tn('cam.docs_n', (int) $evt['nb_liens'])) ?></span><?php endif; ?>
+                </span>
+              </a>
+            </li>
+          <?php endforeach; ?>
+        </ul>
+      <?php endif; ?>
+      <div class="actions" style="margin-top:.6rem">
+        <a class="bouton bouton--petit" href="<?= url('evenements/nouveau', ['agenda' => CalendriersAmis::cle((int) $calendrier['id'])]) ?>" data-fenetre>＋ <?= e(t('cam.evt_ajouter')) ?></a>
+        <a class="bouton bouton--discret bouton--petit" href="<?= url('calendriers-amis/' . (int) $calendrier['id']) ?>" data-fenetre><?= e(t('cam.ouvrir')) ?></a>
+      </div>
     <?php endif; ?>
   </section>
   <?php if ($passees !== []): ?>

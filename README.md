@@ -63,8 +63,10 @@ allemand) et avec un thème clair ou sombre.
   seule ou avec droit de modifier) ou par **lien public** ; ce qu'on vous partage se copie dans votre espace (l'application
   reconnaît ce qui est déjà copié), et un évènement partagé peut recevoir vos propres rappels et notes.
 - **Travaux de groupe** — un projet par groupe de travail, en cinq onglets : qui fait quoi, échéances (placées aussi
-  dans le calendrier), fichiers, document commun, membres ; des cours et dossiers liés que chacun peut ajouter à son
-  espace, une discussion liée, et un lien public en lecture.
+  dans le calendrier), fichiers, document commun, membres ; des cours et dossiers liés (on les partage avec un projet
+  depuis « Partager ») que tous les membres modifient ensemble, sur le même document ; un **calendrier commun** (ses
+  évènements, les tâches datées du projet, et des documents du projet liés à chaque évènement), une discussion liée, et un
+  lien public en lecture.
 
 ### Gérer sa vie d'étudiant
 

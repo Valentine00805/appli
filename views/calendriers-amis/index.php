@@ -30,7 +30,8 @@ $dansUneFenetre = $dansUneFenetre ?? false;
           <strong><?= e($c['nom']) ?></strong>
           <span class="discret">
             <?= e(tn('cam.membres_n', $c['membres'])) ?>
-            · <?= e($c['est_proprietaire'] ? t('cam.cree_par_moi') : t('cam.cree_par', ['qui' => $c['proprietaire_pseudo']])) ?>
+            · <?= e($c['projet_id'] !== null ? t('cam.du_projet', ['nom' => (string) $c['projet_nom']])
+                : ($c['est_proprietaire'] ? t('cam.cree_par_moi') : t('cam.cree_par', ['qui' => $c['proprietaire_pseudo']]))) ?>
             <?php if (!$c['affiche']): ?>· <?= e(t('cam.masque')) ?><?php endif; ?>
           </span>
         </span>

@@ -58,6 +58,7 @@ require __DIR__ . '/src/Amis.php';
 require __DIR__ . '/src/Conversations.php';
 require __DIR__ . '/src/Serveurs.php';
 require __DIR__ . '/src/CalendriersAmis.php';
+require __DIR__ . '/src/LiensEvenements.php';
 require __DIR__ . '/src/Partages.php';
 require __DIR__ . '/src/Difference.php';
 require __DIR__ . '/src/PlanningJour.php';
@@ -487,6 +488,9 @@ $routes = [
     ['POST', 'travaux/versions/{id}/restaurer', [TravauxController::class, 'restaurer']],
     ['POST', 'travaux/{id}/discussion',        [TravauxController::class, 'discussion']],
     ['POST', 'travaux/{id}/discussion/delier', [TravauxController::class, 'delierDiscussion']],
+    ['POST', 'travaux/{id}/calendrier',        [TravauxController::class, 'creerCalendrier']],
+    ['POST', 'travaux/{id}/evenements-liens',  [TravauxController::class, 'lierEvenement']],
+    ['POST', 'travaux/evenements-liens/{id}/supprimer', [TravauxController::class, 'delierEvenement']],
     ['POST', 'travaux/{id}/lien',              [TravauxController::class, 'ouvrirLien']],
     ['POST', 'travaux/{id}/lien/fermer',       [TravauxController::class, 'fermerLien']],
     ['GET',  'g/{jeton}',                      [TravauxController::class, 'public']],
@@ -720,6 +724,8 @@ $routes = [
     ['POST', 'partager/{mot}/{id}/amis',            [PartagesController::class, 'envoyer']],
     ['POST', 'partager/{mot}/{id}/acces/{id}/retirer', [PartagesController::class, 'retirerAcces']],
     ['POST', 'partager/{mot}/{id}/acces/{id}/droit', [PartagesController::class, 'changerDroit']],
+    ['POST', 'partager/{mot}/{id}/projets',         [PartagesController::class, 'envoyerProjets']],
+    ['POST', 'partager/{mot}/{id}/projets/{id}/retirer', [PartagesController::class, 'retirerDuProjet']],
     ['POST', 'partager/{mot}/{id}/lien',            [PartagesController::class, 'creerLien']],
     ['POST', 'partager/{mot}/{id}/lien/desactiver', [PartagesController::class, 'desactiverLien']],
     ['GET',  'partages/fichiers/{id}/contenu',      [PartagesController::class, 'contenu']],

@@ -153,7 +153,16 @@ final class CalendriersAmisController
             Session::flash('erreur', t('cam.err.evenement_introuvable'));
             redirect('calendrier');
         }
-        $this->afficher('calendriers-amis/evenement', ['evenement' => $evenement], (string) $evenement['titre']);
+        // L'évènement du calendrier commun d'un projet peut renvoyer à des documents du projet.
+        $projet = $evenement['calendrier']['projet_id'];
+        $liens = $projet === null ? null : [
+            'projet' => $projet,
+            'type' => 'evenement',
+            'id' => $id,
+            'liens' => LiensEvenements::liensDe($projet, Auth::id(), 'evenement', $id),
+            'aLier' => LiensEvenements::aLier($projet, Auth::id(), 'evenement', $id),
+        ];
+        $this->afficher('calendriers-amis/evenement', ['evenement' => $evenement, 'liensEvenement' => $liens], (string) $evenement['titre']);
     }
 
     public function modifierEvenementForm(int $id): void

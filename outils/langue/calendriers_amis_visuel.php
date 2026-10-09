@@ -10,7 +10,10 @@ require __DIR__ . '/base.php';
 
 $emails = ['cam-vis-a@exemple-test.fr', 'cam-vis-b@exemple-test.fr'];
 $efface = static function () use ($emails): void {
-    foreach ($emails as $e) { bd_run('DELETE FROM users WHERE email = ? AND email LIKE ?', [$e, '%@exemple-test.fr']); }
+    foreach ($emails as $e) {
+        bd_run('DELETE p FROM projets p JOIN users u ON u.id = p.cree_par WHERE u.email = ? AND u.email LIKE ?', [$e, '%@exemple-test.fr']);
+        bd_run('DELETE FROM users WHERE email = ? AND email LIKE ?', [$e, '%@exemple-test.fr']);
+    }
 };
 $efface();
 if (in_array('--efface', $argv, true)) { echo "retirés\n"; return; }
@@ -46,6 +49,12 @@ $cal2 = (int) bd_valeur('SELECT id FROM calendriers_amis WHERE proprietaire_id =
 bd_run('INSERT INTO calendrier_amis_membres (calendrier_id, user_id) VALUES (?, ?), (?, ?)', [$cal2, $b, $cal2, $a]);
 bd_run('INSERT INTO calendrier_amis_evenements (calendrier_id, auteur_id, titre, debut, fin, journee_entiere) VALUES (?, ?, ?, ?, ?, 1)',
     [$cal2, $b, 'Rendu du rapport', "$mois-21 00:00:00", "$mois-21 23:59:59"]);
+
+// Un travail de groupe, pour voir la carte « Calendrier commun » de son onglet Membres.
+$appel('travaux', ['_csrf' => $csrf, 'nom' => 'Rapport de labo', 'amis' => [$b]]);
+$projet = (int) bd_valeur('SELECT id FROM projets WHERE cree_par = ? ORDER BY id DESC LIMIT 1', [$a]);
+echo "projet $projet
+";
 
 $session = '';
 foreach (file($jar) as $l) { if (str_contains($l, 'MESCOURS_SESSID')) { $session = trim(substr($l, strrpos($l, "\t") + 1)); } }
