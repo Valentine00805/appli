@@ -221,7 +221,7 @@ $descendanceDe = static function (int $id) use (&$descendanceDe, $enfantsDe): ar
 
     <?php
     $rendreCible = function (array $d, int $profondeur) use (
-        &$rendreCible, $parNiveau, $dossierId, $lienDossier, $dossiers, $descendanceDe
+        &$rendreCible, $parNiveau, $dossierId, $lienDossier, $dossiers, $descendanceDe, $matieres
     ): void {
         $enfants = $parNiveau[(int) $d['id']] ?? [];
         ?>

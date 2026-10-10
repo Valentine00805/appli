@@ -136,6 +136,7 @@ try {
     [$page] = $appel('organisation/dossiers');
     $dire('la page « Dossiers » montre la matière du dossier (pastille) et la propose en modification', $oui(str_contains($page, 'Mathématiques') && str_contains($page, 'name="appliquer_matiere"') && preg_match('/<option value="' . $mMaths . '" selected>/', $page) === 1), 'oui');
     [$liste] = $appel('cours');
+    $dire('le menu de la colonne liste bien les matières du compte, pas seulement « Aucune matière »', $oui(preg_match('/id="mat-colonne-\d+".*?<\/select>/s', $liste, $sel) === 1 && str_contains($sel[0], 'Informatique') && str_contains($sel[0], 'Mathématiques')), 'oui');
     $dire('la colonne des cours propose aussi la matière (renommage et création rapide)', $oui(substr_count($liste, 'name="matiere_id"') >= 2 && str_contains($liste, 'name="appliquer_matiere" value="1"')), 'oui');
     // La sauvegarde et sa restauration gardent la matière des dossiers (les numéros changent, pas le lien).
     [$archive] = $appel('compte/sauvegarde/export');
