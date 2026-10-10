@@ -91,6 +91,12 @@ try {
     $dire('et chaque groupe aussi', $oui(preg_match('/name="droits_groupes\[' . $groupe . '\]"[^>]*data-droit-perso[^>]*>/s', $fen, $mg) === 1 && !str_contains($mg[0], 'hidden') && !str_contains($mg[0], 'disabled')), 'oui');
     $dire('le menu offre lecture, commentaire et modification',
         $oui(preg_match('/name="droits_amis\[' . $id('b') . '\]".*?<\/select>/s', $fen, $m) === 1 && str_contains($m[0], 'value="lecture"') && str_contains($m[0], 'value="commentaire"') && str_contains($m[0], 'value="modification"')), 'oui');
+    $dire('à qui : trois onglets (amis et groupes, travail de groupe, lien public), l\'enveloppe qui les porte',
+        $oui(str_contains($fen, 'data-dest-portee') && str_contains($fen, 'À qui voulez-vous le partager') && preg_match_all('/data-dest-onglet="(amis|projets|lien)"/', $fen) === 3
+            && str_contains($fen, 'Amis et groupes') && str_contains($fen, 'Un travail de groupe') && str_contains($fen, 'Un lien public')), 'oui');
+    $dire('une seule destination à la fois : les amis d\'abord, les deux autres cachées',
+        $oui(preg_match('/data-dest-section="amis" role="tabpanel">/', $fen) === 1 && preg_match('/data-dest-section="projets" role="tabpanel" hidden>/', $fen) === 1
+            && preg_match('/data-dest-section="lien" role="tabpanel" hidden>/', $fen) === 1), 'oui');
     [, $fenFichier] = $appel('partager/fichiers/' . $fichier . '?fenetre=1');
     $dire('pour un fichier : pas de « modification », ni pour tous ni par personne',
         $oui(str_contains($fenFichier, 'name="droits_amis[' . $id('b') . ']"') && !str_contains($fenFichier, 'value="modification"')), 'oui');
@@ -98,6 +104,14 @@ try {
     echo "\n2. Le même droit pour tous\n";
     $envoyer(['amis' => [$id('b'), $id('c')], 'droits_mode' => 'tous', 'droit' => 'commentaire']);
     $dire('B et C reçoivent « commentaire »', $droit('b', 'cours', $cours) . '|' . $droit('c', 'cours', $cours), 'commentaire|commentaire');
+    [, $fenAcces] = $appel('partager/cours/' . $cours . '?fenetre=1');
+    $dire('« Ont accès » : le droit de chacun et un bouton « Modifier », qui ouvre le panneau (changer le droit, retirer l\'accès)',
+        $oui(preg_match_all('/<label for="acces-ouvrir-\d+" class="[^"]*acces-bouton"[^>]*>[^<]*Modifier<\/label>/', $fenAcces) === 2
+            && preg_match('/class="pastille">Commentaire</', $fenAcces) === 1
+            && preg_match('/<div class="acces-panneau">.*?\/acces\/' . $id('b') . '\/droit.*?Changer.*?\/acces\/' . $id('b') . '\/retirer.*?Retirer l’accès/s', $fenAcces) === 1), 'oui');
+    $dire('le panneau est replié d\'office : une case cachée, décochée, le commande',
+        $oui(preg_match_all('/<input type="checkbox" id="acces-ouvrir-\d+" class="acces-bascule sr-only">/', $fenAcces) === 2
+            && !preg_match('/class="acces-bascule[^"]*"[^>]*checked/', $fenAcces)), 'oui');
     $effacer();
     $envoyer(['amis' => [$id('b'), $id('c')], 'droit' => 'modification']);
     $dire('l\'ancien formulaire (sans le choix) donne le même droit à tous', $droit('b', 'cours', $cours) . '|' . $droit('c', 'cours', $cours), 'modification|modification');

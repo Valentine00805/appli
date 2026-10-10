@@ -37,7 +37,31 @@ $icone = match ($type) {
   </div>
 </div>
 
-<section class="carte partage-section">
+<?php
+/*
+ * À qui : ses amis et ses groupes de discussion, un travail de groupe, ou un lien public pour ceux qui n'ont pas de compte. Un onglet par
+ * destination, une seule à la fois, comme dans « Partager plusieurs ». S'ouvre d'abord celle où l'on a des gens à qui parler (amis, groupes, ou
+ * ceux qui ont déjà accès), sinon le travail de groupe, sinon le lien.
+ */
+$destinations = ['amis' => ['👥', 'pt.dest_amis']];
+if (($projets ?? null) !== null) { $destinations['projets'] = ['🤝', 'pt.dest_projets']; }
+$destinations['lien'] = ['🔗', 'pt.dest_lien'];
+$destActive = $amis !== [] || $groupes !== [] || $destinataires !== [] ? 'amis' : (isset($destinations['projets']) && $projets !== [] ? 'projets' : 'lien');
+?>
+<div data-dest-portee>
+<div class="partage-genres" data-destinations>
+  <p class="legende partage-genres__titre" id="partage-dest-titre"><?= e(t('pt.dest_choisir')) ?></p>
+  <div class="partage-genres__onglets" role="tablist" aria-labelledby="partage-dest-titre">
+    <?php foreach ($destinations as $cle => [$icone, $libelle]): ?>
+      <button type="button" class="partage-genre<?= $destActive === $cle ? ' partage-genre--actif' : '' ?>" role="tab"
+              aria-selected="<?= $destActive === $cle ? 'true' : 'false' ?>" data-dest-onglet="<?= e($cle) ?>">
+        <span aria-hidden="true"><?= $icone ?></span> <?= e(t($libelle)) ?>
+      </button>
+    <?php endforeach; ?>
+  </div>
+</div>
+
+<section class="carte partage-section" data-dest-section="amis" role="tabpanel"<?= $destActive === 'amis' ? '' : ' hidden' ?>>
   <h2 style="margin-top:0"><?= e(t('pt.avec_mes_amis')) ?></h2>
   <?php if ($amis === [] && $groupes === []): ?>
     <p class="discret" style="margin:0"><?= e(t('pt.pas_encore_ami')) ?> <a href="<?= url('amis') ?>"><?= e(t('pt.chercher_pseudo')) ?></a></p>
@@ -110,23 +134,34 @@ $icone = match ($type) {
       <?php foreach ($destinataires as $d): ?>
         <li class="groupe-membres__ligne">
           <?= Amis::avatar($d['id'], $d['pseudo']) ?>
-          <span class="groupe-membres__nom"><?= e($d['pseudo']) ?></span>
-          <?php // Le droit se change sur place : la liste l'envoie d'elle-même. ?>
-          <form method="post" action="<?= url($base . '/acces/' . $d['id'] . '/droit') ?>"<?= $surPlace ?> class="en-ligne">
-            <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
-            <label class="sr-only" for="droit-<?= (int) $d['id'] ?>"><?= e(t('pt.ce_que_peut_faire', ['qui' => $d['pseudo']])) ?></label>
-            <select id="droit-<?= (int) $d['id'] ?>" name="droit">
-              <?php foreach (Partages::DROITS as $unDroit): ?>
-                <?php if (in_array($type, ['fichier', 'evenement'], true) && $unDroit === 'modification') { continue; } ?>
-                <option value="<?= e($unDroit) ?>"<?= $d['droit'] === $unDroit ? ' selected' : '' ?>><?= e(Partages::libelleDroit($unDroit)) ?></option>
-              <?php endforeach; ?>
-            </select>
-            <button class="bouton bouton--discret bouton--petit" type="submit"><?= e(t('pt.changer')) ?></button>
-          </form>
-          <form method="post" action="<?= url($base . '/acces/' . $d['id'] . '/retirer') ?>"<?= $surPlace ?>>
-            <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
-            <button class="bouton bouton--discret bouton--petit" type="submit"><?= e(t('pt.retirer_acces')) ?></button>
-          </form>
+          <span class="groupe-membres__nom"><?= e($d['pseudo']) ?> <span class="pastille"><?= e(Partages::libelleDroit((string) $d['droit'])) ?></span></span>
+          <?php
+          /*
+           * D'abord le droit tel qu'il est, et un bouton « Modifier » : c'est lui qui ouvre le panneau où l'on change le droit ou retire l'accès.
+           * Rien ne se fait d'un clic distrait. Sans script : une case cachée porte l'état, et son étiquette est le bouton.
+           */
+          ?>
+          <input type="checkbox" id="acces-ouvrir-<?= (int) $d['id'] ?>" class="acces-bascule sr-only">
+          <label for="acces-ouvrir-<?= (int) $d['id'] ?>" class="bouton bouton--secondaire bouton--petit acces-bouton" role="button"><?= e(t('commun.modifier')) ?></label>
+          <div class="acces-panneau">
+            <form method="post" action="<?= url($base . '/acces/' . $d['id'] . '/droit') ?>"<?= $surPlace ?> class="acces-panneau__droit">
+              <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+              <label class="acces-panneau__etiquette" for="droit-<?= (int) $d['id'] ?>"><?= e(t('pt.ce_que_peut_faire', ['qui' => $d['pseudo']])) ?></label>
+              <div class="acces-panneau__ligne">
+                <select id="droit-<?= (int) $d['id'] ?>" name="droit">
+                  <?php foreach (Partages::DROITS as $unDroit): ?>
+                    <?php if (in_array($type, ['fichier', 'evenement'], true) && $unDroit === 'modification') { continue; } ?>
+                    <option value="<?= e($unDroit) ?>"<?= $d['droit'] === $unDroit ? ' selected' : '' ?>><?= e(Partages::libelleDroit($unDroit)) ?></option>
+                  <?php endforeach; ?>
+                </select>
+                <button class="bouton" type="submit"><?= e(t('pt.changer')) ?></button>
+              </div>
+            </form>
+            <form method="post" action="<?= url($base . '/acces/' . $d['id'] . '/retirer') ?>"<?= $surPlace ?> class="acces-panneau__retrait">
+              <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+              <button class="bouton bouton--danger bouton--petit" type="submit"><?= e(t('pt.retirer_acces')) ?></button>
+            </form>
+          </div>
         </li>
       <?php endforeach; ?>
     </ul>
@@ -135,7 +170,7 @@ $icone = match ($type) {
 
 <?php if (($projets ?? null) !== null): ?>
   <?php // Un cours ou un dossier se met aussi dans un travail de groupe : ses membres le lisent. ?>
-  <section class="carte partage-section">
+  <section class="carte partage-section" data-dest-section="projets" role="tabpanel"<?= $destActive === 'projets' ? '' : ' hidden' ?>>
     <h2 style="margin-top:0">👥 <?= e(t('pt.avec_projet')) ?></h2>
     <p class="discret" style="margin-top:0"><?= e(t($type === 'fichier' ? 'pt.projets_aide_fichier' : 'pt.projets_aide')) ?></p>
     <?php if ($projets === []): ?>
@@ -188,7 +223,7 @@ $icone = match ($type) {
   </p>
 <?php endif; ?>
 
-<section class="carte partage-section">
+<section class="carte partage-section" data-dest-section="lien" role="tabpanel"<?= $destActive === 'lien' ? '' : ' hidden' ?>>
   <h2 style="margin-top:0"><?= e(t('pt.avec_lien')) ?></h2>
   <p class="discret" style="margin-top:0"><?= e(t('pt.lien_un_aide')) ?></p>
   <?php if ($lien === null): ?>
@@ -211,3 +246,4 @@ $icone = match ($type) {
     </form>
   <?php endif; ?>
 </section>
+</div>

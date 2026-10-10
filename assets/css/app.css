@@ -4730,3 +4730,17 @@ a.serveur-carte:hover, a.serveur-carte:focus-visible { border-color: var(--accen
 .droit-perso { margin-left: auto; width: auto; max-width: 50%; padding: .3rem 1.6rem .3rem .6rem; font-size: .85rem; flex: none; }
 .droit-perso[hidden] { display: none; }
 
+/* « Ont accès » : le droit de chacun, et un bouton « Modifier » qui ouvre un panneau — changer le droit, ou retirer l'accès. */
+.acces-bouton { flex: none; cursor: pointer; user-select: none; }
+.acces-bascule:focus-visible + .acces-bouton { outline: 2px solid var(--accent); outline-offset: 2px; }
+.acces-bascule:checked + .acces-bouton { background: var(--accent-doux); border-color: var(--accent); color: var(--accent); }
+.acces-panneau {
+  display: none; flex-basis: 100%; gap: .85rem; margin: .1rem 0 .3rem; padding: .85rem 1rem;
+  background: var(--fond-doux); border: 1px solid var(--bordure); border-radius: var(--rayon-s);
+}
+.acces-bascule:checked ~ .acces-panneau { display: grid; }
+.acces-panneau__etiquette { display: block; margin-bottom: .35rem; font-size: .82rem; font-weight: 600; color: var(--texte-doux); }
+.acces-panneau__ligne { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; }
+.acces-panneau__ligne select { flex: 1 1 11rem; min-width: 0; width: auto; }
+.acces-panneau__retrait { display: flex; justify-content: flex-end; padding-top: .75rem; border-top: 1px solid var(--bordure); }
+

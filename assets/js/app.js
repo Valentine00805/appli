@@ -7688,12 +7688,13 @@
   });
 })();
 
-/* « Partager plusieurs », à qui : un onglet par destination (amis et groupes, travail de groupe, lien public), une seule à la fois. */
+/* « Partager » et « Partager plusieurs », à qui : un onglet par destination (amis et groupes, travail de groupe, lien public), une seule à la fois. */
 (function () {
   document.addEventListener("click", function (evenement) {
     var onglet = evenement.target.closest ? evenement.target.closest("[data-dest-onglet]") : null;
     if (!onglet) { return; }
-    var formulaire = onglet.closest("form");
+    // « Partager plusieurs » : les onglets sont dans le formulaire ; « Partager » d'un seul document : ses formulaires sont chacun dans sa section.
+    var formulaire = onglet.closest("form") || onglet.closest("[data-dest-portee]");
     if (!formulaire) { return; }
     var voulu = onglet.getAttribute("data-dest-onglet");
     [].slice.call(formulaire.querySelectorAll("[data-dest-onglet]")).forEach(function (autre) {
