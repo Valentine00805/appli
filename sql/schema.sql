@@ -1803,3 +1803,36 @@ CREATE TABLE IF NOT EXISTS `projet_evenement_liens` (
 -- Un fichier déposé sans en faire un cours (voir migration-cours-fichier.sql).
 ALTER TABLE `cours`
   ADD COLUMN `est_fichier` TINYINT(1) NOT NULL DEFAULT 0 AFTER `favori`;
+
+-- Une matière affiliée à un dossier (voir migration-dossiers-matiere.sql).
+ALTER TABLE `dossiers`
+  ADD COLUMN `matiere_id` INT UNSIGNED NULL AFTER `parent_id`,
+  ADD KEY `idx_dossiers_matiere` (`matiere_id`),
+  ADD CONSTRAINT `fk_dossiers_matiere` FOREIGN KEY (`matiere_id`) REFERENCES `matieres`(`id`) ON DELETE SET NULL;
+
+-- Un évènement peut renvoyer à un dossier de cours (voir migration-evenements-dossier.sql).
+ALTER TABLE `evenements`
+  ADD COLUMN `dossier_id` INT UNSIGNED NULL AFTER `cours_id`,
+  ADD KEY `idx_evt_dossier` (`dossier_id`),
+  ADD CONSTRAINT `fk_evt_dossier` FOREIGN KEY (`dossier_id`) REFERENCES `dossiers`(`id`) ON DELETE SET NULL;
+
+-- Plusieurs cours et dossiers liés à un évènement (voir migration-evenement-liens.sql).
+CREATE TABLE IF NOT EXISTS `evenement_liens` (
+  `id`           INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `evenement_id` INT UNSIGNED NOT NULL,
+  `cours_id`     INT UNSIGNED NULL,
+  `dossier_id`   INT UNSIGNED NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_evenement_liens_evt` (`evenement_id`),
+  KEY `idx_evenement_liens_cours` (`cours_id`),
+  KEY `idx_evenement_liens_dossier` (`dossier_id`),
+  CONSTRAINT `fk_evenement_liens_evt`     FOREIGN KEY (`evenement_id`) REFERENCES `evenements`(`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_evenement_liens_cours`   FOREIGN KEY (`cours_id`)     REFERENCES `cours`(`id`)      ON DELETE CASCADE,
+  CONSTRAINT `fk_evenement_liens_dossier` FOREIGN KEY (`dossier_id`)   REFERENCES `dossiers`(`id`)   ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Les liens déjà posés (un cours ou un dossier par évènement) passent dans la table.
+INSERT INTO `evenement_liens` (`evenement_id`, `cours_id`, `dossier_id`)
+SELECT `id`, `cours_id`, NULL FROM `evenements` WHERE `cours_id` IS NOT NULL;
+INSERT INTO `evenement_liens` (`evenement_id`, `cours_id`, `dossier_id`)
+SELECT `id`, NULL, `dossier_id` FROM `evenements` WHERE `dossier_id` IS NOT NULL;

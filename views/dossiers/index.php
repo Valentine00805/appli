@@ -1,7 +1,21 @@
 <?php
-/** @var array $dossiers, $descendants, $palette, $icones @var int $sansDossier */
+/** @var array $dossiers, $descendants, $palette, $icones, $matieres @var int $sansDossier */
 $csrf = Session::jetonCsrf();
 $dernier = count($dossiers) - 1;
+// La matière d'un dossier, en pastille de sa couleur (rien s'il n'en a pas).
+$matieresParId = [];
+foreach ($matieres as $m) {
+    $matieresParId[(int) $m['id']] = $m;
+}
+$pastilleMatiere = static function (array $d) use ($matieresParId): string {
+    $m = $matieresParId[(int) ($d['matiere_id'] ?? 0)] ?? null;
+    if ($m === null) {
+        return '';
+    }
+    $couleur = (string) ($m['couleur'] ?: '#94a3b8');
+
+    return ' <span class="pastille" style="background:' . e($couleur) . ';color:' . e(couleur_texte($couleur)) . '">' . e((string) $m['nom']) . '</span>';
+};
 ?>
 
 <?= Vue::rendre('organisation/_onglets', ['onglet' => 'dossiers']) ?>
@@ -36,7 +50,7 @@ $dernier = count($dossiers) - 1;
        * affichée en entier, ce qui reste utilisable.
        */
       $rendreDossier = function (array $d, array $freres, int $rangFrere) use (
-          &$rendreDossier, $parNiveau, $descendants, $dossiers, $icones, $palette, $csrf
+          &$rendreDossier, $parNiveau, $descendants, $dossiers, $icones, $palette, $csrf, $pastilleMatiere, $matieres
       ): void {
           $enfants = $parNiveau[(int) $d['id']] ?? [];
           ?>
@@ -58,7 +72,7 @@ $dernier = count($dossiers) - 1;
                       aria-expanded="true" aria-controls="enfants-<?= (int) $d['id'] ?>">
                 <span class="dossier-plier__chevron" aria-hidden="true">›</span>
                 <span style="flex:1;min-width:0;text-align:left">
-                  <span class="dossier-plier__nom"><?= e($d['nom']) ?></span>
+                  <span class="dossier-plier__nom"><?= e($d['nom']) ?></span><?= $pastilleMatiere($d) ?>
                   <span class="discret" style="display:block;font-size:.84rem">
                     <?= e(tn('cours.nb_cours', (int) $d['nb_cours'])) ?> ·
                     <?= e(tn('dos.sous_dossiers', count($enfants))) ?>
@@ -67,7 +81,7 @@ $dernier = count($dossiers) - 1;
               </button>
             <?php else: ?>
               <div style="flex:1;min-width:0">
-                <h2 style="margin-bottom:.15rem"><?= e($d['nom']) ?></h2>
+                <h2 style="margin-bottom:.15rem"><?= e($d['nom']) ?><?= $pastilleMatiere($d) ?></h2>
                 <p class="discret" style="margin:0">
                   <?= e(tn('cours.nb_cours', (int) $d['nb_cours'])) ?>
                 </p>
@@ -123,6 +137,12 @@ $dernier = count($dossiers) - 1;
                   </select>
                 </div>
               </div>
+
+              <?= Vue::rendre('dossiers/_matiere', ['matieres' => $matieres, 'choisie' => $d['matiere_id'] === null ? null : (int) $d['matiere_id'], 'idChamp' => 'mat-' . (int) $d['id']]) ?>
+              <label class="case" style="display:block;margin:-.4rem 0 1rem">
+                <input type="checkbox" name="appliquer_matiere" value="1" checked>
+                <?= e(t('dos.appliquer_matiere')) ?>
+              </label>
 
               <div class="champ">
                 <span class="legende"><?= e(t('commun.icone')) ?></span>
@@ -220,6 +240,8 @@ $dernier = count($dossiers) - 1;
         </select>
         <span class="champ__aide"><?= e(t('dos.parent_aide')) ?></span>
       </div>
+
+      <?= Vue::rendre('dossiers/_matiere', ['matieres' => $matieres, 'choisie' => null, 'idChamp' => 'nouveau-matiere']) ?>
 
       <div class="champ">
         <span class="legende"><?= e(t('commun.icone')) ?></span>

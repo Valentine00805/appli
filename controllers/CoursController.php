@@ -864,19 +864,19 @@ final class CoursController
     }
 
     /** Crée le cours d'un fichier déposé ; « fichier » le montre sous son nom plutôt que comme un cours. */
-    private static function insererCoursDepose(int $userId, ?int $dossier, string $titre, bool $enFichier): void
+    private static function insererCoursDepose(int $userId, ?int $dossier, string $titre, bool $enFichier, ?int $matiere = null): void
     {
         if ($enFichier) {
             Database::run(
-                'INSERT INTO cours (user_id, matiere_id, dossier_id, titre, contenu, est_fichier) VALUES (?, NULL, ?, ?, NULL, 1)',
-                [$userId, $dossier, $titre]
+                'INSERT INTO cours (user_id, matiere_id, dossier_id, titre, contenu, est_fichier) VALUES (?, ?, ?, ?, NULL, 1)',
+                [$userId, $matiere, $dossier, $titre]
             );
 
             return;
         }
         Database::run(
-            'INSERT INTO cours (user_id, matiere_id, dossier_id, titre, contenu) VALUES (?, NULL, ?, ?, NULL)',
-            [$userId, $dossier, $titre]
+            'INSERT INTO cours (user_id, matiere_id, dossier_id, titre, contenu) VALUES (?, ?, ?, ?, NULL)',
+            [$userId, $matiere, $dossier, $titre]
         );
     }
 
@@ -925,7 +925,7 @@ final class CoursController
 
             $titre = self::titreDepose($nom, $enFichier);
 
-            self::insererCoursDepose($userId, $parent, $titre, $enFichier);
+            self::insererCoursDepose($userId, $parent, $titre, $enFichier, DossiersController::matiereDu($userId, $parent));
             $coursId = Database::dernierId();
 
             // Le fichier de rang $i, présenté seul au service d'enregistrement.
@@ -1008,8 +1008,8 @@ final class CoursController
             $parent === null ? [$userId] : [$userId, $parent]
         );
         Database::run(
-            'INSERT INTO dossiers (user_id, parent_id, nom, position) VALUES (?, ?, ?, ?)',
-            [$userId, $parent, $nom, $rang]
+            'INSERT INTO dossiers (user_id, parent_id, matiere_id, nom, position) VALUES (?, ?, ?, ?, ?)',
+            [$userId, $parent, DossiersController::matiereDu($userId, $parent), $nom, $rang]
         );
 
         return [(int) Database::dernierId(), 1];
@@ -1038,6 +1038,7 @@ final class CoursController
         $userId = Auth::id();
 
         $dossier = DossiersController::valide($userId, $_POST['dossier'] ?? null);
+        $matiereDuDossier = DossiersController::matiereDu($userId, $dossier);
         $noms = $_FILES['fichiers']['name'] ?? null;
         // « Seulement les fichiers » : pas de cours à écrire, le fichier paraît dans le dossier sous son nom et son extension.
         $enFichier = ($_POST['mode'] ?? '') === 'fichiers';
@@ -1056,7 +1057,7 @@ final class CoursController
             $nom = (string) $noms[$i];
             $titre = self::titreDepose($nom, $enFichier);
 
-            self::insererCoursDepose($userId, $dossier, $titre, $enFichier);
+            self::insererCoursDepose($userId, $dossier, $titre, $enFichier, $matiereDuDossier);
             $coursId = Database::dernierId();
 
             // Le fichier de rang $i, présenté seul au service d'enregistrement.
@@ -1150,6 +1151,11 @@ final class CoursController
             'UPDATE cours SET dossier_id = ? WHERE id = ? AND user_id = ?',
             [$dossier, $cours['id'], $userId]
         );
+        // Rangé dans un dossier qui a une matière, un cours qui n'en a pas la reçoit (jamais d'écrasement d'une matière déjà posée).
+        $matiereDuDossier = DossiersController::matiereDu($userId, $dossier);
+        if ($matiereDuDossier !== null) {
+            Database::run('UPDATE cours SET matiere_id = ? WHERE id = ? AND user_id = ? AND matiere_id IS NULL', [$matiereDuDossier, $cours['id'], $userId]);
+        }
 
         $nom = $dossier === null
             ? null
@@ -1175,12 +1181,14 @@ final class CoursController
             redirect('cours/nouveau');
         }
 
+        $dossierChoisi = DossiersController::valide($userId, $_POST['dossier_id'] ?? null);
         Database::run(
             'INSERT INTO cours (user_id, matiere_id, dossier_id, titre, contenu) VALUES (?, ?, ?, ?, ?)',
             [
                 $userId,
-                $this->matiereValide($userId, $_POST['matiere_id'] ?? null),
-                DossiersController::valide($userId, $_POST['dossier_id'] ?? null),
+                // Sans matière choisie, celle du dossier où le cours se range.
+                $this->matiereValide($userId, $_POST['matiere_id'] ?? null) ?? DossiersController::matiereDu($userId, $dossierChoisi),
+                $dossierChoisi,
                 mb_substr($titre, 0, 200),
                 TexteRiche::depuisFormulaire(post('contenu')),
             ]
@@ -1212,11 +1220,18 @@ final class CoursController
 
         $contenu = TexteRiche::depuisFormulaire(post('contenu'));
         $avant = (string) Database::valeur("SELECT COALESCE(contenu, '') FROM cours WHERE id = ?", [$id]);
+        $dossierAvant = Database::valeur('SELECT dossier_id FROM cours WHERE id = ?', [$id]);
+        $dossierApres = DossiersController::valide($userId, $_POST['dossier_id'] ?? null);
+        $matiere = $this->matiereValide($userId, $_POST['matiere_id'] ?? null);
+        // Un cours qui change de dossier et qu'on laisse sans matière prend celle de son nouveau dossier.
+        if ($matiere === null && $dossierApres !== null && $dossierApres !== ($dossierAvant === null ? null : (int) $dossierAvant)) {
+            $matiere = DossiersController::matiereDu($userId, $dossierApres);
+        }
         Database::run(
             'UPDATE cours SET matiere_id = ?, dossier_id = ?, titre = ?, contenu = ? WHERE id = ? AND user_id = ?',
             [
-                $this->matiereValide($userId, $_POST['matiere_id'] ?? null),
-                DossiersController::valide($userId, $_POST['dossier_id'] ?? null),
+                $matiere,
+                $dossierApres,
                 mb_substr($titre, 0, 200),
                 $contenu,
                 $id,

@@ -115,7 +115,21 @@ $typeActif = $edition ? entier_ou_null($evenement['type_id']) : $typeDefaut;
 if (!$edition && $typeActif === null && $types !== []) {
     $typeActif = (int) $types[0]['id'];
 }
-$coursActif = $edition ? entier_ou_null($evenement['cours_id']) : entier_ou_null($_GET['cours'] ?? null);
+// Les cours et dossiers déjà liés (à la modification), ou celui d'où l'on vient (« ?cours= », « ?dossier= ») : une ligne « Lier à » chacun.
+$liensActifs = [];
+if ($edition) {
+    foreach (EvenementLiens::de((int) $evenement['id'], (int) Auth::id()) as $lie) {
+        $liensActifs[] = [$lie['genre'], $lie['id']];
+    }
+} else {
+    if (entier_ou_null($_GET['dossier'] ?? null) !== null) {
+        $liensActifs[] = ['dossier', (int) $_GET['dossier']];
+    }
+    if (entier_ou_null($_GET['cours'] ?? null) !== null) {
+        $liensActifs[] = ['cours', (int) $_GET['cours']];
+    }
+}
+$dossiersListe = $dossiersListe ?? [];
 $matiereActive = $edition ? entier_ou_null($evenement['matiere_id']) : null;
 ?>
 
@@ -389,16 +403,55 @@ $matiereActive = $edition ? entier_ou_null($evenement['matiere_id']) : null;
           <span class="champ__aide"><?= e(t('evtf.matiere_aide')) ?></span>
         </div>
 
-        <div class="champ">
-          <label for="cours_id"><?= e(t('evtf.cours_lie')) ?></label>
-          <select id="cours_id" name="cours_id">
-            <option value=""><?= e(t('commun.aucun')) ?></option>
-            <?php foreach ($coursListe as $c): ?>
-              <option value="<?= (int) $c['id'] ?>"<?= $coursActif === (int) $c['id'] ? ' selected' : '' ?>>
-                <?= e($c['titre']) ?>
-              </option>
-            <?php endforeach; ?>
-          </select>
+        <div class="champ" data-liens-evenement data-prochain="<?= max(1, count($liensActifs)) ?>">
+          <?php
+          /*
+           * Lier l'évènement à des cours ou des dossiers : une ligne par lien. Sur chacune, on dit d'abord de quoi il s'agit (un cours, un
+           * dossier), puis on choisit lequel ; une seule liste se montre à la fois (le script cache l'autre) ; sans lui, les deux restent là et
+           * seule celle du genre choisi est lue par le serveur. Le « + » ajoute une ligne, copiée du modèle.
+           */
+          $ligneLien = static function (string $i, string $genreLie, ?int $choisi) use ($coursListe, $dossiersListe): void { ?>
+            <div class="lien-ligne" data-lien-ligne>
+              <div class="lien-ligne__champs">
+                <select id="lien-genre-<?= e($i) ?>" name="lien[<?= e($i) ?>][genre]" data-lien-genre aria-label="<?= e(t('evtf.lien_lie')) ?>">
+                  <option value=""><?= e(t('commun.aucun')) ?></option>
+                  <option value="cours"<?= $genreLie === 'cours' ? ' selected' : '' ?>><?= e(t('evtf.lien_un_cours')) ?></option>
+                  <option value="dossier"<?= $genreLie === 'dossier' ? ' selected' : '' ?>><?= e(t('evtf.lien_un_dossier')) ?></option>
+                </select>
+                <select name="lien[<?= e($i) ?>][cours]" class="lien-liste" data-lien-liste="cours" aria-label="<?= e(t('evtf.lien_un_cours')) ?>"
+                        <?= $genreLie === 'cours' ? '' : 'hidden disabled' ?>>
+                  <option value=""><?= e(t('evtf.choisir_cours')) ?></option>
+                  <?php foreach ($coursListe as $c): ?>
+                    <option value="<?= (int) $c['id'] ?>"<?= $genreLie === 'cours' && $choisi === (int) $c['id'] ? ' selected' : '' ?>>
+                      <?= e($c['titre']) ?>
+                    </option>
+                  <?php endforeach; ?>
+                </select>
+                <select name="lien[<?= e($i) ?>][dossier]" class="lien-liste" data-lien-liste="dossier" aria-label="<?= e(t('evtf.lien_un_dossier')) ?>"
+                        <?= $genreLie === 'dossier' ? '' : 'hidden disabled' ?>>
+                  <option value=""><?= e(t('evtf.choisir_dossier')) ?></option>
+                  <?php foreach ($dossiersListe as $d): ?>
+                    <option value="<?= (int) $d['id'] ?>"<?= $genreLie === 'dossier' && $choisi === (int) $d['id'] ? ' selected' : '' ?>>
+                      <?= e(retrait_dossier($d) . trim((string) $d['icone'] . ' ' . (string) $d['nom'])) ?>
+                    </option>
+                  <?php endforeach; ?>
+                </select>
+              </div>
+              <button type="button" class="bouton bouton--discret bouton--petit" data-lien-retirer
+                      title="<?= e(t('evtf.lien_retirer')) ?>" aria-label="<?= e(t('evtf.lien_retirer')) ?>">✕</button>
+            </div>
+          <?php };
+          ?>
+          <label for="lien-genre-0"><?= e(t('evtf.lien_lie')) ?></label>
+          <?php
+          foreach ($liensActifs === [] ? [['', null]] : $liensActifs as $i => [$genreLie, $choisi]) {
+              $ligneLien((string) $i, (string) $genreLie, $choisi);
+          }
+          ?>
+          <template data-lien-modele><?php $ligneLien('__I__', '', null); ?></template>
+          <button type="button" class="bouton bouton--secondaire bouton--petit lien-ajouter" data-lien-ajouter>
+            + <?= e(t('evtf.lien_ajouter')) ?>
+          </button>
           <span class="champ__aide"><?= e(t('evtf.cours_aide')) ?></span>
         </div>
       </div>

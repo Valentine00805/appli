@@ -34,7 +34,7 @@ final class Sauvegarde
      */
     private const TABLES = [
         'matieres'          => ['portee' => 'user',  'liens' => []],
-        'dossiers'          => ['portee' => 'user',  'liens' => ['parent_id' => 'dossiers']],
+        'dossiers'          => ['portee' => 'user',  'liens' => ['parent_id' => 'dossiers', 'matiere_id' => 'matieres']],
         'tags'              => ['portee' => 'user',  'liens' => []],
         'types_evenement'   => ['portee' => 'user',  'liens' => []],
         'categories_budget' => ['portee' => 'user',  'liens' => []],
@@ -51,7 +51,10 @@ final class Sauvegarde
         'series_evenements' => ['portee' => 'user',  'liens' => []],
         'evenements'        => ['portee' => 'user',  'liens' => [
             'matiere_id' => 'matieres', 'type_id' => 'types_evenement',
-            'cours_id' => 'cours', 'serie_id' => 'series_evenements']],
+            'cours_id' => 'cours', 'dossier_id' => 'dossiers', 'serie_id' => 'series_evenements']],
+        // Les cours et dossiers liés à un évènement : venus après les premières sauvegardes, une archive plus ancienne ne les contient pas.
+        'evenement_liens'   => ['portee' => 'evenement', 'liens' => [
+            'evenement_id' => 'evenements', 'cours_id' => 'cours', 'dossier_id' => 'dossiers'], 'facultative' => true],
         'fiche_elements'    => ['portee' => 'user',  'liens' => [
             'cours_id' => 'cours', 'cible_cours_id' => 'cours', 'cible_evenement_id' => 'evenements']],
         'recurrences'       => ['portee' => 'user',  'liens' => ['categorie_id' => 'categories_budget']],
@@ -280,6 +283,7 @@ final class Sauvegarde
     {
         return match (self::TABLES[$table]['portee']) {
             'cours'      => ['cours', 'cours_id'],
+            'evenement'  => ['evenements', 'evenement_id'],
             'discussion' => ['assistant_conversations', 'conversation_id'],
             default       => null,
         };

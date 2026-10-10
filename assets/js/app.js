@@ -7511,3 +7511,131 @@
     if (groupe) { appliquer(groupe); }
   });
 })();
+
+/* ==========================================================================
+   Les choix de couleur (matières, dossiers, types d'évènement, tâches, catégories) : en plus de la palette, une couleur libre, avec le
+   nuancier du navigateur. Ajoutée par le script à chaque groupe « .choix-couleurs » — présent à l'ouverture de la page ou apparu plus tard,
+   dans une fenêtre —, sous la forme d'un bouton radio de plus, de même nom (« couleur ») : le serveur reçoit un #rrggbb comme avant, et n'a
+   rien à savoir de ce nuancier. Sans script, la palette seule reste.
+   ========================================================================== */
+(function () {
+  var nombre = 0;
+  // Les phrases du script : la page les pose dans window.MOTS (cette fonction est hors de celle qui les lit ailleurs).
+  var mot = function (cle) { return (window.MOTS && window.MOTS[cle]) || "Autre couleur"; };
+
+  var ameliorer = function (groupe) {
+    if (groupe.hasAttribute("data-nuancier")) { return; }
+    var radios = groupe.querySelectorAll('input[type="radio"]');
+    if (!radios.length) { return; }
+    groupe.setAttribute("data-nuancier", "");
+
+    var nom = radios[0].name;
+    var actuelle = groupe.querySelector('input[type="radio"]:checked');
+    var depart = actuelle && /^#[0-9a-f]{6}$/i.test(actuelle.value) ? actuelle.value : "#4f46e5";
+
+    var enveloppe = document.createElement("span");
+    enveloppe.className = "choix-couleurs__libre";
+    var titre = mot('couleur_autre');
+    enveloppe.title = titre;
+
+    var radio = document.createElement("input");
+    radio.type = "radio";
+    radio.name = nom;
+    radio.value = depart;
+    radio.id = "couleur-libre-" + (++nombre);
+    radio.setAttribute("data-libre", "");
+
+    var pastille = document.createElement("span");
+    pastille.className = "choix-couleurs__pastille";
+    pastille.style.setProperty("--c", depart);
+
+    var nuancier = document.createElement("input");
+    nuancier.type = "color";
+    nuancier.className = "choix-couleurs__nuancier";
+    nuancier.value = depart;
+    nuancier.setAttribute("aria-label", titre);
+
+    // Choisir une couleur dans le nuancier la sélectionne : c'est elle que le formulaire enverra.
+    nuancier.addEventListener("input", function () {
+      radio.value = nuancier.value;
+      radio.checked = true;
+      pastille.style.setProperty("--c", nuancier.value);
+      radio.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+
+    enveloppe.appendChild(radio);
+    enveloppe.appendChild(pastille);
+    enveloppe.appendChild(nuancier);
+    groupe.appendChild(enveloppe);
+  };
+
+  var tout = function (racine) {
+    if (!racine.querySelectorAll) { return; }
+    if (racine.matches && racine.matches(".choix-couleurs")) { ameliorer(racine); }
+    [].slice.call(racine.querySelectorAll(".choix-couleurs")).forEach(ameliorer);
+  };
+
+  tout(document);
+  // Les fenêtres posent leur contenu après coup : on le reprend à mesure.
+  new MutationObserver(function (changements) {
+    changements.forEach(function (c) {
+      [].slice.call(c.addedNodes).forEach(function (n) { if (n.nodeType === 1) { tout(n); } });
+    });
+  }).observe(document.body, { childList: true, subtree: true });
+})();
+
+/* L'évènement lié à un cours ou à un dossier : le genre choisi montre sa liste et cache (et désactive) l'autre. Écouté sur le document : le
+   formulaire s'ouvre aussi dans une fenêtre, après coup. */
+(function () {
+  /* Montre la liste du genre choisi sur une ligne, cache et désactive l'autre. */
+  function ajuster(ligne, genre) {
+    [].slice.call(ligne.querySelectorAll("[data-lien-liste]")).forEach(function (liste) {
+      var voulue = liste.getAttribute("data-lien-liste") === genre;
+      liste.hidden = !voulue;
+      liste.disabled = !voulue;
+      if (!voulue) { liste.value = ""; }
+    });
+  }
+
+  document.addEventListener("change", function (evenement) {
+    var genre = evenement.target.closest ? evenement.target.closest("[data-lien-genre]") : null;
+    if (!genre) { return; }
+    var ligne = genre.closest("[data-lien-ligne]");
+    if (!ligne) { return; }
+    ajuster(ligne, genre.value);
+    var montree = ligne.querySelector("[data-lien-liste]:not([hidden])");
+    if (montree) { montree.focus(); }
+  });
+
+  document.addEventListener("click", function (evenement) {
+    var cible = evenement.target.closest ? evenement.target.closest("[data-lien-ajouter], [data-lien-retirer]") : null;
+    if (!cible) { return; }
+    var champ = cible.closest("[data-liens-evenement]");
+    if (!champ) { return; }
+
+    if (cible.hasAttribute("data-lien-ajouter")) {
+      // Une ligne de plus, copiée du modèle, avec un numéro neuf pour que ses champs ne recouvrent pas ceux des autres.
+      var modele = champ.querySelector("[data-lien-modele]");
+      var numero = parseInt(champ.getAttribute("data-prochain") || "1", 10);
+      champ.setAttribute("data-prochain", String(numero + 1));
+      var gabarit = document.createElement("div");
+      gabarit.innerHTML = modele.innerHTML.replace(/__I__/g, String(numero));
+      var ligne = gabarit.firstElementChild;
+      champ.insertBefore(ligne, cible);
+      var genre = ligne.querySelector("[data-lien-genre]");
+      if (genre) { genre.focus(); }
+      return;
+    }
+
+    // Retirer : la dernière ligne n'est pas enlevée, elle est remise à « Aucun ».
+    var lignes = champ.querySelectorAll("[data-lien-ligne]");
+    var celle = cible.closest("[data-lien-ligne]");
+    if (lignes.length > 1) {
+      celle.parentNode.removeChild(celle);
+    } else {
+      var seul = celle.querySelector("[data-lien-genre]");
+      seul.value = "";
+      ajuster(celle, "");
+    }
+  });
+})();

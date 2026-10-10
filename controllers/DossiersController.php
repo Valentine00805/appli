@@ -32,6 +32,7 @@ final class DossiersController
         }
 
         Vue::afficher('dossiers/index', [
+            'matieres' => Database::all('SELECT id, nom, couleur FROM matieres WHERE user_id = ? ORDER BY nom', [$userId]),
             'dossiers' => $dossiers,
             'descendants' => $descendants,
             'palette'  => self::PALETTE,
@@ -118,6 +119,55 @@ final class DossiersController
         return $ids;
     }
 
+    /** Une matière du compte, ou null (jamais celle d'un autre). */
+    public static function matiereValide(int $userId, mixed $matiereId): ?int
+    {
+        $id = entier_ou_null($matiereId);
+        if ($id === null) {
+            return null;
+        }
+
+        return Database::valeur('SELECT id FROM matieres WHERE id = ? AND user_id = ?', [$id, $userId]) === null ? null : $id;
+    }
+
+    /**
+     * La matière d'un dossier, ou null s'il n'en a pas (ou s'il n'y a pas de dossier).
+     *
+     * C'est elle que reçoit un cours qu'on y range, quand il n'a pas encore de matière. Un dossier garde la sienne : celle de son dossier parent ne
+     * lui est donnée qu'à sa création, pas ensuite.
+     */
+    public static function matiereDu(int $userId, ?int $dossierId): ?int
+    {
+        if ($dossierId === null) {
+            return null;
+        }
+        $m = Database::valeur('SELECT matiere_id FROM dossiers WHERE id = ? AND user_id = ?', [$dossierId, $userId]);
+
+        return $m === null || $m === false ? null : (int) $m;
+    }
+
+    /**
+     * Donne cette matière aux cours de la branche (le dossier et ses sous-dossiers) qui n'en ont pas, et aux sous-dossiers qui n'en ont pas
+     * non plus. Une matière déjà posée n'est jamais remplacée.
+     *
+     * @return int  combien de cours l'ont reçue
+     */
+    public static function appliquerMatiere(int $userId, int $dossierId, int $matiereId): int
+    {
+        $branche = self::avecDescendants($userId, $dossierId);
+        $trous = implode(', ', array_fill(0, count($branche), '?'));
+        $cours = Database::run(
+            'UPDATE cours SET matiere_id = ? WHERE user_id = ? AND matiere_id IS NULL AND dossier_id IN (' . $trous . ')',
+            array_merge([$matiereId, $userId], $branche)
+        )->rowCount();
+        Database::run(
+            'UPDATE dossiers SET matiere_id = ? WHERE user_id = ? AND matiere_id IS NULL AND id IN (' . $trous . ')',
+            array_merge([$matiereId, $userId], $branche)
+        );
+
+        return $cours;
+    }
+
     /** Vérifie qu'un dossier appartient bien au compte. */
     public static function valide(int $userId, mixed $dossierId): ?int
     {
@@ -146,6 +196,8 @@ final class DossiersController
         }
 
         $parent = self::valide($userId, $_POST['parent_id'] ?? null);
+        // La matière choisie ; sans choix, celle du dossier où il se range : un sous-dossier reste dans la matière de son parent.
+        $matiere = self::matiereValide($userId, $_POST['matiere_id'] ?? null) ?? self::matiereDu($userId, $parent);
 
         // Un nouveau dossier se range à la fin de ses frères.
         $rang = (int) Database::valeur(
@@ -155,9 +207,9 @@ final class DossiersController
         );
 
         Database::run(
-            'INSERT INTO dossiers (user_id, parent_id, nom, couleur, icone, position)
-             VALUES (?, ?, ?, ?, ?, ?)',
-            [$userId, $parent, $nom, $this->couleurValide(post('couleur')),
+            'INSERT INTO dossiers (user_id, parent_id, matiere_id, nom, couleur, icone, position)
+             VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [$userId, $parent, $matiere, $nom, $this->couleurValide(post('couleur')),
              $this->iconeValide(post('icone')), $rang]
         );
 
@@ -172,7 +224,7 @@ final class DossiersController
         Session::verifierCsrf();
         $userId = Auth::id();
 
-        $avant = Database::one('SELECT nom, parent_id FROM dossiers WHERE id = ? AND user_id = ?',
+        $avant = Database::one('SELECT nom, parent_id, matiere_id FROM dossiers WHERE id = ? AND user_id = ?',
             [$id, $userId]);
         if ($avant === null) {
             $this->introuvable();
@@ -206,6 +258,19 @@ final class DossiersController
              $this->iconeValide(post('icone')), $id, $userId]
         );
 
+        // La matière : seulement si le formulaire en parle (celui de la colonne des cours, plus ancien, n'y touche pas).
+        $matiereDonnee = 0;
+        $matiereChangee = false;
+        if (array_key_exists('matiere_id', $_POST)) {
+            $matiere = self::matiereValide($userId, $_POST['matiere_id']);
+            $matiereChangee = ($avant['matiere_id'] === null ? null : (int) $avant['matiere_id']) !== $matiere;
+            Database::run('UPDATE dossiers SET matiere_id = ? WHERE id = ? AND user_id = ?', [$matiere, $id, $userId]);
+            // Les cours du dossier (et de ses sous-dossiers) qui n'ont pas de matière la reçoivent, si on le demande.
+            if ($matiere !== null && (string) ($_POST['appliquer_matiere'] ?? '') === '1') {
+                $matiereDonnee = self::appliquerMatiere($userId, $id, $matiere);
+            }
+        }
+
         /*
          * Un même formulaire sert à renommer et à déplacer : le message dit ce
          * qui a bougé, plutôt que d'annoncer un renommage qui n'a pas eu lieu.
@@ -216,12 +281,17 @@ final class DossiersController
             ? t('dos.fl.racine')
             : t('dos.fl.dans', ['nom' => (string) Database::valeur('SELECT nom FROM dossiers WHERE id = ?', [$parent])]);
 
-        Session::flash('succes', match (true) {
+        $message = match (true) {
             $renomme && $deplace => t('dos.fl.renomme_range', ['nom' => $nom, 'ou' => $ou]),
             $deplace             => t('dos.fl.range', ['nom' => $nom, 'ou' => $ou]),
             $renomme             => t('dos.fl.renomme', ['nom' => $nom]),
+            $matiereChangee      => t('dos.fl.matiere_changee', ['nom' => $nom]),
             default              => t('dos.fl.inchange', ['nom' => $nom]),
-        });
+        };
+        if ($matiereDonnee > 0) {
+            $message .= ' ' . tn('dos.fl.matiere_donnee', $matiereDonnee);
+        }
+        Session::flash('succes', $message);
         // Modifier depuis la colonne des cours ne doit pas déporter ailleurs.
         repartir_vers('organisation/dossiers');
     }

@@ -50,6 +50,7 @@
     <?php if ($dossiers === []): ?>
       <?= Vue::rendre('cours/_nouveau-dossier', [
           'dossiers' => $dossiers,
+          'matieres' => $matieres,
           'dossierId' => $dossierId,
           'dansEntete' => true,
       ]) ?>
@@ -284,6 +285,9 @@ $descendanceDe = static function (int $id) use (&$descendanceDe, $enfantsDe): ar
                   <?php endforeach; ?>
                 </select>
 
+                <?= Vue::rendre('dossiers/_matiere', ['matieres' => $matieres, 'choisie' => $d['matiere_id'] === null ? null : (int) $d['matiere_id'], 'idChamp' => 'mat-colonne-' . (int) $d['id'], 'court' => true]) ?>
+                <input type="hidden" name="appliquer_matiere" value="1">
+
                 <button class="bouton bouton--petit bouton--bloc" type="submit"><?= e(t('commun.enregistrer')) ?></button>
               </form>
 
@@ -342,6 +346,7 @@ $descendanceDe = static function (int $id) use (&$descendanceDe, $enfantsDe): ar
     ?>
     <?= Vue::rendre('cours/_nouveau-dossier', [
         'dossiers' => $dossiers,
+        'matieres' => $matieres,
         'dossierId' => $dossierId,
     ]) ?>
 

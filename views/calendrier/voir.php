@@ -119,10 +119,20 @@ $ligne = static function (string $etiquette, string $valeur): string {
         . ';color:' . e(couleur_texte((string) $evenement['type_couleur'])) . '">'
         . e((string) $evenement['type_icone'] . ' ' . (string) $evenement['type_nom']) . '</span>');
     echo $ligne(t('evt.matiere'), e((string) ($evenement['matiere_nom'] ?? '')));
-    echo $ligne(t('evt.cours_lie'), (string) ($evenement['cours_titre'] ?? '') === '' ? '' :
-        // Dans la fenêtre de l'évènement, le cours s'ouvre dans la même fenêtre (la flèche ← ramène à l'évènement).
-        '<a href="' . url('cours/' . (int) $evenement['cours_id']) . '"' . ($dansUneFenetre ? ' data-fenetre' : '') . '>'
-        . e((string) $evenement['cours_titre']) . '</a>');
+    // Tous les cours et dossiers liés, pas seulement le premier.
+    $liesDossiers = [];
+    $liesCours = [];
+    foreach (EvenementLiens::de((int) $evenement['id'], (int) $evenement['user_id']) as $lie) {
+        if ($lie['genre'] === 'dossier') {
+            // Le dossier s'ouvre dans la liste des cours, réduite à lui.
+            $liesDossiers[] = '<a href="' . url('cours', ['dossier' => $lie['id']]) . '">📁 ' . e($lie['nom']) . '</a>';
+        } else {
+            // Dans la fenêtre de l'évènement, le cours s'ouvre dans la même fenêtre (la flèche ← ramène à l'évènement).
+            $liesCours[] = '<a href="' . url('cours/' . $lie['id']) . '"' . ($dansUneFenetre ? ' data-fenetre' : '') . '>' . e($lie['nom']) . '</a>';
+        }
+    }
+    echo $ligne(t('evt.dossier_lie'), implode(' · ', $liesDossiers));
+    echo $ligne(t('evt.cours_lie'), implode(' · ', $liesCours));
     echo $ligne(t('evt.etat'), (int) $evenement['termine'] === 1 ? e(t('evt.termine')) : '');
     // Les rappels : seulement s'il y en a, dits comme dans le formulaire.
     $rappels = Rappels::dire((string) ($evenement['rappels'] ?? ''));

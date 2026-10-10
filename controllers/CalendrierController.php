@@ -221,7 +221,7 @@ final class CalendrierController
 
         $evenement = Database::one(
             'SELECT e.*, m.nom AS matiere_nom, m.couleur AS matiere_couleur,
-                    c.titre AS cours_titre,
+                    c.titre AS cours_titre, d.nom AS dossier_nom,
                     t.nom AS type_nom, t.icone AS type_icone, t.couleur AS type_couleur,
                     oc.nom AS agenda_nom, oc.couleur AS agenda_couleur,
                     oc.proprietaire AS agenda_proprietaire, oc.partage AS agenda_partage,
@@ -229,6 +229,7 @@ final class CalendrierController
                FROM evenements e
                LEFT JOIN matieres m        ON m.id = e.matiere_id
                LEFT JOIN cours c           ON c.id = e.cours_id
+               LEFT JOIN dossiers d        ON d.id = e.dossier_id
                LEFT JOIN types_evenement t ON t.id = e.type_id
                LEFT JOIN agenda_liens ol   ON ol.evenement_id = e.id AND ol.user_id = e.user_id
                LEFT JOIN agenda_calendriers oc
@@ -315,6 +316,7 @@ final class CalendrierController
 
             'matieres'   => $this->matieres($userId),
             'coursListe' => Database::all('SELECT id, titre FROM cours WHERE user_id = ? ORDER BY titre', [$userId]),
+            'dossiersListe' => DossiersController::pourUtilisateur($userId),
             'dateDefaut' => $dateDefaut,
             'retour'     => self::retourInterne($_GET['retour'] ?? null),
             'types'      => TypesEvenementController::pourUtilisateur($userId),
@@ -466,13 +468,14 @@ final class CalendrierController
     private function poser(int $userId, array $donnees, ?int $serieId, ?array $quand): int
     {
         Database::run(
-            'INSERT INTO evenements (user_id, matiere_id, cours_id, serie_id, type_id, titre,
+            'INSERT INTO evenements (user_id, matiere_id, cours_id, dossier_id, serie_id, type_id, titre,
                                      description, lieu, debut, fin, journee_entiere, rappels)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             [
                 $userId,
                 $donnees['matiere_id'],
                 $donnees['cours_id'],
+                $donnees['dossier_id'],
                 $serieId,
                 $donnees['type_id'],
                 $donnees['titre'],
@@ -486,6 +489,7 @@ final class CalendrierController
         );
 
         $id = Database::dernierId();
+        EvenementLiens::ecrire($id, $donnees['liens'] ?? []);
         Agenda::viser($id, $donnees['agendas']);
 
         return $id;
@@ -912,12 +916,13 @@ final class CalendrierController
 
         Database::run(
             'UPDATE evenements
-             SET matiere_id = ?, cours_id = ?, type_id = ?, titre = ?, description = ?, lieu = ?,
+             SET matiere_id = ?, cours_id = ?, dossier_id = ?, type_id = ?, titre = ?, description = ?, lieu = ?,
                  debut = ?, fin = ?, journee_entiere = ?, rappels = ?
              WHERE id = ? AND user_id = ?',
             [
                 $donnees['matiere_id'],
                 $donnees['cours_id'],
+                $donnees['dossier_id'],
                 $donnees['type_id'],
                 $donnees['titre'],
                 $donnees['description'],
@@ -949,6 +954,8 @@ final class CalendrierController
         if ($souci !== null) {
             Session::flash('erreur', t('flash.agenda_non_porte', ['souci' => $souci]));
         }
+
+        EvenementLiens::ecrire($id, $donnees['liens'] ?? []);
 
         Session::flash('succes', t('flash.evt_maj'));
         $apres($donnees);
@@ -992,11 +999,11 @@ final class CalendrierController
 
             Database::run(
                 'UPDATE evenements
-                    SET matiere_id = ?, cours_id = ?, type_id = ?, titre = ?, description = ?,
+                    SET matiere_id = ?, cours_id = ?, dossier_id = ?, type_id = ?, titre = ?, description = ?,
                         lieu = ?, debut = ?, fin = ?, journee_entiere = ?, rappels = ?
                   WHERE id = ? AND user_id = ?',
                 [
-                    $donnees['matiere_id'], $donnees['cours_id'], $donnees['type_id'],
+                    $donnees['matiere_id'], $donnees['cours_id'], $donnees['dossier_id'], $donnees['type_id'],
                     $donnees['titre'], $donnees['description'], $donnees['lieu'],
                     $neuf->format('Y-m-d H:i:s'), $fin->format('Y-m-d H:i:s'),
                     $donnees['journee_entiere'], $donnees['rappels'],
@@ -1004,6 +1011,7 @@ final class CalendrierController
                 ]
             );
 
+            EvenementLiens::ecrire((int) $occurrence['id'], $donnees['liens'] ?? []);
             Agenda::viser((int) $occurrence['id'], $donnees['agendas']);
         }
 
@@ -1048,13 +1056,14 @@ final class CalendrierController
         }
 
         Database::run(
-            'INSERT INTO evenements (user_id, matiere_id, cours_id, copie_de, type_id, titre,
+            'INSERT INTO evenements (user_id, matiere_id, cours_id, dossier_id, copie_de, type_id, titre,
                                      description, lieu, debut, fin, journee_entiere, rappels)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             [
                 $userId,
                 $donnees['matiere_id'],
                 $donnees['cours_id'],
+                $donnees['dossier_id'],
                 $origine,
                 $donnees['type_id'],
                 $donnees['titre'],
@@ -1068,6 +1077,7 @@ final class CalendrierController
         );
 
         $copie = Database::dernierId();
+        EvenementLiens::ecrire($copie, $donnees['liens'] ?? []);
         Agenda::viser($copie, $donnees['agendas']);
 
         Session::flash('succes', t('flash.evt_copie'));
@@ -1167,7 +1177,7 @@ final class CalendrierController
          */
         [$nomDest, $couleurDest] = self::agendaDeDestination();
 
-        $sql = 'SELECT e.*, m.nom AS matiere_nom, m.couleur AS matiere_couleur, c.titre AS cours_titre,
+        $sql = 'SELECT e.*, m.nom AS matiere_nom, m.couleur AS matiere_couleur, c.titre AS cours_titre, d.nom AS dossier_nom,
                        t.nom AS type_nom, t.icone AS type_icone, t.couleur AS type_couleur, t.est_echeance,
                        ol.calendrier AS outlook_calendrier,
                        COALESCE(oc.nom, ' . $nomDest . ') AS agenda_nom,
@@ -1175,6 +1185,7 @@ final class CalendrierController
                 FROM evenements e
                 LEFT JOIN matieres m        ON m.id = e.matiere_id
                 LEFT JOIN cours c           ON c.id = e.cours_id
+                LEFT JOIN dossiers d        ON d.id = e.dossier_id
                 LEFT JOIN types_evenement t ON t.id = e.type_id
                 LEFT JOIN agenda_liens ol  ON ol.evenement_id = e.id AND ol.user_id = e.user_id
                 LEFT JOIN agenda_calendriers oc
@@ -1557,11 +1568,18 @@ final class CalendrierController
             return t('err.fin_avant_debut');
         }
 
-        $coursId = entier_ou_null($_POST['cours_id'] ?? null);
-        if ($coursId !== null
-            && Database::valeur('SELECT id FROM cours WHERE id = ? AND user_id = ?', [$coursId, $userId]) === null) {
-            $coursId = null;
+        // Des cours et des dossiers, autant qu'on en veut : chaque ligne « Lier à » dit son genre (« lien[0][genre] »), puis son cours ou son
+        // dossier. Seule la liste du genre choisi compte. L'ancien champ « cours_id » (un seul cours) reste lu.
+        if (is_array($_POST['lien'] ?? null)) {
+            $liens = EvenementLiens::depuisFormulaire($userId, $_POST['lien']);
+        } else {
+            $ancien = entier_ou_null($_POST['cours_id'] ?? null);
+            $liens = $ancien !== null
+                && Database::valeur('SELECT id FROM cours WHERE id = ? AND user_id = ?', [$ancien, $userId]) !== null
+                ? [['cours', $ancien]] : [];
         }
+        // Les colonnes de l'évènement gardent le premier cours et le premier dossier ; la table, tous.
+        [$coursId, $dossierId] = EvenementLiens::premiers($liens);
         $matiereId = entier_ou_null($_POST['matiere_id'] ?? null);
         if ($matiereId !== null
             && Database::valeur('SELECT id FROM matieres WHERE id = ? AND user_id = ?', [$matiereId, $userId]) === null) {
@@ -1580,6 +1598,8 @@ final class CalendrierController
             'agendas'         => Agenda::ciblesValides($userId, is_array($coches) ? $coches : []),
             'matiere_id'      => $matiereId,
             'cours_id'        => $coursId,
+            'dossier_id'      => $dossierId,
+            'liens'           => $liens,
             'type_id'         => $typeId,
             'titre'           => mb_substr($titre, 0, 200),
             'description'     => TexteRiche::depuisFormulaire(post('description')) ?: null,

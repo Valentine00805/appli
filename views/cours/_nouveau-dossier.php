@@ -43,6 +43,11 @@ $dansEntete = $dansEntete ?? false;
       </select>
     <?php endif; ?>
 
+    <?php // La matière du dossier : les cours qu'on y range la reçoivent (facultatif). ?>
+    <?php if (!empty($matieres)): ?>
+      <?= Vue::rendre('dossiers/_matiere', ['matieres' => $matieres, 'choisie' => null, 'idChamp' => 'nouveau-dossier-matiere' . ($dansEntete ? '-entete' : ''), 'court' => true]) ?>
+    <?php endif; ?>
+
     <button class="bouton bouton--petit bouton--bloc" type="submit"><?= e(t('cours.creer_dossier')) ?></button>
   </form>
 </details>

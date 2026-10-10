@@ -36,6 +36,7 @@ $estPartage = !empty($evt['est_partage']);
         if (!empty($evt['matiere_nom'])) { echo ' · ' . e($evt['matiere_nom']); }
         if (!empty($evt['lieu'])) { echo ' · 📍 ' . e($evt['lieu']); }
         if (!empty($evt['cours_titre'])) { echo ' · 📘 ' . e($evt['cours_titre']); }
+        if (!empty($evt['dossier_nom'])) { echo ' · 📁 ' . e($evt['dossier_nom']); }
       ?>
     </span>
     <?php if (!empty($evt['description'])): ?>
@@ -90,6 +91,11 @@ $estPartage = !empty($evt['est_partage']);
            title="<?= e(t('evt.ouvrir_fiche')) ?>">
           <?= e(t('cal.revision_bouton')) ?>
         </a>
+      <?php endif; ?>
+      <?php // Lié à un dossier de cours : un bouton pour l'ouvrir. ?>
+      <?php if (!empty($evt['dossier_id']) && !empty($evt['dossier_nom'])): ?>
+        <a class="bouton bouton--secondaire" href="<?= url('cours', ['dossier' => (int) $evt['dossier_id']]) ?>"
+           title="<?= e(t('evt.ouvrir_dossier')) ?> : <?= e((string) $evt['dossier_nom']) ?>"><?= e(t('cal.dossier_bouton')) ?></a>
       <?php endif; ?>
       <a class="bouton bouton--discret bouton--petit" href="<?= url('evenements/' . $evt['id'] . '/modifier') ?>"
          title="<?= e(t('evt.modifier')) ?>">✎</a>

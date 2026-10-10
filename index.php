@@ -60,6 +60,7 @@ require __DIR__ . '/src/Conversations.php';
 require __DIR__ . '/src/Serveurs.php';
 require __DIR__ . '/src/CalendriersAmis.php';
 require __DIR__ . '/src/LiensEvenements.php';
+require __DIR__ . '/src/EvenementLiens.php';
 require __DIR__ . '/src/Partages.php';
 require __DIR__ . '/src/Difference.php';
 require __DIR__ . '/src/PlanningJour.php';

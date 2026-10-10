@@ -4666,3 +4666,22 @@ a.serveur-carte:hover, a.serveur-carte:focus-visible { border-color: var(--accen
 .diapo__tableau { width: 100%; height: 100%; border-collapse: collapse; table-layout: fixed; }
 .diapo__tableau td { border: .12cqw solid #cbd5e1; vertical-align: top; padding: 0; }
 .diapo__libre { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+
+/* La couleur libre d'un choix de couleur : un anneau en arc-en-ciel autour de la couleur choisie ; le nuancier du navigateur, invisible, la couvre. */
+.choix-couleurs__libre { position: relative; display: inline-block; width: 26px; height: 26px; border-radius: 50%; }
+.choix-couleurs__pastille {
+  position: absolute; inset: 0; border-radius: 50%; border: 2px solid transparent;
+  background: radial-gradient(circle, var(--c, #4f46e5) 0 46%, transparent 48%), conic-gradient(#f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00);
+}
+.choix-couleurs .choix-couleurs__nuancier { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; padding: 0; border: 0; }
+.choix-couleurs input[data-libre]:checked + .choix-couleurs__pastille { box-shadow: 0 0 0 2px var(--fond-carte), 0 0 0 4px var(--texte); transform: scale(1.12); }
+.choix-couleurs__libre:focus-within .choix-couleurs__pastille { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* Le choix du cours ou du dossier lié à un évènement : la liste du genre choisi, sous le genre. */
+.lien-liste { margin-top: .5rem; }
+.lien-liste[hidden] { display: none !important; }
+
+/* Une ligne « Lier à » : le genre, sa liste, et la croix qui la retire. */
+.lien-ligne { display: flex; align-items: flex-start; gap: .4rem; margin-top: .5rem; }
+.lien-ligne__champs { flex: 1; min-width: 0; }
+.lien-ligne .lien-liste { width: 100%; }
+.lien-ajouter { margin-top: .6rem; }

@@ -95,6 +95,10 @@
                   <a class="bouton bouton--secondaire" href="<?= url('revision/' . $coursId) ?>" data-fenetre
                      title="<?= e(t('kb.ouvrir_fiche')) ?>"><?= e(t('accueil.fiche_revision')) ?></a>
                 <?php endif; ?>
+                <?php if (!empty($evt['dossier_id']) && !empty($evt['dossier_nom'])): ?>
+                  <a class="bouton bouton--secondaire" href="<?= url('cours', ['dossier' => (int) $evt['dossier_id']]) ?>"
+                     title="<?= e(t('evt.ouvrir_dossier')) ?> : <?= e((string) $evt['dossier_nom']) ?>"><?= e(t('accueil.dossier')) ?></a>
+                <?php endif; ?>
                 <a class="bouton bouton--discret bouton--petit" data-fenetre
                    href="<?= url('evenements/' . $evt['id'] . '/modifier', ['retour' => '/']) ?>" title="<?= e(t('accueil.modifier')) ?>">✎</a>
               </span>
