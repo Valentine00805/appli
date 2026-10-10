@@ -4684,7 +4684,20 @@ a.serveur-carte:hover, a.serveur-carte:focus-visible { border-color: var(--accen
 .lien-ligne { display: flex; align-items: flex-start; gap: .4rem; margin-top: .5rem; }
 .lien-ligne__champs { flex: 1; min-width: 0; }
 .lien-ligne .lien-liste { width: 100%; }
-.lien-ajouter { margin-top: .6rem; }
+/* Le « + » qui ajoute une ligne de lien : même gabarit que « Nouveau calendrier » — pointillés et pastille d'accent, qui se remplit au survol. */
+.lien-ajouter {
+  display: flex; align-items: center; justify-content: center; gap: .5rem; width: 100%; margin-top: .7rem; padding: .55rem .8rem;
+  border: 1.5px dashed var(--accent); border-radius: var(--rayon-s); background: var(--accent-doux); color: var(--accent);
+  font: inherit; font-weight: 600; font-size: .88rem; line-height: 1.25; text-align: left; cursor: pointer;
+  transition: background .15s, color .15s, transform .15s;
+}
+.lien-ajouter:hover, .lien-ajouter:focus-visible { background: var(--accent); color: #fff; border-style: solid; }
+.lien-ajouter:active { transform: scale(.98); }
+.lien-ajouter__icone {
+  flex: none; display: inline-grid; place-items: center; width: 1.35rem; height: 1.35rem; border-radius: 50%;
+  background: var(--accent); color: #fff; line-height: 1; transition: background .15s, color .15s;
+}
+.lien-ajouter:hover .lien-ajouter__icone, .lien-ajouter:focus-visible .lien-ajouter__icone { background: #fff; color: var(--accent); }
 
 /* Les adresses d'un lieu : longues, elles se coupent plutôt que de déborder. */
 .lien-externe { overflow-wrap: anywhere; }

@@ -466,8 +466,8 @@ $matiereActive = $edition ? entier_ou_null($evenement['matiere_id']) : null;
           }
           ?>
           <template data-lien-modele><?php $ligneLien('__I__', '', null); ?></template>
-          <button type="button" class="bouton bouton--secondaire bouton--petit lien-ajouter" data-lien-ajouter>
-            + <?= e(t('evtf.lien_ajouter')) ?>
+          <button type="button" class="lien-ajouter" data-lien-ajouter>
+            <span class="lien-ajouter__icone" aria-hidden="true">＋</span> <?= e(t('evtf.lien_ajouter')) ?>
           </button>
           <span class="champ__aide"><?= e(t('evtf.cours_aide')) ?></span>
         </div>
