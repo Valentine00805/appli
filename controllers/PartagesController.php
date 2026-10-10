@@ -383,6 +383,10 @@ final class PartagesController
             && Partages::maMatiere($moi, $cible['matiere_nom']) !== null) {
             Partages::ajouterMatiere($moi, $type, $id);
         }
+        // Dans un travail de groupe : le document se modifie ici, par tout le groupe — son propriétaire compris, qui n'a pas à passer
+        // par son cours (ce qu'il écrit d'ici ou de chez lui est le même texte, vu de tous).
+        $projetsDuDocument = in_array($type, ['cours', 'dossier'], true) && (!$leMien || $apercuProprio)
+            ? Travaux::projetsDuDocument($moi, $type, $id) : [];
         $donnees = [
             'type' => $type,
             'cible' => $cible,
@@ -395,7 +399,7 @@ final class PartagesController
             'mesCours' => $type === 'fichier'
                 ? Database::all('SELECT id, titre FROM cours WHERE user_id = ? ORDER BY titre', [$moi]) : [],
             'recu' => Database::valeur('SELECT 1 FROM partages_amis WHERE destinataire_id = ? AND cible_type = ? AND cible_id = ?', [$moi, $type, $id]) !== null,
-            'droit' => $apercuProprio ? 'lecture' : (Partages::droit($type, $id, $moi) ?? 'lecture'),
+            'droit' => $apercuProprio ? ($type === 'cours' && $projetsDuDocument !== [] ? 'modification' : 'lecture') : (Partages::droit($type, $id, $moi) ?? 'lecture'),
             'commentaires' => Partages::commentaires($type, $id, $moi),
             'adresseIcs' => url('partages/evenements/' . $id . '/ics'),
             'afficheDOffice' => $type === 'evenement' && Partages::afficheDOffice($moi, (int) $cible['user_id']),
@@ -405,7 +409,7 @@ final class PartagesController
                 : ($leMien ? null : Partages::maCopie($moi, $type, $id)),
             'mot' => $mot,
             // Dans un travail de groupe : le document se modifie ici, par tout le groupe ; une copie à soi reste indépendante.
-            'projetsDuDocument' => !$leMien && in_array($type, ['cours', 'dossier'], true) ? Travaux::projetsDuDocument($moi, $type, $id) : [],
+            'projetsDuDocument' => $projetsDuDocument,
             // L'aperçu de mon propre document : pas de copie à proposer, mais de quoi ouvrir le vrai.
             'apercuProprio' => $apercuProprio,
             'urlDuMien' => $apercuProprio ? match ($type) {
@@ -625,6 +629,10 @@ final class PartagesController
         }
         $cible = Partages::cible($type, $id);
         if ($cible !== null && (int) $cible['user_id'] === Auth::id()) {
+            // Écrit depuis l'aperçu de son cours (dans un projet) : on y reste.
+            if (($_POST['apercu'] ?? '') === '1' && in_array($type, ['cours', 'fiche', 'dossier'], true)) {
+                redirect('partages/' . Partages::mot($type) . '/' . $id, ['apercu' => 1]);
+            }
             redirect(match ($type) {
                 'cours' => 'cours/' . $id,
                 'fiche' => 'revision/' . $id,

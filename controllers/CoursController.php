@@ -746,6 +746,18 @@ final class CoursController
         $nom = (string) $fichier['nom_origine'];
         $genre = (string) ApercuDocument::genre($nom);
 
+        // Une présentation PowerPoint se montre en diapositives, mise en page comprise ; « ?texte=1 » donne son texte seul. Si la lecture des
+        // diapositives échoue (fichier abîmé ou insolite), on retombe sur le texte, qui vaut mieux que rien.
+        $diaporama = null;
+        $texteSeul = (string) ($_GET['texte'] ?? '') === '1';
+        if (ApercuPresentation::possible($nom) && !$texteSeul) {
+            try {
+                $diaporama = ApercuPresentation::lire((string) $chemin, static fn (string $partie): string => url('fichiers/' . $id . '/diapo-media', ['m' => $partie]));
+            } catch (Throwable) {
+                $diaporama = null;
+            }
+        }
+
         $paragraphes = [];
         $enrichis = [];
         $sommaire = 0;
@@ -756,7 +768,10 @@ final class CoursController
         $erreur = null;
 
         try {
-            switch ($genre) {
+            switch ($diaporama !== null ? 'diaporama' : $genre) {
+                case 'diaporama':
+                    // Les diapositives sont déjà lues : rien d'autre à préparer.
+                    break;
                 case 'tableur':
                     ['lignes' => $lignes, 'total' => $total] = ApercuDocument::tableau((string) $chemin, $nom);
                     break;
@@ -820,6 +835,9 @@ final class CoursController
             'limite'      => ApercuDocument::LIGNES_MAX,
             'erreur'      => $erreur,
             'format'      => ApercuDocument::format($nom),
+            'diaporama'   => $diaporama,
+            // Un .pptx en texte seul propose de revenir aux diapositives.
+            'peutDiapos'  => ApercuPresentation::possible($nom) && $texteSeul,
         ];
 
         // Depuis la page du cours, l'aperçu s'ouvre dans une fenêtre, par-dessus
@@ -831,6 +849,35 @@ final class CoursController
         }
 
         Vue::afficher('cours/apercu', $donnees, $nom);
+    }
+
+    /**
+     * Le titre d'un cours créé par un dépôt : le nom du fichier sans son extension — ou, pour un fichier gardé comme tel, le nom entier,
+     * extension comprise (rapport.pdf), puisque c'est ce qu'on veut y lire.
+     */
+    private static function titreDepose(string $nom, bool $enFichier): string
+    {
+        $titre = $enFichier ? $nom : (pathinfo($nom, PATHINFO_FILENAME) ?: $nom);
+        $titre = trim(mb_substr($titre, 0, 200));
+
+        return $titre === '' ? 'Document' : $titre;
+    }
+
+    /** Crée le cours d'un fichier déposé ; « fichier » le montre sous son nom plutôt que comme un cours. */
+    private static function insererCoursDepose(int $userId, ?int $dossier, string $titre, bool $enFichier): void
+    {
+        if ($enFichier) {
+            Database::run(
+                'INSERT INTO cours (user_id, matiere_id, dossier_id, titre, contenu, est_fichier) VALUES (?, NULL, ?, ?, NULL, 1)',
+                [$userId, $dossier, $titre]
+            );
+
+            return;
+        }
+        Database::run(
+            'INSERT INTO cours (user_id, matiere_id, dossier_id, titre, contenu) VALUES (?, NULL, ?, ?, NULL)',
+            [$userId, $dossier, $titre]
+        );
     }
 
     /** Jusqu'où l'on recrée l'arborescence d'un dossier déposé. */
@@ -854,6 +901,7 @@ final class CoursController
         $userId = Auth::id();
 
         $racine = DossiersController::valide($userId, $_POST['dossier'] ?? null);
+        $enFichier = ($_POST['mode'] ?? '') === 'fichiers';
         $chemins = array_values((array) ($_POST['chemins'] ?? []));
         $noms = $_FILES['fichiers']['name'] ?? null;
 
@@ -875,15 +923,9 @@ final class CoursController
             [$parent, $nes] = $this->dossierDuChemin($userId, $racine, is_string($chemin) ? $chemin : '');
             $dossiers += $nes;
 
-            $titre = trim(mb_substr(pathinfo($nom, PATHINFO_FILENAME) ?: $nom, 0, 200));
-            if ($titre === '') {
-                $titre = 'Document';
-            }
+            $titre = self::titreDepose($nom, $enFichier);
 
-            Database::run(
-                'INSERT INTO cours (user_id, matiere_id, dossier_id, titre, contenu) VALUES (?, NULL, ?, ?, NULL)',
-                [$userId, $parent, $titre]
-            );
+            self::insererCoursDepose($userId, $parent, $titre, $enFichier);
             $coursId = Database::dernierId();
 
             // Le fichier de rang $i, présenté seul au service d'enregistrement.
@@ -997,6 +1039,8 @@ final class CoursController
 
         $dossier = DossiersController::valide($userId, $_POST['dossier'] ?? null);
         $noms = $_FILES['fichiers']['name'] ?? null;
+        // « Seulement les fichiers » : pas de cours à écrire, le fichier paraît dans le dossier sous son nom et son extension.
+        $enFichier = ($_POST['mode'] ?? '') === 'fichiers';
 
         if (!is_array($noms) || $noms === []) {
             Session::flash('erreur', t('cours.fl.aucun_fichier'));
@@ -1010,15 +1054,9 @@ final class CoursController
             }
 
             $nom = (string) $noms[$i];
-            $titre = mb_substr(pathinfo($nom, PATHINFO_FILENAME) ?: $nom, 0, 200);
-            if (trim($titre) === '') {
-                $titre = 'Document';
-            }
+            $titre = self::titreDepose($nom, $enFichier);
 
-            Database::run(
-                'INSERT INTO cours (user_id, matiere_id, dossier_id, titre, contenu) VALUES (?, NULL, ?, ?, NULL)',
-                [$userId, $dossier, $titre]
-            );
+            self::insererCoursDepose($userId, $dossier, $titre, $enFichier);
             $coursId = Database::dernierId();
 
             // Le fichier de rang $i, présenté seul au service d'enregistrement.
@@ -1371,6 +1409,36 @@ final class CoursController
      * le navigateur garde la sienne, et une page qui en compte trente ne
      * rouvre pas trente fois l'archive à chaque défilement.
      */
+    /** Une image d'une présentation PowerPoint, lue dans l'archive : seulement le dossier des médias, et seulement pour son propriétaire. */
+    public function mediaDiapo(int $id): void
+    {
+        Auth::exiger();
+        $fichier = Database::one('SELECT * FROM fichiers WHERE id = ? AND user_id = ?', [$id, Auth::id()]);
+        if ($fichier === null || !ApercuPresentation::possible((string) $fichier['nom_origine'])) {
+            $this->introuvable();
+        }
+        $chemin = $this->cheminDe($fichier);
+        $image = ApercuPresentation::media($chemin, (string) ($_GET['m'] ?? ''));
+        if ($image === null) {
+            $this->introuvable();
+        }
+        $marque = '"' . md5($id . ':' . (string) ($_GET['m'] ?? '') . ':' . (string) @filemtime($chemin)) . '"';
+        if (trim((string) ($_SERVER['HTTP_IF_NONE_MATCH'] ?? '')) === $marque) {
+            http_response_code(304);
+            exit;
+        }
+        header('Content-Type: ' . $image['type']);
+        header('Content-Length: ' . (string) strlen($image['octets']));
+        header('Content-Disposition: inline');
+        // Le type annoncé fait foi : pas de reniflage, pas de script déguisé en image.
+        header('X-Content-Type-Options: nosniff');
+        header("Content-Security-Policy: default-src 'none'");
+        header('ETag: ' . $marque);
+        header('Cache-Control: private, max-age=86400');
+        echo $image['octets'];
+        exit;
+    }
+
     public function imageFichier(int $id): void
     {
         Auth::exiger();
@@ -1548,7 +1616,11 @@ final class CoursController
     ): array {
         $sql = 'SELECT c.*, m.nom AS matiere_nom, m.couleur AS matiere_couleur,
                        d.nom AS dossier_nom, d.couleur AS dossier_couleur, d.icone AS dossier_icone,
-                       (SELECT COUNT(*) FROM fichiers f WHERE f.cours_id = c.id) AS nb_fichiers
+                       (SELECT COUNT(*) FROM fichiers f WHERE f.cours_id = c.id) AS nb_fichiers,
+                       (SELECT f.id FROM fichiers f WHERE f.cours_id = c.id AND f.pour_fiche = 0 ORDER BY f.id LIMIT 1) AS fichier_id,
+                       (SELECT f.nom_origine FROM fichiers f WHERE f.cours_id = c.id AND f.pour_fiche = 0 ORDER BY f.id LIMIT 1) AS fichier_nom,
+                       (SELECT f.mime FROM fichiers f WHERE f.cours_id = c.id AND f.pour_fiche = 0 ORDER BY f.id LIMIT 1) AS fichier_mime,
+                       (SELECT f.taille FROM fichiers f WHERE f.cours_id = c.id AND f.pour_fiche = 0 ORDER BY f.id LIMIT 1) AS fichier_taille
                 FROM cours c
                 LEFT JOIN matieres m ON m.id = c.matiere_id
                 LEFT JOIN dossiers d ON d.id = c.dossier_id

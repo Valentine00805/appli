@@ -39,6 +39,7 @@ require __DIR__ . '/src/CarteMentale.php';
 require __DIR__ . '/src/Diaporama.php';
 require __DIR__ . '/src/Fichiers.php';
 require __DIR__ . '/src/ApercuDocument.php';
+require __DIR__ . '/src/ApercuPresentation.php';
 require __DIR__ . '/src/ImagesDocument.php';
 require __DIR__ . '/src/EditionDocument.php';
 require __DIR__ . '/src/ReleveCsv.php';
@@ -516,6 +517,7 @@ $routes = [
     ['GET',  'fichiers/{id}',             [CoursController::class, 'telechargerFichier']],
     ['GET',  'fichiers/{id}/apercu',      [CoursController::class, 'apercuFichier']],
     ['GET',  'fichiers/{id}/image',       [CoursController::class, 'imageFichier']],
+    ['GET',  'fichiers/{id}/diapo-media', [CoursController::class, 'mediaDiapo']],
     ['GET',  'fichiers/{id}/pdf',         [CoursController::class, 'pdfFichier']],
     ['GET',  'cours/{id}/pdf',            [CoursController::class, 'pdfCours']],
     ['GET',  'fichiers/{id}/modifier',    [CoursController::class, 'modifierFichier']],

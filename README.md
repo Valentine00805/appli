@@ -12,9 +12,11 @@ allemand) et avec un thème clair ou sombre.
 ### Étudier
 
 - **Cours** — un texte riche et autant de pièces jointes qu'on veut (PDF, images, Word, PowerPoint, Excel, texte,
-  audio, vidéo, archives ; 200 Mo par fichier), avec aperçu des documents et lecteur audio/vidéo qui reprend là où on
+  audio, vidéo, archives ; 200 Mo par fichier), avec aperçu des documents (les présentations PowerPoint s'y lisent **en diapositives, mises en page**) et lecteur audio/vidéo qui reprend là où on
   s'est arrêté. Un cours a une **matière**, des **tags**, peut être rangé dans un **dossier** et marqué en favori ;
-  une recherche unique parcourt les cours et le calendrier.
+  une recherche unique parcourt les cours et le calendrier. On y **glisse des fichiers (ou des dossiers) depuis son ordinateur**,
+  n'importe où sur la page : un cours par fichier, ou seulement les fichiers, qui paraissent alors dans le dossier sous leur nom
+  et leur extension et s'ouvrent d'un clic.
 - **Révision** — la fiche de révision de chaque cours, avec un état choisi (à réviser, en cours, révisée), une barre
   d'avancement au total et par matière, des anneaux d'avancement sur les enregistrements, et une version imprimable
   ou exportable en PDF.

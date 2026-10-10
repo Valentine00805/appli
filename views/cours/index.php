@@ -31,7 +31,8 @@
     <span class="import-dossier" data-import-dossier hidden
           data-url="<?= url('cours/depot-dossier') ?>"
           data-jeton="<?= e(Session::jetonCsrf()) ?>"
-          data-dossier="<?= $dossierId === null ? '' : (int) $dossierId ?>">
+          data-dossier="<?= $dossierId === null ? '' : (int) $dossierId ?>"
+          data-dossier-nom="<?= e((string) (array_values(array_filter($dossiers, static fn (array $d): bool => (int) $d['id'] === (int) $dossierId))[0]['nom'] ?? '')) ?>">
       <label class="bouton bouton--secondaire" for="import-dossier-champ"><?= e(t('cours.importer_dossier')) ?></label>
       <input type="file" id="import-dossier-champ" class="sr-only"
              data-import-champ webkitdirectory directory multiple>
@@ -437,6 +438,30 @@ for ($haut = $courant; $haut !== null;) {
 <?php else: ?>
   <div class="grille grille--3">
     <?php foreach ($cours as $c): ?>
+      <?php if (!empty($c['est_fichier']) && !empty($c['fichier_id'])): ?>
+        <?php
+        /*
+         * Un fichier gardé comme tel : on y lit son nom, extension comprise, et il s'ouvre directement — l'aperçu quand on sait en faire un,
+         * sinon le fichier lui-même. Dessous, c'est un cours : « Ouvrir comme un cours » en donne la page (partager, supprimer…).
+         */
+        $apercu = ApercuDocument::possible((string) $c['fichier_nom']);
+        $adresseFichier = $apercu ? url('fichiers/' . (int) $c['fichier_id'] . '/apercu') : url('fichiers/' . (int) $c['fichier_id']);
+        ?>
+        <div class="carte cours-carte cours-carte--fichier" data-cours="<?= (int) $c['id'] ?>">
+          <a class="cours-carte__fichier" href="<?= $adresseFichier ?>"<?= $apercu ? ' data-fenetre' : ' target="_blank" rel="noopener"' ?>>
+            <span class="cours-carte__icone" aria-hidden="true"><?= Fichiers::icone((string) $c['fichier_mime'], (string) $c['fichier_nom']) ?></span>
+            <span class="cours-carte__nom"><?= e((string) $c['titre']) ?></span>
+          </a>
+          <div class="cours-carte__bas">
+            <span><?= e(taille_lisible((int) $c['fichier_taille'])) ?> · <?= e(date_fr($c['updated_at'], false)) ?></span>
+            <?php if ($c['dossier_nom'] !== null && $dossierId === null): ?>
+              <span class="pastille"><?= e($c['dossier_icone'] . ' ' . $c['dossier_nom']) ?></span>
+            <?php endif; ?>
+          </div>
+          <a class="cours-carte__cours discret" href="<?= url('cours/' . $c['id']) ?>" data-fenetre><?= e(t('cours.ouvrir_comme_cours')) ?></a>
+        </div>
+        <?php continue; ?>
+      <?php endif; ?>
       <?php // Le cours s'ouvre dans une fenêtre, par-dessus la liste. ?>
       <a class="carte cours-carte" href="<?= url('cours/' . $c['id']) ?>"
          data-cours="<?= (int) $c['id'] ?>" data-fenetre>

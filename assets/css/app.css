@@ -4615,3 +4615,54 @@ a.serveur-carte:hover, a.serveur-carte:focus-visible { border-color: var(--accen
 
 /* « hidden » doit l'emporter sur l'affichage des boutons et des actions de la carte des documents liés. */
 [data-liens] [hidden] { display: none !important; }
+
+/* Mes cours : déposer des fichiers du bureau n'importe où sur la page. */
+.depot-page {
+  position: fixed; inset: .75rem; z-index: 60; display: grid; place-items: center; pointer-events: none;
+  border: 3px dashed var(--accent); border-radius: var(--rayon); background: color-mix(in srgb, var(--accent) 10%, transparent);
+  backdrop-filter: blur(1px); color: var(--accent-fonce); font-size: 1.25rem; font-weight: 700; text-align: center; padding: 1rem;
+}
+.depot-bandeau {
+  position: fixed; left: 50%; bottom: 1.2rem; transform: translateX(-50%); z-index: 61; max-width: min(92vw, 34rem);
+  padding: .7rem 1.1rem; border-radius: var(--rayon); background: var(--fond-carte); color: var(--texte); font-weight: 600;
+  border: 1px solid var(--bordure-forte); box-shadow: var(--ombre);
+}
+
+/* Mes cours : un fichier gardé comme tel — son nom et son extension, ouvert d'un clic. */
+.cours-carte--fichier { display: flex; flex-direction: column; gap: .5rem; }
+.cours-carte__fichier { display: flex; align-items: center; gap: .6rem; color: inherit; text-decoration: none; min-width: 0; }
+.cours-carte__fichier:hover .cours-carte__nom, .cours-carte__fichier:focus-visible .cours-carte__nom { color: var(--accent); text-decoration: underline; }
+.cours-carte__icone { font-size: 1.7rem; line-height: 1; flex: none; }
+.cours-carte__nom { font-weight: 700; overflow-wrap: anywhere; }
+.cours-carte__cours { font-size: .82rem; }
+
+/* La question posée quand on dépose des fichiers : un cours par fichier, ou seulement les fichiers. */
+.depot-choix { position: fixed; inset: 0; z-index: 62; display: grid; place-items: center; padding: 1rem; background: rgba(15, 23, 42, .45); }
+.depot-choix__boite { width: min(34rem, 100%); background: var(--fond-carte); color: var(--texte); border-radius: var(--rayon); padding: 1.2rem 1.3rem; box-shadow: var(--ombre); border: 1px solid var(--bordure); }
+.depot-choix__titre { margin: 0 0 .8rem; font-size: 1.1rem; }
+.depot-choix__option {
+  display: block; width: 100%; text-align: left; margin: 0 0 .6rem; padding: .75rem .9rem; border-radius: var(--rayon-s);
+  border: 1px solid var(--bordure-forte); background: var(--fond-doux); color: inherit; cursor: pointer; font: inherit;
+}
+.depot-choix__option:hover, .depot-choix__option:focus-visible { border-color: var(--accent); background: var(--accent-doux); }
+.depot-choix__option strong { display: block; }
+.depot-choix__option span { color: var(--texte-doux); font-size: .88rem; }
+.depot-choix__annuler { display: block; margin: .2rem 0 0 auto; }
+
+/* L'aperçu d'une présentation PowerPoint : chaque diapositive redessinée, à l'échelle de la largeur disponible. Les positions sont des
+   pourcentages de la page et les tailles de texte des « cqw » (centièmes de la largeur de la diapositive), pour que tout suive. */
+.diapos { display: grid; gap: 1.4rem; max-width: 62rem; }
+.diapo-carte { margin: 0; }
+.diapo-carte figcaption { margin-top: .3rem; font-size: .85rem; color: var(--texte-doux); }
+.diapo {
+  position: relative; width: 100%; container-type: inline-size; overflow: hidden; background: #fff; color: #000;
+  border: 1px solid var(--bordure-forte); border-radius: 6px; box-shadow: var(--ombre);
+}
+.diapo__forme { position: absolute; box-sizing: border-box; }
+.diapo__texte { display: flex; flex-direction: column; width: 100%; height: 100%; box-sizing: border-box; }
+.diapo__texte p { overflow-wrap: anywhere; }
+.diapo__image img { display: block; max-width: none; }
+.diapo__absent { display: grid; place-items: center; border: .25cqw dashed #94a3b8; background: #f8fafc; color: #64748b; font-size: 1.8cqw; text-align: center; }
+.diapo__tableau { width: 100%; height: 100%; border-collapse: collapse; table-layout: fixed; }
+.diapo__tableau td { border: .12cqw solid #cbd5e1; vertical-align: top; padding: 0; }
+.diapo__libre { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }

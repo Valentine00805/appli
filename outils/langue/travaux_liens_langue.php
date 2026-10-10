@@ -211,8 +211,9 @@ try {
     $dire('A ouvre son cours en aperçu : le rendu d\'un cours partagé, en lecture seule, de quoi ouvrir le vrai',
         $oui(str_contains($apercu, 'Le sujet du cours lié.') && str_contains($apercu, 'Partagé par') && str_contains($apercu, 'Ouvrir le mien')
             && !str_contains($apercu, '<header class="entete"')), 'oui');
-    $dire('  sans éditeur, sans « Copier dans mes cours », sans « Supprimer ce cours »',
-        $oui(!str_contains($apercu, 'edition-contenu') && !str_contains($apercu, 'Copier dans mes cours') && !str_contains($apercu, 'Supprimer ce cours')), 'oui');
+    // Le cours est dans un projet : son propriétaire peut le modifier d'ici (tout le groupe le fait), sans passer par sa page.
+    $dire('  avec l\'éditeur (le cours est dans un projet), sans « Copier dans mes cours », sans « Supprimer ce cours »',
+        $oui(str_contains($apercu, 'edition-contenu') && !str_contains($apercu, 'Copier dans mes cours') && !str_contains($apercu, 'Supprimer ce cours')), 'oui');
     [, $reel] = $appel('a', 'partages/cours/' . $coursA);
     $dire('  sans « apercu », ouvrir son propre document mène toujours à sa vraie page', $oui(str_contains($reel, 'Supprimer ce cours')), 'oui');
     [, $dossierApercu] = $appel('a', 'partages/dossiers/' . $dossierA . '?apercu=1&fenetre=1');

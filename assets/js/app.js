@@ -4463,18 +4463,23 @@
       });
 
       cible.addEventListener("drop", function (evenement) {
-        evenement.preventDefault();
         cible.classList.remove("dossier-cible--survol");
 
-        // Des fichiers deposes : on cree un cours par fichier dans ce dossier.
+        // Des fichiers du bureau : la page s'en charge, et demande ce qu'on en veut (un cours par fichier, ou les fichiers seuls). Sans le
+        // script de la page, on garde l'ancien geste : un cours par fichier, dans ce dossier.
         var fichiers = evenement.dataTransfer && evenement.dataTransfer.files;
-        if (!coursGlisse && fichiers && fichiers.length && formeDepot) {
-          formeDepot.elements.dossier.value = cible.dataset.dossier;
-          formeDepot.elements["fichiers[]"].files = fichiers;
-          formeDepot.submit();
+        if (!coursGlisse && fichiers && fichiers.length) {
+          if (window.mesCoursDepotPret) { return; }
+          evenement.preventDefault();
+          if (formeDepot) {
+            formeDepot.elements.dossier.value = cible.dataset.dossier;
+            formeDepot.elements["fichiers[]"].files = fichiers;
+            formeDepot.submit();
+          }
           return;
         }
 
+        evenement.preventDefault();
         if (!coursGlisse) { return; }
         formeRangerCours.elements.cours.value = coursGlisse.dataset.cours;
         formeRangerCours.elements.dossier.value = cible.dataset.dossier;
@@ -4504,18 +4509,27 @@
     var PAQUET_MAX = 15;
     var POIDS_MAX = 40 * 1024 * 1024;
 
+    // Le bandeau du dépôt (voir plus bas) répète ce qui se dit près du bouton : on dépose parfois loin de lui.
+    var bandeauDepot = null;
     var dire = function (texte) {
       if (etatImport) { etatImport.textContent = texte; }
+      if (bandeauDepot) { bandeauDepot.textContent = texte; }
     };
+
+    // Ce qu'on dépose sur la page peut aller ailleurs que dans le dossier ouvert (une ligne de la colonne), et se ranger de deux façons :
+    // « cours » (un cours par fichier, le défaut) ou « fichiers » (le fichier seul, sous son nom et son extension).
+    var destinationImport = null;
+    var modeImport = "cours";
 
     var envoyerLePaquet = function (paquet) {
       var corps = new FormData();
       corps.append("_csrf", importDossier.getAttribute("data-jeton"));
-      corps.append("dossier", importDossier.getAttribute("data-dossier") || "");
+      corps.append("dossier", destinationImport !== null ? destinationImport : (importDossier.getAttribute("data-dossier") || ""));
+      corps.append("mode", modeImport);
       paquet.forEach(function (fichier) {
         corps.append("fichiers[]", fichier);
         // Le chemin voyage à côté du fichier : l'envoi ne le porte pas.
-        corps.append("chemins[]", fichier.webkitRelativePath || fichier.name);
+        corps.append("chemins[]", fichier.cheminRelatif || fichier.webkitRelativePath || fichier.name);
       });
 
       return fetch(importDossier.getAttribute("data-url"),
@@ -4567,9 +4581,17 @@
       }
     };
 
-    champImport.addEventListener("change", function () {
-      var fichiers = [].slice.call(champImport.files || []);
+    var importer = function (fichiers, depuisDepot, mode, destination) {
       if (!fichiers.length) { return; }
+      modeImport = mode || "cours";
+      destinationImport = typeof destination === "string" ? destination : null;
+      // Déposé sur la page : l'avancement se lit dans un bandeau, car le bouton qui le dit habituellement est peut-être loin.
+      if (depuisDepot && !bandeauDepot) {
+        bandeauDepot = document.createElement("div");
+        bandeauDepot.className = "depot-bandeau";
+        bandeauDepot.setAttribute("role", "status");
+        document.body.appendChild(bandeauDepot);
+      }
 
       var paquets = enPaquets(fichiers);
       var total = { cours: 0, dossiers: 0 };
@@ -4598,9 +4620,177 @@
       suite.then(function () {
         champImport.disabled = false;
         champImport.value = "";
+        modeImport = "cours";
+        destinationImport = null;
         resumer(total, ecartes);
+        // Déposé sur la page : la liste se relit d'elle-même, pour montrer les cours créés.
+        if (depuisDepot && total.cours > 0) {
+          window.setTimeout(function () { window.location.reload(); }, 1200);
+        }
+      });
+    };
+
+    champImport.addEventListener("change", function () {
+      importer([].slice.call(champImport.files || []), false);
+    });
+
+    /*
+     * Déposer des fichiers — ou des dossiers — du bureau n'importe où sur la page « Mes cours » : un cours par fichier, dans le dossier
+     * ouvert (ou sans dossier, dans « Tous »). Une ligne de la colonne des dossiers garde la main sur ce qu'on lâche dessus : ses fichiers
+     * vont dans CE dossier. Un dossier déposé est parcouru en entier, et son arborescence reprise comme avec « Importer un dossier ».
+     */
+    var apporteDesFichiersDuBureau = function (evenement) {
+      var t = evenement.dataTransfer && evenement.dataTransfer.types;
+      return !!t && [].indexOf.call(t, "Files") !== -1;
+    };
+    var zoneDepot = null;
+    var profondeurDepot = 0;
+    var montrerZone = function () {
+      if (!zoneDepot) {
+        zoneDepot = document.createElement("div");
+        zoneDepot.className = "depot-page";
+        zoneDepot.setAttribute("aria-hidden", "true");
+        var nom = importDossier.getAttribute("data-dossier-nom") || "";
+        zoneDepot.textContent = nom !== ""
+          ? mot('imp.deposer_dans', { dossier: nom })
+          : mot('imp.deposer_ici');
+        document.body.appendChild(zoneDepot);
+      }
+    };
+    var cacherZone = function () {
+      profondeurDepot = 0;
+      if (zoneDepot) { zoneDepot.remove(); zoneDepot = null; }
+    };
+
+    document.addEventListener("dragenter", function (evenement) {
+      if (!apporteDesFichiersDuBureau(evenement)) { return; }
+      profondeurDepot += 1;
+      montrerZone();
+    });
+    document.addEventListener("dragover", function (evenement) {
+      if (!apporteDesFichiersDuBureau(evenement)) { return; }
+      // Sans cela, le navigateur ouvre le fichier lâché à la place de la page.
+      evenement.preventDefault();
+      evenement.dataTransfer.dropEffect = "copy";
+    });
+    document.addEventListener("dragleave", function (evenement) {
+      if (!apporteDesFichiersDuBureau(evenement)) { return; }
+      profondeurDepot -= 1;
+      if (profondeurDepot <= 0) { cacherZone(); }
+    });
+
+    // Tous les fichiers sous une entrée du bureau (un fichier, ou un dossier et ce qu'il contient), avec leur chemin relatif.
+    var lireEntree = function (entree, chemin, sortie) {
+      if (entree.isFile) {
+        return new Promise(function (fini) {
+          entree.file(function (fichier) {
+            try { fichier.cheminRelatif = chemin + fichier.name; } catch (e) { /* chemin simple : le nom seul */ }
+            sortie.push(fichier);
+            fini();
+          }, function () { fini(); });
+        });
+      }
+      if (!entree.isDirectory) { return Promise.resolve(); }
+      var lecteur = entree.createReader();
+      var lireLeLot = function () {
+        return new Promise(function (fini) {
+          lecteur.readEntries(function (lot) { fini(lot); }, function () { fini([]); });
+        }).then(function (lot) {
+          if (!lot.length) { return null; }
+          return Promise.all(lot.map(function (e) { return lireEntree(e, chemin + entree.name + "/", sortie); })).then(lireLeLot);
+        });
+      };
+      return lireLeLot();
+    };
+
+    document.addEventListener("drop", function (evenement) {
+      if (!apporteDesFichiersDuBureau(evenement)) { return; }
+      cacherZone();
+      // Lâché sur une ligne de la colonne des dossiers : c'est elle qui s'en charge (elle a déjà pris la main).
+      if (evenement.defaultPrevented) { return; }
+      evenement.preventDefault();
+
+      // Lâché sur une ligne de la colonne des dossiers : les fichiers vont dans CE dossier ; ailleurs, dans le dossier ouvert.
+      var ligne = evenement.target.closest ? evenement.target.closest("[data-dossiers-cibles] [data-dossier]") : null;
+      var destination = ligne ? (ligne.getAttribute("data-dossier") || "") : null;
+      var rang = ligne ? ligne.closest(".dossier-rang") : null;
+      var nomDestination = rang ? (rang.getAttribute("data-nom") || "") : "";
+
+      // Les entrées doivent se prendre tout de suite : une fois l'évènement fini, le navigateur les reprend.
+      var items = [].slice.call(evenement.dataTransfer.items || []);
+      var entrees = items.map(function (i) { return i.webkitGetAsEntry ? i.webkitGetAsEntry() : null; }).filter(Boolean);
+      var simples = [].slice.call(evenement.dataTransfer.files || []);
+      if (!entrees.length && !simples.length) { return; }
+
+      var trouves = [];
+      var lecture = entrees.length
+        ? Promise.all(entrees.map(function (e) { return lireEntree(e, "", trouves); }))
+        : Promise.resolve();
+      lecture.then(function () {
+        var fichiers = trouves.length ? trouves : simples;
+        if (!fichiers.length) { return; }
+        demander(fichiers.length, nomDestination !== "" ? nomDestination : importDossier.getAttribute("data-dossier-nom") || "").then(function (mode) {
+          if (mode) { importer(fichiers, true, mode, destination); }
+        });
       });
     });
+    window.mesCoursDepotPret = true;
+
+    /*
+     * Ce qu'on veut faire de ces fichiers : un cours par fichier (qu'on écrira, révisera, partagera), ou seulement les fichiers — qui
+     * paraissent alors dans le dossier sous leur nom, avec leur extension, et s'ouvrent d'un clic. Rien ne part avant le choix.
+     */
+    var demander = function (nombre, dossier) {
+      return new Promise(function (choisi) {
+        var voile = document.createElement("div");
+        voile.className = "depot-choix";
+        var boite = document.createElement("div");
+        boite.className = "depot-choix__boite";
+        boite.setAttribute("role", "dialog");
+        boite.setAttribute("aria-modal", "true");
+        var titre = document.createElement("h2");
+        titre.className = "depot-choix__titre";
+        titre.textContent = motN('imp.choix_titre', nombre) + (dossier !== "" ? " — « " + dossier + " »" : "");
+        boite.appendChild(titre);
+
+        var fermer = function (mode) {
+          document.removeEventListener("keydown", surTouche, true);
+          voile.remove();
+          choisi(mode);
+        };
+        var surTouche = function (e) {
+          if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); fermer(null); }
+        };
+        var option = function (mode, nom, aide) {
+          var b = document.createElement("button");
+          b.type = "button";
+          b.className = "depot-choix__option";
+          var fort = document.createElement("strong");
+          fort.textContent = nom;
+          var petit = document.createElement("span");
+          petit.textContent = aide;
+          b.appendChild(fort);
+          b.appendChild(petit);
+          b.addEventListener("click", function () { fermer(mode); });
+          boite.appendChild(b);
+          return b;
+        };
+        var premiere = option("cours", mot('imp.choix_cours'), mot('imp.choix_cours_aide'));
+        option("fichiers", mot('imp.choix_fichiers'), mot('imp.choix_fichiers_aide'));
+        var annuler = document.createElement("button");
+        annuler.type = "button";
+        annuler.className = "bouton bouton--discret depot-choix__annuler";
+        annuler.textContent = mot('imp.annuler');
+        annuler.addEventListener("click", function () { fermer(null); });
+        boite.appendChild(annuler);
+
+        voile.appendChild(boite);
+        voile.addEventListener("click", function (e) { if (e.target === voile) { fermer(null); } });
+        document.addEventListener("keydown", surTouche, true);
+        document.body.appendChild(voile);
+        premiere.focus();
+      });
+    };
   }
 
   /*

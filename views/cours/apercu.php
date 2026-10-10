@@ -46,10 +46,19 @@ $dansUneFenetre = $dansUneFenetre ?? false;
   </div>
 </div>
 
+<?php $diaporama = $diaporama ?? null; $peutDiapos = $peutDiapos ?? false; ?>
 <?php // Un PDF ou une image s'affichent tels quels : aucun avertissement à donner. ?>
-<?php if (!in_array($genre, ['pdf', 'image'], true)): ?>
+<?php if ($diaporama !== null): ?>
   <div class="flash flash--info" style="margin-bottom:1.25rem">
-    <?php if ($genre === 'tableur'): ?>
+    <?= t('ap.diapo_aide') ?>
+    <a href="<?= url('fichiers/' . $fichier['id'] . '/apercu', ['texte' => 1]) ?>"<?= $dansUneFenetre ? ' data-fenetre' : '' ?>><?= e(t('ap.diapo_texte')) ?></a>
+  </div>
+<?php elseif (!in_array($genre, ['pdf', 'image'], true)): ?>
+  <div class="flash flash--info" style="margin-bottom:1.25rem">
+    <?php if ($peutDiapos): ?>
+      <?= t('ap.texte_aide', ['format' => e($format)]) ?>
+      <a href="<?= url('fichiers/' . $fichier['id'] . '/apercu') ?>"<?= $dansUneFenetre ? ' data-fenetre' : '' ?>><?= e(t('ap.diapo_voir')) ?></a>
+    <?php elseif ($genre === 'tableur'): ?>
       <?= t('ap.tableur_aide') ?>
     <?php elseif ($genre === 'brut'): ?>
       <?= t('ap.brut_aide') ?>
@@ -69,6 +78,19 @@ $dansUneFenetre = $dansUneFenetre ?? false;
       <?= e(t('commun.telecharger_fichier')) ?>
     </a>
   </div>
+<?php elseif ($diaporama !== null): ?>
+  <?php // La présentation, diapositive par diapositive, redessinée à l'échelle de la page. ?>
+  <div class="diapos">
+    <?php foreach ($diaporama['diapos'] as $d): ?>
+      <figure class="diapo-carte">
+        <?= $d['html'] ?>
+        <figcaption><?= e(t('ap.diapo_legende', ['n' => $d['numero'], 'total' => $diaporama['total']])) ?><?= $d['titre'] !== '' ? ' — ' . e($d['titre']) : '' ?></figcaption>
+      </figure>
+    <?php endforeach; ?>
+  </div>
+  <?php if ($diaporama['tronque']): ?>
+    <p class="champ__aide"><?= e(t('ap.diapo_tronque', ['n' => ApercuPresentation::DIAPOS_MAX, 'total' => $diaporama['total']])) ?></p>
+  <?php endif; ?>
 <?php elseif ($genre === 'pdf'): ?>
   <?php // Le document lui-même, dans la page, avec la visionneuse du navigateur. ?>
   <div class="carte apercu-cadre">

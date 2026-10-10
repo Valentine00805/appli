@@ -333,6 +333,11 @@ try {
     $dire('le cours est dans le projet', (string) bd_valeur("SELECT COUNT(*) FROM projet_liens WHERE projet_id = ? AND type = 'cours' AND cible_id = ?", [$projet, $coursHors]), '1');
     [$partage] = $appel($a, 'partager/cours/' . $coursHors . '?fenetre=1');
     $dire('la fenêtre dit qu\'il y est déjà, avec de quoi l\'en retirer', $oui(str_contains($partage, 'Déjà dans') && str_contains($partage, '/projets/') && !str_contains($partage, 'name="projets[]" value="' . $projet . '"')), 'oui');
+    // « Ouvrir le mien » : depuis une fenêtre, le vrai cours s'ouvre dans la fenêtre ; sur une page entière, c'est un lien ordinaire.
+    [$apercu] = $appel($a, 'partages/cours/' . $coursHors . '?apercu=1&fenetre=1');
+    $dire('l\'aperçu de son cours : « Ouvrir le mien » s\'ouvre dans la fenêtre', $oui(preg_match('#href="[^"]*/cours/' . $coursHors . '" data-fenetre[^>]*>Ouvrir le mien#', $apercu) === 1), 'oui');
+    [$apercu] = $appel($a, 'partages/cours/' . $coursHors . '?apercu=1');
+    $dire('sur une page entière, le même bouton reste un lien ordinaire', $oui(preg_match('#href="[^"]*/cours/' . $coursHors . '"[^>]*>Ouvrir le mien#', $apercu) === 1 && !preg_match('#/cours/' . $coursHors . '" data-fenetre[^>]*>Ouvrir le mien#', $apercu)), 'oui');
     [$ongletCours] = $appel($b, 'travaux/' . $projet . '/cours?fenetre=1');
     $dire('B, membre du projet, le voit dans l\'onglet Cours', $oui(str_contains($ongletCours, 'Cours hors projet')), 'oui');
     // Lié à un projet, le cours se modifie par tout le groupe — sur l'original, que chacun voit changer.
@@ -343,6 +348,17 @@ try {
     $dire('sa page dit que tout le groupe peut le modifier ici', $oui(str_contains($lu, 'tout le groupe peut le modifier ici') && str_contains($lu, 'name="contenu"')), 'oui');
     $poster($c, 'partages/cours/' . $coursHors . '/contenu', ['contenu' => 'Écrit par un intrus']);
     $dire('un compte hors du projet ne le modifie pas', $contenuDe(), 'Écrit par B dans le projet');
+    // Le propriétaire modifie son cours d'un projet depuis l'aperçu, sans passer par sa page : le même texte, vu de tout le groupe.
+    [$apercu] = $appel($a, 'partages/cours/' . $coursHors . '?apercu=1&fenetre=1');
+    $dire('dans un projet, son aperçu permet au propriétaire de modifier le cours (et d\'y joindre des fichiers)',
+        $oui(str_contains($apercu, 'name="contenu"') && str_contains($apercu, 'name="fichiers[]"') && str_contains($apercu, 'name="apercu" value="1"')), 'oui');
+    [, $urlApres] = $poster($a, 'partages/cours/' . $coursHors . '/contenu', ['contenu' => 'Écrit par A depuis l\'aperçu', 'apercu' => '1']);
+    $dire('son texte est enregistré, et il reste dans l\'aperçu (pas renvoyé sur son cours)',
+        $contenuDe() . '|' . $oui(str_contains($urlApres, '/partages/cours/' . $coursHors) && str_contains($urlApres, 'apercu=1')), 'Écrit par A depuis l\'aperçu|oui');
+    [$luParB] = $appel($b, 'partages/cours/' . $coursHors . '?fenetre=1');
+    $dire('B, membre du projet, voit aussitôt ce que A a écrit', $oui(str_contains($luParB, htmlspecialchars('Écrit par A depuis l\'aperçu', ENT_QUOTES))), 'oui');
+    $poster($a, 'cours/' . $coursHors . '/contenu', ['contenu' => 'Écrit par B dans le projet']);
+
     // Deux personnes écrivent en même temps : la seconde à enregistrer n'écrase pas la première.
     $baseLue = static function (string $html): string { return preg_match('/name="base" value="([0-9a-f]{32})"/', $html, $m) === 1 ? $m[1] : ''; };
     [$luParB] = $appel($b, 'partages/cours/' . $coursHors . '?fenetre=1');
@@ -391,6 +407,8 @@ try {
     $dire('le numéro d\'un lien d\'un autre cours ne retire rien', (string) bd_valeur("SELECT COUNT(*) FROM projet_liens WHERE projet_id = ? AND type = 'cours'", [$projet]), '2');
     $poster($a, 'partager/cours/' . $coursHors . '/projets/' . $lienCours . '/retirer');
     $dire('A retire le cours du projet', (string) bd_valeur("SELECT COUNT(*) FROM projet_liens WHERE projet_id = ? AND type = 'cours' AND cible_id = ?", [$projet, $coursHors]), '0');
+    [$apercu] = $appel($a, 'partages/cours/' . $coursHors . '?apercu=1&fenetre=1');
+    $dire('hors projet, l\'aperçu de son cours redevient en lecture seule (pas d\'éditeur)', $oui(!str_contains($apercu, 'name="contenu"')), 'oui');
     $poster($b, 'partages/cours/' . $coursHors . '/contenu', ['contenu' => 'Encore B, hors projet']);
     $dire('retiré du projet, B ne peut plus le modifier', $contenuDe(), 'Écrit par B dans le projet');
 

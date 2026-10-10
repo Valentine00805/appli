@@ -111,12 +111,13 @@ $nom = $fichierSeul ? (string) $cible['nom_origine'] : '';
     <?php endif; ?>
     <?php if ($apercuProprio && $urlDuMien !== null): ?>
       <?php // L'aperçu de mon propre document, tel que le voient les autres : de quoi ouvrir le vrai. ?>
-      <a class="bouton bouton--secondaire" href="<?= e($urlDuMien) ?>"><?= e(t('pt.ouvrir_le_mien')) ?></a>
+      <?php // Ouvert depuis une fenêtre, le vrai document s'ouvre dans la fenêtre (←  ramène ici). Un dossier est une page de la liste : lien ordinaire. ?>
+      <a class="bouton bouton--secondaire" href="<?= e($urlDuMien) ?>"<?= $dansUneFenetre && !$estDossier ? ' data-fenetre' : '' ?>><?= e(t('pt.ouvrir_le_mien')) ?></a>
     <?php endif; ?>
     <?php if (!$public && !$apercuProprio): ?>
       <?php if ($dejaCopie): ?>
         <span class="pastille pastille--ok"><?= e(t($estDossier ? 'pt.deja_copie_dossier' : 'pt.deja_copie')) ?></span>
-        <a class="bouton bouton--secondaire" href="<?= e((string) $urlMaCopie) ?>"><?= e(t('pt.ouvrir_ma_copie')) ?></a>
+        <a class="bouton bouton--secondaire" href="<?= e((string) $urlMaCopie) ?>"<?= $dansUneFenetre && !$estDossier ? ' data-fenetre' : '' ?>><?= e(t('pt.ouvrir_ma_copie')) ?></a>
       <?php elseif (!$fichierSeul && !$dejaDansCalendrier): ?>
         <form method="post" action="<?= url($base . '/copier') ?>" class="en-ligne"<?= $dansUneFenetre ? ' data-envoi-fenetre' : '' ?>>
           <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
@@ -344,6 +345,7 @@ $nom = $fichierSeul ? (string) $cible['nom_origine'] : '';
             <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
             <?php // Le texte lu : si quelqu'un l'enregistre entre-temps, le nôtre ne l'écrase pas. ?>
             <input type="hidden" name="base" value="<?= e(Partages::empreinte($texte)) ?>">
+            <?php if ($apercuProprio): ?><input type="hidden" name="apercu" value="1"><?php endif; ?>
             <div class="champ">
               <label class="legende" for="partage-contenu"><?= e(t($estFiche ? 'pt.la_fiche' : 'pt.le_cours')) ?></label>
               <textarea id="partage-contenu" name="contenu" class="edition-contenu__texte" data-texte-riche="complet"
@@ -388,6 +390,7 @@ $nom = $fichierSeul ? (string) $cible['nom_origine'] : '';
                   <form method="post" action="<?= url('partages/fichiers/' . (int) $f['id'] . '/retirer') ?>"<?= $surPlace ?>
                         data-confirmation="<?= e(t('pt.retirer_fichier_confirmation', ['nom' => (string) $f['nom_origine']])) ?>">
                     <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+                    <?php if ($apercuProprio): ?><input type="hidden" name="apercu" value="1"><?php endif; ?>
                     <button class="bouton bouton--discret bouton--petit" type="submit" title="<?= e(t('pt.retirer')) ?>"
                             aria-label="<?= e(t('pt.retirer_nom', ['nom' => (string) $f['nom_origine']])) ?>">✕</button>
                   </form>
@@ -399,8 +402,9 @@ $nom = $fichierSeul ? (string) $cible['nom_origine'] : '';
       <?php endif; ?>
 
       <?php if ($peutEcrire): ?>
-        <form method="post" action="<?= url($base . '/fichiers') ?>" enctype="multipart/form-data" style="margin-top:.6rem">
+        <form method="post" action="<?= url($base . '/fichiers') ?>" enctype="multipart/form-data" style="margin-top:.6rem"<?= $surPlace ?>>
           <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+          <?php if ($apercuProprio): ?><input type="hidden" name="apercu" value="1"><?php endif; ?>
           <div class="champ">
             <label class="legende" for="partage-joindre"><?= e(t('pt.joindre_fichiers')) ?></label>
             <input type="file" id="partage-joindre" name="fichiers[]" multiple>

@@ -1799,3 +1799,7 @@ CREATE TABLE IF NOT EXISTS `projet_evenement_liens` (
   CONSTRAINT `fk_projet_evenement_liens_projet` FOREIGN KEY (`projet_id`) REFERENCES `projets`(`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_projet_evenement_liens_par`    FOREIGN KEY (`ajoute_par`) REFERENCES `users`(`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Un fichier déposé sans en faire un cours (voir migration-cours-fichier.sql).
+ALTER TABLE `cours`
+  ADD COLUMN `est_fichier` TINYINT(1) NOT NULL DEFAULT 0 AFTER `favori`;
