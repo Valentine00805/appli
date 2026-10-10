@@ -33,13 +33,18 @@ $moi = Auth::id();
           <?php foreach ($liens as $l): ?>
             <?php
             $dossier = $l['type'] === 'dossier';
-            $mot = $dossier ? 'dossiers' : 'cours';
+            $fichier = $l['type'] === 'fichier';
+            $mot = $dossier ? 'dossiers' : ($fichier ? 'fichiers' : 'cours');
             $le_mien = $l['proprietaire_id'] === $moi;
+            // Un fichier à moi s'ouvre dans le lecteur de fichiers (l'aperçu, sinon le fichier) ; celui d'un autre, par le partage.
+            $adresse = $fichier && $le_mien
+                ? ApercuDocument::possible($l['titre']) ? url('fichiers/' . $l['cible_id'] . '/apercu') : url('fichiers/' . $l['cible_id'])
+                : url('partages/' . $mot . '/' . $l['cible_id'], $le_mien ? ['apercu' => 1] : []);
             ?>
             <li class="fichier">
               <span class="fichier__icone" aria-hidden="true"><?= e($l['icone']) ?></span>
               <span style="min-width:0">
-                <a class="fichier__nom" href="<?= url('partages/' . $mot . '/' . $l['cible_id'], $le_mien ? ['apercu' => 1] : []) ?>"<?= $ouvre ?>><?= e($l['titre']) ?></a>
+                <a class="fichier__nom" href="<?= $adresse ?>"<?= $ouvre ?>><?= e($l['titre']) ?></a>
                 <?php if ($l['matiere'] !== null): ?>
                   <span class="pastille" style="background:<?= e($l['couleur'] ?: '#94a3b8') ?>;color:<?= e(couleur_texte($l['couleur'] ?: '#94a3b8')) ?>"><?= e($l['matiere']) ?></span>
                 <?php endif; ?><br>
@@ -49,7 +54,11 @@ $moi = Auth::id();
                 <?= Vue::rendre('travaux/_evenements_lies', ['evenements' => LiensEvenements::evenementsDe((int) $projet['id'], $l['type'], (int) $l['cible_id']), 'ouvre' => $ouvre]) ?>
               </span>
               <span class="fichier__actions">
-                <?php if (!$le_mien && $l['ma_copie'] !== null): ?>
+                <?php if ($fichier): ?>
+                  <?php // Un fichier se consulte et se télécharge : pas de copie à soi, pas de modification. ?>
+                  <span class="pastille"><?= e(t('tr.co.lecture_seule')) ?></span>
+                  <?php if ($le_mien): ?><span class="discret"><?= e(t('tr.co.le_mien')) ?></span><?php endif; ?>
+                <?php elseif (!$le_mien && $l['ma_copie'] !== null): ?>
                   <?php // Déjà copié chez moi : on le dit, et on mène à ma copie au lieu de reproposer l'ajout. La copie est à part : ses changements ne sont pas ceux du groupe. ?>
                   <span class="pastille pastille--ok" title="<?= e(t('tr.co.modifiable_aide')) ?>">✎ <?= e(t('tr.co.modifiable')) ?></span>
                   <span class="pastille pastille--ok"><?= e(t($dossier ? 'pt.deja_copie_dossier' : 'pt.deja_copie')) ?></span>

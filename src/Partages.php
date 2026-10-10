@@ -452,6 +452,10 @@ final class Partages
         if (in_array($type, ['cours', 'dossier'], true) && Travaux::lieAUnGroupeDe($type, $id, $moi)) {
             return 'modification';
         }
+        // Un fichier mis dans un groupe se consulte et se télécharge, rien de plus.
+        if ($type === 'fichier' && Travaux::lieAUnGroupeDe($type, $id, $moi)) {
+            return 'lecture';
+        }
 
         return null;
     }

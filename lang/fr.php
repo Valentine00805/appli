@@ -4838,4 +4838,12 @@ return [
     'evtf.lien_un_fichier' => 'Un fichier',
     'evtf.choisir_fichier' => 'Choisir un fichier…',
     'evt.fichier_lie' => 'Fichier lié',
+    'pt.projets_aide_fichier' => 'Tous les membres du projet peuvent le consulter et le télécharger depuis son onglet « Cours » (lecture seule). Vous le retirez quand vous voulez.',
+    'pt.projets_lot_aide' => 'Les cours, dossiers et fichiers cochés plus haut sont mis dans les projets cochés : tous leurs membres les voient depuis l’onglet « Cours ». Les fiches de révision n’en font pas partie.',
+    'pt.projets_lot_ajouter' => 'Ajouter aux projets cochés',
+    'pt.projets_lot_documents' => 'Cochez au moins un cours, un dossier ou un fichier à mettre dans le projet.',
+    'pt.projets_lot_deja' => 'Tout ce qui est coché était déjà dans les projets choisis.',
+    'pt.flash_lot_projets.un' => '{n} élément ajouté aux projets de groupe.',
+    'pt.flash_lot_projets.plusieurs' => '{n} éléments ajoutés aux projets de groupe.',
+    'tr.co.lecture_seule' => 'Lecture seule',
 ];

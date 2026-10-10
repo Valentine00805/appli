@@ -4826,4 +4826,12 @@ return [
     'evtf.lien_un_fichier' => 'A file',
     'evtf.choisir_fichier' => 'Choose a file…',
     'evt.fichier_lie' => 'Linked file',
+    'pt.projets_aide_fichier' => 'All project members can view and download it from its “Courses” tab (read only). You can remove it whenever you like.',
+    'pt.projets_lot_aide' => 'The courses, folders and files ticked above are put in the ticked projects: all members see them from the “Courses” tab. Revision sheets are not included.',
+    'pt.projets_lot_ajouter' => 'Add to the ticked projects',
+    'pt.projets_lot_documents' => 'Tick at least one course, folder or file to put in the project.',
+    'pt.projets_lot_deja' => 'Everything ticked was already in the chosen projects.',
+    'pt.flash_lot_projets.un' => '{n} item added to group projects.',
+    'pt.flash_lot_projets.plusieurs' => '{n} items added to group projects.',
+    'tr.co.lecture_seule' => 'Read only',
 ];

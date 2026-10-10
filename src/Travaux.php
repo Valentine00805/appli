@@ -892,7 +892,8 @@ final class Travaux
     }
 
     /**
-     * Les cours et dossiers liés au groupe, avec ce qu'il faut pour les montrer. Une cible effacée n'y figure plus.
+     * Les cours, dossiers et fichiers liés au groupe, avec ce qu'il faut pour les montrer. Une cible effacée n'y figure plus.
+     * Un fichier se consulte et se télécharge : il n'a ni copie à soi ni modification.
      *
      * @return list<array{id: int, type: string, cible_id: int, titre: string, icone: string, matiere: ?string, couleur: ?string,
      *                    proprietaire_id: int, ma_copie: ?int, proprietaire: string, ajoute_par: ?int, par: string, created_at: string}>
@@ -902,12 +903,14 @@ final class Travaux
         $lignes = Database::all(
             "SELECT l.id, l.type, l.cible_id, l.ajoute_par, l.created_at, COALESCE(u.pseudo, u.nom, '') AS par,
                     c.titre AS cours_titre, c.user_id AS cours_user, m.nom AS matiere_nom, m.couleur AS matiere_couleur,
-                    d.nom AS dossier_nom, d.icone AS dossier_icone, d.user_id AS dossier_user
+                    d.nom AS dossier_nom, d.icone AS dossier_icone, d.user_id AS dossier_user,
+                    f.nom_origine AS fichier_nom, f.mime AS fichier_mime, f.user_id AS fichier_user
                FROM projet_liens l
                LEFT JOIN users u ON u.id = l.ajoute_par
                LEFT JOIN cours c ON l.type = 'cours' AND c.id = l.cible_id
                LEFT JOIN matieres m ON m.id = c.matiere_id
                LEFT JOIN dossiers d ON l.type = 'dossier' AND d.id = l.cible_id
+               LEFT JOIN fichiers f ON l.type = 'fichier' AND f.id = l.cible_id
               WHERE l.projet_id = ?
               ORDER BY l.created_at DESC, l.id DESC",
             [$projet]
@@ -915,20 +918,22 @@ final class Travaux
         $liens = [];
         foreach ($lignes as $l) {
             $cours = $l['type'] === 'cours';
-            if (($cours ? $l['cours_titre'] : $l['dossier_nom']) === null) {
+            $fichier = $l['type'] === 'fichier';
+            if (($fichier ? $l['fichier_nom'] : ($cours ? $l['cours_titre'] : $l['dossier_nom'])) === null) {
                 continue;
             }
             $liens[] = [
                 'id' => (int) $l['id'],
                 'type' => (string) $l['type'],
                 'cible_id' => (int) $l['cible_id'],
-                'titre' => (string) ($cours ? $l['cours_titre'] : $l['dossier_nom']),
-                'icone' => $cours ? '📘' : ((string) $l['dossier_icone'] !== '' ? (string) $l['dossier_icone'] : '📁'),
+                'titre' => (string) ($fichier ? $l['fichier_nom'] : ($cours ? $l['cours_titre'] : $l['dossier_nom'])),
+                'icone' => $fichier ? Fichiers::icone((string) $l['fichier_mime'], (string) $l['fichier_nom'])
+                    : ($cours ? '📘' : ((string) $l['dossier_icone'] !== '' ? (string) $l['dossier_icone'] : '📁')),
                 'matiere' => $cours && $l['matiere_nom'] !== null ? (string) $l['matiere_nom'] : null,
                 'couleur' => $cours && $l['matiere_couleur'] !== null ? (string) $l['matiere_couleur'] : null,
-                'proprietaire_id' => (int) ($cours ? $l['cours_user'] : $l['dossier_user']),
+                'proprietaire_id' => (int) ($fichier ? $l['fichier_user'] : ($cours ? $l['cours_user'] : $l['dossier_user'])),
                 // Ce que j'en ai déjà copié chez moi : de quoi ne pas le proposer une seconde fois.
-                'ma_copie' => $moi > 0 ? Partages::maCopie($moi, $cours ? 'cours' : 'dossier', (int) $l['cible_id']) : null,
+                'ma_copie' => $moi > 0 && !$fichier ? Partages::maCopie($moi, $cours ? 'cours' : 'dossier', (int) $l['cible_id']) : null,
                 'ajoute_par' => $l['ajoute_par'] === null ? null : (int) $l['ajoute_par'],
                 'par' => (string) $l['par'],
                 'created_at' => (string) $l['created_at'],
@@ -970,7 +975,7 @@ final class Travaux
         if (self::projet($projet, $moi) === null) {
             return t('tr.err.pas_membre');
         }
-        if (!in_array($type, ['cours', 'dossier'], true) || Partages::mienne($type, $cibleId, $moi) === null) {
+        if (!in_array($type, ['cours', 'dossier', 'fichier'], true) || Partages::mienne($type, $cibleId, $moi) === null) {
             return t('tr.err.pas_a_vous');
         }
         if ((int) Database::valeur('SELECT COUNT(*) FROM projet_liens WHERE projet_id = ?', [$projet]) >= self::LIENS_MAX) {

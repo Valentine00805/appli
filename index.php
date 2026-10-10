@@ -722,6 +722,7 @@ $routes = [
     ['GET',  'partager/plusieurs',                  [PartagesController::class, 'plusieurs']],
     ['POST', 'partager/plusieurs/amis',             [PartagesController::class, 'envoyerPlusieurs']],
     ['POST', 'partager/plusieurs/lien',            [PartagesController::class, 'creerLienLot']],
+    ['POST', 'partager/plusieurs/projets',         [PartagesController::class, 'envoyerPlusieursProjets']],
     ['POST', 'partager/lots/{id}/desactiver',      [PartagesController::class, 'desactiverLot']],
     ['GET',  'partager/{mot}/{id}',                 [PartagesController::class, 'fenetre']],
     ['POST', 'partager/{mot}/{id}/amis',            [PartagesController::class, 'envoyer']],

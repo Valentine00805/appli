@@ -86,6 +86,7 @@ final class PartagesController
             'choisisDossiers' => array_flip(array_map('intval', is_array($_GET['dossiers'] ?? null) ? $_GET['dossiers'] : [])),
             'choisisFiches' => array_flip(array_map('intval', is_array($_GET['fiches'] ?? null) ? $_GET['fiches'] : [])),
             'mesLots' => Partages::mesLots($moi),
+            'projets' => Travaux::projetsPourPartage($moi, 'cours', 0),
             'amis' => Amis::liste($moi),
             'groupes' => Conversations::liste($moi),
         ];
@@ -94,6 +95,53 @@ final class PartagesController
             return;
         }
         Vue::afficher('partages/plusieurs', $donnees, t('titre.partager_plusieurs'));
+    }
+
+    /**
+     * Les cours, dossiers et fichiers cochés dans « Partager plusieurs », mis dans les travaux de groupe cochés. Chaque document est lié à chaque
+     * projet (un déjà lié est simplement passé) ; une fiche, qui n'est pas un document du projet, n'en fait pas partie.
+     */
+    public function envoyerPlusieursProjets(): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $moi = Auth::id();
+        $projets = is_array($_POST['projets'] ?? null) ? array_values(array_unique(array_map('intval', $_POST['projets']))) : [];
+        $documents = [];
+        foreach (['cours' => 'cours', 'dossier' => 'dossiers', 'fichier' => 'fichiers'] as $type => $champ) {
+            foreach (is_array($_POST[$champ] ?? null) ? $_POST[$champ] : [] as $id) {
+                $documents[] = [$type, (int) $id];
+            }
+        }
+        if ($projets === []) {
+            Session::flash('erreur', t('pt.projets_choisir'));
+            redirect('partager/plusieurs');
+        }
+        if ($documents === []) {
+            Session::flash('erreur', t('pt.projets_lot_documents'));
+            redirect('partager/plusieurs');
+        }
+        $faits = 0;
+        $refus = null;
+        foreach ($projets as $projet) {
+            foreach ($documents as [$type, $id]) {
+                $probleme = Travaux::lier($moi, $projet, $type, $id);
+                if ($probleme === null) {
+                    $faits++;
+                } elseif ($probleme !== t('tr.err.deja_lie')) {
+                    $refus = $probleme;
+                }
+            }
+        }
+        if ($faits > 0) {
+            Session::flash('succes', tn('pt.flash_lot_projets', $faits));
+        }
+        if ($refus !== null) {
+            Session::flash('erreur', $refus);
+        } elseif ($faits === 0) {
+            Session::flash('succes', t('pt.projets_lot_deja'));
+        }
+        redirect('partager/plusieurs');
     }
 
     /** L'envoi du lot : un accès et une carte par document. */
@@ -176,8 +224,8 @@ final class PartagesController
             'amis' => Amis::liste($moi),
             'groupes' => Conversations::liste($moi),
             'destinataires' => Partages::destinataires($moi, $type, $id),
-            // Un cours ou un dossier peut aussi se mettre dans un travail de groupe, dont les membres le lisent.
-            'projets' => in_array($type, ['cours', 'dossier'], true) ? Travaux::projetsPourPartage($moi, $type, $id) : null,
+            // Un cours, un dossier ou un fichier peut aussi se mettre dans un travail de groupe, dont les membres le lisent.
+            'projets' => in_array($type, ['cours', 'dossier', 'fichier'], true) ? Travaux::projetsPourPartage($moi, $type, $id) : null,
             'commentaires' => Partages::commentaires($type, $id),
             'lien' => $lien === null ? null : Partages::adresseLien((string) $lien['jeton']),
             'vues' => $lien === null ? 0 : (int) $lien['vues'],
@@ -230,13 +278,13 @@ final class PartagesController
         $this->retourPuisEnvoyer('partager/' . $mot . '/' . $id, $notifications);
     }
 
-    /** Met ce cours ou dossier dans des travaux de groupe : leurs membres le lisent (et peuvent l'ajouter à leur espace). */
+    /** Met ce cours, dossier ou fichier dans des travaux de groupe : leurs membres le lisent (un cours ou un dossier, ils l'ajoutent aussi à leur espace). */
     public function envoyerProjets(string $mot, int $id): void
     {
         Auth::exiger();
         Session::verifierCsrf();
         $type = self::type($mot);
-        if (!in_array($type, ['cours', 'dossier'], true) || Partages::mienne($type, $id, Auth::id()) === null) {
+        if (!in_array($type, ['cours', 'dossier', 'fichier'], true) || Partages::mienne($type, $id, Auth::id()) === null) {
             self::introuvable();
         }
         $ids = is_array($_POST['projets'] ?? null) ? array_values(array_unique(array_map('intval', $_POST['projets']))) : [];

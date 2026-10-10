@@ -244,6 +244,32 @@ $csrf = Session::jetonCsrf();
 
     <?php
     /*
+     * Les mêmes cours, dossiers et fichiers cochés, mis dans des travaux de groupe : leurs membres les consultent depuis l'onglet « Cours ». Le
+     * bouton envoie le formulaire ailleurs, les amis cochés plus haut n'y sont pour rien.
+     */
+    ?>
+    <?php if (($projets ?? []) !== []): ?>
+    <section class="carte partage-section">
+      <h2 style="margin-top:0">👥 <?= e(t('pt.avec_projet')) ?></h2>
+      <p class="discret" style="margin-top:0"><?= e(t('pt.projets_lot_aide')) ?></p>
+      <ul class="groupe-choix__liste">
+        <?php foreach ($projets as $p): ?>
+          <li>
+            <label class="groupe-choix__ami">
+              <input type="checkbox" name="projets[]" value="<?= (int) $p['id'] ?>">
+              <span class="avatar avatar--mini" aria-hidden="true">👥</span>
+              <span class="partage-liste__nom"><?= e($p['nom']) ?></span>
+            </label>
+          </li>
+        <?php endforeach; ?>
+      </ul>
+      <button class="bouton bouton--secondaire" type="submit"
+              formaction="<?= url('partager/plusieurs/projets') ?>"><?= e(t('pt.projets_lot_ajouter')) ?></button>
+    </section>
+    <?php endif; ?>
+
+    <?php
+    /*
      * Le même choix, mais pour ceux qui n'ont pas de compte : un lien unique
      * qui montre tous les documents cochés. Le bouton envoie le formulaire
      * ailleurs — les cases cochées partent donc telles quelles.

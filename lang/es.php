@@ -4826,4 +4826,12 @@ return [
     'evtf.lien_un_fichier' => 'Un archivo',
     'evtf.choisir_fichier' => 'Elige un archivo…',
     'evt.fichier_lie' => 'Archivo vinculado',
+    'pt.projets_aide_fichier' => 'Todos los miembros del proyecto pueden verlo y descargarlo desde su pestaña «Cursos» (solo lectura). Puedes quitarlo cuando quieras.',
+    'pt.projets_lot_aide' => 'Los cursos, carpetas y archivos marcados arriba se ponen en los proyectos marcados: todos sus miembros los ven desde la pestaña «Cursos». Las fichas de repaso no se incluyen.',
+    'pt.projets_lot_ajouter' => 'Añadir a los proyectos marcados',
+    'pt.projets_lot_documents' => 'Marca al menos un curso, una carpeta o un archivo para poner en el proyecto.',
+    'pt.projets_lot_deja' => 'Todo lo marcado ya estaba en los proyectos elegidos.',
+    'pt.flash_lot_projets.un' => '{n} elemento añadido a proyectos de grupo.',
+    'pt.flash_lot_projets.plusieurs' => '{n} elementos añadidos a proyectos de grupo.',
+    'tr.co.lecture_seule' => 'Solo lectura',
 ];

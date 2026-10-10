@@ -1636,7 +1636,7 @@ ALTER TABLE `cours`
 CREATE TABLE IF NOT EXISTS `projet_liens` (
   `id`         INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `projet_id`  INT UNSIGNED NOT NULL,
-  `type`       ENUM('cours', 'dossier') NOT NULL,
+  `type`       ENUM('cours', 'dossier', 'fichier') NOT NULL,
   `cible_id`   INT UNSIGNED NOT NULL,
   `ajoute_par` INT UNSIGNED NULL,
   `created_at` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -1836,3 +1836,7 @@ INSERT INTO `evenement_liens` (`evenement_id`, `cours_id`, `dossier_id`)
 SELECT `id`, `cours_id`, NULL FROM `evenements` WHERE `cours_id` IS NOT NULL;
 INSERT INTO `evenement_liens` (`evenement_id`, `cours_id`, `dossier_id`)
 SELECT `id`, NULL, `dossier_id` FROM `evenements` WHERE `dossier_id` IS NOT NULL;
+
+-- Un fichier se met aussi dans un travail de groupe (voir migration-projet-liens-fichier.sql).
+ALTER TABLE `projet_liens`
+  MODIFY `type` ENUM('cours', 'dossier', 'fichier') NOT NULL;

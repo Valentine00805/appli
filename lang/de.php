@@ -4826,4 +4826,12 @@ return [
     'evtf.lien_un_fichier' => 'Eine Datei',
     'evtf.choisir_fichier' => 'Datei wählen …',
     'evt.fichier_lie' => 'Verknüpfte Datei',
+    'pt.projets_aide_fichier' => 'Alle Projektmitglieder können sie in der Registerkarte „Kurse“ ansehen und herunterladen (nur Lesen). Du kannst sie jederzeit wieder entfernen.',
+    'pt.projets_lot_aide' => 'Die oben angekreuzten Kurse, Ordner und Dateien kommen in die angekreuzten Projekte: Alle Mitglieder sehen sie in der Registerkarte „Kurse“. Lernkarten-Blätter sind nicht dabei.',
+    'pt.projets_lot_ajouter' => 'Zu den angekreuzten Projekten hinzufügen',
+    'pt.projets_lot_documents' => 'Kreuze mindestens einen Kurs, einen Ordner oder eine Datei an, die ins Projekt soll.',
+    'pt.projets_lot_deja' => 'Alles Angekreuzte war schon in den gewählten Projekten.',
+    'pt.flash_lot_projets.un' => '{n} Element zu Gruppenprojekten hinzugefügt.',
+    'pt.flash_lot_projets.plusieurs' => '{n} Elemente zu Gruppenprojekten hinzugefügt.',
+    'tr.co.lecture_seule' => 'Nur Lesen',
 ];

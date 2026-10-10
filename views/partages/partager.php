@@ -145,7 +145,7 @@ $icone = match ($type) {
   <?php // Un cours ou un dossier se met aussi dans un travail de groupe : ses membres le lisent. ?>
   <section class="carte partage-section">
     <h2 style="margin-top:0">👥 <?= e(t('pt.avec_projet')) ?></h2>
-    <p class="discret" style="margin-top:0"><?= e(t('pt.projets_aide')) ?></p>
+    <p class="discret" style="margin-top:0"><?= e(t($type === 'fichier' ? 'pt.projets_aide_fichier' : 'pt.projets_aide')) ?></p>
     <?php if ($projets === []): ?>
       <p class="discret" style="margin:0"><?= e(t('pt.projets_aucun')) ?> <a href="<?= url('travaux') ?>"><?= e(t('pt.projets_creer')) ?></a></p>
     <?php else: ?>
