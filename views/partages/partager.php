@@ -20,6 +20,8 @@ $surPlace = $dansUneFenetre ? ' data-envoi-fenetre' : '';
 $csrf = Session::jetonCsrf();
 $base = 'partager/' . $mot . '/' . (int) $cible['id'];
 $ontAcces = array_flip(array_column($destinataires, 'id'));
+// Les droits qu'on peut donner : un fichier ou un évènement ne se modifie pas.
+$droitsPossibles = array_values(array_filter(Partages::DROITS, static fn (string $d): bool => !(in_array($type, ['fichier', 'evenement'], true) && $d === 'modification')));
 $icone = match ($type) {
     'cours' => '📘',
     'fiche' => '📝',
@@ -57,6 +59,7 @@ $icone = match ($type) {
               <?= Amis::avatar((int) $a['id'], (string) $a['pseudo']) ?>
               <span class="partage-liste__nom"><?= e((string) $a['pseudo']) ?></span>
               <?php if (isset($ontAcces[(int) $a['id']])): ?><span class="pastille"><?= e(t('pt.a_acces')) ?></span><?php endif; ?>
+              <?= Vue::rendre('partages/_droit_perso', ['champ' => 'droits_amis', 'qui' => (int) $a['id'], 'nom' => (string) $a['pseudo'], 'droitsPossibles' => $droitsPossibles]) ?>
             </label>
           </li>
         <?php endforeach; ?>
@@ -66,25 +69,14 @@ $icone = match ($type) {
               <input type="checkbox" name="groupes[]" value="<?= (int) $g['id'] ?>">
               <?= Conversations::avatar((int) $g['id'], $g['photo_nom'] ?? null) ?>
               <span class="partage-liste__nom"><?= e((string) $g['nom']) ?> <span class="discret">· <?= e(t('pt.groupe')) ?></span></span>
+              <?= Vue::rendre('partages/_droit_perso', ['champ' => 'droits_groupes', 'qui' => (int) $g['id'], 'nom' => (string) $g['nom'], 'droitsPossibles' => $droitsPossibles]) ?>
             </label>
           </li>
         <?php endforeach; ?>
       </ul>
       <p class="discret" data-filtre-vide hidden style="margin:.4rem 0 0"><?= e(t('pt.personne_correspond')) ?></p>
-      <?php // Ce qu'ils pourront en faire : le partage le dit dès l'envoi. ?>
-      <fieldset class="champ partage-droits" style="margin-top:.75rem">
-        <legend class="legende"><?= e(t('pt.ce_quils_pourront')) ?></legend>
-        <?php foreach (Partages::DROITS as $rang => $unDroit): ?>
-          <?php if (in_array($type, ['fichier', 'evenement'], true) && $unDroit === 'modification') { continue; } ?>
-          <label class="partage-droits__choix">
-            <input type="radio" name="droit" value="<?= e($unDroit) ?>"<?= $rang === 0 ? ' checked' : '' ?>>
-            <span>
-              <strong><?= e(Partages::libelleDroit($unDroit)) ?></strong>
-              <span class="discret"><?= e(Partages::expliqueDroit($unDroit)) ?></span>
-            </span>
-          </label>
-        <?php endforeach; ?>
-      </fieldset>
+      <?php // Ce qu'ils pourront en faire : le même droit pour tous, ou un droit par personne ; le partage le dit dès l'envoi. ?>
+      <?= Vue::rendre('partages/_droits', ['droitsPossibles' => $droitsPossibles]) ?>
       <?php
       /*
        * Un évènement lié à un cours : on choisit de partager ou non le cours avec lui. Le cours n'est jamais envoyé sans

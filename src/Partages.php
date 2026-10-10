@@ -659,12 +659,15 @@ final class Partages
 
     /**
      * Partage avec des amis et des groupes : un accès pour chacun, et une
-     * carte dans la discussion.
+     * carte dans la discussion. Le droit est le même pour tous (« $droit »), sauf pour ceux dont « $droitsAmis » ou « $droitsGroupes »
+     * (identifiant => droit) en donnent un à eux : un groupe entier reçoit celui du groupe.
      *
      * @return array{0: int, 1: ?string, 2: list<int>} les personnes atteintes, la raison d'un refus, les notifications en file
      */
-    public static function partagerAvecAmis(int $moi, string $type, int $id, array $amis, array $groupes, string $texte, string $droit = 'lecture'): array
-    {
+    public static function partagerAvecAmis(
+        int $moi, string $type, int $id, array $amis, array $groupes, string $texte, string $droit = 'lecture',
+        array $droitsAmis = [], array $droitsGroupes = []
+    ): array {
         $cible = self::mienne($type, $id, $moi);
         if ($cible === null) {
             return [0, t('pt.doc_introuvable'), []];
@@ -689,7 +692,7 @@ final class Partages
         ]);
 
         foreach ($amis as $a) {
-            self::donnerAcces($moi, $a, $type, $id, $droit, $texte);
+            self::donnerAcces($moi, $a, $type, $id, $droitsAmis[$a] ?? $droit, $texte);
             $atteints[$a] = true;
             $annonce = fn (): string => t('pt.a_partage', ['qui' => $pseudo(), 'quoi' => $quoi()])
                 . ($texte === '' ? '' : ' · ' . $texte);
@@ -709,7 +712,7 @@ final class Partages
         foreach ($groupes as $g) {
             foreach (Conversations::membres($g) as $membre) {
                 if ($membre['id'] !== $moi) {
-                    self::donnerAcces($moi, $membre['id'], $type, $id, $droit, $texte);
+                    self::donnerAcces($moi, $membre['id'], $type, $id, $droitsGroupes[$g] ?? $droit, $texte);
                     $atteints[$membre['id']] = true;
                 }
             }
@@ -767,8 +770,10 @@ final class Partages
      * @param array<string, list<int|string>> $parType  les identifiants choisis, par type
      * @return array{0: string, 1: int, 2: ?string, 3: list<int>} ce qui est parti (« 3 cours »), les personnes atteintes, un refus, les notifications
      */
-    public static function partagerPlusieurs(int $moi, array $parType, array $amis, array $groupes, string $texte, string $droit = 'lecture'): array
-    {
+    public static function partagerPlusieurs(
+        int $moi, array $parType, array $amis, array $groupes, string $texte, string $droit = 'lecture',
+        array $droitsAmis = [], array $droitsGroupes = []
+    ): array {
         $texte = trim(str_replace(["\r\n", "\r"], "\n", $texte));
         if (mb_strlen($texte) > Amis::MESSAGE_MAX) {
             return ['', 0, t('pt.message_long', ['max' => Amis::MESSAGE_MAX]), []];
@@ -815,7 +820,7 @@ final class Partages
         foreach ($amis as $a) {
             $carte = self::dansLaDiscussion($a);
             foreach ($documents as $rang => $doc) {
-                self::donnerAcces($moi, $a, $doc['type'], $doc['id'], $droit, $texte);
+                self::donnerAcces($moi, $a, $doc['type'], $doc['id'], $droitsAmis[$a] ?? $droit, $texte);
                 if ($carte) {
                     Database::run(
                         'INSERT INTO messages (expediteur_id, destinataire_id, texte, partage_type, partage_id, created_at) VALUES (?, ?, ?, ?, ?, UTC_TIMESTAMP())',
@@ -835,7 +840,7 @@ final class Partages
             foreach (Conversations::membres($g) as $membre) {
                 if ($membre['id'] !== $moi) {
                     foreach ($documents as $doc) {
-                        self::donnerAcces($moi, $membre['id'], $doc['type'], $doc['id'], $droit, $texte);
+                        self::donnerAcces($moi, $membre['id'], $doc['type'], $doc['id'], $droitsGroupes[$g] ?? $droit, $texte);
                     }
                     $atteints[$membre['id']] = true;
                 }

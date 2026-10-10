@@ -19,6 +19,7 @@
  */
 $dansUneFenetre = $dansUneFenetre ?? false;
 $csrf = Session::jetonCsrf();
+$droitsPossibles = Partages::DROITS;   // les droits qu'on peut donner, pour tous ou à chacun
 ?>
 <div class="entete-page"<?= $dansUneFenetre ? ' data-large' : '' ?>>
   <div>
@@ -32,11 +33,38 @@ $csrf = Session::jetonCsrf();
     <p class="discret" style="margin:0"><?= e(t('pt.rien_a_partager')) ?></p>
   </section>
 <?php else: ?>
+  <?php
+  /*
+   * D'abord de quoi il s'agit (un cours, une fiche de révision, un dossier, un fichier), puis ce qu'on en choisit. Une seule liste se montre à la
+   * fois ; ce qui est coché dans les autres reste coché, et part avec l'envoi : on peut mêler les genres. Le nombre de cases cochées se lit sur
+   * chaque onglet. Celui d'où l'on vient (cases cochées d'avance) s'ouvre le premier, sinon le premier genre qui a quelque chose à partager.
+   */
+  $genres = array_filter([
+      'cours' => [$mesCours, '📘', 'pt.genre_cours', count($choisis)],
+      'fiches' => [$mesFiches, '📝', 'pt.genre_fiches', count($choisisFiches)],
+      'dossiers' => [$mesDossiers, '📁', 'pt.genre_dossiers', count($choisisDossiers)],
+      'fichiers' => [$mesFichiers, '📎', 'pt.genre_fichiers', count($choisisFichiers)],
+  ], static fn (array $g): bool => $g[0] !== []);
+  $genreActif = (string) (array_key_first(array_filter($genres, static fn (array $g): bool => $g[3] > 0)) ?? array_key_first($genres));
+  ?>
   <form method="post" action="<?= url('partager/plusieurs/amis') ?>"<?= $dansUneFenetre ? ' data-envoi-fenetre' : '' ?>>
     <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
 
+    <div class="partage-genres" data-genres>
+      <p class="legende partage-genres__titre" id="partage-genres-titre"><?= e(t('pt.genre_choisir')) ?></p>
+      <div class="partage-genres__onglets" role="tablist" aria-labelledby="partage-genres-titre">
+        <?php foreach ($genres as $cle => [, $icone, $libelle, $coches]): ?>
+          <button type="button" class="partage-genre<?= $genreActif === $cle ? ' partage-genre--actif' : '' ?>" role="tab"
+                  aria-selected="<?= $genreActif === $cle ? 'true' : 'false' ?>" data-genre-onglet="<?= e($cle) ?>">
+            <span aria-hidden="true"><?= $icone ?></span> <?= e(t($libelle)) ?>
+            <span class="partage-genre__compte" data-genre-compte<?= $coches > 0 ? '' : ' hidden' ?>><?= $coches > 0 ? (int) $coches : '' ?></span>
+          </button>
+        <?php endforeach; ?>
+      </div>
+    </div>
+
     <?php if ($mesCours !== []): ?>
-    <section class="carte partage-section">
+    <section class="carte partage-section" data-genre-section="cours" role="tabpanel"<?= $genreActif === 'cours' ? '' : ' hidden' ?>>
       <h2 style="margin-top:0"><?= e(t('pt.cours_titre')) ?></h2>
       <label class="discussions-recherche">
         <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false">
@@ -72,7 +100,7 @@ $csrf = Session::jetonCsrf();
 
     <?php if ($mesFiches !== []): ?>
     <?php // Une fiche se partage sans son cours : son texte, ses liens, ses fichiers. ?>
-    <section class="carte partage-section">
+    <section class="carte partage-section" data-genre-section="fiches" role="tabpanel"<?= $genreActif === 'fiches' ? '' : ' hidden' ?>>
       <h2 style="margin-top:0"><?= e(t('pt.fiches_titre')) ?></h2>
       <label class="discussions-recherche">
         <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false">
@@ -111,7 +139,7 @@ $csrf = Session::jetonCsrf();
 
     <?php if ($mesDossiers !== []): ?>
     <?php // Un dossier coché ouvre tout ce qu'il contient, sous-dossiers compris. ?>
-    <section class="carte partage-section">
+    <section class="carte partage-section" data-genre-section="dossiers" role="tabpanel"<?= $genreActif === 'dossiers' ? '' : ' hidden' ?>>
       <h2 style="margin-top:0"><?= e(t('pt.dossiers_titre')) ?></h2>
       <label class="discussions-recherche">
         <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false">
@@ -147,7 +175,7 @@ $csrf = Session::jetonCsrf();
 
     <?php if ($mesFichiers !== []): ?>
     <?php // Les fichiers joints de mes cours : chacun se partage seul, tel quel. ?>
-    <section class="carte partage-section">
+    <section class="carte partage-section" data-genre-section="fichiers" role="tabpanel"<?= $genreActif === 'fichiers' ? '' : ' hidden' ?>>
       <h2 style="margin-top:0"><?= e(t('pt.fichiers_titre')) ?></h2>
       <label class="discussions-recherche">
         <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true" focusable="false">
@@ -181,7 +209,29 @@ $csrf = Session::jetonCsrf();
     </section>
     <?php endif; ?>
 
-    <section class="carte partage-section">
+    <?php
+    /*
+     * Puis à qui : ses amis et ses groupes de discussion, un travail de groupe, ou un lien public pour ceux qui n'ont pas de compte. Même principe
+     * que pour le genre de document : un onglet par destination, une seule à la fois, chacune avec son propre bouton d'envoi.
+     */
+    $destinations = ['amis' => ['👥', 'pt.dest_amis']];
+    if (($projets ?? []) !== []) { $destinations['projets'] = ['🤝', 'pt.dest_projets']; }
+    $destinations['lien'] = ['🔗', 'pt.dest_lien'];
+    $destActive = $amis !== [] || $groupes !== [] ? 'amis' : (isset($destinations['projets']) ? 'projets' : 'lien');
+    ?>
+    <div class="partage-genres" data-destinations>
+      <p class="legende partage-genres__titre" id="partage-dest-titre"><?= e(t('pt.dest_choisir')) ?></p>
+      <div class="partage-genres__onglets" role="tablist" aria-labelledby="partage-dest-titre">
+        <?php foreach ($destinations as $cle => [$icone, $libelle]): ?>
+          <button type="button" class="partage-genre<?= $destActive === $cle ? ' partage-genre--actif' : '' ?>" role="tab"
+                  aria-selected="<?= $destActive === $cle ? 'true' : 'false' ?>" data-dest-onglet="<?= e($cle) ?>">
+            <span aria-hidden="true"><?= $icone ?></span> <?= e(t($libelle)) ?>
+          </button>
+        <?php endforeach; ?>
+      </div>
+    </div>
+
+    <section class="carte partage-section" data-dest-section="amis" role="tabpanel"<?= $destActive === 'amis' ? '' : ' hidden' ?>>
       <h2 style="margin-top:0"><?= e(t('pt.avec_mes_amis')) ?></h2>
       <?php if ($amis === [] && $groupes === []): ?>
         <p class="discret" style="margin:0">
@@ -203,6 +253,7 @@ $csrf = Session::jetonCsrf();
               <input type="checkbox" name="amis[]" value="<?= (int) $a['id'] ?>">
               <?= Amis::avatar((int) $a['id'], (string) $a['pseudo']) ?>
               <span class="partage-liste__nom"><?= e((string) $a['pseudo']) ?></span>
+              <?= Vue::rendre('partages/_droit_perso', ['champ' => 'droits_amis', 'qui' => (int) $a['id'], 'nom' => (string) $a['pseudo'], 'droitsPossibles' => $droitsPossibles]) ?>
             </label>
           </li>
         <?php endforeach; ?>
@@ -212,24 +263,14 @@ $csrf = Session::jetonCsrf();
               <input type="checkbox" name="groupes[]" value="<?= (int) $g['id'] ?>">
               <?= Conversations::avatar((int) $g['id'], $g['photo_nom'] ?? null) ?>
               <span class="partage-liste__nom"><?= e((string) $g['nom']) ?> <span class="discret">· <?= e(t('pt.groupe')) ?></span></span>
+              <?= Vue::rendre('partages/_droit_perso', ['champ' => 'droits_groupes', 'qui' => (int) $g['id'], 'nom' => (string) $g['nom'], 'droitsPossibles' => $droitsPossibles]) ?>
             </label>
           </li>
         <?php endforeach; ?>
       </ul>
       <p class="discret" data-filtre-vide hidden style="margin:.4rem 0 0"><?= e(t('pt.personne_correspond')) ?></p>
 
-      <fieldset class="champ partage-droits" style="margin-top:.75rem">
-        <legend class="legende"><?= e(t('pt.ce_quils_pourront')) ?></legend>
-        <?php foreach (Partages::DROITS as $rang => $unDroit): ?>
-          <label class="partage-droits__choix">
-            <input type="radio" name="droit" value="<?= e($unDroit) ?>"<?= $rang === 0 ? ' checked' : '' ?>>
-            <span>
-              <strong><?= e(Partages::libelleDroit($unDroit)) ?></strong>
-              <span class="discret"><?= e(Partages::expliqueDroit($unDroit)) ?></span>
-            </span>
-          </label>
-        <?php endforeach; ?>
-      </fieldset>
+      <?= Vue::rendre('partages/_droits', ['droitsPossibles' => $droitsPossibles]) ?>
       <div class="champ" style="margin-top:.75rem">
         <label for="lot-texte"><?= e(t('pt.message_facultatif')) ?></label>
         <textarea id="lot-texte" name="texte" rows="2" maxlength="<?= Amis::MESSAGE_MAX ?>"
@@ -249,7 +290,7 @@ $csrf = Session::jetonCsrf();
      */
     ?>
     <?php if (($projets ?? []) !== []): ?>
-    <section class="carte partage-section">
+    <section class="carte partage-section" data-dest-section="projets" role="tabpanel"<?= $destActive === 'projets' ? '' : ' hidden' ?>>
       <h2 style="margin-top:0">👥 <?= e(t('pt.avec_projet')) ?></h2>
       <p class="discret" style="margin-top:0"><?= e(t('pt.projets_lot_aide')) ?></p>
       <ul class="groupe-choix__liste">
@@ -275,7 +316,7 @@ $csrf = Session::jetonCsrf();
      * ailleurs — les cases cochées partent donc telles quelles.
      */
     ?>
-    <section class="carte partage-section">
+    <section class="carte partage-section" data-dest-section="lien" role="tabpanel"<?= $destActive === 'lien' ? '' : ' hidden' ?>>
       <h2 style="margin-top:0"><?= e(t('pt.avec_lien')) ?></h2>
       <p class="discret" style="margin-top:0">
         <?= e(t('pt.lien_aide')) ?>

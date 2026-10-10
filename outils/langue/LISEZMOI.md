@@ -464,3 +464,5 @@ La base locale est désignée par « config/parametres.test.php » (posé puis r
 **`calendriers_amis_visuel.php`** — prépare le contrôle visuel (deux comptes amis, deux calendriers garnis, la session du premier) ; `--efface` les retire.
 
 **`projets_fichiers_langue.php`** — un fichier dans un travail de groupe : la fenêtre « Partager » d'un fichier (« Dans un projet de groupe », lecture seule), le mettre dans un projet (les siens seulement, une fois, jeton CSRF, étranger refusé), ce que voient les membres (et eux seuls), le retirer, « Partager plusieurs » (cours, dossiers et fichiers cochés dans les projets cochés), quatre langues.
+
+**`partages_droits_langue.php`** — les droits d'un partage, pour tous ou un par personne : les fenêtres « Partager » et « Partager plusieurs » (le choix, le menu de chaque ami et de chaque groupe, sans « modification » pour un fichier), l'enregistrement (le même droit pour tous, un droit à chacun avec le droit commun pour qui n'en a pas, droit invalide ramené à la lecture, droit d'une personne non cochée ignoré, droit d'un groupe pour tous ses membres), plusieurs documents, quatre langues.

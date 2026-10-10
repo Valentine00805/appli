@@ -7639,3 +7639,119 @@
     }
   });
 })();
+
+/* « Partager plusieurs » : un onglet par genre de document, une seule liste à la fois. Ce qui est coché dans une liste cachée reste coché (il
+   part avec le formulaire) ; chaque onglet dit combien de cases y sont cochées. Écouté sur le document : la fenêtre se charge après coup. */
+(function () {
+  function compter(formulaire) {
+    [].slice.call(formulaire.querySelectorAll("[data-genre-section]")).forEach(function (section) {
+      var nom = section.getAttribute("data-genre-section");
+      var onglet = formulaire.querySelector('[data-genre-onglet="' + nom + '"]');
+      var compte = onglet ? onglet.querySelector("[data-genre-compte]") : null;
+      if (!compte) { return; }
+      var n = section.querySelectorAll('input[type="checkbox"]:checked').length;
+      compte.textContent = n > 0 ? String(n) : "";
+      compte.hidden = n === 0;
+    });
+  }
+
+  document.addEventListener("click", function (evenement) {
+    var onglet = evenement.target.closest ? evenement.target.closest("[data-genre-onglet]") : null;
+    if (onglet) {
+      var formulaire = onglet.closest("form");
+      if (!formulaire) { return; }
+      var voulu = onglet.getAttribute("data-genre-onglet");
+      [].slice.call(formulaire.querySelectorAll("[data-genre-onglet]")).forEach(function (autre) {
+        var actif = autre.getAttribute("data-genre-onglet") === voulu;
+        autre.classList.toggle("partage-genre--actif", actif);
+        autre.setAttribute("aria-selected", actif ? "true" : "false");
+      });
+      [].slice.call(formulaire.querySelectorAll("[data-genre-section]")).forEach(function (section) {
+        section.hidden = section.getAttribute("data-genre-section") !== voulu;
+      });
+      var champ = formulaire.querySelector('[data-genre-section="' + voulu + '"] input[type="search"]');
+      if (champ) { champ.focus(); }
+      return;
+    }
+    // « Tout cocher » ne déclenche pas de « change » : on recompte une fois que son gestionnaire est passé.
+    var tout = evenement.target.closest ? evenement.target.closest("[data-cocher-tout]") : null;
+    if (tout && tout.closest("[data-genre-section]")) {
+      var f = tout.closest("form");
+      if (f) { setTimeout(function () { compter(f); }, 0); }
+    }
+  });
+
+  document.addEventListener("change", function (evenement) {
+    var section = evenement.target.closest ? evenement.target.closest("[data-genre-section]") : null;
+    var formulaire = section ? section.closest("form") : null;
+    if (formulaire) { compter(formulaire); }
+  });
+})();
+
+/* « Partager plusieurs », à qui : un onglet par destination (amis et groupes, travail de groupe, lien public), une seule à la fois. */
+(function () {
+  document.addEventListener("click", function (evenement) {
+    var onglet = evenement.target.closest ? evenement.target.closest("[data-dest-onglet]") : null;
+    if (!onglet) { return; }
+    var formulaire = onglet.closest("form");
+    if (!formulaire) { return; }
+    var voulu = onglet.getAttribute("data-dest-onglet");
+    [].slice.call(formulaire.querySelectorAll("[data-dest-onglet]")).forEach(function (autre) {
+      var actif = autre.getAttribute("data-dest-onglet") === voulu;
+      autre.classList.toggle("partage-genre--actif", actif);
+      autre.setAttribute("aria-selected", actif ? "true" : "false");
+    });
+    [].slice.call(formulaire.querySelectorAll("[data-dest-section]")).forEach(function (section) {
+      section.hidden = section.getAttribute("data-dest-section") !== voulu;
+    });
+    var champ = formulaire.querySelector('[data-dest-section="' + voulu + '"] input[type="search"]');
+    if (champ) { champ.focus(); }
+  });
+})();
+
+/* Partager : « Les mêmes droits pour tous » ou « Un droit par personne ». Dans le second cas, chaque ami et chaque groupe de la liste montre son
+   menu de droits (par défaut celui qu'on avait choisi pour tous) ; changer le droit de quelqu'un le coche. */
+(function () {
+  function appliquer(fieldset) {
+    var formulaire = fieldset.closest("form");
+    var mode = fieldset.querySelector('input[name="droits_mode"]:checked');
+    var chacun = !!mode && mode.value === "chacun";
+    [].slice.call(fieldset.querySelectorAll('input[name="droits_mode"]')).forEach(function (radio) {
+      radio.parentNode.classList.toggle("partage-genre--actif", radio.checked);
+    });
+    var tous = fieldset.querySelector("[data-droits-tous]");
+    var aide = fieldset.querySelector("[data-droits-chacun]");
+    if (tous) { tous.hidden = chacun; }
+    if (aide) { aide.hidden = !chacun; }
+    if (!formulaire) { return; }
+    var commun = fieldset.querySelector('input[name="droit"]:checked');
+    [].slice.call(formulaire.querySelectorAll("[data-droit-perso]")).forEach(function (menu) {
+      menu.hidden = !chacun;
+      menu.disabled = !chacun;
+      if (chacun && !menu.getAttribute("data-touche") && commun) {
+        // Au départ, chacun reçoit ce qu'on avait choisi pour tous (s'il le permet).
+        if ([].some.call(menu.options, function (o) { return o.value === commun.value; })) { menu.value = commun.value; }
+      }
+    });
+  }
+
+  document.addEventListener("change", function (evenement) {
+    var cible = evenement.target;
+    if (!cible.closest) { return; }
+    var mode = cible.closest('input[name="droits_mode"]');
+    if (mode) {
+      var fieldset = mode.closest("[data-droits]");
+      if (fieldset) { appliquer(fieldset); }
+      return;
+    }
+    var menu = cible.closest("[data-droit-perso]");
+    if (menu) {
+      menu.setAttribute("data-touche", "1");
+      var case_ = menu.parentNode.querySelector('input[type="checkbox"]');
+      if (case_ && !case_.checked) {
+        case_.checked = true;
+        case_.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+    }
+  });
+})();

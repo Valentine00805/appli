@@ -161,7 +161,8 @@ final class PartagesController
             is_array($_POST['amis'] ?? null) ? $_POST['amis'] : [],
             is_array($_POST['groupes'] ?? null) ? $_POST['groupes'] : [],
             (string) ($_POST['texte'] ?? ''),
-            Partages::droitValide($_POST['droit'] ?? null)
+            Partages::droitValide($_POST['droit'] ?? null),
+            ...self::droitsParDestinataire()
         );
         if ($refus !== null) {
             Session::flash('erreur', $refus);
@@ -170,6 +171,31 @@ final class PartagesController
             Session::flash('succes', tn('pt.flash_lot', $nombre, ['combien' => $partis]));
         }
         $this->retourPuisEnvoyer('partager/plusieurs', $notifications);
+    }
+
+    /**
+     * Les droits choisis un par un (« Un droit par personne ») : amis et groupes, identifiant => droit. Vide si le formulaire donne le même droit à
+     * tous — ou s'il ne dit rien, comme l'ancien formulaire.
+     *
+     * @return array{0: array<int, string>, 1: array<int, string>}
+     */
+    private static function droitsParDestinataire(): array
+    {
+        if ((string) ($_POST['droits_mode'] ?? '') !== 'chacun') {
+            return [[], []];
+        }
+        $lire = static function (mixed $champ): array {
+            $droits = [];
+            foreach (is_array($champ) ? $champ : [] as $qui => $droit) {
+                if ((int) $qui > 0) {
+                    $droits[(int) $qui] = Partages::droitValide($droit);
+                }
+            }
+
+            return $droits;
+        };
+
+        return [$lire($_POST['droits_amis'] ?? null), $lire($_POST['droits_groupes'] ?? null)];
     }
 
     /** Un lien public pour tout ce qui est coché : le lot, et son adresse. */
@@ -247,7 +273,8 @@ final class PartagesController
             is_array($_POST['amis'] ?? null) ? $_POST['amis'] : [],
             is_array($_POST['groupes'] ?? null) ? $_POST['groupes'] : [],
             (string) ($_POST['texte'] ?? ''),
-            Partages::droitValide($_POST['droit'] ?? null)
+            Partages::droitValide($_POST['droit'] ?? null),
+            ...self::droitsParDestinataire()
         );
         $succes = tn('pt.flash_un', $nombre);
         // Un évènement lié à un cours : le cours part aussi si on l'a demandé (même droit, mêmes destinataires, sans message).
@@ -260,7 +287,8 @@ final class PartagesController
                     is_array($_POST['amis'] ?? null) ? $_POST['amis'] : [],
                     is_array($_POST['groupes'] ?? null) ? $_POST['groupes'] : [],
                     '',
-                    Partages::droitValide($_POST['droit'] ?? null)
+                    Partages::droitValide($_POST['droit'] ?? null),
+                    ...self::droitsParDestinataire()
                 );
                 if ($refusCours === null) {
                     $succes .= ' ' . t('pt.flash_avec_cours', ['titre' => (string) $evenement['cours_titre']]);

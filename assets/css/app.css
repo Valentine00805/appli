@@ -4701,3 +4701,32 @@ a.serveur-carte:hover, a.serveur-carte:focus-visible { border-color: var(--accen
 
 /* Les adresses d'un lieu : longues, elles se coupent plutôt que de déborder. */
 .lien-externe { overflow-wrap: anywhere; }
+
+/* « Partager plusieurs » : le choix du genre de document, en onglets ; le nombre de cases cochées se lit sur chacun. */
+.partage-genres { margin-bottom: 1rem; }
+.partage-genres__titre { margin: 0 0 .5rem; }
+.partage-genres__onglets { display: flex; flex-wrap: wrap; gap: .5rem; }
+.partage-genre {
+  display: inline-flex; align-items: center; gap: .4rem; padding: .5rem .9rem; border: 1.5px solid var(--bordure-forte); border-radius: 999px;
+  background: var(--fond-carte); color: var(--texte); font: inherit; font-weight: 600; font-size: .92rem; cursor: pointer;
+  transition: background .15s, color .15s, border-color .15s, transform .15s;
+}
+.partage-genre:hover, .partage-genre:focus-visible { border-color: var(--accent); color: var(--accent); }
+.partage-genre:active { transform: scale(.97); }
+.partage-genre--actif, .partage-genre--actif:hover, .partage-genre--actif:focus-visible { background: var(--accent); border-color: var(--accent); color: #fff; }
+.partage-genre__compte {
+  display: inline-grid; place-items: center; min-width: 1.35rem; height: 1.35rem; padding: 0 .35rem; border-radius: 999px;
+  background: var(--accent); color: #fff; font-size: .78rem; line-height: 1;
+}
+.partage-genre--actif .partage-genre__compte { background: #fff; color: var(--accent); }
+.partage-genre__compte[hidden] { display: none; }
+.partage-section[hidden] { display: none; }
+
+/* Les droits des destinataires : le même pour tous, ou un par personne (son menu, à droite de son nom dans la liste). */
+.partage-droits__mode { margin-bottom: .2rem; }
+.partage-droits__mode .partage-genre { position: relative; }
+.partage-droits__mode .partage-genre:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+.partage-droits[hidden], [data-droits-tous][hidden] { display: none; }
+.droit-perso { margin-left: auto; width: auto; max-width: 50%; padding: .3rem 1.6rem .3rem .6rem; font-size: .85rem; flex: none; }
+.droit-perso[hidden] { display: none; }
+
