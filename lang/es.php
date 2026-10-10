@@ -4823,4 +4823,7 @@ return [
     'evtf.choisir_dossier' => 'Elige una carpeta…',
     'evtf.lien_ajouter' => 'Vincular otro curso o carpeta',
     'evtf.lien_retirer' => 'Quitar este vínculo',
+    'evtf.lien_un_fichier' => 'Un archivo',
+    'evtf.choisir_fichier' => 'Elige un archivo…',
+    'evt.fichier_lie' => 'Archivo vinculado',
 ];

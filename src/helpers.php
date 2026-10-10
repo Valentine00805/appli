@@ -758,3 +758,27 @@ function retrait_dossier(array $dossier): string
 {
     return str_repeat("\u{00A0}\u{00A0}\u{00A0}", (int) ($dossier['profondeur'] ?? 0));
 }
+
+/**
+ * Un texte simple échappé, dont les adresses web (http:// ou https://) deviennent des liens qui s'ouvrent dans un nouvel onglet.
+ * Seules ces deux formes sont reconnues : jamais « javascript: » ni rien d'autre. La ponctuation qui suit l'adresse n'en fait pas partie.
+ */
+function texte_avec_liens(?string $texte): string
+{
+    $parties = preg_split('~(https?://[^\s<>"]+)~iu', (string) $texte, -1, PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_NO_EMPTY) ?: [];
+    $html = '';
+    foreach ($parties as $partie) {
+        if (preg_match('~^https?://~i', $partie) !== 1) {
+            $html .= e($partie);
+            continue;
+        }
+        $reste = '';
+        while ($partie !== '' && preg_match('~[.,;:!?)\]}\'»]$~u', $partie) === 1) {
+            $reste = mb_substr($partie, -1) . $reste;
+            $partie = mb_substr($partie, 0, -1);
+        }
+        $html .= '<a href="' . e($partie) . '" target="_blank" rel="noopener noreferrer" class="lien-externe">' . e($partie) . '</a>' . e($reste);
+    }
+
+    return $html;
+}

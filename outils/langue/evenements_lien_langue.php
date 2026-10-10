@@ -1,6 +1,6 @@
 <?php
 /**
- * Un évènement lié à des cours et des dossiers (HTTP + base) : les lignes « Lier à » du formulaire (le genre, puis la liste du genre, et le « + »
+ * Un évènement lié à des cours, des fichiers seuls et des dossiers (HTTP + base) : les lignes « Lier à » du formulaire (le genre, puis la liste, et le « + »
  * qui en ajoute), l'enregistrement à la création, en modifiant et sur une série, ce qui est refusé (le dossier ou le cours d'un autre compte,
  * un doublon), la fiche de l'évènement, la liste du calendrier, la sauvegarde-restauration, la suppression d'un cours ou d'un dossier, et les
  * quatre langues.
@@ -44,6 +44,17 @@ $cours = (int) bd_valeur('SELECT id FROM cours WHERE user_id = ?', [$idA]);
 $coursB = (int) bd_valeur('SELECT id FROM cours WHERE user_id = ?', [$idB]);
 bd_run('INSERT INTO cours (user_id, titre) VALUES (?, ?)', [$idA, 'Cours de bases de données']);
 $cours2 = (int) bd_valeur('SELECT id FROM cours WHERE user_id = ? AND titre = ?', [$idA, 'Cours de bases de données']);
+// Un fichier déposé sans en faire un cours : une ligne de « cours » marquée « est_fichier ».
+bd_run('INSERT INTO cours (user_id, titre, est_fichier) VALUES (?, ?, 1), (?, ?, 1)', [$idA, 'schema-bdd.pdf', $idB, 'fichier-etranger.pdf']);
+$fichier = (int) bd_valeur('SELECT id FROM cours WHERE user_id = ? AND titre = ?', [$idA, 'schema-bdd.pdf']);
+$fichierB = (int) bd_valeur('SELECT id FROM cours WHERE user_id = ? AND titre = ?', [$idB, 'fichier-etranger.pdf']);
+// Le fichier derrière chaque fichier seul : un PDF (qui a un aperçu) et une archive (qui n'en a pas).
+bd_run('INSERT INTO cours (user_id, titre, est_fichier) VALUES (?, ?, 1)', [$idA, 'rendu.zip']);
+$archive = (int) bd_valeur('SELECT id FROM cours WHERE user_id = ? AND titre = ?', [$idA, 'rendu.zip']);
+bd_run('INSERT INTO fichiers (user_id, cours_id, pour_fiche, nom_origine, nom_stocke, mime, taille) VALUES (?, ?, 0, ?, ?, ?, 10), (?, ?, 0, ?, ?, ?, 10)',
+    [$idA, $fichier, 'schema-bdd.pdf', 'essai-evlien-1.pdf', 'application/pdf', $idA, $archive, 'rendu.zip', 'essai-evlien-2.zip', 'application/zip']);
+$fichierPdf = (int) bd_valeur('SELECT id FROM fichiers WHERE cours_id = ?', [$fichier]);
+$fichierZip = (int) bd_valeur('SELECT id FROM fichiers WHERE cours_id = ?', [$archive]);
 
 $cookie = __DIR__ . '/ck_evlien.txt';
 @unlink($cookie);
@@ -87,6 +98,12 @@ try {
             && str_contains($lc[0], 'value="' . $cours . '"') && str_contains($lc[0], 'value="' . $cours2 . '"') && !str_contains($lc[0], 'Semestre un')
             && str_contains($ld[0], 'value="' . $dossier . '"') && !str_contains($ld[0], 'Cours de réseaux')
             && !str_contains($formulaire, 'Cours étranger') && !str_contains($formulaire, 'Dossier étranger')), 'oui');
+    $dire('le genre « Un fichier » existe, avec sa propre liste (les fichiers seuls, ni les cours, ni ceux d\'un autre compte)',
+        $oui(str_contains($formulaire, '>Un fichier<') && preg_match('/name="lien\[0\]\[fichier\]"[^>]*hidden disabled/', $formulaire) === 1
+            && preg_match('/name="lien\[0\]\[fichier\]".*?<\/select>/s', $formulaire, $lf) === 1
+            && str_contains($lf[0], 'schema-bdd.pdf') && !str_contains($lf[0], 'Cours de réseaux') && !str_contains($formulaire, 'fichier-etranger.pdf')), 'oui');
+    $dire('et la liste des cours ne contient pas les fichiers seuls',
+        $oui(preg_match('/name="lien\[0\]\[cours\]".*?<\/select>/s', $formulaire, $lc2) === 1 && !str_contains($lc2[0], 'schema-bdd.pdf')), 'oui');
     $dire('un « + » pour lier d\'autres cours ou dossiers, avec son modèle de ligne',
         $oui(str_contains($formulaire, 'data-lien-ajouter') && str_contains($formulaire, 'Lier un autre cours ou dossier') && str_contains($formulaire, 'name="lien[__I__][genre]"')), 'oui');
     $dire('et une croix pour retirer une ligne', $oui(str_contains($formulaire, 'data-lien-retirer')), 'oui');
@@ -148,6 +165,45 @@ try {
     $appel('evenements/' . $idModif . '/modifier', $champs('À modifier', ['_csrf' => $csrf]));
     $dire('un envoi sans aucune ligne ne lie rien non plus', $nbLiens('À modifier') . '|' . $liens('À modifier'), '0|-|-');
 
+    echo "\n2c. Un fichier seul\n";
+    $appel('evenements/nouveau', $champs('Avec fichier', ['_csrf' => $csrf, 'lien' => [
+        ['genre' => 'fichier', 'fichier' => (string) $fichier],
+        ['genre' => 'fichier', 'fichier' => (string) $cours],        // un vrai cours donné pour un fichier : refusé
+        ['genre' => 'cours', 'cours' => (string) $fichier],          // un fichier donné pour un cours : refusé
+        ['genre' => 'fichier', 'fichier' => (string) $fichierB],     // le fichier d'un autre compte : refusé
+    ]]));
+    $dire('seul le fichier seul est gardé', $nbLiens('Avec fichier'), '1');
+    $dire('il n\'occupe aucune colonne (ni cours, ni dossier) : les boutons « Cours » et « Révision » n\'ont rien à en faire', $liens('Avec fichier'), '-|-');
+    $idFichier = (int) $evenement('Avec fichier')['id'];
+    [$ficheFichier] = $appel('evenements/' . $idFichier . '?fenetre=1');
+    $dire('la fiche l\'annonce « Fichier lié », avec un lien vers lui, et pas sous « Cours lié »',
+        $oui(str_contains($ficheFichier, 'Fichier lié') && str_contains($ficheFichier, 'schema-bdd.pdf') && !str_contains($ficheFichier, 'Cours lié')), 'oui');
+    $dire('un fichier seul s\'ouvre dans le lecteur de fichiers (l\'aperçu, en fenêtre), pas en page de cours',
+        $oui(preg_match('~<a href="[^"]*fichiers/' . $fichierPdf . '/apercu" data-fenetre>~', $ficheFichier) === 1 && !str_contains($ficheFichier, 'cours/' . $fichier)), 'oui');
+    $appel('evenements/nouveau', $champs('Avec archive', ['_csrf' => $csrf, 'lien' => [['genre' => 'fichier', 'fichier' => (string) $archive]]]));
+    [$ficheArchive] = $appel('evenements/' . (int) $evenement('Avec archive')['id'] . '?fenetre=1');
+    $dire('un fichier sans aperçu (une archive) s\'ouvre comme fichier, dans un nouvel onglet',
+        $oui(preg_match('~<a href="[^"]*fichiers/' . $fichierZip . '" target="_blank" rel="noopener">~', $ficheArchive) === 1 && !str_contains($ficheArchive, 'cours/' . $archive)), 'oui');
+    [$editionFichier] = $appel('evenements/' . $idFichier . '/modifier?fenetre=1');
+    $dire('le formulaire de modification présélectionne le genre « fichier » et le fichier',
+        $oui(preg_match('/<option value="fichier" selected>/', $editionFichier) === 1 && preg_match('/<option value="' . $fichier . '" selected>/', $editionFichier) === 1
+            && !preg_match('/<option value="cours" selected>/', $editionFichier)), 'oui');
+    [$depuisFichier] = $appel('evenements/nouveau?fenetre=1&cours=' . $fichier);
+    $dire('« ?cours= » avec un fichier seul présélectionne le genre « fichier »', $oui(preg_match('/<option value="fichier" selected>/', $depuisFichier) === 1), 'oui');
+    $appel('evenements/nouveau', $champs('Cours et fichier', ['_csrf' => $csrf, 'lien' => [
+        ['genre' => 'cours', 'cours' => (string) $cours], ['genre' => 'fichier', 'fichier' => (string) $fichier]]]));
+    $dire('un cours et un fichier ensemble : les deux, et la colonne ne garde que le cours', $nbLiens('Cours et fichier') . '|' . $liens('Cours et fichier'), '2|' . $cours . '|-');
+
+    echo "\n2d. Un lieu qui est une adresse web\n";
+    $appel('evenements/nouveau', $champs('Avec adresse', ['_csrf' => $csrf, 'lieu' => 'Salle 3 ou https://exemple.test/a?b=1&c=2). <script>alert(1)</script> javascript:alert(2)']));
+    [$ficheLieu] = $appel('evenements/' . (int) $evenement('Avec adresse')['id'] . '?fenetre=1');
+    $dire('l\'adresse https:// du lieu est un lien cliquable, ouvert dans un nouvel onglet',
+        $oui(str_contains($ficheLieu, '<a href="https://exemple.test/a?b=1&amp;c=2" target="_blank" rel="noopener noreferrer"')), 'oui');
+    $dire('la ponctuation qui suit n\'en fait pas partie', $oui(str_contains($ficheLieu, '</a>).')), 'oui');
+    $dire('le reste du texte est échappé (pas de balise injectée) et « javascript: » n\'est jamais un lien',
+        $oui(!str_contains($ficheLieu, '<script>alert(1)') && str_contains($ficheLieu, '&lt;script&gt;') && !str_contains($ficheLieu, 'href="javascript')), 'oui');
+    [$listeLieu] = $appel('calendrier?vue=liste&date=' . $demain);
+    $dire('dans la liste du calendrier aussi', $oui(str_contains($listeLieu, 'href="https://exemple.test/a?b=1&amp;c=2"')), 'oui');
     echo "\n3. Modifier\n";
     $idEvt = (int) $evenement('Sans lien')['id'];
     $appel('evenements/' . $idEvt . '/modifier', $champs('Sans lien', ['_csrf' => $csrf, 'lien' => [['genre' => 'dossier', 'dossier' => (string) $dossier]]]));
@@ -182,6 +238,7 @@ try {
     $dire('sauvegardé puis restauré, l\'évènement garde son dossier (par son nom)',
         (string) bd_valeur('SELECT d.nom FROM evenements e JOIN dossiers d ON d.id = e.dossier_id WHERE e.user_id = ? AND e.titre = ?', [$idA, 'Révisions du semestre']), 'Semestre un');
     $dire('sauvegardé puis restauré, « Plusieurs liens » garde ses trois liens', $nbLiens('Plusieurs liens'), '3');
+    $dire('« Avec fichier » garde son fichier seul', $nbLiens('Avec fichier'), '1');
     $dire('et les colonnes suivent (premier cours, premier dossier)', $oui((bool) bd_valeur('SELECT COUNT(*) FROM evenements WHERE user_id = ? AND titre = ? AND cours_id IS NOT NULL AND dossier_id IS NOT NULL', [$idA, 'Plusieurs liens'])), 'oui');
     bd_run('DELETE FROM cours WHERE user_id = ? AND titre = ?', [$idA, 'Cours de bases de données']);
     $dire('supprimer un cours retire son lien seulement', $nbLiens('Plusieurs liens'), '2');
@@ -191,11 +248,11 @@ try {
 
     echo "\n6. Les quatre langues\n";
     bd_run('INSERT INTO dossiers (user_id, nom) VALUES (?, ?)', [$idA, 'Autre dossier']);
-    foreach (['en' => ['Link to', 'A folder'], 'es' => ['Vincular a', 'Una carpeta'], 'de' => ['Verknüpfen mit', 'Ein Ordner'],
-        'fr' => ['Lier à', 'Un dossier']] as $langue => $mots) {
+    foreach (['en' => ['Link to', 'A folder', 'A file'], 'es' => ['Vincular a', 'Una carpeta', 'Un archivo'], 'de' => ['Verknüpfen mit', 'Ein Ordner', 'Eine Datei'],
+        'fr' => ['Lier à', 'Un dossier', 'Un fichier']] as $langue => $mots) {
         $appel('compte/langue', ['_csrf' => $csrf, 'langue' => $langue]);
         [$vue] = $appel('evenements/nouveau?fenetre=1');
-        $dire("$langue : le formulaire est traduit, sans clé brute", $oui(str_contains($vue, $mots[0]) && str_contains($vue, '>' . $mots[1] . '<') && !preg_match('/\bevtf\.(lien_[a-z_]+|choisir_[a-z]+)/', $vue)), 'oui');
+        $dire("$langue : le formulaire est traduit, sans clé brute", $oui(str_contains($vue, $mots[0]) && str_contains($vue, '>' . $mots[1] . '<') && str_contains($vue, '>' . $mots[2] . '<') && !preg_match('/\bevtf\.(lien_[a-z_]+|choisir_[a-z]+)/', $vue)), 'oui');
     }
     $termine = true;
 } finally {

@@ -34,7 +34,7 @@ $estPartage = !empty($evt['est_partage']);
       <?= e(libelle_type($evt)) ?><?php
         if ($estTache && !empty($evt['detail_tache'])) { echo ' · ' . e((string) $evt['detail_tache']); }
         if (!empty($evt['matiere_nom'])) { echo ' · ' . e($evt['matiere_nom']); }
-        if (!empty($evt['lieu'])) { echo ' · 📍 ' . e($evt['lieu']); }
+        if (!empty($evt['lieu'])) { echo ' · 📍 ' . texte_avec_liens((string) $evt['lieu']); }
         if (!empty($evt['cours_titre'])) { echo ' · 📘 ' . e($evt['cours_titre']); }
         if (!empty($evt['dossier_nom'])) { echo ' · 📁 ' . e($evt['dossier_nom']); }
       ?>

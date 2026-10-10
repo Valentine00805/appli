@@ -4835,4 +4835,7 @@ return [
     'evtf.choisir_dossier' => 'Choisir un dossier…',
     'evtf.lien_ajouter' => 'Lier un autre cours ou dossier',
     'evtf.lien_retirer' => 'Retirer ce lien',
+    'evtf.lien_un_fichier' => 'Un fichier',
+    'evtf.choisir_fichier' => 'Choisir un fichier…',
+    'evt.fichier_lie' => 'Fichier lié',
 ];

@@ -10,10 +10,15 @@ declare(strict_types=1);
  */
 final class EvenementLiens
 {
+    /** Le fichier déposé derrière un fichier seul (le premier de la ligne de cours), à joindre à une requête sur « cours c ». */
+    private const FICHIER = '(SELECT f.id FROM fichiers f WHERE f.cours_id = c.id AND f.pour_fiche = 0 ORDER BY f.id LIMIT 1) AS fichier_id,
+                             (SELECT f.nom_origine FROM fichiers f WHERE f.cours_id = c.id AND f.pour_fiche = 0 ORDER BY f.id LIMIT 1) AS fichier_nom,
+                             (SELECT f.mime FROM fichiers f WHERE f.cours_id = c.id AND f.pour_fiche = 0 ORDER BY f.id LIMIT 1) AS fichier_mime';
+
     /**
      * Les liens soumis par le formulaire (« lien[0][genre] », « lien[0][cours] »…), gardés s'ils sont à soi, sans doublon.
      *
-     * @return list<array{0: string, 1: int}>  [genre, identifiant], genre « cours » ou « dossier »
+     * @return list<array{0: string, 1: int}>  [genre, identifiant], genre « cours », « fichier » (seul) ou « dossier »
      */
     public static function depuisFormulaire(int $userId, mixed $lignes): array
     {
@@ -27,9 +32,13 @@ final class EvenementLiens
                 continue;
             }
             $genre = (string) ($ligne['genre'] ?? '');
-            if ($genre === 'cours') {
-                $id = entier_ou_null($ligne['cours'] ?? null);
-                $a = $id !== null && Database::valeur('SELECT id FROM cours WHERE id = ? AND user_id = ?', [$id, $userId]) !== null;
+            if ($genre === 'cours' || $genre === 'fichier') {
+                // Un fichier seul est une ligne de « cours » marquée comme telle : le genre dit lequel des deux on attend.
+                $id = entier_ou_null($ligne[$genre] ?? null);
+                $a = $id !== null && Database::valeur(
+                    'SELECT id FROM cours WHERE id = ? AND user_id = ? AND est_fichier = ?',
+                    [$id, $userId, $genre === 'fichier' ? 1 : 0]
+                ) !== null;
             } elseif ($genre === 'dossier') {
                 $id = entier_ou_null($ligne['dossier'] ?? null);
                 $a = $id !== null && DossiersController::valide($userId, $id) !== null;
@@ -52,9 +61,9 @@ final class EvenementLiens
         foreach ($liens as [$genre, $id]) {
             if ($genre === 'cours') {
                 $cours ??= $id;
-            } else {
+            } elseif ($genre === 'dossier') {
                 $dossier ??= $id;
-            }
+            }   // un fichier seul n'a pas de colonne : il vit dans la table (« Cours » et « Révision » n'ont rien à en faire)
         }
 
         return [$cours, $dossier];
@@ -67,21 +76,22 @@ final class EvenementLiens
         foreach ($liens as [$genre, $id]) {
             Database::run(
                 'INSERT INTO evenement_liens (evenement_id, cours_id, dossier_id) VALUES (?, ?, ?)',
-                [$evenementId, $genre === 'cours' ? $id : null, $genre === 'dossier' ? $id : null]
+                [$evenementId, $genre === 'dossier' ? null : $id, $genre === 'dossier' ? $id : null]
             );
         }
     }
 
     /**
-     * Les liens d'un évènement, prêts à afficher : les cours (id, titre) puis les dossiers (id, nom, icone). Un lien dont le cours ou le
+     * Les liens d'un évènement, prêts à afficher : les cours et fichiers seuls (id, titre) puis les dossiers (id, nom, icone). Un lien dont le cours ou le
      * dossier n'est plus à soi n'est pas rendu.
      *
-     * @return list<array{genre: string, id: int, nom: string}>
+     * @return list<array{genre: string, id: int, nom: string, fichier_id?: ?int, fichier_nom?: string, fichier_mime?: string}>
+     *         genre « cours », « fichier » ou « dossier » ; le fichier derrière un fichier seul
      */
     public static function de(int $evenementId, int $userId): array
     {
         $cours = Database::all(
-            'SELECT c.id, c.titre AS nom
+            'SELECT c.id, c.titre AS nom, c.est_fichier, ' . self::FICHIER . '
                FROM evenement_liens l JOIN cours c ON c.id = l.cours_id
               WHERE l.evenement_id = ? AND c.user_id = ? ORDER BY l.id',
             [$evenementId, $userId]
@@ -96,7 +106,7 @@ final class EvenementLiens
         // Un évènement posé sans passer par le formulaire n'a que ses colonnes : à défaut de lignes, on lit celles-là.
         if ($cours === [] && $dossiers === [] && Database::valeur('SELECT COUNT(*) FROM evenement_liens WHERE evenement_id = ?', [$evenementId]) === 0) {
             $cours = Database::all(
-                'SELECT c.id, c.titre AS nom FROM evenements e JOIN cours c ON c.id = e.cours_id WHERE e.id = ? AND c.user_id = ?',
+                'SELECT c.id, c.titre AS nom, c.est_fichier, ' . self::FICHIER . ' FROM evenements e JOIN cours c ON c.id = e.cours_id WHERE e.id = ? AND c.user_id = ?',
                 [$evenementId, $userId]
             );
             $dossiers = Database::all(
@@ -107,7 +117,12 @@ final class EvenementLiens
 
         $rendu = [];
         foreach ($cours as $c) {
-            $rendu[] = ['genre' => 'cours', 'id' => (int) $c['id'], 'nom' => (string) $c['nom']];
+            $rendu[] = [
+                'genre' => (int) $c['est_fichier'] === 1 ? 'fichier' : 'cours', 'id' => (int) $c['id'], 'nom' => (string) $c['nom'],
+                // Un fichier seul s'ouvre dans le lecteur de fichiers, pas en page de cours : on garde le fichier derrière.
+                'fichier_id' => $c['fichier_id'] === null ? null : (int) $c['fichier_id'],
+                'fichier_nom' => (string) ($c['fichier_nom'] ?? ''), 'fichier_mime' => (string) ($c['fichier_mime'] ?? ''),
+            ];
         }
         foreach ($dossiers as $d) {
             $rendu[] = ['genre' => 'dossier', 'id' => (int) $d['id'], 'nom' => trim((string) $d['icone'] . ' ' . (string) $d['nom'])];

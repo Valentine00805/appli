@@ -37,7 +37,7 @@ allemand) et avec un thème clair ou sombre.
 - **Accueil** — ce qui est prévu aujourd'hui et les 7 prochains jours, les échéances avec compte à rebours, les cours
   récents, les travaux de groupe.
 - **Calendrier** — vues mois, semaine et liste ; types d'évènements personnalisables ; couleurs par matière ;
-  évènements cochables comme terminés, rattachables à **plusieurs cours et dossiers** (un « + » en ajoute), **répétables**, avec **plusieurs rappels** ; clic sur
+  évènements cochables comme terminés, rattachables à **plusieurs cours, fichiers seuls et dossiers** (un « + » en ajoute), **répétables**, avec **plusieurs rappels** ; clic sur
   `+` dans une case pour créer. On peut y afficher le calendrier d'amis qui l'ont partagé.
 - **Tâches** — des listes, des tâches datées, des sous-tâches, des cases à cocher ; une tâche cochée descend dans les
   « terminées » sans disparaître.

@@ -4823,4 +4823,7 @@ return [
     'evtf.choisir_dossier' => 'Choose a folder…',
     'evtf.lien_ajouter' => 'Link another course or folder',
     'evtf.lien_retirer' => 'Remove this link',
+    'evtf.lien_un_fichier' => 'A file',
+    'evtf.choisir_fichier' => 'Choose a file…',
+    'evt.fichier_lie' => 'Linked file',
 ];

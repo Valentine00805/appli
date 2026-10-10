@@ -315,7 +315,7 @@ final class CalendrierController
             'evenement'  => $evenement,
 
             'matieres'   => $this->matieres($userId),
-            'coursListe' => Database::all('SELECT id, titre FROM cours WHERE user_id = ? ORDER BY titre', [$userId]),
+            'coursListe' => Database::all('SELECT id, titre, est_fichier FROM cours WHERE user_id = ? ORDER BY titre', [$userId]),
             'dossiersListe' => DossiersController::pourUtilisateur($userId),
             'dateDefaut' => $dateDefaut,
             'retour'     => self::retourInterne($_GET['retour'] ?? null),

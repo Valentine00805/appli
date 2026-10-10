@@ -4685,3 +4685,6 @@ a.serveur-carte:hover, a.serveur-carte:focus-visible { border-color: var(--accen
 .lien-ligne__champs { flex: 1; min-width: 0; }
 .lien-ligne .lien-liste { width: 100%; }
 .lien-ajouter { margin-top: .6rem; }
+
+/* Les adresses d'un lieu : longues, elles se coupent plutôt que de déborder. */
+.lien-externe { overflow-wrap: anywhere; }

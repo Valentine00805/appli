@@ -113,7 +113,7 @@ $ligne = static function (string $etiquette, string $valeur): string {
         ));
     }
 
-    echo $ligne(t('evt.lieu'), e((string) ($evenement['lieu'] ?? '')));
+    echo $ligne(t('evt.lieu'), texte_avec_liens((string) ($evenement['lieu'] ?? '')));
     echo $ligne(t('evt.type'), (string) ($evenement['type_nom'] ?? '') === '' ? '' :
         '<span class="pastille" style="background:' . e((string) $evenement['type_couleur'])
         . ';color:' . e(couleur_texte((string) $evenement['type_couleur'])) . '">'
@@ -122,10 +122,23 @@ $ligne = static function (string $etiquette, string $valeur): string {
     // Tous les cours et dossiers liés, pas seulement le premier.
     $liesDossiers = [];
     $liesCours = [];
+    $liesFichiers = [];
     foreach (EvenementLiens::de((int) $evenement['id'], (int) $evenement['user_id']) as $lie) {
         if ($lie['genre'] === 'dossier') {
             // Le dossier s'ouvre dans la liste des cours, réduite à lui.
             $liesDossiers[] = '<a href="' . url('cours', ['dossier' => $lie['id']]) . '">📁 ' . e($lie['nom']) . '</a>';
+        } elseif ($lie['genre'] === 'fichier') {
+            // Un fichier seul s'ouvre dans le lecteur de fichiers (l'aperçu quand on sait en faire un, sinon le fichier lui-même), comme depuis
+            // « Mes cours » ; sans fichier derrière, la page de la ligne de cours.
+            if ($lie['fichier_id'] === null) {
+                $liesFichiers[] = '<a href="' . url('cours/' . $lie['id']) . '"' . ($dansUneFenetre ? ' data-fenetre' : '') . '>📄 ' . e($lie['nom']) . '</a>';
+            } elseif (ApercuDocument::possible($lie['fichier_nom'])) {
+                $liesFichiers[] = '<a href="' . url('fichiers/' . $lie['fichier_id'] . '/apercu') . '" data-fenetre>'
+                    . Fichiers::icone($lie['fichier_mime'], $lie['fichier_nom']) . ' ' . e($lie['nom']) . '</a>';
+            } else {
+                $liesFichiers[] = '<a href="' . url('fichiers/' . $lie['fichier_id']) . '" target="_blank" rel="noopener">'
+                    . Fichiers::icone($lie['fichier_mime'], $lie['fichier_nom']) . ' ' . e($lie['nom']) . '</a>';
+            }
         } else {
             // Dans la fenêtre de l'évènement, le cours s'ouvre dans la même fenêtre (la flèche ← ramène à l'évènement).
             $liesCours[] = '<a href="' . url('cours/' . $lie['id']) . '"' . ($dansUneFenetre ? ' data-fenetre' : '') . '>' . e($lie['nom']) . '</a>';
@@ -133,6 +146,7 @@ $ligne = static function (string $etiquette, string $valeur): string {
     }
     echo $ligne(t('evt.dossier_lie'), implode(' · ', $liesDossiers));
     echo $ligne(t('evt.cours_lie'), implode(' · ', $liesCours));
+    echo $ligne(t('evt.fichier_lie'), implode(' · ', $liesFichiers));
     echo $ligne(t('evt.etat'), (int) $evenement['termine'] === 1 ? e(t('evt.termine')) : '');
     // Les rappels : seulement s'il y en a, dits comme dans le formulaire.
     $rappels = Rappels::dire((string) ($evenement['rappels'] ?? ''));

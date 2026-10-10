@@ -4823,4 +4823,7 @@ return [
     'evtf.choisir_dossier' => 'Ordner wählen …',
     'evtf.lien_ajouter' => 'Weiteren Kurs oder Ordner verknüpfen',
     'evtf.lien_retirer' => 'Diese Verknüpfung entfernen',
+    'evtf.lien_un_fichier' => 'Eine Datei',
+    'evtf.choisir_fichier' => 'Datei wählen …',
+    'evt.fichier_lie' => 'Verknüpfte Datei',
 ];

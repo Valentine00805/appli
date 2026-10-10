@@ -126,7 +126,12 @@ if ($edition) {
         $liensActifs[] = ['dossier', (int) $_GET['dossier']];
     }
     if (entier_ou_null($_GET['cours'] ?? null) !== null) {
-        $liensActifs[] = ['cours', (int) $_GET['cours']];
+        $venu = (int) $_GET['cours'];
+        $estFichier = false;
+        foreach ($coursListe as $c) {
+            if ((int) $c['id'] === $venu) { $estFichier = (int) $c['est_fichier'] === 1; }
+        }
+        $liensActifs[] = [$estFichier ? 'fichier' : 'cours', $venu];
     }
 }
 $dossiersListe = $dossiersListe ?? [];
@@ -416,13 +421,25 @@ $matiereActive = $edition ? entier_ou_null($evenement['matiere_id']) : null;
                 <select id="lien-genre-<?= e($i) ?>" name="lien[<?= e($i) ?>][genre]" data-lien-genre aria-label="<?= e(t('evtf.lien_lie')) ?>">
                   <option value=""><?= e(t('commun.aucun')) ?></option>
                   <option value="cours"<?= $genreLie === 'cours' ? ' selected' : '' ?>><?= e(t('evtf.lien_un_cours')) ?></option>
+                  <option value="fichier"<?= $genreLie === 'fichier' ? ' selected' : '' ?>><?= e(t('evtf.lien_un_fichier')) ?></option>
                   <option value="dossier"<?= $genreLie === 'dossier' ? ' selected' : '' ?>><?= e(t('evtf.lien_un_dossier')) ?></option>
                 </select>
                 <select name="lien[<?= e($i) ?>][cours]" class="lien-liste" data-lien-liste="cours" aria-label="<?= e(t('evtf.lien_un_cours')) ?>"
                         <?= $genreLie === 'cours' ? '' : 'hidden disabled' ?>>
                   <option value=""><?= e(t('evtf.choisir_cours')) ?></option>
                   <?php foreach ($coursListe as $c): ?>
+                    <?php if ((int) $c['est_fichier'] === 1) { continue; } ?>
                     <option value="<?= (int) $c['id'] ?>"<?= $genreLie === 'cours' && $choisi === (int) $c['id'] ? ' selected' : '' ?>>
+                      <?= e($c['titre']) ?>
+                    </option>
+                  <?php endforeach; ?>
+                </select>
+                <select name="lien[<?= e($i) ?>][fichier]" class="lien-liste" data-lien-liste="fichier" aria-label="<?= e(t('evtf.lien_un_fichier')) ?>"
+                        <?= $genreLie === 'fichier' ? '' : 'hidden disabled' ?>>
+                  <option value=""><?= e(t('evtf.choisir_fichier')) ?></option>
+                  <?php foreach ($coursListe as $c): ?>
+                    <?php if ((int) $c['est_fichier'] !== 1) { continue; } ?>
+                    <option value="<?= (int) $c['id'] ?>"<?= $genreLie === 'fichier' && $choisi === (int) $c['id'] ? ' selected' : '' ?>>
                       <?= e($c['titre']) ?>
                     </option>
                   <?php endforeach; ?>
