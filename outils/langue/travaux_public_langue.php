@@ -1,9 +1,10 @@
 <?php
 /**
- * Le lien public d'un travail de groupe, vu par quelqu'un qui n'a pas de compte (HTTP + base) : le calendrier commun du projet, s'il en a un —
- * ses évènements et les tâches datées du mois, jour par jour, en lecture seule —, la navigation de mois en mois (un mois illisible ou hors
- * bornes ramené au mois courant), un mois vide, un projet sans calendrier (pas de carte), ce qui ne doit pas s'y trouver (les notes d'un
- * évènement), un lien mort, et les quatre langues.
+ * Le lien public d'un travail de groupe, vu par quelqu'un qui n'a pas de compte (HTTP + base) : il faut dire son prénom pour entrer (sans cela,
+ * ni la page ni les fichiers), ce qui est refusé comme prénom, le cookie qui le reconnaît ensuite, « Ce n'est pas vous ? », ce que voient les
+ * membres (qui est entré par le lien, quand, « Nouveau »), retirer quelqu'un (un administrateur seulement), un lien fermé ou refait qui oublie
+ * tout le monde, la limite de monde, puis ce que le lien montre : le calendrier commun du projet — évènements et tâches datées du mois, en
+ * lecture seule —, la navigation de mois en mois, un projet sans calendrier, un lien mort, et les quatre langues.
  */
 require __DIR__ . '/base.php';
 
@@ -18,20 +19,33 @@ $dire = static function (string $quoi, string $obtenu, string $attendu) use (&$a
 };
 $oui = static fn (bool $b): string => $b ? 'oui' : 'non';
 
-$email = 'tpub-a@exemple-test.fr';
-bd_run('DELETE FROM users WHERE email = ? AND email LIKE ?', [$email, '%@exemple-test.fr']);
-bd_run('INSERT INTO users (email, pseudo, password_hash, nom) VALUES (?, ?, ?, ?)', [$email, 'Tpub_un', password_hash('MotDePasse!2026', PASSWORD_DEFAULT), 'Essai public']);
-$idA = (int) bd_valeur('SELECT id FROM users WHERE email = ?', [$email]);
+$mdp = 'MotDePasse!2026';
+$comptes = ['a' => ['email' => 'tpub-a@exemple-test.fr', 'pseudo' => 'Tpub_un'], 'b' => ['email' => 'tpub-b@exemple-test.fr', 'pseudo' => 'Tpub_deux']];
+foreach ($comptes as $c => $d) {
+    bd_run('DELETE FROM users WHERE email = ? AND email LIKE ?', [$d['email'], '%@exemple-test.fr']);
+    bd_run('INSERT INTO users (email, pseudo, password_hash, nom) VALUES (?, ?, ?, ?)', [$d['email'], $d['pseudo'], password_hash($mdp, PASSWORD_DEFAULT), 'Essai ' . $c]);
+    $comptes[$c]['id'] = (int) bd_valeur('SELECT id FROM users WHERE email = ?', [$d['email']]);
+}
+$id = static fn (string $c): int => $comptes[$c]['id'];
 
-/** Une page publique, sans compte ni cookie : @return array{0: int, 1: string} */
-$visiteur = static function (string $chemin, string $langue = 'fr'): array {
+/** Un navigateur = un fichier de cookies. Rend [code, corps, adresse finale]. */
+$jar = static fn (string $nom): string => __DIR__ . '/ck_tpub_' . $nom . '.txt';
+$appel = static function (string $navigateur, string $chemin, ?array $post = null, string $langue = 'fr') use ($jar): array {
     usleep(250000);
     $h = curl_init('http://localhost/mon_appli/appli/' . $chemin);
     curl_setopt_array($h, [CURLOPT_RETURNTRANSFER => true, CURLOPT_FOLLOWLOCATION => true, CURLOPT_TIMEOUT => 60,
-        CURLOPT_HTTPHEADER => ['Accept-Language: ' . $langue]]);
+        CURLOPT_COOKIEJAR => $jar($navigateur), CURLOPT_COOKIEFILE => $jar($navigateur), CURLOPT_HTTPHEADER => ['Accept-Language: ' . $langue]]);
+    if ($post !== null) { curl_setopt($h, CURLOPT_POST, true); curl_setopt($h, CURLOPT_POSTFIELDS, http_build_query($post)); }
     $corps = (string) curl_exec($h);
-    $code = (int) curl_getinfo($h, CURLINFO_RESPONSE_CODE);
+    $r = [(int) curl_getinfo($h, CURLINFO_RESPONSE_CODE), $corps, (string) curl_getinfo($h, CURLINFO_EFFECTIVE_URL)];
     unset($h);
+    return $r;
+};
+$jeton = static fn (string $html): string => preg_match('/name="_csrf" value="([^"]+)"/', $html, $m) ? $m[1] : '';
+/** Un visiteur dit son prénom : [code, corps]. */
+$entrer = static function (string $navigateur, string $lien, string $prenom, string $langue = 'fr') use ($appel, $jeton): array {
+    [, $entree] = $appel($navigateur, 'g/' . $lien, null, $langue);
+    [$code, $corps] = $appel($navigateur, 'g/' . $lien . '/entrer', ['_csrf' => $jeton($entree), 'prenom' => $prenom], $langue);
     return [$code, $corps];
 };
 
@@ -44,24 +58,130 @@ try {
 
     $jetonAvec = bin2hex(random_bytes(16));
     $jetonSans = bin2hex(random_bytes(16));
-    foreach ([['Projet avec calendrier', $jetonAvec], ['Projet sans calendrier', $jetonSans]] as [$nom, $jeton]) {
-        bd_run('INSERT INTO projets (nom, cree_par, jeton) VALUES (?, ?, ?)', [$nom, $idA, $jeton]);
-        $projets[$nom] = (int) bd_valeur('SELECT id FROM projets WHERE cree_par = ? AND nom = ?', [$idA, $nom]);
-        bd_run('INSERT INTO projet_membres (projet_id, user_id, role, statut) VALUES (?, ?, ?, ?)', [$projets[$nom], $idA, 'admin', 'membre']);
+    foreach ([['Projet avec calendrier', $jetonAvec], ['Projet sans calendrier', $jetonSans]] as [$nom, $lien]) {
+        bd_run('INSERT INTO projets (nom, cree_par, jeton) VALUES (?, ?, ?)', [$nom, $id('a'), $lien]);
+        $projets[$nom] = (int) bd_valeur('SELECT id FROM projets WHERE cree_par = ? AND nom = ?', [$id('a'), $nom]);
+        bd_run('INSERT INTO projet_membres (projet_id, user_id, role, statut) VALUES (?, ?, ?, ?), (?, ?, ?, ?)',
+            [$projets[$nom], $id('a'), 'admin', 'membre', $projets[$nom], $id('b'), 'membre', 'membre']);
     }
     $p = $projets['Projet avec calendrier'];
-    $membre = (int) bd_valeur('SELECT id FROM projet_membres WHERE projet_id = ? AND user_id = ?', [$p, $idA]);
-    bd_run('INSERT INTO calendriers_amis (proprietaire_id, projet_id, nom, couleur) VALUES (?, ?, ?, ?)', [$idA, $p, 'Calendrier du groupe', '#e11d48']);
+    $q = $projets['Projet sans calendrier'];
+    $membre = (int) bd_valeur('SELECT id FROM projet_membres WHERE projet_id = ? AND user_id = ?', [$p, $id('a')]);
+    bd_run('INSERT INTO calendriers_amis (proprietaire_id, projet_id, nom, couleur) VALUES (?, ?, ?, ?)', [$id('a'), $p, 'Calendrier du groupe', '#e11d48']);
     $cal = (int) bd_valeur('SELECT id FROM calendriers_amis WHERE projet_id = ?', [$p]);
     bd_run('INSERT INTO calendrier_amis_evenements (calendrier_id, auteur_id, titre, description, lieu, debut, fin, journee_entiere) VALUES (?, ?, ?, ?, ?, ?, ?, 0), (?, ?, ?, ?, ?, ?, ?, 1), (?, ?, ?, ?, ?, ?, ?, 0)',
-        [$cal, $idA, 'Réunion de groupe', 'NOTE-SECRETE-DE-L-EVENEMENT', 'Salle B12', $jour($mois, 15) . ' 14:00:00', $jour($mois, 15) . ' 15:30:00',
-         $cal, $idA, 'Rendu du rapport', null, null, $jour($mois, 20) . ' 00:00:00', $jour($mois, 20) . ' 23:59:59',
-         $cal, $idA, 'Soutenance du mois prochain', null, null, $jour($suivant, 5) . ' 09:00:00', $jour($suivant, 5) . ' 10:00:00']);
+        [$cal, $id('a'), 'Réunion de groupe', 'NOTE-SECRETE-DE-L-EVENEMENT', 'Salle B12', $jour($mois, 15) . ' 14:00:00', $jour($mois, 15) . ' 15:30:00',
+         $cal, $id('a'), 'Rendu du rapport', null, null, $jour($mois, 20) . ' 00:00:00', $jour($mois, 20) . ' 23:59:59',
+         $cal, $id('a'), 'Soutenance du mois prochain', null, null, $jour($suivant, 5) . ' 09:00:00', $jour($suivant, 5) . ' 10:00:00']);
     bd_run('INSERT INTO projet_taches (projet_id, titre, membre_id, echeance, statut) VALUES (?, ?, ?, ?, ?), (?, ?, ?, ?, ?), (?, ?, NULL, ?, ?)',
         [$p, 'Rédiger la conclusion', $membre, $jour($mois, 18), 'a_faire', $p, 'Relire le plan', $membre, $jour($mois, 10), 'fait', $p, 'Tâche sans personne', $jour($mois, 22), 'a_faire']);
+    bd_run('INSERT INTO projet_fichiers (projet_id, user_id, nom_origine, nom_stocke, mime, taille) VALUES (?, ?, ?, ?, ?, ?)', [$p, $id('a'), 'plan-secret.pdf', 'essai-tpub-1.pdf', 'application/pdf', 10]);
+    $fichier = (int) bd_valeur('SELECT id FROM projet_fichiers WHERE projet_id = ?', [$p]);
+    $nbVisiteurs = static fn (int $projet): int => (int) bd_valeur('SELECT COUNT(*) FROM projet_visiteurs WHERE projet_id = ?', [$projet]);
 
-    echo "\n1. Le lien public d'un projet qui a un calendrier\n";
-    [$cod, $page] = $visiteur('g/' . $jetonAvec);
+    echo "\n1. Sans prénom, on n'entre pas\n";
+    [$cod, $entree] = $appel('anonyme', 'g/' . $jetonAvec);
+    $dire('la page du lien ne montre que le nom du projet et le champ « Votre prénom »', $cod . ' · ' . $oui(str_contains($entree, 'Projet avec calendrier')
+        && str_contains($entree, 'name="prenom"') && str_contains($entree, 'Votre prénom') && str_contains($entree, 'Accéder au projet') && str_contains($entree, 'autocomplete="given-name"')), '200 · oui');
+    $dire('rien du projet n\'y est (ni tâches, ni calendrier, ni fichiers, ni membres)',
+        $oui(!str_contains($entree, 'Qui fait quoi') && !str_contains($entree, 'calendrier-public') && !str_contains($entree, 'Réunion de groupe')
+            && !str_contains($entree, 'plan-secret.pdf') && !str_contains($entree, 'Tpub_un') && !str_contains($entree, 'Rédiger la conclusion')), 'oui');
+    [$cod, $fichierSans] = $appel('anonyme', 'g/' . $jetonAvec . '/fichiers/' . $fichier);
+    $dire('un fichier du projet ne se sert pas non plus sans prénom', $cod . ' · ' . $oui(!str_contains($fichierSans, '%PDF')), '404 · oui');
+    $dire('et personne n\'est encore entré', (string) $nbVisiteurs($p), '0');
+
+    echo "\n2. Un prénom qui n'en est pas un est refusé\n";
+    foreach (['' => 'vide', '   ' => 'des espaces', 'Léa123' => 'avec des chiffres', '<script>alert(1)</script>' => 'avec du HTML', 'http://piege.example' => 'une adresse',
+        str_repeat('a', 41) => 'trop long (41 lettres)', '- Léa' => 'qui commence par un tiret'] as $prenomInvalide => $quoi) {
+        [$cod, $refus] = $entrer('anonyme', $jetonAvec, (string) $prenomInvalide);
+        $dire("« $quoi » : refusé, et on le dit", $cod . ' · ' . $oui(str_contains($refus, 'Écrivez un prénom') && str_contains($refus, 'name="prenom"')) . ' · ' . $nbVisiteurs($p), '422 · oui · 0');
+    }
+    [, $apresRefus] = $entrer('anonyme', $jetonAvec, 'Léa42');
+    $dire('ce qui a été tapé est remis dans le champ', $oui(str_contains($apresRefus, 'value="Léa42"')), 'oui');
+    $appel('anonyme', 'g/' . $jetonAvec . '/entrer', ['prenom' => 'Léa']);
+    $dire('sans le bon jeton CSRF : rien', (string) $nbVisiteurs($p), '0');
+
+    echo "\n3. Dire son prénom : on entre\n";
+    [$cod, $page] = $entrer('lea', $jetonAvec, '  Léa   ');
+    $dire('« Léa » (espaces en trop effacés) : on voit le projet, avec « Bonjour Léa »',
+        $cod . ' · ' . $oui(str_contains($page, 'Qui fait quoi') && str_contains($page, 'Bonjour Léa') && str_contains($page, 'Ce n’est pas vous ?') && !str_contains($page, 'name="prenom"')), '200 · oui');
+    $dire('son prénom est gardé, avec sa première visite', (string) bd_valeur('SELECT CONCAT(prenom, \'|\', visites) FROM projet_visiteurs WHERE projet_id = ?', [$p]), 'Léa|1');
+    $dire('le jeton n\'est pas gardé tel quel : seulement son empreinte (64 caractères)', (string) bd_valeur('SELECT CHAR_LENGTH(empreinte) FROM projet_visiteurs WHERE projet_id = ?', [$p]), '64');
+    [$cod, $encore] = $appel('lea', 'g/' . $jetonAvec);
+    $dire('au retour (même navigateur), il n\'a plus à le redire', $cod . ' · ' . $oui(str_contains($encore, 'Bonjour Léa') && str_contains($encore, 'Qui fait quoi')), '200 · oui');
+    [, $autreNavigateur] = $appel('autre', 'g/' . $jetonAvec);
+    $dire('mais un autre navigateur, lui, le redemande', $oui(str_contains($autreNavigateur, 'name="prenom"') && !str_contains($autreNavigateur, 'Qui fait quoi')), 'oui');
+    [, $accents] = $entrer('jp', $jetonAvec, 'Jean-Pierre');
+    [, $apostrophe] = $entrer('dart', $jetonAvec, 'D’Artagnan');
+    [, $droite] = $entrer('dart2', $jetonAvec, "D'Artagnan");
+    $dire('un prénom composé (« Jean-Pierre »), avec apostrophe (« D’Artagnan »), est accepté',
+        $oui(str_contains($accents, 'Bonjour Jean-Pierre') && str_contains($apostrophe, 'Qui fait quoi') && str_contains($droite, 'Qui fait quoi')), 'oui');
+    $dire('quatre personnes sont entrées', (string) $nbVisiteurs($p), '4');
+    [$cod, $sans2] = $appel('lea', 'g/' . $jetonSans);
+    $dire('chaque projet a sa propre entrée : le prénom donné pour l\'un n\'ouvre pas l\'autre lien', $oui(str_contains($sans2, 'name="prenom"') && !str_contains($sans2, 'Qui fait quoi')), 'oui');
+
+    echo "\n3b. Un membre du projet n'a pas à se présenter\n";
+    [, $connexionA] = $appel('membre', 'connexion');
+    $appel('membre', 'connexion', ['_csrf' => $jeton($connexionA), 'identifiant' => $comptes['a']['email'], 'mot_de_passe' => $mdp]);
+    [$cod, $pageMembre] = $appel('membre', 'g/' . $jetonAvec);
+    $dire('connecté, un membre ouvre le lien de son projet sans prénom à donner, et sans « Bonjour »',
+        $cod . ' · ' . $oui(str_contains($pageMembre, 'Qui fait quoi') && !str_contains($pageMembre, 'name="prenom"') && !str_contains($pageMembre, 'Ce n’est pas vous ?')) . ' · ' . $nbVisiteurs($p), '200 · oui · 4');
+    echo "\n4. « Ce n'est pas vous ? »\n";
+    [, $page] = $appel('lea', 'g/' . $jetonAvec);
+    $appel('lea', 'g/' . $jetonAvec . '/sortir', ['_csrf' => $jeton($page)]);
+    [, $apresSortie] = $appel('lea', 'g/' . $jetonAvec);
+    $dire('le navigateur oublie le prénom : le lien le redemande, et la ligne reste pour les membres', $oui(str_contains($apresSortie, 'name="prenom"')) . ' · ' . $nbVisiteurs($p), 'oui · 4');
+
+    echo "\n5. Ce que voient les membres\n";
+    foreach (['a', 'b'] as $c) {
+        [, $connexion] = $appel($c, 'connexion');
+        $appel($c, 'connexion', ['_csrf' => $jeton($connexion), 'identifiant' => $comptes[$c]['email'], 'mot_de_passe' => $mdp]);
+    }
+    [, $membresA] = $appel('a', 'travaux/' . $p . '/membres');
+    $dire('la carte du lien public liste ceux qui sont entrés : « Entrés par le lien (4) », leurs prénoms et « Arrivé le … »',
+        $oui(str_contains($membresA, 'Entrés par le lien') && str_contains($membresA, '(4)') && str_contains($membresA, 'Léa') && str_contains($membresA, 'Jean-Pierre')
+            && substr_count($membresA, 'Arrivé le') === 4), 'oui');
+    $dire('les arrivées des dernières 24 h portent « Nouveau »', $oui(substr_count($membresA, '>Nouveau<') === 4), 'oui');
+    $dire('un administrateur peut en retirer un (✕)', $oui(substr_count($membresA, '/visiteurs/') === 4 && str_contains($membresA, 'Retirer Léa de la liste')), 'oui');
+    [, $membresB] = $appel('b', 'travaux/' . $p . '/membres');
+    $dire('un membre qui n\'est pas administrateur voit la liste, sans le bouton de retrait', $oui(str_contains($membresB, 'Léa') && !str_contains($membresB, '/visiteurs/')), 'oui');
+    bd_run('UPDATE projet_visiteurs SET created_at = ?, derniere_visite = ?, visites = 3 WHERE prenom = ? AND projet_id = ?',
+        [date('Y-m-d H:i:s', strtotime('-5 days')), date('Y-m-d H:i:s', strtotime('-1 day')), 'Léa', $p]);
+    [, $membresVieux] = $appel('a', 'travaux/' . $p . '/membres');
+    $dire('une arrivée plus ancienne n\'est plus « Nouveau », et dit sa dernière visite', $oui(substr_count($membresVieux, '>Nouveau<') === 3 && str_contains($membresVieux, 'dernière visite le')), 'oui');
+
+    echo "\n6. Retirer quelqu'un, fermer le lien\n";
+    $idJp = (int) bd_valeur('SELECT id FROM projet_visiteurs WHERE prenom = ? AND projet_id = ?', ['Jean-Pierre', $p]);
+    $appel('b', 'travaux/' . $p . '/visiteurs/' . $idJp . '/retirer', ['_csrf' => $jeton($membresB)]);
+    $dire('un membre simple ne retire personne', (string) $nbVisiteurs($p), '4');
+    $appel('a', 'travaux/' . $p . '/visiteurs/' . $idJp . '/retirer', ['_csrf' => $jeton($membresA)]);
+    $dire('un administrateur retire Jean-Pierre', (string) $nbVisiteurs($p), '3');
+    [, $jpApres] = $appel('jp', 'g/' . $jetonAvec);
+    $dire('et son navigateur doit redire son prénom', $oui(str_contains($jpApres, 'name="prenom"') && !str_contains($jpApres, 'Qui fait quoi')), 'oui');
+    $idDArt = (int) bd_valeur('SELECT id FROM projet_visiteurs WHERE prenom = ? AND projet_id = ? ORDER BY id LIMIT 1', ['D’Artagnan', $p]);
+    $appel('a', 'travaux/' . $q . '/visiteurs/' . $idDArt . '/retirer', ['_csrf' => $jeton($membresA)]);
+    $dire('retirer en passant par un autre projet ne retire rien', (string) $nbVisiteurs($p), '3');
+    [, $dArtApres] = $appel('dart', 'g/' . $jetonAvec);
+    $dire('D’Artagnan est toujours reconnu', $oui(str_contains($dArtApres, 'Qui fait quoi')), 'oui');
+    $appel('a', 'travaux/' . $p . '/lien/fermer', ['_csrf' => $jeton($membresA)]);
+    $dire('fermer le lien efface la liste, et son adresse ne mène plus à rien', $nbVisiteurs($p) . ' · ' . $appel('dart', 'g/' . $jetonAvec)[0], '0 · 404');
+    $appel('a', 'travaux/' . $p . '/lien', ['_csrf' => $jeton($membresA)]);
+    $nouveau = (string) bd_valeur('SELECT jeton FROM projets WHERE id = ?', [$p]);
+    [, $refaitDart] = $appel('dart', 'g/' . $nouveau);
+    $dire('un nouveau lien : ceux d\'avant (leur cookie) doivent redire leur prénom', $oui($nouveau !== '' && $nouveau !== $jetonAvec && str_contains($refaitDart, 'name="prenom"')), 'oui');
+    bd_run('UPDATE projets SET jeton = ? WHERE id = ?', [$jetonAvec, $p]);
+
+    echo "\n7. La limite de monde\n";
+    for ($i = 0; $i < 300; $i++) {
+        bd_run("INSERT INTO projet_visiteurs (projet_id, prenom, empreinte, created_at, derniere_visite) VALUES (?, ?, ?, NOW(), NOW())", [$q, 'Foule', hash('sha256', 'foule' . $i)]);
+    }
+    [$cod, $plein] = $entrer('trop', $jetonSans, 'Retardataire');
+    $dire('au-delà de 300 personnes : refusé, avec la raison', $cod . ' · ' . $oui(str_contains($plein, 'Trop de personnes sont déjà entrées')) . ' · ' . $nbVisiteurs($q), '422 · oui · 300');
+    bd_run('DELETE FROM projet_visiteurs WHERE projet_id = ?', [$q]);
+
+    echo "\n8. Ce que le lien montre : le calendrier commun du projet\n";
+    $entrer('visiteur', $jetonAvec, 'Camille');
+    [$cod, $page] = $appel('visiteur', 'g/' . $jetonAvec);
     $dire('la carte « Calendrier » est là, avec le mois courant', $cod . ' · ' . $oui(str_contains($page, 'id="calendrier-public"') && str_contains($page, '📅 Calendrier')
         && str_contains($page, ucfirst(nom_mois_en_phrase_test((int) $mois->format('n'))) . ' ' . $mois->format('Y'))), '200 · oui');
     $dire('l\'évènement : titre, heures, lieu',
@@ -70,50 +190,54 @@ try {
     $dire('les tâches datées du projet y sont aussi (✅), avec qui s\'en occupe ; celle de personne sans nom',
         $oui(str_contains($page, '✅ Rédiger la conclusion') && str_contains($page, 'Tpub_un') && str_contains($page, '✅ Tâche sans personne')), 'oui');
     $dire('une tâche faite est barrée', $oui(preg_match('#calendrier-public__evenement--fait[^>]*>\s*<strong>✅ Relire le plan#', $page) === 1), 'oui');
-    $dire('les jours se suivent dans l\'ordre (10, 15, 18, 20, 22), un jour avec son numéro',
+    $dire('les jours se suivent dans l\'ordre (10, 15, 18, 20, 22)',
         $oui(preg_match_all('#calendrier-public__numero">(\d+)<#', $page, $jours) === 5 && $jours[1] === ['10', '15', '18', '20', '22']), 'oui');
     $dire('la couleur du calendrier colore les évènements', $oui(str_contains($page, '--couleur-evt:#e11d48')), 'oui');
     $dire('ce qui n\'a pas à y être n\'y est pas : les notes de l\'évènement', $oui(!str_contains($page, 'NOTE-SECRETE-DE-L-EVENEMENT')), 'oui');
     $dire('rien à modifier : pas de formulaire dans la carte', $oui(preg_match('#id="calendrier-public".*?</section>#s', $page, $carte) === 1 && !str_contains($carte[0], '<form') && !str_contains($carte[0], 'data-fenetre')), 'oui');
-
-    echo "\n2. De mois en mois\n";
     $dire('les liens « mois précédent » et « mois suivant »',
         $oui(str_contains($page, 'mois=' . $precedent->format('Y-m') . '#calendrier-public') && str_contains($page, 'mois=' . $suivant->format('Y-m') . '#calendrier-public')), 'oui');
-    [, $prochain] = $visiteur('g/' . $jetonAvec . '?mois=' . $suivant->format('Y-m'));
+    [, $prochain] = $appel('visiteur', 'g/' . $jetonAvec . '?mois=' . $suivant->format('Y-m'));
     // (Dans la carte seulement : « Qui fait quoi » liste toujours toutes les tâches du projet, quel que soit le mois.)
     $dire('le mois suivant : sa soutenance, et plus les évènements ni les tâches de ce mois-ci dans le calendrier',
         $oui(preg_match('#id="calendrier-public".*?</section>#s', $prochain, $carteSuivante) === 1 && str_contains($carteSuivante[0], 'Soutenance du mois prochain')
             && !str_contains($carteSuivante[0], 'Réunion de groupe') && !str_contains($carteSuivante[0], 'Rédiger la conclusion')), 'oui');
-    [, $vide] = $visiteur('g/' . $jetonAvec . '?mois=' . $mois->modify('-5 months')->format('Y-m'));
+    [, $vide] = $appel('visiteur', 'g/' . $jetonAvec . '?mois=' . $mois->modify('-5 months')->format('Y-m'));
     $dire('un mois sans rien : « Rien de prévu ce mois-ci. »', $oui(str_contains($vide, 'Rien de prévu ce mois-ci.') && !str_contains($vide, 'calendrier-public__jours')), 'oui');
-    [, $illisible] = $visiteur('g/' . $jetonAvec . '?mois=abc');
-    [, $horsBornes] = $visiteur('g/' . $jetonAvec . '?mois=1999-01');
+    [, $illisible] = $appel('visiteur', 'g/' . $jetonAvec . '?mois=abc');
+    [, $horsBornes] = $appel('visiteur', 'g/' . $jetonAvec . '?mois=1999-01');
     $dire('un mois illisible ou hors des bornes : le mois courant', $oui(str_contains($illisible, 'Réunion de groupe') && str_contains($horsBornes, 'Réunion de groupe')), 'oui');
-    [, $injection] = $visiteur('g/' . $jetonAvec . '?mois=2026-10%27%20OR%201=1');
+    [, $injection] = $appel('visiteur', 'g/' . $jetonAvec . '?mois=2026-10%27%20OR%201=1');
     $dire('et une valeur piégée n\'est jamais prise telle quelle', $oui(str_contains($injection, 'Réunion de groupe') && !str_contains($injection, 'OR 1=1')), 'oui');
-
-    echo "\n3. Un projet sans calendrier, un lien mort\n";
-    [$cod, $sans] = $visiteur('g/' . $jetonSans);
-    $dire('pas de calendrier commun : pas de carte « Calendrier »', $cod . ' · ' . $oui(!str_contains($sans, 'calendrier-public') && str_contains($sans, 'Qui fait quoi')), '200 · oui');
-    [$cod] = $visiteur('g/' . bin2hex(random_bytes(16)));
+    $entrer('sansCal', $jetonSans, 'Camille');
+    [$cod, $sans] = $appel('sansCal', 'g/' . $jetonSans);
+    $dire('un projet sans calendrier commun : pas de carte « Calendrier »', $cod . ' · ' . $oui(!str_contains($sans, 'calendrier-public') && str_contains($sans, 'Qui fait quoi')), '200 · oui');
+    [$cod] = $appel('anonyme', 'g/' . bin2hex(random_bytes(16)));
     $dire('un lien inconnu : 404', (string) $cod, '404');
 
-    echo "\n4. Les quatre langues\n";
-    foreach (['en' => ['Calendar', 'All day', 'Next month'], 'es' => ['Calendario', 'Todo el día', 'Mes siguiente'], 'de' => ['Kalender', 'Ganztägig', 'Nächster Monat'],
-        'fr' => ['Calendrier', 'Toute la journée', 'Mois suivant']] as $langue => $mots) {
-        [, $vue] = $visiteur('g/' . $jetonAvec, $langue);
-        $dire("$langue : la carte est traduite, sans clé brute", $oui(str_contains($vue, $mots[0]) && str_contains($vue, $mots[1]) && str_contains($vue, 'aria-label="' . $mots[2] . '"')
-            && !preg_match('/\btr\.pu\.[a-z_]+/', $vue)), 'oui');
+    echo "\n9. Les quatre langues\n";
+    foreach (['en' => ['Your first name', 'Open the project', 'Hello Zoé', 'Calendar', 'All day', 'Next month'],
+        'es' => ['Tu nombre', 'Abrir el proyecto', 'Hola Zoé', 'Calendario', 'Todo el día', 'Mes siguiente'],
+        'de' => ['Dein Vorname', 'Projekt öffnen', 'Hallo Zoé', 'Kalender', 'Ganztägig', 'Nächster Monat'],
+        'fr' => ['Votre prénom', 'Accéder au projet', 'Bonjour Zoé', 'Calendrier', 'Toute la journée', 'Mois suivant']] as $langue => $mots) {
+        [, $gate] = $appel('langue-' . $langue, 'g/' . $jetonAvec, null, $langue);
+        [, $vue] = $entrer('langue-' . $langue, $jetonAvec, 'Zoé', $langue);
+        $dire("$langue : l'entrée et le projet sont traduits, sans clé brute",
+            $oui(str_contains($gate, $mots[0]) && str_contains($gate, $mots[1]) && str_contains($vue, $mots[2]) && str_contains($vue, $mots[3]) && str_contains($vue, $mots[4])
+                && str_contains($vue, 'aria-label="' . $mots[5] . '"') && !preg_match('/\btr\.(pu|me|fl|notif)\.[a-z_]+/', $gate . $vue)), 'oui');
     }
     $termine = true;
 } finally {
-    // Ménage : les projets d'essai (leurs calendriers, évènements et tâches partent avec eux), puis le compte.
+    // Ménage : les projets d'essai (leurs calendriers, évènements, tâches, fichiers et visiteurs partent avec eux), puis les comptes.
     foreach ($projets as $idProjet) {
         bd_run('DELETE FROM calendriers_amis WHERE projet_id = ?', [$idProjet]);
         bd_run('DELETE FROM projet_membres WHERE projet_id = ?', [$idProjet]);
-        bd_run('DELETE FROM projets WHERE id = ? AND cree_par = ?', [$idProjet, $idA]);
+        bd_run('DELETE FROM projets WHERE id = ? AND cree_par = ?', [$idProjet, $id('a')]);
     }
-    bd_run('DELETE FROM users WHERE id = ? AND email = ? AND email LIKE ?', [$idA, $email, '%@exemple-test.fr']);
+    foreach ($comptes as $c => $d) {
+        if (isset($d['id'])) { bd_run('DELETE FROM users WHERE id = ? AND email = ? AND email LIKE ?', [$d['id'], $d['email'], '%@exemple-test.fr']); }
+    }
+    foreach (glob(__DIR__ . '/ck_tpub_*.txt') ?: [] as $fichierCookie) { @unlink($fichierCookie); }
     if (!$termine) { $anomalies++; echo "\n   ✗ le script s'est arrêté avant la fin\n"; }
     echo "\n" . ($anomalies === 0 ? 'Aucune anomalie' : $anomalies . ' anomalie(s)')
         . ' · comptes d’essai restants ' . bd_valeur("SELECT COUNT(*) FROM users WHERE email LIKE 'tpub-_@exemple-test.fr'") . "\n";

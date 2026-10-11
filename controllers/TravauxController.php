@@ -158,6 +158,8 @@ final class TravauxController
         $dedans = array_filter(array_map(static fn (array $m): ?int => $m['user_id'] === null ? null : (int) $m['user_id'], $membres));
         $this->afficher('travaux/membres', $projet, [
             'membres'       => $membres,
+            // Ceux qui sont entrés par le lien public : leur prénom et quand.
+            'visiteurs'     => Travaux::visiteurs($id),
             // Le calendrier commun du projet, s'il en a un.
             'calendrier'    => CalendriersAmis::duProjet($id, Auth::id()),
             'amisAInviter'  => array_values(array_filter(Amis::liste(Auth::id()),
@@ -608,6 +610,14 @@ final class TravauxController
             return;
         }
         $id = (int) $projet['id'];
+        // Le lien demande un prénom : tant qu'on ne l'a pas donné (pas de cookie reconnu), on ne voit pas le projet.
+        // Un membre du projet qui ouvre son propre lien n'a pas à se présenter : il est connecté, et ce n'est pas un visiteur.
+        $visiteur = !Travaux::lienDemandeUnPrenom() || (Auth::connecte() && Travaux::projet($id, Auth::id()) !== null)
+            ? ['id' => 0, 'prenom' => ''] : Travaux::visiteurDuLien($projet);
+        if ($visiteur === null) {
+            Vue::afficherPublic('travaux/public_entree', ['projet' => $projet, 'jeton' => $jeton, 'erreur' => null, 'prenom' => ''], (string) $projet['nom']);
+            return;
+        }
         // Le calendrier commun du projet, s'il en a un : le mois demandé (« ?mois=2026-11 »), le mois courant à défaut, de 2000 à 2100.
         $mois = preg_match('/^(\d{4})-(0[1-9]|1[0-2])$/', (string) ($_GET['mois'] ?? ''), $m) === 1 && (int) $m[1] >= 2000 && (int) $m[1] <= 2100
             ? new DateTimeImmutable($m[1] . '-' . $m[2] . '-01') : new DateTimeImmutable('first day of this month midnight');
@@ -617,6 +627,7 @@ final class TravauxController
             'jeton'     => $jeton,
             'calendrier' => $calendrier,
             'moisCalendrier' => $mois,
+            'visiteur'  => $visiteur,
             'membres'   => Travaux::membresActifs($id),
             'taches'    => Travaux::taches($id),
             'echeances' => Travaux::echeances($id),
@@ -624,9 +635,57 @@ final class TravauxController
         ], (string) $projet['nom']);
     }
 
+    /** Quelqu'un dit son prénom pour entrer par le lien : on le garde, on lui pose son cookie, et il voit le projet. */
+    public function entrer(string $jeton): void
+    {
+        $projet = Travaux::parJeton($jeton);
+        if ($projet === null) {
+            http_response_code(404);
+            Vue::afficherPublic('partages/lien_mort', [], t('titre.lien_introuvable'));
+            return;
+        }
+        Session::verifierCsrf();
+        [$secret, $refus] = Travaux::entrerParLeLien($projet, post('prenom'));
+        if ($secret === null) {
+            http_response_code(422);
+            Vue::afficherPublic('travaux/public_entree', ['projet' => $projet, 'jeton' => $jeton, 'erreur' => $refus, 'prenom' => post('prenom')], (string) $projet['nom']);
+            return;
+        }
+        // Le cookie ne se lit que par le serveur (httponly), jamais envoyé depuis un autre site (SameSite), et dure six mois.
+        setcookie(Travaux::cookieVisiteur((int) $projet['id']), $secret, [
+            'expires' => time() + 180 * 86400, 'path' => url(''), 'httponly' => true, 'samesite' => 'Lax',
+            'secure' => (string) ($_SERVER['HTTPS'] ?? '') !== '' && $_SERVER['HTTPS'] !== 'off',
+        ]);
+        redirect('g/' . $jeton);
+    }
+
+    /** « Ce n'est pas vous ? » : le navigateur oublie le prénom, et le lien le redemande. */
+    public function sortir(string $jeton): void
+    {
+        $projet = Travaux::parJeton($jeton);
+        Session::verifierCsrf();
+        if ($projet !== null) {
+            setcookie(Travaux::cookieVisiteur((int) $projet['id']), '', ['expires' => time() - 3600, 'path' => url(''), 'httponly' => true, 'samesite' => 'Lax']);
+        }
+        redirect('g/' . $jeton);
+    }
+
+    /** Un administrateur retire quelqu'un de la liste de ceux qui sont entrés par le lien. */
+    public function retirerVisiteur(int $id, int $visiteur): void
+    {
+        $this->exigerPost();
+        $this->finir(Travaux::retirerVisiteur(Auth::id(), $id, $visiteur) ? null : t('tr.fl.admins_retirer_visiteur'),
+            t('tr.fl.visiteur_retire'), 'travaux/' . $id . '/membres');
+    }
+
     public function fichierPublic(string $jeton, int $id): void
     {
         $projet = Travaux::parJeton($jeton);
+        // Les fichiers suivent le lien : sans prénom donné, on ne les sert pas non plus.
+        if ($projet !== null && Travaux::lienDemandeUnPrenom() && Travaux::visiteurDuLien($projet) === null
+            && !(Auth::connecte() && Travaux::projet((int) $projet['id'], Auth::id()) !== null)) {
+            $projet = null;
+        }
         $fichier = $projet === null ? null
             : Database::one('SELECT * FROM projet_fichiers WHERE id = ? AND projet_id = ?', [$id, (int) $projet['id']]);
         if ($fichier === null) {

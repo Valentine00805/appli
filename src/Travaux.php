@@ -1173,6 +1173,7 @@ final class Travaux
         }
         $jeton = bin2hex(random_bytes(16));
         Database::run('UPDATE projets SET jeton = ? WHERE id = ?', [$jeton, $projet]);
+        self::oublierVisiteurs($projet);   // un nouveau lien : ceux d'avant n'y ont plus accès
 
         return $jeton;
     }
@@ -1183,8 +1184,149 @@ final class Travaux
             return false;
         }
         Database::run('UPDATE projets SET jeton = NULL WHERE id = ?', [$projet]);
+        self::oublierVisiteurs($projet);
 
         return true;
+    }
+
+    // --- Ceux qui entrent par le lien public : un prénom, puis l'accès --------------
+
+    /** Au plus autant de personnes entrées par lien : au-delà, on fabrique un autre lien. */
+    public const VISITEURS_MAX = 300;
+
+    /** Un prénom : des lettres (accents compris), des espaces, des tirets, des apostrophes et des points — rien d'autre. */
+    public const PRENOM_MAX = 40;
+
+    /** Le nom du cookie qui garde le jeton du visiteur, un par projet. */
+    public static function cookieVisiteur(int $projet): string
+    {
+        return 'mc_visiteur_' . $projet;
+    }
+
+    /** Un prénom lisible, ou null s'il n'en est pas un (vide, trop long, des chiffres, des signes). */
+    public static function prenomValide(string $brut): ?string
+    {
+        $prenom = trim((string) preg_replace('/\s+/u', ' ', $brut));
+        if ($prenom === '' || mb_strlen($prenom) > self::PRENOM_MAX) {
+            return null;
+        }
+
+        return preg_match('/^\p{L}[\p{L}\p{M}\' ’.-]*$/u', $prenom) === 1 ? $prenom : null;
+    }
+
+    /**
+     * Le visiteur que ce navigateur est, pour ce projet : sa ligne, si son cookie lui donne accès. Sa visite est notée (au plus une fois toutes
+     * les cinq minutes). Sans la table (migration pas encore importée), on rend un visiteur sans nom : le lien reste ouvert comme avant.
+     *
+     * @return ?array{id: int, prenom: string}
+     */
+    public static function visiteurDuLien(array $projet): ?array
+    {
+        try {
+            $jeton = (string) ($_COOKIE[self::cookieVisiteur((int) $projet['id'])] ?? '');
+            if (preg_match('/^[0-9a-f]{32}$/', $jeton) !== 1) {
+                return null;
+            }
+            $ligne = Database::one('SELECT id, prenom, derniere_visite FROM projet_visiteurs WHERE projet_id = ? AND empreinte = ?',
+                [(int) $projet['id'], hash('sha256', $jeton)]);
+            if ($ligne === null) {
+                return null;
+            }
+            if (strtotime((string) $ligne['derniere_visite']) < time() - 300) {
+                Database::run('UPDATE projet_visiteurs SET derniere_visite = ?, visites = visites + 1 WHERE id = ?', [date('Y-m-d H:i:s'), (int) $ligne['id']]);
+            }
+
+            return ['id' => (int) $ligne['id'], 'prenom' => (string) $ligne['prenom']];
+        } catch (Throwable) {
+            return ['id' => 0, 'prenom' => ''];
+        }
+    }
+
+    /** Le lien public demande-t-il un prénom ? Oui, sauf tant que la table n'existe pas. */
+    public static function lienDemandeUnPrenom(): bool
+    {
+        try {
+            Database::valeur('SELECT 1 FROM projet_visiteurs LIMIT 1');
+
+            return true;
+        } catch (Throwable) {
+            return false;
+        }
+    }
+
+    /**
+     * Quelqu'un entre par le lien : on garde son prénom et on prévient les membres. Rend le jeton à poser dans son cookie, ou la raison du refus.
+     *
+     * @return array{0: ?string, 1: ?string} [jeton, raison du refus]
+     */
+    public static function entrerParLeLien(array $projet, string $prenomBrut): array
+    {
+        $prenom = self::prenomValide($prenomBrut);
+        if ($prenom === null) {
+            return [null, t('tr.pu.prenom_invalide', ['max' => self::PRENOM_MAX])];
+        }
+        $projetId = (int) $projet['id'];
+        if ((int) Database::valeur('SELECT COUNT(*) FROM projet_visiteurs WHERE projet_id = ?', [$projetId]) >= self::VISITEURS_MAX) {
+            return [null, t('tr.pu.trop_de_monde')];
+        }
+        $jeton = bin2hex(random_bytes(16));
+        $maintenant = date('Y-m-d H:i:s');
+        Database::run(
+            'INSERT INTO projet_visiteurs (projet_id, prenom, empreinte, created_at, derniere_visite) VALUES (?, ?, ?, ?, ?)',
+            [$projetId, $prenom, hash('sha256', $jeton), $maintenant, $maintenant]
+        );
+        $visiteurId = Database::dernierId();
+
+        // Les membres qui ont un compte voient qui est arrivé, dans la langue de chacun.
+        foreach (Database::all("SELECT user_id FROM projet_membres WHERE projet_id = ? AND statut = 'membre' AND user_id IS NOT NULL", [$projetId]) as $m) {
+            FileNotifications::ajouter((int) $m['user_id'], 'projet', fn (): array => [
+                'title' => '👥 ' . (string) $projet['nom'],
+                'body'  => t('tr.notif.visiteur', ['prenom' => $prenom]),
+                'url'   => url('travaux/' . $projetId . '/membres'),
+                'tag'   => 'projet-visiteur-' . $visiteurId,
+            ]);
+        }
+
+        return [$jeton, null];
+    }
+
+    /**
+     * Les personnes entrées par le lien, la dernière arrivée en tête. Vide, sans erreur, tant que la table n'existe pas.
+     *
+     * @return list<array{id: int, prenom: string, created_at: string, derniere_visite: string, visites: int}>
+     */
+    public static function visiteurs(int $projet): array
+    {
+        try {
+            return array_map(static fn (array $v): array => [
+                'id' => (int) $v['id'], 'prenom' => (string) $v['prenom'], 'created_at' => (string) $v['created_at'],
+                'derniere_visite' => (string) $v['derniere_visite'], 'visites' => (int) $v['visites'],
+            ], Database::all('SELECT id, prenom, created_at, derniere_visite, visites FROM projet_visiteurs WHERE projet_id = ? ORDER BY created_at DESC, id DESC', [$projet]));
+        } catch (Throwable) {
+            return [];
+        }
+    }
+
+    /** Retire quelqu'un du lien (un administrateur) : son cookie ne donne plus accès, il devra redire son prénom. */
+    public static function retirerVisiteur(int $moi, int $projet, int $visiteurId): bool
+    {
+        if (!self::estAdmin($projet, $moi)) {
+            return false;
+        }
+        try {
+            return Database::run('DELETE FROM projet_visiteurs WHERE id = ? AND projet_id = ?', [$visiteurId, $projet])->rowCount() > 0;
+        } catch (Throwable) {
+            return false;
+        }
+    }
+
+    private static function oublierVisiteurs(int $projet): void
+    {
+        try {
+            Database::run('DELETE FROM projet_visiteurs WHERE projet_id = ?', [$projet]);
+        } catch (Throwable) {
+            // pas de table : rien à oublier
+        }
     }
 
     /** L’adresse complète du lien public, à copier. */

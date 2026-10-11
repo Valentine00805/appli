@@ -10,12 +10,21 @@
  * @var list<array> $fichiers
  * @var ?array $calendrier  le calendrier commun du projet (nom, couleur, évènements du mois), null s'il n'en a pas
  * @var DateTimeImmutable $moisCalendrier  le premier jour du mois affiché
+ * @var array{id: int, prenom: string} $visiteur  qui est là (son prénom est vide tant que le lien ne demande pas de prénom)
  */
 $maintenant = date('Y-m-d H:i:s');
 $avenir = array_filter($echeances, static fn (array $e): bool => (string) $e['fin'] >= $maintenant);
 $faites = count(array_filter($taches, static fn (array $t): bool => $t['statut'] === 'fait'));
 $avancement = Travaux::avancement(count($taches), $faites);
 ?>
+<?php if (($visiteur['prenom'] ?? '') !== ''): ?>
+  <?php // Qui est là, et un moyen de dire autre chose : « Ce n'est pas vous ? » fait oublier le prénom à ce navigateur. ?>
+  <form method="post" action="<?= url('g/' . $jeton . '/sortir') ?>" class="visiteur-bandeau">
+    <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
+    <span>👋 <?= e(t('tr.pu.bonjour', ['prenom' => (string) $visiteur['prenom']])) ?></span>
+    <button class="bouton bouton--discret bouton--petit" type="submit"><?= e(t('tr.pu.pas_vous')) ?></button>
+  </form>
+<?php endif; ?>
 <div class="entete-page">
   <div>
     <h1>👥 <?= e((string) $projet['nom']) ?></h1>

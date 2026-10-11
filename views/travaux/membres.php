@@ -181,6 +181,39 @@ $jeton = $projet['jeton'] === null ? null : (string) $projet['jeton'];
           <button class="bouton" type="button" data-partage-copier><?= e(t('tr.me.copier')) ?></button>
         </div>
         <p class="champ__aide" data-partage-etat aria-live="polite"><?= e(t('tr.me.lecture_seule')) ?></p>
+        <?php
+        /*
+         * Ceux qui sont entrés par le lien : le prénom qu'ils ont donné, quand ils sont arrivés, leur dernière visite. Un administrateur peut en retirer un
+         * (il redira son prénom, ou n'entrera plus si le lien est fermé). Les arrivées des dernières 24 h portent « Nouveau ».
+         */
+        $visiteurs = $visiteurs ?? [];
+        ?>
+        <h3 class="groupe-sous-titre">👋 <?= e(t('tr.me.visiteurs')) ?> <span class="discret">(<?= count($visiteurs) ?>)</span></h3>
+        <?php if ($visiteurs === []): ?>
+          <p class="discret" style="margin:0 0 .6rem"><?= e(t('tr.me.visiteurs_aucun')) ?></p>
+        <?php else: ?>
+          <ul class="visiteurs-liste">
+            <?php foreach ($visiteurs as $v): ?>
+              <li class="visiteur-ligne">
+                <span class="visiteur-ligne__prenom"><?= e($v['prenom']) ?>
+                  <?php if (strtotime($v['created_at']) >= time() - 86400): ?><span class="pastille pastille--ok"><?= e(t('tr.me.visiteur_nouveau')) ?></span><?php endif; ?>
+                </span>
+                <span class="visiteur-ligne__quand discret">
+                  <?= e(t('tr.me.visiteur_arrive', ['date' => date_fr($v['created_at'])])) ?>
+                  <?php if ($v['visites'] > 1): ?>· <?= e(t('tr.me.visiteur_derniere', ['date' => date_fr($v['derniere_visite'])])) ?><?php endif; ?>
+                </span>
+                <?php if ($admin): ?>
+                  <form method="post"<?= $envoi ?> action="<?= url('travaux/' . (int) $projet['id'] . '/visiteurs/' . (int) $v['id'] . '/retirer') ?>"
+                        data-confirmation="<?= e(t('tr.me.visiteur_retirer_confirmation', ['prenom' => $v['prenom']])) ?>">
+                    <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+                    <button class="bouton bouton--discret bouton--petit" type="submit" title="<?= e(t('tr.me.visiteur_retirer')) ?>"
+                            aria-label="<?= e(t('tr.me.visiteur_retirer_nom', ['prenom' => $v['prenom']])) ?>">✕</button>
+                  </form>
+                <?php endif; ?>
+              </li>
+            <?php endforeach; ?>
+          </ul>
+        <?php endif; ?>
         <?php if ($admin): ?>
           <form method="post"<?= $envoi ?> action="<?= url('travaux/' . (int) $projet['id'] . '/lien/fermer') ?>"
                 data-confirmation="<?= e(t('tr.me.desactiver_confirmation')) ?>">

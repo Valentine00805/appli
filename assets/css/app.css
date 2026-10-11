@@ -4867,3 +4867,15 @@ a.serveur-carte:hover, a.serveur-carte:focus-visible { border-color: var(--accen
 .calendrier-public__evenement { display: grid; gap: .1rem; padding: .45rem .7rem; border-left: 4px solid var(--couleur-evt, var(--accent)); border-radius: var(--rayon-s); background: var(--fond-doux); overflow-wrap: anywhere; }
 .calendrier-public__evenement--fait strong { text-decoration: line-through; color: var(--texte-doux); }
 
+/* Le lien public d'un travail de groupe : la page où l'on dit son prénom, « Bonjour … », et la liste de ceux qui sont entrés (côté membres). */
+.entree-lien { max-width: 26rem; margin: 2.5rem auto; text-align: center; }
+.entree-lien__icone { margin: 0; font-size: 2.6rem; line-height: 1; }
+.entree-lien__titre { margin: .4rem 0 .3rem; font-size: 1.5rem; overflow-wrap: anywhere; }
+.entree-lien__aide { margin: 0 0 1rem; }
+.entree-lien__formulaire { text-align: left; }
+.visiteur-bandeau { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .6rem; margin: 0 0 1rem; padding: .5rem .9rem; border-radius: var(--rayon-s); background: var(--accent-doux); color: var(--accent-fonce); font-weight: 600; }
+.visiteurs-liste { list-style: none; margin: 0 0 .8rem; padding: 0; display: grid; gap: .45rem; }
+.visiteur-ligne { display: flex; flex-wrap: wrap; align-items: center; gap: .2rem .7rem; padding: .5rem .7rem; border: 1px solid var(--bordure); border-radius: var(--rayon-s); background: var(--fond-doux); }
+.visiteur-ligne__prenom { flex: 1 1 8rem; min-width: 0; font-weight: 700; overflow-wrap: anywhere; display: flex; align-items: center; gap: .4rem; flex-wrap: wrap; }
+.visiteur-ligne__quand { flex: 2 1 14rem; font-size: .85rem; }
+

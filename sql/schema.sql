@@ -1856,3 +1856,18 @@ CREATE TABLE IF NOT EXISTS `discussions_epinglees` (
   UNIQUE KEY `uniq_discussions_epinglees` (`user_id`, `genre`, `cible_id`),
   CONSTRAINT `fk_discussions_epinglees_user` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Les personnes entrées par le lien public d'un travail de groupe (voir migration-projet-visiteurs.sql).
+CREATE TABLE IF NOT EXISTS `projet_visiteurs` (
+  `id`              INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `projet_id`       INT UNSIGNED NOT NULL,
+  `prenom`          VARCHAR(60)  NOT NULL,
+  `empreinte`       CHAR(64)     NOT NULL,
+  `created_at`      DATETIME     NOT NULL,
+  `derniere_visite` DATETIME     NOT NULL,
+  `visites`         INT UNSIGNED NOT NULL DEFAULT 1,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_projet_visiteurs_empreinte` (`empreinte`),
+  KEY `idx_projet_visiteurs_projet` (`projet_id`, `created_at`),
+  CONSTRAINT `fk_projet_visiteurs_projet` FOREIGN KEY (`projet_id`) REFERENCES `projets`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
