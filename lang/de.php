@@ -4875,4 +4875,10 @@ return [
     'ami.epingle_indisponible' => 'Anheften ist auf dieser Seite noch nicht verfügbar. Versuche es später noch einmal.',
     'ami.options' => 'Weitere Optionen',
     'ami.options_de' => 'Optionen für {nom}',
+    'tr.pu.calendrier' => 'Kalender',
+    'tr.pu.calendrier_mois' => 'Monate durchblättern',
+    'tr.pu.mois_precedent' => 'Vorheriger Monat',
+    'tr.pu.mois_suivant' => 'Nächster Monat',
+    'tr.pu.calendrier_vide' => 'In diesem Monat ist nichts geplant.',
+    'tr.pu.toute_la_journee' => 'Ganztägig',
 ];

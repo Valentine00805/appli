@@ -294,6 +294,50 @@ final class CalendriersAmis
         );
     }
 
+    /**
+     * Le calendrier commun d'un travail de groupe, lu par quelqu'un qui n'a pas de compte (le lien public du projet) : ses évènements et les
+     * tâches datées du projet, entre deux dates. Rien n'y est modifiable, et on n'y donne que ce que la page du lien montre déjà — le titre,
+     * le jour et l'heure, le lieu, et pour une tâche qui s'en occupe. Null si le projet n'a pas de calendrier commun.
+     *
+     * @return ?array{nom: string, couleur: string, evenements: list<array<string, mixed>>}
+     */
+    public static function publicDuProjet(int $projet, DateTimeInterface $debut, DateTimeInterface $fin): ?array
+    {
+        $calendrier = Database::one('SELECT id, nom, couleur FROM calendriers_amis WHERE projet_id = ?', [$projet]);
+        if ($calendrier === null) {
+            return null;
+        }
+        $couleur = Serveurs::couleurValide($calendrier['couleur']) ?? self::COULEUR_DEFAUT;
+
+        $evenements = [];
+        foreach (Database::all(
+            'SELECT titre, lieu, debut, fin, journee_entiere FROM calendrier_amis_evenements
+              WHERE calendrier_id = ? AND debut <= ? AND fin >= ? ORDER BY debut, fin, id',
+            [(int) $calendrier['id'], $fin->format('Y-m-d H:i:s'), $debut->format('Y-m-d H:i:s')]
+        ) as $e) {
+            $evenements[] = [
+                'titre' => (string) $e['titre'], 'lieu' => (string) ($e['lieu'] ?? ''), 'debut' => (string) $e['debut'], 'fin' => (string) $e['fin'],
+                'journee_entiere' => (int) $e['journee_entiere'] === 1, 'tache' => false, 'fait' => false, 'qui' => '',
+            ];
+        }
+        foreach (Database::all(
+            "SELECT pt.titre, pt.echeance, pt.statut, COALESCE(u.pseudo, pm.nom, '') AS qui
+               FROM projet_taches pt
+               LEFT JOIN projet_membres pm ON pm.id = pt.membre_id
+               LEFT JOIN users u ON u.id = pm.user_id
+              WHERE pt.projet_id = ? AND pt.echeance BETWEEN ? AND ? ORDER BY pt.echeance, pt.id",
+            [$projet, $debut->format('Y-m-d'), $fin->format('Y-m-d')]
+        ) as $t) {
+            $evenements[] = [
+                'titre' => (string) $t['titre'], 'lieu' => '', 'debut' => $t['echeance'] . ' 00:00:00', 'fin' => $t['echeance'] . ' 23:59:59',
+                'journee_entiere' => true, 'tache' => true, 'fait' => $t['statut'] === 'fait', 'qui' => (string) $t['qui'],
+            ];
+        }
+        usort($evenements, static fn (array $a, array $b): int => [$a['debut'], $a['fin']] <=> [$b['debut'], $b['fin']]);
+
+        return ['nom' => (string) $calendrier['nom'], 'couleur' => $couleur, 'evenements' => $evenements];
+    }
+
     /** Renomme et recolore le calendrier (son créateur). */
     public static function modifier(int $moi, int $id, string $nom, ?string $couleur): ?string
     {

@@ -608,9 +608,15 @@ final class TravauxController
             return;
         }
         $id = (int) $projet['id'];
+        // Le calendrier commun du projet, s'il en a un : le mois demandé (« ?mois=2026-11 »), le mois courant à défaut, de 2000 à 2100.
+        $mois = preg_match('/^(\d{4})-(0[1-9]|1[0-2])$/', (string) ($_GET['mois'] ?? ''), $m) === 1 && (int) $m[1] >= 2000 && (int) $m[1] <= 2100
+            ? new DateTimeImmutable($m[1] . '-' . $m[2] . '-01') : new DateTimeImmutable('first day of this month midnight');
+        $calendrier = CalendriersAmis::publicDuProjet($id, $mois, $mois->modify('last day of this month')->setTime(23, 59, 59));
         Vue::afficherPublic('travaux/public', [
             'projet'    => $projet,
             'jeton'     => $jeton,
+            'calendrier' => $calendrier,
+            'moisCalendrier' => $mois,
             'membres'   => Travaux::membresActifs($id),
             'taches'    => Travaux::taches($id),
             'echeances' => Travaux::echeances($id),

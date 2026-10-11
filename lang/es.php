@@ -4875,4 +4875,10 @@ return [
     'ami.epingle_indisponible' => 'Fijar aún no está disponible en este sitio. Inténtalo más tarde.',
     'ami.options' => 'Más opciones',
     'ami.options_de' => 'Opciones de {nom}',
+    'tr.pu.calendrier' => 'Calendario',
+    'tr.pu.calendrier_mois' => 'Recorrer los meses',
+    'tr.pu.mois_precedent' => 'Mes anterior',
+    'tr.pu.mois_suivant' => 'Mes siguiente',
+    'tr.pu.calendrier_vide' => 'Nada previsto este mes.',
+    'tr.pu.toute_la_journee' => 'Todo el día',
 ];

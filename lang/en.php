@@ -4875,4 +4875,10 @@ return [
     'ami.epingle_indisponible' => 'Pinning is not available on this site yet. Please try again later.',
     'ami.options' => 'More options',
     'ami.options_de' => 'Options for {nom}',
+    'tr.pu.calendrier' => 'Calendar',
+    'tr.pu.calendrier_mois' => 'Browse the months',
+    'tr.pu.mois_precedent' => 'Previous month',
+    'tr.pu.mois_suivant' => 'Next month',
+    'tr.pu.calendrier_vide' => 'Nothing planned this month.',
+    'tr.pu.toute_la_journee' => 'All day',
 ];

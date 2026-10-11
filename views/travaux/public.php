@@ -8,6 +8,8 @@
  * @var list<array> $taches
  * @var list<array> $echeances
  * @var list<array> $fichiers
+ * @var ?array $calendrier  le calendrier commun du projet (nom, couleur, évènements du mois), null s'il n'en a pas
+ * @var DateTimeImmutable $moisCalendrier  le premier jour du mois affiché
  */
 $maintenant = date('Y-m-d H:i:s');
 $avenir = array_filter($echeances, static fn (array $e): bool => (string) $e['fin'] >= $maintenant);
@@ -55,6 +57,64 @@ $avancement = Travaux::avancement(count($taches), $faites);
         </ul>
       <?php endif; ?>
     </section>
+
+    <?php if (($calendrier ?? null) !== null): ?>
+      <?php
+      /*
+       * Le calendrier commun du projet, en lecture seule : les évènements et les tâches datées du mois, jour par jour. Se parcourt de mois en
+       * mois (« ?mois= ») ; quelqu'un qui n'a pas de compte y a le même accès que celui que donne ce lien au reste du projet.
+       */
+      $precedent = $moisCalendrier->modify('-1 month')->format('Y-m');
+      $suivant = $moisCalendrier->modify('+1 month')->format('Y-m');
+      $parJour = [];
+      foreach ($calendrier['evenements'] as $ev) {
+          $jour = new DateTimeImmutable(substr($ev['debut'], 0, 10));
+          $dernier = new DateTimeImmutable(substr($ev['fin'], 0, 10));
+          for (; $jour <= $dernier; $jour = $jour->modify('+1 day')) {
+              if ($jour->format('Y-m') === $moisCalendrier->format('Y-m')) { $parJour[$jour->format('Y-m-d')][] = $ev; }
+          }
+      }
+      ksort($parJour);
+      $aujourdhui = date('Y-m-d');
+      ?>
+      <section class="carte" id="calendrier-public">
+        <div class="calendrier-public__entete">
+          <h2 style="margin:0">📅 <?= e(t('tr.pu.calendrier')) ?></h2>
+          <nav class="calendrier-public__mois" aria-label="<?= e(t('tr.pu.calendrier_mois')) ?>">
+            <a class="bouton bouton--discret bouton--petit" href="<?= url('g/' . $jeton, ['mois' => $precedent]) ?>#calendrier-public" rel="nofollow" aria-label="<?= e(t('tr.pu.mois_precedent')) ?>">‹</a>
+            <strong><?= e(ucfirst(nom_mois_en_phrase((int) $moisCalendrier->format('n')))) ?> <?= e($moisCalendrier->format('Y')) ?></strong>
+            <a class="bouton bouton--discret bouton--petit" href="<?= url('g/' . $jeton, ['mois' => $suivant]) ?>#calendrier-public" rel="nofollow" aria-label="<?= e(t('tr.pu.mois_suivant')) ?>">›</a>
+          </nav>
+        </div>
+        <?php if ($parJour === []): ?>
+          <p class="discret" style="margin:.8rem 0 0"><?= e(t('tr.pu.calendrier_vide')) ?></p>
+        <?php else: ?>
+          <ul class="calendrier-public__jours">
+            <?php foreach ($parJour as $date => $evenementsDuJour): ?>
+              <?php $ts = strtotime($date . ' 12:00:00'); ?>
+              <li class="calendrier-public__jour<?= $date === $aujourdhui ? ' calendrier-public__jour--aujourdhui' : '' ?>">
+                <span class="calendrier-public__date">
+                  <span class="calendrier-public__numero"><?= (int) date('j', $ts) ?></span>
+                  <span class="calendrier-public__semaine"><?= e(jours_semaine()[((int) date('N', $ts)) - 1] ?? '') ?></span>
+                </span>
+                <ul class="calendrier-public__evenements">
+                  <?php foreach ($evenementsDuJour as $ev): ?>
+                    <li class="calendrier-public__evenement<?= $ev['fait'] ? ' calendrier-public__evenement--fait' : '' ?>" style="--couleur-evt:<?= e($calendrier['couleur']) ?>">
+                      <strong><?= $ev['tache'] ? '✅ ' : '' ?><?= e($ev['titre']) ?></strong>
+                      <span class="discret">
+                        <?= e($ev['journee_entiere'] ? t('tr.pu.toute_la_journee') : heure_courte((int) strtotime($ev['debut'])) . ' – ' . heure_courte((int) strtotime($ev['fin']))) ?>
+                        <?php if ($ev['lieu'] !== ''): ?>· 📍 <?= e($ev['lieu']) ?><?php endif; ?>
+                        <?php if ($ev['tache'] && $ev['qui'] !== ''): ?>· <?= e($ev['qui']) ?><?php endif; ?>
+                      </span>
+                    </li>
+                  <?php endforeach; ?>
+                </ul>
+              </li>
+            <?php endforeach; ?>
+          </ul>
+        <?php endif; ?>
+      </section>
+    <?php endif; ?>
 
     <?php if ((string) ($projet['document'] ?? '') !== ''): ?>
       <section class="carte">

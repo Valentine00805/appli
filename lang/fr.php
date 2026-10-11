@@ -4887,4 +4887,10 @@ return [
     'ami.epingle_indisponible' => 'L’épinglage n’est pas encore disponible sur ce site. Réessayez un peu plus tard.',
     'ami.options' => 'Plus d’options',
     'ami.options_de' => 'Options pour {nom}',
+    'tr.pu.calendrier' => 'Calendrier',
+    'tr.pu.calendrier_mois' => 'Parcourir les mois',
+    'tr.pu.mois_precedent' => 'Mois précédent',
+    'tr.pu.mois_suivant' => 'Mois suivant',
+    'tr.pu.calendrier_vide' => 'Rien de prévu ce mois-ci.',
+    'tr.pu.toute_la_journee' => 'Toute la journée',
 ];

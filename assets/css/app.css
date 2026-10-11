@@ -4853,3 +4853,17 @@ a.serveur-carte:hover, a.serveur-carte:focus-visible { border-color: var(--accen
 /* Sans survol (écran tactile) : les trois points se voient toujours, discrets. */
 @media (hover: none) { .ami-menu__bouton { opacity: .8; } }
 
+/* Le lien public d'un travail de groupe : son calendrier commun, en lecture seule, jour par jour. */
+.calendrier-public__entete { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .6rem; }
+.calendrier-public__mois { display: inline-flex; align-items: center; gap: .6rem; }
+.calendrier-public__jours { list-style: none; margin: .9rem 0 0; padding: 0; display: grid; gap: .6rem; }
+.calendrier-public__jour { display: grid; grid-template-columns: 3.2rem minmax(0, 1fr); gap: .8rem; align-items: start; }
+.calendrier-public__date { display: grid; place-items: center; padding: .35rem 0; border-radius: var(--rayon-s); background: var(--fond-doux); text-align: center; line-height: 1.1; }
+.calendrier-public__numero { font-size: 1.25rem; font-weight: 700; }
+.calendrier-public__semaine { font-size: .72rem; color: var(--texte-doux); text-transform: uppercase; letter-spacing: .03em; }
+.calendrier-public__jour--aujourdhui .calendrier-public__date { background: var(--accent); color: #fff; }
+.calendrier-public__jour--aujourdhui .calendrier-public__semaine { color: #fff; }
+.calendrier-public__evenements { list-style: none; margin: 0; padding: 0; display: grid; gap: .4rem; }
+.calendrier-public__evenement { display: grid; gap: .1rem; padding: .45rem .7rem; border-left: 4px solid var(--couleur-evt, var(--accent)); border-radius: var(--rayon-s); background: var(--fond-doux); overflow-wrap: anywhere; }
+.calendrier-public__evenement--fait strong { text-decoration: line-through; color: var(--texte-doux); }
+
