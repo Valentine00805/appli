@@ -556,6 +556,19 @@ final class Travaux
             [$moi]);
     }
 
+    /**
+     * Mes tâches de la page Groupes s'ouvrent-elles repliées ? Le réglage de « Mon compte » ; faux (dépliées) par défaut — et tant que la
+     * colonne n'existe pas, le temps d'importer la migration.
+     */
+    public static function tachesRepliees(int $moi): bool
+    {
+        try {
+            return (int) Database::valeur('SELECT taches_groupes_repliees FROM users WHERE id = ?', [$moi]) === 1;
+        } catch (Throwable) {
+            return false;
+        }
+    }
+
     /** Où en est le projet, en pourcentage de tâches faites (null sans tâche). */
     public static function avancement(int $total, int $faites): ?int
     {

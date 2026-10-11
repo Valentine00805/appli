@@ -102,18 +102,54 @@ $csrf = Session::jetonCsrf();
     <?php if ($mesTaches !== []): ?>
       <section class="carte">
         <h2><?= e(t('tr.li.a_faire')) ?></h2>
-        <ul class="travaux-mes-taches">
-          <?php foreach ($mesTaches as $t): ?>
-            <li>
-              <a href="<?= url('travaux/' . (int) $t['projet_id']) ?>" data-fenetre><?= e($t['membre_id'] === null ? t('cal.tache_sans_personne', ['titre' => (string) $t['titre']]) : (string) $t['titre']) ?></a>
-              <span class="travaux-projet" title="<?= e(t('tr.li.le_projet')) ?>">👥 <?= e((string) $t['projet_nom']) ?></span>
-              <?php $texte = echeance_libelle($t['echeance']); ?>
-              <?php if ($texte !== ''): ?>
-                <span class="echeance echeance--<?= e(echeance_etat($t['echeance'])) ?>"><?= e($texte) ?></span>
-              <?php endif; ?>
-            </li>
+        <?php
+        /*
+         * Rangées par projet (dans l'ordre de la plus proche échéance), chaque projet se replie : sa pastille dit combien de tâches m'y attendent,
+         * et combien sont en retard, pour aujourd'hui ou pour demain. Natif — rien à charger, ça se déroule au clavier comme à la souris.
+         */
+        $parProjet = [];
+        foreach ($mesTaches as $t) {
+            $parProjet[(int) $t['projet_id']]['nom'] = (string) $t['projet_nom'];
+            $parProjet[(int) $t['projet_id']]['taches'][] = $t;
+        }
+        ?>
+        <div class="taches-projets">
+          <?php foreach ($parProjet as $groupe): ?>
+            <?php
+            $nb = count($groupe['taches']);
+            // Ce qui presse, sans aller plus loin que demain : le retard, ce qui tombe aujourd'hui et ce qui tombe demain.
+            $etats = array_count_values(array_map(static fn (array $t): string => echeance_etat($t['echeance']), $groupe['taches']));
+            $enRetard = $etats['retard'] ?? 0;
+            $aujourdhui = $etats['aujourdhui'] ?? 0;
+            $demain = $etats['demain'] ?? 0;
+            ?>
+            <details class="tache-projet"<?= ($tachesRepliees ?? false) ? '' : ' open' ?>>
+              <summary>
+                <span class="tache-projet__fleche" aria-hidden="true">▾</span>
+                <span class="tache-projet__nom">👥 <?= e($groupe['nom']) ?></span>
+                <span class="tache-projet__compte" title="<?= e(tn('tr.li.nb_taches', $nb)) ?>"><?= $nb ?></span>
+                <?php if ($enRetard + $aujourdhui + $demain > 0): ?>
+                  <span class="tache-projet__etats">
+                    <?php if ($enRetard > 0): ?>
+                      <span class="echeance echeance--retard"><?= e(tn('tr.li.nb_en_retard', $enRetard)) ?></span>
+                    <?php endif; ?>
+                    <?php if ($aujourdhui > 0): ?>
+                      <span class="echeance echeance--aujourdhui"><?= e(tn('tr.li.nb_aujourdhui', $aujourdhui)) ?></span>
+                    <?php endif; ?>
+                    <?php if ($demain > 0): ?>
+                      <span class="echeance echeance--demain"><?= e(tn('tr.li.nb_demain', $demain)) ?></span>
+                    <?php endif; ?>
+                  </span>
+                <?php endif; ?>
+              </summary>
+              <ul class="travaux-mes-taches">
+                <?php foreach ($groupe['taches'] as $t): ?>
+                  <?= Vue::rendre('travaux/_tache_tuile', ['t' => $t, 'sansProjet' => true]) ?>
+                <?php endforeach; ?>
+              </ul>
+            </details>
           <?php endforeach; ?>
-        </ul>
+        </div>
       </section>
     <?php endif; ?>
   </div>

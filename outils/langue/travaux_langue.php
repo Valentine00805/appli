@@ -156,6 +156,40 @@ try {
             && !str_contains($accueil, 'Mine due (unassigned)')), 'oui');
     $liste = $appel('travaux');
     $dire('  et la colonne « à faire » de la liste des travaux', $oui(str_contains($liste, 'Nobody due (unassigned)') && !str_contains($liste, 'Alex due')), 'oui');
+    // Les tâches à faire qui m'attendent dans ce groupe : les miennes et celles que personne n'a prises.
+    $combienMiennes = (int) bd_valeur("SELECT COUNT(*) FROM projet_taches WHERE projet_id = ? AND statut <> 'fait' AND (membre_id = ? OR membre_id IS NULL)", [$projet, $moiMembre]);
+    $dire('  rangées par projet : un bloc repliable (ouvert d\'office) avec la pastille du nombre de tâches',
+        $oui(preg_match_all('/<details class="tache-projet" open>/', $liste) === 1 && preg_match('/class="tache-projet__compte" title="' . $combienMiennes . ' tasks to do">' . $combienMiennes . '</', $liste) === 1
+            && $combienMiennes >= 4 && str_contains($liste, 'Essai de langue')), 'oui');
+    // Ce qui presse, dit à côté du nom du projet : « 1 today » (Due today), et « 1 tomorrow » le temps d'une tâche pour demain, pas plus loin.
+    $dire('  à côté du projet : ce qui tombe aujourd\'hui est dit (« 1 today »)', $oui(preg_match('/echeance--aujourdhui">1 today</', $liste) === 1), 'oui');
+    bd_run('INSERT INTO projet_taches (projet_id, titre, membre_id, echeance, statut) VALUES (?, ?, ?, ?, ?)', [$projet, 'Due tomorrow', $moiMembre, date('Y-m-d', strtotime('+1 day')), 'a_faire']);
+    bd_run('INSERT INTO projet_taches (projet_id, titre, membre_id, echeance, statut) VALUES (?, ?, ?, ?, ?)', [$projet, 'Due in three days', $moiMembre, date('Y-m-d', strtotime('+3 days')), 'a_faire']);
+    $listeDemain = $appel('travaux');
+    $dire('  ce qui tombe demain aussi (« 1 tomorrow »), mais rien pour une échéance plus lointaine',
+        $oui(preg_match('/echeance--demain">1 tomorrow</', $listeDemain) === 1 && preg_match('#<summary>(.*?)</summary>#s', $listeDemain, $entete) === 1
+            && !str_contains($entete[1], 'echeance--proche') && !str_contains($entete[1], 'echeance--lointain') && !str_contains($entete[1], 'in 3 days')), 'oui');
+    bd_run('DELETE FROM projet_taches WHERE projet_id = ? AND titre IN (?, ?)', [$projet, 'Due tomorrow', 'Due in three days']);
+    // Le réglage de « Mon compte » : dépliée d'office, ou repliée.
+    $dire('  dépliés d\'office (réglage par défaut)', $oui(preg_match_all('/<details class="tache-projet" open>/', $liste) === 1), 'oui');
+    $compteReglage = $appel('compte');
+    $dire('  « Mon compte » : la carte du réglage, avec « Expanded » et « Collapsed »',
+        $oui(str_contains($compteReglage, 'id="taches-groupes-carte"') && str_contains($compteReglage, 'Group project tasks') && str_contains($compteReglage, 'name="taches_repliees" value="0" checked')
+            && str_contains($compteReglage, 'Expanded: all my tasks, project by project') && str_contains($compteReglage, 'Collapsed: only the projects and their task count')), 'oui');
+    $appel('compte/taches-groupes', ['_csrf' => $csrf, 'taches_repliees' => '1']);
+    $apresRepli = $appel('travaux');
+    $dire('  repliés : le bloc du projet n\'est plus ouvert, mais sa pastille et ses tuiles sont là',
+        $oui(preg_match_all('/<details class="tache-projet">/', $apresRepli) === 1 && !str_contains($apresRepli, '<details class="tache-projet" open>')
+            && preg_match('/class="tache-projet__compte" title="\d+ tasks to do"/', $apresRepli) === 1 && str_contains($apresRepli, 'Mine due')), 'oui');
+    $dire('  et le réglage est gardé en base', (string) bd_valeur('SELECT taches_groupes_repliees FROM users WHERE id = ?', [$id]), '1');
+    $dire('  « Mon compte » le montre sélectionné (« Collapsed »)', $oui(str_contains($appel('compte'), 'name="taches_repliees" value="1" checked')), 'oui');
+    $appel('compte/taches-groupes', ['_csrf' => $csrf, 'taches_repliees' => '2']);
+    $appel('compte/taches-groupes', ['_csrf' => 'faux', 'taches_repliees' => '0']);
+    $dire('  une valeur inconnue, ou sans le bon jeton CSRF : rien ne change', (string) bd_valeur('SELECT taches_groupes_repliees FROM users WHERE id = ?', [$id]), '1');
+    $appel('compte/taches-groupes', ['_csrf' => $csrf, 'taches_repliees' => '0']);
+    $dire('  redéplier : les blocs s\'ouvrent de nouveau', $oui(str_contains($appel('travaux'), '<details class="tache-projet" open>')), 'oui');
+    $dire('  sous le projet, une tuile ne répète pas le nom du projet',
+        $oui(preg_match('/<li class="tache-groupe">(?:(?!<\/li>).)*travaux-projet/s', $liste) !== 1 && substr_count($liste, 'class="tache-groupe"') === $combienMiennes), 'oui');
     $apres = $appel('calendrier?date=' . date('Y-m-15', strtotime('+2 months')));
     $dire('  un autre mois ne l\'affiche pas', $oui(!str_contains($apres, 'Mine due')), 'oui');
 

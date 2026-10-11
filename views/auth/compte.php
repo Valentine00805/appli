@@ -330,6 +330,36 @@ $transcription = (int) ($moi['transcription_vocale'] ?? 1) === 1;
 
 <?php
 /*
+ * Les tâches de la page Groupes (« Ce que j'ai à faire »), rangées par projet : dépliées d'office, ou repliées (seuls les projets et leur
+ * nombre de tâches se lisent). Un projet s'ouvre et se referme d'un clic de toute façon : ce réglage ne dit que l'état au chargement.
+ */
+$tachesRepliees = Travaux::tachesRepliees((int) Auth::id());
+?>
+<section class="carte" style="margin-bottom:1rem" id="taches-groupes-carte" data-reglage>
+  <h2 style="margin-top:0">👥 <?= e(t('cpt.taches_groupes')) ?></h2>
+
+  <div class="reglage-lecture" data-reglage-lecture>
+    <p class="reglage-lecture__valeur"><?= e($tachesRepliees ? t('cpt.taches_repliees_puce') : t('cpt.taches_depliees_puce')) ?></p>
+    <button class="bouton bouton--secondaire" type="button" data-reglage-modifier><?= e(t('commun.modifier')) ?></button>
+  </div>
+
+  <form method="post" action="<?= url('compte/taches-groupes') ?>" data-reglage-edition hidden>
+    <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
+    <fieldset class="reglage-choix">
+      <legend class="legende"><?= e(t('cpt.taches_legende')) ?></legend>
+      <label><input type="radio" name="taches_repliees" value="0"<?= $tachesRepliees ? '' : ' checked' ?>> <?= e(t('cpt.taches_depliees')) ?></label>
+      <label><input type="radio" name="taches_repliees" value="1"<?= $tachesRepliees ? ' checked' : '' ?>> <?= e(t('cpt.taches_repliees')) ?></label>
+    </fieldset>
+    <div class="actions">
+      <button class="bouton" type="submit"><?= e(t('commun.enregistrer')) ?></button>
+      <button class="bouton bouton--discret" type="button" data-reglage-annuler><?= e(t('commun.annuler')) ?></button>
+    </div>
+  </form>
+
+  <p class="champ__aide" style="margin-bottom:0"><?= e(t('cpt.taches_aide')) ?></p>
+</section>
+<?php
+/*
  * Les évènements que mes amis me partagent : pour chacun, s'ils paraissent
  * d'office dans mon calendrier, ou restent dans « Partagés ».
  */

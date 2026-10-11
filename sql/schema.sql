@@ -1840,3 +1840,7 @@ SELECT `id`, NULL, `dossier_id` FROM `evenements` WHERE `dossier_id` IS NOT NULL
 -- Un fichier se met aussi dans un travail de groupe (voir migration-projet-liens-fichier.sql).
 ALTER TABLE `projet_liens`
   MODIFY `type` ENUM('cours', 'dossier', 'fichier') NOT NULL;
+
+-- Les tâches de la page Groupes, dépliées ou repliées d'office (voir migration-users-taches-groupes.sql).
+ALTER TABLE `users`
+  ADD COLUMN `taches_groupes_repliees` TINYINT(1) NOT NULL DEFAULT 0;

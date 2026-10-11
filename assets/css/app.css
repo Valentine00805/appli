@@ -4746,17 +4746,38 @@ a.serveur-carte:hover, a.serveur-carte:focus-visible { border-color: var(--accen
 
 /* Accueil, « Travaux de groupe » : chaque tâche est une tuile cliquable en entier, plutôt qu'un simple lien. */
 .tache-groupe {
-  position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .75rem; padding: .7rem .9rem .7rem 1rem;
+  position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: .4rem .75rem; padding: .7rem .9rem .7rem 1rem;
   background: var(--fond-doux); border: 1px solid var(--bordure); border-left: 4px solid var(--accent); border-radius: var(--rayon-s);
   transition: background .15s, border-color .15s, box-shadow .15s, transform .15s;
 }
 .tache-groupe:hover { background: var(--accent-doux); border-color: var(--accent); box-shadow: var(--ombre); transform: translateY(-1px); }
 .tache-groupe:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
-.tache-groupe__titre { flex: 1 1 11rem; min-width: 0; color: var(--texte); font-weight: 700; text-decoration: none; overflow-wrap: anywhere; }
+.tache-groupe__titre { grid-column: 1; min-width: 0; color: var(--texte); font-weight: 700; text-decoration: none; overflow-wrap: anywhere; }
 .tache-groupe__titre:hover { color: var(--accent-fonce); text-decoration: none; }
 /* Le lien couvre toute la tuile : un clic n'importe où l'ouvre. */
 .tache-groupe__titre::after { content: ""; position: absolute; inset: 0; border-radius: inherit; }
-.tache-groupe__meta { display: inline-flex; flex-wrap: wrap; align-items: center; gap: .35rem; }
-.tache-groupe__fleche { margin-left: auto; color: var(--accent); font-size: 1.4rem; line-height: 1; transition: transform .15s; }
+.tache-groupe__meta { grid-column: 1; display: flex; flex-wrap: wrap; align-items: center; gap: .35rem; }
+.tache-groupe__fleche { grid-column: 2; grid-row: 1 / span 2; align-self: center; color: var(--accent); font-size: 1.4rem; line-height: 1; transition: transform .15s; }
 .tache-groupe:hover .tache-groupe__fleche { transform: translateX(3px); }
+
+/* Page « Groupes », « Ce que j'ai à faire » : mes tâches rangées par projet, chaque projet se replie, une pastille en compte les tâches. */
+.taches-projets { display: grid; gap: .75rem; }
+.tache-projet > summary {
+  list-style: none; cursor: pointer; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: .3rem .6rem; padding: .35rem .2rem;
+  border-radius: var(--rayon-s); user-select: none;
+}
+.tache-projet > summary::-webkit-details-marker { display: none; }
+.tache-projet > summary::marker { content: ""; }
+.tache-projet > summary:hover { background: var(--fond-doux); }
+.tache-projet > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.tache-projet__fleche { flex: none; color: var(--accent); transition: transform .15s; }
+.tache-projet:not([open]) .tache-projet__fleche { transform: rotate(-90deg); }
+.tache-projet__nom { min-width: 0; font-weight: 700; overflow-wrap: anywhere; }
+/* Sous le nom : ce qui presse (retard, aujourd'hui, demain), sans aller plus loin. */
+.tache-projet__etats { grid-column: 2 / -1; display: flex; flex-wrap: wrap; gap: .35rem; }
+.tache-projet__compte {
+  display: inline-grid; place-items: center; min-width: 1.6rem; height: 1.6rem; padding: 0 .45rem; border-radius: 999px;
+  background: var(--accent); color: #fff; font-size: .85rem; font-weight: 700; line-height: 1;
+}
+.tache-projet > ul { margin-top: .5rem; }
 

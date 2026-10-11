@@ -464,6 +464,29 @@ final class AuthController
     }
 
     /** Active ou coupe la transcription de ses messages vocaux. */
+    /** Les tâches de la page Groupes s'ouvrent dépliées (« 0 ») ou repliées (« 1 »). */
+    public function changerTachesGroupes(): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+
+        $choix = (string) ($_POST['taches_repliees'] ?? '');
+        if ($choix !== '0' && $choix !== '1') {
+            Session::flash('erreur', t('auth.fl.taches_choix'));
+            redirect('compte');
+        }
+
+        try {
+            Database::run('UPDATE users SET taches_groupes_repliees = ? WHERE id = ?', [(int) $choix, Auth::id()]);
+        } catch (Throwable) {
+            // La colonne n'existe pas encore (migration à importer) : on le dit plutôt que de planter.
+            Session::flash('erreur', t('auth.fl.taches_indisponible'));
+            redirect('compte');
+        }
+        Session::flash('succes', t($choix === '1' ? 'auth.fl.taches_repliees' : 'auth.fl.taches_depliees'));
+        redirect('compte');
+    }
+
     public function changerTranscription(): void
     {
         Auth::exiger();

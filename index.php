@@ -291,6 +291,7 @@ $routes = [
     ['POST', 'compte/gemini/retirer',    [AuthController::class, 'retirerCleGemini']],
     ['POST', 'compte/pseudo',            [AuthController::class, 'changerPseudo']],
     ['POST', 'compte/transcription',     [AuthController::class, 'changerTranscription']],
+    ['POST', 'compte/taches-groupes',    [AuthController::class, 'changerTachesGroupes']],
     ['POST', 'compte/photo',             [AuthController::class, 'changerPhoto']],
     ['POST', 'compte/photo/retirer',     [AuthController::class, 'retirerPhoto']],
     ['GET',  'comptes/{id}/photo',       [AuthController::class, 'photo']],

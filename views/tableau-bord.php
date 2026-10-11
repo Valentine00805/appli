@@ -119,18 +119,7 @@
           <?php
           // Quatre tâches se lisent d'un coup d'œil ; les suivantes se déroulent sous la carte, d'un clic.
           $ligne = static function (array $t): void { ?>
-              <?php // Une tuile : toute la carte se clique (le lien du titre s'étend dessus), le projet et l'échéance s'y lisent en pastilles. ?>
-              <li class="tache-groupe">
-                <a class="tache-groupe__titre" href="<?= url('travaux/' . (int) $t['projet_id']) ?>" data-fenetre><?= e($t['membre_id'] === null ? t('cal.tache_sans_personne', ['titre' => (string) $t['titre']]) : (string) $t['titre']) ?></a>
-                <span class="tache-groupe__meta">
-                  <span class="travaux-projet" title="<?= e(t('tr.li.le_projet')) ?>">👥 <?= e((string) $t['projet_nom']) ?></span>
-                  <?php $texte = echeance_libelle($t['echeance']); ?>
-                  <?php if ($texte !== ''): ?>
-                    <span class="echeance echeance--<?= e(echeance_etat($t['echeance'])) ?>"><?= e($texte) ?></span>
-                  <?php endif; ?>
-                </span>
-                <span class="tache-groupe__fleche" aria-hidden="true">›</span>
-              </li>
+              <?= Vue::rendre('travaux/_tache_tuile', ['t' => $t]) ?>
           <?php };
           $visibles = array_slice($travaux['taches'], 0, 4);
           $suite = array_slice($travaux['taches'], 4);

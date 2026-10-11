@@ -16,7 +16,9 @@ final class TravauxController
         Vue::afficher('travaux/index', [
             'projets'     => Travaux::mesProjets($moi),
             'invitations' => Travaux::invitations($moi),
-            'mesTaches'   => Travaux::mesTaches($moi, 8),
+            'mesTaches'   => Travaux::mesTaches($moi, 200),
+            // Dépliées ou repliées d'office : le réglage de « Mon compte ».
+            'tachesRepliees' => Travaux::tachesRepliees($moi),
             // Une invitation vient d'être acceptée : la liste rouvre aussitôt le groupe dans une fenêtre (lien « data-ouvrir-auto »).
             'aOuvrir'     => (int) ($_GET['ouvrir'] ?? 0) > 0 ? Travaux::projet((int) $_GET['ouvrir'], $moi) : null,
         ], t('titre.tr_liste'));
