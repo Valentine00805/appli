@@ -109,9 +109,20 @@ try {
         $oui(preg_match_all('/<label for="acces-ouvrir-\d+" class="[^"]*acces-bouton"[^>]*>[^<]*Modifier<\/label>/', $fenAcces) === 2
             && preg_match('/class="pastille">Commentaire</', $fenAcces) === 1
             && preg_match('/<div class="acces-panneau">.*?\/acces\/' . $id('b') . '\/droit.*?Changer.*?\/acces\/' . $id('b') . '\/retirer.*?Retirer l’accès/s', $fenAcces) === 1), 'oui');
+    $dire('le panneau a aussi un « Annuler » (la même case le referme), à côté de « Changer »',
+        $oui(preg_match_all('#<label for="acces-ouvrir-(\d+)" class="bouton bouton--discret" role="button">Annuler</label>#', $fenAcces, $annuler) === 2
+            && $annuler[1] === array_map(static fn (string $n): string => $n, $annuler[1]) && preg_match('#Changer</button>\s*<label for="acces-ouvrir-\d+" class="bouton bouton--discret"#', $fenAcces) === 1), 'oui');
     $dire('le panneau est replié d\'office : une case cachée, décochée, le commande',
         $oui(preg_match_all('/<input type="checkbox" id="acces-ouvrir-\d+" class="acces-bascule sr-only">/', $fenAcces) === 2
             && !preg_match('/class="acces-bascule[^"]*"[^>]*checked/', $fenAcces)), 'oui');
+    [, $profilB] = $appel('amis/' . $id('b') . '/profil');
+    $dire('le profil de B, « Partagé par vous » : « Modifier » puis un panneau (menu de droits, « Changer », « Annuler », « Retirer l\'accès »)',
+        $oui(preg_match('#<label for="(acces-profil-cours-' . $cours . ')" class="bouton bouton--secondaire bouton--petit acces-bouton" role="button">[^<]*Modifier</label>\s*<div class="acces-panneau">(.*?)</div>\s*</li>#s', $profilB, $mp) === 1
+            && str_contains($mp[2], '/acces/' . $id('b') . '/droit') && str_contains($mp[2], 'Changer')
+            && str_contains($mp[2], '<label for="acces-profil-cours-' . $cours . '" class="bouton bouton--discret" role="button">Annuler</label>')
+            && str_contains($mp[2], '/acces/' . $id('b') . '/retirer') && str_contains($mp[2], 'bouton--danger')), 'oui');
+    $dire('  replié d\'office : la case cachée est décochée, et l\'ancien menu de droits n\'est plus en vue sur la ligne',
+        $oui(preg_match('#<input type="checkbox" id="acces-profil-cours-' . $cours . '" class="acces-bascule sr-only">#', $profilB) === 1 && !str_contains($profilB, 'profil-ami__droit')), 'oui');
     $effacer();
     $envoyer(['amis' => [$id('b'), $id('c')], 'droit' => 'modification']);
     $dire('l\'ancien formulaire (sans le choix) donne le même droit à tous', $droit('b', 'cours', $cours) . '|' . $droit('c', 'cours', $cours), 'modification|modification');

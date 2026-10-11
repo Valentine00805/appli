@@ -4867,4 +4867,12 @@ return [
     'auth.fl.taches_choix' => 'Wähle „aufgeklappt“ oder „zugeklappt“.',
     'auth.fl.taches_indisponible' => 'Diese Einstellung ist auf dieser Seite noch nicht verfügbar. Versuche es später noch einmal.',
     'tr.do.par' => 'von',
+    'ami.epinglees' => 'Angeheftet',
+    'ami.epingler_discussion' => 'Oben in der Liste anheften',
+    'ami.desepingler_discussion' => 'Lösen',
+    'ami.epingle_limite' => 'Du kannst höchstens {max} Unterhaltungen anheften.',
+    'ami.epingle_introuvable' => 'Diese Unterhaltung gibt es nicht oder sie gehört nicht dir.',
+    'ami.epingle_indisponible' => 'Anheften ist auf dieser Seite noch nicht verfügbar. Versuche es später noch einmal.',
+    'ami.options' => 'Weitere Optionen',
+    'ami.options_de' => 'Optionen für {nom}',
 ];

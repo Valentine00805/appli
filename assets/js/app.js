@@ -7756,3 +7756,39 @@
     }
   });
 })();
+
+/* Le menu « ⋮ » d'une discussion (Amis) : un seul ouvert à la fois ; il se ferme d'un clic ailleurs ou d'Échap ; et s'il n'a plus de place sous la
+   ligne (bas de la liste, bas de l'écran), il s'ouvre vers le haut. « toggle » ne remonte pas : on l'écoute en phase de capture. */
+(function () {
+  function fermer(sauf) {
+    [].slice.call(document.querySelectorAll(".ami-menu[open]")).forEach(function (menu) {
+      if (menu !== sauf) { menu.removeAttribute("open"); }
+    });
+  }
+
+  document.addEventListener("toggle", function (evenement) {
+    var menu = evenement.target;
+    if (!menu.classList || !menu.classList.contains("ami-menu") || !menu.open) { return; }
+    fermer(menu);
+    menu.classList.remove("ami-menu--haut");
+    var liste = menu.querySelector(".ami-menu__liste");
+    if (!liste) { return; }
+    var boite = liste.getBoundingClientRect();
+    var conteneur = menu.closest(".chat__amis");
+    var limite = Math.min(window.innerHeight, conteneur ? conteneur.getBoundingClientRect().bottom : window.innerHeight);
+    if (boite.bottom > limite) { menu.classList.add("ami-menu--haut"); }
+  }, true);
+
+  document.addEventListener("click", function (evenement) {
+    if (!evenement.target.closest || !evenement.target.closest(".ami-menu")) { fermer(null); }
+  });
+
+  document.addEventListener("keydown", function (evenement) {
+    if (evenement.key !== "Escape") { return; }
+    var ouvert = document.querySelector(".ami-menu[open]");
+    if (!ouvert) { return; }
+    ouvert.removeAttribute("open");
+    var bouton = ouvert.querySelector("summary");
+    if (bouton) { bouton.focus(); }
+  });
+})();

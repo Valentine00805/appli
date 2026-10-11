@@ -300,6 +300,7 @@ $routes = [
     // Les amis : chercher un pseudo, les demandes, et les conversations.
     ['GET',  'amis',                      [AmisController::class, 'index']],
     ['POST', 'amis/demande',              [AmisController::class, 'demander']],
+    ['POST', 'discussions/epingler',      [AmisController::class, 'epinglerDiscussion']],
     ['POST', 'amis/{id}/accepter',        [AmisController::class, 'accepter']],
     ['POST', 'amis/{id}/retirer',         [AmisController::class, 'retirer']],
     ['POST', 'amis/{id}/bloquer',         [AmisController::class, 'bloquer']],

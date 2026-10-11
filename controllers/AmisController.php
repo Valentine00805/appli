@@ -98,6 +98,25 @@ final class AmisController
         redirect('amis');
     }
 
+    /**
+     * Épingle une discussion en haut de ma liste, ou la désépingle (« genre » : « ami » ou « groupe », « epingle » : 1 ou 0). On revient d'où l'on
+     * vient : la liste, ou la conversation ouverte.
+     */
+    public function epinglerDiscussion(): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $refus = Amis::epinglerDiscussion(
+            Auth::id(), (string) ($_POST['genre'] ?? ''), (int) ($_POST['cible'] ?? 0), (string) ($_POST['epingle'] ?? '') === '1'
+        );
+        if ($refus !== null) {
+            Session::flash('erreur', $refus);
+        }
+        // Un chemin de l'application seulement : jamais une adresse venue du formulaire telle quelle.
+        $retour = (string) ($_POST['retour'] ?? '');
+        redirect(preg_match('~^[A-Za-z0-9/_-]*$~', $retour) === 1 && !str_contains($retour, '//') && $retour !== '' ? ltrim($retour, '/') : 'amis');
+    }
+
     /** La conversation avec un ami. */
     public function conversation(int $id): void
     {

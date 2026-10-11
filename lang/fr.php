@@ -4879,4 +4879,12 @@ return [
     'auth.fl.taches_choix' => 'Choisissez « dépliée » ou « repliée ».',
     'auth.fl.taches_indisponible' => 'Ce réglage n’est pas encore disponible sur ce site. Réessayez un peu plus tard.',
     'tr.do.par' => 'par',
+    'ami.epinglees' => 'Épinglées',
+    'ami.epingler_discussion' => 'Épingler en haut de la liste',
+    'ami.desepingler_discussion' => 'Désépingler',
+    'ami.epingle_limite' => 'Vous pouvez épingler au plus {max} discussions.',
+    'ami.epingle_introuvable' => 'Cette discussion n’existe pas, ou ce n’est pas une de vos discussions.',
+    'ami.epingle_indisponible' => 'L’épinglage n’est pas encore disponible sur ce site. Réessayez un peu plus tard.',
+    'ami.options' => 'Plus d’options',
+    'ami.options_de' => 'Options pour {nom}',
 ];

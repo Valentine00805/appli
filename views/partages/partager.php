@@ -155,6 +155,7 @@ $destActive = $amis !== [] || $groupes !== [] || $destinataires !== [] ? 'amis' 
                   <?php endforeach; ?>
                 </select>
                 <button class="bouton" type="submit"><?= e(t('pt.changer')) ?></button>
+                <label for="acces-ouvrir-<?= (int) $d['id'] ?>" class="bouton bouton--discret" role="button"><?= e(t('commun.annuler')) ?></label>
               </div>
             </form>
             <form method="post" action="<?= url($base . '/acces/' . $d['id'] . '/retirer') ?>"<?= $surPlace ?> class="acces-panneau__retrait">

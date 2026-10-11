@@ -15,6 +15,8 @@ $groupeActif = $groupeActif ?? null;
 $groupes = $groupes ?? [];
 $derniersGroupes = $derniersGroupes ?? [];
 $moi = Auth::id();
+// Mes discussions épinglées (genre => identifiants) : elles montent dans une section « Épinglées », en haut de la liste.
+$epinglees = Amis::discussionsEpinglees($moi);
 
 $discussions = [];
 foreach ($amis as $a) {
@@ -32,6 +34,9 @@ foreach ($amis as $a) {
           . preg_replace('/\s+/u', ' ', (string) $dernier['texte'])));
     $discussions[] = [
         'url' => url('amis/' . (int) $a['id']),
+        'genre' => 'ami',
+        'cible' => (int) $a['id'],
+        'epingle' => in_array((int) $a['id'], $epinglees['ami'], true),
         'actif' => $actif === (int) $a['id'],
         'nom' => (string) $a['pseudo'],
         'avatar' => mb_strtoupper(mb_substr((string) $a['pseudo'], 0, 1)),
@@ -47,6 +52,9 @@ foreach ($groupes as $g) {
     $dernier = $g['dernier_id'] !== null ? ($derniersGroupes[(int) $g['dernier_id']] ?? null) : null;
     $discussions[] = [
         'url' => url('groupes/' . (int) $g['id']),
+        'genre' => 'groupe',
+        'cible' => (int) $g['id'],
+        'epingle' => in_array((int) $g['id'], $epinglees['groupe'], true),
         'actif' => $groupeActif === (int) $g['id'],
         'nom' => (string) $g['nom'],
         'avatar' => '👥',
@@ -66,12 +74,18 @@ usort($discussions, static fn (array $x, array $y): int => [$y['tri'], $x['nom']
  * Deux sections pliables : « Messages » (une personne) et « Groupes ». Chacune garde son état d'ouverture (voir app.js,
  * [data-memoire]) ; fermée, elle montre ce qu'elle cache de non lu. La discussion ouverte garde sa section ouverte.
  */
-$sections = [
-    ['cle' => 'messages', 'titre' => t('ami.messages'), 'lignes' => array_values(array_filter($discussions, static fn (array $d): bool => !$d['groupe'])),
-     'vide' => t('ami.pas_encore_amis')],
-    ['cle' => 'groupes', 'titre' => t('ami.groupes_section'), 'lignes' => array_values(array_filter($discussions, static fn (array $d): bool => $d['groupe'])),
-     'vide' => t('ami.aucun_groupe')],
-];
+// Les épinglées d'abord (de la plus récente à la plus ancienne), puis les autres, comme avant. Une section dont tout est épinglé ne dit pas
+// « pas d'amis » : elle est simplement vide.
+$epingleesLignes = array_values(array_filter($discussions, static fn (array $d): bool => $d['epingle']));
+$sections = [];
+if ($epingleesLignes !== []) {
+    $sections[] = ['cle' => 'epinglees', 'titre' => t('ami.epinglees'), 'lignes' => $epingleesLignes, 'vide' => ''];
+}
+foreach ([['messages', 'ami.messages', false, 'ami.pas_encore_amis'], ['groupes', 'ami.groupes_section', true, 'ami.aucun_groupe']] as [$cle, $titre, $groupes_, $vide]) {
+    $tous = array_filter($discussions, static fn (array $d): bool => $d['groupe'] === $groupes_);
+    $lignes = array_values(array_filter($tous, static fn (array $d): bool => !$d['epingle']));
+    $sections[] = ['cle' => $cle, 'titre' => t($titre), 'lignes' => $lignes, 'vide' => $tous === [] ? t($vide) : ''];
+}
 ?>
 <?php foreach ($sections as $section): ?>
   <?php
@@ -88,11 +102,11 @@ $sections = [
       <?php endif; ?>
     </summary>
     <?php if ($section['lignes'] === []): ?>
-      <p class="discret liste-section__vide"><?= e($section['vide']) ?></p>
+      <?php if ($section['vide'] !== ''): ?><p class="discret liste-section__vide"><?= e($section['vide']) ?></p><?php endif; ?>
     <?php else: ?>
       <ul class="amis-liste" data-liste-discussions>
         <?php foreach ($section['lignes'] as $d): ?>
-          <li data-nom="<?= e(mb_strtolower($d['nom'])) ?>">
+          <li class="ami-ligne" data-nom="<?= e(mb_strtolower($d['nom'])) ?>">
             <a class="ami<?= $d['actif'] ? ' ami--actif' : '' ?><?= $d['non_lus'] > 0 ? ' ami--non-lu' : '' ?>"
                href="<?= e($d['url']) ?>"<?= $d['actif'] ? ' aria-current="page"' : '' ?>>
               <?php if (isset($d['avatar_html'])): ?>
@@ -116,6 +130,37 @@ $sections = [
                 </span>
               </span>
             </a>
+            <?php
+            /*
+             * Le menu de la discussion, trois points verticaux : épingler en haut de la liste (ou désépingler — à soi seul, l'autre ne le voit
+             * pas) et voir le profil (ou les réglages, pour un groupe). Natif : « details » s'ouvre et se referme sans script, le script de la
+             * page ferme en plus celui qu'on quitte du clic.
+             */
+            ?>
+            <details class="ami-menu">
+              <summary class="ami-menu__bouton" aria-label="<?= e(t('ami.options_de', ['nom' => $d['nom']])) ?>" title="<?= e(t('ami.options')) ?>">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true" focusable="false">
+                  <circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/>
+                </svg>
+              </summary>
+              <div class="ami-menu__liste" role="menu">
+                <form method="post" action="<?= url('discussions/epingler') ?>" role="none">
+                  <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
+                  <input type="hidden" name="genre" value="<?= e($d['genre']) ?>">
+                  <input type="hidden" name="cible" value="<?= (int) $d['cible'] ?>">
+                  <input type="hidden" name="epingle" value="<?= $d['epingle'] ? '0' : '1' ?>">
+                  <input type="hidden" name="retour" value="<?= e(ROUTE) ?>">
+                  <button type="submit" class="ami-menu__item" role="menuitem">
+                    <span aria-hidden="true">📌</span> <?= e(t($d['epingle'] ? 'ami.desepingler_discussion' : 'ami.epingler_discussion')) ?>
+                  </button>
+                </form>
+                <a class="ami-menu__item" role="menuitem" data-fenetre
+                   href="<?= e($d['genre'] === 'groupe' ? url('groupes/' . (int) $d['cible'] . '/reglages') : url('amis/' . (int) $d['cible'] . '/profil')) ?>">
+                  <span aria-hidden="true"><?= $d['genre'] === 'groupe' ? '⚙️' : '👤' ?></span>
+                  <?= e(t($d['genre'] === 'groupe' ? 'chat.reglages_groupe' : 'chat.voir_profil')) ?>
+                </a>
+              </div>
+            </details>
           </li>
         <?php endforeach; ?>
       </ul>

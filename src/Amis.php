@@ -390,6 +390,59 @@ final class Amis
         );
     }
 
+    /** Au plus autant de discussions épinglées par personne. */
+    public const EPINGLEES_MAX = 10;
+
+    /**
+     * Mes discussions épinglées, par genre : les amis (« ami ») et les groupes (« groupe »), leurs identifiants. Vide, sans erreur, tant que la
+     * table n'existe pas (la migration n'est pas encore importée).
+     *
+     * @return array{ami: list<int>, groupe: list<int>}
+     */
+    public static function discussionsEpinglees(int $moi): array
+    {
+        $epinglees = ['ami' => [], 'groupe' => []];
+        try {
+            foreach (Database::all('SELECT genre, cible_id FROM discussions_epinglees WHERE user_id = ?', [$moi]) as $ligne) {
+                $epinglees[(string) $ligne['genre']][] = (int) $ligne['cible_id'];
+            }
+        } catch (Throwable) {
+            // pas de table : rien d'épinglé
+        }
+
+        return $epinglees;
+    }
+
+    /**
+     * Épingle ou désépingle une discussion (un ami, ou un groupe dont je suis membre).
+     *
+     * @return ?string la raison du refus, ou null
+     */
+    public static function epinglerDiscussion(int $moi, string $genre, int $cibleId, bool $epingle): ?string
+    {
+        $permis = $genre === 'ami' ? self::sontAmis($moi, $cibleId)
+            : ($genre === 'groupe' && Conversations::membre($cibleId, $moi) !== null);
+        if (!$permis) {
+            return t('ami.epingle_introuvable');
+        }
+        try {
+            if (!$epingle) {
+                Database::run('DELETE FROM discussions_epinglees WHERE user_id = ? AND genre = ? AND cible_id = ?', [$moi, $genre, $cibleId]);
+
+                return null;
+            }
+            if (count(self::discussionsEpinglees($moi)['ami']) + count(self::discussionsEpinglees($moi)['groupe']) >= self::EPINGLEES_MAX
+                && !in_array($cibleId, self::discussionsEpinglees($moi)[$genre], true)) {
+                return t('ami.epingle_limite', ['max' => self::EPINGLEES_MAX]);
+            }
+            Database::run('INSERT IGNORE INTO discussions_epinglees (user_id, genre, cible_id) VALUES (?, ?, ?)', [$moi, $genre, $cibleId]);
+        } catch (Throwable) {
+            return t('ami.epingle_indisponible');
+        }
+
+        return null;
+    }
+
     public static function sontAmis(int $moi, int $autre): bool
     {
         $relation = self::relation($moi, $autre);

@@ -54,7 +54,7 @@ allemand) et avec un thème clair ou sombre.
 
 ### Collaborer
 
-- **Amis** — recherche par pseudo, demandes, blocage ; discussions à deux avec texte, **photos**, **fichiers**,
+- **Amis** — recherche par pseudo, demandes, blocage ; **épingler** une discussion (un ami ou un groupe) en haut de la liste, même sans message récent ; discussions à deux avec texte, **photos**, **fichiers**,
   **messages vocaux** (avec transcription si vous la laissez activée), réponses, réactions, modification et
   suppression de messages, **messages épinglés**, recherche dans la conversation, fond d'écran partagé.
 - **Sondages** — dans toute discussion : réponse unique ou multiple, résultats en direct.

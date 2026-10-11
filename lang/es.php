@@ -4867,4 +4867,12 @@ return [
     'auth.fl.taches_choix' => 'Elige «desplegada» o «plegada».',
     'auth.fl.taches_indisponible' => 'Este ajuste aún no está disponible en este sitio. Inténtalo más tarde.',
     'tr.do.par' => 'por',
+    'ami.epinglees' => 'Fijadas',
+    'ami.epingler_discussion' => 'Fijar arriba en la lista',
+    'ami.desepingler_discussion' => 'Quitar de fijadas',
+    'ami.epingle_limite' => 'Puedes fijar como máximo {max} conversaciones.',
+    'ami.epingle_introuvable' => 'Esta conversación no existe o no es una de las tuyas.',
+    'ami.epingle_indisponible' => 'Fijar aún no está disponible en este sitio. Inténtalo más tarde.',
+    'ami.options' => 'Más opciones',
+    'ami.options_de' => 'Opciones de {nom}',
 ];

@@ -4867,4 +4867,12 @@ return [
     'auth.fl.taches_choix' => 'Choose “expanded” or “collapsed”.',
     'auth.fl.taches_indisponible' => 'This setting is not available on this site yet. Please try again later.',
     'tr.do.par' => 'by',
+    'ami.epinglees' => 'Pinned',
+    'ami.epingler_discussion' => 'Pin to the top of the list',
+    'ami.desepingler_discussion' => 'Unpin',
+    'ami.epingle_limite' => 'You can pin at most {max} conversations.',
+    'ami.epingle_introuvable' => 'This conversation does not exist, or it is not one of yours.',
+    'ami.epingle_indisponible' => 'Pinning is not available on this site yet. Please try again later.',
+    'ami.options' => 'More options',
+    'ami.options_de' => 'Options for {nom}',
 ];

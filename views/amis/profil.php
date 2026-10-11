@@ -172,28 +172,46 @@ $nbPartages = count($entreNous['recus']) + count($entreNous['envoyes']);
                 : e(t('prf.oublier_sur', ['titre' => $p['titre'], 'qui' => $pseudo]));
             ?>
             <?php if ($aMoi): ?>
-              <?php // Le droit de mon ami se change ici, comme dans la fenêtre « Partager ». ?>
-              <form method="post" class="en-ligne profil-ami__droit" data-envoi-fenetre
-                    action="<?= url('partager/' . Partages::mot($p['type']) . '/' . (int) $p['id'] . '/acces/' . (int) $ami['id'] . '/droit') ?>">
+              <?php
+              /*
+               * Ce que j'ai partagé : le droit de mon ami et son accès se changent derrière « Modifier », dans un panneau — comme dans la fenêtre
+               * « Partager ». Rien ne se fait d'un clic distrait, et « Annuler » referme le panneau. Sans script : une case cachée porte l'état.
+               */
+              $cle = e($p['type']) . '-' . (int) $p['id'];
+              ?>
+              <input type="checkbox" id="acces-profil-<?= $cle ?>" class="acces-bascule sr-only">
+              <label for="acces-profil-<?= $cle ?>" class="bouton bouton--secondaire bouton--petit acces-bouton" role="button"><?= e(t('commun.modifier')) ?></label>
+              <div class="acces-panneau">
+                <form method="post" class="acces-panneau__droit" data-envoi-fenetre
+                      action="<?= url('partager/' . Partages::mot($p['type']) . '/' . (int) $p['id'] . '/acces/' . (int) $ami['id'] . '/droit') ?>">
+                  <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
+                  <input type="hidden" name="profil" value="<?= (int) $ami['id'] ?>">
+                  <label class="acces-panneau__etiquette" for="droit-<?= $cle ?>"><?= e(t('pt.ce_que_peut_faire', ['qui' => $pseudo])) ?></label>
+                  <div class="acces-panneau__ligne">
+                    <select id="droit-<?= $cle ?>" name="droit">
+                      <?php foreach (Partages::DROITS as $unDroit): ?>
+                        <?php if (in_array($p['type'], ['fichier', 'evenement'], true) && $unDroit === 'modification') { continue; } ?>
+                        <option value="<?= e($unDroit) ?>"<?= $p['droit'] === $unDroit ? ' selected' : '' ?>><?= e(Partages::libelleDroit($unDroit)) ?></option>
+                      <?php endforeach; ?>
+                    </select>
+                    <button class="bouton" type="submit"><?= e(t('prf.changer')) ?></button>
+                    <label for="acces-profil-<?= $cle ?>" class="bouton bouton--discret" role="button"><?= e(t('commun.annuler')) ?></label>
+                  </div>
+                </form>
+                <form method="post" action="<?= url($actionRetrait) ?>" data-envoi-fenetre data-confirmation="<?= $garde ?>" class="acces-panneau__retrait">
+                  <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
+                  <input type="hidden" name="profil" value="<?= (int) $ami['id'] ?>">
+                  <button class="bouton bouton--danger bouton--petit" type="submit"><?= e(t('prf.retirer_acces')) ?></button>
+                </form>
+              </div>
+            <?php else: ?>
+              <?php // Ce qu'on m'a partagé : je le retire de ma liste (après confirmation). ?>
+              <form method="post" action="<?= url($actionRetrait) ?>" data-envoi-fenetre data-confirmation="<?= $garde ?>">
                 <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
                 <input type="hidden" name="profil" value="<?= (int) $ami['id'] ?>">
-                <label class="sr-only" for="droit-<?= e($p['type']) ?>-<?= (int) $p['id'] ?>"><?= e(t('prf.ce_que_peut_faire', ['qui' => $pseudo, 'titre' => $p['titre']])) ?></label>
-                <select id="droit-<?= e($p['type']) ?>-<?= (int) $p['id'] ?>" name="droit">
-                  <?php foreach (Partages::DROITS as $unDroit): ?>
-                    <?php if (in_array($p['type'], ['fichier', 'evenement'], true) && $unDroit === 'modification') { continue; } ?>
-                    <option value="<?= e($unDroit) ?>"<?= $p['droit'] === $unDroit ? ' selected' : '' ?>><?= e(Partages::libelleDroit($unDroit)) ?></option>
-                  <?php endforeach; ?>
-                </select>
-                <button class="bouton bouton--discret bouton--petit" type="submit"><?= e(t('prf.changer')) ?></button>
+                <button class="bouton bouton--discret bouton--petit" type="submit"><?= e(t('prf.retirer_liste')) ?></button>
               </form>
             <?php endif; ?>
-            <form method="post" action="<?= url($actionRetrait) ?>" data-envoi-fenetre data-confirmation="<?= $garde ?>">
-              <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
-              <input type="hidden" name="profil" value="<?= (int) $ami['id'] ?>">
-              <button class="bouton bouton--discret bouton--petit" type="submit">
-                <?= e(t($aMoi ? 'prf.retirer_acces' : 'prf.retirer_liste')) ?>
-              </button>
-            </form>
           </li>
         <?php endforeach; ?>
       </ul>

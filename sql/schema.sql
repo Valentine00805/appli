@@ -1844,3 +1844,15 @@ ALTER TABLE `projet_liens`
 -- Les tâches de la page Groupes, dépliées ou repliées d'office (voir migration-users-taches-groupes.sql).
 ALTER TABLE `users`
   ADD COLUMN `taches_groupes_repliees` TINYINT(1) NOT NULL DEFAULT 0;
+
+-- Les discussions épinglées en haut de la liste des amis (voir migration-discussions-epinglees.sql).
+CREATE TABLE IF NOT EXISTS `discussions_epinglees` (
+  `id`         INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `user_id`    INT UNSIGNED NOT NULL,
+  `genre`      ENUM('ami', 'groupe') NOT NULL,
+  `cible_id`   INT UNSIGNED NOT NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_discussions_epinglees` (`user_id`, `genre`, `cible_id`),
+  CONSTRAINT `fk_discussions_epinglees_user` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

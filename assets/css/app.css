@@ -398,7 +398,7 @@ textarea { min-height: 260px; resize: vertical; line-height: 1.65; }
 
 /* L'onglet « Partagés » : une ligne par document, et le rappel dans Mes cours. */
 .partage-lignes { margin: .6rem 0 0; padding: 0; list-style: none; display: grid; }
-.partage-ligne { display: flex; align-items: center; gap: .6rem; padding: .5rem 0; border-top: 1px solid var(--bordure); }
+.partage-ligne { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; padding: .5rem 0; border-top: 1px solid var(--bordure); }
 .partage-ligne:first-child { border-top: 0; }
 .partage-ligne__lien { display: flex; align-items: center; gap: .7rem; flex: 1; min-width: 0; color: inherit; text-decoration: none; }
 .partage-ligne__lien:hover .partage-ligne__titre { text-decoration: underline; }
@@ -4822,4 +4822,34 @@ a.serveur-carte:hover, a.serveur-carte:focus-visible { border-color: var(--accen
   background: var(--accent); color: #fff; font-size: 1rem; line-height: 1; transition: transform .15s;
 }
 .retour-pastille:hover .retour-pastille__fleche, .retour-pastille:focus-visible .retour-pastille__fleche { transform: translateX(-3px); }
+
+/* Une discussion de la liste : le lien, et à sa droite un menu « ⋮ » (épingler, voir le profil). La ligne porte le fond, pour que le menu en fasse partie. */
+.ami-ligne { position: relative; display: flex; align-items: center; border-radius: var(--rayon-s); }
+.ami-ligne > .ami { flex: 1; min-width: 0; }
+.ami-ligne:hover { background: var(--fond-doux); }
+.ami-ligne:has(> .ami--actif) { background: var(--accent-doux); }
+.ami-ligne > .ami:hover, .ami-ligne > .ami--actif { background: transparent; }
+.ami-menu { position: relative; flex: none; margin-right: .3rem; }
+.ami-menu__bouton {
+  display: inline-grid; place-items: center; width: 1.9rem; height: 1.9rem; border-radius: 50%; color: var(--texte-doux); cursor: pointer;
+  list-style: none; opacity: 0; transition: opacity .15s, background .15s, color .15s;
+}
+.ami-menu__bouton::-webkit-details-marker { display: none; }
+.ami-menu__bouton::marker { content: ""; }
+.ami-ligne:hover .ami-menu__bouton, .ami-ligne:focus-within .ami-menu__bouton, .ami-menu[open] .ami-menu__bouton { opacity: 1; }
+.ami-menu__bouton:hover, .ami-menu[open] .ami-menu__bouton { background: var(--fond-carte); color: var(--accent); box-shadow: var(--ombre); }
+.ami-menu__bouton:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.ami-menu__liste {
+  position: absolute; z-index: 30; top: calc(100% + .2rem); right: 0; min-width: 14.5rem; padding: .3rem;
+  background: var(--fond-carte); border: 1px solid var(--bordure); border-radius: var(--rayon-s); box-shadow: var(--ombre);
+}
+.ami-menu--haut .ami-menu__liste { top: auto; bottom: calc(100% + .2rem); }
+.ami-menu__liste form { margin: 0; }
+.ami-menu__item {
+  display: flex; align-items: center; gap: .55rem; width: 100%; padding: .5rem .7rem; border: 0; border-radius: calc(var(--rayon-s) - 2px);
+  background: transparent; color: var(--texte); font: inherit; font-size: .9rem; text-align: left; text-decoration: none; cursor: pointer;
+}
+.ami-menu__item:hover, .ami-menu__item:focus-visible { background: var(--accent-doux); color: var(--accent-fonce); text-decoration: none; }
+/* Sans survol (écran tactile) : les trois points se voient toujours, discrets. */
+@media (hover: none) { .ami-menu__bouton { opacity: .8; } }
 
