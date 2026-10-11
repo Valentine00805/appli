@@ -10,14 +10,14 @@
 <meta name="theme-color" content="#4f46e5">
 <title><?= e($titrePage) ?></title>
 <link rel="stylesheet" href="<?= asset('assets/css/app.css') ?>">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>">
+<link rel="icon" type="image/png" href="<?= asset('assets/img/logo.png') ?>">
 </head>
 <body class="page-auth">
 
 <main class="auth">
   <div class="auth__carte">
     <div class="auth__marque">
-      <span aria-hidden="true">📚</span>
+      <img class="auth__logo" src="<?= asset('assets/img/logo.png') ?>" alt="" width="120" height="120" decoding="async">
       <h1><?= e((string) Config::get('app', 'nom')) ?></h1>
       <p><?= e(t('accueil.pitch')) ?></p>
     </div>

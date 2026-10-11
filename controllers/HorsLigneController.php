@@ -6,7 +6,7 @@ declare(strict_types=1);
  *
  * Trois choses, et elles vont ensemble : la page qui s'affiche quand on
  * demande quelque chose qui n'a jamais été ouvert, le manifeste qui permet
- * d'installer l'application sur un téléphone ou un bureau, et son icône.
+ * d'installer l'application sur un téléphone ou un bureau, et son icône (le logo).
  *
  * Aucune de ces trois-là ne demande de session : elles doivent répondre même
  * quand le serveur n'est pas joignable — c'est-à-dire depuis le cache.
@@ -28,6 +28,9 @@ final class HorsLigneController
     public function manifeste(): void
     {
         $nom = (string) Config::get('app', 'nom');
+        // Les icônes portent la date de leur fichier : un changement de logo change leur adresse, et ni le cache du navigateur (une semaine) ni
+        // celui du service worker ne resservent l'ancienne image.
+        $icone = static fn (string $route, string $fichier): string => url($route) . '?v=' . (int) @filemtime(dirname(__DIR__) . '/assets/img/' . $fichier);
         header('Content-Type: application/manifest+json; charset=utf-8');
         header('Cache-Control: private, max-age=3600');
 
@@ -44,9 +47,9 @@ final class HorsLigneController
             'background_color' => '#f5f6fa',
             'theme_color' => '#4f46e5',
             'icons' => [
-                ['src' => url('icone-192.png'), 'sizes' => '192x192', 'type' => 'image/png', 'purpose' => 'any'],
-                ['src' => url('icone-512.png'), 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'any'],
-                ['src' => url('icone-512.png'), 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'maskable'],
+                ['src' => $icone('icone-192.png', 'icone-192.png'), 'sizes' => '192x192', 'type' => 'image/png', 'purpose' => 'any'],
+                ['src' => $icone('icone-512.png', 'icone-512.png'), 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'any'],
+                ['src' => $icone('icone-masque-512.png', 'icone-masque-512.png'), 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'maskable'],
             ],
             'shortcuts' => [
                 ['name' => t('nav.calendrier'), 'url' => url('calendrier')],
@@ -58,41 +61,34 @@ final class HorsLigneController
     }
 
     /**
-     * L'icône de l'application, dessinée ici plutôt que gardée en fichier :
-     * un carré violet, un livre ouvert en blanc. Les emojis ne s'impriment
-     * pas dans une image, et une icône installée doit être un vrai PNG.
+     * L'icône de l'application : le logo de Mes Cours, en PNG (une icône installée doit être un vrai PNG). « icone-192.png » et « icone-512.png »
+     * ont les coins arrondis, transparents ; la demande se ramène à la taille la plus proche.
      */
     public function icone(int $taille): void
     {
-        $taille = max(48, min(512, $taille));
-        $image = imagecreatetruecolor($taille, $taille);
-        imagealphablending($image, true);
+        self::servir($taille <= 192 ? 'icone-192.png' : 'icone-512.png');
+    }
 
-        $violet = (int) imagecolorallocate($image, 79, 70, 229);
-        $blanc = (int) imagecolorallocate($image, 255, 255, 255);
-        $ombre = (int) imagecolorallocate($image, 224, 226, 245);
-        imagefilledrectangle($image, 0, 0, $taille, $taille, $violet);
+    /**
+     * La même, pour les systèmes qui découpent l'icône à leur façon (Android, iOS) : le fond est plein et blanc, le logo tient dans la zone
+     * sûre — sans coins transparents qui deviendraient noirs.
+     */
+    public function iconeMasquable(int $taille): void
+    {
+        self::servir('icone-masque-512.png');
+    }
 
-        // Un livre ouvert : deux pages, et la reliure au milieu.
-        $m = $taille / 16;              // la marge, pour que ça respire
-        $hautPage = 4.5 * $m;
-        $basPage = 11.5 * $m;
-        $milieu = $taille / 2;
-
-        imagefilledrectangle($image, (int) (2.2 * $m), (int) $hautPage, (int) ($milieu - 0.2 * $m), (int) $basPage, $blanc);
-        imagefilledrectangle($image, (int) ($milieu + 0.2 * $m), (int) $hautPage, (int) ($taille - 2.2 * $m), (int) $basPage, $blanc);
-        // Les lignes du texte, en gris très clair.
-        for ($ligne = 1; $ligne <= 4; $ligne++) {
-            $y = (int) ($hautPage + $ligne * ($basPage - $hautPage) / 5);
-            $epaisseur = max(1, (int) ($taille / 90));
-            imagefilledrectangle($image, (int) (3 * $m), $y, (int) ($milieu - 1 * $m), $y + $epaisseur, $ombre);
-            imagefilledrectangle($image, (int) ($milieu + 1 * $m), $y, (int) ($taille - 3 * $m), $y + $epaisseur, $ombre);
+    private static function servir(string $fichier): never
+    {
+        $chemin = dirname(__DIR__) . '/assets/img/' . $fichier;
+        if (!is_file($chemin)) {
+            http_response_code(404);
+            exit;
         }
-
         header('Content-Type: image/png');
+        header('Content-Length: ' . filesize($chemin));
         header('Cache-Control: public, max-age=604800');
-        imagepng($image);
-        imagedestroy($image);
+        readfile($chemin);
         exit;
     }
 }

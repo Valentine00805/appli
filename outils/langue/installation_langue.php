@@ -45,6 +45,32 @@ try {
     $dire('les raccourcis', implode(' · ', array_column((array) ($fr['shortcuts'] ?? []), 'name')),
         'Calendrier · Mes cours · Alternance');
 
+    echo "\n1b. Le logo : l'icône de l'application et l'image de l'en-tête\n";
+    $icones = (array) ($fr['icons'] ?? []);
+    $chemin = static fn (array $i): string => (string) preg_replace('#^.*/mon_appli/appli/#', '', (string) $i['src']);
+    $dire('le manifeste annonce trois icônes : 192 et 512 (any), 512 découpable (maskable)',
+        implode(' · ', array_map(static fn (array $i): string => $i['sizes'] . ' ' . $i['purpose'], $icones)), '192x192 any · 512x512 any · 512x512 maskable');
+    foreach ($icones as $icone) {
+        $image = $appel($chemin($icone));
+        $infos = $image === '' ? false : getimagesizefromstring($image);
+        $dire('  ' . $icone['purpose'] . ' ' . $icone['sizes'] . ' : un PNG de la bonne taille (' . $chemin($icone) . ')',
+            $infos === false ? 'illisible' : $infos[0] . 'x' . $infos[1] . ' ' . $infos['mime'], $icone['sizes'] . ' image/png');
+    }
+    $plein = imagecreatefromstring($appel($chemin($icones[2])));
+    $dire('l\'icône découpable est pleine (aucun coin transparent)',
+        $oui($plein !== false && ((imagecolorat($plein, 0, 0) >> 24) & 0x7F) === 0 && ((imagecolorat($plein, 511, 511) >> 24) & 0x7F) === 0), 'oui');
+    $coins = imagecreatefromstring($appel($chemin($icones[1])));
+    $dire('l\'icône ordinaire est le logo seul, sur fond transparent (coins et centre du livre : le coin est transparent, le milieu opaque)',
+        $oui($coins !== false && ((imagecolorat($coins, 0, 0) >> 24) & 0x7F) === 127 && ((imagecolorat($coins, 256, 256) >> 24) & 0x7F) < 10), 'oui');
+    $pageAccueil = $appel('');
+    $dire('l\'en-tête montre le logo (une image) et plus l\'emoji',
+        $oui(preg_match('#<img class="marque__icone" src="[^"]*assets/img/logo\.png\?v=\d+"#', $pageAccueil) === 1 && !str_contains($pageAccueil, 'class="marque__icone" aria-hidden')), 'oui');
+    $dire('l\'onglet du navigateur (favicon) et l\'icône iOS aussi',
+        $oui(preg_match('#<link rel="icon" type="image/png" href="[^"]*assets/img/logo\.png#', $pageAccueil) === 1 && str_contains($pageAccueil, 'rel="apple-touch-icon" href="') && str_contains($pageAccueil, 'icone-masque-512.png')), 'oui');
+    $dire('les icônes du manifeste portent la date de leur fichier (« ?v= ») : un nouveau logo change leur adresse',
+        $oui(count(array_filter($icones, static fn (array $i): bool => preg_match('#icone-[a-z0-9-]+\.png\?v=\d{9,}$#', (string) $i['src']) === 1)) === 3
+            && preg_match('#apple-touch-icon" href="[^"]*icone-masque-512\.png\?v=\d{9,}#', $pageAccueil) === 1), 'oui');
+    $dire('le fichier du logo se sert', $oui(strlen($appel('assets/img/logo.png')) > 1000), 'oui');
     echo "\n2. Le même, en anglais\n";
     $appel('compte/langue', ['_csrf' => $csrf, 'langue' => 'en']);
     $en = json_decode($appel('manifeste.webmanifest'), true);

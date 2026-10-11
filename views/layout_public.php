@@ -15,14 +15,14 @@
 <meta name="robots" content="noindex, nofollow">
 <title><?= e($titrePage) ?></title>
 <link rel="stylesheet" href="<?= asset('assets/css/app.css') ?>">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>">
+<link rel="icon" type="image/png" href="<?= asset('assets/img/logo.png') ?>">
 </head>
 <body class="page-publique">
 
 <header class="entete">
   <div class="entete__interieur">
     <a class="marque" href="<?= url('') ?>">
-      <span class="marque__icone" aria-hidden="true">📚</span>
+      <img class="marque__icone" src="<?= asset('assets/img/logo.png') ?>" alt="" width="44" height="44" decoding="async">
       <span><?= e((string) Config::get('app', 'nom')) ?></span>
     </a>
   </div>

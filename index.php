@@ -269,6 +269,7 @@ $routes = [
     // Le hors-ligne : la page de secours, le manifeste et l’icône. Sans session.
     ['GET',  'hors-ligne',                [HorsLigneController::class, 'page']],
     ['GET',  'manifeste.webmanifest',     [HorsLigneController::class, 'manifeste']],
+    ['GET',  'icone-masque-{id}.png',     [HorsLigneController::class, 'iconeMasquable']],
     ['GET',  'icone-{id}.png',            [HorsLigneController::class, 'icone']],
     ['POST', 'notifications/abonnement',  [NotificationsController::class, 'abonner']],
     ['POST', 'notifications/desabonnement', [NotificationsController::class, 'desabonner']],

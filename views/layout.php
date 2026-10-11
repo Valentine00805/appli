@@ -22,8 +22,8 @@ $actif = static function (string $prefixe) use ($route): string {
 <link rel="stylesheet" href="<?= asset('assets/css/app.css') ?>">
 <?php // Installable, et gardée pour le hors-ligne. ?>
 <link rel="manifest" href="<?= url('manifeste.webmanifest') ?>">
-<link rel="apple-touch-icon" href="<?= url('icone-192.png') ?>">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>">
+<link rel="apple-touch-icon" href="<?= url('icone-masque-512.png') ?>?v=<?= (int) @filemtime(__DIR__ . '/../assets/img/icone-masque-512.png') ?>">
+<link rel="icon" type="image/png" href="<?= asset('assets/img/logo.png') ?>">
 </head>
 <?php // Le réglage « transcription de la voix » vaut aussi pour la dictée dans l’éditeur. ?>
 <body data-transcription="<?= Auth::connecte() ? (int) (Auth::utilisateur()['transcription_vocale'] ?? 1) : 1 ?>"
@@ -34,7 +34,7 @@ $actif = static function (string $prefixe) use ($route): string {
 <header class="entete" id="haut">
   <div class="entete__interieur">
     <a class="marque" href="<?= url('') ?>">
-      <span class="marque__icone" aria-hidden="true">📚</span>
+      <img class="marque__icone" src="<?= asset('assets/img/logo.png') ?>" alt="" width="44" height="44" decoding="async">
       <span><?= e((string) Config::get('app', 'nom')) ?></span>
     </a>
 

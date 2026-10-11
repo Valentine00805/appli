@@ -132,7 +132,8 @@ html { scroll-padding-top: 4.5rem; }
   display: flex; align-items: center; gap: .5rem;
   font-weight: 700; font-size: 1.05rem; color: var(--texte); text-decoration: none;
 }
-.marque__icone { font-size: 1.3rem; }
+/* Le logo a le fond transparent et se lit plus large que haut : on lui donne la place d'un carré un peu plus grand que l'ancien emoji. */
+.marque__icone { flex: none; width: 44px; height: 44px; margin: -.3rem -.1rem; }
 
 .burger {
   margin-left: auto; display: none; flex-direction: column; gap: 4px;
@@ -1163,6 +1164,7 @@ legend { padding: 0 .4rem; font-weight: 600; font-size: .9rem; }
 }
 .auth__marque { text-align: center; margin-bottom: 1.25rem; }
 .auth__marque span { font-size: 2rem; }
+.auth__logo { display: block; width: 120px; height: 120px; margin: -.6rem auto -.2rem; }
 .auth__marque h1 { font-size: 1.4rem; margin: .3rem 0 .2rem; }
 .auth__marque p { color: var(--texte-doux); font-size: .9rem; margin: 0; }
 .auth__bas { text-align: center; margin: 1rem 0 0; font-size: .9rem; color: var(--texte-doux); }
