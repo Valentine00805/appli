@@ -3255,7 +3255,7 @@ return [
     'tr.pu.echeances' => '📅 Deadlines',
     'tr.pu.aucune_echeance' => 'No upcoming deadline.',
     'tr.pu.fichiers' => '📎 Files',
-    'tr.ve.retour' => '← The current document',
+    'tr.ve.retour' => 'The current document',
     'tr.ve.titre' => '📝 Version of {date}',
     'tr.ve.ecrite_par' => '{projet} · written by {qui}',
     'tr.ve.restaurer_confirmation' => 'Go back to this version? The current document will stay in the history.',
@@ -4866,4 +4866,5 @@ return [
     'auth.fl.taches_repliees' => 'Your group tasks will open collapsed.',
     'auth.fl.taches_choix' => 'Choose “expanded” or “collapsed”.',
     'auth.fl.taches_indisponible' => 'This setting is not available on this site yet. Please try again later.',
+    'tr.do.par' => 'by',
 ];

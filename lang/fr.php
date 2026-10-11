@@ -3267,7 +3267,7 @@ return [
     'tr.pu.echeances' => '📅 Échéances',
     'tr.pu.aucune_echeance' => 'Aucune échéance à venir.',
     'tr.pu.fichiers' => '📎 Fichiers',
-    'tr.ve.retour' => '← Le document actuel',
+    'tr.ve.retour' => 'Le document actuel',
     'tr.ve.titre' => '📝 Version du {date}',
     'tr.ve.ecrite_par' => '{projet} · écrite par {qui}',
     'tr.ve.restaurer_confirmation' => 'Revenir à cette version ? Le document actuel restera dans l’historique.',
@@ -4878,4 +4878,5 @@ return [
     'auth.fl.taches_repliees' => 'Vos tâches de groupe s’ouvriront repliées.',
     'auth.fl.taches_choix' => 'Choisissez « dépliée » ou « repliée ».',
     'auth.fl.taches_indisponible' => 'Ce réglage n’est pas encore disponible sur ce site. Réessayez un peu plus tard.',
+    'tr.do.par' => 'par',
 ];

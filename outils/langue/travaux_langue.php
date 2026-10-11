@@ -97,6 +97,35 @@ try {
     $document = $appel('travaux/' . $projet . '/document');
     $dire('le document : le titre et les versions',
         $oui(str_contains($document, 'Shared document') && str_contains($document, 'Earlier versions')), 'oui');
+    $dire('le document, encore vide : l\'éditeur s\'ouvre tout de suite (rien à lire, pas de « Annuler »)',
+        $oui(str_contains($document, 'name="document"') && !str_contains($document, 'travaux-document__entete')
+            && preg_match('#<a class="bouton bouton--discret" href="[^"]*/document"[^>]*>Cancel</a>#', $document) !== 1), 'oui');
+    $versionLue = (int) bd_valeur('SELECT document_version FROM projets WHERE id = ?', [$projet]);
+    $apresSave = $appel('travaux/' . $projet . '/document', ['_csrf' => $csrf, 'version' => (string) $versionLue, 'document' => 'Plan du rapport : introduction, méthode.']);
+    $dire('après un enregistrement : la lecture du document mis en forme, avec « Modifier » (et plus l\'éditeur)',
+        $oui(str_contains($apresSave, 'Plan du rapport : introduction, méthode.') && str_contains($apresSave, 'travaux-document__entete')
+            && str_contains($apresSave, 'document?modifier=1') && !str_contains($apresSave, 'name="document"') && str_contains($apresSave, 'Shared document')), 'oui');
+    $dire('  la page se rouvre en lecture (sans « ?modifier »), avec ses versions',
+        $oui(!str_contains($appel('travaux/' . $projet . '/document'), 'name="document"') && str_contains($appel('travaux/' . $projet . '/document'), 'Earlier versions')), 'oui');
+    $edition = $appel('travaux/' . $projet . '/document?modifier=1');
+    $dire('  « Modifier » ouvre l\'éditeur, avec « Enregistrer » et « Annuler » qui ramène à la lecture',
+        $oui(str_contains($edition, 'name="document"') && str_contains($edition, 'Plan du rapport : introduction, méthode.') && str_contains($edition, '>Save<')
+            && preg_match('#<a class="bouton bouton--discret" href="[^"]*/document"[^>]*>Cancel</a>#', $edition) === 1 && !str_contains($edition, 'travaux-document__entete')), 'oui');
+    $conflit = $appel('travaux/' . $projet . '/document', ['_csrf' => $csrf, 'version' => (string) ($versionLue - 5), 'document' => 'Ce que je tapais sans le savoir.']);
+    $dire('  quelqu\'un a écrit entre-temps : on reste dans l\'éditeur, avec ce qu\'on avait tapé gardé à côté',
+        $oui(str_contains($conflit, 'name="document"') && str_contains($conflit, 'Ce que je tapais sans le savoir.') && str_contains($conflit, 'travaux-brouillon')
+            && !str_contains($conflit, 'travaux-document__entete')), 'oui');
+    $versionNeuve = (int) bd_valeur('SELECT document_version FROM projets WHERE id = ?', [$projet]);
+    $appel('travaux/' . $projet . '/document', ['_csrf' => $csrf, 'version' => (string) $versionNeuve, 'document' => 'Plan du rapport : introduction, méthode, résultats.']);
+    $avecVersions = $appel('travaux/' . $projet . '/document');
+    $dire('les versions précédentes : une tuile cliquable en entier par version, avec la date, l\'avatar et le nom de l\'auteur en évidence',
+        $oui(preg_match('#<li class="version-tuile">.*?<a class="version-tuile__date" href="[^"]*/travaux/versions/\d+"[^>]*>[^<]+</a>.*?by <strong class="version-tuile__nom">Trav_essai</strong>#s', $avecVersions) === 1
+            && str_contains($avecVersions, 'data-compte-avatar') && str_contains($avecVersions, 'version-tuile__fleche')), 'oui');
+    $idVersion = (int) bd_valeur('SELECT id FROM projet_versions WHERE projet_id = ? ORDER BY id DESC LIMIT 1', [$projet]);
+    $pageVersion = $appel('travaux/versions/' . $idVersion);
+    $dire('une version précédente : le retour au document en pastille (flèche dans un rond), sans la flèche écrite dans le libellé',
+        $oui(preg_match('#<a class="retour-pastille" href="[^"]*/travaux/\d+/document"[^>]*>\s*<span class="retour-pastille__fleche" aria-hidden="true">←</span>\s*<span>The current document</span>#', $pageVersion) === 1
+            && !str_contains($pageVersion, '← The current document')), 'oui');
     $membres = $appel('travaux/' . $projet . '/membres');
     $dire('les membres : les cartes et les réglages',
         $oui(str_contains($membres, 'Invite friends') && str_contains($membres, 'Add someone without an account')

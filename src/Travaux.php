@@ -1135,7 +1135,7 @@ final class Travaux
     public static function versions(int $projet): array
     {
         return Database::all(
-            'SELECT v.id, v.created_at, COALESCE(u.pseudo, u.nom) AS auteur, CHAR_LENGTH(v.contenu) AS longueur
+            'SELECT v.id, v.created_at, v.user_id, COALESCE(u.pseudo, u.nom) AS auteur, CHAR_LENGTH(v.contenu) AS longueur
                FROM projet_versions v LEFT JOIN users u ON u.id = v.user_id
               WHERE v.projet_id = ? ORDER BY v.id DESC', [$projet]);
     }

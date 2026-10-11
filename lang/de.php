@@ -3255,7 +3255,7 @@ return [
     'tr.pu.echeances' => '📅 Fristen',
     'tr.pu.aucune_echeance' => 'Keine Frist in Sicht.',
     'tr.pu.fichiers' => '📎 Dateien',
-    'tr.ve.retour' => '← Das aktuelle Dokument',
+    'tr.ve.retour' => 'Das aktuelle Dokument',
     'tr.ve.titre' => '📝 Fassung vom {date}',
     'tr.ve.ecrite_par' => '{projet} · geschrieben von {qui}',
     'tr.ve.restaurer_confirmation' => 'Zu dieser Fassung zurückgehen? Das aktuelle Dokument bleibt im Verlauf.',
@@ -4866,4 +4866,5 @@ return [
     'auth.fl.taches_repliees' => 'Deine Gruppenaufgaben öffnen sich zugeklappt.',
     'auth.fl.taches_choix' => 'Wähle „aufgeklappt“ oder „zugeklappt“.',
     'auth.fl.taches_indisponible' => 'Diese Einstellung ist auf dieser Seite noch nicht verfügbar. Versuche es später noch einmal.',
+    'tr.do.par' => 'von',
 ];

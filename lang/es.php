@@ -3255,7 +3255,7 @@ return [
     'tr.pu.echeances' => '📅 Vencimientos',
     'tr.pu.aucune_echeance' => 'Ningún vencimiento por venir.',
     'tr.pu.fichiers' => '📎 Archivos',
-    'tr.ve.retour' => '← El documento actual',
+    'tr.ve.retour' => 'El documento actual',
     'tr.ve.titre' => '📝 Versión del {date}',
     'tr.ve.ecrite_par' => '{projet} · escrita por {qui}',
     'tr.ve.restaurer_confirmation' => '¿Volver a esta versión? El documento actual se quedará en el historial.',
@@ -4866,4 +4866,5 @@ return [
     'auth.fl.taches_repliees' => 'Tus tareas de grupo se abrirán plegadas.',
     'auth.fl.taches_choix' => 'Elige «desplegada» o «plegada».',
     'auth.fl.taches_indisponible' => 'Este ajuste aún no está disponible en este sitio. Inténtalo más tarde.',
+    'tr.do.par' => 'por',
 ];

@@ -140,10 +140,14 @@ final class TravauxController
     public function document(int $id): void
     {
         $projet = $this->projet($id);
+        $brouillon = Session::reprendre('travaux-document-' . $id);
         $this->afficher('travaux/document', $projet, [
             'versions'  => Travaux::versions($id),
-            'brouillon' => Session::reprendre('travaux-document-' . $id),
+            'brouillon' => $brouillon,
             'auteur'    => $projet['document_par'] === null ? null : Amis::compte((int) $projet['document_par']),
+            // On lit d'abord le document, mis en forme ; « Modifier » ouvre l'éditeur. L'éditeur s'ouvre d'office quand il n'y a encore rien à lire,
+            // ou qu'on vient d'avoir un conflit (ce qu'on avait tapé est gardé à côté).
+            'enEdition' => isset($_GET['modifier']) || trim((string) $projet['document']) === '' || (is_string($brouillon) && trim($brouillon) !== ''),
         ], 'document');
     }
 
@@ -495,9 +499,10 @@ final class TravauxController
             // Quelqu'un a écrit entre-temps : on garde ce qu'on avait tapé, à côté.
             Session::garder('travaux-document-' . $id, $contenu);
             Session::flash('erreur', t('tr.fl.document_conflit'));
-        } else {
-            Session::flash('succes', t('tr.fl.document_enregistre'));
+            redirect('travaux/' . $id . '/document', ['modifier' => 1]);
         }
+        // Enregistré : on revient à la lecture du document, avec « Modifier » pour y retoucher.
+        Session::flash('succes', t('tr.fl.document_enregistre'));
         redirect('travaux/' . $id . '/document');
     }
 
