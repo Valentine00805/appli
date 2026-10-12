@@ -1887,3 +1887,35 @@ CREATE TABLE IF NOT EXISTS `projet_visiteur_appareils` (
   KEY `idx_projet_visiteur_appareils_visiteur` (`visiteur_id`),
   CONSTRAINT `fk_projet_visiteur_appareils_visiteur` FOREIGN KEY (`visiteur_id`) REFERENCES `projet_visiteurs`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Les listes à points à cocher d'un travail de groupe, dans les tâches et à part (voir migration-projet-listes.sql).
+CREATE TABLE IF NOT EXISTS `projet_listes` (
+  `id`         INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `projet_id`  INT UNSIGNED NOT NULL,
+  `titre`      VARCHAR(120) NOT NULL,
+  `cree_par`   INT UNSIGNED NULL,
+  `position`   INT UNSIGNED NOT NULL DEFAULT 0,
+  `created_at` DATETIME NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_projet_listes_projet` (`projet_id`, `position`),
+  CONSTRAINT `fk_projet_listes_projet` FOREIGN KEY (`projet_id`) REFERENCES `projets`(`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_projet_listes_par`    FOREIGN KEY (`cree_par`)  REFERENCES `users`(`id`)   ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `projet_points` (
+  `id`         INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `tache_id`   INT UNSIGNED NULL,
+  `liste_id`   INT UNSIGNED NULL,
+  `texte`      VARCHAR(200) NOT NULL,
+  `fait`       TINYINT(1) NOT NULL DEFAULT 0,
+  `fait_par`   INT UNSIGNED NULL,
+  `fait_le`    DATETIME NULL,
+  `position`   INT UNSIGNED NOT NULL DEFAULT 0,
+  `created_at` DATETIME NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_projet_points_tache` (`tache_id`, `position`),
+  KEY `idx_projet_points_liste` (`liste_id`, `position`),
+  CONSTRAINT `fk_projet_points_tache` FOREIGN KEY (`tache_id`) REFERENCES `projet_taches`(`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_projet_points_liste` FOREIGN KEY (`liste_id`) REFERENCES `projet_listes`(`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_projet_points_par`   FOREIGN KEY (`fait_par`) REFERENCES `users`(`id`)         ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

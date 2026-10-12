@@ -3,7 +3,7 @@
  * L'en-tête d'un travail de groupe et ses onglets.
  *
  * @var array $projet
- * @var string $onglet  taches | echeances | fichiers | cours | document | membres
+ * @var string $onglet  taches | echeances | fichiers | cours | document | listes | membres
  * @var bool $dansUneFenetre  ouvert depuis la liste : les onglets restent dans la fenêtre
  */
 $dansUneFenetre = $dansUneFenetre ?? false;
@@ -15,6 +15,10 @@ $onglets = [
     'document'  => ['/document', '📝', t('tr.on.document')],
     'membres'   => ['/membres', '👥', t('tr.on.membres')],
 ];
+// « Listes » : des listes à points à cocher, une fois la migration passée.
+if (Travaux::listesDisponibles()) {
+    $onglets = array_slice($onglets, 0, 5, true) + ['listes' => ['/listes', '☑️', t('tr.on.listes')]] + array_slice($onglets, 5, null, true);
+}
 ?>
 <?php // En fenêtre, toute la place : trois colonnes de tâches y tiennent. ?>
 <div class="entete-page"<?= $dansUneFenetre ? ' data-document' : '' ?>>

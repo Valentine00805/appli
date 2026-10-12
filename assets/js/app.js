@@ -1270,6 +1270,8 @@
 
       var donnees = new FormData(formulaire);
       donnees.append('fenetre', '1');
+      // Cocher un point d'une liste ne doit pas renvoyer en haut de la fenêtre : on garde l'endroit où l'on était.
+      var defilement = formulaire.hasAttribute('data-garder-defilement') ? corps.scrollTop : null;
       var bouton = evenement.submitter || formulaire.querySelector('button[type="submit"]');
       // Un bouton peut viser une autre adresse que son formulaire (« formaction ») :
       // c'est là qu'il faut envoyer.
@@ -1322,6 +1324,7 @@
           }
           majRetour();
           poser(reponse.html);
+          if (defilement !== null) { corps.scrollTop = defilement; }
         })
         .catch(function () {
           // Faute de mieux, l'envoi ordinaire : la page entière s'en chargera.
@@ -1457,6 +1460,7 @@
 
       var donnees = new FormData(formulaire);
       donnees.append('fenetre', '1');
+      var defilementDessus = formulaire.hasAttribute('data-garder-defilement') ? corpsDessus.scrollTop : null;
       changeDessus = true;
       fetch(formulaire.action, { method: 'POST', body: donnees, credentials: 'same-origin' })
         .then(function (reponse) {
@@ -1480,6 +1484,7 @@
           var deja = cheminDessus.indexOf(adresseDessus);
           if (deja >= 0) { cheminDessus = cheminDessus.slice(0, deja + 1); } else { cheminDessus.push(adresseDessus); }
           poserDessus(reponse.html);
+          if (defilementDessus !== null) { corpsDessus.scrollTop = defilementDessus; }
         })
         .catch(function () { if (adresseDessus !== null) { ouvrirDessus(adresseDessus); } });
     });
@@ -7791,4 +7796,93 @@
     var bouton = ouvert.querySelector("summary");
     if (bouton) { bouton.focus(); }
   });
+})();
+
+/*
+ * Les points à cocher d'une tâche qu'on est en train de créer : la tâche n'existe pas encore, alors on tient la liste ici — chaque point est
+ * un champ caché « points[] » qui part avec le formulaire. Même allure que la liste d'une tâche existante : un point par ligne, une croix pour
+ * le retirer, « Ajouter » (ou Entrée, qui n'envoie pas le formulaire). Un point écrit mais pas encore ajouté part quand même avec la tâche.
+ */
+(function () {
+  'use strict';
+
+  var bloc = function (element) { return element && element.closest ? element.closest('[data-points-nouveaux]') : null; };
+
+  var majCompte = function (zone) {
+    var compte = zone.querySelector('[data-points-compte]');
+    var n = zone.querySelectorAll('[data-points-liste] > li').length;
+    if (!compte) { return; }
+    compte.hidden = n === 0;
+    compte.textContent = '0/' + n;
+  };
+
+  var ajouter = function (zone) {
+    var saisie = zone.querySelector('[data-points-saisie]');
+    var liste = zone.querySelector('[data-points-liste]');
+    var texte = saisie.value.replace(/\s+/g, ' ').trim();
+    if (texte === '' || liste.children.length >= parseInt(zone.getAttribute('data-max') || '100', 10)) { return; }
+
+    var ligne = document.createElement('li');
+    ligne.className = 'coche';
+    var libelle = document.createElement('span');
+    libelle.className = 'coche__case';
+    var interieur = document.createElement('span');
+    interieur.className = 'coche__libelle';
+    var boite = document.createElement('span');
+    boite.className = 'coche__fausse';
+    boite.setAttribute('aria-hidden', 'true');
+    var mot = document.createElement('span');
+    mot.textContent = texte;
+    interieur.appendChild(boite);
+    interieur.appendChild(mot);
+    libelle.appendChild(interieur);
+    var cache = document.createElement('input');
+    cache.type = 'hidden';
+    cache.name = 'points[]';
+    cache.value = texte;
+    var retrait = document.createElement('span');
+    retrait.className = 'coche__retrait';
+    var croix = document.createElement('button');
+    croix.type = 'button';
+    croix.className = 'coche__retirer';
+    croix.setAttribute('data-points-retirer', '');
+    croix.textContent = '×';
+    croix.title = zone.getAttribute('data-retirer-court') || '';
+    croix.setAttribute('aria-label', (zone.getAttribute('data-retirer') || '').replace('{texte}', texte));
+    retrait.appendChild(croix);
+    ligne.appendChild(libelle);
+    ligne.appendChild(cache);
+    ligne.appendChild(retrait);
+    liste.appendChild(ligne);
+
+    saisie.value = '';
+    saisie.focus();
+    majCompte(zone);
+  };
+
+  document.addEventListener('click', function (evenement) {
+    var cible = evenement.target.closest ? evenement.target.closest('[data-points-ajouter], [data-points-retirer]') : null;
+    var zone = bloc(cible);
+    if (!cible || !zone) { return; }
+    evenement.preventDefault();
+    if (cible.hasAttribute('data-points-ajouter')) {
+      ajouter(zone);
+    } else {
+      cible.closest('li').remove();
+      majCompte(zone);
+    }
+  });
+
+  // Entrée dans le champ ajoute le point, sans envoyer toute la tâche.
+  document.addEventListener('keydown', function (evenement) {
+    if (evenement.key !== 'Enter' || !evenement.target.hasAttribute || !evenement.target.hasAttribute('data-points-saisie')) { return; }
+    evenement.preventDefault();
+    ajouter(bloc(evenement.target));
+  });
+
+  // Avant l'envoi (en phase de capture : la fenêtre lit le formulaire dans sa propre écoute) : le point resté dans le champ est ajouté.
+  document.addEventListener('submit', function (evenement) {
+    var zone = evenement.target.querySelector ? evenement.target.querySelector('[data-points-nouveaux]') : null;
+    if (zone) { ajouter(zone); }
+  }, true);
 })();

@@ -84,7 +84,101 @@ final class TravauxController
             'taches'  => $taches,
             'membres' => Travaux::membresActifs($id),
             'filtre'  => in_array($_GET['voir'] ?? '', ['moi', 'personne'], true) ? $_GET['voir'] : 'tous',
+            'points'  => Travaux::pointsDesTaches($id),
         ], 'taches');
+    }
+
+    /** L'onglet « Listes » : les listes du groupe, à points à cocher. */
+    public function listes(int $id): void
+    {
+        $projet = $this->projet($id);
+        if (!Travaux::listesDisponibles()) {
+            $this->introuvable();
+        }
+        $this->afficher('travaux/listes', $projet, ['listes' => Travaux::listes($id)], 'listes');
+    }
+
+    public function creerListe(int $id): void
+    {
+        $this->exigerPost();
+        $this->projet($id);
+        $this->finir(Travaux::creerListe(Auth::id(), $id, post('titre')), t('tr.li2.fl.creee'), 'travaux/' . $id . '/listes');
+    }
+
+    public function renommerListe(int $id): void
+    {
+        $this->exigerPost();
+        $liste = Travaux::liste(Auth::id(), $id) ?? $this->introuvable();
+        $this->finir(Travaux::renommerListe(Auth::id(), $id, post('titre')), t('tr.li2.fl.renommee'), 'travaux/' . (int) $liste['projet_id'] . '/listes');
+    }
+
+    public function supprimerListe(int $id): void
+    {
+        $this->exigerPost();
+        $projet = Travaux::supprimerListe(Auth::id(), $id) ?? $this->introuvable();
+        $this->finir(null, t('tr.li2.fl.supprimee'), 'travaux/' . $projet . '/listes');
+    }
+
+    /** « En faire une tâche » : la liste devient une tâche du tableau, avec ses points. */
+    public function listeEnTache(int $id): void
+    {
+        $this->exigerPost();
+        [$tache, $projet] = Travaux::listeEnTache(Auth::id(), $id);
+        if ($tache === null) {
+            $this->introuvable();
+        }
+        $this->finir(null, t('tr.li2.fl.en_tache'), 'travaux/' . $projet);
+    }
+
+    /** Un point de plus dans une tâche, ou dans une liste : on revient à la page d'où l'on vient. */
+    public function ajouterPointTache(int $id): void
+    {
+        $this->ajouterUnPoint('tache', $id);
+    }
+
+    public function ajouterPointListe(int $id): void
+    {
+        $this->ajouterUnPoint('liste', $id);
+    }
+
+    private function ajouterUnPoint(string $genre, int $id): never
+    {
+        $this->exigerPost();
+        $refus = Travaux::ajouterPoint(Auth::id(), $genre, $id, post('texte'));
+        if ($refus !== null) {
+            Session::flash('erreur', $refus);
+        }
+        $this->retourDesPoints($genre, $id);
+    }
+
+    /** Coche (« fait » = 1) ou décoche (0) un point : sans bruit, la case suffit à le dire. */
+    public function cocherPoint(int $id): void
+    {
+        $this->exigerPost();
+        $point = Travaux::point(Auth::id(), $id) ?? $this->introuvable();
+        Travaux::cocherPoint(Auth::id(), $id, (string) ($_POST['fait'] ?? '') === '1');
+        if (veut_du_json()) {
+            repondre_json(['fait' => (string) ($_POST['fait'] ?? '') === '1']);
+        }
+        $this->retourDesPoints($point['liste_id'] !== null ? 'liste' : 'tache', (int) ($point['liste_id'] ?? $point['tache_id']));
+    }
+
+    public function supprimerPoint(int $id): void
+    {
+        $this->exigerPost();
+        $point = Travaux::point(Auth::id(), $id) ?? $this->introuvable();
+        Travaux::supprimerPoint(Auth::id(), $id);
+        $this->retourDesPoints($point['liste_id'] !== null ? 'liste' : 'tache', (int) ($point['liste_id'] ?? $point['tache_id']));
+    }
+
+    /** Après un point : là d'où l'on vient (le tableau, la fenêtre de la tâche), sinon la page de sa liste ou de sa tâche. */
+    private function retourDesPoints(string $genre, int $parentId): never
+    {
+        if ($genre === 'liste') {
+            $liste = Database::one('SELECT projet_id FROM projet_listes WHERE id = ?', [$parentId]);
+            repartir_vers('travaux/' . (int) ($liste['projet_id'] ?? 0) . '/listes');
+        }
+        repartir_vers('travaux/taches/' . $parentId . '/modifier');
     }
 
     public function echeances(int $id): void
@@ -273,6 +367,10 @@ final class TravauxController
         if (is_string($resultat)) {
             $this->finir($resultat, '', 'travaux/' . $id . '/taches/nouvelle');
         }
+        // Les points à cocher écrits dès la création (un par ligne).
+        // (le formulaire envoie « points[] » un par un ; sans script, une zone de texte d'un point par ligne)
+        $points = $_POST['points'] ?? '';
+        Travaux::ajouterPointsEnLot($resultat, is_array($points) ? implode("\n", array_filter($points, 'is_string')) : (string) $points);
         $this->finir(null, t('tr.fl.tache_ajoutee'), 'travaux/' . $id);
     }
 
@@ -285,6 +383,7 @@ final class TravauxController
             'tache' => $tache,
             'projet' => Travaux::projet((int) $tache['projet_id'], Auth::id()),
             'membres' => Travaux::membresActifs((int) $tache['projet_id']),
+            'points' => Travaux::points('tache', $id),
         ], t('titre.tr_modifier_tache'));
     }
 
@@ -634,6 +733,8 @@ final class TravauxController
             'taches'    => Travaux::taches($id),
             'echeances' => Travaux::echeances($id),
             'fichiers'  => Travaux::fichiers($id),
+            'listes'    => Travaux::listes($id),
+            'points'    => Travaux::pointsDesTaches($id),
         ], (string) $projet['nom']);
     }
 

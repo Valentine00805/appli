@@ -5,6 +5,7 @@
  * @var array $projet
  * @var array $tache
  * @var list<array> $membres  ceux à qui l'on peut la confier
+ * @var list<array> $points  ses points à cocher (vide, ou sans migration : pas de bloc)
  * @var bool $dansUneFenetre
  */
 $dansUneFenetre = $dansUneFenetre ?? false;
@@ -53,6 +54,22 @@ $choisi = $tache['membre_id'] === null ? null : (int) $tache['membre_id'];
     <a class="bouton bouton--secondaire" href="<?= $retour ?>"<?= $dansUneFenetre ? ' data-fermer' : '' ?>><?= e(t('tr.ty.annuler')) ?></a>
   </p>
 </form>
+
+<?php if (Travaux::listesDisponibles()): ?>
+  <?php // Une liste de sous-tâches : chacun coche, ajoute et retire ; ça ne ferme pas la fenêtre (pas de data-fermer-apres). ?>
+  <?php $av = Travaux::avancementPoints($points ?? []); ?>
+  <section class="carte bloc-liste" style="margin-top:.75rem">
+    <div class="bloc-liste__entete">
+      <h2><?= e(t('tr.li2.dans_la_tache')) ?></h2>
+      <?php if ($av !== null): ?><span class="pastille<?= $av[0] === $av[1] ? ' pastille--ok' : '' ?>"><?= e(t('tr.li2.faits', ['faits' => $av[0], 'total' => $av[1]])) ?></span><?php endif; ?>
+    </div>
+    <p class="discret" style="margin:0 0 .5rem"><?= e(t('tr.li2.dans_la_tache_aide')) ?></p>
+    <?= Vue::rendre('travaux/_points', [
+        'points' => $points ?? [], 'ajout' => url('travaux/taches/' . $id . '/points'),
+        'envoi' => $dansUneFenetre ? ' data-envoi-fenetre' : '', 'idBase' => 'point-tache-' . $id,
+    ]) ?>
+  </section>
+<?php endif; ?>
 
 <form method="post"<?= $envoi ?> action="<?= url('travaux/taches/' . $id . '/supprimer') ?>" style="margin-top:.75rem"
       data-confirmation="<?= e(t('tr.tc.supprimer_confirmation', ['titre' => (string) $tache['titre']])) ?>">

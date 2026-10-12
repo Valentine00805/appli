@@ -6,6 +6,8 @@
  * @var string $jeton
  * @var list<array> $membres
  * @var list<array> $taches
+ * @var list<array> $listes  les listes du groupe, avec leurs points (lecture seule)
+ * @var array<int, list<array>> $points  les points de chaque tâche
  * @var list<array> $echeances
  * @var list<array> $fichiers
  * @var ?array $calendrier  le calendrier commun du projet (nom, couleur, évènements du mois), null s'il n'en a pas
@@ -56,7 +58,9 @@ $avancement = Travaux::avancement(count($taches), $faites);
             <li<?= $fait ? ' class="travaux-public-taches--faite"' : '' ?>>
               <span aria-hidden="true"><?= Travaux::STATUTS[$t['statut']]['icone'] ?></span>
               <span style="flex:1;min-width:0"><?= e((string) $t['titre']) ?>
-                <span class="discret">· <?= e((string) ($t['membre_nom'] ?? t('tr.pu.personne'))) ?></span></span>
+                <span class="discret">· <?= e((string) ($t['membre_nom'] ?? t('tr.pu.personne'))) ?></span>
+                <?php $av = Travaux::avancementPoints(($points ?? [])[(int) $t['id']] ?? []); ?>
+                <?php if ($av !== null): ?><span class="pastille">☑ <?= e(t('tr.li2.faits', ['faits' => $av[0], 'total' => $av[1]])) ?></span><?php endif; ?></span>
               <?php $texte = echeance_libelle($t['echeance'], $fait); ?>
               <?php if ($texte !== ''): ?>
                 <span class="echeance echeance--<?= e(echeance_etat($t['echeance'], $fait)) ?>"><?= e($texte) ?></span>
@@ -66,6 +70,25 @@ $avancement = Travaux::avancement(count($taches), $faites);
         </ul>
       <?php endif; ?>
     </section>
+
+    <?php foreach (($listes ?? []) as $l): ?>
+      <?php $av = Travaux::avancementPoints($l['points']); ?>
+      <section class="carte bloc-liste">
+        <div class="bloc-liste__entete">
+          <h2>☑️ <?= e((string) $l['titre']) ?></h2>
+          <?php if ($av !== null): ?><span class="pastille<?= $av[0] === $av[1] ? ' pastille--ok' : '' ?>"><?= e(t('tr.li2.faits', ['faits' => $av[0], 'total' => $av[1]])) ?></span><?php endif; ?>
+        </div>
+        <?php if ($l['points'] === []): ?>
+          <p class="discret"><?= e(t('tr.li2.liste_vide')) ?></p>
+        <?php else: ?>
+          <ul class="cochees">
+            <?php foreach ($l['points'] as $p): ?>
+              <li class="coche<?= $p['fait'] ? ' coche--fait' : '' ?>"><span class="coche__libelle"><span aria-hidden="true"><?= $p['fait'] ? '☑' : '☐' ?></span> <span><?= e($p['texte']) ?></span></span></li>
+            <?php endforeach; ?>
+          </ul>
+        <?php endif; ?>
+      </section>
+    <?php endforeach; ?>
 
     <?php if (($calendrier ?? null) !== null): ?>
       <?php

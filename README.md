@@ -65,8 +65,8 @@ allemand) et avec un thème clair ou sombre.
 - **Partages** — partager un cours, un fichier, un évènement ou plusieurs éléments d'un coup avec des amis (lecture
   seule ou avec droit de modifier) ou par **lien public** ; ce qu'on vous partage se copie dans votre espace (l'application
   reconnaît ce qui est déjà copié), et un évènement partagé peut recevoir vos propres rappels et notes.
-- **Travaux de groupe** — un projet par groupe de travail, en cinq onglets : qui fait quoi, échéances (placées aussi
-  dans le calendrier), fichiers, document commun, membres ; la liste « Ce que j'ai à faire » range mes tâches par projet (blocs repliables, pastille du nombre de tâches, du retard et de ce qui tombe aujourd'hui ou demain), dépliée ou repliée d'office selon un réglage de « Mon compte » ; des cours, dossiers et fichiers liés (on les met dans un projet
+- **Travaux de groupe** — un projet par groupe de travail, en six onglets : qui fait quoi (chaque tâche peut avoir sa liste de points à cocher, avec l'avancement « 2/5 »), échéances (placées aussi
+  dans le calendrier), fichiers, document commun, **listes** à points à cocher communes au groupe (matériel à apporter, plan du rapport…), membres ; la liste « Ce que j'ai à faire » range mes tâches par projet (blocs repliables, pastille du nombre de tâches, du retard et de ce qui tombe aujourd'hui ou demain), dépliée ou repliée d'office selon un réglage de « Mon compte » ; des cours, dossiers et fichiers liés (on les met dans un projet
   depuis « Partager » ou « Partager plusieurs ») : les cours et dossiers, tous les membres les modifient ensemble sur le même
   document ; un fichier se consulte et se télécharge ; un **calendrier commun** (ses
   évènements, les tâches datées du projet, et des documents du projet liés à chaque évènement), une discussion liée, et un
@@ -104,7 +104,7 @@ allemand) et avec un thème clair ou sombre.
 | **Tâches** | Listes, tâches datées, sous-tâches, cases à cocher. |
 | **Tableau** | Le kanban de tout ce qu'il y a à faire, en quatre colonnes (à faire, en cours, validation, terminé). |
 | **Alternance** | Notes, rythme école/entreprise, journal des missions, documents, fiche de l'entreprise. |
-| **Groupes** | Les travaux de groupe : liste de vos projets, invitations, et chaque projet en cinq onglets. |
+| **Groupes** | Les travaux de groupe : liste de vos projets, invitations, et chaque projet en six onglets. |
 | **Budget** | Cinq onglets : **Opérations** (recettes et dépenses du mois, tendance sur 12 mois), **Prévisions** (solde de départ, charges fixes, solde prévisionnel reporté de mois en mois), **Remboursements** (ce qu'on vous doit), **Import** (relevé bancaire au format CSV, ou ancien classeur `.xlsx`) et **Catégories** (avec plafond mensuel). |
 | **Organisation** | Trois onglets : **Matières** (nom, couleur, enseignant), **Types d'évènement** (nom, icône, couleur, ordre, indicateurs « échéance » et « paraît sur le tableau ») et **Tags** (créer, renommer, fusionner, supprimer). |
 | **Amis** | La messagerie : discussions à deux, groupes (repliables), **serveurs** dans la barre de gauche, demandes d'amis et invitations. |

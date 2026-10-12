@@ -43,6 +43,27 @@ $dansUneFenetre = $dansUneFenetre ?? false;
     <label for="note-nouvelle"><?= e(t('tr.tc.precisions')) ?> <span class="discret"><?= e(t('tr.ec.facultatif')) ?></span></label>
     <textarea id="note-nouvelle" name="note" rows="3" maxlength="2000"></textarea>
   </div>
+  <?php if (Travaux::listesDisponibles()): ?>
+    <?php // La tâche n'existe pas encore : les points se tiennent ici (champs cachés « points[] »), et partent avec elle. Sans script : une zone de texte, un point par ligne. ?>
+    <div class="bloc-liste bloc-liste--formulaire" data-points-nouveaux data-max="<?= Travaux::POINTS_MAX ?>"
+         data-retirer="<?= e(t('tr.li2.retirer_point', ['texte' => '{texte}'])) ?>" data-retirer-court="<?= e(t('tr.li2.retirer')) ?>">
+      <div class="bloc-liste__entete">
+        <h2><?= e(t('tr.li2.dans_la_tache')) ?></h2>
+        <span class="pastille" data-points-compte hidden>0/0</span>
+      </div>
+      <p class="discret" style="margin:0 0 .5rem"><?= e(t('tr.li2.dans_la_tache_aide')) ?></p>
+      <ul class="cochees" data-points-liste></ul>
+      <div class="coche-ajout">
+        <label class="sr-only" for="point-nouveau"><?= e(t('tr.li2.ajouter_label')) ?></label>
+        <input type="text" id="point-nouveau" maxlength="<?= Travaux::POINT_TEXTE_MAX ?>" placeholder="<?= e(t('tr.li2.ajouter_placeholder')) ?>" autocomplete="off" data-points-saisie>
+        <button class="bouton bouton--secondaire bouton--petit" type="button" data-points-ajouter><?= e(t('tr.li2.ajouter')) ?></button>
+      </div>
+      <noscript>
+        <textarea name="points" rows="4" placeholder="<?= e(t('tr.li2.nouvelle_exemple')) ?>" aria-label="<?= e(t('tr.li2.dans_la_tache')) ?>"></textarea>
+        <p class="champ__aide"><?= e(t('tr.li2.nouvelle_aide', ['max' => Travaux::POINTS_MAX])) ?></p>
+      </noscript>
+    </div>
+  <?php endif; ?>
   <p class="actions">
     <button class="bouton" type="submit"><?= e(t('tr.tc.ajouter')) ?></button>
     <a class="bouton bouton--secondaire" href="<?= url('travaux/' . (int) $projet['id']) ?>"<?= $dansUneFenetre ? ' data-fermer' : '' ?>><?= e(t('tr.ty.annuler')) ?></a>

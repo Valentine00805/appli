@@ -1164,6 +1164,282 @@ final class Travaux
         return $projet;
     }
 
+    // --- Les listes à points à cocher : dans les tâches, et à part ------------------
+
+    public const POINTS_MAX = 100;
+    public const LISTES_MAX = 50;
+    public const POINT_TEXTE_MAX = 200;
+    public const LISTE_TITRE_MAX = 120;
+
+    /** Les tables des listes existent-elles ? (Sinon — migration pas encore importée — l'onglet et les points n'apparaissent pas.) */
+    public static function listesDisponibles(): bool
+    {
+        static $ok = null;
+        if ($ok === null) {
+            try {
+                Database::valeur('SELECT 1 FROM projet_points LIMIT 1');
+                Database::valeur('SELECT 1 FROM projet_listes LIMIT 1');
+                $ok = true;
+            } catch (Throwable) {
+                $ok = false;
+            }
+        }
+
+        return $ok;
+    }
+
+    /**
+     * Les points de toutes les tâches du projet, par tâche (identifiant de la tâche => points, dans l'ordre).
+     *
+     * @return array<int, list<array{id: int, texte: string, fait: bool, fait_par: ?string}>>
+     */
+    public static function pointsDesTaches(int $projet): array
+    {
+        if (!self::listesDisponibles()) {
+            return [];
+        }
+        $parTache = [];
+        foreach (Database::all(
+            'SELECT p.id, p.tache_id, p.texte, p.fait, COALESCE(u.pseudo, u.nom) AS fait_par
+               FROM projet_points p
+               JOIN projet_taches t ON t.id = p.tache_id AND t.projet_id = ?
+               LEFT JOIN users u ON u.id = p.fait_par
+              ORDER BY p.tache_id, p.position, p.id',
+            [$projet]
+        ) as $p) {
+            $parTache[(int) $p['tache_id']][] = ['id' => (int) $p['id'], 'texte' => (string) $p['texte'], 'fait' => (int) $p['fait'] === 1, 'fait_par' => $p['fait_par'] === null ? null : (string) $p['fait_par']];
+        }
+
+        return $parTache;
+    }
+
+    /**
+     * Les points d'une tâche ou d'une liste.
+     *
+     * @return list<array{id: int, texte: string, fait: bool, fait_par: ?string}>
+     */
+    public static function points(string $parent, int $parentId): array
+    {
+        if (!self::listesDisponibles()) {
+            return [];
+        }
+
+        return array_map(static fn (array $p): array => [
+            'id' => (int) $p['id'], 'texte' => (string) $p['texte'], 'fait' => (int) $p['fait'] === 1, 'fait_par' => $p['fait_par'] === null ? null : (string) $p['fait_par'],
+        ], Database::all(
+            'SELECT p.id, p.texte, p.fait, COALESCE(u.pseudo, u.nom) AS fait_par FROM projet_points p LEFT JOIN users u ON u.id = p.fait_par
+              WHERE p.' . ($parent === 'liste' ? 'liste_id' : 'tache_id') . ' = ? ORDER BY p.position, p.id',
+            [$parentId]
+        ));
+    }
+
+    /**
+     * Les points d'une nouvelle tâche, écrits un par ligne dans le formulaire de création : chaque ligne non vide devient un point (200 caractères
+     * au plus), jusqu'à la limite. Sans effet avant la migration.
+     *
+     * @return int combien de points ont été ajoutés
+     */
+    public static function ajouterPointsEnLot(int $tacheId, string $texte): int
+    {
+        if (!self::listesDisponibles()) {
+            return 0;
+        }
+        $ajoutes = 0;
+        foreach (preg_split('/\R/u', $texte) ?: [] as $ligne) {
+            $ligne = self::nettoyer($ligne, self::POINT_TEXTE_MAX);
+            if ($ligne === '') {
+                continue;
+            }
+            if ($ajoutes >= self::POINTS_MAX) {
+                break;
+            }
+            Database::run('INSERT INTO projet_points (tache_id, texte, position, created_at) VALUES (?, ?, ?, ?)', [$tacheId, $ligne, $ajoutes + 1, date('Y-m-d H:i:s')]);
+            $ajoutes++;
+        }
+
+        return $ajoutes;
+    }
+
+    /** « 2/5 » : combien de points faits sur combien. Null s'il n'y en a pas. */
+    public static function avancementPoints(array $points): ?array
+    {
+        return $points === [] ? null : [count(array_filter($points, static fn (array $p): bool => $p['fait'])), count($points)];
+    }
+
+    /** Les listes du projet, avec leurs points. */
+    public static function listes(int $projet): array
+    {
+        if (!self::listesDisponibles()) {
+            return [];
+        }
+        $listes = Database::all('SELECT id, titre, created_at FROM projet_listes WHERE projet_id = ? ORDER BY position, id', [$projet]);
+        foreach ($listes as &$l) {
+            $l['points'] = self::points('liste', (int) $l['id']);
+        }
+
+        return $listes;
+    }
+
+    /** Une liste, si je suis membre (avec un compte) de son projet. */
+    public static function liste(int $moi, int $listeId): ?array
+    {
+        if (!self::listesDisponibles()) {
+            return null;
+        }
+
+        return Database::one(
+            "SELECT l.* FROM projet_listes l
+               JOIN projet_membres pm ON pm.projet_id = l.projet_id AND pm.user_id = ? AND pm.statut = 'membre'
+              WHERE l.id = ?",
+            [$moi, $listeId]
+        );
+    }
+
+    public static function creerListe(int $moi, int $projet, string $titre): ?string
+    {
+        if (!self::listesDisponibles() || self::projet($projet, $moi) === null) {
+            return t('tr.li2.introuvable');
+        }
+        $titre = self::nettoyer($titre, self::LISTE_TITRE_MAX);
+        if ($titre === '') {
+            return t('tr.li2.titre_obligatoire');
+        }
+        if ((int) Database::valeur('SELECT COUNT(*) FROM projet_listes WHERE projet_id = ?', [$projet]) >= self::LISTES_MAX) {
+            return t('tr.li2.trop_de_listes', ['max' => self::LISTES_MAX]);
+        }
+        $position = (int) Database::valeur('SELECT COALESCE(MAX(position), 0) + 1 FROM projet_listes WHERE projet_id = ?', [$projet]);
+        Database::run('INSERT INTO projet_listes (projet_id, titre, cree_par, position, created_at) VALUES (?, ?, ?, ?, ?)', [$projet, $titre, $moi, $position, date('Y-m-d H:i:s')]);
+
+        return null;
+    }
+
+    public static function renommerListe(int $moi, int $listeId, string $titre): ?string
+    {
+        if (self::liste($moi, $listeId) === null) {
+            return t('tr.li2.introuvable');
+        }
+        $titre = self::nettoyer($titre, self::LISTE_TITRE_MAX);
+        if ($titre === '') {
+            return t('tr.li2.titre_obligatoire');
+        }
+        Database::run('UPDATE projet_listes SET titre = ? WHERE id = ?', [$titre, $listeId]);
+
+        return null;
+    }
+
+    /**
+     * Fait d'une liste une tâche du tableau : une tâche « à faire » du même nom, qui reprend les points de la liste tels quels (cochés ou non,
+     * avec qui les a cochés) ; la liste disparaît. Personne n'en est chargé : on la prend ou on la confie ensuite.
+     *
+     * @return array{0: ?int, 1: ?int} [la tâche, le projet] — la tâche est nulle si la liste est introuvable
+     */
+    public static function listeEnTache(int $moi, int $listeId): array
+    {
+        $liste = self::liste($moi, $listeId);
+        if ($liste === null) {
+            return [null, null];
+        }
+        $projet = (int) $liste['projet_id'];
+        $position = (int) Database::valeur('SELECT COALESCE(MAX(position), 0) + 1 FROM projet_taches WHERE projet_id = ?', [$projet]);
+        Database::run(
+            'INSERT INTO projet_taches (projet_id, titre, position, cree_par) VALUES (?, ?, ?, ?)',
+            [$projet, self::nettoyer((string) $liste['titre'], 200), $position, $moi]);
+        $tache = Database::dernierId();
+        Database::run('UPDATE projet_points SET tache_id = ?, liste_id = NULL WHERE liste_id = ?', [$tache, $listeId]);
+        Database::run('DELETE FROM projet_listes WHERE id = ?', [$listeId]);
+
+        return [$tache, $projet];
+    }
+
+    /** Efface la liste et ses points (n'importe quel membre : le groupe la tient ensemble). */
+    public static function supprimerListe(int $moi, int $listeId): ?int
+    {
+        $liste = self::liste($moi, $listeId);
+        if ($liste === null) {
+            return null;
+        }
+        Database::run('DELETE FROM projet_listes WHERE id = ?', [$listeId]);
+
+        return (int) $liste['projet_id'];
+    }
+
+    /**
+     * Ajoute un point à une tâche (« tache ») ou à une liste (« liste »), à la fin.
+     *
+     * @return ?string la raison du refus
+     */
+    public static function ajouterPoint(int $moi, string $parent, int $parentId, string $texte): ?string
+    {
+        if (!self::listesDisponibles()) {
+            return t('tr.li2.introuvable');
+        }
+        if ($parent === 'liste' ? self::liste($moi, $parentId) === null : self::tache($moi, $parentId) === null) {
+            return t('tr.li2.introuvable');
+        }
+        $texte = self::nettoyer($texte, self::POINT_TEXTE_MAX);
+        if ($texte === '') {
+            return t('tr.li2.point_vide');
+        }
+        $colonne = $parent === 'liste' ? 'liste_id' : 'tache_id';
+        if ((int) Database::valeur("SELECT COUNT(*) FROM projet_points WHERE $colonne = ?", [$parentId]) >= self::POINTS_MAX) {
+            return t('tr.li2.trop_de_points', ['max' => self::POINTS_MAX]);
+        }
+        $position = (int) Database::valeur("SELECT COALESCE(MAX(position), 0) + 1 FROM projet_points WHERE $colonne = ?", [$parentId]);
+        Database::run("INSERT INTO projet_points ($colonne, texte, position, created_at) VALUES (?, ?, ?, ?)", [$parentId, $texte, $position, date('Y-m-d H:i:s')]);
+
+        return null;
+    }
+
+    /**
+     * Un point, si je suis membre du projet dont il dépend, avec ce qu'il faut pour revenir à sa page.
+     *
+     * @return ?array{id: int, tache_id: ?int, liste_id: ?int, projet_id: int, fait: int}
+     */
+    public static function point(int $moi, int $pointId): ?array
+    {
+        if (!self::listesDisponibles()) {
+            return null;
+        }
+        $p = Database::one(
+            "SELECT p.id, p.tache_id, p.liste_id, p.fait, COALESCE(t.projet_id, l.projet_id) AS projet_id
+               FROM projet_points p
+               LEFT JOIN projet_taches t ON t.id = p.tache_id
+               LEFT JOIN projet_listes l ON l.id = p.liste_id
+              WHERE p.id = ?",
+            [$pointId]
+        );
+        if ($p === null || self::projet((int) $p['projet_id'], $moi) === null) {
+            return null;
+        }
+
+        return ['id' => (int) $p['id'], 'tache_id' => $p['tache_id'] === null ? null : (int) $p['tache_id'],
+                'liste_id' => $p['liste_id'] === null ? null : (int) $p['liste_id'], 'projet_id' => (int) $p['projet_id'], 'fait' => (int) $p['fait']];
+    }
+
+    /** Coche ou décoche un point (on garde qui l'a fait et quand). */
+    public static function cocherPoint(int $moi, int $pointId, bool $fait): bool
+    {
+        if (self::point($moi, $pointId) === null) {
+            return false;
+        }
+        Database::run(
+            'UPDATE projet_points SET fait = ?, fait_par = ?, fait_le = ? WHERE id = ?',
+            [$fait ? 1 : 0, $fait ? $moi : null, $fait ? date('Y-m-d H:i:s') : null, $pointId]
+        );
+
+        return true;
+    }
+
+    public static function supprimerPoint(int $moi, int $pointId): bool
+    {
+        if (self::point($moi, $pointId) === null) {
+            return false;
+        }
+        Database::run('DELETE FROM projet_points WHERE id = ?', [$pointId]);
+
+        return true;
+    }
+
     // --- Le lien public, pour qui n'a pas de compte ----------------------------
 
     public static function ouvrirLien(int $moi, int $projet): ?string

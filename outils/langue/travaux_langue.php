@@ -2,6 +2,8 @@
 /** Les travaux de groupe dans une autre langue : les pages, les refus, les confirmations. */
 require __DIR__ . '/base.php';
 
+date_default_timezone_set('Europe/Paris');   // l'application tourne à l'heure de Paris : « aujourd'hui » doit être le même jour des deux côtés, même après minuit
+
 $anomalies = 0;
 $termine = false;   // faux si le script s'arrête en route : le bilan ne doit pas dire « aucune anomalie »
 $dire = static function (string $quoi, string $obtenu, string $attendu) use (&$anomalies): void {

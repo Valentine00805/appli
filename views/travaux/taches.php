@@ -6,6 +6,7 @@
  * @var list<array> $taches
  * @var list<array> $membres  ceux à qui l'on peut confier une tâche
  * @var string $filtre  tous | moi | personne
+ * @var array<int, list<array>> $points  les points à cocher de chaque tâche
  * @var string $onglet
  */
 $dansUneFenetre = $dansUneFenetre ?? false;
@@ -71,7 +72,14 @@ $avancement = Travaux::avancement($total, $faites);
                 <?php if ((string) ($t['note'] ?? '') !== ''): ?>
                   <p class="discret" style="margin:.2rem 0 0;font-size:.85rem"><?= nl2br(e((string) $t['note'])) ?></p>
                 <?php endif; ?>
+                <?php $pts = ($points ?? [])[$id] ?? []; $av = Travaux::avancementPoints($pts); ?>
+                <?php if ($pts !== []): ?>
+                  <?= Vue::rendre('travaux/_points', ['points' => $pts, 'ajout' => null, 'envoi' => $envoi, 'retour' => $retour, 'compact' => true, 'idBase' => 'p-' . $id]) ?>
+                <?php endif; ?>
                 <p class="kanban-carte__meta">
+                  <?php if ($av !== null): ?>
+                    <span class="pastille<?= $av[0] === $av[1] ? ' pastille--ok' : '' ?>" title="<?= e(t('tr.li2.dans_la_tache')) ?>">☑ <?= e(t('tr.li2.faits', ['faits' => $av[0], 'total' => $av[1]])) ?></span>
+                  <?php endif; ?>
                   <?php if ($t['membre_id'] !== null): ?>
                     <span class="pastille<?= (int) $t['membre_id'] === $moi ? ' pastille--active' : '' ?>">
                       👤 <?= (int) $t['membre_id'] === $moi ? e(t('tr.ta.moi')) : e((string) $t['membre_nom']) ?></span>

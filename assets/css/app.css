@@ -4892,3 +4892,35 @@ a.serveur-carte:hover, a.serveur-carte:focus-visible { border-color: var(--accen
 .entree-lien__creer:hover, .entree-lien__creer:focus-visible { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(79, 70, 229, .38); }
 .entree-lien__creer:active { transform: scale(.98); }
 
+/* --- Des points à cocher : dans une tâche, et dans les listes du groupe ------ */
+.cochees { list-style: none; margin: .4rem 0; padding: 0; display: grid; gap: .1rem; }
+.coche { display: flex; align-items: center; gap: .5rem; padding: .2rem .25rem; border-radius: var(--rayon-petit, 8px); }
+.coche:hover { background: var(--fond-doux); }
+.coche__case { flex: 1; min-width: 0; margin: 0; }
+.coche__libelle { display: flex; align-items: flex-start; gap: .55rem; cursor: pointer; min-width: 0; overflow-wrap: anywhere; }
+.coche__libelle input { flex: none; margin-top: .2rem; width: 1.05rem; height: 1.05rem; accent-color: var(--accent); }
+.coche--fait .coche__libelle span:last-child { text-decoration: line-through; color: var(--texte-doux); }
+.coche__par { flex: none; font-size: .8rem; }
+.coche__retrait { margin: 0; flex: none; }
+.coche__retirer { border: 0; background: transparent; color: var(--texte-doux); font-size: 1.15rem; line-height: 1; padding: .1rem .4rem; border-radius: 6px; cursor: pointer; opacity: .5; }
+.coche:hover .coche__retirer, .coche__retirer:focus-visible { opacity: 1; }
+.coche__retirer:hover { color: var(--danger, #b3261e); background: var(--fond-doux); }
+.cochees--compact { margin: .3rem 0 .1rem; max-height: 11rem; overflow-y: auto; font-size: .88rem; }
+.cochees--compact .coche { padding: .05rem .15rem; }
+.coche-ajout { display: flex; gap: .5rem; align-items: center; margin-top: .5rem; }
+.coche-ajout input[type=text] { flex: 1; min-width: 0; }
+.liste-nouvelle { display: flex; gap: .5rem; align-items: center; }
+.liste-nouvelle input[type=text] { flex: 1; min-width: 0; }
+.bloc-liste__entete { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .75rem; }
+.bloc-liste__entete h2 { margin: 0; flex: 1 1 8rem; min-width: 0; overflow-wrap: anywhere; }
+
+/* Les points d'une tâche en création : dans le formulaire, un cadre (pas une carte dans la carte) ; la case est un dessin, la tâche n'existe pas encore. */
+.bloc-liste--formulaire { border: 1px solid var(--bordure); border-radius: 12px; padding: .9rem 1rem; margin: .25rem 0 1rem; }
+.bloc-liste--formulaire textarea { width: 100%; }
+.coche__fausse { flex: none; margin-top: .2rem; width: 1.05rem; height: 1.05rem; border: 2px solid var(--bordure-forte); border-radius: 4px; box-sizing: border-box; }
+[data-points-compte][hidden] { display: none; }
+
+/* Le bouton « En faire une tâche », dans l'en-tête d'une liste (à côté de « Modifier »). */
+.bloc-liste__action { margin: 0; flex: none; }
+.acces-panneau__ligne input[type=text] { flex: 1 1 11rem; min-width: 0; width: auto; }
+
