@@ -500,6 +500,7 @@ $routes = [
     ['POST', 'travaux/{id}/lien/fermer',       [TravauxController::class, 'fermerLien']],
     ['GET',  'g/{jeton}',                      [TravauxController::class, 'public']],
     ['GET',  'g/{jeton}/fichiers/{id}',        [TravauxController::class, 'fichierPublic']],
+    ['GET',  'g/{jeton}/se-connecter',         [TravauxController::class, 'seConnecter']],
     ['POST', 'g/{jeton}/entrer',               [TravauxController::class, 'entrer']],
     ['POST', 'g/{jeton}/sortir',               [TravauxController::class, 'sortir']],
     ['POST', 'travaux/{id}/visiteurs/{id}/retirer', [TravauxController::class, 'retirerVisiteur']],

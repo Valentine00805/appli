@@ -4913,4 +4913,12 @@ return [
     'tr.me.visiteur_retirer_confirmation' => 'Retirer {prenom} ? Cette personne devra redonner son prénom pour revoir le projet.',
     'tr.fl.visiteur_retire' => 'Cette personne est retirée de la liste.',
     'tr.fl.admins_retirer_visiteur' => 'Seuls les administrateurs du groupe retirent quelqu’un de cette liste.',
+    'tr.pu.deja_entre' => '« {prenom} » est déjà entré par ce lien. Est-ce vous ?',
+    'tr.pu.deja_entre_aide' => 'Si c’est vous, vous retrouvez votre place. Sinon, vous pourrez vous distinguer.',
+    'tr.pu.oui_moi' => 'Oui, c’est moi',
+    'tr.pu.non_autre' => 'Non, une autre personne',
+    'tr.pu.distinguer' => 'Il y a déjà un « {prenom} » dans ce projet. Ajoutez l’initiale de votre nom pour vous distinguer (par exemple « {prenom} D. »).',
+    'tr.pu.deja_compte' => 'Vous avez déjà un compte ?',
+    'tr.me.par_le_lien' => 'Par le lien',
+    'tr.me.par_le_lien_aide' => 'Cette personne est entrée par le lien public : retirez-la d’ici, ou de la liste « Entrés par le lien » (elle y perd aussi son accès).',
 ];

@@ -160,6 +160,8 @@ final class TravauxController
             'membres'       => $membres,
             // Ceux qui sont entrés par le lien public : leur prénom et quand.
             'visiteurs'     => Travaux::visiteurs($id),
+            // Ceux des membres sans compte qui sont là par le lien (« Par le lien »).
+            'parLeLien'     => Travaux::membresParLien($id),
             // Le calendrier commun du projet, s'il en a un.
             'calendrier'    => CalendriersAmis::duProjet($id, Auth::id()),
             'amisAInviter'  => array_values(array_filter(Amis::liste(Auth::id()),
@@ -615,7 +617,7 @@ final class TravauxController
         $visiteur = !Travaux::lienDemandeUnPrenom() || (Auth::connecte() && Travaux::projet($id, Auth::id()) !== null)
             ? ['id' => 0, 'prenom' => ''] : Travaux::visiteurDuLien($projet);
         if ($visiteur === null) {
-            Vue::afficherPublic('travaux/public_entree', ['projet' => $projet, 'jeton' => $jeton, 'erreur' => null, 'prenom' => ''], (string) $projet['nom']);
+            Vue::afficherPublic('travaux/public_entree', ['projet' => $projet, 'jeton' => $jeton, 'erreur' => null, 'prenom' => '', 'etat' => 'saisie'], (string) $projet['nom']);
             return;
         }
         // Le calendrier commun du projet, s'il en a un : le mois demandé (« ?mois=2026-11 »), le mois courant à défaut, de 2000 à 2100.
@@ -645,10 +647,15 @@ final class TravauxController
             return;
         }
         Session::verifierCsrf();
-        [$secret, $refus] = Travaux::entrerParLeLien($projet, post('prenom'));
+        $reponse = in_array(post('reponse'), ['moi', 'autre'], true) ? post('reponse') : '';
+        $entree = Travaux::entrerParLeLien($projet, post('prenom'), $reponse);
+        $secret = $entree['jeton'];
         if ($secret === null) {
-            http_response_code(422);
-            Vue::afficherPublic('travaux/public_entree', ['projet' => $projet, 'jeton' => $jeton, 'erreur' => $refus, 'prenom' => post('prenom')], (string) $projet['nom']);
+            // Un refus (prénom illisible, trop de monde) est une erreur ; une question (« est-ce vous ? ») ou une invitation à se distinguer n'en est pas une.
+            http_response_code($entree['etat'] === 'refus' ? 422 : 200);
+            Vue::afficherPublic('travaux/public_entree', [
+                'projet' => $projet, 'jeton' => $jeton, 'erreur' => $entree['refus'], 'prenom' => $entree['prenom'], 'etat' => $entree['etat'],
+            ], (string) $projet['nom']);
             return;
         }
         // Le cookie ne se lit que par le serveur (httponly), jamais envoyé depuis un autre site (SameSite), et dure six mois.
@@ -657,6 +664,18 @@ final class TravauxController
             'secure' => (string) ($_SERVER['HTTPS'] ?? '') !== '' && $_SERVER['HTTPS'] !== 'off',
         ]);
         redirect('g/' . $jeton);
+    }
+
+    /**
+     * « Se connecter » depuis la page d'entrée du lien : on va à la connexion, et une fois connecté on revient au lien (un membre du projet y entre
+     * alors sans prénom). L'adresse de retour est fabriquée ici, jamais lue dans la demande.
+     */
+    public function seConnecter(string $jeton): void
+    {
+        if (Travaux::parJeton($jeton) !== null) {
+            $_SESSION['_apres_connexion'] = url('g/' . $jeton);
+        }
+        redirect('connexion');
     }
 
     /** « Ce n'est pas vous ? » : le navigateur oublie le prénom, et le lien le redemande. */

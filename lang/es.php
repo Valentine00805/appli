@@ -4901,4 +4901,12 @@ return [
     'tr.me.visiteur_retirer_confirmation' => '¿Quitar a {prenom}? Tendrá que volver a decir su nombre para ver el proyecto.',
     'tr.fl.visiteur_retire' => 'Esta persona se ha quitado de la lista.',
     'tr.fl.admins_retirer_visiteur' => 'Solo los administradores del grupo pueden quitar a alguien de esta lista.',
+    'tr.pu.deja_entre' => '«{prenom}» ya ha entrado por este enlace. ¿Eres tú?',
+    'tr.pu.deja_entre_aide' => 'Si eres tú, recuperas tu sitio. Si no, podrás distinguirte.',
+    'tr.pu.oui_moi' => 'Sí, soy yo',
+    'tr.pu.non_autre' => 'No, otra persona',
+    'tr.pu.distinguer' => 'Ya hay un «{prenom}» en este proyecto. Añade la inicial de tu apellido para distinguirte (por ejemplo «{prenom} D.»).',
+    'tr.pu.deja_compte' => '¿Ya tienes una cuenta?',
+    'tr.me.par_le_lien' => 'Por el enlace',
+    'tr.me.par_le_lien_aide' => 'Esta persona entró por el enlace público: quítala aquí, o de la lista «Entraron por el enlace» (allí también pierde el acceso).',
 ];

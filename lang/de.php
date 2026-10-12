@@ -4901,4 +4901,12 @@ return [
     'tr.me.visiteur_retirer_confirmation' => '{prenom} entfernen? Diese Person muss den Vornamen erneut angeben, um das Projekt zu sehen.',
     'tr.fl.visiteur_retire' => 'Diese Person wurde aus der Liste entfernt.',
     'tr.fl.admins_retirer_visiteur' => 'Nur die Administratoren der Gruppe können jemanden aus dieser Liste entfernen.',
+    'tr.pu.deja_entre' => '„{prenom}“ ist schon über diesen Link gekommen. Bist du das?',
+    'tr.pu.deja_entre_aide' => 'Wenn du es bist, bekommst du deinen Platz zurück. Wenn nicht, kannst du dich unterscheiden.',
+    'tr.pu.oui_moi' => 'Ja, das bin ich',
+    'tr.pu.non_autre' => 'Nein, jemand anderes',
+    'tr.pu.distinguer' => 'In diesem Projekt gibt es schon einen „{prenom}“. Füge den Anfangsbuchstaben deines Nachnamens hinzu, um dich zu unterscheiden (zum Beispiel „{prenom} D.“).',
+    'tr.pu.deja_compte' => 'Hast du schon ein Konto?',
+    'tr.me.par_le_lien' => 'Über den Link',
+    'tr.me.par_le_lien_aide' => 'Diese Person kam über den öffentlichen Link: Entferne sie hier oder aus der Liste „Über den Link gekommen“ (dort verliert sie auch den Zugang).',
 ];

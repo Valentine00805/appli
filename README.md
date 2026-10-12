@@ -70,7 +70,7 @@ allemand) et avec un thème clair ou sombre.
   depuis « Partager » ou « Partager plusieurs ») : les cours et dossiers, tous les membres les modifient ensemble sur le même
   document ; un fichier se consulte et se télécharge ; un **calendrier commun** (ses
   évènements, les tâches datées du projet, et des documents du projet liés à chaque évènement), une discussion liée, et un
-  lien public en lecture (avec le calendrier commun du projet, mois par mois, pour qui n'a pas de compte).
+  lien public en lecture (on y entre en disant son prénom ; la personne devient d'office membre sans compte, et les membres voient qui est passé par le lien ; avec le calendrier commun du projet, mois par mois).
 
 ### Gérer sa vie d'étudiant
 

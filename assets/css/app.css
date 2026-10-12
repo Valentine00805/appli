@@ -4879,3 +4879,16 @@ a.serveur-carte:hover, a.serveur-carte:focus-visible { border-color: var(--accen
 .visiteur-ligne__prenom { flex: 1 1 8rem; min-width: 0; font-weight: 700; overflow-wrap: anywhere; display: flex; align-items: center; gap: .4rem; flex-wrap: wrap; }
 .visiteur-ligne__quand { flex: 2 1 14rem; font-size: .85rem; }
 
+/* La question « est-ce vous ? » du lien public : le prénom déjà entré, et les deux réponses l'une sous l'autre. */
+.entree-lien__question { margin: 0 0 .4rem; font-weight: 650; overflow-wrap: anywhere; }
+.entree-lien__choix { display: grid; gap: .6rem; }
+
+/* Sous le formulaire du lien public : se connecter, ou créer un compte, chacun avec son bouton. */
+.entree-lien__compte { margin-top: 1rem; padding-top: .9rem; border-top: 1px solid var(--bordure); display: grid; gap: .5rem; text-align: left; }
+.entree-lien__compte-ligne { margin: 0; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .4rem .8rem; font-size: .9rem; color: var(--texte-doux); }
+
+/* « Créer un compte » sur le lien public : le bouton plein, avec son icône, qui s'éclaire un peu au survol. */
+.entree-lien__creer { display: inline-flex; align-items: center; gap: .45rem; box-shadow: 0 4px 12px rgba(79, 70, 229, .28); transition: transform .15s, box-shadow .15s, background .15s; }
+.entree-lien__creer:hover, .entree-lien__creer:focus-visible { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(79, 70, 229, .38); }
+.entree-lien__creer:active { transform: scale(.98); }
+

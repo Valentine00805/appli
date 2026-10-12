@@ -1862,12 +1862,28 @@ CREATE TABLE IF NOT EXISTS `projet_visiteurs` (
   `id`              INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `projet_id`       INT UNSIGNED NOT NULL,
   `prenom`          VARCHAR(60)  NOT NULL,
-  `empreinte`       CHAR(64)     NOT NULL,
+  -- Le membre sans compte qui la représente dans le projet ; « membre_cree » : c'est le lien qui l'a créé (voir migration-projet-visiteurs-membres.sql).
+  `membre_id`       INT UNSIGNED NULL,
+  `membre_cree`     TINYINT(1)   NOT NULL DEFAULT 0,
   `created_at`      DATETIME     NOT NULL,
   `derniere_visite` DATETIME     NOT NULL,
   `visites`         INT UNSIGNED NOT NULL DEFAULT 1,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uniq_projet_visiteurs_empreinte` (`empreinte`),
+  UNIQUE KEY `uniq_projet_visiteurs_prenom` (`projet_id`, `prenom`),
   KEY `idx_projet_visiteurs_projet` (`projet_id`, `created_at`),
-  CONSTRAINT `fk_projet_visiteurs_projet` FOREIGN KEY (`projet_id`) REFERENCES `projets`(`id`) ON DELETE CASCADE
+  KEY `idx_projet_visiteurs_membre` (`membre_id`),
+  CONSTRAINT `fk_projet_visiteurs_projet` FOREIGN KEY (`projet_id`) REFERENCES `projets`(`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_projet_visiteurs_membre` FOREIGN KEY (`membre_id`) REFERENCES `projet_membres`(`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Les appareils d'une même personne entrée par le lien : un jeton (empreinte) chacun (voir migration-projet-visiteurs-appareils.sql).
+CREATE TABLE IF NOT EXISTS `projet_visiteur_appareils` (
+  `id`          INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `visiteur_id` INT UNSIGNED NOT NULL,
+  `empreinte`   CHAR(64)     NOT NULL,
+  `created_at`  DATETIME     NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_projet_visiteur_appareils_empreinte` (`empreinte`),
+  KEY `idx_projet_visiteur_appareils_visiteur` (`visiteur_id`),
+  CONSTRAINT `fk_projet_visiteur_appareils_visiteur` FOREIGN KEY (`visiteur_id`) REFERENCES `projet_visiteurs`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

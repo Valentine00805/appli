@@ -1227,8 +1227,11 @@ final class Travaux
             if (preg_match('/^[0-9a-f]{32}$/', $jeton) !== 1) {
                 return null;
             }
-            $ligne = Database::one('SELECT id, prenom, derniere_visite FROM projet_visiteurs WHERE projet_id = ? AND empreinte = ?',
-                [(int) $projet['id'], hash('sha256', $jeton)]);
+            $ligne = Database::one(
+                'SELECT v.id, v.prenom, v.derniere_visite FROM projet_visiteur_appareils a JOIN projet_visiteurs v ON v.id = a.visiteur_id
+                  WHERE v.projet_id = ? AND a.empreinte = ?',
+                [(int) $projet['id'], hash('sha256', $jeton)]
+            );
             if ($ligne === null) {
                 return null;
             }
@@ -1242,11 +1245,87 @@ final class Travaux
         }
     }
 
-    /** Le lien public demande-t-il un prénom ? Oui, sauf tant que la table n'existe pas. */
+    /** Le lien public demande-t-il un prénom ? Oui, sauf tant que les tables (migrations) n'existent pas. */
     public static function lienDemandeUnPrenom(): bool
     {
         try {
             Database::valeur('SELECT 1 FROM projet_visiteurs LIMIT 1');
+            Database::valeur('SELECT 1 FROM projet_visiteur_appareils LIMIT 1');
+
+            return true;
+        } catch (Throwable) {
+            return false;
+        }
+    }
+
+    /** Au plus autant d'appareils par personne entrée par le lien : les plus anciens s'effacent. */
+    public const APPAREILS_MAX = 5;
+
+    /**
+     * Quelqu'un dit son prénom pour entrer par le lien. Un prénom ne se prend qu'une fois par projet (majuscules et accents ne comptent pas) :
+     *  - nouveau : on le garde, on prévient les membres, et on rend le jeton à poser dans son cookie ;
+     *  - déjà pris : on ne crée rien. « question » demande si c'est bien la même personne ; « moi » (la réponse) lui donne un nouvel appareil
+     *    sur cette personne ; « autre » lui demande de se distinguer (l'initiale de son nom, par exemple).
+     *
+     * @param string $reponse  « moi » ou « autre » quand la personne a répondu à la question, sinon vide
+     * @return array{etat: string, jeton: ?string, refus: ?string, prenom: string}
+     *         état : « ok » (jeton rendu), « refus » (raison dite), « question » ou « distinguer » (le prénom pris, tel qu'il est écrit)
+     */
+    public static function entrerParLeLien(array $projet, string $prenomBrut, string $reponse = ''): array
+    {
+        $prenom = self::prenomValide($prenomBrut);
+        if ($prenom === null) {
+            return ['etat' => 'refus', 'jeton' => null, 'refus' => t('tr.pu.prenom_invalide', ['max' => self::PRENOM_MAX]), 'prenom' => $prenomBrut];
+        }
+        $projetId = (int) $projet['id'];
+        $pris = static fn (): ?array => Database::one('SELECT id, prenom FROM projet_visiteurs WHERE projet_id = ? AND prenom = ?', [$projetId, $prenom]);
+
+        $existant = $pris();
+        if ($existant === null) {
+            if ((int) Database::valeur('SELECT COUNT(*) FROM projet_visiteurs WHERE projet_id = ?', [$projetId]) >= self::VISITEURS_MAX) {
+                return ['etat' => 'refus', 'jeton' => null, 'refus' => t('tr.pu.trop_de_monde'), 'prenom' => $prenom];
+            }
+            $maintenant = date('Y-m-d H:i:s');
+            try {
+                Database::run('INSERT INTO projet_visiteurs (projet_id, prenom, created_at, derniere_visite) VALUES (?, ?, ?, ?)', [$projetId, $prenom, $maintenant, $maintenant]);
+                $visiteurId = Database::dernierId();
+            } catch (PDOException) {
+                // Quelqu'un vient de prendre ce prénom, à l'instant : on retombe sur le cas « déjà pris ».
+                $existant = $pris();
+                $visiteurId = 0;
+            }
+            if ($existant === null) {
+                // Les membres qui ont un compte voient qui est arrivé, dans la langue de chacun.
+                foreach (Database::all("SELECT user_id FROM projet_membres WHERE projet_id = ? AND statut = 'membre' AND user_id IS NOT NULL", [$projetId]) as $m) {
+                    FileNotifications::ajouter((int) $m['user_id'], 'projet', fn (): array => [
+                        'title' => '👥 ' . (string) $projet['nom'],
+                        'body'  => t('tr.notif.visiteur', ['prenom' => $prenom]),
+                        'url'   => url('travaux/' . $projetId . '/membres'),
+                        'tag'   => 'projet-visiteur-' . $visiteurId,
+                    ]);
+                }
+
+                self::devenirMembre($projetId, $visiteurId, $prenom);
+
+                return ['etat' => 'ok', 'jeton' => self::nouvelAppareil($visiteurId), 'refus' => null, 'prenom' => $prenom];
+            }
+        }
+
+        // Le prénom est déjà pris : la même personne qui revient (« moi »), ou une autre qui doit se distinguer.
+        if ($reponse === 'moi') {
+            Database::run('UPDATE projet_visiteurs SET derniere_visite = ?, visites = visites + 1 WHERE id = ?', [date('Y-m-d H:i:s'), (int) $existant['id']]);
+
+            return ['etat' => 'ok', 'jeton' => self::nouvelAppareil((int) $existant['id']), 'refus' => null, 'prenom' => (string) $existant['prenom']];
+        }
+
+        return ['etat' => $reponse === 'autre' ? 'distinguer' : 'question', 'jeton' => null, 'refus' => null, 'prenom' => (string) $existant['prenom']];
+    }
+
+    /** La migration des membres sans compte par le lien est-elle passée ? (Sinon, entrer par le lien ne crée pas de membre.) */
+    private static function membresParLeLien(): bool
+    {
+        try {
+            Database::valeur('SELECT membre_id, membre_cree FROM projet_visiteurs LIMIT 1');
 
             return true;
         } catch (Throwable) {
@@ -1255,41 +1334,59 @@ final class Travaux
     }
 
     /**
-     * Quelqu'un entre par le lien : on garde son prénom et on prévient les membres. Rend le jeton à poser dans son cookie, ou la raison du refus.
-     *
-     * @return array{0: ?string, 1: ?string} [jeton, raison du refus]
+     * Quelqu'un qui vient d'entrer par le lien devient membre sans compte du projet — un nom à qui confier des tâches, que les administrateurs
+     * retirent quand ils veulent. Un nom sans compte déjà là, de même prénom, est celui de cette personne : on le reprend, sans doublon. Si le projet
+     * est plein (30 membres), elle entre quand même, sans devenir membre.
      */
-    public static function entrerParLeLien(array $projet, string $prenomBrut): array
+    private static function devenirMembre(int $projetId, int $visiteurId, string $prenom): void
     {
-        $prenom = self::prenomValide($prenomBrut);
-        if ($prenom === null) {
-            return [null, t('tr.pu.prenom_invalide', ['max' => self::PRENOM_MAX])];
+        if (!self::membresParLeLien()) {
+            return;
         }
-        $projetId = (int) $projet['id'];
-        if ((int) Database::valeur('SELECT COUNT(*) FROM projet_visiteurs WHERE projet_id = ?', [$projetId]) >= self::VISITEURS_MAX) {
-            return [null, t('tr.pu.trop_de_monde')];
+        $membre = Database::valeur('SELECT id FROM projet_membres WHERE projet_id = ? AND user_id IS NULL AND nom = ? ORDER BY id LIMIT 1', [$projetId, $prenom]);
+        $cree = 0;
+        if ($membre === null || $membre === false) {
+            if (self::nbMembres($projetId) >= self::MEMBRES_MAX) {
+                return;
+            }
+            Database::run("INSERT INTO projet_membres (projet_id, user_id, nom, role, statut, invite_par) VALUES (?, NULL, ?, 'membre', 'membre', NULL)", [$projetId, $prenom]);
+            $membre = Database::dernierId();
+            $cree = 1;
         }
-        $jeton = bin2hex(random_bytes(16));
-        $maintenant = date('Y-m-d H:i:s');
-        Database::run(
-            'INSERT INTO projet_visiteurs (projet_id, prenom, empreinte, created_at, derniere_visite) VALUES (?, ?, ?, ?, ?)',
-            [$projetId, $prenom, hash('sha256', $jeton), $maintenant, $maintenant]
-        );
-        $visiteurId = Database::dernierId();
-
-        // Les membres qui ont un compte voient qui est arrivé, dans la langue de chacun.
-        foreach (Database::all("SELECT user_id FROM projet_membres WHERE projet_id = ? AND statut = 'membre' AND user_id IS NOT NULL", [$projetId]) as $m) {
-            FileNotifications::ajouter((int) $m['user_id'], 'projet', fn (): array => [
-                'title' => '👥 ' . (string) $projet['nom'],
-                'body'  => t('tr.notif.visiteur', ['prenom' => $prenom]),
-                'url'   => url('travaux/' . $projetId . '/membres'),
-                'tag'   => 'projet-visiteur-' . $visiteurId,
-            ]);
-        }
-
-        return [$jeton, null];
+        Database::run('UPDATE projet_visiteurs SET membre_id = ?, membre_cree = ? WHERE id = ?', [(int) $membre, $cree, $visiteurId]);
     }
 
+    /**
+     * Les membres du projet qui y sont par le lien public (leur id) : de quoi les marquer « Par le lien ». Vide, sans erreur, avant la migration.
+     *
+     * @return array<int, true>
+     */
+    public static function membresParLien(int $projet): array
+    {
+        try {
+            $ids = [];
+            foreach (Database::all('SELECT membre_id FROM projet_visiteurs WHERE projet_id = ? AND membre_id IS NOT NULL', [$projet]) as $l) {
+                $ids[(int) $l['membre_id']] = true;
+            }
+
+            return $ids;
+        } catch (Throwable) {
+            return [];
+        }
+    }
+
+    /** Un appareil de plus pour cette personne : le jeton à poser dans son cookie (on ne garde que son empreinte). */
+    private static function nouvelAppareil(int $visiteurId): string
+    {
+        $jeton = bin2hex(random_bytes(16));
+        Database::run('INSERT INTO projet_visiteur_appareils (visiteur_id, empreinte, created_at) VALUES (?, ?, ?)', [$visiteurId, hash('sha256', $jeton), date('Y-m-d H:i:s')]);
+        Database::run(
+            'DELETE FROM projet_visiteur_appareils WHERE visiteur_id = ? AND id NOT IN (SELECT id FROM (SELECT id FROM projet_visiteur_appareils WHERE visiteur_id = ? ORDER BY id DESC LIMIT ' . self::APPAREILS_MAX . ') gardes)',
+            [$visiteurId, $visiteurId]
+        );
+
+        return $jeton;
+    }
     /**
      * Les personnes entrées par le lien, la dernière arrivée en tête. Vide, sans erreur, tant que la table n'existe pas.
      *
@@ -1314,7 +1411,17 @@ final class Travaux
             return false;
         }
         try {
-            return Database::run('DELETE FROM projet_visiteurs WHERE id = ? AND projet_id = ?', [$visiteurId, $projet])->rowCount() > 0;
+            // Le membre sans compte que le lien avait créé pour cette personne part avec elle ; un nom sans compte déjà là reste.
+            $cree = null;
+            if (self::membresParLeLien()) {
+                $cree = Database::one('SELECT membre_id, membre_cree FROM projet_visiteurs WHERE id = ? AND projet_id = ?', [$visiteurId, $projet]);
+            }
+            $retire = Database::run('DELETE FROM projet_visiteurs WHERE id = ? AND projet_id = ?', [$visiteurId, $projet])->rowCount() > 0;
+            if ($retire && $cree !== null && (int) $cree['membre_cree'] === 1 && $cree['membre_id'] !== null) {
+                Database::run('DELETE FROM projet_membres WHERE id = ? AND projet_id = ? AND user_id IS NULL', [(int) $cree['membre_id'], $projet]);
+            }
+
+            return $retire;
         } catch (Throwable) {
             return false;
         }

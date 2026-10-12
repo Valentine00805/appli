@@ -4901,4 +4901,12 @@ return [
     'tr.me.visiteur_retirer_confirmation' => 'Remove {prenom}? They will have to give their first name again to see the project.',
     'tr.fl.visiteur_retire' => 'This person is removed from the list.',
     'tr.fl.admins_retirer_visiteur' => 'Only the group’s administrators can remove someone from this list.',
+    'tr.pu.deja_entre' => '“{prenom}” has already joined through this link. Is that you?',
+    'tr.pu.deja_entre_aide' => 'If it is you, you get your place back. If not, you can tell yourself apart.',
+    'tr.pu.oui_moi' => 'Yes, it’s me',
+    'tr.pu.non_autre' => 'No, someone else',
+    'tr.pu.distinguer' => 'There is already a “{prenom}” in this project. Add the initial of your last name to tell yourself apart (for example “{prenom} D.”).',
+    'tr.pu.deja_compte' => 'Already have an account?',
+    'tr.me.par_le_lien' => 'Via the link',
+    'tr.me.par_le_lien_aide' => 'This person came in through the public link: remove them here, or from the “Joined through the link” list (they also lose their access there).',
 ];

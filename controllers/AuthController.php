@@ -163,6 +163,7 @@ final class AuthController
         }
 
         $destination = $_SESSION['_apres_connexion'] ?? null;
+        unset($_SESSION['_apres_connexion']);   // elle ne sert qu'une fois : une connexion d'un autre jour ne doit pas y ramener
         Auth::connecter((int) $utilisateur['id']);
         Langue::imposer((string) $utilisateur['langue']);
         Langue::retenirPourLeVisiteur(Langue::courante());

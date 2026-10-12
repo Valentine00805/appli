@@ -37,6 +37,7 @@ $jeton = $projet['jeton'] === null ? null : (string) $projet['jeton'];
               <?php if ($m['role'] === 'admin'): ?><span class="pastille"><?= e(t('tr.me.administrateur')) ?></span><?php endif; ?>
               <?php if ($m['statut'] === 'invite'): ?><span class="pastille pastille--muette"><?= e(t('tr.me.invitation_envoyee')) ?></span><?php endif; ?>
               <?php if ($m['user_id'] === null): ?><span class="pastille pastille--muette"><?= e(t('tr.me.sans_compte')) ?></span><?php endif; ?>
+              <?php if (isset(($parLeLien ?? [])[(int) $m['id']])): ?><span class="pastille pastille--ok" title="<?= e(t('tr.me.par_le_lien_aide')) ?>">👋 <?= e(t('tr.me.par_le_lien')) ?></span><?php endif; ?>
               <?php if ($m['statut'] === 'membre'): ?>
                 <br><span class="discret"><?= e(tn('tr.me.a_faire', (int) $m['a_faire'])) ?>
                   · <?= e(tn('tr.me.faites', (int) $m['faites'])) ?></span>
