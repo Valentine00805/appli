@@ -898,12 +898,226 @@ final class Travaux
 
     // --- Les fichiers ----------------------------------------------------------
 
-    public static function fichiers(int $projet): array
+    /**
+     * Les fichiers du groupe. $dossier : -1, tous (le lien public, les évènements) ; null, ceux de la racine ; un identifiant, ceux de ce dossier.
+     */
+    public static function fichiers(int $projet, ?int $dossier = -1): array
     {
+        $ou = '';
+        $valeurs = [$projet];
+        if ($dossier !== -1 && self::dossiersDisponibles()) {
+            $ou = $dossier === null ? ' AND f.dossier_id IS NULL' : ' AND f.dossier_id = ?';
+            if ($dossier !== null) {
+                $valeurs[] = $dossier;
+            }
+        }
+
         return Database::all(
             'SELECT f.*, COALESCE(u.pseudo, u.nom) AS depose_par
                FROM projet_fichiers f LEFT JOIN users u ON u.id = f.user_id
-              WHERE f.projet_id = ?' . (self::livrablesDisponibles() ? ' AND f.livrable_id IS NULL' : '') . ' ORDER BY f.created_at DESC, f.id DESC', [$projet]);
+              WHERE f.projet_id = ?' . (self::livrablesDisponibles() ? ' AND f.livrable_id IS NULL' : '') . $ou . ' ORDER BY f.created_at DESC, f.id DESC', $valeurs);
+    }
+
+    // --- Les dossiers de l'onglet « Fichiers » ---------------------------------------------------------
+
+    public const DOSSIERS_MAX = 100;
+    public const DOSSIER_NOM_MAX = 80;
+    public const DOSSIER_PROFONDEUR_MAX = 6;
+
+    /** Les dossiers de fichiers existent-ils ? (Sinon — migration pas encore importée — les fichiers restent en vrac.) */
+    public static function dossiersDisponibles(): bool
+    {
+        static $ok = null;
+        if ($ok === null) {
+            try {
+                Database::valeur('SELECT dossier_id FROM projet_fichiers LIMIT 1');
+                Database::valeur('SELECT 1 FROM projet_dossiers LIMIT 1');
+                $ok = true;
+            } catch (Throwable) {
+                $ok = false;
+            }
+        }
+
+        return $ok;
+    }
+
+    /**
+     * Tous les dossiers du projet, avec ce qu'ils contiennent (fichiers et sous-dossiers directs).
+     *
+     * @return list<array{id: int, parent_id: ?int, nom: string, cree_par: ?int, nb_fichiers: int, nb_dossiers: int}>
+     */
+    public static function dossiers(int $projet): array
+    {
+        if (!self::dossiersDisponibles()) {
+            return [];
+        }
+
+        return array_map(static fn (array $d): array => [
+            'id' => (int) $d['id'], 'parent_id' => $d['parent_id'] === null ? null : (int) $d['parent_id'], 'nom' => (string) $d['nom'],
+            'cree_par' => $d['cree_par'] === null ? null : (int) $d['cree_par'], 'nb_fichiers' => (int) $d['nb_fichiers'], 'nb_dossiers' => (int) $d['nb_dossiers'],
+        ], Database::all(
+            'SELECT d.id, d.parent_id, d.nom, d.cree_par,
+                    (SELECT COUNT(*) FROM projet_fichiers f WHERE f.dossier_id = d.id) AS nb_fichiers,
+                    (SELECT COUNT(*) FROM projet_dossiers s WHERE s.parent_id = d.id) AS nb_dossiers
+               FROM projet_dossiers d WHERE d.projet_id = ? ORDER BY d.nom, d.id',
+            [$projet]
+        ));
+    }
+
+    /** Un dossier de ce projet. */
+    public static function dossierDuProjet(int $projet, int $dossierId): ?array
+    {
+        foreach (self::dossiers($projet) as $d) {
+            if ($d['id'] === $dossierId) {
+                return $d;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Le chemin jusqu'à un dossier, de la racine à lui (lui compris) : de quoi dire « Fichiers › Sources › Brouillons ».
+     *
+     * @return list<array{id: int, parent_id: ?int, nom: string, cree_par: ?int, nb_fichiers: int, nb_dossiers: int}>
+     */
+    public static function cheminDuDossier(int $projet, ?int $dossierId): array
+    {
+        $parId = [];
+        foreach (self::dossiers($projet) as $d) {
+            $parId[$d['id']] = $d;
+        }
+        $chemin = [];
+        for ($courant = $dossierId, $garde = 0; $courant !== null && isset($parId[$courant]) && $garde < 50; $garde++) {
+            array_unshift($chemin, $parId[$courant]);
+            $courant = $parId[$courant]['parent_id'];
+        }
+
+        return $chemin;
+    }
+
+    /**
+     * Tous les dossiers, avec leur chemin écrit (« Sources / Brouillons »), dans l'ordre : de quoi choisir où déplacer un fichier.
+     *
+     * @return list<array{id: int, libelle: string}>
+     */
+    public static function dossiersAvecChemin(int $projet): array
+    {
+        $liste = [];
+        foreach (self::dossiers($projet) as $d) {
+            $liste[] = ['id' => $d['id'], 'libelle' => implode(' / ', array_column(self::cheminDuDossier($projet, $d['id']), 'nom'))];
+        }
+        usort($liste, static fn (array $a, array $b): int => strcasecmp($a['libelle'], $b['libelle']));
+
+        return $liste;
+    }
+
+    private static function nomDeDossierValide(int $projet, ?int $parent, string $nom, int $sauf = 0): ?string
+    {
+        $nom = self::nettoyer($nom, self::DOSSIER_NOM_MAX);
+        if ($nom === '') {
+            return t('tr.fd.nom_obligatoire');
+        }
+        foreach (self::dossiers($projet) as $d) {
+            if ($d['id'] !== $sauf && $d['parent_id'] === $parent && mb_strtolower($d['nom']) === mb_strtolower($nom)) {
+                return t('tr.fd.nom_pris');
+            }
+        }
+
+        return null;
+    }
+
+    /** Crée un dossier (dans « $parent », ou à la racine). Rend la raison du refus. */
+    public static function creerDossier(int $moi, int $projet, ?int $parent, string $nom): ?string
+    {
+        if (!self::dossiersDisponibles() || self::projet($projet, $moi) === null) {
+            return t('tr.fd.introuvable');
+        }
+        if ($parent !== null && self::dossierDuProjet($projet, $parent) === null) {
+            return t('tr.fd.introuvable');
+        }
+        if (count(self::dossiers($projet)) >= self::DOSSIERS_MAX) {
+            return t('tr.fd.trop', ['max' => self::DOSSIERS_MAX]);
+        }
+        if (count(self::cheminDuDossier($projet, $parent)) >= self::DOSSIER_PROFONDEUR_MAX) {
+            return t('tr.fd.profond', ['max' => self::DOSSIER_PROFONDEUR_MAX]);
+        }
+        $refus = self::nomDeDossierValide($projet, $parent, $nom);
+        if ($refus !== null) {
+            return $refus;
+        }
+        Database::run('INSERT INTO projet_dossiers (projet_id, parent_id, nom, cree_par, created_at) VALUES (?, ?, ?, ?, ?)',
+            [$projet, $parent, self::nettoyer($nom, self::DOSSIER_NOM_MAX), $moi, date('Y-m-d H:i:s')]);
+
+        return null;
+    }
+
+    /** Un dossier, si je suis membre de son projet. */
+    public static function leDossier(int $moi, int $dossierId): ?array
+    {
+        if (!self::dossiersDisponibles()) {
+            return null;
+        }
+
+        return Database::one(
+            "SELECT d.* FROM projet_dossiers d
+               JOIN projet_membres pm ON pm.projet_id = d.projet_id AND pm.user_id = ? AND pm.statut = 'membre'
+              WHERE d.id = ?",
+            [$moi, $dossierId]);
+    }
+
+    public static function renommerDossier(int $moi, int $dossierId, string $nom): ?string
+    {
+        $d = self::leDossier($moi, $dossierId);
+        if ($d === null) {
+            return t('tr.fd.introuvable');
+        }
+        $refus = self::nomDeDossierValide((int) $d['projet_id'], $d['parent_id'] === null ? null : (int) $d['parent_id'], $nom, $dossierId);
+        if ($refus !== null) {
+            return $refus;
+        }
+        Database::run('UPDATE projet_dossiers SET nom = ? WHERE id = ?', [self::nettoyer($nom, self::DOSSIER_NOM_MAX), $dossierId]);
+
+        return null;
+    }
+
+    /**
+     * Supprime un dossier — celui qui l'a créé, ou un administrateur : ses fichiers et ses sous-dossiers remontent d'un cran, rien n'est perdu.
+     *
+     * @return ?array{projet: int, parent: ?int} le projet et le dossier où l'on revient, ou null s'il n'est pas à supprimer par cette personne
+     */
+    public static function supprimerDossier(int $moi, int $dossierId): ?array
+    {
+        $d = self::leDossier($moi, $dossierId);
+        if ($d === null || ((int) ($d['cree_par'] ?? 0) !== $moi && !self::estAdmin((int) $d['projet_id'], $moi))) {
+            return null;
+        }
+        $parent = $d['parent_id'] === null ? null : (int) $d['parent_id'];
+        Database::run('UPDATE projet_fichiers SET dossier_id = ? WHERE dossier_id = ?', [$parent, $dossierId]);
+        Database::run('UPDATE projet_dossiers SET parent_id = ? WHERE parent_id = ?', [$parent, $dossierId]);
+        Database::run('DELETE FROM projet_dossiers WHERE id = ?', [$dossierId]);
+
+        return ['projet' => (int) $d['projet_id'], 'parent' => $parent];
+    }
+
+    /**
+     * Range un fichier du groupe dans un dossier (0 : à la racine). Tout membre peut ranger.
+     *
+     * @return ?array{projet: int, ancien: ?int} le projet et le dossier d'où il vient, ou null si le fichier ou le dossier ne convient pas
+     */
+    public static function deplacerFichier(int $moi, int $fichierId, int $dossierId): ?array
+    {
+        $f = self::fichier($moi, $fichierId);
+        if ($f === null || !self::dossiersDisponibles() || ($f['livrable_id'] ?? null) !== null) {
+            return null;
+        }
+        $projet = (int) $f['projet_id'];
+        if ($dossierId > 0 && self::dossierDuProjet($projet, $dossierId) === null) {
+            return null;
+        }
+        Database::run('UPDATE projet_fichiers SET dossier_id = ? WHERE id = ?', [$dossierId > 0 ? $dossierId : null, $fichierId]);
+
+        return ['projet' => $projet, 'ancien' => ($f['dossier_id'] ?? null) === null ? null : (int) $f['dossier_id']];
     }
 
     // --- Les livrables : les documents finaux que le groupe doit rendre ---------------------------
@@ -1442,10 +1656,20 @@ final class Travaux
     }
 
     /** @return string[] les erreurs rencontrées */
-    public static function deposer(array $fichiers, int $moi, int $projet): array
+    public static function deposer(array $fichiers, int $moi, int $projet, ?int $dossier = null): array
     {
+        // Un dossier qui n'est pas de ce projet (ou plus de dossiers) : les fichiers vont à la racine.
+        $dossier = $dossier !== null && $dossier > 0 && self::dossierDuProjet($projet, $dossier) !== null ? $dossier : null;
+
         return Fichiers::recevoir($fichiers, self::dossier(),
-            static function (string $nomOrigine, string $nomStocke, string $mime, int $taille) use ($moi, $projet): void {
+            static function (string $nomOrigine, string $nomStocke, string $mime, int $taille) use ($moi, $projet, $dossier): void {
+                if (self::dossiersDisponibles()) {
+                    Database::run(
+                        'INSERT INTO projet_fichiers (projet_id, dossier_id, user_id, nom_origine, nom_stocke, mime, taille) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                        [$projet, $dossier, $moi, mb_substr($nomOrigine, 0, 255), $nomStocke, $mime, $taille]);
+
+                    return;
+                }
                 Database::run(
                     'INSERT INTO projet_fichiers (projet_id, user_id, nom_origine, nom_stocke, mime, taille)
                      VALUES (?, ?, ?, ?, ?, ?)',

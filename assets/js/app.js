@@ -7886,3 +7886,16 @@
     if (zone) { ajouter(zone); }
   }, true);
 })();
+
+/*
+ * Un menu « ⋮ » dont on choisit un lien (« Télécharger » : on ne quitte pas la page) se referme ; les liens qui ouvrent une fenêtre ou envoient un
+ * formulaire n'ont pas besoin de ce coup de pouce, mais cela ne gêne pas.
+ */
+(function () {
+  'use strict';
+  document.addEventListener('click', function (evenement) {
+    var item = evenement.target.closest ? evenement.target.closest('.ami-menu__item') : null;
+    var menu = item ? item.closest('.ami-menu') : null;
+    if (menu && item.tagName === 'A') { setTimeout(function () { menu.removeAttribute('open'); }, 0); }
+  });
+})();

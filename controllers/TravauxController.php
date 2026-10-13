@@ -346,7 +346,19 @@ final class TravauxController
     {
         $projet = $this->projet($id);
         $this->ongletOuvert($projet, 'fichiers');
-        $this->afficher('travaux/fichiers', $projet, ['fichiers' => Travaux::fichiers($id)], 'fichiers');
+        // Dans un dossier (« ?dossier=12 ») ou à la racine ; sans les dossiers (migration pas passée), tous les fichiers en vrac.
+        $avecDossiers = Travaux::dossiersDisponibles();
+        $courant = $avecDossiers ? (int) ($_GET['dossier'] ?? 0) : 0;
+        if ($courant > 0 && Travaux::dossierDuProjet($id, $courant) === null) {
+            $this->introuvable();
+        }
+        $chemin = $avecDossiers ? Travaux::cheminDuDossier($id, $courant > 0 ? $courant : null) : [];
+        $sousDossiers = $avecDossiers ? array_values(array_filter(Travaux::dossiers($id), static fn (array $d): bool => $d['parent_id'] === ($courant > 0 ? $courant : null))) : [];
+        $this->afficher('travaux/fichiers', $projet, [
+            'fichiers' => $avecDossiers ? Travaux::fichiers($id, $courant > 0 ? $courant : null) : Travaux::fichiers($id),
+            // Les dossiers (null : la migration n'est pas passée, pas de dossiers) : où l'on est, le chemin, les sous-dossiers, et tous (pour déplacer).
+            'dossiers' => $avecDossiers ? ['courant' => $courant > 0 ? $courant : null, 'chemin' => $chemin, 'sous' => $sousDossiers, 'tous' => Travaux::dossiersAvecChemin($id)] : null,
+        ], 'fichiers');
     }
 
     /** Les cours et dossiers liés : les lire, les ajouter à son espace, et en lier un des siens. */
@@ -428,6 +440,120 @@ final class TravauxController
         ));
         echo $pdf;
         exit;
+    }
+
+    /** Un nouveau dossier, en fenêtre par-dessus les fichiers (« ?parent=12 » : dans ce dossier). */
+    public function nouveauDossier(int $id): void
+    {
+        $projet = $this->projet($id);
+        $this->ongletOuvert($projet, 'fichiers');
+        if (!Travaux::dossiersDisponibles()) {
+            $this->introuvable();
+        }
+        $parent = (int) ($_GET['parent'] ?? 0);
+        if ($parent > 0 && Travaux::dossierDuProjet($id, $parent) === null) {
+            $this->introuvable();
+        }
+        $this->formulaire('travaux/nouveau_dossier', [
+            'projet' => $projet,
+            'parent' => $parent > 0 ? $parent : null,
+            'chemin' => Travaux::cheminDuDossier($id, $parent > 0 ? $parent : null),
+        ], t('titre.tr_nouveau_dossier'));
+    }
+
+    public function creerDossier(int $id): void
+    {
+        $this->exigerPost();
+        $this->projet($id);
+        $parent = (int) post('parent');
+        $refus = Travaux::creerDossier(Auth::id(), $id, $parent > 0 ? $parent : null, post('nom'));
+        $parametres = $parent > 0 ? ['dossier' => $parent] : [];
+        if ($refus !== null) {
+            // Refusé : on reste sur le formulaire, pour corriger.
+            Session::flash('erreur', $refus);
+            redirect('travaux/' . $id . '/dossiers/nouveau', $parent > 0 ? ['parent' => $parent] : []);
+        }
+        Session::flash('succes', t('tr.fd.fl.cree'));
+        redirect('travaux/' . $id . '/fichiers', $parametres);
+    }
+
+    /** Renommer un dossier, en fenêtre par-dessus les fichiers (« ?depuis=12 » : le dossier où l'on était, 0 la racine). */
+    public function formulaireDossier(int $id): void
+    {
+        Auth::exiger();
+        $d = Travaux::leDossier(Auth::id(), $id) ?? $this->introuvable();
+        $projet = $this->projet((int) $d['projet_id']);
+        $this->ongletOuvert($projet, 'fichiers');
+        $this->formulaire('travaux/renommer_dossier', [
+            'projet' => $projet,
+            'dossier' => $d,
+            'chemin' => Travaux::cheminDuDossier((int) $d['projet_id'], $id),
+            'depuis' => max(0, (int) ($_GET['depuis'] ?? 0)),
+        ], t('titre.tr_renommer_dossier'));
+    }
+
+    public function renommerDossier(int $id): void
+    {
+        $this->exigerPost();
+        $d = Travaux::leDossier(Auth::id(), $id) ?? $this->introuvable();
+        $projet = (int) $d['projet_id'];
+        // On revient où l'on était (« depuis ») ; sans cette indication, dans le dossier renommé.
+        $depuis = isset($_POST['depuis']) ? max(0, (int) $_POST['depuis']) : $id;
+        if ($depuis > 0 && Travaux::dossierDuProjet($projet, $depuis) === null) {
+            $depuis = 0;
+        }
+        $refus = Travaux::renommerDossier(Auth::id(), $id, post('nom'));
+        if ($refus !== null) {
+            // Refusé : on reste sur le formulaire, pour corriger.
+            Session::flash('erreur', $refus);
+            redirect('travaux/dossiers/' . $id . '/renommer', ['depuis' => $depuis]);
+        }
+        Session::flash('succes', t('tr.fd.fl.renomme'));
+        redirect('travaux/' . $projet . '/fichiers', $depuis > 0 ? ['dossier' => $depuis] : []);
+    }
+
+    public function supprimerDossier(int $id): void
+    {
+        $this->exigerPost();
+        $d = Travaux::leDossier(Auth::id(), $id) ?? $this->introuvable();
+        $retour = Travaux::supprimerDossier(Auth::id(), $id);
+        if ($retour === null) {
+            Session::flash('erreur', t('tr.fd.supprimer_interdit'));
+            redirect('travaux/' . (int) $d['projet_id'] . '/fichiers', ['dossier' => $id]);
+        }
+        Session::flash('succes', t('tr.fd.fl.supprime'));
+        redirect('travaux/' . $retour['projet'] . '/fichiers', $retour['parent'] !== null ? ['dossier' => $retour['parent']] : []);
+    }
+
+    /** Déplacer un fichier, en fenêtre par-dessus les fichiers (« ?depuis=12 » : le dossier où l'on était, 0 la racine). */
+    public function formulaireDeplacement(int $id): void
+    {
+        Auth::exiger();
+        $fichier = Travaux::fichier(Auth::id(), $id);
+        if ($fichier === null || !Travaux::dossiersDisponibles() || ($fichier['livrable_id'] ?? null) !== null) {
+            $this->introuvable();
+        }
+        $projet = $this->projet((int) $fichier['projet_id']);
+        $this->ongletOuvert($projet, 'fichiers');
+        $this->formulaire('travaux/deplacer_fichier', [
+            'projet' => $projet,
+            'fichier' => $fichier,
+            'tous' => Travaux::dossiersAvecChemin((int) $fichier['projet_id']),
+            'depuis' => max(0, (int) ($_GET['depuis'] ?? 0)),
+        ], t('titre.tr_deplacer_fichier'));
+    }
+
+    /** Range un fichier dans un dossier (« dossier » : son identifiant, ou 0 pour la racine) ; on revient où l'on était (« depuis »), sinon au dossier d'où il part. */
+    public function deplacerFichier(int $id): void
+    {
+        $this->exigerPost();
+        $retour = Travaux::deplacerFichier(Auth::id(), $id, (int) post('dossier')) ?? $this->introuvable();
+        Session::flash('succes', t('tr.fd.fl.deplace'));
+        $retourne = isset($_POST['depuis']) ? max(0, (int) $_POST['depuis']) : ($retour['ancien'] ?? 0);
+        if ($retourne > 0 && Travaux::dossierDuProjet($retour['projet'], $retourne) === null) {
+            $retourne = 0;
+        }
+        redirect('travaux/' . $retour['projet'] . '/fichiers', $retourne > 0 ? ['dossier' => $retourne] : []);
     }
 
     /** Les onglets du groupe (l'administrateur les choisit). */
@@ -774,7 +900,8 @@ final class TravauxController
         $this->projet($id);
         $compter = static fn (): int => (int) Database::valeur('SELECT COUNT(*) FROM projet_fichiers WHERE projet_id = ?', [$id]);
         $avant = $compter();
-        $erreurs = Travaux::deposer($_FILES['fichiers'] ?? [], Auth::id(), $id);
+        $dossier = (int) post('dossier');
+        $erreurs = Travaux::deposer($_FILES['fichiers'] ?? [], Auth::id(), $id, $dossier > 0 ? $dossier : null);
         $recus = $compter() - $avant;
         if ($recus > 0) {
             Session::flash('succes', tn('tr.fl.fichiers_deposes', $recus));
@@ -784,7 +911,7 @@ final class TravauxController
         } elseif ($recus === 0) {
             Session::flash('erreur', t('tr.fl.choisir_fichier'));
         }
-        redirect('travaux/' . $id . '/fichiers');
+        redirect('travaux/' . $id . '/fichiers', $dossier > 0 && Travaux::dossierDuProjet($id, $dossier) !== null ? ['dossier' => $dossier] : []);
     }
 
     public function fichier(int $id): void
@@ -801,13 +928,14 @@ final class TravauxController
         $projet = (int) ($avant['projet_id'] ?? 0);
         // Le document d'un livrable se retire depuis les livrables.
         $onglet = ($avant['livrable_id'] ?? null) !== null ? 'livrables' : 'fichiers';
+        $dossierDuFichier = (int) ($avant['dossier_id'] ?? 0);
         $fichier = Travaux::supprimerFichier(Auth::id(), $id);
         if ($fichier === null) {
             Session::flash('erreur', t('tr.fl.retirer_fichier_interdit'));
         } else {
             Session::flash('succes', t('tr.fl.fichier_supprime', ['nom' => (string) $fichier['nom_origine']]));
         }
-        redirect($projet > 0 ? 'travaux/' . $projet . '/' . $onglet : 'travaux');
+        redirect($projet > 0 ? 'travaux/' . $projet . '/' . $onglet : 'travaux', $onglet === 'fichiers' && $dossierDuFichier > 0 ? ['dossier' => $dossierDuFichier] : []);
     }
 
     // --- Le document commun ----------------------------------------------------

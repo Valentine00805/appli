@@ -4961,3 +4961,29 @@ a.serveur-carte:hover, a.serveur-carte:focus-visible { border-color: var(--accen
 .choix-onglet__texte { flex: 1; min-width: 0; font-size: .95rem; }
 .choix-onglet__texte .discret { font-size: .84rem; }
 
+/* Les dossiers de l'onglet « Fichiers » : le chemin où l'on est, les dossiers comme des lignes cliquables, et « Déplacer » sous un fichier. */
+.fichiers-barre { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .6rem .9rem; }
+.fichiers-chemin { display: flex; flex-wrap: wrap; align-items: center; gap: .25rem .5rem; min-width: 0; overflow-wrap: anywhere; }
+.fichiers-chemin a { text-decoration: none; }
+.fichiers-chemin a:hover { text-decoration: underline; }
+.fichier--dossier { background: var(--accent-doux); border-color: transparent; transition: border-color .15s, transform .15s; }
+.fichier--dossier:hover { border-color: var(--accent); transform: translateY(-1px); }
+.fichier--dossier .fichier__nom { color: var(--accent-fonce, var(--accent)); }
+.fichier--panneau { flex-wrap: wrap; }
+
+/* Le menu « ⋮ » d'un dossier de fichiers : à droite de sa ligne, toujours un peu visible (comme sur une discussion, il s'affiche en plein au survol). */
+.fichier--dossier .ami-menu { margin: 0 0 0 auto; }
+.fichier--dossier .ami-menu__bouton, .bloc-liste__entete .ami-menu__bouton { opacity: .75; }
+.fichier--dossier:hover .ami-menu__bouton, .fichier--dossier:focus-within .ami-menu__bouton, .bloc-liste__entete:hover .ami-menu__bouton, .bloc-liste__entete .ami-menu[open] .ami-menu__bouton { opacity: 1; }
+
+/* Le menu « ⋮ » du dossier où l'on est : juste après son nom dans le chemin, la liste s'ouvre vers la droite. */
+.fichiers-chemin .ami-menu { margin: 0 0 0 -.2rem; }
+.fichiers-chemin .ami-menu__bouton { opacity: .75; }
+.fichiers-chemin .ami-menu:hover .ami-menu__bouton, .fichiers-chemin .ami-menu[open] .ami-menu__bouton { opacity: 1; }
+.fichiers-chemin .ami-menu__liste { right: auto; left: 0; }
+
+/* Le menu « ⋮ » d'un fichier du groupe : à droite de sa ligne, comme sur un dossier. */
+.liste-fichiers .fichier:not(.fichier--dossier) > .ami-menu { margin: 0 0 0 auto; }
+.liste-fichiers .fichier .ami-menu__bouton { opacity: .75; }
+.liste-fichiers .fichier:hover .ami-menu__bouton, .liste-fichiers .fichier:focus-within .ami-menu__bouton, .liste-fichiers .fichier .ami-menu[open] .ami-menu__bouton { opacity: 1; }
+

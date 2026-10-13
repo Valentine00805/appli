@@ -1342,10 +1342,26 @@ CREATE TABLE IF NOT EXISTS `projet_livrables` (
   CONSTRAINT `fk_projet_livrables_cree_par` FOREIGN KEY (`cree_par`) REFERENCES `users`(`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Les dossiers de l'onglet « Fichiers » (voir migration-projet-dossiers.sql).
+CREATE TABLE IF NOT EXISTS `projet_dossiers` (
+  `id`         INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `projet_id`  INT UNSIGNED NOT NULL,
+  `parent_id`  INT UNSIGNED NULL,
+  `nom`        VARCHAR(80) NOT NULL,
+  `cree_par`   INT UNSIGNED NULL,
+  `created_at` DATETIME NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_projet_dossiers_projet` (`projet_id`, `parent_id`),
+  CONSTRAINT `fk_projet_dossiers_projet` FOREIGN KEY (`projet_id`) REFERENCES `projets`(`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_projet_dossiers_parent` FOREIGN KEY (`parent_id`) REFERENCES `projet_dossiers`(`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_projet_dossiers_cree_par` FOREIGN KEY (`cree_par`) REFERENCES `users`(`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS `projet_fichiers` (
   `id`          INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `projet_id`   INT UNSIGNED NOT NULL,
   `livrable_id` INT UNSIGNED NULL,
+  `dossier_id`  INT UNSIGNED NULL,
   `user_id`     INT UNSIGNED NULL,
   `nom_origine` VARCHAR(255) NOT NULL,
   `nom_stocke`  VARCHAR(100) NOT NULL,
@@ -1355,6 +1371,8 @@ CREATE TABLE IF NOT EXISTS `projet_fichiers` (
   PRIMARY KEY (`id`),
   KEY `idx_projet_fichiers_projet` (`projet_id`),
   KEY `idx_projet_fichiers_livrable` (`livrable_id`),
+  KEY `idx_projet_fichiers_dossier` (`dossier_id`),
+  CONSTRAINT `fk_projet_fichiers_dossier` FOREIGN KEY (`dossier_id`) REFERENCES `projet_dossiers`(`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_projet_fichiers_livrable` FOREIGN KEY (`livrable_id`) REFERENCES `projet_livrables`(`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_projet_fichiers_projet` FOREIGN KEY (`projet_id`) REFERENCES `projets`(`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_projet_fichiers_user` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE SET NULL
