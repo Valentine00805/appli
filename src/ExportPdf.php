@@ -95,14 +95,14 @@ final class ExportPdf
      * sommaire prend lui-même de la place : on met donc en pages deux fois, la
      * première avec un sommaire aux numéros provisoires, de même hauteur.
      *
-     * @param array{titre: string, contenu: ?string, matiere_nom?: ?string} $cours
+     * @param array{titre: string, contenu: ?string, matiere_nom?: ?string, infos?: list<string>} $cours  « infos » : des lignes grises sous le titre
      */
     public static function depuisCours(array $cours): string
     {
         [$blocs, $profondeur] = self::blocsDuTexteRiche($cours['contenu'] ?? null);
 
         return self::publier(
-            ['titre' => (string) $cours['titre'], 'sous_titre' => trim((string) ($cours['matiere_nom'] ?? ''))],
+            ['titre' => (string) $cours['titre'], 'sous_titre' => trim((string) ($cours['matiere_nom'] ?? '')), 'infos' => $cours['infos'] ?? []],
             $blocs, $profondeur, t('pdf.cours_vide'), (string) $cours['titre']
         );
     }
@@ -277,6 +277,10 @@ final class ExportPdf
                      'titre' => 1, 'taille_titre' => 22.0]);
         if ($entete['sous_titre'] !== '') {
             $this->bloc(['html' => '<span data-couleur="6b7280">' . htmlspecialchars($entete['sous_titre'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</span>']);
+        }
+        // Des lignes d'information de plus, si l'on en a demandé (le groupe, la date…).
+        foreach ((array) ($entete['infos'] ?? []) as $info) {
+            $this->bloc(['html' => '<span data-couleur="6b7280">' . htmlspecialchars((string) $info, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</span>']);
         }
         $this->y -= 6;
 

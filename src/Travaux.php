@@ -497,11 +497,25 @@ final class Travaux
 
     public static function changerStatut(int $moi, int $tacheId, string $statut): bool
     {
-        if (!isset(self::STATUTS[$statut]) || self::tache($moi, $tacheId) === null) {
+        $tache = self::tache($moi, $tacheId);
+        if ($tache === null) {
+            return false;
+        }
+        // Une phase (« col:12 ») : la tâche est « en cours », rangée dans cette colonne-là.
+        if (preg_match('/^col:(\d+)$/', $statut, $m) === 1) {
+            if (!self::colonnesDisponibles()
+                || Database::valeur('SELECT id FROM projet_colonnes WHERE id = ? AND projet_id = ?', [(int) $m[1], (int) $tache['projet_id']]) === null) {
+                return false;
+            }
+            Database::run('UPDATE projet_taches SET statut = \'en_cours\', colonne_id = ?, fait_le = NULL WHERE id = ?', [(int) $m[1], $tacheId]);
+
+            return true;
+        }
+        if (!isset(self::STATUTS[$statut])) {
             return false;
         }
         Database::run(
-            'UPDATE projet_taches SET statut = ?, fait_le = IF(statut = \'fait\', COALESCE(fait_le, ?), NULL) WHERE id = ?',
+            'UPDATE projet_taches SET statut = ?, ' . (self::colonnesDisponibles() ? 'colonne_id = NULL, ' : '') . 'fait_le = IF(statut = \'fait\', COALESCE(fait_le, ?), NULL) WHERE id = ?',
             [$statut, date('Y-m-d H:i:s'), $tacheId]);
 
         return true;
@@ -885,7 +899,361 @@ final class Travaux
         return Database::all(
             'SELECT f.*, COALESCE(u.pseudo, u.nom) AS depose_par
                FROM projet_fichiers f LEFT JOIN users u ON u.id = f.user_id
-              WHERE f.projet_id = ? ORDER BY f.created_at DESC, f.id DESC', [$projet]);
+              WHERE f.projet_id = ?' . (self::livrablesDisponibles() ? ' AND f.livrable_id IS NULL' : '') . ' ORDER BY f.created_at DESC, f.id DESC', [$projet]);
+    }
+
+    // --- Les livrables : les documents finaux que le groupe doit rendre ---------------------------
+
+    public const LIVRABLES_MAX = 30;
+    public const LIVRABLE_TITRE_MAX = 120;
+    public const LIVRABLE_NOTE_MAX = 500;
+    public const LIVRABLE_FICHIERS_MAX = 20;
+
+    /** Les livrables existent-ils ? (Sinon — migration pas encore importée — l'onglet n'apparaît pas.) */
+    public static function livrablesDisponibles(): bool
+    {
+        static $ok = null;
+        if ($ok === null) {
+            try {
+                Database::valeur('SELECT livrable_id FROM projet_fichiers LIMIT 1');
+                Database::valeur('SELECT 1 FROM projet_livrables LIMIT 1');
+                $ok = true;
+            } catch (Throwable) {
+                $ok = false;
+            }
+        }
+
+        return $ok;
+    }
+
+    /**
+     * Les livrables du projet, avec leurs documents : ceux qui restent à rendre d'abord (le plus pressé en tête), puis ceux déjà rendus.
+     *
+     * @return list<array<string, mixed>>  chacun avec « fichiers » et « etat » (a_rendre | pret | rendu)
+     */
+    public static function livrables(int $projet): array
+    {
+        if (!self::livrablesDisponibles()) {
+            return [];
+        }
+        $livrables = Database::all(
+            'SELECT l.*, COALESCE(u.pseudo, u.nom) AS rendu_par_nom
+               FROM projet_livrables l LEFT JOIN users u ON u.id = l.rendu_par
+              WHERE l.projet_id = ?
+              ORDER BY l.rendu_le IS NOT NULL, l.echeance IS NULL, l.echeance, l.position, l.id',
+            [$projet]);
+        $fichiers = [];
+        foreach (Database::all(
+            'SELECT f.*, COALESCE(u.pseudo, u.nom) AS depose_par
+               FROM projet_fichiers f LEFT JOIN users u ON u.id = f.user_id
+              WHERE f.projet_id = ? AND f.livrable_id IS NOT NULL ORDER BY f.created_at, f.id',
+            [$projet]
+        ) as $f) {
+            $fichiers[(int) $f['livrable_id']][] = $f;
+        }
+        foreach ($livrables as &$l) {
+            $l['fichiers'] = $fichiers[(int) $l['id']] ?? [];
+            $l['etat'] = $l['rendu_le'] !== null ? 'rendu' : ($l['fichiers'] !== [] ? 'pret' : 'a_rendre');
+        }
+
+        return $livrables;
+    }
+
+    /** Un livrable, si je suis membre (avec un compte) de son projet. */
+    public static function livrable(int $moi, int $livrableId): ?array
+    {
+        if (!self::livrablesDisponibles()) {
+            return null;
+        }
+
+        return Database::one(
+            "SELECT l.* FROM projet_livrables l
+               JOIN projet_membres pm ON pm.projet_id = l.projet_id AND pm.user_id = ? AND pm.statut = 'membre'
+              WHERE l.id = ?",
+            [$moi, $livrableId]);
+    }
+
+    public static function creerLivrable(int $moi, int $projet, string $titre, string $echeance, string $note): ?string
+    {
+        if (!self::livrablesDisponibles() || self::projet($projet, $moi) === null) {
+            return t('tr.lv.introuvable');
+        }
+        $titre = self::nettoyer($titre, self::LIVRABLE_TITRE_MAX);
+        if ($titre === '') {
+            return t('tr.lv.titre_obligatoire');
+        }
+        if ((int) Database::valeur('SELECT COUNT(*) FROM projet_livrables WHERE projet_id = ?', [$projet]) >= self::LIVRABLES_MAX) {
+            return t('tr.lv.trop', ['max' => self::LIVRABLES_MAX]);
+        }
+        $position = (int) Database::valeur('SELECT COALESCE(MAX(position), 0) + 1 FROM projet_livrables WHERE projet_id = ?', [$projet]);
+        Database::run(
+            'INSERT INTO projet_livrables (projet_id, titre, note, echeance, cree_par, position, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [$projet, $titre, self::noteDeLivrable($note), self::dateValide($echeance), $moi, $position, date('Y-m-d H:i:s')]);
+
+        return null;
+    }
+
+    private static function noteDeLivrable(string $note): ?string
+    {
+        $note = trim($note);
+
+        return $note === '' ? null : mb_substr($note, 0, self::LIVRABLE_NOTE_MAX);
+    }
+
+    public static function modifierLivrable(int $moi, int $livrableId, string $titre, string $echeance, string $note): ?string
+    {
+        if (self::livrable($moi, $livrableId) === null) {
+            return t('tr.lv.introuvable');
+        }
+        $titre = self::nettoyer($titre, self::LIVRABLE_TITRE_MAX);
+        if ($titre === '') {
+            return t('tr.lv.titre_obligatoire');
+        }
+        Database::run('UPDATE projet_livrables SET titre = ?, echeance = ?, note = ? WHERE id = ?',
+            [$titre, self::dateValide($echeance), self::noteDeLivrable($note), $livrableId]);
+
+        return null;
+    }
+
+    /** Marque le livrable comme rendu (par moi, maintenant), ou le remet « à rendre ». */
+    public static function rendreLivrable(int $moi, int $livrableId, bool $rendu): bool
+    {
+        if (self::livrable($moi, $livrableId) === null) {
+            return false;
+        }
+        Database::run('UPDATE projet_livrables SET rendu_le = ?, rendu_par = ? WHERE id = ?',
+            [$rendu ? date('Y-m-d H:i:s') : null, $rendu ? $moi : null, $livrableId]);
+
+        return true;
+    }
+
+    /** Supprime le livrable et ses documents : l'administrateur du groupe seulement. Rend le projet, ou null. */
+    public static function supprimerLivrable(int $moi, int $livrableId): ?int
+    {
+        $l = self::livrable($moi, $livrableId);
+        if ($l === null || !self::estAdmin((int) $l['projet_id'], $moi)) {
+            return null;
+        }
+        foreach (Database::all('SELECT nom_stocke FROM projet_fichiers WHERE livrable_id = ?', [$livrableId]) as $f) {
+            $chemin = self::dossier() . DIRECTORY_SEPARATOR . basename((string) $f['nom_stocke']);
+            if (is_file($chemin)) {
+                @unlink($chemin);
+            }
+        }
+        Database::run('DELETE FROM projet_fichiers WHERE livrable_id = ?', [$livrableId]);
+        Database::run('DELETE FROM projet_livrables WHERE id = ?', [$livrableId]);
+
+        return (int) $l['projet_id'];
+    }
+
+    /**
+     * Dépose des documents dans un livrable.
+     *
+     * @return array{0: int, 1: list<string>} combien ont été reçus, et les erreurs rencontrées
+     */
+    public static function deposerDansLivrable(array $fichiers, int $moi, int $livrableId): array
+    {
+        $l = self::livrable($moi, $livrableId);
+        if ($l === null) {
+            return [0, [t('tr.lv.introuvable')]];
+        }
+        $projet = (int) $l['projet_id'];
+        $deja = (int) Database::valeur('SELECT COUNT(*) FROM projet_fichiers WHERE livrable_id = ?', [$livrableId]);
+        $annonces = count(array_filter((array) ($fichiers['name'] ?? []), static fn (mixed $n): bool => (string) $n !== ''));
+        if ($deja + $annonces > self::LIVRABLE_FICHIERS_MAX) {
+            return [0, [t('tr.lv.trop_de_fichiers', ['max' => self::LIVRABLE_FICHIERS_MAX])]];
+        }
+        $recus = 0;
+        $erreurs = Fichiers::recevoir($fichiers, self::dossier(),
+            static function (string $nomOrigine, string $nomStocke, string $mime, int $taille) use ($moi, $projet, $livrableId, &$recus): void {
+                Database::run(
+                    'INSERT INTO projet_fichiers (projet_id, livrable_id, user_id, nom_origine, nom_stocke, mime, taille) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                    [$projet, $livrableId, $moi, mb_substr($nomOrigine, 0, 255), $nomStocke, $mime, $taille]);
+                $recus++;
+            });
+
+        return [$recus, $erreurs];
+    }
+
+    // --- L'en-tête du PDF du document commun : ce qu'on y met ----------------------------------------
+
+    public const ENTETE_TITRE_MAX = 120;
+    public const ENTETE_AUTRE_LIGNES = 3;
+    public const ENTETE_AUTRE_LIGNE_MAX = 150;
+
+    /** Le choix de l'en-tête peut-il être gardé ? (Sinon — migration pas encore importée — le PDF garde l'en-tête de départ.) */
+    public static function entetePdfDisponible(): bool
+    {
+        static $ok = null;
+        if ($ok === null) {
+            try {
+                Database::valeur('SELECT pdf_entete FROM projets LIMIT 1');
+                $ok = true;
+            } catch (Throwable) {
+                $ok = false;
+            }
+        }
+
+        return $ok;
+    }
+
+    /**
+     * Ce que le groupe a choisi de mettre en tête du PDF — avec ce qu'on met par défaut : le nom du projet, « Document commun », rien d'autre.
+     * « titre » vide : le nom du projet. « sous_titre » vide, une fois choisi : pas de sous-titre.
+     *
+     * @return array{titre: string, sous_titre: string, membres: bool, date: bool, autre: string}
+     */
+    public static function entetePdf(array $projet): array
+    {
+        $garde = [];
+        if (self::entetePdfDisponible() && (string) ($projet['pdf_entete'] ?? '') !== '') {
+            $lu = json_decode((string) $projet['pdf_entete'], true);
+            $garde = is_array($lu) ? $lu : [];
+        }
+
+        return [
+            'titre'      => (string) ($garde['titre'] ?? ''),
+            'sous_titre' => array_key_exists('sous_titre', $garde) ? (string) $garde['sous_titre'] : t('tr.do.label'),
+            'membres'    => !empty($garde['membres']),
+            'date'       => !empty($garde['date']),
+            'autre'      => (string) ($garde['autre'] ?? ''),
+        ];
+    }
+
+    /** Garde le choix d'en-tête du projet (tout membre le règle). Rend la raison du refus. */
+    public static function enregistrerEntetePdf(int $moi, int $projetId, array $donnees): ?string
+    {
+        if (!self::entetePdfDisponible() || self::projet($projetId, $moi) === null) {
+            return t('tr.do.entete_indisponible');
+        }
+        $lignes = array_slice(array_values(array_filter(array_map(
+            static fn (string $l): string => self::nettoyer($l, self::ENTETE_AUTRE_LIGNE_MAX),
+            preg_split('/\R/u', (string) ($donnees['autre'] ?? '')) ?: []
+        ), static fn (string $l): bool => $l !== '')), 0, self::ENTETE_AUTRE_LIGNES);
+        $entete = [
+            'titre'      => self::nettoyer((string) ($donnees['titre'] ?? ''), self::ENTETE_TITRE_MAX),
+            'sous_titre' => self::nettoyer((string) ($donnees['sous_titre'] ?? ''), self::ENTETE_TITRE_MAX),
+            'membres'    => !empty($donnees['membres']) ? 1 : 0,
+            'date'       => !empty($donnees['date']) ? 1 : 0,
+            'autre'      => implode("\n", $lignes),
+        ];
+        Database::run('UPDATE projets SET pdf_entete = ? WHERE id = ?', [json_encode($entete, JSON_UNESCAPED_UNICODE), $projetId]);
+
+        return null;
+    }
+
+    /** Les lignes d'information sous le titre du PDF, selon le choix du groupe : les membres, la date de la version, le texte libre. */
+    private static function ligneDInfosPdf(array $projet, array $entete): array
+    {
+        $infos = [];
+        if ($entete['membres']) {
+            $noms = array_map(static fn (array $m): string => (string) $m['nom_affiche'], self::membresActifs((int) $projet['id']));
+            if ($noms !== []) {
+                $infos[] = t('tr.do.pdf_membres', ['noms' => implode(', ', $noms)]);
+            }
+        }
+        if ($entete['date']) {
+            $infos[] = t('tr.do.pdf_date', ['date' => date_fr((string) ($projet['document_le'] ?? date('Y-m-d')), false)]);
+        }
+        foreach (preg_split('/\R/u', $entete['autre']) ?: [] as $ligne) {
+            if (trim($ligne) !== '') {
+                $infos[] = trim($ligne);
+            }
+        }
+
+        return $infos;
+    }
+
+    // --- Le document commun, en PDF — et dans les livrables ---------------------------------------
+
+    /** Le document commun enregistré, en PDF : son texte mis en pages comme celui d'un cours, sous le nom du projet. */
+    public static function documentEnPdf(array $projet): string
+    {
+        $entete = self::entetePdf($projet);
+
+        return ExportPdf::depuisCours([
+            'titre' => $entete['titre'] !== '' ? $entete['titre'] : (string) $projet['nom'],
+            'contenu' => $projet['document'] ?? null,
+            'matiere_nom' => $entete['sous_titre'],
+            'infos' => self::ligneDInfosPdf($projet, $entete),
+        ]);
+    }
+
+    /** Le nom du fichier PDF : « Document commun - Rapport de labo.pdf ». */
+    public static function nomPdfDocument(array $projet): string
+    {
+        $nom = trim((string) preg_replace('/[\\\\\/:*?"<>|]+/', ' ', t('tr.do.nom_pdf', ['nom' => (string) $projet['nom']])));
+
+        return mb_substr($nom, 0, 240) . '.pdf';
+    }
+
+    /**
+     * Met le document commun, en PDF, dans un livrable : « nouveau » (le livrable « Document commun », créé s'il n'existe pas) ou l'identifiant d'un
+     * livrable du projet. Un PDF du même nom déjà dans ce livrable est remplacé : le livrable garde le document tel qu'il est à présent.
+     *
+     * @return array{0: ?array{id: int, titre: string}, 1: ?string} le livrable, ou la raison du refus
+     */
+    public static function documentVersLivrable(int $moi, int $projetId, string $choix): array
+    {
+        $projet = self::projet($projetId, $moi);
+        if ($projet === null || !self::livrablesDisponibles()) {
+            return [null, t('tr.lv.introuvable')];
+        }
+        if (trim((string) ($projet['document'] ?? '')) === '') {
+            return [null, t('tr.do.vide')];
+        }
+
+        if ($choix === 'nouveau') {
+            $titre = t('tr.do.livrable_titre');
+            $l = Database::one('SELECT id, titre FROM projet_livrables WHERE projet_id = ? AND titre = ? ORDER BY id LIMIT 1', [$projetId, $titre]);
+            if ($l === null) {
+                $refus = self::creerLivrable($moi, $projetId, $titre, '', '');
+                if ($refus !== null) {
+                    return [null, $refus];
+                }
+                $l = Database::one('SELECT id, titre FROM projet_livrables WHERE projet_id = ? AND titre = ? ORDER BY id DESC LIMIT 1', [$projetId, $titre]);
+            }
+        } elseif (ctype_digit($choix)) {
+            $l = self::livrable($moi, (int) $choix);
+            if ($l === null || (int) $l['projet_id'] !== $projetId) {
+                return [null, t('tr.lv.introuvable')];
+            }
+        } else {
+            return [null, t('tr.lv.introuvable')];
+        }
+        $livrableId = (int) $l['id'];
+
+        $nom = self::nomPdfDocument($projet);
+        $anciens = Database::all('SELECT id, nom_stocke FROM projet_fichiers WHERE livrable_id = ? AND nom_origine = ?', [$livrableId, $nom]);
+        $deja = (int) Database::valeur('SELECT COUNT(*) FROM projet_fichiers WHERE livrable_id = ?', [$livrableId]);
+        if ($deja - count($anciens) >= self::LIVRABLE_FICHIERS_MAX) {
+            return [null, t('tr.lv.trop_de_fichiers', ['max' => self::LIVRABLE_FICHIERS_MAX])];
+        }
+        try {
+            $pdf = self::documentEnPdf($projet);
+        } catch (Throwable) {
+            return [null, t('tr.do.pdf_echec')];
+        }
+        $dossier = self::dossier();
+        if (!is_dir($dossier) && !mkdir($dossier, 0775, true) && !is_dir($dossier)) {
+            return [null, t('tr.do.pdf_echec')];
+        }
+        $nomStocke = bin2hex(random_bytes(16)) . '.pdf';
+        if (file_put_contents($dossier . DIRECTORY_SEPARATOR . $nomStocke, $pdf) === false) {
+            return [null, t('tr.do.pdf_echec')];
+        }
+        Database::run(
+            'INSERT INTO projet_fichiers (projet_id, livrable_id, user_id, nom_origine, nom_stocke, mime, taille) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [$projetId, $livrableId, $moi, $nom, $nomStocke, 'application/pdf', strlen($pdf)]);
+        foreach ($anciens as $ancien) {
+            $chemin = $dossier . DIRECTORY_SEPARATOR . basename((string) $ancien['nom_stocke']);
+            if (is_file($chemin)) {
+                @unlink($chemin);
+            }
+            Database::run('DELETE FROM projet_fichiers WHERE id = ?', [(int) $ancien['id']]);
+        }
+
+        return [['id' => $livrableId, 'titre' => (string) $l['titre']], null];
     }
 
     // --- Les cours et dossiers liés ----------------------------------------------------------------------------------------
@@ -1164,6 +1532,234 @@ final class Travaux
         return $projet;
     }
 
+    // --- Les colonnes du tableau : celles de base, et les phases que l'administrateur ajoute ---------
+
+    public const COLONNES_MAX = 8;
+    public const COLONNE_NOM_MAX = 40;
+    public const COLONNE_ICONE_DEFAUT = '🔹';
+
+    /** Les colonnes en plus existent-elles ? (Sinon — migration pas encore importée — le tableau garde ses trois colonnes.) */
+    public static function colonnesDisponibles(): bool
+    {
+        static $ok = null;
+        if ($ok === null) {
+            try {
+                Database::valeur('SELECT colonne_id FROM projet_taches LIMIT 1');
+                Database::valeur('SELECT icone, zone FROM projet_colonnes LIMIT 1');
+                $ok = true;
+            } catch (Throwable) {
+                $ok = false;
+            }
+        }
+
+        return $ok;
+    }
+
+    /** Les icônes proposées pour une phase. */
+    public static function iconesColonnes(): array
+    {
+        return ['🔹', '💡', '🔍', '📋', '📝', '✏️', '🧠', '🛠️', '🧪', '🔬', '📊', '📚', '🎨', '💻', '🗣️', '🎤', '📦', '👀', '🔒', '⏳', '⭐', '📌', '🚀', '🏁'];
+    }
+
+    /**
+     * Les phases du projet, de gauche à droite : celles rangées après « À faire » d'abord, puis celles d'après « En cours ».
+     *
+     * @return list<array{id: int, nom: string, icone: string, zone: string, position: int, nb_taches: int}>
+     */
+    public static function colonnes(int $projet): array
+    {
+        if (!self::colonnesDisponibles()) {
+            return [];
+        }
+
+        return array_map(static fn (array $c): array => [
+            'id' => (int) $c['id'], 'nom' => (string) $c['nom'], 'icone' => (string) $c['icone'], 'zone' => (string) $c['zone'],
+            'position' => (int) $c['position'], 'nb_taches' => (int) $c['nb_taches'],
+        ], Database::all(
+            "SELECT c.id, c.nom, c.icone, c.zone, c.position, (SELECT COUNT(*) FROM projet_taches t WHERE t.colonne_id = c.id) AS nb_taches
+               FROM projet_colonnes c WHERE c.projet_id = ? ORDER BY c.zone = 'en_cours', c.position, c.id",
+            [$projet]
+        ));
+    }
+
+    /**
+     * Toutes les colonnes du tableau, de gauche à droite : « À faire », les phases rangées après lui, « En cours », les phases rangées après lui,
+     * « Fait ». La clé est ce que le menu de statut d'une carte envoie : « a_faire », « en_cours », « fait », ou « col:12 » pour une phase.
+     *
+     * @return list<array{cle: string, nom: string, icone: string, phase: bool, id: ?int, nb_taches: ?int}>
+     */
+    public static function colonnesDuTableau(int $projet): array
+    {
+        $statuts = self::statuts();
+        $base = static fn (string $cle): array => ['cle' => $cle, 'nom' => $statuts[$cle]['nom'], 'icone' => $statuts[$cle]['icone'], 'phase' => false, 'id' => null, 'nb_taches' => null];
+        $phase = static fn (array $c): array => ['cle' => 'col:' . $c['id'], 'nom' => $c['nom'], 'icone' => $c['icone'], 'phase' => true, 'id' => $c['id'], 'nb_taches' => $c['nb_taches']];
+        $phases = self::colonnes($projet);
+
+        $colonnes = [$base('a_faire')];
+        foreach ($phases as $c) {
+            if ($c['zone'] === 'a_faire') {
+                $colonnes[] = $phase($c);
+            }
+        }
+        $colonnes[] = $base('en_cours');
+        foreach ($phases as $c) {
+            if ($c['zone'] !== 'a_faire') {
+                $colonnes[] = $phase($c);
+            }
+        }
+        $colonnes[] = $base('fait');
+
+        return $colonnes;
+    }
+
+    /** La colonne où se range une tâche : sa phase s'il en a une, sinon son statut. */
+    public static function cleDeColonne(array $tache): string
+    {
+        return ($tache['colonne_id'] ?? null) !== null ? 'col:' . (int) $tache['colonne_id'] : (string) $tache['statut'];
+    }
+
+    /** Une phase, si j'administre son projet. */
+    public static function colonne(int $moi, int $colonneId): ?array
+    {
+        if (!self::colonnesDisponibles()) {
+            return null;
+        }
+        $c = Database::one('SELECT * FROM projet_colonnes WHERE id = ?', [$colonneId]);
+
+        return $c !== null && self::estAdmin((int) $c['projet_id'], $moi) ? $c : null;
+    }
+
+    /** Une icône parmi celles proposées ; sinon l'icône de départ. */
+    private static function iconeValide(mixed $icone): string
+    {
+        return is_string($icone) && in_array($icone, self::iconesColonnes(), true) ? $icone : self::COLONNE_ICONE_DEFAUT;
+    }
+
+    private static function nomDeColonneValide(int $projet, string $nom, int $sauf = 0): ?string
+    {
+        $nom = self::nettoyer($nom, self::COLONNE_NOM_MAX);
+        if ($nom === '') {
+            return t('tr.cl.nom_obligatoire');
+        }
+        foreach (self::colonnesDuTableau($projet) as $c) {
+            if ($c['cle'] !== 'col:' . $sauf && mb_strtolower($c['nom']) === mb_strtolower($nom)) {
+                return t('tr.cl.nom_pris');
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * La suite des colonnes avant « Fait », de gauche à droite, en clés (« a_faire », « col:3 », « en_cours »…) : « À faire » est toujours la
+     * première, « Fait » la dernière et n'y figure pas.
+     *
+     * @return list<string>
+     */
+    private static function suiteDesColonnes(int $projet): array
+    {
+        return array_values(array_filter(
+            array_column(self::colonnesDuTableau($projet), 'cle'),
+            static fn (string $cle): bool => $cle !== 'fait'
+        ));
+    }
+
+    /** Écrit cette suite : chaque phase prend la zone (après « À faire » ou après « En cours ») et le rang que la suite lui donne. */
+    private static function ecrireLaSuite(int $projet, array $cles): void
+    {
+        $zone = 'a_faire';
+        $rang = 0;
+        foreach ($cles as $cle) {
+            if ($cle === 'en_cours') {
+                $zone = 'en_cours';
+            } elseif (preg_match('/^col:(\d+)$/', (string) $cle, $m) === 1) {
+                Database::run('UPDATE projet_colonnes SET zone = ?, position = ? WHERE id = ? AND projet_id = ?', [$zone, ++$rang, (int) $m[1], $projet]);
+            }
+        }
+    }
+
+    /**
+     * Ajoute une phase (l'administrateur du groupe seulement), rangée après la colonne « $apres » : « a_faire », « en_cours » ou une autre phase
+     * (« col:3 ») ; sans rien de valable, tout à droite, avant « Fait ». Rend la raison du refus.
+     */
+    public static function creerColonne(int $moi, int $projet, string $nom, mixed $icone = null, string $apres = ''): ?string
+    {
+        if (!self::colonnesDisponibles() || !self::estAdmin($projet, $moi)) {
+            return t('tr.cl.introuvable');
+        }
+        if (count(self::colonnes($projet)) >= self::COLONNES_MAX) {
+            return t('tr.cl.trop', ['max' => self::COLONNES_MAX]);
+        }
+        $refus = self::nomDeColonneValide($projet, $nom);
+        if ($refus !== null) {
+            return $refus;
+        }
+        Database::run(
+            'INSERT INTO projet_colonnes (projet_id, nom, icone, zone, position, created_at) VALUES (?, ?, ?, ?, 0, ?)',
+            [$projet, self::nettoyer($nom, self::COLONNE_NOM_MAX), self::iconeValide($icone), 'en_cours', date('Y-m-d H:i:s')]);
+        $cle = 'col:' . Database::dernierId();
+
+        $suite = self::suiteDesColonnes($projet);
+        $suite = array_values(array_filter($suite, static fn (string $c): bool => $c !== $cle));
+        $rang = array_search($apres, $suite, true);
+        array_splice($suite, $rang === false ? count($suite) : $rang + 1, 0, [$cle]);
+        self::ecrireLaSuite($projet, $suite);
+
+        return null;
+    }
+
+    /** Change le nom et l'icône d'une phase. */
+    public static function modifierColonne(int $moi, int $colonneId, string $nom, mixed $icone = null): ?string
+    {
+        $c = self::colonne($moi, $colonneId);
+        if ($c === null) {
+            return t('tr.cl.introuvable');
+        }
+        $refus = self::nomDeColonneValide((int) $c['projet_id'], $nom, $colonneId);
+        if ($refus !== null) {
+            return $refus;
+        }
+        Database::run('UPDATE projet_colonnes SET nom = ?, icone = ? WHERE id = ?',
+            [self::nettoyer($nom, self::COLONNE_NOM_MAX), is_string($icone) && in_array($icone, self::iconesColonnes(), true) ? $icone : (string) $c['icone'], $colonneId]);
+
+        return null;
+    }
+
+    /** Supprime la phase : ses tâches restent « en cours », dans la colonne de base. Rend le projet, ou null. */
+    public static function supprimerColonne(int $moi, int $colonneId): ?int
+    {
+        $c = self::colonne($moi, $colonneId);
+        if ($c === null) {
+            return null;
+        }
+        Database::run('UPDATE projet_taches SET colonne_id = NULL WHERE colonne_id = ?', [$colonneId]);
+        Database::run('DELETE FROM projet_colonnes WHERE id = ?', [$colonneId]);
+
+        return (int) $c['projet_id'];
+    }
+
+    /**
+     * Décale la phase d'un cran, vers la gauche ou la droite — par-dessus « En cours » aussi, mais jamais avant « À faire » ni après « Fait ».
+     * Rend le projet, ou null.
+     */
+    public static function deplacerColonne(int $moi, int $colonneId, bool $versLaGauche): ?int
+    {
+        $c = self::colonne($moi, $colonneId);
+        if ($c === null) {
+            return null;
+        }
+        $projet = (int) $c['projet_id'];
+        $suite = self::suiteDesColonnes($projet);
+        $rang = (int) array_search('col:' . $colonneId, $suite, true);
+        $cible = $versLaGauche ? $rang - 1 : $rang + 1;
+        if ($cible >= 1 && $cible < count($suite)) {
+            [$suite[$rang], $suite[$cible]] = [$suite[$cible], $suite[$rang]];
+            self::ecrireLaSuite($projet, $suite);
+        }
+
+        return $projet;
+    }
+
     // --- Les listes à points à cocher : dans les tâches, et à part ------------------
 
     public const POINTS_MAX = 100;
@@ -1277,7 +1873,7 @@ final class Travaux
         $voulu = $faits === $total ? 'fait' : ($faits > 0 ? 'en_cours' : ($statut === 'fait' ? 'a_faire' : $statut));
         if ($voulu !== $statut) {
             Database::run(
-                'UPDATE projet_taches SET statut = ?, fait_le = IF(statut = \'fait\', COALESCE(fait_le, ?), NULL) WHERE id = ?',
+                'UPDATE projet_taches SET statut = ?, ' . (self::colonnesDisponibles() ? 'colonne_id = NULL, ' : '') . 'fait_le = IF(statut = \'fait\', COALESCE(fait_le, ?), NULL) WHERE id = ?',
                 [$voulu, date('Y-m-d H:i:s'), $tacheId]);
         }
     }

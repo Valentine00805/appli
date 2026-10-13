@@ -1252,6 +1252,8 @@ CREATE TABLE IF NOT EXISTS `projets` (
   `document_version` INT UNSIGNED NOT NULL DEFAULT 0,
   `document_par`    INT UNSIGNED NULL,
   `document_le`     DATETIME NULL,
+  -- Le choix d'en-tête du PDF du document commun (JSON ; voir migration-projet-pdf-entete.sql).
+  `pdf_entete`      TEXT NULL,
   `jeton`           CHAR(32) NULL,
   `created_at`      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
@@ -1282,6 +1284,20 @@ CREATE TABLE IF NOT EXISTS `projet_membres` (
   CONSTRAINT `fk_projet_membres_par` FOREIGN KEY (`invite_par`) REFERENCES `users`(`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Les phases d'un projet : des colonnes de plus dans son tableau, entre « En cours » et « Fait » (voir migration-projet-colonnes.sql).
+CREATE TABLE IF NOT EXISTS `projet_colonnes` (
+  `id`         INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `projet_id`  INT UNSIGNED NOT NULL,
+  `nom`        VARCHAR(40) NOT NULL,
+  `icone`      VARCHAR(16) NOT NULL DEFAULT '🔹',
+  `zone`       ENUM('a_faire','en_cours') NOT NULL DEFAULT 'en_cours',
+  `position`   INT UNSIGNED NOT NULL DEFAULT 0,
+  `created_at` DATETIME NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_projet_colonnes_projet` (`projet_id`, `zone`, `position`),
+  CONSTRAINT `fk_projet_colonnes_projet` FOREIGN KEY (`projet_id`) REFERENCES `projets`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS `projet_taches` (
   `id`         INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `projet_id`  INT UNSIGNED NOT NULL,
@@ -1290,6 +1306,7 @@ CREATE TABLE IF NOT EXISTS `projet_taches` (
   `membre_id`  INT UNSIGNED NULL,
   `echeance`   DATE NULL,
   `statut`     ENUM('a_faire','en_cours','fait') NOT NULL DEFAULT 'a_faire',
+  `colonne_id` INT UNSIGNED NULL,
   `position`   INT UNSIGNED NOT NULL DEFAULT 0,
   `cree_par`   INT UNSIGNED NULL,
   `fait_le`    DATETIME NULL,
@@ -1297,14 +1314,36 @@ CREATE TABLE IF NOT EXISTS `projet_taches` (
   PRIMARY KEY (`id`),
   KEY `idx_projet_taches_projet` (`projet_id`, `statut`, `position`),
   KEY `idx_projet_taches_membre` (`membre_id`),
+  KEY `idx_projet_taches_colonne` (`colonne_id`),
+  CONSTRAINT `fk_projet_taches_colonne` FOREIGN KEY (`colonne_id`) REFERENCES `projet_colonnes`(`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_projet_taches_projet` FOREIGN KEY (`projet_id`) REFERENCES `projets`(`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_projet_taches_membre` FOREIGN KEY (`membre_id`) REFERENCES `projet_membres`(`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_projet_taches_cree_par` FOREIGN KEY (`cree_par`) REFERENCES `users`(`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Les documents finaux à rendre (voir migration-projet-livrables.sql) ; leurs fichiers sont dans projet_fichiers (`livrable_id`).
+CREATE TABLE IF NOT EXISTS `projet_livrables` (
+  `id`         INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `projet_id`  INT UNSIGNED NOT NULL,
+  `titre`      VARCHAR(120) NOT NULL,
+  `note`       VARCHAR(500) NULL,
+  `echeance`   DATE NULL,
+  `rendu_le`   DATETIME NULL,
+  `rendu_par`  INT UNSIGNED NULL,
+  `cree_par`   INT UNSIGNED NULL,
+  `position`   INT UNSIGNED NOT NULL DEFAULT 0,
+  `created_at` DATETIME NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_projet_livrables_projet` (`projet_id`, `echeance`),
+  CONSTRAINT `fk_projet_livrables_projet` FOREIGN KEY (`projet_id`) REFERENCES `projets`(`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_projet_livrables_rendu_par` FOREIGN KEY (`rendu_par`) REFERENCES `users`(`id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_projet_livrables_cree_par` FOREIGN KEY (`cree_par`) REFERENCES `users`(`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS `projet_fichiers` (
   `id`          INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `projet_id`   INT UNSIGNED NOT NULL,
+  `livrable_id` INT UNSIGNED NULL,
   `user_id`     INT UNSIGNED NULL,
   `nom_origine` VARCHAR(255) NOT NULL,
   `nom_stocke`  VARCHAR(100) NOT NULL,
@@ -1313,6 +1352,8 @@ CREATE TABLE IF NOT EXISTS `projet_fichiers` (
   `created_at`  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `idx_projet_fichiers_projet` (`projet_id`),
+  KEY `idx_projet_fichiers_livrable` (`livrable_id`),
+  CONSTRAINT `fk_projet_fichiers_livrable` FOREIGN KEY (`livrable_id`) REFERENCES `projet_livrables`(`id`) ON DELETE SET NULL,
   CONSTRAINT `fk_projet_fichiers_projet` FOREIGN KEY (`projet_id`) REFERENCES `projets`(`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_projet_fichiers_user` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

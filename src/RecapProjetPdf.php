@@ -233,7 +233,7 @@ final class RecapProjetPdf
         }
         foreach ($taches as $t) {
             $fait = $t['statut'] === 'fait';
-            $droite = $fait && $t['fait_le'] !== null ? t('tr.rc.pdf.fait_le', ['date' => date_fr($t['fait_le'], false)]) : Travaux::statutNom($t['statut']);
+            $droite = $fait && $t['fait_le'] !== null ? t('tr.rc.pdf.fait_le', ['date' => date_fr($t['fait_le'], false)]) : ($t['phase'] ?? Travaux::statutNom($t['statut']));
             if ($t['points'] !== null) {
                 $droite = t('tr.rc.pdf.points', ['faits' => $t['points'][0], 'total' => $t['points'][1]]) . ' · ' . $droite;
             }

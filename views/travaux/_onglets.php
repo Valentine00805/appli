@@ -3,7 +3,7 @@
  * L'en-tête d'un travail de groupe et ses onglets.
  *
  * @var array $projet
- * @var string $onglet  taches | echeances | fichiers | cours | document | listes | membres
+ * @var string $onglet  taches | echeances | fichiers | cours | document | livrables | listes | membres
  * @var bool $dansUneFenetre  ouvert depuis la liste : les onglets restent dans la fenêtre
  */
 $dansUneFenetre = $dansUneFenetre ?? false;
@@ -15,9 +15,14 @@ $onglets = [
     'document'  => ['/document', '📝', t('tr.on.document')],
     'membres'   => ['/membres', '👥', t('tr.on.membres')],
 ];
-// « Listes » : des listes à points à cocher, une fois la migration passée.
+// « Livrables » (les documents finaux à rendre) puis « Listes » (des points à cocher), une fois les migrations passées : après « Document commun ».
+$apres = 5;
+if (Travaux::livrablesDisponibles()) {
+    $onglets = array_slice($onglets, 0, $apres, true) + ['livrables' => ['/livrables', '📤', t('tr.on.livrables')]] + array_slice($onglets, $apres, null, true);
+    $apres++;
+}
 if (Travaux::listesDisponibles()) {
-    $onglets = array_slice($onglets, 0, 5, true) + ['listes' => ['/listes', '☑️', t('tr.on.listes')]] + array_slice($onglets, 5, null, true);
+    $onglets = array_slice($onglets, 0, $apres, true) + ['listes' => ['/listes', '☑️', t('tr.on.listes')]] + array_slice($onglets, $apres, null, true);
 }
 ?>
 <?php // En fenêtre, toute la place : trois colonnes de tâches y tiennent. ?>

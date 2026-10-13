@@ -4928,3 +4928,23 @@ a.serveur-carte:hover, a.serveur-carte:focus-visible { border-color: var(--accen
 .travaux-recap { margin-top: 1rem; padding-top: .9rem; border-top: 1px solid var(--bordure); display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .6rem; }
 .travaux-recap__fini { margin: 0; font-weight: 700; color: var(--succes); }
 
+/* Un tableau de plus de trois colonnes (des phases ajoutées) : chaque colonne garde une largeur lisible, et le tableau défile de côté. */
+@media (min-width: 821px) {
+  .travaux-kanban--defile { grid-template-columns: repeat(var(--colonnes), minmax(15rem, 1fr)); overflow-x: auto; padding-bottom: .5rem; }
+}
+
+/* Les livrables : une carte par document à rendre, bordée de la couleur de son état ; « Marquer comme rendu » en bas. */
+.livrable { border-left: 4px solid var(--bordure-forte); }
+.livrable--pret { border-left-color: var(--accent); }
+.livrable--rendu { border-left-color: var(--succes); }
+.livrable__meta { margin: .5rem 0 0; font-size: .9rem; }
+.livrable__meta:empty { display: none; }
+.livrable__note { margin: .4rem 0 0; color: var(--texte-doux); overflow-wrap: anywhere; }
+.livrable .depot { margin-top: .8rem; }
+.livrable__rendu, .livrable__rendre { margin-top: .9rem; padding-top: .9rem; border-top: 1px solid var(--bordure); }
+
+/* Une case à cocher avec son texte, dans un panneau de réglage. */
+.case-simple { display: flex; align-items: center; gap: .5rem; margin: .3rem 0; cursor: pointer; }
+.case-simple input { width: 1.05rem; height: 1.05rem; accent-color: var(--accent); }
+.acces-panneau textarea { width: 100%; min-height: 5rem; height: 5.5rem; }
+

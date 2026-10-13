@@ -26,9 +26,12 @@ $visibles = array_filter($taches, static fn (array $t): bool => match ($filtre) 
     'personne' => $t['membre_id'] === null,
     default => true,
 });
-$parStatut = array_fill_keys(array_keys(Travaux::STATUTS), []);
+// Les colonnes de base, et les phases que l'administrateur a ajoutées entre « En cours » et « Fait ».
+$colonnes = $colonnes ?? Travaux::colonnesDuTableau((int) $projet['id']);
+$peutAjouterUneColonne = (string) ($projet['role'] ?? '') === 'admin' && Travaux::colonnesDisponibles();
+$parStatut = array_fill_keys(array_column($colonnes, 'cle'), []);
 foreach ($visibles as $t) {
-    $parStatut[$t['statut']][] = $t;
+    $parStatut[Travaux::cleDeColonne($t)][] = $t;
 }
 $total = count($taches);
 $faites = count(array_filter($taches, static fn (array $t): bool => $t['statut'] === 'fait'));
@@ -36,10 +39,15 @@ $avancement = Travaux::avancement($total, $faites);
 ?>
 <?= Vue::rendre('travaux/_onglets', ['projet' => $projet, 'onglet' => $onglet, 'dansUneFenetre' => $dansUneFenetre]) ?>
 
-<div class="<?= $dansUneFenetre ? 'pile' : 'colonnes' ?>">
+<?php // Avec des phases en plus, le tableau prend toute la largeur : la répartition passe dessous. ?>
+<div class="<?= $dansUneFenetre || count($colonnes) > 3 ? 'pile' : 'colonnes' ?>">
   <div class="pile">
     <div class="travaux-filtres">
       <a class="bouton bouton--petit" href="<?= url('travaux/' . (int) $projet['id'] . '/taches/nouvelle') ?>" data-fenetre><?= e(t('tr.ta.nouvelle')) ?></a>
+      <?php if ($peutAjouterUneColonne): ?>
+        <?php // Les phases du projet : par-dessus le tableau, qui se relit en se fermant. ?>
+        <a class="bouton bouton--secondaire bouton--petit" href="<?= url('travaux/' . (int) $projet['id'] . '/colonnes') ?>" data-fenetre-dessus data-relire-derriere><?= e(t('tr.cl.bouton')) ?></a>
+      <?php endif; ?>
       <?php foreach (['tous' => t('tr.ta.toutes'), 'moi' => t('tr.ta.les_miennes'), 'personne' => t('tr.ta.sans_personne')] as $cle => $nom): ?>
         <a class="pastille<?= $filtre === $cle ? ' pastille--active' : '' ?>"
            href="<?= url('travaux/' . (int) $projet['id'], $cle === 'tous' ? [] : ['voir' => $cle]) ?>"<?= $lien ?>><?= e($nom) ?></a>
@@ -55,8 +63,8 @@ $avancement = Travaux::avancement($total, $faites);
     <?php endif; ?>
 
     <?php // On saisit une carte et on la dépose dans une autre colonne ; sans script, le menu fait la même chose. ?>
-    <div class="kanban travaux-kanban" data-glisser-taches>
-      <?php foreach (Travaux::statuts() as $statut => $s): ?>
+    <div class="kanban travaux-kanban<?= count($colonnes) > 3 ? ' travaux-kanban--defile' : '' ?>" style="--colonnes:<?= count($colonnes) ?>" data-glisser-taches>
+      <?php foreach ($colonnes as $s): $statut = $s['cle']; ?>
         <section class="kanban__colonne" data-statut="<?= e($statut) ?>">
           <h2 class="kanban__entete"><?= $s['icone'] ?> <?= e($s['nom']) ?>
             <span class="kanban__compteur"><?= count($parStatut[$statut]) ?></span></h2>
@@ -97,8 +105,8 @@ $avancement = Travaux::avancement($total, $faites);
                     <?= $retour ?>
                     <label class="sr-only" for="statut-<?= $id ?>"><?= e(t('tr.ta.ou_en_est', ['titre' => (string) $t['titre']])) ?></label>
                     <select id="statut-<?= $id ?>" name="statut">
-                      <?php foreach (Travaux::statuts() as $autre => $a): ?>
-                        <option value="<?= e($autre) ?>"<?= $autre === $statut ? ' selected' : '' ?>><?= e($a['nom']) ?></option>
+                      <?php foreach ($colonnes as $a): ?>
+                        <option value="<?= e($a['cle']) ?>"<?= $a['cle'] === $statut ? ' selected' : '' ?>><?= e($a['nom']) ?></option>
                       <?php endforeach; ?>
                     </select>
                     <noscript><button class="bouton bouton--discret bouton--petit" type="submit"><?= e(t('tr.ta.ok')) ?></button></noscript>

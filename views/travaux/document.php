@@ -7,6 +7,8 @@
  * @var list<array> $versions
  * @var ?string $brouillon  ce qu'on avait tapé quand quelqu'un a écrit en même temps
  * @var ?array $auteur      qui l'a modifié en dernier
+ * @var ?array $entete  l'en-tête du PDF (titre, sous_titre, membres, date, autre) ; null : la migration n'est pas passée, pas de réglage
+ * @var ?list<array> $livrables  les livrables du projet (null : la migration n'est pas passée, le document ne se met pas dans un livrable)
  * @var string $onglet
  * @var bool $enEdition  l'éditeur est ouvert (sinon, la lecture du document avec « Modifier »)
  */
@@ -36,8 +38,64 @@ $csrf = Session::jetonCsrf();
       <section class="carte travaux-document">
         <div class="travaux-document__entete">
           <h2 style="margin:0"><?= e(t('tr.do.titre')) ?></h2>
-          <a class="bouton bouton--secondaire" href="<?= url('travaux/' . (int) $projet['id'] . '/document', ['modifier' => 1]) ?>"<?= $lien ?>><?= e(t('commun.modifier')) ?></a>
+          <div class="actions" style="margin:0">
+            <a class="bouton bouton--secondaire" href="<?= url('travaux/' . (int) $projet['id'] . '/document/pdf') ?>" title="<?= e(t('tr.do.pdf_aide')) ?>">⬇ <?= e(t('tr.do.pdf')) ?></a>
+            <?php if (($entete ?? null) !== null): ?>
+              <label for="document-entete-ouvrir" class="bouton bouton--secondaire acces-bouton" role="button" title="<?= e(t('tr.do.entete_aide')) ?>">🏷️ <?= e(t('tr.do.entete')) ?></label>
+            <?php endif; ?>
+            <?php if (($livrables ?? null) !== null): ?>
+              <label for="document-livrable-ouvrir" class="bouton bouton--secondaire acces-bouton" role="button" title="<?= e(t('tr.do.vers_livrable_aide')) ?>">📤 <?= e(t('tr.do.vers_livrable')) ?></label>
+            <?php endif; ?>
+            <a class="bouton bouton--secondaire" href="<?= url('travaux/' . (int) $projet['id'] . '/document', ['modifier' => 1]) ?>"<?= $lien ?>><?= e(t('commun.modifier')) ?></a>
+          </div>
         </div>
+        <?php // Les réglages du PDF : « En-tête du PDF » (ce qu'on met sous le titre) et « Mettre dans les livrables ». Une case cachée par panneau porte son état (le bouton en est l'étiquette), chacune dans son bloc. ?>
+        <?php if (($entete ?? null) !== null): ?>
+          <div>
+            <input type="checkbox" id="document-entete-ouvrir" class="acces-bascule sr-only">
+            <div class="acces-panneau" style="margin-top:.8rem">
+              <form method="post"<?= $envoi ?> action="<?= url('travaux/' . (int) $projet['id'] . '/document/entete') ?>" class="acces-panneau__droit">
+                <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+                <p class="champ__aide" style="margin:0 0 .7rem"><?= e(t('tr.do.entete_aide')) ?></p>
+                <label class="acces-panneau__etiquette" for="entete-titre"><?= e(t('tr.do.entete_titre')) ?></label>
+                <input type="text" id="entete-titre" name="titre" maxlength="<?= Travaux::ENTETE_TITRE_MAX ?>" value="<?= e($entete['titre']) ?>" placeholder="<?= e((string) $projet['nom']) ?>" autocomplete="off">
+                <label class="acces-panneau__etiquette" for="entete-sous-titre" style="margin-top:.7rem"><?= e(t('tr.do.entete_sous_titre')) ?></label>
+                <input type="text" id="entete-sous-titre" name="sous_titre" maxlength="<?= Travaux::ENTETE_TITRE_MAX ?>" value="<?= e($entete['sous_titre']) ?>" autocomplete="off">
+                <span class="acces-panneau__etiquette" style="margin-top:.7rem"><?= e(t('tr.do.entete_en_plus')) ?></span>
+                <label class="case-simple"><input type="checkbox" name="membres" value="1"<?= $entete['membres'] ? ' checked' : '' ?>> <?= e(t('tr.do.entete_membres')) ?></label>
+                <label class="case-simple"><input type="checkbox" name="date" value="1"<?= $entete['date'] ? ' checked' : '' ?>> <?= e(t('tr.do.entete_date')) ?></label>
+                <label class="acces-panneau__etiquette" for="entete-autre" style="margin-top:.7rem"><?= e(t('tr.do.entete_autre')) ?></label>
+                <textarea id="entete-autre" name="autre" rows="3" placeholder="<?= e(t('tr.do.entete_autre_exemple')) ?>"><?= e($entete['autre']) ?></textarea>
+                <div class="acces-panneau__ligne" style="margin-top:.8rem">
+                  <button class="bouton" type="submit"><?= e(t('commun.enregistrer')) ?></button>
+                  <label for="document-entete-ouvrir" class="bouton bouton--discret" role="button"><?= e(t('commun.annuler')) ?></label>
+                </div>
+              </form>
+            </div>
+          </div>
+        <?php endif; ?>
+        <?php if (($livrables ?? null) !== null): ?>
+          <div>
+          <input type="checkbox" id="document-livrable-ouvrir" class="acces-bascule sr-only">
+          <div class="acces-panneau" style="margin-top:.8rem">
+            <form method="post"<?= $envoi ?> action="<?= url('travaux/' . (int) $projet['id'] . '/document/livrable') ?>" class="acces-panneau__droit">
+              <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+              <label class="acces-panneau__etiquette" for="document-livrable"><?= e(t('tr.do.livrable_label')) ?></label>
+              <div class="acces-panneau__ligne">
+                <select id="document-livrable" name="livrable">
+                  <option value="nouveau" selected><?= e(t('tr.do.livrable_nouveau', ['titre' => t('tr.do.livrable_titre')])) ?></option>
+                  <?php foreach ($livrables as $l): ?>
+                    <option value="<?= (int) $l['id'] ?>"><?= e((string) $l['titre']) ?></option>
+                  <?php endforeach; ?>
+                </select>
+                <button class="bouton" type="submit"><?= e(t('tr.do.mettre')) ?></button>
+                <label for="document-livrable-ouvrir" class="bouton bouton--discret" role="button"><?= e(t('commun.annuler')) ?></label>
+              </div>
+              <p class="champ__aide" style="margin:.5rem 0 0"><?= e(t('tr.do.vers_livrable_aide')) ?></p>
+            </form>
+          </div>
+          </div>
+        <?php endif; ?>
         <?php if ($modifie !== ''): ?><p class="discret" style="margin:.3rem 0 .8rem"><?= e($modifie) ?></p><?php endif; ?>
         <div class="texte-riche-affiche"><?= TexteRiche::versHtml((string) $projet['document']) ?></div>
       </section>

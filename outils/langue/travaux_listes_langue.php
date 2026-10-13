@@ -67,7 +67,7 @@ try {
     echo "\n1. L'onglet « Listes »\n";
     [$cod, $tableau] = $appel('a', 'travaux/' . $p);
     $dire('le projet a un onglet « Listes », entre « Document commun » et « Membres »',
-        $cod . ' · ' . $oui(preg_match('#Document commun\s*</a>\s*<a href="[^"]*/travaux/' . $p . '/listes"[^>]*>\s*<span aria-hidden="true">☑️</span> Listes\s*</a>\s*<a href="[^"]*/travaux/' . $p . '/membres"#u', $tableau) === 1), '200 · oui');
+        $cod . ' · ' . $oui(preg_match('#Document commun\s*</a>\s*(?:<a href="[^"]*/travaux/' . $p . '/livrables"[^>]*>[\s\S]*?</a>\s*)?<a href="[^"]*/travaux/' . $p . '/listes"[^>]*>\s*<span aria-hidden="true">☑️</span> Listes\s*</a>\s*<a href="[^"]*/travaux/' . $p . '/membres"#u', $tableau) === 1), '200 · oui');
     [$cod, $page] = $appel('a', 'travaux/' . $p . '/listes');
     $dire('la page, sans liste : le formulaire « Créer la liste » et l\'état vide',
         $cod . ' · ' . $oui(str_contains($page, 'Créer la liste') && str_contains($page, 'Aucune liste pour l’instant.') && str_contains($page, 'aria-current="page"')), '200 · oui');

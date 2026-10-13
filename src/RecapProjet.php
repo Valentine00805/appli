@@ -24,6 +24,7 @@ final class RecapProjet
      * @param list<array{id: int|string, titre: string, membre_id: mixed, statut: string, created_at: ?string, fait_le: ?string, echeance?: ?string}> $taches
      * @param string $aujourdhui un jour (« Y-m-d »)
      * @param array<int, list<array{texte: string, fait: bool, fait_le: ?string, par_user_id: ?int}>> $points les points à cocher de chaque tâche (par tâche)
+     * @param array<int, string> $phases le nom des colonnes en plus du tableau, par identifiant
      *
      * @return array{
      *     debut: string, fin: string, termine: bool, jours: int, total: int, faites: int, part: int,
@@ -33,7 +34,7 @@ final class RecapProjet
      *     axe: int, maximum: int
      * }
      */
-    public static function calculer(array $projet, array $membres, array $taches, string $aujourdhui, array $points = []): array
+    public static function calculer(array $projet, array $membres, array $taches, string $aujourdhui, array $points = [], array $phases = []): array
     {
         $jour = static fn (mixed $dateHeure): ?string => $dateHeure === null || $dateHeure === '' ? null : substr((string) $dateHeure, 0, 10);
         $debut = $jour($projet['created_at'] ?? null) ?? $aujourdhui;
@@ -100,6 +101,7 @@ final class RecapProjet
         foreach ($taches as $i => $t) {
             $deLaTache = $points[(int) $t['id']] ?? [];
             $ligne = ['titre' => (string) $t['titre'], 'statut' => (string) $t['statut'], 'fait_le' => $faiteLe[$i] ?? null,
+                       'phase' => $t['statut'] !== 'fait' && ($t['colonne_id'] ?? null) !== null ? ($phases[(int) $t['colonne_id']] ?? null) : null,
                        'points' => $deLaTache === [] ? null : [count(array_filter($deLaTache, static fn (array $p): bool => $p['fait'])), count($deLaTache)]];
             foreach ($deLaTache as $p) {
                 if ($p['fait'] && $p['par_user_id'] !== null) {

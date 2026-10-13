@@ -85,6 +85,7 @@ final class TravauxController
             'membres' => Travaux::membresActifs($id),
             'filtre'  => in_array($_GET['voir'] ?? '', ['moi', 'personne'], true) ? $_GET['voir'] : 'tous',
             'points'  => Travaux::pointsDesTaches($id),
+            'colonnes' => Travaux::colonnesDuTableau($id),
         ], 'taches');
     }
 
@@ -96,7 +97,8 @@ final class TravauxController
     {
         $projet = $this->projet($id);
         try {
-            $recap = RecapProjet::calculer($projet, Travaux::membresActifs($id), Travaux::taches($id), date('Y-m-d'), Travaux::pointsPourRecapitulatif($id));
+            $recap = RecapProjet::calculer($projet, Travaux::membresActifs($id), Travaux::taches($id), date('Y-m-d'), Travaux::pointsPourRecapitulatif($id),
+                array_column(Travaux::colonnes($id), 'nom', 'id'));
             $pdf = RecapProjetPdf::generer($recap, (string) $projet['nom']);
         } catch (Throwable) {
             Session::flash('erreur', t('tr.rc.erreur'));
@@ -145,6 +147,115 @@ final class TravauxController
         $this->exigerPost();
         $projet = Travaux::supprimerListe(Auth::id(), $id) ?? $this->introuvable();
         $this->finir(null, t('tr.li2.fl.supprimee'), 'travaux/' . $projet . '/listes');
+    }
+
+    /** Les livrables : les documents finaux à rendre. */
+    public function livrables(int $id): void
+    {
+        $projet = $this->projet($id);
+        if (!Travaux::livrablesDisponibles()) {
+            $this->introuvable();
+        }
+        $this->afficher('travaux/livrables', $projet, ['livrables' => Travaux::livrables($id)], 'livrables');
+    }
+
+    /** Un nouveau livrable, en fenêtre par-dessus la liste. */
+    public function nouveauLivrable(int $id): void
+    {
+        $projet = $this->projet($id);
+        if (!Travaux::livrablesDisponibles()) {
+            $this->introuvable();
+        }
+        $this->formulaire('travaux/nouveau_livrable', ['projet' => $projet], t('titre.tr_nouveau_livrable'));
+    }
+
+    public function creerLivrable(int $id): void
+    {
+        $this->exigerPost();
+        $this->projet($id);
+        $refus = Travaux::creerLivrable(Auth::id(), $id, post('titre'), post('echeance'), post('note'));
+        // Refusé : on reste sur le formulaire, pour corriger.
+        $this->finir($refus, t('tr.lv.fl.cree'), 'travaux/' . $id . ($refus === null ? '/livrables' : '/livrables/nouveau'));
+    }
+
+    public function modifierLivrable(int $id): void
+    {
+        $this->exigerPost();
+        $l = Travaux::livrable(Auth::id(), $id) ?? $this->introuvable();
+        $this->finir(Travaux::modifierLivrable(Auth::id(), $id, post('titre'), post('echeance'), post('note')), t('tr.lv.fl.modifie'), 'travaux/' . (int) $l['projet_id'] . '/livrables');
+    }
+
+    /** « Marquer comme rendu » (« rendu » = 1), ou le remettre « à rendre » (0). */
+    public function rendreLivrable(int $id): void
+    {
+        $this->exigerPost();
+        $l = Travaux::livrable(Auth::id(), $id) ?? $this->introuvable();
+        $rendu = (string) ($_POST['rendu'] ?? '') === '1';
+        Travaux::rendreLivrable(Auth::id(), $id, $rendu);
+        $this->finir(null, t($rendu ? 'tr.lv.fl.rendu' : 'tr.lv.fl.pas_rendu'), 'travaux/' . (int) $l['projet_id'] . '/livrables');
+    }
+
+    /** L'administrateur du groupe supprime un livrable et ses documents. */
+    public function supprimerLivrable(int $id): void
+    {
+        $this->exigerPost();
+        $l = Travaux::livrable(Auth::id(), $id) ?? $this->introuvable();
+        $projet = Travaux::supprimerLivrable(Auth::id(), $id);
+        $this->finir($projet === null ? t('tr.lv.supprimer_admin') : null, t('tr.lv.fl.supprime'), 'travaux/' . (int) $l['projet_id'] . '/livrables');
+    }
+
+    public function deposerLivrable(int $id): void
+    {
+        $this->exigerPost();
+        $l = Travaux::livrable(Auth::id(), $id) ?? $this->introuvable();
+        [$recus, $erreurs] = Travaux::deposerDansLivrable($_FILES['fichiers'] ?? [], Auth::id(), $id);
+        if ($recus > 0) {
+            Session::flash('succes', tn('tr.fl.fichiers_deposes', $recus));
+        }
+        if ($erreurs !== []) {
+            Session::flash('erreur', implode(' ', $erreurs));
+        } elseif ($recus === 0) {
+            Session::flash('erreur', t('tr.fl.choisir_fichier'));
+        }
+        redirect('travaux/' . (int) $l['projet_id'] . '/livrables');
+    }
+
+    /** Les colonnes du tableau (les phases du projet), en fenêtre par-dessus lui : l'administrateur du groupe seulement. */
+    public function colonnes(int $id): void
+    {
+        $projet = $this->projet($id);
+        if (!Travaux::colonnesDisponibles() || (string) $projet['role'] !== 'admin') {
+            $this->introuvable();
+        }
+        $this->afficher('travaux/colonnes', $projet, ['suite' => Travaux::colonnesDuTableau($id), 'icones' => Travaux::iconesColonnes()], 'taches');
+    }
+
+    public function creerColonne(int $id): void
+    {
+        $this->exigerPost();
+        $this->projet($id);
+        $this->finir(Travaux::creerColonne(Auth::id(), $id, post('nom'), $_POST['icone'] ?? null, post('apres')), t('tr.cl.fl.creee'), 'travaux/' . $id . '/colonnes');
+    }
+
+    public function renommerColonne(int $id): void
+    {
+        $this->exigerPost();
+        $colonne = Travaux::colonne(Auth::id(), $id) ?? $this->introuvable();
+        $this->finir(Travaux::modifierColonne(Auth::id(), $id, post('nom'), $_POST['icone'] ?? null), t('tr.cl.fl.renommee'), 'travaux/' . (int) $colonne['projet_id'] . '/colonnes');
+    }
+
+    public function supprimerColonne(int $id): void
+    {
+        $this->exigerPost();
+        $projet = Travaux::supprimerColonne(Auth::id(), $id) ?? $this->introuvable();
+        $this->finir(null, t('tr.cl.fl.supprimee'), 'travaux/' . $projet . '/colonnes');
+    }
+
+    public function deplacerColonne(int $id): void
+    {
+        $this->exigerPost();
+        $projet = Travaux::deplacerColonne(Auth::id(), $id, post('sens') !== 'droite') ?? $this->introuvable();
+        redirect('travaux/' . $projet . '/colonnes');
     }
 
     /** « En faire une tâche » : la liste devient une tâche du tableau, avec ses points. */
@@ -265,12 +376,64 @@ final class TravauxController
         $brouillon = Session::reprendre('travaux-document-' . $id);
         $this->afficher('travaux/document', $projet, [
             'versions'  => Travaux::versions($id),
+            // L'en-tête du PDF : ce que le groupe a choisi (null : la migration n'est pas passée, le réglage n'est pas proposé).
+            'entete'    => Travaux::entetePdfDisponible() ? Travaux::entetePdf($projet) : null,
+            // Les livrables où l'on peut mettre le document en PDF (vide sans la migration : le choix n'est alors pas proposé).
+            'livrables' => Travaux::livrablesDisponibles() ? Travaux::livrables($id) : null,
             'brouillon' => $brouillon,
             'auteur'    => $projet['document_par'] === null ? null : Amis::compte((int) $projet['document_par']),
             // On lit d'abord le document, mis en forme ; « Modifier » ouvre l'éditeur. L'éditeur s'ouvre d'office quand il n'y a encore rien à lire,
             // ou qu'on vient d'avoir un conflit (ce qu'on avait tapé est gardé à côté).
             'enEdition' => isset($_GET['modifier']) || trim((string) $projet['document']) === '' || (is_string($brouillon) && trim($brouillon) !== ''),
         ], 'document');
+    }
+
+    /** Le document commun en PDF, à télécharger (le texte enregistré). */
+    public function documentPdf(int $id): void
+    {
+        $projet = $this->projet($id);
+        if (trim((string) ($projet['document'] ?? '')) === '') {
+            Session::flash('erreur', t('tr.do.vide'));
+            redirect('travaux/' . $id . '/document');
+        }
+        try {
+            $pdf = Travaux::documentEnPdf($projet);
+        } catch (Throwable) {
+            Session::flash('erreur', t('tr.do.pdf_echec'));
+            redirect('travaux/' . $id . '/document');
+        }
+        $nom = Travaux::nomPdfDocument($projet);
+        header('Content-Type: application/pdf');
+        header('Content-Length: ' . strlen($pdf));
+        header('X-Content-Type-Options: nosniff');
+        header('Cache-Control: private, no-store');
+        header(sprintf(
+            "Content-Disposition: attachment; filename=\"%s\"; filename*=UTF-8''%s",
+            preg_replace('/[^A-Za-z0-9._-]+/', '_', $nom) ?? 'document.pdf',
+            rawurlencode($nom)
+        ));
+        echo $pdf;
+        exit;
+    }
+
+    /** Ce que le groupe met en tête du PDF de son document commun (titre, sous-titre, membres, date, texte libre). */
+    public function enregistrerEntetePdf(int $id): void
+    {
+        $this->exigerPost();
+        $this->projet($id);
+        $this->finir(Travaux::enregistrerEntetePdf(Auth::id(), $id, $_POST), t('tr.do.fl.entete'), 'travaux/' . $id . '/document');
+    }
+
+    /** Met le document commun, en PDF, dans un livrable (un nouveau « Document commun », ou un livrable choisi). */
+    public function documentVersLivrable(int $id): void
+    {
+        $this->exigerPost();
+        $this->projet($id);
+        [$livrable, $refus] = Travaux::documentVersLivrable(Auth::id(), $id, post('livrable'));
+        if ($livrable === null) {
+            $this->finir($refus, '', 'travaux/' . $id . '/document');
+        }
+        $this->finir(null, t('tr.do.fl.dans_livrable', ['titre' => $livrable['titre']]), 'travaux/' . $id . '/livrables');
     }
 
     public function membres(int $id): void
@@ -609,14 +772,17 @@ final class TravauxController
     public function supprimerFichier(int $id): void
     {
         $this->exigerPost();
-        $projet = (int) (Travaux::fichier(Auth::id(), $id)['projet_id'] ?? 0);
+        $avant = Travaux::fichier(Auth::id(), $id);
+        $projet = (int) ($avant['projet_id'] ?? 0);
+        // Le document d'un livrable se retire depuis les livrables.
+        $onglet = ($avant['livrable_id'] ?? null) !== null ? 'livrables' : 'fichiers';
         $fichier = Travaux::supprimerFichier(Auth::id(), $id);
         if ($fichier === null) {
             Session::flash('erreur', t('tr.fl.retirer_fichier_interdit'));
         } else {
             Session::flash('succes', t('tr.fl.fichier_supprime', ['nom' => (string) $fichier['nom_origine']]));
         }
-        redirect($projet > 0 ? 'travaux/' . $projet . '/fichiers' : 'travaux');
+        redirect($projet > 0 ? 'travaux/' . $projet . '/' . $onglet : 'travaux');
     }
 
     // --- Le document commun ----------------------------------------------------
@@ -835,7 +1001,7 @@ final class TravauxController
             $projet = null;
         }
         $fichier = $projet === null ? null
-            : Database::one('SELECT * FROM projet_fichiers WHERE id = ? AND projet_id = ?', [$id, (int) $projet['id']]);
+            : Database::one('SELECT * FROM projet_fichiers WHERE id = ? AND projet_id = ?' . (Travaux::livrablesDisponibles() ? ' AND livrable_id IS NULL' : ''), [$id, (int) $projet['id']]);
         if ($fichier === null) {
             http_response_code(404);
             Vue::afficherPublic('partages/lien_mort', [], t('titre.lien_introuvable'));
