@@ -312,7 +312,11 @@ $puce = static function (array $evt) use ($destination): string {
             <span class="cal-volet__nouveau-icone" aria-hidden="true">＋</span> <?= e(t('cam.nouveau')) ?>
           </a>
           <?php if (!empty($section['groupes_ok'])): ?>
-            <a class="cal-volet__nouveau-groupe" href="<?= url('calendriers-amis/groupes/nouveau', ['retour' => $retourVolet]) ?>" data-fenetre>📁 <?= e(t('cam.gr.nouveau')) ?></a>
+            <a class="cal-volet__nouveau-groupe" href="<?= url('calendriers-amis/groupes/nouveau', ['retour' => $retourVolet]) ?>" data-fenetre>
+              <span class="cal-volet__nouveau-groupe-icone" aria-hidden="true">📁</span>
+              <span><?= e(t('cam.gr.nouveau')) ?></span>
+              <span class="cal-volet__nouveau-groupe-plus" aria-hidden="true">＋</span>
+            </a>
           <?php endif; ?>
         <?php endif; ?>
       </details>

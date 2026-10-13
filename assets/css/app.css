@@ -5007,6 +5007,22 @@ summary.cal-volet__sous-titre:focus-visible { outline: 2px solid var(--accent, #
   border-radius: 999px; background: var(--fond-doux); color: var(--texte-doux, #64748b);
 }
 .cal-volet__sous > .cal-volet__liste { margin-left: .55rem; padding-left: .5rem; border-left: 2px solid var(--accent-doux, #e0e7ff); }
-.cal-volet__nouveau-groupe { display: block; margin-top: .45rem; text-align: center; font-size: .85rem; color: var(--texte-doux, #64748b); text-decoration: none; }
-.cal-volet__nouveau-groupe:hover, .cal-volet__nouveau-groupe:focus-visible { color: var(--accent); text-decoration: underline; }
+/* « Nouveau groupe » : le pendant plein de « Nouveau calendrier » (même gabarit) — une carte à bordure pleine, une pastille-dossier à gauche, le « ＋ » à droite. */
+.cal-volet__nouveau-groupe {
+  display: flex; align-items: center; gap: .55rem; margin-top: .45rem; padding: .45rem .6rem;
+  border: 1.5px solid var(--bordure-forte); border-radius: var(--rayon-s); background: var(--fond-carte); color: var(--texte);
+  font-weight: 600; font-size: .88rem; text-decoration: none; transition: border-color .15s, background .15s, box-shadow .15s, transform .15s;
+}
+.cal-volet__nouveau-groupe > span:nth-child(2) { flex: 1; min-width: 0; }
+.cal-volet__nouveau-groupe-icone {
+  display: inline-grid; place-items: center; flex: none; width: 1.7rem; height: 1.7rem; border-radius: 8px;
+  background: var(--attention-doux); font-size: 1rem; line-height: 1; transition: transform .15s;
+}
+.cal-volet__nouveau-groupe-plus { flex: none; color: var(--texte-doux); font-size: 1.05rem; line-height: 1; transition: color .15s, transform .15s; }
+.cal-volet__nouveau-groupe:hover, .cal-volet__nouveau-groupe:focus-visible {
+  border-color: var(--accent); background: var(--accent-doux); text-decoration: none; box-shadow: 0 1px 4px rgba(79, 70, 229, .18);
+}
+.cal-volet__nouveau-groupe:hover .cal-volet__nouveau-groupe-icone, .cal-volet__nouveau-groupe:focus-visible .cal-volet__nouveau-groupe-icone { transform: rotate(-6deg) scale(1.06); }
+.cal-volet__nouveau-groupe:hover .cal-volet__nouveau-groupe-plus, .cal-volet__nouveau-groupe:focus-visible .cal-volet__nouveau-groupe-plus { color: var(--accent); transform: rotate(90deg); }
+.cal-volet__nouveau-groupe:active { transform: scale(.98); }
 

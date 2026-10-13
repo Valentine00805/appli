@@ -80,7 +80,7 @@ try {
     echo "\n1. Le volet, sans groupe\n";
     [$page] = $appel($a, 'calendrier');
     $dire('« Nouveau groupe » est proposé (fenêtre, avec la page où revenir) ; aucun groupe encore',
-        $oui(preg_match('#<a class="cal-volet__nouveau-groupe" href="[^"]*calendriers-amis/groupes/nouveau\?retour=[^"]*" data-fenetre>📁 Nouveau groupe</a>#u', $page) === 1 && !str_contains($page, 'class="cal-volet__sous"')), 'oui');
+        $oui(preg_match('#<a class="cal-volet__nouveau-groupe" href="[^"]*calendriers-amis/groupes/nouveau\?retour=[^"]*" data-fenetre>\s*<span class="cal-volet__nouveau-groupe-icone" aria-hidden="true">📁</span>\s*<span>Nouveau groupe</span>#u', $page) === 1 && !str_contains($page, 'class="cal-volet__sous"')), 'oui');
     $dire('les trois calendriers sont listés comme avant', $oui(str_contains($page, '>Cours</span>') && str_contains($page, '>Famille</span>') && str_contains($page, '>Vacances</span>')), 'oui');
 
     echo "\n2. Créer un groupe\n";
