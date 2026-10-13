@@ -197,6 +197,34 @@ try {
     $dire('en fenêtre : le contenu seul ; quelqu\'un du dehors : 404', $oui(!str_contains($fragmentDeplacer, '<html') && str_contains($fragmentDeplacer, 'data-envoi-fenetre') && str_contains($fragmentDeplacer, 'data-fermer')) . ' · ' . $codC, 'oui · 404');
     [, $racineSansDossiers] = $appel('a', $racine);
     $dire('à la racine, le fichier « racine.txt » a le même menu (Déplacer avec depuis=0)', $oui(str_contains($racineSansDossiers, '/travaux/fichiers/' . $racineId . '/deplacer?depuis=0')), 'oui');
+    // L'aperçu : le nom du fichier ouvre une fenêtre d'aperçu (texte, vide, type inconnu = comme avant), ouverte à tout le groupe seulement.
+    $dire('le nom d\'un fichier qu\'on sait montrer (« plan.txt ») ouvre l\'aperçu dans une fenêtre, plus le fichier brut',
+        $oui(preg_match('#<a class="fichier__nom" href="/mon_appli/appli/travaux/fichiers/' . $planId . '/apercu" data-fenetre>plan\.txt</a>#', $dansBrouillons) === 1
+            && !str_contains($dansBrouillons, 'href="/mon_appli/appli/travaux/fichiers/' . $planId . '" target="_blank"')), 'oui');
+    [$codA, $apercuPlan] = $appel('a', 'travaux/fichiers/' . $planId . '/apercu');
+    $dire('la page d\'aperçu de « plan.txt » : son contenu (« Le plan. »), « Télécharger », le retour aux fichiers',
+        $codA . ' · ' . $oui(str_contains($apercuPlan, 'Le plan.') && str_contains($apercuPlan, '<pre class="apercu-brut">') && str_contains($apercuPlan, 'travaux/fichiers/' . $planId . '?telecharger=1') && str_contains($apercuPlan, '/travaux/' . $p . '/fichiers')), '200 · oui');
+    [, $fragApercu] = $appel('a', 'travaux/fichiers/' . $planId . '/apercu?fenetre=1');
+    $dire('en fenêtre : le contenu seul, large', $oui(!str_contains($fragApercu, '<html') && str_contains($fragApercu, 'data-document') && str_contains($fragApercu, 'Le plan.')), 'oui');
+    [$codB] = $appel('b', 'travaux/fichiers/' . $planId . '/apercu');
+    [$codD] = $appel('c', 'travaux/fichiers/' . $planId . '/apercu');
+    $dire('un autre membre du groupe y accède ; quelqu\'un du dehors : 404', $codB . ' · ' . $codD, '200 · 404');
+    $appel('a', $racine, ['_csrf' => $ta, 'fichiers[0]' => $fichier('vide.txt', ''), 'fichiers[1]' => $fichier('archive.zip', 'PK')]);
+    $videId = (int) bd_valeur('SELECT id FROM projet_fichiers WHERE nom_origine = ?', ['vide.txt']);
+    $zipId = (int) bd_valeur('SELECT id FROM projet_fichiers WHERE nom_origine = ?', ['archive.zip']);
+    [, $racineAvecVide] = $appel('a', $racine);
+    $dire('un fichier vide s\'ouvre en aperçu et le dit (« rien que l\'aperçu sache montrer ») ; une archive garde le lien d\'avant (onglet), sans aperçu',
+        $oui(str_contains($racineAvecVide, 'travaux/fichiers/' . $videId . '/apercu') && str_contains($appel('a', 'travaux/fichiers/' . $videId . '/apercu')[1], 'ne contient rien que l’aperçu sache montrer')
+            && !str_contains($racineAvecVide, 'travaux/fichiers/' . $zipId . '/apercu') && str_contains($racineAvecVide, 'href="/mon_appli/appli/travaux/fichiers/' . $zipId . '" target="_blank"')), 'oui');
+    [, , $adresseZip] = $appel('a', 'travaux/fichiers/' . $zipId . '/apercu');
+    $dire('l\'aperçu d\'une archive renvoie le fichier lui-même', $oui(str_ends_with($adresseZip, '/travaux/fichiers/' . $zipId)), 'oui');
+    foreach ([$videId, $zipId] as $aRetirer) {
+        $appel('a', 'travaux/fichiers/' . $aRetirer . '/supprimer', ['_csrf' => $ta]);
+    }
+    [, $fragLivr] = $appel('a', 'travaux/' . $p . '/livrables');
+    $dire('l\'onglet Livrables se charge toujours (le nom des fichiers y est un lien partagé)', $oui(!str_contains($fragLivr, 'Fatal error') && !str_contains($fragLivr, 'Warning:')), 'oui');
+    [$codX] = $appel('a', 'travaux/fichiers/999999999/apercu');
+    $dire('un fichier qui n\'existe pas : 404', (string) $codX, '404');
     [, $deplace, $adresseDeplace] = $appel('b', 'travaux/fichiers/' . $planId . '/deplacer', ['_csrf' => $tb, 'dossier' => (string) $diapos]);
     $dire('b déplace « plan.txt » dans « Diapositives » : « Fichier déplacé. », on revient d\'où il part (« Brouillons »)',
         $oui(str_contains($deplace, 'Fichier déplacé.') && str_ends_with($adresseDeplace, '/fichiers?dossier=' . $brouillons)) . ' · ' . $ou('plan.txt'), 'oui · ' . $diapos);

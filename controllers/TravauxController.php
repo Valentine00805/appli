@@ -921,6 +921,108 @@ final class TravauxController
         Fichiers::envoyer($fichier, isset($_GET['telecharger']), Travaux::dossier());
     }
 
+    /**
+     * L'aperçu d'un fichier du groupe, dans une fenêtre par-dessus les fichiers : PDF, image, texte, tableur, document, présentation, son et
+     * vidéo se lisent sans rien télécharger. Un autre type (une archive…) s'ouvre comme avant.
+     */
+    public function apercuFichier(int $id): void
+    {
+        Auth::exiger();
+        $fichier = Travaux::fichier(Auth::id(), $id) ?? $this->introuvable();
+        $nom = (string) $fichier['nom_origine'];
+        $media = Fichiers::estMedia((string) $fichier['mime'], $nom);
+        if (!$media && !ApercuDocument::possible($nom)) {
+            redirect('travaux/fichiers/' . $id);
+        }
+        $projet = $this->projet((int) $fichier['projet_id']);
+        $chemin = Travaux::dossier() . DIRECTORY_SEPARATOR . basename((string) $fichier['nom_stocke']);
+        $genre = $media ? (Fichiers::estVideo((string) $fichier['mime'], $nom) ? 'video' : 'audio') : (string) ApercuDocument::genre($nom);
+
+        $diaporama = null;
+        $texteSeul = (string) ($_GET['texte'] ?? '') === '1';
+        if (!$media && is_file($chemin) && ApercuPresentation::possible($nom) && !$texteSeul) {
+            try {
+                $diaporama = ApercuPresentation::lire($chemin, static fn (string $partie): string => url('travaux/fichiers/' . $id . '/diapo-media', ['m' => $partie]));
+            } catch (Throwable) {
+                $diaporama = null;
+            }
+        }
+
+        $paragraphes = [];
+        $lignes = [];
+        $texte = '';
+        $tronque = false;
+        $total = 0;
+        $erreur = null;
+        if (!is_file($chemin)) {
+            $erreur = t('fic.introuvable_disque');
+        } else {
+            try {
+                switch ($diaporama !== null ? 'diaporama' : $genre) {
+                    case 'tableur':
+                        ['lignes' => $lignes, 'total' => $total] = ApercuDocument::tableau($chemin, $nom);
+                        break;
+                    case 'brut':
+                        ['texte' => $texte, 'tronque' => $tronque] = ApercuDocument::texteBrut($chemin);
+                        break;
+                    case 'document':
+                        $paragraphes = ApercuDocument::paragraphes($chemin, $nom);
+                        break;
+                    // Un PDF, une image, un son, une vidéo : affichés tels quels ; une présentation : déjà lue.
+                }
+            } catch (Throwable $e) {
+                $erreur = $e->getMessage();
+            }
+        }
+
+        $donnees = [
+            'projet'      => $projet,
+            'fichier'     => $fichier,
+            'onglet'      => ($fichier['livrable_id'] ?? null) !== null ? 'livrables' : 'fichiers',
+            'genre'       => $genre,
+            'paragraphes' => $paragraphes,
+            'lignes'      => $lignes,
+            'texte'       => $texte,
+            'tronque'     => $tronque,
+            'total'       => $total,
+            'limite'      => ApercuDocument::LIGNES_MAX,
+            'erreur'      => $erreur,
+            'format'      => $media ? strtoupper((string) pathinfo($nom, PATHINFO_EXTENSION)) : ApercuDocument::format($nom),
+            'diaporama'   => $diaporama,
+            'peutDiapos'  => ApercuPresentation::possible($nom) && $texteSeul,
+        ];
+        $this->formulaire('travaux/apercu_fichier', $donnees, $nom);
+    }
+
+    /** Une image d'une présentation du groupe (pour son aperçu en diapositives). */
+    public function mediaDiapo(int $id): void
+    {
+        Auth::exiger();
+        $fichier = Travaux::fichier(Auth::id(), $id);
+        if ($fichier === null || !ApercuPresentation::possible((string) $fichier['nom_origine'])) {
+            $this->introuvable();
+        }
+        $chemin = Travaux::dossier() . DIRECTORY_SEPARATOR . basename((string) $fichier['nom_stocke']);
+        $image = is_file($chemin) ? ApercuPresentation::media($chemin, (string) ($_GET['m'] ?? '')) : null;
+        if ($image === null) {
+            $this->introuvable();
+        }
+        $marque = '"' . md5($id . ':' . (string) ($_GET['m'] ?? '') . ':' . (string) @filemtime($chemin)) . '"';
+        if (trim((string) ($_SERVER['HTTP_IF_NONE_MATCH'] ?? '')) === $marque) {
+            http_response_code(304);
+            exit;
+        }
+        header('Content-Type: ' . $image['type']);
+        header('Content-Length: ' . (string) strlen($image['octets']));
+        header('Content-Disposition: inline');
+        header('X-Content-Type-Options: nosniff');
+        header("Content-Security-Policy: default-src 'none'");
+        header('ETag: ' . $marque);
+        header('Cache-Control: private, max-age=86400');
+        echo $image['octets'];
+        exit;
+    }
+
     public function supprimerFichier(int $id): void
     {
         $this->exigerPost();

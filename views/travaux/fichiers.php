@@ -145,9 +145,7 @@ $menuFichier = static function (array $f, int $depuis) use ($dossiers, $courant,
             <li class="fichier">
               <span class="fichier__icone" aria-hidden="true"><?= Fichiers::icone((string) $f['mime'], (string) $f['nom_origine']) ?></span>
               <span style="min-width:0">
-                <a class="fichier__nom" href="<?= url('travaux/fichiers/' . $fid) ?>" target="_blank" rel="noopener">
-                  <?= e((string) $f['nom_origine']) ?>
-                </a><br>
+                <?= Vue::rendre('travaux/_nom_fichier', ['f' => $f, 'dansUneFenetre' => $dansUneFenetre]) ?><br>
                 <span class="fichier__meta">
                   <?= e(taille_lisible((int) $f['taille'])) ?>
                   <?= e(t('tr.fi.depose_par', [

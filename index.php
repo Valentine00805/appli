@@ -521,6 +521,8 @@ $routes = [
     ['POST', 'travaux/echeances/{id}/modifier', [TravauxController::class, 'modifierEcheance']],
     ['POST', 'travaux/echeances/{id}/supprimer', [TravauxController::class, 'supprimerEcheance']],
     ['POST', 'travaux/{id}/fichiers',          [TravauxController::class, 'deposer']],
+    ['GET',  'travaux/fichiers/{id}/apercu',   [TravauxController::class, 'apercuFichier']],
+    ['GET',  'travaux/fichiers/{id}/diapo-media', [TravauxController::class, 'mediaDiapo']],
     ['GET',  'travaux/fichiers/{id}',          [TravauxController::class, 'fichier']],
     ['POST', 'travaux/fichiers/{id}/supprimer', [TravauxController::class, 'supprimerFichier']],
     ['POST', 'travaux/{id}/document',          [TravauxController::class, 'ecrireDocument']],
