@@ -3,6 +3,7 @@
  * Un nouveau travail de groupe, ouvert en fenêtre par-dessus la liste.
  *
  * @var list<array> $amis
+ * @var ?list<string> $proposes  les onglets au choix (null : la migration n'est pas passée, pas de choix)
  * @var bool $dansUneFenetre
  */
 $dansUneFenetre = $dansUneFenetre ?? false;
@@ -27,6 +28,9 @@ $dansUneFenetre = $dansUneFenetre ?? false;
     <label for="description-projet"><?= e(t('tr.nv.sujet')) ?> <span class="discret"><?= e(t('tr.nv.facultatif')) ?></span></label>
     <textarea id="description-projet" name="description" rows="3" maxlength="2000"></textarea>
   </div>
+  <?php if (($proposes ?? null) !== null): ?>
+    <?= Vue::rendre('travaux/_choix_onglets', ['proposes' => $proposes, 'actifs' => $proposes, 'suffixe' => 'nouveau']) ?>
+  <?php endif; ?>
   <div class="champ">
     <span class="legende"><?= e(t('tr.nv.inviter')) ?> <span class="discret"><?= e(t('tr.nv.acceptent')) ?></span></span>
     <?php if ($amis === []): ?>

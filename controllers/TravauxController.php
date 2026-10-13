@@ -28,8 +28,10 @@ final class TravauxController
     {
         Auth::exiger();
         Session::verifierCsrf();
+        // Les onglets choisis à la création (« onglets_choisis » dit que le choix a été fait, même sans rien de coché).
+        $onglets = isset($_POST['onglets_choisis']) ? (is_array($_POST['onglets'] ?? null) ? $_POST['onglets'] : []) : null;
         [$projet, $refus] = Travaux::creer(Auth::id(), post('nom'), post('description'),
-            is_array($_POST['amis'] ?? null) ? $_POST['amis'] : []);
+            is_array($_POST['amis'] ?? null) ? $_POST['amis'] : [], $onglets);
         if ($projet === null) {
             Session::flash('erreur', (string) $refus);
             redirect('travaux/nouveau');
@@ -48,7 +50,11 @@ final class TravauxController
     public function nouveau(): void
     {
         Auth::exiger();
-        $this->formulaire('travaux/nouveau', ['amis' => Amis::liste(Auth::id())], t('titre.tr_nouveau'));
+        $this->formulaire('travaux/nouveau', [
+            'amis' => Amis::liste(Auth::id()),
+            // Les onglets au choix (null : la migration n'est pas passée, un projet a tous les siens).
+            'proposes' => Travaux::ongletsChoisissables() ? Travaux::ongletsProposes() : null,
+        ], t('titre.tr_nouveau'));
     }
 
     public function nouvelleTache(int $id): void
@@ -122,6 +128,7 @@ final class TravauxController
     public function listes(int $id): void
     {
         $projet = $this->projet($id);
+        $this->ongletOuvert($projet, 'listes');
         if (!Travaux::listesDisponibles()) {
             $this->introuvable();
         }
@@ -153,6 +160,7 @@ final class TravauxController
     public function livrables(int $id): void
     {
         $projet = $this->projet($id);
+        $this->ongletOuvert($projet, 'livrables');
         if (!Travaux::livrablesDisponibles()) {
             $this->introuvable();
         }
@@ -163,6 +171,7 @@ final class TravauxController
     public function nouveauLivrable(int $id): void
     {
         $projet = $this->projet($id);
+        $this->ongletOuvert($projet, 'livrables');
         if (!Travaux::livrablesDisponibles()) {
             $this->introuvable();
         }
@@ -323,6 +332,7 @@ final class TravauxController
     public function echeances(int $id): void
     {
         $projet = $this->projet($id);
+        $this->ongletOuvert($projet, 'echeances');
         $this->afficher('travaux/echeances', $projet, [
             'echeances' => Travaux::echeances($id),
             'types' => Travaux::types($id),
@@ -335,6 +345,7 @@ final class TravauxController
     public function fichiers(int $id): void
     {
         $projet = $this->projet($id);
+        $this->ongletOuvert($projet, 'fichiers');
         $this->afficher('travaux/fichiers', $projet, ['fichiers' => Travaux::fichiers($id)], 'fichiers');
     }
 
@@ -342,6 +353,7 @@ final class TravauxController
     public function cours(int $id): void
     {
         $projet = $this->projet($id);
+        $this->ongletOuvert($projet, 'cours');
         $this->afficher('travaux/cours', $projet, [
             'liens' => Travaux::liens($id, Auth::id()),
             'aLier' => Travaux::aLier($id, Auth::id()),
@@ -373,13 +385,14 @@ final class TravauxController
     public function document(int $id): void
     {
         $projet = $this->projet($id);
+        $this->ongletOuvert($projet, 'document');
         $brouillon = Session::reprendre('travaux-document-' . $id);
         $this->afficher('travaux/document', $projet, [
             'versions'  => Travaux::versions($id),
             // L'en-tête du PDF : ce que le groupe a choisi (null : la migration n'est pas passée, le réglage n'est pas proposé).
             'entete'    => Travaux::entetePdfDisponible() ? Travaux::entetePdf($projet) : null,
-            // Les livrables où l'on peut mettre le document en PDF (vide sans la migration : le choix n'est alors pas proposé).
-            'livrables' => Travaux::livrablesDisponibles() ? Travaux::livrables($id) : null,
+            // Les livrables où l'on peut mettre le document en PDF (null sans la migration, ou si le groupe n'a pas l'onglet : le choix n'est alors pas proposé).
+            'livrables' => Travaux::livrablesDisponibles() && Travaux::ongletActif($projet, 'livrables') ? Travaux::livrables($id) : null,
             'brouillon' => $brouillon,
             'auteur'    => $projet['document_par'] === null ? null : Amis::compte((int) $projet['document_par']),
             // On lit d'abord le document, mis en forme ; « Modifier » ouvre l'éditeur. L'éditeur s'ouvre d'office quand il n'y a encore rien à lire,
@@ -392,6 +405,7 @@ final class TravauxController
     public function documentPdf(int $id): void
     {
         $projet = $this->projet($id);
+        $this->ongletOuvert($projet, 'document');
         if (trim((string) ($projet['document'] ?? '')) === '') {
             Session::flash('erreur', t('tr.do.vide'));
             redirect('travaux/' . $id . '/document');
@@ -414,6 +428,14 @@ final class TravauxController
         ));
         echo $pdf;
         exit;
+    }
+
+    /** Les onglets du groupe (l'administrateur les choisit). */
+    public function enregistrerOnglets(int $id): void
+    {
+        $this->exigerPost();
+        $this->projet($id);
+        $this->finir(Travaux::enregistrerOnglets(Auth::id(), $id, is_array($_POST['onglets'] ?? null) ? $_POST['onglets'] : []), t('tr.ot.fl.enregistres'), 'travaux/' . $id . '/membres');
     }
 
     /** Ce que le groupe met en tête du PDF de son document commun (titre, sous-titre, membres, date, texte libre). */
@@ -445,6 +467,9 @@ final class TravauxController
             'membres'       => $membres,
             // Ceux qui sont entrés par le lien public : leur prénom et quand.
             'visiteurs'     => Travaux::visiteurs($id),
+            // Les onglets au choix, et ceux que le groupe a gardés (null : la migration n'est pas passée, pas de réglage).
+            'proposes'      => Travaux::ongletsChoisissables() ? Travaux::ongletsProposes() : null,
+            'actifs'        => Travaux::ongletsDuProjet($projet),
             // Ceux des membres sans compte qui sont là par le lien (« Par le lien »).
             'parLeLien'     => Travaux::membresParLien($id),
             // Le calendrier commun du projet, s'il en a un.
@@ -916,7 +941,8 @@ final class TravauxController
         // Le calendrier commun du projet, s'il en a un : le mois demandé (« ?mois=2026-11 »), le mois courant à défaut, de 2000 à 2100.
         $mois = preg_match('/^(\d{4})-(0[1-9]|1[0-2])$/', (string) ($_GET['mois'] ?? ''), $m) === 1 && (int) $m[1] >= 2000 && (int) $m[1] <= 2100
             ? new DateTimeImmutable($m[1] . '-' . $m[2] . '-01') : new DateTimeImmutable('first day of this month midnight');
-        $calendrier = CalendriersAmis::publicDuProjet($id, $mois, $mois->modify('last day of this month')->setTime(23, 59, 59));
+        $calendrier = Travaux::ongletActif($projet, 'echeances')
+            ? CalendriersAmis::publicDuProjet($id, $mois, $mois->modify('last day of this month')->setTime(23, 59, 59)) : null;
         Vue::afficherPublic('travaux/public', [
             'projet'    => $projet,
             'jeton'     => $jeton,
@@ -926,8 +952,8 @@ final class TravauxController
             'membres'   => Travaux::membresActifs($id),
             'taches'    => Travaux::taches($id),
             'echeances' => Travaux::echeances($id),
-            'fichiers'  => Travaux::fichiers($id),
-            'listes'    => Travaux::listes($id),
+            'fichiers'  => Travaux::ongletActif($projet, 'fichiers') ? Travaux::fichiers($id) : [],
+            'listes'    => Travaux::ongletActif($projet, 'listes') ? Travaux::listes($id) : [],
             'points'    => Travaux::pointsDesTaches($id),
         ], (string) $projet['nom']);
     }
@@ -1000,6 +1026,9 @@ final class TravauxController
             && !(Auth::connecte() && Travaux::projet((int) $projet['id'], Auth::id()) !== null)) {
             $projet = null;
         }
+        if ($projet !== null && !Travaux::ongletActif($projet, 'fichiers')) {
+            $projet = null;
+        }
         $fichier = $projet === null ? null
             : Database::one('SELECT * FROM projet_fichiers WHERE id = ? AND projet_id = ?' . (Travaux::livrablesDisponibles() ? ' AND livrable_id IS NULL' : ''), [$id, (int) $projet['id']]);
         if ($fichier === null) {
@@ -1011,6 +1040,14 @@ final class TravauxController
     }
 
     // --- Commun ----------------------------------------------------------------
+
+    /** Ce groupe a-t-il choisi cet onglet ? Sinon, la page n'existe pas pour lui (404). */
+    private function ongletOuvert(array $projet, string $onglet): void
+    {
+        if (!Travaux::ongletActif($projet, $onglet)) {
+            $this->introuvable();
+        }
+    }
 
     /** Le projet dont je suis membre, ou 404. */
     private function projet(int $id): array

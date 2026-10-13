@@ -147,7 +147,7 @@ final class Travaux
      *
      * @return array{0: ?int, 1: ?string} le projet, ou la raison du refus
      */
-    public static function creer(int $moi, string $nom, string $description, array $amis): array
+    public static function creer(int $moi, string $nom, string $description, array $amis, ?array $onglets = null): array
     {
         $nom = self::nettoyer($nom, self::NOM_MAX);
         if ($nom === '') {
@@ -160,6 +160,10 @@ final class Travaux
             "INSERT INTO projet_membres (projet_id, user_id, role, statut) VALUES (?, ?, 'admin', 'membre')",
             [$projet, $moi]);
         self::creerTypesDeDepart($projet);
+        // Les onglets que le groupe a choisis (null : il n'a pas eu le choix, il a tout).
+        if ($onglets !== null) {
+            self::ecrireOnglets($projet, $onglets);
+        }
 
         [, $refus] = $amis === [] ? [0, null] : self::inviter($moi, $projet, $amis);
 
@@ -1196,7 +1200,7 @@ final class Travaux
     public static function documentVersLivrable(int $moi, int $projetId, string $choix): array
     {
         $projet = self::projet($projetId, $moi);
-        if ($projet === null || !self::livrablesDisponibles()) {
+        if ($projet === null || !self::livrablesDisponibles() || !self::ongletActif($projet, 'livrables')) {
             return [null, t('tr.lv.introuvable')];
         }
         if (trim((string) ($projet['document'] ?? '')) === '') {
@@ -1353,8 +1357,13 @@ final class Travaux
      */
     public static function lier(int $moi, int $projet, string $type, int $cibleId): ?string
     {
-        if (self::projet($projet, $moi) === null) {
+        $leProjet = self::projet($projet, $moi);
+        if ($leProjet === null) {
             return t('tr.err.pas_membre');
+        }
+        // Un groupe qui n'a pas l'onglet « Cours » (ou « Fichiers ») n'y reçoit rien : on ne le verrait pas.
+        if (in_array($type, ['cours', 'dossier', 'fichier'], true) && !self::ongletActif($leProjet, $type === 'fichier' ? 'fichiers' : 'cours')) {
+            return t('tr.ot.indisponible');
         }
         if (!in_array($type, ['cours', 'dossier', 'fichier'], true) || Partages::mienne($type, $cibleId, $moi) === null) {
             return t('tr.err.pas_a_vous');
@@ -1395,13 +1404,17 @@ final class Travaux
     public static function projetsPourPartage(int $moi, string $type, int $cibleId): array
     {
         $lignes = Database::all(
-            "SELECT p.id, p.nom,
+            "SELECT p.id, p.nom, " . (self::ongletsChoisissables() ? 'p.onglets' : 'NULL') . " AS onglets,
                     (SELECT l.id FROM projet_liens l WHERE l.projet_id = p.id AND l.type = ? AND l.cible_id = ?) AS lien_id
                FROM projets p
                JOIN projet_membres pm ON pm.projet_id = p.id AND pm.user_id = ? AND pm.statut = 'membre'
               ORDER BY p.nom, p.id",
             [$type, $cibleId, $moi]
         );
+
+        // Un groupe sans l'onglet « Cours » (ou « Fichiers ») n'est pas proposé, sauf s'il a déjà l'élément (pour pouvoir l'en retirer).
+        $onglet = $type === 'fichier' ? 'fichiers' : 'cours';
+        $lignes = array_values(array_filter($lignes, static fn (array $l): bool => $l['lien_id'] !== null || self::ongletActif(['onglets' => $l['onglets']], $onglet)));
 
         return array_map(static fn (array $l): array => [
             'id' => (int) $l['id'], 'nom' => (string) $l['nom'], 'lien_id' => $l['lien_id'] === null ? null : (int) $l['lien_id'],
@@ -1530,6 +1543,86 @@ final class Travaux
         self::ecrireDocument($moi, $projet, TexteRiche::pourEditeur((string) $v['contenu']), $version);
 
         return $projet;
+    }
+
+    // --- Les onglets d'un projet : ceux que le groupe a choisis ---------------------------------------
+
+    /** Les onglets au choix ; « Qui fait quoi » et « Membres » sont toujours là. */
+    public const ONGLETS_AU_CHOIX = ['echeances', 'fichiers', 'cours', 'document', 'livrables', 'listes'];
+
+    /** Le choix des onglets est-il possible ? (Sinon — migration pas encore importée — un projet a tous ses onglets.) */
+    public static function ongletsChoisissables(): bool
+    {
+        static $ok = null;
+        if ($ok === null) {
+            try {
+                Database::valeur('SELECT onglets FROM projets LIMIT 1');
+                $ok = true;
+            } catch (Throwable) {
+                $ok = false;
+            }
+        }
+
+        return $ok;
+    }
+
+    /** Les onglets au choix qui existent sur ce site (« Livrables » et « Listes » demandent leur migration). */
+    public static function ongletsProposes(): array
+    {
+        return array_values(array_filter(self::ONGLETS_AU_CHOIX, static fn (string $o): bool => match ($o) {
+            'livrables' => self::livrablesDisponibles(),
+            'listes' => self::listesDisponibles(),
+            default => true,
+        }));
+    }
+
+    /**
+     * Les onglets au choix que ce projet propose : tous tant que le groupe n'a pas choisi (« onglets » nul), sinon ceux qu'il a gardés.
+     *
+     * @param array $projet une ligne de « projets » (avec « onglets » quand la migration est passée)
+     * @return list<string>
+     */
+    public static function ongletsDuProjet(array $projet): array
+    {
+        $gardes = self::ONGLETS_AU_CHOIX;
+        if (self::ongletsChoisissables() && ($projet['onglets'] ?? null) !== null) {
+            $gardes = array_values(array_intersect(self::ONGLETS_AU_CHOIX, explode(',', (string) $projet['onglets'])));
+        }
+
+        return array_values(array_intersect($gardes, self::ongletsProposes()));
+    }
+
+    /** Ce projet a-t-il cet onglet ? (« Qui fait quoi » et « Membres » : toujours.) */
+    public static function ongletActif(array $projet, string $onglet): bool
+    {
+        return !in_array($onglet, self::ONGLETS_AU_CHOIX, true) || in_array($onglet, self::ongletsDuProjet($projet), true);
+    }
+
+    /** Écrit le choix d'onglets d'un projet : tous cochés, c'est « pas de choix » (les onglets à venir apparaîtront d'eux-mêmes). */
+    private static function ecrireOnglets(int $projet, array $cles): void
+    {
+        if (!self::ongletsChoisissables()) {
+            return;
+        }
+        $proposes = self::ongletsProposes();
+        $choisis = array_values(array_intersect($proposes, array_map('strval', $cles)));
+        // Ceux que ce site ne propose pas encore (migration manquante) restent gardés : ils apparaîtront quand elle sera passée.
+        $gardes = array_values(array_unique(array_merge($choisis, array_diff(self::ONGLETS_AU_CHOIX, $proposes))));
+        Database::run('UPDATE projets SET onglets = ? WHERE id = ?', [count($choisis) === count($proposes) ? null : implode(',', $gardes), $projet]);
+    }
+
+    /** Les onglets du groupe : l'administrateur seulement. Rend la raison du refus. */
+    public static function enregistrerOnglets(int $moi, int $projet, array $cles): ?string
+    {
+        if (!self::estAdmin($projet, $moi)) {
+            return t('tr.ot.admin');
+        }
+        if (!self::ongletsChoisissables()) {
+            return t('tr.ot.indisponible_reglage');
+        }
+        self::ecrireOnglets($projet, $cles);
+
+        return null;
     }
 
     // --- Les colonnes du tableau : celles de base, et les phases que l'administrateur ajoute ---------

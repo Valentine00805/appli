@@ -457,6 +457,7 @@ $routes = [
     ['GET',  'travaux/{id}/document/pdf',      [TravauxController::class, 'documentPdf']],
     ['POST', 'travaux/{id}/document/entete',   [TravauxController::class, 'enregistrerEntetePdf']],
     ['POST', 'travaux/{id}/document/livrable', [TravauxController::class, 'documentVersLivrable']],
+    ['POST', 'travaux/{id}/onglets',           [TravauxController::class, 'enregistrerOnglets']],
     ['GET',  'travaux/{id}/livrables',         [TravauxController::class, 'livrables']],
     ['GET',  'travaux/{id}/livrables/nouveau', [TravauxController::class, 'nouveauLivrable']],
     ['POST', 'travaux/{id}/livrables',         [TravauxController::class, 'creerLivrable']],

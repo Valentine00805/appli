@@ -1254,6 +1254,8 @@ CREATE TABLE IF NOT EXISTS `projets` (
   `document_le`     DATETIME NULL,
   -- Le choix d'en-tête du PDF du document commun (JSON ; voir migration-projet-pdf-entete.sql).
   `pdf_entete`      TEXT NULL,
+  -- Les onglets au choix gardés par le groupe, séparés par des virgules ; NULL : tous (voir migration-projet-onglets.sql).
+  `onglets`         VARCHAR(120) NULL,
   `jeton`           CHAR(32) NULL,
   `created_at`      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),

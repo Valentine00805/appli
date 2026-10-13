@@ -24,6 +24,8 @@ if (Travaux::livrablesDisponibles()) {
 if (Travaux::listesDisponibles()) {
     $onglets = array_slice($onglets, 0, $apres, true) + ['listes' => ['/listes', '☑️', t('tr.on.listes')]] + array_slice($onglets, $apres, null, true);
 }
+// Seulement ceux que le groupe a choisis (« Qui fait quoi » et « Membres » sont toujours là).
+$onglets = array_filter($onglets, static fn (string $cle): bool => Travaux::ongletActif($projet, $cle), ARRAY_FILTER_USE_KEY);
 ?>
 <?php // En fenêtre, toute la place : trois colonnes de tâches y tiennent. ?>
 <div class="entete-page"<?= $dansUneFenetre ? ' data-document' : '' ?>>

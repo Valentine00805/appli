@@ -240,6 +240,13 @@ $jeton = $projet['jeton'] === null ? null : (string) $projet['jeton'];
           </div>
           <button class="bouton bouton--petit" type="submit"><?= e(t('tr.me.enregistrer')) ?></button>
         </form>
+        <?php if (($proposes ?? null) !== null): ?>
+          <form method="post"<?= $envoi ?> action="<?= url('travaux/' . (int) $projet['id'] . '/onglets') ?>" style="margin-top:1.2rem">
+            <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
+            <?= Vue::rendre('travaux/_choix_onglets', ['proposes' => $proposes, 'actifs' => $actifs, 'suffixe' => 'reglage']) ?>
+            <button class="bouton bouton--petit" type="submit" style="margin-top:.7rem"><?= e(t('tr.me.enregistrer')) ?></button>
+          </form>
+        <?php endif; ?>
         <form method="post"<?= $envoi ?> action="<?= url('travaux/' . (int) $projet['id'] . '/supprimer') ?>" style="margin-top:1rem"
               data-confirmation="<?= e(t('tr.me.supprimer_confirmation', ['nom' => (string) $projet['nom']])) ?>">
           <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">

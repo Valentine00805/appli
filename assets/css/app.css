@@ -4948,3 +4948,16 @@ a.serveur-carte:hover, a.serveur-carte:focus-visible { border-color: var(--accen
 .case-simple input { width: 1.05rem; height: 1.05rem; accent-color: var(--accent); }
 .acces-panneau textarea { width: 100%; min-height: 5rem; height: 5.5rem; }
 
+/* Le choix des onglets d'un projet : une ligne par onglet, avec ce qu'il sert à faire. « Qui fait quoi » et « Membres » sont fixes. */
+.choix-onglets { border: 1px solid var(--bordure); border-radius: 12px; padding: .8rem 1rem 1rem; margin: 0 0 1rem; min-width: 0; }
+.choix-onglets legend { font-weight: 700; padding: 0 .4rem; }
+.choix-onglets__liste { list-style: none; margin: 0; padding: 0; display: grid; gap: .4rem; }
+.choix-onglet { display: flex; align-items: center; gap: .7rem; padding: .55rem .7rem; border: 1px solid var(--bordure); border-radius: var(--rayon-s, 8px); cursor: pointer; background: var(--fond-carte, transparent); }
+.choix-onglet:hover { border-color: var(--bordure-forte); }
+.choix-onglet:has(input:checked:not(:disabled)) { border-color: var(--accent); background: var(--accent-doux); }
+.choix-onglet--fixe { cursor: default; background: var(--fond-doux); }
+.choix-onglet input { flex: none; width: 1.1rem; height: 1.1rem; accent-color: var(--accent); }
+.choix-onglet__icone { flex: none; font-size: 1.25rem; line-height: 1; }
+.choix-onglet__texte { flex: 1; min-width: 0; font-size: .95rem; }
+.choix-onglet__texte .discret { font-size: .84rem; }
+
