@@ -83,11 +83,9 @@ $menuFichier = static function (array $f, int $depuis) use ($dossiers, $courant,
                 <span aria-hidden="true">✎</span> <?= e(t('tr.fd.renommer')) ?>
               </a>
               <?php if ($peutSupprimer): ?>
-                <form method="post"<?= $envoi ?> action="<?= url('travaux/dossiers/' . (int) $d['id'] . '/supprimer') ?>" role="none"
-                      data-confirmation="<?= e(t('tr.fd.supprimer_confirmation', ['nom' => $d['nom'], 'parent' => $d['parent_nom']])) ?>">
-                  <input type="hidden" name="_csrf" value="<?= e($csrf) ?>">
-                  <button type="submit" class="ami-menu__item" role="menuitem"><span aria-hidden="true">🗑️</span> <?= e(t('tr.fd.supprimer')) ?></button>
-                </form>
+                <a class="ami-menu__item" role="menuitem" data-fenetre href="<?= url('travaux/dossiers/' . (int) $d['id'] . '/supprimer', ['depuis' => $depuis]) ?>">
+                  <span aria-hidden="true">🗑️</span> <?= e(t('tr.fd.supprimer')) ?>
+                </a>
               <?php endif; ?>
             </div>
           </details>

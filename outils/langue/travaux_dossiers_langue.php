@@ -2,7 +2,7 @@
 /**
  * Les dossiers de l'onglet « Fichiers » d'un travail de groupe (HTTP + base + disque) : créer un dossier (dans une fenêtre à part, à la racine ou dans un autre ;
  * les noms refusés, la profondeur, le plafond), s'y repérer (le chemin, les sous-dossiers et leurs compteurs), y déposer des fichiers, les déplacer, renommer
- * un dossier, le supprimer (son contenu remonte, rien n'est perdu ; seulement par qui l'a créé ou un administrateur), ce que voit le lien public, les livrables
+ * un dossier, le supprimer AVEC son contenu (sous-dossiers et fichiers, base et disque ; il faut retaper son nom ; par un administrateur, ou par qui l'a créé tant que tous les fichiers sont les siens), ce que voit le lien public, les livrables
  * qui restent à part, l'onglet retiré, un site dont la migration n'est pas passée, et les quatre langues.
  */
 require __DIR__ . '/base.php';
@@ -250,11 +250,11 @@ try {
     echo "\n7. Renommer un dossier\n";
     [, $panneau] = $appel('a', $racine . '?dossier=' . $sources);
     [, $pageRacine7] = $appel('a', $racine);
-    $dire('à la racine : chaque dossier a un menu « ⋮ » (« Options du dossier… ») avec « ✎ Renommer » (fenêtre, depuis=0) et « 🗑️ Supprimer le dossier » (avec confirmation)',
+    $dire('à la racine : chaque dossier a un menu « ⋮ » (« Options du dossier… ») avec « ✎ Renommer » (fenêtre, depuis=0) et « 🗑️ Supprimer le dossier » (une fenêtre de confirmation)',
         (string) preg_match_all('#<details class="ami-menu">\\s*<summary class="ami-menu__bouton" aria-label="Options du dossier « [^"]+ »"#u', $pageRacine7) . ' · ' . $oui(str_contains($pageRacine7, 'href="/mon_appli/appli/travaux/dossiers/' . $sources . '/renommer?depuis=0"') && str_contains($pageRacine7, 'data-fenetre href="/mon_appli/appli/travaux/dossiers/' . $sources . '/renommer?depuis=0"')
-            && str_contains($pageRacine7, 'action="/mon_appli/appli/travaux/dossiers/' . $sources . '/supprimer"') && str_contains($pageRacine7, 'Supprimer le dossier « Sources » ? Ses fichiers et ses sous-dossiers remontent dans « Fichiers » : rien n’est perdu.')), '2 · oui');
+            && preg_match('#data-fenetre href="/mon_appli/appli/travaux/dossiers/' . $sources . '/supprimer\\?depuis=0">\\s*<span aria-hidden="true">🗑️</span> Supprimer le dossier#u', $pageRacine7) === 1 && !str_contains($pageRacine7, 'action="/mon_appli/appli/travaux/dossiers/' . $sources . '/supprimer"')), '2 · oui');
     $dire('dans « Sources » : le même menu, juste après le nom dans le chemin (plus de carte en dessous) et sur « Brouillons », avec depuis=' . $sources . ' ; sans l\'ancien panneau « Modifier »',
-        (string) preg_match_all('#renommer\\?depuis=' . $sources . '"#', $panneau) . ' · ' . $oui(!str_contains($panneau, 'id="dossier-ouvrir"') && !str_contains($panneau, '✎ Modifier') && str_contains($panneau, 'dans « Fichiers » : rien n’est perdu')
+        (string) preg_match_all('#renommer\\?depuis=' . $sources . '"#', $panneau) . ' · ' . $oui(!str_contains($panneau, 'id="dossier-ouvrir"') && !str_contains($panneau, '✎ Modifier') && str_contains($panneau, 'dossiers/' . $brouillons . '/supprimer?depuis=' . $sources)
             && preg_match('#<strong>📁 Sources</strong>\\s*<details class="ami-menu">#u', $panneau) === 1 && !str_contains($panneau, '<h2>📁 Sources</h2>')), '2 · oui');
     [$cod, $formRenommer] = $appel('a', 'travaux/dossiers/' . $sources . '/renommer?depuis=' . $sources);
     $dire('la page « Renommer le dossier » : le nom rempli, son chemin, « Enregistrer », « Annuler », et d\'où l\'on vient',
@@ -283,28 +283,89 @@ try {
     [$cod] = $appel('c', 'travaux/dossiers/' . $sources . '/modifier', ['_csrf' => $csrf('c', 'compte'), 'nom' => 'Piraté']);
     $dire('quelqu\'un du dehors ne renomme rien (404)', $cod . ' · ' . bd_valeur('SELECT nom FROM projet_dossiers WHERE id = ?', [$sources]), '404 · Sources');
 
-    echo "\n8. Supprimer un dossier : son contenu remonte\n";
+    echo "\n8. Supprimer un dossier : avec ce qu'il contient, en le redemandant\n";
+    // « plan.txt » sort de « Brouillons » (il sert plus loin) ; on met un fichier de chacun dans « Sources » et « Brouillons ».
+    $appel('a', 'travaux/fichiers/' . $planId . '/deplacer', ['_csrf' => $ta, 'dossier' => '0']);
+    $appel('a', $racine, ['_csrf' => $ta, 'dossier' => (string) $sources, 'fichiers[0]' => $fichier('src-a.txt', 'A.')]);
+    $appel('b', $racine, ['_csrf' => $tb, 'dossier' => (string) $brouillons, 'fichiers[0]' => $fichier('src-b.txt', 'B.')]);
     $stockePlan = (string) bd_valeur('SELECT nom_stocke FROM projet_fichiers WHERE id = ?', [$planId]);
-    [, $refus] = $appel('b', 'travaux/dossiers/' . $sources . '/supprimer', ['_csrf' => $tb]);
-    $dire('b n\'a pas créé « Sources » et n\'est pas administrateur : « Seul celui qui a créé… », rien ne change',
-        $oui(str_contains($refus, 'Seul celui qui a créé le dossier, ou un administrateur, peut le supprimer.')) . ' · ' . $combien(), 'oui · 4');
-    [, $pageB] = $appel('b', $racine . '?dossier=' . $sources);
-    $dire('et son menu « ⋮ » ne lui propose pas « Supprimer le dossier » (seulement « Renommer »)', $oui(!str_contains($pageB, 'Supprimer le dossier') && str_contains($pageB, '</span> Renommer')), 'oui');
-    $dire('b peut supprimer celui qu\'il a créé (« Rapport »)', $oui(str_contains($appel('b', $racine . '?dossier=' . $dossierId('Rapport'))[1], 'Supprimer le dossier')), 'oui');
-    [, $supprime, $adresseSupprime] = $appel('a', 'travaux/dossiers/' . $sources . '/supprimer', ['_csrf' => $ta]);
-    $dire('l\'administrateur supprime « Sources » : « Dossier supprimé : son contenu est remonté. », retour à la racine',
-        $oui(str_contains($supprime, 'Dossier supprimé : son contenu est remonté.') && str_ends_with($adresseSupprime, '/travaux/' . $p . '/fichiers')) . ' · ' . bd_valeur('SELECT COUNT(*) FROM projet_dossiers WHERE id = ?', [$sources]), 'oui · 0');
-    $dire('« Brouillons » (qui était dedans) est remonté à la racine, avec « plan.txt » dedans (pas perdu, pas effacé du disque)',
-        $parentDe($brouillons) . ' · ' . $ou('plan.txt') . ' · ' . $oui($existe($stockePlan)), 'racine · ' . $brouillons . ' · oui');
-    $appel('a', 'travaux/' . $p . '/dossiers', ['_csrf' => $ta, 'nom' => 'Les anciens', 'parent' => (string) $brouillons]);
-    $anciens = $dossierId('Les anciens');
-    $appel('a', 'travaux/fichiers/' . $planId . '/deplacer', ['_csrf' => $ta, 'dossier' => (string) $anciens]);
-    [, , $adresseRemonte] = $appel('a', 'travaux/dossiers/' . $brouillons . '/supprimer', ['_csrf' => $ta]);
-    $dire('supprimer « Brouillons » (qui contient « Les anciens », avec « plan.txt ») : « Les anciens » remonte à la racine, « plan.txt » reste dedans',
-        $parentDe($anciens) . ' · ' . $ou('plan.txt') . ' · ' . bd_valeur('SELECT COUNT(*) FROM projet_dossiers WHERE id = ?', [$brouillons]), 'racine · ' . $anciens . ' · 0');
-    [$cod] = $appel('c', 'travaux/dossiers/' . $anciens . '/supprimer', ['_csrf' => $csrf('c', 'compte')]);
-    $dire('quelqu\'un du dehors ne supprime rien (404)', $cod . ' · ' . bd_valeur('SELECT COUNT(*) FROM projet_dossiers WHERE id = ?', [$anciens]), '404 · 1');
-    bd_run('DELETE FROM projet_dossiers WHERE id = ?', [$anciens]);
+    $stockeA = (string) bd_valeur('SELECT nom_stocke FROM projet_fichiers WHERE nom_origine = ?', ['src-a.txt']);
+    $stockeB = (string) bd_valeur('SELECT nom_stocke FROM projet_fichiers WHERE nom_origine = ?', ['src-b.txt']);
+    $lignesFichiers = static fn (string ...$noms): int => (int) bd_valeur('SELECT COUNT(*) FROM projet_fichiers WHERE projet_id = ? AND nom_origine IN (' . implode(',', array_fill(0, count($noms), '?')) . ')', array_merge([$GLOBALS['p']], $noms));
+    $urlSupp = static fn (int $d): string => 'travaux/dossiers/' . $d . '/supprimer';
+
+    [$cod, $pageSupp] = $appel('a', $urlSupp($sources) . '?depuis=0');
+    $dire('l\'administrateur ouvre la page : le titre, l\'avertissement, ce qui part (2 fichiers, 1 sous-dossier), leurs noms, le nom à retaper, la dernière confirmation',
+        $cod . ' · ' . $oui(str_contains($pageSupp, 'Supprimer le dossier « Sources » ?') && str_contains($pageSupp, 'sera supprimé pour tout le groupe, définitivement') && str_contains($pageSupp, '2 fichiers (') && str_contains($pageSupp, '1 sous-dossier')
+            && str_contains($pageSupp, 'src-a.txt') && str_contains($pageSupp, 'src-b.txt') && str_contains($pageSupp, 'Pour confirmer, tapez le nom du dossier : Sources') && str_contains($pageSupp, 'name="confirmation"') && str_contains($pageSupp, 'Supprimer définitivement')
+            && str_contains($pageSupp, 'action="/mon_appli/appli/travaux/dossiers/' . $sources . '/supprimer"') && str_contains($pageSupp, 'data-confirmation="Dernière vérification : supprimer définitivement le dossier « Sources » et tout ce qu’il contient ?"')), '200 · oui');
+    [, $fragSupp] = $appel('a', $urlSupp($sources) . '?fenetre=1&depuis=0');
+    [$codC] = $appel('c', $urlSupp($sources));
+    $dire('en fenêtre : le contenu seul ; quelqu\'un du dehors : 404', $oui(!str_contains($fragSupp, '<html') && str_contains($fragSupp, 'data-envoi-fenetre') && str_contains($fragSupp, 'data-fermer')) . ' · ' . $codC, 'oui · 404');
+    [, $pageSuppB] = $appel('b', $urlSupp($sources));
+    $dire('b (ni le créateur de « Sources », ni administrateur) ouvre la page : le refus, et pas de champ pour confirmer', $oui(str_contains($pageSuppB, 'Seul celui qui a créé le dossier, ou un administrateur, peut le supprimer.') && !str_contains($pageSuppB, 'name="confirmation"')), 'oui');
+    [, $refusB] = $appel('b', $urlSupp($sources), ['_csrf' => $tb, 'confirmation' => 'Sources']);
+    $dire('et même en postant le bon nom : rien ne part (4 dossiers, 2 fichiers)', $oui(str_contains($refusB, 'Seul celui qui a créé le dossier')) . ' · ' . $combien() . ' · ' . $lignesFichiers('src-a.txt', 'src-b.txt'), 'oui · 4 · 2');
+    [, $sansNom, $adresseSans] = $appel('a', $urlSupp($sources), ['_csrf' => $ta, 'confirmation' => '', 'depuis' => '0']);
+    $dire('l\'administrateur sans retaper le nom : « Le nom tapé n’est pas celui du dossier », on reste sur la page, rien ne part',
+        $oui(str_contains($sansNom, 'Le nom tapé n’est pas celui du dossier : rien n’a été supprimé.') && str_ends_with($adresseSans, '/supprimer?depuis=0')) . ' · ' . $combien() . ' · ' . $lignesFichiers('src-a.txt', 'src-b.txt'), 'oui · 4 · 2');
+    [, $malNom] = $appel('a', $urlSupp($sources), ['_csrf' => $ta, 'confirmation' => 'Diapositives', 'depuis' => '0']);
+    $dire('avec le nom d\'un autre dossier : pareil', $oui(str_contains($malNom, 'Le nom tapé n’est pas celui du dossier')) . ' · ' . $combien() . ' · ' . $lignesFichiers('src-a.txt', 'src-b.txt') . ' · ' . $oui($existe($stockeA) && $existe($stockeB)), 'oui · 4 · 2 · oui');
+    [, $supprime, $adresseSupprime] = $appel('a', $urlSupp($sources), ['_csrf' => $ta, 'confirmation' => '  sources ', 'depuis' => '0']);
+    $dire('avec le bon nom (majuscules et espaces sans importance) : « Dossier supprimé, avec ses 2 fichiers. », retour à la racine',
+        $oui(str_contains($supprime, 'Dossier supprimé, avec ses 2 fichiers.') && str_ends_with($adresseSupprime, '/travaux/' . $p . '/fichiers')), 'oui');
+    $dire('« Sources » et « Brouillons » ont disparu, avec leurs deux fichiers — dans la base ET sur le disque',
+        bd_valeur('SELECT COUNT(*) FROM projet_dossiers WHERE id IN (?, ?)', [$sources, $brouillons]) . ' · ' . $lignesFichiers('src-a.txt', 'src-b.txt') . ' · ' . $oui(!$existe($stockeA) && !$existe($stockeB)), '0 · 0 · oui');
+    $dire('« plan.txt » (à la racine) et « Diapositives » ne sont pas touchés', $ou('plan.txt') . ' · ' . $oui($existe($stockePlan)) . ' · ' . bd_valeur('SELECT COUNT(*) FROM projet_dossiers WHERE id = ?', [$diapos]), 'racine · oui · 1');
+
+    // Qui a créé un dossier, sans être administrateur, ne supprime pas le travail des autres.
+    $rapport = $dossierId('Rapport');
+    $appel('a', $racine, ['_csrf' => $ta, 'dossier' => (string) $rapport, 'fichiers[0]' => $fichier('chez-b.txt', 'x')]);
+    $chezB = (int) bd_valeur('SELECT id FROM projet_fichiers WHERE nom_origine = ?', ['chez-b.txt']);
+    $stockeChezB = (string) bd_valeur('SELECT nom_stocke FROM projet_fichiers WHERE id = ?', [$chezB]);
+    [, $pageB2] = $appel('b', $urlSupp($rapport));
+    [, $refusAutres] = $appel('b', $urlSupp($rapport), ['_csrf' => $tb, 'confirmation' => 'Rapport']);
+    $dire('b a créé « Rapport » mais un fichier de a y est : « seul un administrateur… », ni champ ni suppression',
+        $oui(str_contains($pageB2, 'déposés par d’autres membres') && !str_contains($pageB2, 'name="confirmation"') && str_contains($refusAutres, 'déposés par d’autres membres')) . ' · ' . $oui($dossierId('Rapport') === $rapport) . ' · ' . $oui($existe($stockeChezB)), 'oui · oui · oui');
+    $appel('a', 'travaux/fichiers/' . $chezB . '/supprimer', ['_csrf' => $ta]);
+    $appel('b', $racine, ['_csrf' => $tb, 'dossier' => (string) $rapport, 'fichiers[0]' => $fichier('mien-b.txt', 'y')]);
+    $stockeMien = (string) bd_valeur('SELECT nom_stocke FROM projet_fichiers WHERE nom_origine = ?', ['mien-b.txt']);
+    [, $pageB3] = $appel('b', $urlSupp($rapport));
+    $dire('quand tous les fichiers sont les siens, b peut : la page propose le champ du nom (1 fichier)', $oui(str_contains($pageB3, 'name="confirmation"') && str_contains($pageB3, '1 fichier (') && str_contains($pageB3, 'mien-b.txt')), 'oui');
+    $appel('b', $urlSupp($rapport), ['_csrf' => $tb, 'confirmation' => 'autre chose']);
+    $dire('mais pas sans le bon nom', $oui($dossierId('Rapport') === $rapport) . ' · ' . $lignesFichiers('mien-b.txt'), 'oui · 1');
+    [, $supprimeB] = $appel('b', $urlSupp($rapport), ['_csrf' => $tb, 'confirmation' => 'Rapport', 'depuis' => (string) $rapport]);
+    $dire('avec le bon nom : « Dossier supprimé, avec son fichier. », et l\'on revient dans « Diapositives » (son parent : le dossier où l\'on était n\'existe plus)',
+        $oui(str_contains($supprimeB, 'Dossier supprimé, avec son fichier.')) . ' · ' . $oui($dossierId('Rapport') === 0) . ' · ' . $lignesFichiers('mien-b.txt') . ' · ' . $oui(!$existe($stockeMien)), 'oui · oui · 0 · oui');
+
+    // Un dossier vide : une simple confirmation, sans nom à retaper.
+    $appel('b', 'travaux/' . $p . '/dossiers', ['_csrf' => $tb, 'nom' => 'Vide']);
+    $vide = $dossierId('Vide');
+    [, $pageVide] = $appel('b', $urlSupp($vide));
+    $dire('un dossier vide : « Ce dossier est vide : il sera simplement retiré. », pas de nom à retaper', $oui(str_contains($pageVide, 'Ce dossier est vide : il sera simplement retiré.') && !str_contains($pageVide, 'name="confirmation"') && str_contains($pageVide, 'Supprimer le dossier</button>')), 'oui');
+    [, $supprimeVide, $adresseVide] = $appel('b', $urlSupp($vide), ['_csrf' => $tb, 'depuis' => '0']);
+    $dire('et il part sans le nom : « Dossier supprimé. »', $oui(str_contains($supprimeVide, 'Dossier supprimé.') && !str_contains($supprimeVide, 'avec ses') && str_ends_with($adresseVide, '/travaux/' . $p . '/fichiers')) . ' · ' . $oui($dossierId('Vide') === 0), 'oui · oui');
+
+    // Les sous-dossiers, à tous les niveaux : tout part, pas seulement le premier étage.
+    $appel('a', 'travaux/' . $p . '/dossiers', ['_csrf' => $ta, 'nom' => 'Niveau 1']);
+    $n1 = $dossierId('Niveau 1');
+    $appel('a', 'travaux/' . $p . '/dossiers', ['_csrf' => $ta, 'nom' => 'Niveau 2', 'parent' => (string) $n1]);
+    $n2 = $dossierId('Niveau 2');
+    $appel('a', 'travaux/' . $p . '/dossiers', ['_csrf' => $ta, 'nom' => 'Niveau 3', 'parent' => (string) $n2]);
+    $n3 = $dossierId('Niveau 3');
+    $appel('a', $racine, ['_csrf' => $ta, 'dossier' => (string) $n3, 'fichiers[0]' => $fichier('tout-au-fond.txt', 'z')]);
+    $stockeFond = (string) bd_valeur('SELECT nom_stocke FROM projet_fichiers WHERE nom_origine = ?', ['tout-au-fond.txt']);
+    [, $pageNiveaux] = $appel('a', $urlSupp($n1));
+    $dire('« Niveau 1 » contient 2 sous-dossiers et le fichier du fond (3 niveaux plus bas) : la page les compte', $oui(str_contains($pageNiveaux, '1 fichier (') && str_contains($pageNiveaux, '2 sous-dossiers') && str_contains($pageNiveaux, 'tout-au-fond.txt')), 'oui');
+    $appel('a', $urlSupp($n1), ['_csrf' => $ta, 'confirmation' => 'Niveau 1', 'depuis' => (string) $n3]);
+    $dire('supprimé depuis « Niveau 3 » (qui disparaît) : les trois niveaux et le fichier ont disparu, base et disque',
+        bd_valeur('SELECT COUNT(*) FROM projet_dossiers WHERE id IN (?, ?, ?)', [$n1, $n2, $n3]) . ' · ' . $lignesFichiers('tout-au-fond.txt') . ' · ' . $oui(!$existe($stockeFond)), '0 · 0 · oui');
+    [$codX] = $appel('c', $urlSupp($diapos), ['_csrf' => $csrf('c', 'compte'), 'confirmation' => 'Diapositives']);
+    $dire('quelqu\'un du dehors ne supprime rien (404)', $codX . ' · ' . bd_valeur('SELECT COUNT(*) FROM projet_dossiers WHERE id = ?', [$diapos]), '404 · 1');
+    $appel('a', 'travaux/' . $p . '/dossiers', ['_csrf' => $ta, 'nom' => 'Tmp']);
+    $tmp = $dossierId('Tmp');
+    $appel('a', 'travaux/fichiers/' . $planId . '/deplacer', ['_csrf' => $ta, 'dossier' => (string) $tmp]);
+    bd_run('DELETE FROM projet_dossiers WHERE id = ?', [$tmp]);
     $dire('et si un dossier disparaît directement de la base, ses fichiers retombent à la racine (rien de perdu)', $ou('plan.txt') . ' · ' . $oui($existe($stockePlan)), 'racine · oui');
 
     echo "\n9. Ce qui reste à part, et ce que voit le lien public\n";

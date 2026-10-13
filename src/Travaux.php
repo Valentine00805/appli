@@ -1082,22 +1082,77 @@ final class Travaux
     }
 
     /**
-     * Supprime un dossier — celui qui l'a créé, ou un administrateur : ses fichiers et ses sous-dossiers remontent d'un cran, rien n'est perdu.
+     * Ce que supprimer un dossier emporterait : lui, ses sous-dossiers à tous les niveaux et tous les fichiers qu'ils contiennent — et si cette
+     * personne a le droit de le faire : un administrateur, ou celui qui a créé le dossier tant que tous les fichiers sont les siens.
      *
-     * @return ?array{projet: int, parent: ?int} le projet et le dossier où l'on revient, ou null s'il n'est pas à supprimer par cette personne
+     * @return ?array{dossier: array, ids: list<int>, sous_dossiers: int, fichiers: list<array>, taille: int, autres: int, droit: bool, permis: bool}
+     *         null si ce dossier n'est pas d'un projet dont on est membre
+     */
+    public static function suppressionDuDossier(int $moi, int $dossierId): ?array
+    {
+        $d = self::leDossier($moi, $dossierId);
+        if ($d === null) {
+            return null;
+        }
+        $projet = (int) $d['projet_id'];
+        $ids = [$dossierId];
+        $front = [$dossierId];
+        for ($garde = 0; $front !== [] && $garde < 20; $garde++) {
+            $in = implode(',', array_fill(0, count($front), '?'));
+            $enfants = array_map('intval', array_column(Database::all(
+                "SELECT id FROM projet_dossiers WHERE projet_id = ? AND parent_id IN ($in)", array_merge([$projet], $front)), 'id'));
+            $front = array_values(array_diff($enfants, $ids));
+            $ids = array_merge($ids, $front);
+        }
+        $in = implode(',', array_fill(0, count($ids), '?'));
+        $fichiers = Database::all(
+            "SELECT id, nom_origine, nom_stocke, taille, user_id FROM projet_fichiers
+              WHERE projet_id = ? AND livrable_id IS NULL AND dossier_id IN ($in) ORDER BY nom_origine, id",
+            array_merge([$projet], $ids));
+        $autres = count(array_filter($fichiers, static fn (array $f): bool => (int) ($f['user_id'] ?? 0) !== $moi));
+        $admin = self::estAdmin($projet, $moi);
+        $droit = $admin || (int) ($d['cree_par'] ?? 0) === $moi;
+
+        return [
+            'dossier' => $d,
+            'ids' => $ids,
+            'sous_dossiers' => count($ids) - 1,
+            'fichiers' => $fichiers,
+            'taille' => (int) array_sum(array_map(static fn (array $f): int => (int) $f['taille'], $fichiers)),
+            'autres' => $autres,
+            'droit' => $droit,
+            // Un administrateur peut tout ; qui a créé le dossier ne peut pas effacer le travail des autres.
+            'permis' => $admin || ($droit && $autres === 0),
+        ];
+    }
+
+    /**
+     * Supprime un dossier AVEC ce qu'il contient — ses sous-dossiers et tous leurs fichiers (base et disque) : rien n'est récupérable. Le droit est
+     * celui de « suppressionDuDossier » ; la confirmation, c'est au contrôleur de la demander.
+     *
+     * @return ?array{projet: int, parent: ?int, fichiers: int, dossiers: int} où l'on revient et ce qui est parti, ou null si ce n'est pas permis
      */
     public static function supprimerDossier(int $moi, int $dossierId): ?array
     {
-        $d = self::leDossier($moi, $dossierId);
-        if ($d === null || ((int) ($d['cree_par'] ?? 0) !== $moi && !self::estAdmin((int) $d['projet_id'], $moi))) {
+        $r = self::suppressionDuDossier($moi, $dossierId);
+        if ($r === null || !$r['permis']) {
             return null;
         }
-        $parent = $d['parent_id'] === null ? null : (int) $d['parent_id'];
-        Database::run('UPDATE projet_fichiers SET dossier_id = ? WHERE dossier_id = ?', [$parent, $dossierId]);
-        Database::run('UPDATE projet_dossiers SET parent_id = ? WHERE parent_id = ?', [$parent, $dossierId]);
-        Database::run('DELETE FROM projet_dossiers WHERE id = ?', [$dossierId]);
+        foreach ($r['fichiers'] as $f) {
+            $chemin = self::dossier() . DIRECTORY_SEPARATOR . basename((string) $f['nom_stocke']);
+            if (is_file($chemin)) {
+                @unlink($chemin);
+            }
+        }
+        if ($r['fichiers'] !== []) {
+            $in = implode(',', array_fill(0, count($r['fichiers']), '?'));
+            Database::run("DELETE FROM projet_fichiers WHERE id IN ($in)", array_map(static fn (array $f): int => (int) $f['id'], $r['fichiers']));
+        }
+        $in = implode(',', array_fill(0, count($r['ids']), '?'));
+        Database::run("DELETE FROM projet_dossiers WHERE id IN ($in)", $r['ids']);
+        $parent = $r['dossier']['parent_id'] === null ? null : (int) $r['dossier']['parent_id'];
 
-        return ['projet' => (int) $d['projet_id'], 'parent' => $parent];
+        return ['projet' => (int) $r['dossier']['projet_id'], 'parent' => $parent, 'fichiers' => count($r['fichiers']), 'dossiers' => $r['sous_dossiers']];
     }
 
     /**

@@ -512,17 +512,50 @@ final class TravauxController
         redirect('travaux/' . $projet . '/fichiers', $depuis > 0 ? ['dossier' => $depuis] : []);
     }
 
+    /** La page où l'on confirme la suppression d'un dossier : ce qui partirait avec lui, et le nom à retaper s'il n'est pas vide. */
+    public function formulaireSuppressionDossier(int $id): void
+    {
+        Auth::exiger();
+        $resume = Travaux::suppressionDuDossier(Auth::id(), $id) ?? $this->introuvable();
+        $projet = $this->projet((int) $resume['dossier']['projet_id']);
+        $this->ongletOuvert($projet, 'fichiers');
+        $this->formulaire('travaux/supprimer_dossier', [
+            'projet' => $projet,
+            'resume' => $resume,
+            'depuis' => max(0, (int) ($_GET['depuis'] ?? 0)),
+        ], t('tr.fd.supprimer'));
+    }
+
+    /**
+     * Supprime un dossier avec tout ce qu'il contient — sous-dossiers et fichiers. Un dossier qui n'est pas vide ne part que si l'on retape son nom :
+     * c'est définitif, et la fenêtre le redemande encore une fois avant d'envoyer.
+     */
     public function supprimerDossier(int $id): void
     {
         $this->exigerPost();
-        $d = Travaux::leDossier(Auth::id(), $id) ?? $this->introuvable();
-        $retour = Travaux::supprimerDossier(Auth::id(), $id);
-        if ($retour === null) {
-            Session::flash('erreur', t('tr.fd.supprimer_interdit'));
-            redirect('travaux/' . (int) $d['projet_id'] . '/fichiers', ['dossier' => $id]);
+        $resume = Travaux::suppressionDuDossier(Auth::id(), $id) ?? $this->introuvable();
+        $projet = (int) $resume['dossier']['projet_id'];
+        $depuis = max(0, (int) ($_POST['depuis'] ?? 0));
+        $page = 'travaux/dossiers/' . $id . '/supprimer';
+
+        if (!$resume['permis']) {
+            Session::flash('erreur', t($resume['droit'] ? 'tr.fd.supprimer_autres' : 'tr.fd.supprimer_interdit'));
+            redirect($page, ['depuis' => $depuis]);
         }
-        Session::flash('succes', t('tr.fd.fl.supprime'));
-        redirect('travaux/' . $retour['projet'] . '/fichiers', $retour['parent'] !== null ? ['dossier' => $retour['parent']] : []);
+        $vide = $resume['fichiers'] === [] && $resume['sous_dossiers'] === 0;
+        if (!$vide && mb_strtolower(trim(post('confirmation'))) !== mb_strtolower(trim((string) $resume['dossier']['nom']))) {
+            Session::flash('erreur', t('tr.fd.confirmer_nom'));
+            redirect($page, ['depuis' => $depuis]);
+        }
+
+        $retour = Travaux::supprimerDossier(Auth::id(), $id) ?? $this->introuvable();
+        Session::flash('succes', $retour['fichiers'] > 0 ? tn('tr.fd.fl.supprime_fichiers', $retour['fichiers']) : t('tr.fd.fl.supprime'));
+        // On revient où l'on était — sauf si c'était dans le dossier supprimé (ou l'un de ses sous-dossiers) : alors à son parent.
+        $retourne = $depuis;
+        if ($retourne > 0 && Travaux::dossierDuProjet($projet, $retourne) === null) {
+            $retourne = (int) ($retour['parent'] ?? 0);
+        }
+        redirect('travaux/' . $projet . '/fichiers', $retourne > 0 ? ['dossier' => $retourne] : []);
     }
 
     /** Déplacer un fichier, en fenêtre par-dessus les fichiers (« ?depuis=12 » : le dossier où l'on était, 0 la racine). */

@@ -468,6 +468,7 @@ $routes = [
     ['POST', 'travaux/{id}/dossiers',          [TravauxController::class, 'creerDossier']],
     ['GET',  'travaux/dossiers/{id}/renommer', [TravauxController::class, 'formulaireDossier']],
     ['POST', 'travaux/dossiers/{id}/modifier', [TravauxController::class, 'renommerDossier']],
+    ['GET',  'travaux/dossiers/{id}/supprimer', [TravauxController::class, 'formulaireSuppressionDossier']],
     ['POST', 'travaux/dossiers/{id}/supprimer', [TravauxController::class, 'supprimerDossier']],
     ['GET',  'travaux/fichiers/{id}/deplacer', [TravauxController::class, 'formulaireDeplacement']],
     ['POST', 'travaux/fichiers/{id}/deplacer', [TravauxController::class, 'deplacerFichier']],
