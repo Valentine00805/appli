@@ -88,6 +88,34 @@ final class TravauxController
         ], 'taches');
     }
 
+    /**
+     * Le récapitulatif du projet en PDF : qui a fait quoi, les tâches faites par personne, le burn down du premier jour au dernier.
+     * Tout membre du projet (avec un compte) le télécharge, terminé ou non : il dit alors où l'on en est.
+     */
+    public function recapitulatif(int $id): void
+    {
+        $projet = $this->projet($id);
+        try {
+            $recap = RecapProjet::calculer($projet, Travaux::membresActifs($id), Travaux::taches($id), date('Y-m-d'), Travaux::pointsPourRecapitulatif($id));
+            $pdf = RecapProjetPdf::generer($recap, (string) $projet['nom']);
+        } catch (Throwable) {
+            Session::flash('erreur', t('tr.rc.erreur'));
+            redirect('travaux/' . $id);
+        }
+
+        $nom = trim((string) preg_replace('/[\\\\\/:*?"<>|]+/', ' ', t('tr.rc.nom_fichier', ['nom' => (string) $projet['nom']]))) . '.pdf';
+        header('Content-Type: application/pdf');
+        header('Content-Length: ' . strlen($pdf));
+        header('X-Content-Type-Options: nosniff');
+        header('Cache-Control: private, no-store');
+        header(sprintf(
+            "Content-Disposition: attachment; filename=\"%s\"; filename*=UTF-8''%s",
+            preg_replace('/[^A-Za-z0-9._-]+/', '_', $nom) ?? 'recapitulatif.pdf',
+            rawurlencode($nom)
+        ));
+        echo $pdf;
+    }
+
     /** L'onglet « Listes » : les listes du groupe, à points à cocher. */
     public function listes(int $id): void
     {

@@ -119,6 +119,37 @@ final class PdfSimple
     }
 
     /**
+     * Un trait droit.
+     *
+     * @param array{0: float, 1: float, 2: float} $couleur
+     * @param ?array{0: float, 1: float} $tirets  la longueur du trait et du blanc, pour un pointillé
+     */
+    public function ligne(float $x1, float $y1, float $x2, float $y2, float $epaisseur, array $couleur, ?array $tirets = null): void
+    {
+        $this->trace([[$x1, $y1], [$x2, $y2]], $epaisseur, $couleur, $tirets);
+    }
+
+    /**
+     * Une ligne brisée, qui passe par tous ces points (de quoi tracer une courbe).
+     *
+     * @param list<array{0: float, 1: float}> $points
+     * @param array{0: float, 1: float, 2: float} $couleur
+     * @param ?array{0: float, 1: float} $tirets
+     */
+    public function trace(array $points, float $epaisseur, array $couleur, ?array $tirets = null): void
+    {
+        if (count($points) < 2) {
+            return;
+        }
+        $operation = sprintf('q %.3F %.3F %.3F RG %.2F w 1 J 1 j', $couleur[0], $couleur[1], $couleur[2], $epaisseur)
+            . ($tirets === null ? '' : sprintf(' [%.2F %.2F] 0 d', $tirets[0], $tirets[1]));
+        foreach (array_values($points) as $i => [$x, $y]) {
+            $operation .= sprintf(' %.2F %.2F %s', $x, $y, $i === 0 ? 'm' : 'l');
+        }
+        $this->ajouter($operation . ' S Q');
+    }
+
+    /**
      * Une image, déjà passée par GD : un JPEG en couleurs, que le PDF garde tel
      * quel. Rend son numéro, à poser ensuite où l'on veut.
      */

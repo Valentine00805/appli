@@ -1260,6 +1260,52 @@ final class Travaux
         return $ajoutes;
     }
 
+    /**
+     * Le statut d'une tâche suit ses points à cocher : tous cochés, elle est « Fait » ; quelques-uns, elle est « En cours » ; plus aucun,
+     * une tâche « Fait » redevient « À faire ». Ajouter un point à une tâche faite la remet donc « En cours ». Appelé après chaque
+     * changement de points ; sans point, le statut reste celui qu'on a choisi à la main.
+     */
+    private static function suivreLesPoints(int $tacheId): void
+    {
+        $l = Database::one('SELECT COUNT(*) AS total, COALESCE(SUM(fait), 0) AS faits FROM projet_points WHERE tache_id = ?', [$tacheId]);
+        $total = (int) ($l['total'] ?? 0);
+        $faits = (int) ($l['faits'] ?? 0);
+        $statut = Database::valeur('SELECT statut FROM projet_taches WHERE id = ?', [$tacheId]);
+        if ($total === 0 || $statut === null || $statut === false) {
+            return;
+        }
+        $voulu = $faits === $total ? 'fait' : ($faits > 0 ? 'en_cours' : ($statut === 'fait' ? 'a_faire' : $statut));
+        if ($voulu !== $statut) {
+            Database::run(
+                'UPDATE projet_taches SET statut = ?, fait_le = IF(statut = \'fait\', COALESCE(fait_le, ?), NULL) WHERE id = ?',
+                [$voulu, date('Y-m-d H:i:s'), $tacheId]);
+        }
+    }
+
+    /**
+     * Les points de chaque tâche du projet, avec qui les a cochés et quand : de quoi dire, dans le récapitulatif, ce que chacun a fait.
+     *
+     * @return array<int, list<array{texte: string, fait: bool, fait_le: ?string, par_user_id: ?int}>>
+     */
+    public static function pointsPourRecapitulatif(int $projet): array
+    {
+        if (!self::listesDisponibles()) {
+            return [];
+        }
+        $parTache = [];
+        foreach (Database::all(
+            'SELECT p.tache_id, p.texte, p.fait, p.fait_le, p.fait_par
+               FROM projet_points p JOIN projet_taches t ON t.id = p.tache_id AND t.projet_id = ?
+              ORDER BY p.tache_id, p.position, p.id',
+            [$projet]
+        ) as $p) {
+            $parTache[(int) $p['tache_id']][] = ['texte' => (string) $p['texte'], 'fait' => (int) $p['fait'] === 1,
+                'fait_le' => $p['fait_le'] === null ? null : (string) $p['fait_le'], 'par_user_id' => $p['fait_par'] === null ? null : (int) $p['fait_par']];
+        }
+
+        return $parTache;
+    }
+
     /** « 2/5 » : combien de points faits sur combien. Null s'il n'y en a pas. */
     public static function avancementPoints(array $points): ?array
     {
@@ -1347,6 +1393,7 @@ final class Travaux
         $tache = Database::dernierId();
         Database::run('UPDATE projet_points SET tache_id = ?, liste_id = NULL WHERE liste_id = ?', [$tache, $listeId]);
         Database::run('DELETE FROM projet_listes WHERE id = ?', [$listeId]);
+        self::suivreLesPoints($tache);   // des points déjà cochés : la tâche est en cours, ou faite
 
         return [$tache, $projet];
     }
@@ -1386,6 +1433,9 @@ final class Travaux
         }
         $position = (int) Database::valeur("SELECT COALESCE(MAX(position), 0) + 1 FROM projet_points WHERE $colonne = ?", [$parentId]);
         Database::run("INSERT INTO projet_points ($colonne, texte, position, created_at) VALUES (?, ?, ?, ?)", [$parentId, $texte, $position, date('Y-m-d H:i:s')]);
+        if ($parent !== 'liste') {
+            self::suivreLesPoints($parentId);
+        }
 
         return null;
     }
@@ -1426,16 +1476,24 @@ final class Travaux
             'UPDATE projet_points SET fait = ?, fait_par = ?, fait_le = ? WHERE id = ?',
             [$fait ? 1 : 0, $fait ? $moi : null, $fait ? date('Y-m-d H:i:s') : null, $pointId]
         );
+        $point = self::point($moi, $pointId);
+        if ($point !== null && $point['tache_id'] !== null) {
+            self::suivreLesPoints($point['tache_id']);
+        }
 
         return true;
     }
 
     public static function supprimerPoint(int $moi, int $pointId): bool
     {
-        if (self::point($moi, $pointId) === null) {
+        $point = self::point($moi, $pointId);
+        if ($point === null) {
             return false;
         }
         Database::run('DELETE FROM projet_points WHERE id = ?', [$pointId]);
+        if ($point['tache_id'] !== null) {
+            self::suivreLesPoints($point['tache_id']);
+        }
 
         return true;
     }

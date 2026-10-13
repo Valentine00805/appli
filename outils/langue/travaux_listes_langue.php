@@ -161,8 +161,8 @@ try {
     $tachesAvant = (int) bd_valeur('SELECT COUNT(*) FROM projet_taches WHERE projet_id = ?', [$p]);
     [$cod, $apres, $adresse] = $appel('a', 'travaux/listes/' . $aTransformer . '/en-tache', ['_csrf' => $t]);
     $nouvelleTache = bd_all('SELECT id, statut, membre_id FROM projet_taches WHERE projet_id = ? AND titre = ?', [$p, 'À transformer']);
-    $dire('une tâche « À transformer » est créée, à faire, sans responsable',
-        count($nouvelleTache) . ' · ' . ($nouvelleTache[0]['statut'] ?? '-') . ' · ' . ($nouvelleTache[0]['membre_id'] ?? 'personne') . ' · ' . ((int) bd_valeur('SELECT COUNT(*) FROM projet_taches WHERE projet_id = ?', [$p]) - $tachesAvant), '1 · a_faire · personne · 1');
+    $dire('une tâche « À transformer » est créée, sans responsable, « en cours » (un de ses deux points était coché)',
+        count($nouvelleTache) . ' · ' . ($nouvelleTache[0]['statut'] ?? '-') . ' · ' . ($nouvelleTache[0]['membre_id'] ?? 'personne') . ' · ' . ((int) bd_valeur('SELECT COUNT(*) FROM projet_taches WHERE projet_id = ?', [$p]) - $tachesAvant), '1 · en_cours · personne · 1');
     $dire('la liste a disparu, on revient au tableau avec « Liste transformée en tâche. »',
         $cod . ' · ' . bd_valeur('SELECT COUNT(*) FROM projet_listes WHERE id = ?', [$aTransformer]) . ' · ' . $oui(str_ends_with($adresse, '/travaux/' . $p) && str_contains($apres, 'Liste transformée en tâche.') && str_contains($apres, 'À transformer')), '200 · 0 · oui');
     $reprise = $points('tache_id', (int) $nouvelleTache[0]['id']);
@@ -237,6 +237,50 @@ try {
     $beaucoup = implode("\n", array_map(static fn (int $i): string => 'Point ' . $i, range(1, Travaux_essai_max_points() + 20)));
     $appel('a', 'travaux/' . $p . '/taches', ['_csrf' => $jeton($nouvelle), 'titre' => 'Beaucoup', 'points' => $beaucoup]);
     $dire('au-delà de la limite, les lignes en trop sont laissées', (string) count($points('tache_id', (int) bd_valeur('SELECT id FROM projet_taches WHERE projet_id = ? AND titre = ?', [$p, 'Beaucoup']))), (string) Travaux_essai_max_points());
+
+    echo "\n7c. Le statut de la tâche suit ses points\n";
+    bd_run('INSERT INTO projet_taches (projet_id, titre, statut) VALUES (?, ?, ?)', [$p, 'Suivi des points', 'a_faire']);
+    $suivie = (int) bd_valeur('SELECT id FROM projet_taches WHERE projet_id = ? AND titre = ?', [$p, 'Suivi des points']);
+    $etat = static fn (): string => bd_valeur('SELECT statut FROM projet_taches WHERE id = ?', [$suivie]) . ($GLOBALS['suivieFaiteLe']() ? '+date' : '');
+    $suivieFaiteLe = static fn (): bool => bd_valeur('SELECT fait_le FROM projet_taches WHERE id = ?', [$suivie]) !== null;
+    $cocher = static function (int $pointId, bool $fait) use ($appel, $csrf, $p): void {
+        $GLOBALS['appel']('a', 'travaux/points/' . $pointId . '/cocher', ['_csrf' => $csrf('a', 'travaux/' . $p), 'fait' => $fait ? '1' : '0']);
+    };
+    $tc = $csrf('a', 'travaux/' . $p);
+    foreach (['Un', 'Deux'] as $texte) {
+        $appel('a', 'travaux/taches/' . $suivie . '/points', ['_csrf' => $tc, 'texte' => $texte]);
+    }
+    [$un, $deux] = array_map(static fn (array $l): int => (int) $l['id'], $points('tache_id', $suivie));
+    $dire('deux points pas cochés : la tâche reste « à faire »', $etat(), 'a_faire');
+    $cocher($un, true);
+    $dire('un point coché sur deux : la tâche passe « en cours »', $etat(), 'en_cours');
+    $cocher($deux, true);
+    $dire('tous cochés : la tâche est « faite », avec sa date', $etat(), 'fait+date');
+    $appel('a', 'travaux/taches/' . $suivie . '/points', ['_csrf' => $tc, 'texte' => 'Trois']);
+    $dire('un point de plus sur une tâche faite : elle redevient « en cours » (sans date de fin)', $etat(), 'en_cours');
+    $trois = (int) $points('tache_id', $suivie)[2]['id'];
+    $cocher($trois, true);
+    $cocher($un, false);
+    $cocher($deux, false);
+    $cocher($trois, false);
+    $dire('plus aucun point coché : une tâche « en cours » le reste (on l\'avait peut-être lancée à la main)', $etat(), 'en_cours');
+    $appel('a', 'travaux/points/' . $deux . '/supprimer', ['_csrf' => $tc]);
+    $appel('a', 'travaux/points/' . $trois . '/supprimer', ['_csrf' => $tc]);
+    $cocher($un, true);
+    $dire('on retire les points pas cochés : il ne reste que des points cochés, la tâche est « faite »', $etat(), 'fait+date');
+    $cocher($un, false);
+    $dire('et si l\'on décoche le seul point d\'une tâche faite : elle redevient « à faire »', $etat(), 'a_faire');
+    $appel('a', 'travaux/taches/' . $suivie . '/statut', ['_csrf' => $tc, 'statut' => 'fait']);
+    $dire('un statut choisi à la main n\'est pas défait tant qu\'on ne touche pas aux points', $etat(), 'fait+date');
+    bd_run('DELETE FROM projet_taches WHERE id = ?', [$suivie]);
+    $appel('a', 'travaux/' . $p . '/listes', ['_csrf' => $csrf('a', 'travaux/' . $p . '/listes'), 'titre' => 'Liste cochée']);
+    $cochee = (int) bd_valeur('SELECT id FROM projet_listes WHERE projet_id = ? AND titre = ?', [$p, 'Liste cochée']);
+    $appel('a', 'travaux/listes/' . $cochee . '/points', ['_csrf' => $tc, 'texte' => 'Déjà fait']);
+    $appel('a', 'travaux/points/' . (int) $points('liste_id', $cochee)[0]['id'] . '/cocher', ['_csrf' => $csrf('a', 'travaux/' . $p . '/listes'), 'fait' => '1']);
+    $appel('a', 'travaux/listes/' . $cochee . '/en-tache', ['_csrf' => $csrf('a', 'travaux/' . $p . '/listes')]);
+    $dire('une liste dont tous les points sont cochés, faite tâche : la tâche est « faite »',
+        (string) bd_valeur('SELECT statut FROM projet_taches WHERE projet_id = ? AND titre = ?', [$p, 'Liste cochée']), 'fait');
+    bd_run('DELETE FROM projet_taches WHERE projet_id = ? AND titre = ?', [$p, 'Liste cochée']);
 
     echo "\n8. Les limites\n";
     $maximum = Travaux_essai_max_points();

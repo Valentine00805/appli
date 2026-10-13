@@ -51,6 +51,8 @@ require __DIR__ . '/src/TextePdf.php';
 require __DIR__ . '/src/GenerateurCartes.php';
 require __DIR__ . '/src/TexteRiche.php';
 require __DIR__ . '/src/PdfSimple.php';
+require __DIR__ . '/src/RecapProjet.php';
+require __DIR__ . '/src/RecapProjetPdf.php';
 require __DIR__ . '/src/ExportPdf.php';
 require __DIR__ . '/src/WebPush.php';
 require __DIR__ . '/src/Rappels.php';
@@ -451,6 +453,7 @@ $routes = [
     ['GET',  'travaux/{id}',                   [TravauxController::class, 'taches']],
     ['GET',  'travaux/{id}/echeances',         [TravauxController::class, 'echeances']],
     ['GET',  'travaux/{id}/listes',            [TravauxController::class, 'listes']],
+    ['GET',  'travaux/{id}/recapitulatif',     [TravauxController::class, 'recapitulatif']],
     ['POST', 'travaux/{id}/listes',            [TravauxController::class, 'creerListe']],
     ['POST', 'travaux/listes/{id}/modifier',   [TravauxController::class, 'renommerListe']],
     ['POST', 'travaux/listes/{id}/supprimer',  [TravauxController::class, 'supprimerListe']],

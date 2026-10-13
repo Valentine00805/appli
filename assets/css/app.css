@@ -4924,3 +4924,7 @@ a.serveur-carte:hover, a.serveur-carte:focus-visible { border-color: var(--accen
 .bloc-liste__action { margin: 0; flex: none; }
 .acces-panneau__ligne input[type=text] { flex: 1 1 11rem; min-width: 0; width: auto; }
 
+/* « Répartition » : le récapitulatif PDF du projet, et « Projet terminé » quand toutes les tâches sont faites. */
+.travaux-recap { margin-top: 1rem; padding-top: .9rem; border-top: 1px solid var(--bordure); display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .6rem; }
+.travaux-recap__fini { margin: 0; font-weight: 700; color: var(--succes); }
+

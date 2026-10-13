@@ -145,6 +145,13 @@ $avancement = Travaux::avancement($total, $faites);
           </li>
         <?php endforeach; ?>
       </ul>
+      <?php if ($total > 0): ?>
+        <?php // Terminé ou non, le récapitulatif se télécharge : qui a fait quoi, les tâches par personne, le burn down. ?>
+        <div class="travaux-recap">
+          <?php if ($faites === $total): ?><p class="travaux-recap__fini">✅ <?= e(t('tr.rc.termine')) ?></p><?php endif; ?>
+          <a class="bouton bouton--secondaire" href="<?= url('travaux/' . (int) $projet['id'] . '/recapitulatif') ?>" title="<?= e(t('tr.rc.bouton_aide')) ?>">📄 <?= e(t('tr.rc.bouton')) ?></a>
+        </div>
+      <?php endif; ?>
     </section>
   </div>
 </div>
