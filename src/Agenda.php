@@ -118,6 +118,8 @@ final class Agenda
             'replie'  => isset($replies['calendriersamis']),
             'sources' => CalendriersAmis::sourcesDuVolet($userId),
             'amis'    => true,
+            'groupes' => CalendriersAmis::groupes($userId),
+            'groupes_ok' => CalendriersAmis::groupesDisponibles(),
         ];
 
         return $sections;

@@ -7899,3 +7899,28 @@
     if (menu && item.tagName === 'A') { setTimeout(function () { menu.removeAttribute('open'); }, 0); }
   });
 })();
+
+/*
+ * Les groupes de calendriers du volet retiennent leur état (plié ou déplié) : on prévient le serveur en arrière-plan, sans recharger la page.
+ * Sans JavaScript, « details » plie et déplie quand même ; seule la mémoire manque.
+ */
+(function () {
+  'use strict';
+  var volet = document.querySelector('.cal-volet');
+  var jeton = volet ? volet.querySelector('input[name="_csrf"]') : null;
+  if (!volet || !jeton) { return; }
+  volet.querySelectorAll('.cal-volet__sous[data-groupe]').forEach(function (groupe) {
+    groupe.addEventListener('toggle', function () {
+      var corps = new FormData();
+      corps.append('_csrf', jeton.value);
+      corps.append('replie', groupe.open ? '0' : '1');
+      fetch(groupe.dataset.groupe, { method: 'POST', body: corps, headers: { 'Accept': 'application/json' }, credentials: 'same-origin' })
+        .catch(function () { /* tant pis : le groupe reste ainsi pour cette page-ci */ });
+    });
+  });
+  // Un clic sur l'engrenage, dans le titre du groupe, ouvre la fenêtre sans plier le groupe.
+  volet.addEventListener('click', function (evenement) {
+    var outil = evenement.target.closest ? evenement.target.closest('.cal-volet__sous-titre .cal-volet__outil') : null;
+    if (outil) { evenement.preventDefault(); }
+  });
+})();

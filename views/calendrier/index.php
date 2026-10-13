@@ -242,45 +242,78 @@ $puce = static function (array $evt) use ($destination): string {
        * verrait s'ouvrir puis se refermer au chargement.
        */
       ?>
+      <?php
+      // Une ligne du volet : la case, le nom, les outils d'un calendrier partagé, la teinte. Posée là pour servir aussi dans les groupes.
+      $ligneSource = static function (array $source): void { ?>
+      <li>
+        <label>
+          <input type="checkbox" name="sources[]"
+                 value="<?= e($source['cle']) ?>"<?= $source['affiche'] ? ' checked' : '' ?>>
+          <span><?= e($source['nom']) ?></span>
+        </label>
+        <?php if (isset($source['calendrier_id'])): ?>
+          <?php // Un calendrier partagé : ses réglages et ses membres, et un évènement à y ajouter. ?>
+          <a class="cal-volet__outil" href="<?= url('evenements/nouveau', ['agenda' => CalendriersAmis::cle((int) $source['calendrier_id'])]) ?>" data-fenetre
+             title="<?= e(t('cam.evt_ajouter')) ?>" aria-label="<?= e(t('cam.evt_ajouter')) ?>">＋</a>
+          <a class="cal-volet__outil" href="<?= url('calendriers-amis/' . (int) $source['calendrier_id']) ?>" data-fenetre
+             title="<?= e(t('cam.gerer')) ?>" aria-label="<?= e(t('cam.gerer')) ?>">⚙</a>
+        <?php endif; ?>
+        <?php
+        /*
+         * Le nuancier du navigateur, celui-là même que l'éditeur de
+         * documents ouvre : toutes les teintes plutôt qu'une palette de
+         * dix, et un outil que la personne connaît déjà.
+         */
+        ?>
+        <input type="color" class="cal-volet__teinte"
+               name="couleur[<?= e($source['cle']) ?>]"
+               value="<?= e($source['couleur']) ?>"
+               title="<?= e(t('cal.couleur_de', ['nom' => $source['nom']])) ?>"
+               aria-label="<?= e(t('cal.couleur_de', ['nom' => $source['nom']])) ?>">
+      </li>
+      <?php };
+      $retourVolet = (string) ($_SERVER['REQUEST_URI'] ?? '');
+      ?>
       <?php foreach ($sources as $section): ?>
+      <?php
+      // Les calendriers partagés se rangent en groupes (pliables) : ceux d'un groupe d'abord, puis ceux qui n'en ont pas.
+      $groupes = $section['groupes'] ?? [];
+      $rangees = [];
+      foreach ($groupes as $g) { $rangees[$g['id']] = []; }
+      $libres = [];
+      foreach ($section['sources'] as $source) {
+          $gid = $source['groupe_id'] ?? null;
+          if ($gid !== null && isset($rangees[$gid])) { $rangees[$gid][] = $source; } else { $libres[] = $source; }
+      }
+      ?>
       <details class="cal-volet__section" data-section="<?= e($section['cle']) ?>"
                <?= $section['replie'] ? '' : 'open' ?>>
         <summary class="cal-volet__groupe"><?= e($section['titre']) ?></summary>
-        <ul class="cal-volet__liste">
-        <?php foreach ($section['sources'] as $source): ?>
-          <li>
-            <label>
-              <input type="checkbox" name="sources[]"
-                     value="<?= e($source['cle']) ?>"<?= $source['affiche'] ? ' checked' : '' ?>>
-              <span><?= e($source['nom']) ?></span>
-            </label>
-            <?php if (isset($source['calendrier_id'])): ?>
-              <?php // Un calendrier partagé : ses réglages et ses membres, et un évènement à y ajouter. ?>
-              <a class="cal-volet__outil" href="<?= url('evenements/nouveau', ['agenda' => CalendriersAmis::cle((int) $source['calendrier_id'])]) ?>" data-fenetre
-                 title="<?= e(t('cam.evt_ajouter')) ?>" aria-label="<?= e(t('cam.evt_ajouter')) ?>">＋</a>
-              <a class="cal-volet__outil" href="<?= url('calendriers-amis/' . (int) $source['calendrier_id']) ?>" data-fenetre
-                 title="<?= e(t('cam.gerer')) ?>" aria-label="<?= e(t('cam.gerer')) ?>">⚙</a>
-            <?php endif; ?>
-            <?php
-            /*
-             * Le nuancier du navigateur, celui-là même que l'éditeur de
-             * documents ouvre : toutes les teintes plutôt qu'une palette de
-             * dix, et un outil que la personne connaît déjà.
-             */
-            ?>
-            <input type="color" class="cal-volet__teinte"
-                   name="couleur[<?= e($source['cle']) ?>]"
-                   value="<?= e($source['couleur']) ?>"
-                   title="<?= e(t('cal.couleur_de', ['nom' => $source['nom']])) ?>"
-                   aria-label="<?= e(t('cal.couleur_de', ['nom' => $source['nom']])) ?>">
-          </li>
+        <?php foreach ($groupes as $g): ?>
+          <details class="cal-volet__sous" data-groupe="<?= e(url('calendriers-amis/groupes/' . (int) $g['id'] . '/replier')) ?>"<?= $g['replie'] ? '' : ' open' ?>>
+            <summary class="cal-volet__sous-titre">
+              <span class="cal-volet__sous-nom"><?= e($g['nom']) ?></span>
+              <span class="cal-volet__sous-nb"><?= count($rangees[$g['id']]) ?></span>
+              <a class="cal-volet__outil" href="<?= url('calendriers-amis/groupes/' . (int) $g['id'] . '/modifier', ['retour' => $retourVolet]) ?>" data-fenetre
+                 title="<?= e(t('cam.gr.gerer', ['nom' => $g['nom']])) ?>" aria-label="<?= e(t('cam.gr.gerer', ['nom' => $g['nom']])) ?>">⚙</a>
+            </summary>
+            <ul class="cal-volet__liste">
+              <?php foreach ($rangees[$g['id']] as $source) { $ligneSource($source); } ?>
+              <?php if ($rangees[$g['id']] === []): ?><li class="cal-volet__vide"><?= e(t('cam.gr.vide')) ?></li><?php endif; ?>
+            </ul>
+          </details>
         <?php endforeach; ?>
+        <ul class="cal-volet__liste">
+        <?php foreach ($libres as $source) { $ligneSource($source); } ?>
         </ul>
         <?php if (!empty($section['amis'])): ?>
           <?php if ($section['sources'] === []): ?><p class="cal-volet__vide"><?= e(t('cam.volet_vide')) ?></p><?php endif; ?>
           <a class="cal-volet__nouveau" href="<?= url('calendriers-amis/nouveau') ?>" data-fenetre>
             <span class="cal-volet__nouveau-icone" aria-hidden="true">＋</span> <?= e(t('cam.nouveau')) ?>
           </a>
+          <?php if (!empty($section['groupes_ok'])): ?>
+            <a class="cal-volet__nouveau-groupe" href="<?= url('calendriers-amis/groupes/nouveau', ['retour' => $retourVolet]) ?>" data-fenetre>📁 <?= e(t('cam.gr.nouveau')) ?></a>
+          <?php endif; ?>
         <?php endif; ?>
       </details>
       <?php endforeach; ?>

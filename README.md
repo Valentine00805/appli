@@ -45,7 +45,8 @@ allemand) et avec un thème clair ou sombre.
   ne se désynchronise).
 - **Calendriers partagés** — des calendriers à part, ouverts aux seuls amis que vous choisissez : chacun y ajoute ses
   évènements (et modifie les siens), le créateur gère les membres, et chaque membre affiche ou masque le calendrier, et
-  lui donne sa couleur, depuis le volet du calendrier.
+  lui donne sa couleur, depuis le volet du calendrier. On peut **réunir plusieurs calendriers dans un groupe**, pliable et
+  dépliable (un rangement à soi, que les autres membres ne voient pas ; un calendrier n'est que dans un groupe à la fois).
 - **Agendas externes** — **Outlook (Microsoft)** et **Google Agenda** se relient chacun à votre compte, et la
   synchronisation se fait dans les deux sens.
 - **Rappels et notifications** — notifications du navigateur ou du téléphone (même application fermée, avec la tâche

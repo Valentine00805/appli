@@ -74,8 +74,9 @@ final class CalendriersAmis
      */
     public static function liste(int $moi): array
     {
+        $groupe = self::groupesDisponibles() ? 'm.groupe_id' : 'NULL AS groupe_id';
         $lignes = Database::all(
-            "SELECT c.id, c.proprietaire_id, c.projet_id, p.nom AS projet_nom, c.nom, c.couleur AS couleur_calendrier, m.affiche, m.couleur AS couleur_perso,
+            "SELECT c.id, c.proprietaire_id, c.projet_id, p.nom AS projet_nom, c.nom, c.couleur AS couleur_calendrier, m.affiche, m.couleur AS couleur_perso, {$groupe},
                     COALESCE(u.pseudo, '') AS proprietaire_pseudo,
                     (SELECT COUNT(*) FROM calendrier_amis_membres x WHERE x.calendrier_id = c.id) AS membres
                FROM calendrier_amis_membres m
@@ -112,6 +113,8 @@ final class CalendriersAmis
             'couleur' => $couleur,
             'couleur_calendrier' => (string) $l['couleur_calendrier'],
             'couleur_perso' => $l['couleur_perso'] === null ? null : (string) $l['couleur_perso'],
+            // Le groupe de mon volet où il se range (null : hors groupe, ou groupes pas encore disponibles).
+            'groupe_id' => isset($l['groupe_id']) ? (int) $l['groupe_id'] : null,
         ];
     }
 
@@ -456,7 +459,124 @@ final class CalendriersAmis
             'partage' => true,
             'agenda' => '',
             'calendrier_id' => $c['id'],
+            'groupe_id' => $c['groupe_id'],
         ], self::liste($moi));
+    }
+
+    // --- Les groupes de calendriers (le rangement du volet, propre à chacun) --------------------------------------------
+
+    public const GROUPES_MAX = 20;
+    public const GROUPE_NOM_MAX = 60;
+
+    /** La migration des groupes est-elle passée ? Sinon le volet reste comme avant. */
+    public static function groupesDisponibles(): bool
+    {
+        static $ok = null;
+        if ($ok === null) {
+            try {
+                Database::valeur('SELECT 1 FROM calendrier_groupes LIMIT 1');
+                Database::valeur('SELECT groupe_id FROM calendrier_amis_membres LIMIT 1');
+                $ok = true;
+            } catch (Throwable) {
+                $ok = false;
+            }
+        }
+
+        return $ok;
+    }
+
+    /**
+     * Mes groupes, par nom, avec les calendriers qu'ils réunissent.
+     *
+     * @return list<array{id: int, nom: string, replie: bool, calendriers: list<int>}>
+     */
+    public static function groupes(int $moi): array
+    {
+        if (!self::groupesDisponibles()) {
+            return [];
+        }
+        $par = [];
+        foreach (Database::all('SELECT id, nom, replie FROM calendrier_groupes WHERE user_id = ? ORDER BY nom, id', [$moi]) as $g) {
+            $par[(int) $g['id']] = ['id' => (int) $g['id'], 'nom' => (string) $g['nom'], 'replie' => (int) $g['replie'] !== 0, 'calendriers' => []];
+        }
+        foreach (Database::all('SELECT calendrier_id, groupe_id FROM calendrier_amis_membres WHERE user_id = ? AND groupe_id IS NOT NULL ORDER BY calendrier_id', [$moi]) as $l) {
+            if (isset($par[(int) $l['groupe_id']])) {
+                $par[(int) $l['groupe_id']]['calendriers'][] = (int) $l['calendrier_id'];
+            }
+        }
+
+        return array_values($par);
+    }
+
+    /** Un de mes groupes, ou null. @return ?array{id: int, nom: string, replie: bool, calendriers: list<int>} */
+    public static function groupe(int $id, int $moi): ?array
+    {
+        foreach (self::groupes($moi) as $g) {
+            if ($g['id'] === $id) {
+                return $g;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Crée un groupe (id null) ou modifie le mien : son nom, et les calendriers qu'il réunit — ceux qu'on décoche en sortent, ceux qu'on coche y
+     * entrent (un calendrier n'est que dans un groupe à la fois). Seuls mes calendriers comptent.
+     *
+     * @param array<int, mixed> $calendriers
+     * @return array{0: ?int, 1: ?string}  l'identifiant du groupe, ou le refus
+     */
+    public static function enregistrerGroupe(int $moi, ?int $id, string $nom, array $calendriers): array
+    {
+        if (!self::groupesDisponibles() || ($id !== null && self::groupe($id, $moi) === null)) {
+            return [null, t('cam.gr.err.introuvable')];
+        }
+        $nom = mb_substr(trim((string) preg_replace('/\s+/u', ' ', $nom)), 0, self::GROUPE_NOM_MAX);
+        if ($nom === '') {
+            return [null, t('cam.gr.err.nom_obligatoire')];
+        }
+        if ((int) Database::valeur('SELECT COUNT(*) FROM calendrier_groupes WHERE user_id = ? AND nom = ? AND id <> ?', [$moi, $nom, $id ?? 0]) > 0) {
+            return [null, t('cam.gr.err.nom_pris')];
+        }
+        if ($id === null) {
+            if ((int) Database::valeur('SELECT COUNT(*) FROM calendrier_groupes WHERE user_id = ?', [$moi]) >= self::GROUPES_MAX) {
+                return [null, t('cam.gr.err.trop', ['max' => self::GROUPES_MAX])];
+            }
+            Database::run('INSERT INTO calendrier_groupes (user_id, nom) VALUES (?, ?)', [$moi, $nom]);
+            $id = Database::dernierId();
+        } else {
+            Database::run('UPDATE calendrier_groupes SET nom = ? WHERE id = ? AND user_id = ?', [$nom, $id, $moi]);
+        }
+
+        $miens = array_map(static fn (array $c): int => $c['id'], self::liste($moi));
+        $voulus = array_values(array_intersect(array_map('intval', $calendriers), $miens));
+        Database::run('UPDATE calendrier_amis_membres SET groupe_id = NULL WHERE user_id = ? AND groupe_id = ?', [$moi, $id]);
+        foreach ($voulus as $calendrier) {
+            Database::run('UPDATE calendrier_amis_membres SET groupe_id = ? WHERE user_id = ? AND calendrier_id = ?', [$id, $moi, $calendrier]);
+        }
+
+        return [$id, null];
+    }
+
+    /** Supprime mon groupe ; les calendriers qu'il réunissait restent, hors groupe. */
+    public static function supprimerGroupe(int $moi, int $id): bool
+    {
+        if (self::groupe($id, $moi) === null) {
+            return false;
+        }
+        Database::run('UPDATE calendrier_amis_membres SET groupe_id = NULL WHERE user_id = ? AND groupe_id = ?', [$moi, $id]);
+        Database::run('DELETE FROM calendrier_groupes WHERE id = ? AND user_id = ?', [$id, $moi]);
+
+        return true;
+    }
+
+    /** Plie ou déplie mon groupe dans le volet. */
+    public static function replierGroupe(int $moi, int $id, bool $replie): void
+    {
+        if (self::groupesDisponibles()) {
+            Database::run('UPDATE calendrier_groupes SET replie = ? WHERE id = ? AND user_id = ?', [$replie ? 1 : 0, $id, $moi]);
+        }
     }
 
     /**

@@ -1812,6 +1812,18 @@ CREATE TABLE IF NOT EXISTS `calendriers_amis` (
   CONSTRAINT `fk_calendriers_amis_projet` FOREIGN KEY (`projet_id`) REFERENCES `projets`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS `calendrier_groupes` (
+  `id`         INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `user_id`    INT UNSIGNED NOT NULL,
+  `nom`        VARCHAR(60) NOT NULL,
+  -- Le groupe est-il plié dans mon volet ?
+  `replie`     TINYINT(1) NOT NULL DEFAULT 0,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_calendrier_groupes_user` (`user_id`),
+  CONSTRAINT `fk_calendrier_groupes_user` FOREIGN KEY (`user_id`) REFERENCES `users`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS `calendrier_amis_membres` (
   `calendrier_id` INT UNSIGNED NOT NULL,
   `user_id`       INT UNSIGNED NOT NULL,
@@ -1819,11 +1831,15 @@ CREATE TABLE IF NOT EXISTS `calendrier_amis_membres` (
   `affiche`       TINYINT(1)   NOT NULL DEFAULT 1,
   -- Ma couleur pour lui, si elle n'est pas celle du créateur.
   `couleur`       CHAR(7)      NULL,
+  -- Le groupe de mon volet où il se range (vide : hors groupe).
+  `groupe_id`     INT UNSIGNED NULL,
   `rejoint_le`    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`calendrier_id`, `user_id`),
   KEY `idx_calendrier_amis_membres_user` (`user_id`),
+  KEY `idx_calendrier_amis_membres_groupe` (`groupe_id`),
   CONSTRAINT `fk_cam_calendrier` FOREIGN KEY (`calendrier_id`) REFERENCES `calendriers_amis`(`id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_cam_user`       FOREIGN KEY (`user_id`)       REFERENCES `users`(`id`)           ON DELETE CASCADE
+  CONSTRAINT `fk_cam_user`       FOREIGN KEY (`user_id`)       REFERENCES `users`(`id`)           ON DELETE CASCADE,
+  CONSTRAINT `fk_cam_groupe`     FOREIGN KEY (`groupe_id`)     REFERENCES `calendrier_groupes`(`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `calendrier_amis_evenements` (

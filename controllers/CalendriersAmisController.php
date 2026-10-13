@@ -108,6 +108,120 @@ final class CalendriersAmisController
         redirect('calendriers-amis');
     }
 
+    // --- Les groupes de calendriers (le rangement du volet) --------------------------------------------------------------
+
+    public function nouveauGroupe(): void
+    {
+        Auth::exiger();
+        $this->groupesOuRetour();
+        $this->formulaireGroupe(null);
+    }
+
+    public function groupeForm(int $id): void
+    {
+        Auth::exiger();
+        $this->groupesOuRetour();
+        $groupe = CalendriersAmis::groupe($id, Auth::id());
+        if ($groupe === null) {
+            Session::flash('erreur', t('cam.gr.err.introuvable'));
+            repartir_vers('calendrier');
+        }
+        $this->formulaireGroupe($groupe);
+    }
+
+    public function creerGroupe(): void
+    {
+        $this->poster();
+        $this->groupesOuRetour();
+        [$id, $refus] = CalendriersAmis::enregistrerGroupe(Auth::id(), null, (string) ($_POST['nom'] ?? ''), self::calendriersCoches());
+        if ($id === null) {
+            Session::flash('erreur', (string) $refus);
+            redirect('calendriers-amis/groupes/nouveau', self::versRetour());
+        }
+        Session::flash('succes', t('cam.gr.fl.cree'));
+        repartir_vers('calendrier');
+    }
+
+    public function modifierGroupe(int $id): void
+    {
+        $this->poster();
+        $this->groupesOuRetour();
+        [$fait, $refus] = CalendriersAmis::enregistrerGroupe(Auth::id(), $id, (string) ($_POST['nom'] ?? ''), self::calendriersCoches());
+        if ($fait === null) {
+            Session::flash('erreur', (string) $refus);
+            redirect('calendriers-amis/groupes/' . $id . '/modifier', self::versRetour());
+        }
+        Session::flash('succes', t('cam.gr.fl.modifie'));
+        repartir_vers('calendrier');
+    }
+
+    public function supprimerGroupe(int $id): void
+    {
+        $this->poster();
+        $this->groupesOuRetour();
+        $nom = (string) (CalendriersAmis::groupe($id, Auth::id())['nom'] ?? '');
+        if (CalendriersAmis::supprimerGroupe(Auth::id(), $id)) {
+            Session::flash('succes', t('cam.gr.fl.supprime', ['nom' => $nom]));
+        } else {
+            Session::flash('erreur', t('cam.gr.err.introuvable'));
+        }
+        repartir_vers('calendrier');
+    }
+
+    /** Appelée en arrière-plan quand on plie ou déplie un groupe du volet : la page ne se recharge pas. */
+    public function replierGroupe(int $id): void
+    {
+        $this->poster();
+        CalendriersAmis::replierGroupe(Auth::id(), $id, (string) ($_POST['replie'] ?? '') === '1');
+        if (veut_du_json()) {
+            repondre_json(['fait' => true]);
+        }
+        repartir_vers('calendrier');
+    }
+
+    /** Sans la migration des groupes, on retourne au calendrier. */
+    private function groupesOuRetour(): void
+    {
+        if (!CalendriersAmis::groupesDisponibles()) {
+            Session::flash('erreur', t('cam.gr.err.introuvable'));
+            redirect('calendrier');
+        }
+    }
+
+    private function formulaireGroupe(?array $groupe): void
+    {
+        $moi = Auth::id();
+        $this->afficher('calendriers-amis/groupe', [
+            'groupe' => $groupe,
+            'calendriers' => CalendriersAmis::liste($moi),
+            'groupes' => CalendriersAmis::groupes($moi),
+            'retour' => self::retourDemande(),
+        ], t($groupe === null ? 'cam.gr.nouveau_titre' : 'cam.gr.modifier_titre'));
+    }
+
+    /** @return list<int> les calendriers cochés dans le formulaire */
+    private static function calendriersCoches(): array
+    {
+        return is_array($_POST['calendriers'] ?? null) ? array_map('intval', $_POST['calendriers']) : [];
+    }
+
+    /** La page du calendrier qu'on regardait derrière la fenêtre (« ?retour=/chemin ») : un chemin du site, rien d'autre. */
+    private static function retourDemande(): string
+    {
+        $retour = $_GET['retour'] ?? $_POST['retour'] ?? '';
+
+        return is_string($retour) && $retour !== '' && $retour[0] === '/' && !str_starts_with($retour, '//') && !preg_match('/[\r\n]/', $retour)
+            && (BASE_URL === '' || str_starts_with($retour, BASE_URL . '/')) ? $retour : '';
+    }
+
+    /** @return array<string, string> */
+    private static function versRetour(): array
+    {
+        $retour = self::retourDemande();
+
+        return $retour === '' ? [] : ['retour' => $retour];
+    }
+
     // --- Les évènements -------------------------------------------------------------------------------------------------
 
     /** Le formulaire d'un nouvel évènement dans ce calendrier. */
