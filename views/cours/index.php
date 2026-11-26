@@ -59,6 +59,11 @@
        data-fenetre title="<?= e(t('cours.partager_plusieurs_aide')) ?>"><?= Partages::icone() ?> <?= e(t('cours.partager_plusieurs')) ?></a>
     <?php // Un dossier ouvert : de quoi le partager tel quel, avec ses cours. ?>
     <?php if ($dossierId !== null): ?>
+      <?php if (FicheDossier::disponible()): ?>
+        <?php // La fiche de révision du dossier (• : elle existe déjà) : rattachée au dossier, sans créer de cours. ?>
+        <a class="bouton bouton--secondaire" href="<?= url('dossiers/' . $dossierId . '/revision') ?>"
+           data-fenetre>📝 <?= e(t('dosf.bouton')) ?><?= FicheDossier::ecrite(Auth::id(), (int) $dossierId) ? ' •' : '' ?></a>
+      <?php endif; ?>
       <a class="bouton bouton--secondaire bouton-partage" href="<?= url('partager/dossiers/' . $dossierId) ?>"
          data-fenetre><?= Partages::icone() ?> <?= e(t('cours.partager_dossier')) ?></a>
     <?php endif; ?>
@@ -473,6 +478,8 @@ for ($haut = $courant; $haut !== null;) {
           <?php else: ?>
             <a class="cours-carte__matiere cours-carte__matiere--vide" href="<?= $versMatiere ?>" data-fenetre><?= e(t('cours.fm.ajouter')) ?></a>
           <?php endif; ?>
+          <?php // La fiche de révision du fichier (• : elle existe déjà) : rattachée au fichier, qui ne devient pas un cours. ?>
+          <a class="cours-carte__cours discret" href="<?= url('revision/' . (int) $c['id']) ?>" data-fenetre>📝 <?= e(t('cours.ff.fiche')) ?><?= trim((string) ($c['fiche_revision'] ?? '')) !== '' ? ' •' : '' ?></a>
           <a class="cours-carte__cours discret" href="<?= url('cours/' . $c['id']) ?>" data-fenetre><?= e(t('cours.ouvrir_comme_cours')) ?></a>
         </div>
         <?php continue; ?>

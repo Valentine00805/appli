@@ -383,9 +383,22 @@ final class CoursController
             }
         }
 
-        // Chaque carte porte l'anneau de sa fiche : ce qui en a été écouté, lu,
-        // et où en est son paquet de cartes.
+        // Les dossiers ont leur fiche aussi : ils se rangent avec les cours, selon le même tri (ceux dont la fiche est écrite, puis ceux qui n'en ont pas).
+        $dossiersAvecFiche = [];
+        $dossiersSansFiche = [];
+        foreach (FicheDossier::pourRevision($userId, $matiereId, $termes) as $d) {
+            if (trim((string) $d['fiche_revision']) !== '') {
+                $dossiersAvecFiche[] = $d;
+            } else {
+                $dossiersSansFiche[] = $d;
+            }
+        }
+        // Chaque carte porte l'anneau de sa fiche : ce qui en a été écouté, lu, et où en est son paquet de cartes — pour les cours seulement.
         $anneaux = $this->anneauxDesFiches(array_merge($garnies, $vides), $userId);
+        if ($dossiersAvecFiche !== [] || $dossiersSansFiche !== []) {
+            $garnies = FicheDossier::trier(array_merge($garnies, $dossiersAvecFiche), $tri);
+            $vides = FicheDossier::trier(array_merge($vides, $dossiersSansFiche), $tri);
+        }
         $paquets = $this->paquetsDesFiches($userId);
 
         Vue::afficher('cours/revisions', [
@@ -546,8 +559,11 @@ final class CoursController
         $userId = Auth::id();
 
         $cours = Database::one(
-            'SELECT c.id, c.titre, c.fiche_revision,
-                    m.nom AS matiere_nom, m.couleur AS matiere_couleur
+            'SELECT c.id, c.titre, c.fiche_revision, c.est_fichier,
+                    m.nom AS matiere_nom, m.couleur AS matiere_couleur,
+                    (SELECT f.id FROM fichiers f WHERE f.cours_id = c.id AND f.pour_fiche = 0 ORDER BY f.id LIMIT 1) AS fichier_id,
+                    (SELECT f.nom_origine FROM fichiers f WHERE f.cours_id = c.id AND f.pour_fiche = 0 ORDER BY f.id LIMIT 1) AS fichier_nom,
+                    (SELECT f.mime FROM fichiers f WHERE f.cours_id = c.id AND f.pour_fiche = 0 ORDER BY f.id LIMIT 1) AS fichier_mime
              FROM cours c LEFT JOIN matieres m ON m.id = c.matiere_id
              WHERE c.id = ? AND c.user_id = ?',
             [$id, $userId]
@@ -665,17 +681,18 @@ final class CoursController
         Session::verifierCsrf();
         $userId = Auth::id();
 
-        $coursId = Database::valeur(
-            'SELECT cours_id FROM fiche_elements WHERE id = ? AND user_id = ?',
-            [$id, $userId]
-        );
-        if ($coursId === null) {
+        $element = Database::one('SELECT cours_id, dossier_id FROM fiche_elements WHERE id = ? AND user_id = ?', [$id, $userId]);
+        if ($element === null) {
             $this->introuvable();
         }
 
         Database::run('DELETE FROM fiche_elements WHERE id = ? AND user_id = ?', [$id, $userId]);
         Session::flash('succes', t('cours.fl.element_retire'));
-        $this->retourFiche((int) $coursId);
+        // Un élément de la fiche d'un dossier : on revient à cette fiche.
+        if ($element['cours_id'] === null) {
+            redirect('dossiers/' . (int) $element['dossier_id'] . '/revision');
+        }
+        $this->retourFiche((int) $element['cours_id']);
     }
 
     /** Formulaire de création (id null) ou de modification. */
@@ -730,9 +747,11 @@ final class CoursController
         $userId = Auth::id();
 
         $fichier = Database::one(
-            'SELECT f.*, c.id AS cours_id, c.titre AS cours_titre, c.est_fichier AS cours_est_fichier,
+            'SELECT f.*, c.id AS cours_id, COALESCE(c.titre, d.nom) AS cours_titre, c.est_fichier AS cours_est_fichier,
+                    TRIM(COALESCE(c.fiche_revision, \'\')) <> \'\' AS cours_a_fiche,
                     m.nom AS matiere_nom, m.couleur AS matiere_couleur
-             FROM fichiers f JOIN cours c ON c.id = f.cours_id
+             FROM fichiers f LEFT JOIN cours c ON c.id = f.cours_id
+             LEFT JOIN dossiers d ON d.id = f.dossier_id
              LEFT JOIN matieres m ON m.id = c.matiere_id
              WHERE f.id = ? AND f.user_id = ?',
             [$id, $userId]
@@ -1680,15 +1699,18 @@ final class CoursController
         Session::verifierCsrf();
         $userId = Auth::id();
 
-        $coursId = Database::valeur('SELECT cours_id FROM fichiers WHERE id = ? AND user_id = ?', [$id, $userId]);
-        if ($coursId === null) {
+        $fichier = Database::one('SELECT cours_id, dossier_id, pour_fiche, nom_origine, mime, taille FROM fichiers WHERE id = ? AND user_id = ?', [$id, $userId]);
+        if ($fichier === null) {
             $this->introuvable();
         }
-        $fichier = Database::one('SELECT cours_id, pour_fiche, nom_origine, mime, taille FROM fichiers WHERE id = ?', [$id]);
+        $coursId = $fichier['cours_id'];
         Fichiers::supprimer($id, $userId);
-        if ($fichier !== null) {
-            Partages::suivreRetrait($userId, $fichier);
+        // Un fichier de la fiche d'un dossier : retiré, on revient à cette fiche (il n'y a ni cours ni partage derrière).
+        if ($coursId === null) {
+            Session::flash('succes', t('cours.fl.fichier_supprime'));
+            redirect('dossiers/' . (int) $fichier['dossier_id'] . '/revision');
         }
+        Partages::suivreRetrait($userId, $fichier);
         Session::flash('succes', t('cours.fl.fichier_supprime'));
         // Retiré depuis une fiche affichée seule : c'est là qu'on revient.
         if (($_POST['page'] ?? '') === 'fiche') {

@@ -52,6 +52,9 @@ CREATE TABLE IF NOT EXISTS `dossiers` (
   `nom`        VARCHAR(120) NOT NULL,
   `couleur`    CHAR(7)      NOT NULL DEFAULT '#4f46e5',
   `icone`      VARCHAR(8)   NOT NULL DEFAULT '📁',
+  -- La fiche de révision du dossier (vide : pas de fiche).
+  `fiche_revision` LONGTEXT NULL,
+  `fiche_modifiee_le` DATETIME NULL,
   `position`   INT UNSIGNED NOT NULL DEFAULT 0,
   `created_at` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
@@ -105,7 +108,9 @@ CREATE TABLE IF NOT EXISTS `cours_tag` (
 CREATE TABLE IF NOT EXISTS `fichiers` (
   `id`         INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `user_id`    INT UNSIGNED NOT NULL,
-  `cours_id`   INT UNSIGNED NOT NULL,
+  -- Un fichier appartient à un cours, ou (fiche de révision d'un dossier) à un dossier.
+  `cours_id`   INT UNSIGNED NULL,
+  `dossier_id` INT UNSIGNED NULL,
   -- Un fichier de la fiche de révision ne figure pas dans les pièces jointes
   -- du cours : c'est la seule différence, tout le reste est commun.
   `pour_fiche` TINYINT(1)   NOT NULL DEFAULT 0,
@@ -120,7 +125,9 @@ CREATE TABLE IF NOT EXISTS `fichiers` (
   PRIMARY KEY (`id`),
   KEY `idx_fichiers_cours` (`cours_id`),
   KEY `idx_fichiers_fiche` (`cours_id`, `pour_fiche`),
+  KEY `idx_fichiers_dossier` (`dossier_id`, `pour_fiche`),
   CONSTRAINT `fk_fichiers_cours` FOREIGN KEY (`cours_id`) REFERENCES `cours`(`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_fichiers_dossier` FOREIGN KEY (`dossier_id`) REFERENCES `dossiers`(`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_fichiers_user`  FOREIGN KEY (`user_id`)  REFERENCES `users`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -415,7 +422,9 @@ CREATE TABLE IF NOT EXISTS `cartes` (
 CREATE TABLE IF NOT EXISTS `fiche_elements` (
   `id`         INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `user_id`    INT UNSIGNED NOT NULL,
-  `cours_id`   INT UNSIGNED NOT NULL,
+  -- Un élément de fiche appartient à un cours, ou à un dossier (sa fiche de révision).
+  `cours_id`   INT UNSIGNED NULL,
+  `dossier_id` INT UNSIGNED NULL,
   `type`       ENUM('lien', 'cours', 'evenement') NOT NULL,
   `libelle`    VARCHAR(200) DEFAULT NULL,
   `url`        VARCHAR(2048) DEFAULT NULL,
@@ -427,9 +436,11 @@ CREATE TABLE IF NOT EXISTS `fiche_elements` (
   `created_at` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `idx_fiche_elements_cours` (`cours_id`, `type`, `position`),
+  KEY `idx_fiche_elements_dossier` (`dossier_id`, `type`, `position`),
   KEY `idx_fiche_elements_user` (`user_id`),
   CONSTRAINT `fk_fiche_elements_user`  FOREIGN KEY (`user_id`)  REFERENCES `users`(`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_fiche_elements_cours` FOREIGN KEY (`cours_id`) REFERENCES `cours`(`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_fiche_elements_dossier` FOREIGN KEY (`dossier_id`) REFERENCES `dossiers`(`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_fiche_elements_cible_cours` FOREIGN KEY (`cible_cours_id`) REFERENCES `cours`(`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_fiche_elements_cible_evt`   FOREIGN KEY (`cible_evenement_id`) REFERENCES `evenements`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

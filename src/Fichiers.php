@@ -28,6 +28,19 @@ final class Fichiers
             });
     }
 
+    /** Joint des fichiers à la fiche de révision d'un dossier : ils tiennent au dossier, et à aucun cours. */
+    public static function enregistrerPourDossier(array $fichiers, int $dossierId, int $userId): array
+    {
+        return self::recevoir($fichiers, (string) Config::get('app', 'dossier_uploads'),
+            static function (string $nomOrigine, string $nomStocke, string $mime, int $taille) use ($dossierId, $userId): void {
+                Database::run(
+                    'INSERT INTO fichiers (user_id, cours_id, dossier_id, pour_fiche, nom_origine, nom_stocke, mime, taille)
+                     VALUES (?, NULL, ?, 1, ?, ?, ?, ?)',
+                    [$userId, $dossierId, mb_substr($nomOrigine, 0, 255), $nomStocke, $mime, $taille]
+                );
+            });
+    }
+
     /**
      * Reçoit les fichiers téléversés dans un dossier, avec les contrôles de
      * toujours (taille, extension, transfert), et laisse $ranger dire où la

@@ -54,6 +54,7 @@ require __DIR__ . '/src/PdfSimple.php';
 require __DIR__ . '/src/RecapProjet.php';
 require __DIR__ . '/src/RecapProjetPdf.php';
 require __DIR__ . '/src/ExportPdf.php';
+require __DIR__ . '/src/FicheDossier.php';
 require __DIR__ . '/src/WebPush.php';
 require __DIR__ . '/src/Rappels.php';
 require __DIR__ . '/src/FileNotifications.php';
@@ -600,6 +601,11 @@ $routes = [
     ['GET',  'organisation/dossiers',      [DossiersController::class, 'index']],
 
     ['POST', 'dossiers',                   [DossiersController::class, 'creer']],
+    ['GET',  'dossiers/{id}/revision',     [DossiersController::class, 'fiche']],
+    ['POST', 'dossiers/{id}/revision',     [DossiersController::class, 'enregistrerFiche']],
+    ['POST', 'dossiers/{id}/revision/fichiers',  [DossiersController::class, 'joindreFiche']],
+    ['POST', 'dossiers/{id}/revision/elements',  [DossiersController::class, 'ajouterElement']],
+    ['GET',  'dossiers/{id}/revision/pdf', [DossiersController::class, 'pdfFiche']],
     ['POST', 'dossiers/{id}/modifier',     [DossiersController::class, 'modifier']],
     ['POST', 'dossiers/{id}/supprimer',    [DossiersController::class, 'supprimer']],
     ['POST', 'dossiers/{id}/deplacer',     [DossiersController::class, 'deplacer']],

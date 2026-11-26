@@ -21,7 +21,7 @@ final class ResumesController
         $documentsParCours = [];
         foreach (Database::all(
             'SELECT id, cours_id, nom_origine, mime, taille, pour_fiche
-               FROM fichiers WHERE user_id = ? ORDER BY pour_fiche, created_at',
+               FROM fichiers WHERE user_id = ? AND cours_id IS NOT NULL ORDER BY pour_fiche, created_at',
             [$userId]
         ) as $fichier) {
             $documentsParCours[(int) $fichier['cours_id']][] = $fichier;

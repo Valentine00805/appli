@@ -161,7 +161,7 @@ $compteurs = static function (array $c): array {
       <?php endif; ?>
 
       <?php // La fiche s'ouvre dans une fenêtre, par-dessus la liste. ?>
-      <a class="carte fiche-carte" href="<?= url('revision/' . $c['id']) ?>" data-fenetre>
+      <a class="carte fiche-carte" href="<?= url(!empty($c['dossier']) ? 'dossiers/' . $c['id'] . '/revision' : 'revision/' . $c['id']) ?>" data-fenetre>
         <?php if (!$parMatiere): ?>
           <p class="fiche-carte__entete">
             <?php if ($c['matiere_nom'] !== null): ?>
@@ -175,10 +175,11 @@ $compteurs = static function (array $c): array {
           </p>
         <?php endif; ?>
 
-        <h3 class="fiche-carte__titre"><?= surligner(e($c['titre']), $termes) ?></h3>
+        <h3 class="fiche-carte__titre"><?= !empty($c['dossier']) ? e($c['icone']) . ' ' : '' ?><?= surligner(e($c['titre']), $termes) ?></h3>
 
-        <?php $mediasFiche = $anneaux[(int) $c['id']] ?? []; ?>
-        <?php $paquet = $paquets[(int) $c['id']] ?? null; ?>
+        <?php // Les anneaux et les paquets de cartes sont ceux des cours : un dossier n'en a pas (et son numéro n'est pas celui d'un cours). ?>
+        <?php $mediasFiche = empty($c['dossier']) ? ($anneaux[(int) $c['id']] ?? []) : []; ?>
+        <?php $paquet = empty($c['dossier']) ? ($paquets[(int) $c['id']] ?? null) : null; ?>
         <?php if ($mediasFiche !== [] || $paquet !== null): ?>
           <?php $a = avancement_anneaux($mediasFiche, $paquet === null ? [] : [$paquet]); ?>
           <p class="fiche-carte__ecoute">
@@ -211,6 +212,7 @@ $compteurs = static function (array $c): array {
         <?php endif; ?>
 
         <?php $lignes = $compteurs($c); ?>
+        <?php if (!empty($c['dossier'])) { array_unshift($lignes, t('dosf.etiquette')); } ?>
         <?php if ($lignes !== []): ?>
           <p class="fiche-carte__compteurs"><?= e(implode(' · ', $lignes)) ?></p>
         <?php endif; ?>
@@ -240,11 +242,11 @@ $compteurs = static function (array $c): array {
       <summary><strong><?= e(t('rev.cours_sans_fiche')) ?></strong> <span class="discret">(<?= count($vides) ?>)</span></summary>
       <div class="pile" style="margin-top:.85rem">
         <?php foreach ($vides as $c): ?>
-          <a class="evt-ligne" href="<?= url('revision/' . $c['id']) ?>" data-fenetre>
+          <a class="evt-ligne" href="<?= url(!empty($c['dossier']) ? 'dossiers/' . $c['id'] . '/revision' : 'revision/' . $c['id']) ?>" data-fenetre>
             <span>
-              <span class="evt-ligne__titre"><?= surligner(e($c['titre']), $termes) ?></span><br>
+              <span class="evt-ligne__titre"><?= !empty($c['dossier']) ? e($c['icone']) . ' ' : '' ?><?= surligner(e($c['titre']), $termes) ?></span><br>
               <span class="evt-ligne__meta">
-                <?= $c['matiere_nom'] !== null ? e($c['matiere_nom']) : e(t('focus.sans_matiere')) ?>
+                <?= !empty($c['dossier']) ? e(t('dosf.etiquette')) . ' · ' : '' ?><?= $c['matiere_nom'] !== null ? e($c['matiere_nom']) : e(t('focus.sans_matiere')) ?>
                 <?= e(t('rev.commencer_fiche')) ?>
               </span>
             </span>

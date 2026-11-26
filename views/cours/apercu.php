@@ -24,7 +24,8 @@ $dansUneFenetre = $dansUneFenetre ?? false;
     <?php // Dans une fenêtre, le cours est juste derrière : la croix y ramène. ?>
     <?php if (!$dansUneFenetre): ?>
       <p class="discret" style="margin-bottom:.35rem">
-        <a href="<?= url('cours/' . $fichier['cours_id']) ?>">← <?= e((string) $fichier['cours_titre']) ?></a>
+        <?php // Un fichier de la fiche d'un dossier n'a pas de cours : on revient à la fiche du dossier. ?>
+        <a href="<?= $fichier['cours_id'] === null ? url('dossiers/' . (int) $fichier['dossier_id'] . '/revision') : url('cours/' . $fichier['cours_id']) ?>">← <?= e((string) $fichier['cours_titre']) ?></a>
       </p>
     <?php endif; ?>
     <h1><?= e(Fichiers::icone($fichier['mime'], $fichier['nom_origine'])) ?> <?= e((string) $fichier['nom_origine']) ?></h1>
@@ -42,17 +43,23 @@ $dansUneFenetre = $dansUneFenetre ?? false;
          <?= $dansUneFenetre ? 'data-fenetre-dessus data-relire-derriere' : 'data-fenetre' ?>>
         🏷️ <?= e(t('cours.fm.bouton')) ?>
       </a>
+      <?php // La fiche de révision de ce fichier : elle lui est rattachée, sans en faire un cours. ?>
+      <a class="bouton bouton--secondaire" href="<?= url('revision/' . (int) $fichier['cours_id']) ?>"<?= $dansUneFenetre ? ' data-fenetre' : '' ?>>
+        📝 <?= e(t('cours.ff.fiche')) ?><?= !empty($fichier['cours_a_fiche']) ? ' •' : '' ?>
+      </a>
     <?php endif; ?>
-    <?php if (EditionDocument::modifiable((string) $fichier['nom_origine'])): ?>
+    <?php if ($fichier['cours_id'] !== null && EditionDocument::modifiable((string) $fichier['nom_origine'])): ?>
       <?php // Dans la fenêtre, l'éditeur prend la place de l'aperçu. ?>
       <a class="bouton bouton--secondaire" href="<?= url('fichiers/' . $fichier['id'] . '/modifier') ?>"
          <?= $dansUneFenetre ? 'data-fenetre' : '' ?>>
         <?= e(t('ap.modifier_texte')) ?>
       </a>
     <?php endif; ?>
-    <a class="bouton bouton--secondaire bouton-partage" href="<?= url('partager/fichiers/' . $fichier['id']) ?>" <?= $dansUneFenetre ? 'data-fenetre-dessus' : 'data-fenetre' ?>>
-      <?= Partages::icone() ?> <?= e(t('evt.partager')) ?>
-    </a>
+    <?php if ($fichier['cours_id'] !== null): ?>
+      <a class="bouton bouton--secondaire bouton-partage" href="<?= url('partager/fichiers/' . $fichier['id']) ?>" <?= $dansUneFenetre ? 'data-fenetre-dessus' : 'data-fenetre' ?>>
+        <?= Partages::icone() ?> <?= e(t('evt.partager')) ?>
+      </a>
+    <?php endif; ?>
     <?php // Télécharger : le fichier d'origine, ou le PDF. ?>
     <?= Vue::rendre('cours/_telecharger', ['fichier' => $fichier]) ?>
   </div>

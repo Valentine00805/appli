@@ -18,7 +18,7 @@ $dansUneFenetre = $dansUneFenetre ?? false;
         <a href="<?= url('revision') ?>"><?= e(t('fiche.retour_revision')) ?></a>
       </p>
     <?php endif; ?>
-    <h1><?= e($cours['titre']) ?></h1>
+    <h1 style="overflow-wrap:anywhere"><?= !empty($cours['est_fichier']) && !empty($cours['fichier_id']) ? e(Fichiers::icone((string) $cours['fichier_mime'], (string) $cours['fichier_nom'])) . ' ' : '' ?><?= e($cours['titre']) ?></h1>
     <p>
       <?php if ($cours['matiere_nom'] !== null): ?>
         <span class="pastille" style="background:<?= e($cours['matiere_couleur']) ?>;color:<?= e(couleur_texte($cours['matiere_couleur'])) ?>">
@@ -49,10 +49,19 @@ $dansUneFenetre = $dansUneFenetre ?? false;
     <?php // La fiche enregistrée, à emporter : son texte et ce qui lui est rattaché. ?>
     <a class="bouton bouton--secondaire" href="<?= url('revision/' . $cours['id'] . '/pdf') ?>"
        title="<?= e(t('fiche.pdf_aide')) ?>">⬇ PDF</a>
-    <a class="bouton bouton--secondaire" href="<?= url('cours/' . $cours['id']) ?>"
-       <?= $dansUneFenetre ? 'data-fenetre' : '' ?>>
-      <?= e(t('fiche.voir_cours')) ?>
-    </a>
+    <?php if (!empty($cours['est_fichier']) && !empty($cours['fichier_id'])): ?>
+      <?php // Un fichier gardé comme tel : on revient à son aperçu (ou au fichier), pas à une page de cours. ?>
+      <?php $apercuPossible = ApercuDocument::possible((string) $cours['fichier_nom']); ?>
+      <a class="bouton bouton--secondaire" href="<?= url('fichiers/' . (int) $cours['fichier_id'] . ($apercuPossible ? '/apercu' : '')) ?>"
+         <?= $apercuPossible ? ($dansUneFenetre ? 'data-fenetre' : '') : 'target="_blank" rel="noopener"' ?>>
+        <?= e(t('fiche.voir_fichier')) ?>
+      </a>
+    <?php else: ?>
+      <a class="bouton bouton--secondaire" href="<?= url('cours/' . $cours['id']) ?>"
+         <?= $dansUneFenetre ? 'data-fenetre' : '' ?>>
+        <?= e(t('fiche.voir_cours')) ?>
+      </a>
+    <?php endif; ?>
   </div>
 </div>
 

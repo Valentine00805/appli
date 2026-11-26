@@ -313,6 +313,9 @@ final class DossiersController
             [$id, $userId]
         );
 
+        // Les fichiers joints à la fiche du dossier lui appartiennent : ils partent avec lui (du disque aussi).
+        FicheDossier::effacerFichiers($userId, $id);
+
         // Rien n'est emporté : les contraintes remettent les cours sans dossier
         // et font remonter les sous-dossiers à la racine.
         Database::run('DELETE FROM dossiers WHERE id = ? AND user_id = ?', [$id, $userId]);
@@ -461,6 +464,111 @@ final class DossiersController
     private static function fermerLaColonne(int $userId, bool $ferme): void
     {
         Database::run('UPDATE users SET dossiers_ferme = ? WHERE id = ?', [$ferme ? 1 : 0, $userId]);
+    }
+
+    /** La fiche de révision d'un dossier : son texte, et ce que le dossier contient. */
+    public function fiche(int $id): void
+    {
+        Auth::exiger();
+        $dossier = FicheDossier::dossier(Auth::id(), $id) ?? $this->introuvable();
+        $moi = Auth::id();
+        $donnees = [
+            'dossier' => $dossier,
+            'contenu' => FicheDossier::contenu($moi, $id),
+            // Les éléments rattachés (fichiers, liens, renvois, évènements) ; sans la seconde migration, la colonne reste celle du contenu.
+            'elementsPossibles' => FicheDossier::elementsDisponibles(),
+            'fichiersFiche' => FicheDossier::fichiers($moi, $id),
+            'parType' => FicheDossier::elements($moi, $id),
+            'desCours' => FicheDossier::desCours($moi, $id),
+        ] + FicheDossier::choix($moi);
+        if (Vue::enFenetre()) {
+            Vue::fragment('dossiers/fiche', $donnees);
+
+            return;
+        }
+        Vue::afficher('dossiers/fiche', $donnees, t('dosf.titre_page', ['nom' => (string) $dossier['nom']]));
+    }
+
+    public function enregistrerFiche(int $id): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        FicheDossier::dossier(Auth::id(), $id) ?? $this->introuvable();
+        $fiche = TexteRiche::depuisFormulaire((string) ($_POST['fiche_revision'] ?? ''));
+        FicheDossier::enregistrer(Auth::id(), $id, $fiche);
+        Session::flash('succes', t($fiche === '' ? 'dosf.fl.vide' : 'dosf.fl.enregistree'));
+        redirect('dossiers/' . $id . '/revision');
+    }
+
+    /** Joint des fichiers à la fiche du dossier. */
+    public function joindreFiche(int $id): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $moi = Auth::id();
+        FicheDossier::dossier($moi, $id) ?? $this->introuvable();
+        if (!FicheDossier::elementsDisponibles()) {
+            $this->introuvable();
+        }
+
+        if (!isset($_FILES['fichiers']) || !is_array($_FILES['fichiers']['name'] ?? null)) {
+            Session::flash('erreur', t('cours.fl.aucun_fichier'));
+            redirect('dossiers/' . $id . '/revision');
+        }
+        $compte = static fn (): int => (int) Database::valeur('SELECT COUNT(*) FROM fichiers WHERE dossier_id = ? AND pour_fiche = 1', [$id]);
+        $avant = $compte();
+        $erreurs = Fichiers::enregistrerPourDossier($_FILES['fichiers'], $id, $moi);
+        $ajoutes = $compte() - $avant;
+        foreach ($erreurs as $erreur) {
+            Session::flash('erreur', $erreur);
+        }
+        if ($ajoutes > 0) {
+            Session::flash('succes', tn('cours.fl.fiche_fichiers', $ajoutes));
+        }
+        redirect('dossiers/' . $id . '/revision');
+    }
+
+    /** Rattache à la fiche du dossier un lien web, un cours ou un évènement. */
+    public function ajouterElement(int $id): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $moi = Auth::id();
+        FicheDossier::dossier($moi, $id) ?? $this->introuvable();
+        if (!FicheDossier::elementsDisponibles()) {
+            $this->introuvable();
+        }
+
+        $libelle = mb_substr(trim((string) ($_POST['libelle'] ?? '')), 0, 200);
+        $erreur = match ((string) ($_POST['type'] ?? '')) {
+            'lien'      => FicheDossier::ajouterLien($moi, $id, (string) ($_POST['url'] ?? ''), $libelle),
+            'cours'     => FicheDossier::ajouterRenvoi($moi, $id, 'cours', entier_ou_null($_POST['cible'] ?? null), $libelle),
+            'evenement' => FicheDossier::ajouterRenvoi($moi, $id, 'evenement', entier_ou_null($_POST['cible'] ?? null), $libelle),
+            default     => t('cours.fl.type_inconnu'),
+        };
+        Session::flash($erreur === null ? 'succes' : 'erreur', $erreur ?? t('cours.fl.element_ajoute'));
+        redirect('dossiers/' . $id . '/revision');
+    }
+
+    /** La fiche du dossier, en PDF. */
+    public function pdfFiche(int $id): void
+    {
+        Auth::exiger();
+        $dossier = FicheDossier::dossier(Auth::id(), $id) ?? $this->introuvable();
+        try {
+            $pdf = ExportPdf::depuisFiche(['titre' => (string) $dossier['nom'], 'fiche_revision' => $dossier['fiche_revision'], 'matiere_nom' => $dossier['matiere_nom']], [], []);
+        } catch (Throwable) {
+            Session::flash('erreur', t('dosf.fl.pdf'));
+            redirect('dossiers/' . $id . '/revision');
+        }
+        $nom = (trim((string) preg_replace('/[\\\\\/:*?"<>|]+/', ' ', t('dosf.pdf_nom', ['nom' => (string) $dossier['nom']]))) ?: 'fiche') . '.pdf';
+        header('Content-Type: application/pdf');
+        header('Content-Length: ' . strlen($pdf));
+        header('X-Content-Type-Options: nosniff');
+        header('Cache-Control: private, no-store');
+        header(sprintf("Content-Disposition: attachment; filename=\"%s\"; filename*=UTF-8''%s", preg_replace('/[^A-Za-z0-9._-]+/', '_', $nom) ?? 'fiche.pdf', rawurlencode($nom)));
+        echo $pdf;
+        exit;
     }
 
     private function introuvable(): never

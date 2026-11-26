@@ -71,7 +71,7 @@ final class CartesController
         $documentsParCours = [];
         foreach (Database::all(
             'SELECT id, cours_id, nom_origine, mime, taille, pour_fiche
-               FROM fichiers WHERE user_id = ? ORDER BY pour_fiche, created_at',
+               FROM fichiers WHERE user_id = ? AND cours_id IS NOT NULL ORDER BY pour_fiche, created_at',
             [$userId]
         ) as $fichier) {
             $documentsParCours[(int) $fichier['cours_id']][] = $fichier;
@@ -757,8 +757,15 @@ final class CartesController
         $coursId = entier_ou_null($_GET['cours'] ?? null);
         $cours = $coursId !== null ? $this->cours($coursId, $userId) : null;
 
-        $filtre = $cours !== null ? ' AND k.cours_id = ?' : '';
-        $params = $cours !== null ? [$userId, $coursId] : [$userId];
+        // Ou les cartes des cours d'un dossier (depuis la fiche de révision du dossier) — à moi seulement.
+        $dossierId = $cours === null ? entier_ou_null($_GET['dossier'] ?? null) : null;
+        if ($dossierId !== null && Database::valeur('SELECT id FROM dossiers WHERE id = ? AND user_id = ?', [$dossierId, $userId]) === null) {
+            $dossierId = null;
+        }
+        $duDossier = ' AND k.cours_id IN (SELECT id FROM cours WHERE dossier_id = ? AND user_id = ?)';
+
+        $filtre = $cours !== null ? ' AND k.cours_id = ?' : ($dossierId !== null ? $duDossier : '');
+        $params = $cours !== null ? [$userId, $coursId] : ($dossierId !== null ? [$userId, $dossierId, $userId] : [$userId]);
 
         $cartes = Database::all(
             'SELECT k.*, c.titre AS cours_titre
@@ -781,9 +788,9 @@ final class CartesController
             'cours'  => $cours,
             // Combien sont dues en tout, pour dire ce que la séance laisse de côté.
             'duesEnTout' => (int) Database::valeur(
-                'SELECT COUNT(*) FROM cartes WHERE user_id = ? AND revoir_le <= CURDATE()'
-                . ($cours === null ? '' : ' AND cours_id = ?'),
-                $cours === null ? [$userId] : [$userId, (int) $cours['id']]
+                'SELECT COUNT(*) FROM cartes k WHERE k.user_id = ? AND k.revoir_le <= CURDATE()'
+                . ($cours === null ? ($dossierId !== null ? $duDossier : '') : ' AND k.cours_id = ?'),
+                $cours === null ? ($dossierId !== null ? [$userId, $dossierId, $userId] : [$userId]) : [$userId, (int) $cours['id']]
             ),
             'rezeroTotal' => $cours === null ? 0 : (int) $paquet['total'],
             // L'anneau ne vaut que pour un paquet : une séance qui mêle
