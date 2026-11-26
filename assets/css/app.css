@@ -2602,14 +2602,16 @@ ul.apercu-liste--n2 { list-style-type: square; }
 /* « flex » plutôt que « width » : sans lui, le cadre se laisse écraser
    par le nom du fichier quand la place manque. */
 .fichier__pdf { flex: 0 0 100%; margin-top: .45rem; }
-/* Une page web (.html) déposée dans la fiche : lue dans un cadre, de la largeur de la fiche. */
-.fichier__web { flex: 0 0 100%; margin-top: .45rem; }
-.fichier__web iframe {
-  display: block; width: 100%; height: 24rem; max-height: 70vh;
+/* Un quizz (page web .html) de la fiche : joué sur place, dans un cadre de la largeur de la fiche. */
+.quizz { margin-bottom: .9rem; }
+.quizz__entete { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; margin-bottom: .35rem; }
+.quizz__nom { min-width: 0; overflow-wrap: anywhere; }
+.quizz__entete .fichier__actions { margin-left: auto; }
+.quizz__cadre {
+  display: block; width: 100%; height: 28rem; max-height: 75vh;
   border: 1px solid var(--bordure); border-radius: var(--rayon-s);
   background: #fff; resize: vertical; overflow: auto;
 }
-.fichier__web .champ__aide { display: block; margin-top: .3rem; }
 .fichier__pdf iframe {
   display: block; width: 100%; aspect-ratio: 1 / 1.35;
   min-height: 20rem; max-height: 70vh;
@@ -2753,7 +2755,7 @@ ul.apercu-liste--n2 { list-style-type: square; }
   .fiche__rayon--vide,
   .fiche-grille__elements--vide,
   .fiche .champ__aide { display: none !important; }
-  .fichier__lecteur, .fichier__pdf, .fichier__web, .fiche__total { display: none !important; }
+  .fichier__lecteur, .fichier__pdf, .quizz__cadre, .fiche__total { display: none !important; }
 
   /* Une image s'imprime, et toutes : on ne feuillette pas une feuille. */
   .fichier__vue[hidden] { display: block !important; }

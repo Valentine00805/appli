@@ -172,8 +172,13 @@ final class Fichiers
         return true;
     }
 
-    /** Envoie le fichier au navigateur (affichage en ligne ou téléchargement). */
-    public static function envoyer(array $fichier, bool $telecharger, ?string $dossier = null): never
+    /**
+     * Envoie le fichier au navigateur (affichage en ligne ou téléchargement).
+     *
+     * $jouer : pour une page web d'une fiche de révision (un quizz), laisse ses scripts s'exécuter — toujours enfermés : origine à part, aucun
+     * réseau, aucun formulaire, aucune fenêtre.
+     */
+    public static function envoyer(array $fichier, bool $telecharger, ?string $dossier = null, bool $jouer = false): never
     {
         // Le dossier des pièces jointes des cours, ou un autre — celui des discussions.
         $chemin = ($dossier ?? Config::get('app', 'dossier_uploads')) . DIRECTORY_SEPARATOR . basename((string) $fichier['nom_stocke']);
@@ -236,6 +241,15 @@ final class Fichiers
              * incluses dans le fichier lui-même ; rien ne part vers un autre site.
              */
             $politique = "sandbox; default-src 'none'; style-src 'unsafe-inline'; img-src data:; font-src data:; media-src data:";
+            if ($jouer) {
+                /*
+                 * Un quizz a besoin de ses scripts. « allow-scripts » SANS « allow-same-origin » : ils tournent dans une origine à part, qui ne
+                 * lit ni les cookies de la session ni la page du site, et « default-src 'none' » leur interdit tout réseau (aucun envoi vers
+                 * l'extérieur, aucun script chargé d'ailleurs : seuls les scripts écrits dans le fichier tournent). Ni formulaire, ni fenêtre,
+                 * ni navigation du site : ces permissions-là ne sont pas données.
+                 */
+                $politique = "sandbox allow-scripts; default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:; font-src data:; media-src data:; base-uri 'none'; form-action 'none'";
+            }
         } elseif ($enLigne && $mime === 'application/pdf') {
             $politique .= 'object-src \'self\'; frame-src \'self\'';
         } elseif ($enLigne && $estMedia) {

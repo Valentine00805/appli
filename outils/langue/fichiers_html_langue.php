@@ -122,15 +122,28 @@ try {
     [$fiche] = $appel($a, 'cours/' . $cours);
     $dire('la fiche du cours liste la page web avec son icône 🌐 et le lien vers l\'aperçu', $oui(str_contains($fiche, '🌐') && str_contains($fiche, 'fichiers/' . $html . '/apercu')), 'oui');
 
-    // Dans la FICHE de révision : la page se lit sur place, dans un cadre (le serveur l'enferme)
-    $appel($a, 'cours/' . $cours . '/revision/fichiers', ['_csrf' => $csrf, 'fichiers[0]' => $fichier('page-fiche.html', '<p>Dans la fiche</p><script>alert(1)</script>', 'text/html')]);
+    // Dans la FICHE de révision : la rubrique « Quizz » — la page se joue sur place, dans un cadre ; ses scripts tournent, enfermés
+    $appel($a, 'cours/' . $cours . '/revision/fichiers', ['_csrf' => $csrf, 'fichiers[0]' => $fichier('page-fiche.html', '<p>Dans la fiche</p><script>alert(1)</script>', 'text/html'), 'fichiers[1]' => $fichier('annales.txt', 'des annales', 'text/plain')]);
     $dansFiche = $idFichier('page-fiche.html');
     [$ficheRev] = $appel($a, 'revision/' . $cours . '?fenetre=1');
-    $dire('une page web déposée dans la fiche de révision s\'y lit dans un cadre, sans attribut « sandbox » (l\'enfermement vient du serveur), avec sa mention ; la zone de dépôt la cite',
-        $oui(preg_match('#<span class="fichier__web">\s*<iframe src="[^"]*/fichiers/' . $dansFiche . '" referrerpolicy="no-referrer" loading="lazy"\s+title="page-fiche.html"></iframe>#', $ficheRev) === 1
-            && !str_contains($ficheRev, 'sandbox=') && str_contains($ficheRev, 'Page web en lecture seule') && str_contains($ficheRev, 'page web (.html)') && !str_contains($ficheRev, '<script>alert(1)')), 'oui');
-    [, , , $eFiche] = $appel($a, 'fichiers/' . $dansFiche);
-    $dire('et ce fichier de la fiche reste servi enfermé (sandbox)', $oui(str_starts_with($eFiche['content-security-policy'] ?? '', 'sandbox;')), 'oui');
+    $dire('une page web déposée dans la fiche est un « Quizz » : un cadre vers le fichier à jouer, sans attribut « sandbox » (l\'enfermement vient du serveur), avec sa mention de sécurité et son bouton « Jouer en grand »',
+        $oui(preg_match('#<div class="quizz">.*?<iframe class="quizz__cadre" src="[^"]*/fichiers/' . $dansFiche . '\?jouer=1" referrerpolicy="no-referrer" loading="lazy"\s+title="page-fiche.html"></iframe>#s', $ficheRev) === 1
+            && !str_contains($ficheRev, 'sandbox=') && str_contains($ficheRev, '🎯 Quizz') && str_contains($ficheRev, 'Ses scripts s’exécutent, enfermés') && str_contains($ficheRev, 'Jouer en grand')
+            && !str_contains($ficheRev, '<script>alert(1)')), 'oui');
+    $dire('elle n\'est plus listée dans « Fichiers et images » (où reste le .txt), et la zone de dépôt du quizz le dit',
+        $oui(!preg_match('#<li class="fichier[^"]*">(?:(?!</li>).)*page-fiche\.html#s', $ficheRev) && str_contains($ficheRev, 'annales.txt') && str_contains($ficheRev, 'accept=".html,.htm,text/html"') && str_contains($ficheRev, 'un quizz : une page .html')), 'oui');
+    [, $codeJ, , $eJouer] = $appel($a, 'fichiers/' . $dansFiche . '?jouer=1');
+    $csp = $eJouer['content-security-policy'] ?? '';
+    $dire('« ?jouer=1 » : les scripts sont permis (« sandbox allow-scripts ») mais sans origine du site, sans formulaire, fenêtre ni navigation, et sans réseau (rien que « default-src \'none\' », scripts écrits dans le fichier)',
+        $codeJ . ' · ' . $oui(str_starts_with($csp, 'sandbox allow-scripts;') && str_contains($csp, "default-src 'none'") && str_contains($csp, "script-src 'unsafe-inline'") && str_contains($csp, "form-action 'none'") && str_contains($csp, "base-uri 'none'")
+            && !str_contains($csp, 'allow-same-origin') && !str_contains($csp, 'allow-forms') && !str_contains($csp, 'allow-popups') && !str_contains($csp, 'allow-top-navigation') && !str_contains($csp, 'allow-modals')
+            && !str_contains($csp, 'connect-src') && !str_contains($csp, 'https:') && !str_contains($csp, "'self'") && !str_contains($csp, 'unsafe-eval')), '200 · oui');
+    [, , , $eSans] = $appel($a, 'fichiers/' . $dansFiche);
+    $dire('sans « ?jouer=1 », la même page reste servie sans script (« sandbox » seul)', $oui(str_starts_with($eSans['content-security-policy'] ?? '', 'sandbox;') && !str_contains($eSans['content-security-policy'] ?? '', 'allow-scripts')), 'oui');
+    [, , , $ePj] = $appel($a, 'fichiers/' . $html . '?jouer=1');
+    $dire('et « ?jouer=1 » ne donne rien à une pièce jointe de cours qui n\'est pas dans une fiche : toujours sans script', $oui(!str_contains($ePj['content-security-policy'] ?? '', 'allow-scripts')), 'oui');
+    [, $codeBj] = $appel($b, 'fichiers/' . $dansFiche . '?jouer=1');
+    $dire('un autre compte ne joue pas ce quizz (404)', (string) $codeBj, '404');
 
     echo "\n4. Ce qui n'a pas changé\n";
     $appel($a, 'cours/' . $cours . '/fichiers', ['_csrf' => $csrf, 'fichiers[0]' => $fichier('dessin.svg', '<svg xmlns="http://www.w3.org/2000/svg" onload="alert(1)"/>', 'image/svg+xml'), 'fichiers[1]' => $fichier('note.txt', 'bonjour', 'text/plain')]);

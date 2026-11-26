@@ -299,6 +299,12 @@ $avancementFiche = avancement_anneaux(
     </p>
   </div>
 
+  <?php // --- Quizz : des pages web (.html) jouées sur place ---------------- ?>
+  <?= Vue::rendre('cours/_fiche_quizz', [
+      'fichiersFiche' => $fichiersFiche, 'actionDepot' => url('cours/' . $cours['id'] . '/revision/fichiers'),
+      'idDepot' => (string) (int) $cours['id'], 'surPlace' => $surPlace, 'champPage' => $champPage, 'dansUneFenetre' => $dansUneFenetre,
+  ]) ?>
+
   <?php // --- Liens web ----------------------------------------------- ?>
   <div class="fiche__rayon<?= $parType['lien'] === [] ? ' fiche__rayon--vide' : '' ?>">
     <h4 class="fiche__titre"><?= e(t('fiche.liens')) ?></h4>

@@ -223,16 +223,18 @@ try {
     $dire('retirer le fichier l\'efface (base et disque) et ramène à la fiche du dossier',
         $codeRetireFichier . ' · ' . $oui(str_ends_with($apresFichier, '/' . $url)) . ' · ' . bd_valeur('SELECT COUNT(*) FROM fichiers WHERE id = ?', [$idFichier]) . ' · ' . $oui(!is_file($racine . '/storage/uploads/' . basename((string) ($f['nom_stocke'] ?? 'x')))), '200 · oui · 0 · oui');
 
-    // Une page web (.html) déposée dans la fiche du dossier : lue sur place, dans un cadre enfermé par le serveur
+    // Une page web (.html) déposée dans la fiche du dossier : un quizz, joué sur place dans un cadre enfermé par le serveur
     $envoyer($a, $url . '/fichiers', 'page-dossier.html', '<p>Dans la fiche du dossier</p><script>alert(1)</script>', $csrfA);
     $page = bd_all('SELECT id, cours_id, dossier_id FROM fichiers WHERE user_id = ? AND nom_origine = ?', [$idA, 'page-dossier.html'])[0] ?? null;
     [$avecPage] = $appel($a, $url . '?fenetre=1');
-    [, , , $entetesPage] = $appel($a, 'fichiers/' . (int) ($page['id'] ?? 0));
-    $dire('une page web déposée dans la fiche du dossier s\'y lit dans un cadre (sans attribut « sandbox », enfermée par le serveur), sans cours créé',
+    [, , , $entetesPage] = $appel($a, 'fichiers/' . (int) ($page['id'] ?? 0) . '?jouer=1');
+    $dire('une page web déposée dans la fiche du dossier s\'y joue dans la rubrique « Quizz » (cadre sans attribut « sandbox », scripts enfermés par le serveur), sans cours créé',
         $oui($page !== null && $page['cours_id'] === null && (int) $page['dossier_id'] === $dossier
-            && preg_match('#<span class="fichier__web">\s*<iframe src="[^"]*/fichiers/' . (int) $page['id'] . '" referrerpolicy="no-referrer" loading="lazy"#', $avecPage) === 1
-            && !str_contains($avecPage, 'sandbox=') && !str_contains($avecPage, '<script>alert(1)')
-            && str_starts_with($entetesPage['content-security-policy'] ?? '', 'sandbox;')), 'oui');
+            && preg_match('#<div class="quizz">.*?<iframe class="quizz__cadre" src="[^"]*/fichiers/' . (int) $page['id'] . '\?jouer=1" referrerpolicy="no-referrer" loading="lazy"#s', $avecPage) === 1
+            && !str_contains($avecPage, 'sandbox=') && !str_contains($avecPage, '<script>alert(1)') && str_contains($avecPage, '🎯 Quizz')
+            && str_starts_with($entetesPage['content-security-policy'] ?? '', 'sandbox allow-scripts;') && !str_contains($entetesPage['content-security-policy'] ?? '', 'allow-same-origin')), 'oui');
+    [, $codeJB] = $appel($b, 'fichiers/' . (int) ($page['id'] ?? 0) . '?jouer=1');
+    $dire('B ne joue pas le quizz du dossier de A (404)', (string) $codeJB, '404');
     if ($page !== null) {
         $appel($a, 'fichiers/' . (int) $page['id'] . '/supprimer', ['_csrf' => $csrfA]);
     }

@@ -56,6 +56,13 @@ $temp = tempnam(sys_get_temp_dir(), 'dv');
 file_put_contents($temp, $png);
 $appel("dossiers/$d/revision/fichiers", ['_csrf' => $csrf, 'fichiers[]' => new CURLFile($temp, 'image/png', 'schema-hexagonal.png')]);
 @unlink($temp);
+// Un quizz : une page .html dont le script écrit dans la page (pour voir qu'il tourne, enfermé)
+$quizz = '<!doctype html><html><body style="font-family:sans-serif"><h2>Quizz d\'essai</h2><p id="etat">script inactif</p><button onclick="document.getElementById(\'r\').textContent=\'Bravo, bonne réponse !\'">Répondre : 2 + 2 = 4</button><p id="r"></p>'
+    . '<script>document.getElementById("etat").textContent="script actif — origine : " + (location.origin==="null"?"à part (enfermée)":location.origin);</script></body></html>';
+$tq = tempnam(sys_get_temp_dir(), 'dv');
+file_put_contents($tq, $quizz);
+$appel("dossiers/$d/revision/fichiers", ['_csrf' => $csrf, 'fichiers[]' => new CURLFile($tq, 'text/html', 'quizz-architecture.html')]);
+@unlink($tq);
 
 $session = '';
 foreach (file($jar) as $l) { if (str_contains($l, 'MESCOURS_SESSID')) { $session = trim(substr($l, strrpos($l, "\t") + 1)); } }

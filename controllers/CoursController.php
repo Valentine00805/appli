@@ -1509,7 +1509,8 @@ final class CoursController
         if ($fichier === null) {
             $this->introuvable();
         }
-        Fichiers::envoyer($fichier, isset($_GET['telecharger']));
+        // « ?jouer=1 » : les scripts d'un quizz (page web d'une fiche de révision) s'exécutent, enfermés ; jamais pour une autre pièce jointe.
+        Fichiers::envoyer($fichier, isset($_GET['telecharger']), null, isset($_GET['jouer']) && (int) $fichier['pour_fiche'] === 1);
     }
 
     /**
