@@ -55,6 +55,8 @@ CREATE TABLE IF NOT EXISTS `dossiers` (
   -- La fiche de révision du dossier (vide : pas de fiche).
   `fiche_revision` LONGTEXT NULL,
   `fiche_modifiee_le` DATETIME NULL,
+  -- 0 : la fiche relie tout le dossier ; 1 : seulement ce qui est dans dossier_fiche_liens.
+  `fiche_choix` TINYINT(1) NOT NULL DEFAULT 0,
   `position`   INT UNSIGNED NOT NULL DEFAULT 0,
   `created_at` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
@@ -443,6 +445,24 @@ CREATE TABLE IF NOT EXISTS `fiche_elements` (
   CONSTRAINT `fk_fiche_elements_dossier` FOREIGN KEY (`dossier_id`) REFERENCES `dossiers`(`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_fiche_elements_cible_cours` FOREIGN KEY (`cible_cours_id`) REFERENCES `cours`(`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_fiche_elements_cible_evt`   FOREIGN KEY (`cible_evenement_id`) REFERENCES `evenements`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Ce que la fiche de révision d'un dossier relie, une fois le choix fait (cours, fichiers gardés tels quels, sous-dossiers).
+CREATE TABLE IF NOT EXISTS `dossier_fiche_liens` (
+  `id`              INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `user_id`         INT UNSIGNED NOT NULL,
+  `dossier_id`      INT UNSIGNED NOT NULL,
+  -- Un cours (ou un fichier gardé comme tel) OU un sous-dossier, jamais les deux.
+  `cours_id`        INT UNSIGNED NULL,
+  `sous_dossier_id` INT UNSIGNED NULL,
+  `created_at`      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_dfl_cours` (`dossier_id`, `cours_id`),
+  UNIQUE KEY `uniq_dfl_sous` (`dossier_id`, `sous_dossier_id`),
+  CONSTRAINT `fk_dfl_user`    FOREIGN KEY (`user_id`)         REFERENCES `users`(`id`)    ON DELETE CASCADE,
+  CONSTRAINT `fk_dfl_dossier` FOREIGN KEY (`dossier_id`)      REFERENCES `dossiers`(`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_dfl_cours`   FOREIGN KEY (`cours_id`)        REFERENCES `cours`(`id`)    ON DELETE CASCADE,
+  CONSTRAINT `fk_dfl_sous`    FOREIGN KEY (`sous_dossier_id`) REFERENCES `dossiers`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Relier un calendrier Outlook à l'application.

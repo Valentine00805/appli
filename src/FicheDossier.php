@@ -171,14 +171,15 @@ final class FicheDossier
     }
 
     /**
-     * Ce que les cours du dossier ont déjà : leurs cartes de révision, leurs cartes mentales, leurs diaporamas rangés dans leur fiche. On ne les crée
+     * Ce que les cours reliés de la fiche ont déjà : leurs cartes de révision, leurs cartes mentales, leurs diaporamas rangés dans leur fiche. On ne les crée
      * pas ici (ils tiennent chacun à un cours) : la fiche du dossier les rassemble pour réviser le dossier d'un coup.
      *
      * @return array{cartes: array, cartesMentales: list<array>, diaporamas: list<array>}
      */
     public static function desCours(int $moi, int $id): array
     {
-        $ids = array_map('intval', array_column(Database::all('SELECT id FROM cours WHERE user_id = ? AND dossier_id = ?', [$moi, $id]), 'id'));
+        // Les cours que la fiche relie : tout le dossier (sous-dossiers compris) tant qu'on n'a pas choisi, puis seulement le choix.
+        $ids = self::coursRelies($moi, $id);
         $cartes = ['total' => 0, 'a_revoir' => 0, 'avancement' => null];
         $cartesMentales = [];
         $diaporamas = [];
@@ -216,6 +217,170 @@ final class FicheDossier
         foreach (Database::all('SELECT id FROM fichiers WHERE dossier_id = ? AND user_id = ?', [$id, $moi]) as $fichier) {
             Fichiers::supprimer((int) $fichier['id'], $moi);
         }
+    }
+
+    /** Le choix des éléments reliés est-il possible ? Il faut la troisième migration, « dossier-fiche-liens » ; sans elle, la fiche relie tout le dossier. */
+    public static function liensDisponibles(): bool
+    {
+        static $ok = null;
+        if ($ok === null) {
+            try {
+                Database::valeur('SELECT fiche_choix FROM dossiers LIMIT 1');
+                Database::valeur('SELECT cours_id, sous_dossier_id FROM dossier_fiche_liens LIMIT 1');
+                $ok = self::disponible();
+            } catch (Throwable) {
+                $ok = false;
+            }
+        }
+
+        return $ok;
+    }
+
+    /**
+     * Tout ce que le dossier contient, sous-dossiers compris, à plat et dans l'ordre de l'arborescence : d'abord ses cours et fichiers, puis chaque
+     * sous-dossier suivi de son propre contenu. Chaque ligne dit si la fiche la relie (« relie »), et pourquoi : choisie elle-même, ou parce qu'un
+     * dossier au-dessus l'est (« heritee »).
+     *
+     * Tant qu'aucun choix n'a été fait, tout est relié.
+     *
+     * @return array{choix: bool, noeuds: list<array<string, mixed>>}
+     */
+    public static function arbre(int $moi, int $id): array
+    {
+        $choix = false;
+        $coursChoisis = [];
+        $dossiersChoisis = [];
+        if (self::liensDisponibles()) {
+            $choix = (int) Database::valeur('SELECT fiche_choix FROM dossiers WHERE id = ? AND user_id = ?', [$id, $moi]) === 1;
+            foreach (Database::all('SELECT cours_id, sous_dossier_id FROM dossier_fiche_liens WHERE dossier_id = ? AND user_id = ?', [$id, $moi]) as $l) {
+                if ($l['cours_id'] !== null) {
+                    $coursChoisis[(int) $l['cours_id']] = true;
+                }
+                if ($l['sous_dossier_id'] !== null) {
+                    $dossiersChoisis[(int) $l['sous_dossier_id']] = true;
+                }
+            }
+        }
+
+        $enfants = [];
+        foreach (Database::all('SELECT id, parent_id, nom, icone FROM dossiers WHERE user_id = ? ORDER BY nom, id', [$moi]) as $d) {
+            $enfants[(int) ($d['parent_id'] ?? 0)][] = $d;
+        }
+        $un = static fn (string $colonne): string => '(SELECT f.' . $colonne . ' FROM fichiers f WHERE f.cours_id = c.id AND f.pour_fiche = 0 ORDER BY f.id LIMIT 1)';
+        $coursDe = [];
+        foreach (Database::all(
+            'SELECT c.id, c.titre, c.dossier_id, c.est_fichier, TRIM(COALESCE(c.fiche_revision, \'\')) <> \'\' AS a_fiche,
+                    ' . $un('id') . ' AS fichier_id, ' . $un('nom_origine') . ' AS fichier_nom, ' . $un('mime') . ' AS fichier_mime
+               FROM cours c WHERE c.user_id = ? AND c.dossier_id IS NOT NULL ORDER BY c.titre, c.id',
+            [$moi]
+        ) as $c) {
+            $coursDe[(int) $c['dossier_id']][] = $c;
+        }
+
+        $noeuds = [];
+        $vus = [$id => true];
+        $dossierRelie = [];   // sous-dossier => relié (choisi, ou sous un dossier choisi) ; le dossier de la fiche lui-même n'y figure pas
+        $descendre = static function (int $dossier, int $profondeur) use (&$descendre, &$noeuds, &$vus, &$dossierRelie, $choix, $id, $enfants, $coursDe, $coursChoisis, $dossiersChoisis): void {
+            foreach ($coursDe[$dossier] ?? [] as $c) {
+                $choisi = isset($coursChoisis[(int) $c['id']]);
+                $herite = $dossier !== $id && ($dossierRelie[$dossier] ?? false);
+                $noeuds[] = $c + [
+                    'genre' => 'cours', 'profondeur' => $profondeur, 'parent' => $dossier,
+                    'seul' => (int) $c['est_fichier'] === 1 && $c['fichier_id'] !== null,
+                    'choisi' => $choisi, 'heritee' => $herite && !$choisi, 'relie' => !$choix || $choisi || $herite,
+                ];
+            }
+            foreach ($enfants[$dossier] ?? [] as $d) {
+                $sous = (int) $d['id'];
+                if (isset($vus[$sous]) || $profondeur > 20) {
+                    continue;
+                }
+                $vus[$sous] = true;
+                $choisi = isset($dossiersChoisis[$sous]);
+                $herite = $dossier !== $id && ($dossierRelie[$dossier] ?? false);
+                $relie = !$choix || $choisi || $herite;
+                $dossierRelie[$sous] = $relie;
+                $noeuds[] = [
+                    'genre' => 'dossier', 'id' => $sous, 'nom' => (string) $d['nom'], 'icone' => (string) $d['icone'],
+                    'profondeur' => $profondeur, 'parent' => $dossier, 'nb_cours' => count($coursDe[$sous] ?? []),
+                    'choisi' => $choisi, 'heritee' => $herite && !$choisi, 'relie' => $relie,
+                ];
+                $descendre($sous, $profondeur + 1);
+            }
+        };
+        $descendre($id, 0);
+
+        return ['choix' => $choix, 'noeuds' => $noeuds];
+    }
+
+    /** Les cours et fichiers que la fiche relie (identifiants), pour en tirer les cartes, cartes mentales et diaporamas. */
+    public static function coursRelies(int $moi, int $id): array
+    {
+        $ids = [];
+        foreach (self::arbre($moi, $id)['noeuds'] as $n) {
+            if ($n['genre'] === 'cours' && $n['relie']) {
+                $ids[] = (int) $n['id'];
+            }
+        }
+
+        return $ids;
+    }
+
+    /**
+     * Enregistre le choix : les cours et sous-dossiers cochés (de ce dossier seulement) ; « tout » revient à tout relier. Un sous-dossier relié l'est
+     * avec tout son contenu : ce qu'il contient n'est donc pas retenu à part. Faux si ce n'est pas mon dossier.
+     *
+     * @param list<int> $cours      cours et fichiers cochés
+     * @param list<int> $dossiers   sous-dossiers cochés
+     */
+    public static function enregistrerLiens(int $moi, int $id, array $cours, array $dossiers, bool $tout): bool
+    {
+        if (self::dossier($moi, $id) === null || !self::liensDisponibles()) {
+            return false;
+        }
+        Database::run('DELETE FROM dossier_fiche_liens WHERE dossier_id = ? AND user_id = ?', [$id, $moi]);
+        if ($tout) {
+            Database::run('UPDATE dossiers SET fiche_choix = 0 WHERE id = ? AND user_id = ?', [$id, $moi]);
+
+            return true;
+        }
+
+        // Seulement ce qui est vraiment dans ce dossier : jamais le cours ou le dossier de quelqu'un d'autre, ni d'ailleurs.
+        $noeuds = [];
+        foreach (self::arbre($moi, $id)['noeuds'] as $n) {
+            $noeuds[$n['genre'] . ':' . $n['id']] = $n;
+        }
+        $dossiersChoisis = [];
+        foreach ($dossiers as $d) {
+            if (isset($noeuds['dossier:' . (int) $d])) {
+                $dossiersChoisis[(int) $d] = true;
+            }
+        }
+        // Un nœud est « couvert » quand un dossier au-dessus de lui est choisi.
+        $couvert = static function (array $noeud) use (&$couvert, $noeuds, $dossiersChoisis, $id): bool {
+            $parent = (int) $noeud['parent'];
+            while ($parent !== $id && $parent !== 0) {
+                if (isset($dossiersChoisis[$parent])) {
+                    return true;
+                }
+                $parent = (int) ($noeuds['dossier:' . $parent]['parent'] ?? 0);
+            }
+
+            return false;
+        };
+        foreach (array_keys($dossiersChoisis) as $d) {
+            if (!$couvert($noeuds['dossier:' . $d])) {
+                Database::run('INSERT INTO dossier_fiche_liens (user_id, dossier_id, sous_dossier_id) VALUES (?, ?, ?)', [$moi, $id, $d]);
+            }
+        }
+        foreach (array_unique(array_map('intval', $cours)) as $c) {
+            if (isset($noeuds['cours:' . $c]) && !$couvert($noeuds['cours:' . $c])) {
+                Database::run('INSERT INTO dossier_fiche_liens (user_id, dossier_id, cours_id) VALUES (?, ?, ?)', [$moi, $id, $c]);
+            }
+        }
+        Database::run('UPDATE dossiers SET fiche_choix = 1 WHERE id = ? AND user_id = ?', [$id, $moi]);
+
+        return true;
     }
 
     /** Mon dossier, avec sa matière et sa fiche ; null s'il n'est pas à moi (ou si la fonction n'est pas disponible). */

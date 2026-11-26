@@ -762,10 +762,12 @@ final class CartesController
         if ($dossierId !== null && Database::valeur('SELECT id FROM dossiers WHERE id = ? AND user_id = ?', [$dossierId, $userId]) === null) {
             $dossierId = null;
         }
-        $duDossier = ' AND k.cours_id IN (SELECT id FROM cours WHERE dossier_id = ? AND user_id = ?)';
+        // Les cartes des cours que la fiche du dossier relie (tout le dossier, ou le choix fait) ; aucun cours relié, aucune carte.
+        $reliesIds = $dossierId !== null ? FicheDossier::coursRelies($userId, $dossierId) : [];
+        $duDossier = ' AND k.cours_id IN (' . ($reliesIds === [] ? 'NULL' : implode(',', array_fill(0, count($reliesIds), '?'))) . ')';
 
         $filtre = $cours !== null ? ' AND k.cours_id = ?' : ($dossierId !== null ? $duDossier : '');
-        $params = $cours !== null ? [$userId, $coursId] : ($dossierId !== null ? [$userId, $dossierId, $userId] : [$userId]);
+        $params = $cours !== null ? [$userId, $coursId] : ($dossierId !== null ? array_merge([$userId], $reliesIds) : [$userId]);
 
         $cartes = Database::all(
             'SELECT k.*, c.titre AS cours_titre
@@ -790,7 +792,7 @@ final class CartesController
             'duesEnTout' => (int) Database::valeur(
                 'SELECT COUNT(*) FROM cartes k WHERE k.user_id = ? AND k.revoir_le <= CURDATE()'
                 . ($cours === null ? ($dossierId !== null ? $duDossier : '') : ' AND k.cours_id = ?'),
-                $cours === null ? ($dossierId !== null ? [$userId, $dossierId, $userId] : [$userId]) : [$userId, (int) $cours['id']]
+                $cours === null ? ($dossierId !== null ? array_merge([$userId], $reliesIds) : [$userId]) : [$userId, (int) $cours['id']]
             ),
             'rezeroTotal' => $cours === null ? 0 : (int) $paquet['total'],
             // L'anneau ne vaut que pour un paquet : une séance qui mêle

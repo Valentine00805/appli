@@ -605,6 +605,7 @@ $routes = [
     ['POST', 'dossiers/{id}/revision',     [DossiersController::class, 'enregistrerFiche']],
     ['POST', 'dossiers/{id}/revision/fichiers',  [DossiersController::class, 'joindreFiche']],
     ['POST', 'dossiers/{id}/revision/elements',  [DossiersController::class, 'ajouterElement']],
+    ['POST', 'dossiers/{id}/revision/liens',     [DossiersController::class, 'choisirLiens']],
     ['GET',  'dossiers/{id}/revision/pdf', [DossiersController::class, 'pdfFiche']],
     ['POST', 'dossiers/{id}/modifier',     [DossiersController::class, 'modifier']],
     ['POST', 'dossiers/{id}/supprimer',    [DossiersController::class, 'supprimer']],

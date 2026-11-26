@@ -480,6 +480,9 @@ final class DossiersController
             'fichiersFiche' => FicheDossier::fichiers($moi, $id),
             'parType' => FicheDossier::elements($moi, $id),
             'desCours' => FicheDossier::desCours($moi, $id),
+            // Ce que la fiche relie : tout le dossier tant qu'on n'a pas choisi (la troisième migration permet de choisir).
+            'liensPossibles' => FicheDossier::liensDisponibles(),
+            'arbre' => FicheDossier::arbre($moi, $id),
         ] + FicheDossier::choix($moi);
         if (Vue::enFenetre()) {
             Vue::fragment('dossiers/fiche', $donnees);
@@ -526,6 +529,23 @@ final class DossiersController
         if ($ajoutes > 0) {
             Session::flash('succes', tn('cours.fl.fiche_fichiers', $ajoutes));
         }
+        redirect('dossiers/' . $id . '/revision');
+    }
+
+    /** Choisit les fichiers, cours et sous-dossiers que la fiche du dossier relie (ou revient à tout relier). */
+    public function choisirLiens(int $id): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $moi = Auth::id();
+        FicheDossier::dossier($moi, $id) ?? $this->introuvable();
+        if (!FicheDossier::liensDisponibles()) {
+            $this->introuvable();
+        }
+
+        $entiers = static fn (mixed $valeurs): array => is_array($valeurs) ? array_values(array_filter(array_map('intval', $valeurs), static fn (int $n): bool => $n > 0)) : [];
+        FicheDossier::enregistrerLiens($moi, $id, $entiers($_POST['cours'] ?? []), $entiers($_POST['dossiers'] ?? []), isset($_POST['tout']));
+        Session::flash('succes', t(isset($_POST['tout']) ? 'dosf.fl.tout_relie' : 'dosf.fl.choix_enregistre'));
         redirect('dossiers/' . $id . '/revision');
     }
 

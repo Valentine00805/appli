@@ -81,6 +81,7 @@ $fiche = static fn (int $d): mixed => bd_valeur('SELECT fiche_revision FROM doss
 $nbCours = static fn (int $u): int => (int) bd_valeur('SELECT COUNT(*) FROM cours WHERE user_id = ?', [$u]);
 $renomme = false;
 $renommeFichiers = false;
+$renommeChoix = false;
 
 try {
     [$a, $b] = $emails;
@@ -107,7 +108,7 @@ try {
         $code . ' · ' . $oui(str_contains($fen, '🏛️ Architecture') && str_contains($fen, 'Architecture logicielle</span>') && str_contains($fen, 'Fiche de révision du dossier') && str_contains($fen, 'name="fiche_revision"') && str_contains($fen, 'Enregistrer') && !str_contains($fen, '<html') && str_contains($fen, 'data-envoi-fenetre')), '200 · oui');
     $dire('sans fiche, pas de bouton « PDF » ; mais imprimer est là', $oui(!str_contains($fen, '/revision/pdf') && str_contains($fen, 'Imprimer')), 'oui');
     $conditions = [
-        'titre' => str_contains($fen, 'Dans ce dossier'),
+        'titre' => str_contains($fen, 'Reliés à la fiche'),
         'cours ordinaire' => str_contains($fen, '>Cours de conception</a>') && str_contains($fen, 'href="/mon_appli/appli/cours/' . $coursOrdinaire . '"'),
         'cours avec sa fiche' => preg_match('~architecture hexagonale</a><br>\s*<span class="fichier__meta">\s*<a href="[^"]*/revision/' . $coursAvecFiche . '"[^>]*>📝 Sa fiche de révision</a>~u', $fen) === 1,
         'fichier pdf (icône, aperçu)' => str_contains($fen, '📕') && str_contains($fen, '/fichiers/' . $fichierSimple . '/apercu'),
@@ -115,17 +116,17 @@ try {
         'sous-dossier' => str_contains($fen, 'dossiers/' . $annexes . '/revision') && str_contains($fen, '1 cours ou fichier'),
     ];
     $manquants = array_keys(array_filter($conditions, static fn (bool $b): bool => !$b));
-    $dire('« Dans ce dossier » : le cours, le cours avec fiche (« Sa fiche de révision »), le fichier PDF (son aperçu), l\'archive (dans un onglet), le sous-dossier', $manquants === [] ? 'tout y est' : 'manque : ' . implode(' | ', $manquants), 'tout y est');
-    $dire('seul ce qui est dans CE dossier : ni « Annexe 1 » (dans le sous-dossier), ni « Hors dossier » (listés seulement dans le choix des renvois), ni le cours de B', $oui(!str_contains($fen, '>Annexe 1</a>') && !str_contains($fen, '>Hors dossier</a>') && !str_contains($fen, 'Cours de B')), 'oui');
+    $dire('« Reliés à la fiche » : le cours, le cours avec fiche (« Sa fiche de révision »), le fichier PDF (son aperçu), l\'archive (dans un onglet), le sous-dossier', $manquants === [] ? 'tout y est' : 'manque : ' . implode(' | ', $manquants), 'tout y est');
+    $dire('tant qu\'on n\'a rien choisi, tout le dossier est relié, sous-dossiers compris (« Annexe 1 ») ; jamais « Hors dossier » (listé seulement dans le choix des renvois) ni le cours de B', $oui(str_contains($fen, '>Annexe 1</a>') && !str_contains($fen, '>Hors dossier</a>') && !str_contains($fen, 'Cours de B')), 'oui');
     [$feVide] = $appel($a, 'dossiers/' . $vide . '/revision?fenetre=1');
     $dire('un dossier vide le dit', $oui(str_contains($feVide, 'Ce dossier est vide pour l’instant')), 'oui');
     [$pleine, $codePleine] = $appel($a, $url);
     $dire('en page entière : le retour au dossier, avec la mise en page du site', $codePleine . ' · ' . $oui(str_contains($pleine, '<html') && str_contains($pleine, 'cours?dossier=' . $dossier)), '200 · oui');
 
     echo "\n2b. Les éléments rattachés, comme sur la fiche d'un cours\n";
-    $titresRayons = ['Éléments rattachés', 'Diaporamas', 'Fichiers et images', 'Cartes', 'Cartes mentales', 'Liens', 'Autres cours', 'Au calendrier', 'Dans ce dossier'];
+    $titresRayons = ['Éléments rattachés', 'Diaporamas', 'Fichiers et images', 'Cartes', 'Cartes mentales', 'Liens', 'Autres cours', 'Au calendrier', 'Reliés à la fiche'];
     $positions = array_map(static fn (string $titre): int|false => strpos(html_entity_decode($fen, ENT_QUOTES, 'UTF-8'), $titre), $titresRayons);
-    $dire('la colonne de gauche reprend les rubriques de la fiche d\'un cours, dans le même ordre, puis « Dans ce dossier »',
+    $dire('la colonne de gauche reprend les rubriques de la fiche d\'un cours, dans le même ordre, puis « Reliés à la fiche »',
         $oui(!in_array(false, $positions, true) && $positions === (static function (array $p): array { $s = $p; sort($s); return $s; })($positions)), 'oui');
     $dire('le dépôt de fichiers part vers le dossier, les formulaires de liens et de renvois aussi',
         $oui(str_contains($fen, 'action="/mon_appli/appli/' . $url . '/fichiers"') && substr_count($fen, 'action="/mon_appli/appli/' . $url . '/elements"') === 2 && str_contains($fen, 'data-depot-champ') && str_contains($fen, 'data-jeton-lecture')), 'oui');
@@ -230,13 +231,65 @@ try {
     $diaporama = (int) bd_valeur('SELECT MAX(id) FROM diaporamas WHERE user_id = ?', [$idA]);
     bd_run('INSERT INTO diaporama_cours (diaporama_id, cours_id, user_id) VALUES (?, ?, ?)', [$diaporama, $coursOrdinaire, $idA]);
     [$synthese] = $appel($a, $url . '?fenetre=1');
-    $dire('les cartes des cours DU DOSSIER sont comptées (1 carte, à revoir) — pas celles du sous-dossier ; la carte mentale et le diaporama des cours y sont listés',
-        $oui(str_contains($synthese, '<strong>1</strong> carte') && str_contains($synthese, '1 à revoir') && str_contains($synthese, 'Les couches') && str_contains($synthese, 'Les ports en images') && str_contains($synthese, 'cartes/seance?dossier=' . $dossier)), 'oui');
+    $dire('tant que tout est relié, les cartes du dossier ET de son sous-dossier sont comptées (2 cartes, à revoir) ; la carte mentale et le diaporama des cours y sont listés',
+        $oui(str_contains($synthese, '<strong>2</strong> cartes') && str_contains($synthese, '2 à revoir') && str_contains($synthese, 'Les couches') && str_contains($synthese, 'Les ports en images') && str_contains($synthese, 'cartes/seance?dossier=' . $dossier)), 'oui');
     [$seance, $codeSeance] = $appel($a, 'cartes/seance?dossier=' . $dossier . '&fenetre=1');
-    $dire('« Réviser » ouvre une séance avec les cartes du dossier seulement',
-        $codeSeance . ' · ' . $oui(str_contains($seance, 'Qu&#039;est-ce qu&#039;un port ?') || str_contains($seance, 'Qu\'est-ce qu\'un port ?')) . ' · ' . $oui(!str_contains($seance, 'Question des annexes')), '200 · oui · oui');
+    $dire('« Réviser » ouvre une séance avec les cartes reliées (le dossier et son sous-dossier)',
+        $codeSeance . ' · ' . $oui(str_contains($seance, 'Qu&#039;est-ce qu&#039;un port ?') || str_contains($seance, 'Qu\'est-ce qu\'un port ?')) . ' · ' . $oui(str_contains($seance, 'Question des annexes')), '200 · oui · oui');
     [$seanceB] = $appel($b, 'cartes/seance?dossier=' . $dossier . '&fenetre=1');
     $dire('B, avec le numéro du dossier de A, ne voit aucune de ses cartes', $oui(!str_contains($seanceB, 'port ?') && !str_contains($seanceB, 'Question des annexes')), 'oui');
+
+    echo "\n2c. Choisir ce que la fiche relie\n";
+    $cases = static fn (string $html, bool $cochees): int => preg_match_all('~<input type="checkbox" name="(?:cours|dossiers)\[\]" value="\d+"' . ($cochees ? ' checked>' : '( checked)?>') . '~', $html);
+    [$avantChoix] = $appel($a, $url . '?fenetre=1');
+    $dire('tant qu\'on n\'a rien choisi : « Tout le dossier est relié », et toutes les cases du choix sont cochées',
+        $oui(str_contains($avantChoix, 'Tout le dossier est relié') && $cases($avantChoix, false) >= 6 && $cases($avantChoix, true) === $cases($avantChoix, false)) . ' · ' . $cases($avantChoix, false), 'oui · ' . $cases($avantChoix, false));
+    $liens = static fn (): array => bd_all('SELECT cours_id, sous_dossier_id FROM dossier_fiche_liens WHERE dossier_id = ? ORDER BY id', [$dossier]);
+    $choix = static fn (): int => (int) bd_valeur('SELECT fiche_choix FROM dossiers WHERE id = ?', [$dossier]);
+
+    // Étape 1 : un cours, un fichier, et le sous-dossier (dont un cours est coché aussi : il est déjà couvert par son dossier)
+    $appel($a, $url . '/liens', ['_csrf' => $csrfA, 'cours' => [$coursOrdinaire, $simple, $dansAnnexes], 'dossiers' => [$annexes]]);
+    $stockes = array_map(static fn (array $l): string => $l['cours_id'] !== null ? 'c' . $l['cours_id'] : 's' . $l['sous_dossier_id'], $liens());
+    sort($stockes);
+    $attendus = ['c' . $coursOrdinaire, 'c' . $simple, 's' . $annexes];
+    sort($attendus);
+    $dire('le choix est enregistré : le cours, le fichier et le sous-dossier ; le cours déjà couvert par son dossier n\'est pas retenu à part',
+        $choix() . ' · ' . implode(',', $stockes), '1 · ' . implode(',', $attendus));
+    [$choisie] = $appel($a, $url . '?fenetre=1');
+    $dire('la page ne montre plus que ce qui est relié : « Seuls … choisis », le cours, le fichier PDF, le sous-dossier (et « Annexe 1 », avec son dossier) — pas le cours avec fiche ni l\'archive',
+        $oui(str_contains($choisie, 'Seuls les fichiers et dossiers choisis') && str_contains($choisie, '>Cours de conception</a>') && str_contains($choisie, 'Cours_Architecture_logicielle.pdf</a>')
+            && str_contains($choisie, 'dossiers/' . $annexes . '/revision') && str_contains($choisie, '>Annexe 1</a>') && str_contains($choisie, 'avec son dossier')
+            && !str_contains($choisie, 'revision/' . $coursAvecFiche . '"') && !str_contains($choisie, '>sources.zip</a>')), 'oui');
+    $dire('et le choix montre toutes les cases, cochées seulement celles qui sont reliées (4 cochées sur ' . $cases($choisie, false) . ')',
+        (string) $cases($choisie, true) . ' / ' . $cases($choisie, false), '4 / ' . $cases($choisie, false));
+    [$syn2] = $appel($a, $url . '?fenetre=1');
+    $dire('les cartes comptées sont celles des cours reliés (celle du cours + celle du sous-dossier : 2)', $oui(str_contains($syn2, '<strong>2</strong> cartes')), 'oui');
+
+    // Étape 2 : seulement le cours de conception : les cartes du sous-dossier ne comptent plus
+    $appel($a, $url . '/liens', ['_csrf' => $csrfA, 'cours' => [$coursOrdinaire]]);
+    [$seul] = $appel($a, $url . '?fenetre=1');
+    [$seanceSeul] = $appel($a, 'cartes/seance?dossier=' . $dossier . '&fenetre=1');
+    $dire('avec le seul cours de conception relié : une carte, une séance sans les questions du sous-dossier, et « Annexes » décoché dans le choix',
+        $oui(str_contains($seul, '<strong>1</strong> carte') && str_contains($seanceSeul, 'port ?')) . ' · ' . $oui(!str_contains($seanceSeul, 'Question des annexes')) . ' · ' . $oui(str_contains($seul, 'name="dossiers[]" value="' . $annexes . '">')), 'oui · oui · oui');
+
+    // Jamais un cours ou un dossier d'ailleurs, ni d'un autre compte
+    $appel($a, $url . '/liens', ['_csrf' => $csrfA, 'cours' => [$coursOrdinaire, $coursDeB, $horsDossier], 'dossiers' => [$deB, $vide]]);
+    $dire('un cours d\'un autre compte, un cours hors du dossier, un dossier d\'ailleurs : rien n\'est retenu que le cours du dossier',
+        implode(',', array_map(static fn (array $l): string => $l['cours_id'] !== null ? 'c' . $l['cours_id'] : 's' . $l['sous_dossier_id'], $liens())), 'c' . $coursOrdinaire);
+    [, $codeB6] = $appel($b, $url . '/liens', ['_csrf' => $csrfB, 'cours' => [$coursDeB]]);
+    [, $codeSans2] = $appel($a, $url . '/liens', ['cours' => [$simple]]);
+    $dire('B ne choisit rien sur le dossier de A (404) ; sans jeton CSRF, rien non plus (400)', $codeB6 . ' · ' . $codeSans2 . ' · ' . count($liens()), '404 · 400 · 1');
+
+    // Étape 3 : tout relier à nouveau
+    $appel($a, $url . '/liens', ['_csrf' => $csrfA, 'tout' => '1']);
+    [$retour] = $appel($a, $url . '?fenetre=1');
+    $dire('« Tout relier » revient à tout le dossier : plus de choix, plus de lignes, toutes les cases cochées',
+        $choix() . ' · ' . count($liens()) . ' · ' . $oui(str_contains($retour, 'Tout le dossier est relié') && $cases($retour, true) === $cases($retour, false)), '0 · 0 · oui');
+    $appel($a, $url . '/liens', ['_csrf' => $csrfA, 'cours' => [$coursOrdinaire]]);
+    $dire('et supprimer un cours relié le retire du choix sans rien casser',
+        (string) bd_run('DELETE FROM cours WHERE id = ?', [$coursOrdinaire]) . ' · ' . count($liens()) . ' · ' . $oui(!str_contains($appel($a, $url . '?fenetre=1')[0], 'Fatal error')), '1 · 0 · oui');
+    $coursOrdinaire = $cours($idA, 'Cours de conception', $dossier);
+    $appel($a, $url . '/liens', ['_csrf' => $csrfA, 'tout' => '1']);
 
     // Supprimer le dossier : ses fichiers partent aussi du disque
     $envoyer($a, $url . '/fichiers', 'a-supprimer.png', $png, $csrfA);
@@ -353,18 +406,28 @@ try {
     bd_run('ALTER TABLE fichiers CHANGE dossier_id dossier_id_essai INT UNSIGNED NULL');
     $renommeFichiers = true;
     [$sansEl, $codeSansEl] = $appel($a, $url . '?fenetre=1');
-    $dire('sans la seconde migration : la fiche s\'ouvre (200), avec « Dans ce dossier » mais sans les rubriques de fichiers, liens ni cartes',
-        $codeSansEl . ' · ' . $oui(str_contains($sansEl, 'Dans ce dossier') && !str_contains($sansEl, 'Fichiers et images') && !str_contains($sansEl, 'Au calendrier') && !str_contains($sansEl, 'Fatal error')), '200 · oui');
+    $dire('sans la seconde migration : la fiche s\'ouvre (200), avec « Reliés à la fiche » mais sans les rubriques de fichiers, liens ni cartes',
+        $codeSansEl . ' · ' . $oui(str_contains($sansEl, 'Reliés à la fiche') && !str_contains($sansEl, 'Fichiers et images') && !str_contains($sansEl, 'Au calendrier') && !str_contains($sansEl, 'Fatal error')), '200 · oui');
     [, $codeSansEl2] = $appel($a, $url . '/elements', ['_csrf' => $csrfA, 'type' => 'lien', 'url' => 'https://exemple.fr/']);
     $dire('et l\'ajout d\'un élément répond 404 plutôt que de planter', (string) $codeSansEl2, '404');
     bd_run('ALTER TABLE fichiers CHANGE dossier_id_essai dossier_id INT UNSIGNED NULL');
     $renommeFichiers = false;
 
+    // La troisième migration (le choix des éléments reliés) manquante : la fiche relie tout le dossier, sans le choix.
+    bd_run('ALTER TABLE dossiers CHANGE fiche_choix fiche_choix_essai TINYINT(1) NOT NULL DEFAULT 0');
+    $renommeChoix = true;
+    [$sansChoix, $codeSansChoix] = $appel($a, $url . '?fenetre=1');
+    [, $codeSansChoix2] = $appel($a, $url . '/liens', ['_csrf' => $csrfA, 'tout' => '1']);
+    $dire('sans la troisième migration : la fiche s\'ouvre (200) avec « Dans ce dossier » et tout son contenu, sans le choix ; l\'envoi du choix répond 404',
+        $codeSansChoix . ' · ' . $oui(str_contains($sansChoix, 'Dans ce dossier') && !str_contains($sansChoix, 'Choisir les fichiers') && !str_contains($sansChoix, 'Fatal error')) . ' · ' . $codeSansChoix2, '200 · oui · 404');
+    bd_run('ALTER TABLE dossiers CHANGE fiche_choix_essai fiche_choix TINYINT(1) NOT NULL DEFAULT 0');
+    $renommeChoix = false;
+
     echo "\n6. Les quatre langues\n";
     $appel($a, $url, ['_csrf' => $csrfA, 'fiche_revision' => 'Une fiche pour les langues.']);
     [$pCompte] = $appel($a, 'compte');
     $tokenCompte = $jeton($pCompte);
-    foreach (['en' => ['Revision sheet', 'Folder revision sheet', 'In this folder', 'Folder'], 'es' => ['Ficha de repaso', 'Ficha de repaso de la carpeta', 'En esta carpeta', 'Carpeta'], 'de' => ['Lernblatt', 'Lernblatt des Ordners', 'In diesem Ordner', 'Ordner'], 'fr' => ['Fiche de révision', 'Fiche de révision du dossier', 'Dans ce dossier', 'Dossier']] as $langue => [$bouton, $sousTitre, $contenu, $rev]) {
+    foreach (['en' => ['Revision sheet', 'Folder revision sheet', 'Linked to the sheet', 'Folder'], 'es' => ['Ficha de repaso', 'Ficha de repaso de la carpeta', 'Vinculado a la ficha', 'Carpeta'], 'de' => ['Lernblatt', 'Lernblatt des Ordners', 'Mit dem Lernblatt verknüpft', 'Ordner'], 'fr' => ['Fiche de révision', 'Fiche de révision du dossier', 'Reliés à la fiche', 'Dossier']] as $langue => [$bouton, $sousTitre, $contenu, $rev]) {
         $appel($a, 'compte/langue', ['_csrf' => $tokenCompte, 'langue' => $langue]);
         [$ou] = $appel($a, 'cours?dossier=' . $dossier);
         [$fi] = $appel($a, $url . '?fenetre=1');
@@ -384,6 +447,12 @@ try {
 } finally {
     if ($renomme) {
         try { bd_run('ALTER TABLE dossiers CHANGE fiche_revision_essai fiche_revision LONGTEXT NULL'); } catch (Throwable) {}
+    }
+    if ($renommeFichiers) {
+        try { bd_run('ALTER TABLE fichiers CHANGE dossier_id_essai dossier_id INT UNSIGNED NULL'); } catch (Throwable) {}
+    }
+    if ($renommeChoix) {
+        try { bd_run('ALTER TABLE dossiers CHANGE fiche_choix_essai fiche_choix TINYINT(1) NOT NULL DEFAULT 0'); } catch (Throwable) {}
     }
     $nettoyer();
     foreach ($cookies as $f) { @unlink($f); }

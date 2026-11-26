@@ -20,6 +20,10 @@ $fichiersFiche = $fichiersFiche ?? [];
 $parType = $parType ?? ['lien' => [], 'cours' => [], 'evenement' => []];
 $desCours = $desCours ?? ['cartes' => ['total' => 0, 'a_revoir' => 0, 'avancement' => null], 'cartesMentales' => [], 'diaporamas' => []];
 $autresCours = $autresCours ?? [];
+$liensPossibles = $liensPossibles ?? false;
+$arbre = $arbre ?? ['choix' => false, 'noeuds' => []];
+// Le choix des fichiers et dossiers reliés (troisième migration) donne son titre à la dernière partie.
+$titreRelies = t($liensPossibles ? 'dosf.relies' : 'dosf.contenu');
 $evenementsChoix = $evenementsChoix ?? [];
 $cartes = $desCours['cartes'];
 $ouvertureDessus = $dansUneFenetre ? 'data-fenetre-dessus' : 'data-fenetre';
@@ -295,14 +299,77 @@ $nbElements = $elementsPossibles
             <?php endif; ?>
           </div>
 
-          <h3 class="volet__section"><?= e(t('dosf.contenu')) ?></h3>
+          <h3 class="volet__section"><?= e($titreRelies) ?></h3>
         <?php else: ?>
           <h3 class="volet__section" style="margin-top:0">
-            <?= e(t('dosf.contenu')) ?>
+            <?= e($titreRelies) ?>
             <?php if (!$vide): ?><span class="discret">(<?= count($contenu['sous']) + count($contenu['cours']) ?>)</span><?php endif; ?>
           </h3>
         <?php endif; ?>
 
+        <?php if ($liensPossibles): ?>
+          <?php if ($arbre['noeuds'] === []): ?>
+            <p class="discret fiche__vide"><?= e(t('dosf.vide')) ?></p>
+          <?php else: ?>
+            <p class="champ__aide" style="margin:-.35rem 0 .7rem"><?= e(t($arbre['choix'] ? 'dosf.relies_choix' : 'dosf.relies_tout')) ?></p>
+            <?php $reliesListe = array_values(array_filter($arbre['noeuds'], static fn (array $n): bool => (bool) $n['relie'])); ?>
+            <?php if ($reliesListe === []): ?>
+              <p class="discret fiche__vide"><?= e(t('dosf.rien_relie')) ?></p>
+            <?php else: ?>
+              <ul class="liste-fichiers">
+                <?php foreach ($reliesListe as $n): ?>
+                  <?php if ($n['genre'] === 'dossier'): ?>
+                    <li class="fichier fichier--dossier" style="margin-left:<?= (int) $n['profondeur'] * 1.2 ?>rem">
+                      <span class="fichier__icone" aria-hidden="true"><?= e((string) $n['icone']) ?></span>
+                      <span style="min-width:0">
+                        <a class="fichier__nom" href="<?= url('dossiers/' . (int) $n['id'] . '/revision') ?>"<?= $ouverture ?>><?= e((string) $n['nom']) ?></a><br>
+                        <span class="fichier__meta"><?= e(tn('dosf.nb_cours', (int) $n['nb_cours'])) ?><?= $arbre['choix'] && !empty($n['heritee']) ? ' · ' . e(t('dosf.herite')) : '' ?></span>
+                      </span>
+                    </li>
+                  <?php else: ?>
+                    <?php
+                    $apercu = $n['seul'] && ApercuDocument::possible((string) $n['fichier_nom']);
+                    $adresse = !$n['seul'] ? url('cours/' . (int) $n['id']) : url('fichiers/' . (int) $n['fichier_id'] . ($apercu ? '/apercu' : ''));
+                    ?>
+                    <li class="fichier" style="margin-left:<?= (int) $n['profondeur'] * 1.2 ?>rem">
+                      <span class="fichier__icone" aria-hidden="true"><?= $n['seul'] ? e(Fichiers::icone((string) $n['fichier_mime'], (string) $n['fichier_nom'])) : '📄' ?></span>
+                      <span style="min-width:0">
+                        <a class="fichier__nom" href="<?= $adresse ?>"<?= !$n['seul'] || $apercu ? $ouverture : ' target="_blank" rel="noopener"' ?>><?= e((string) $n['titre']) ?></a><br>
+                        <span class="fichier__meta">
+                          <?php if ((int) $n['a_fiche'] === 1): ?>
+                            <a href="<?= url('revision/' . (int) $n['id']) ?>"<?= $ouverture ?>>📝 <?= e(t('dosf.sa_fiche')) ?></a>
+                          <?php else: ?>
+                            <?= e(t($n['seul'] ? 'dosf.fichier' : 'dosf.cours')) ?>
+                          <?php endif; ?>
+                          <?= $arbre['choix'] && !empty($n['heritee']) ? ' · ' . e(t('dosf.herite')) : '' ?>
+                        </span>
+                      </span>
+                    </li>
+                  <?php endif; ?>
+                <?php endforeach; ?>
+              </ul>
+            <?php endif; ?>
+
+            <?php // Choisir ce que la fiche relie : les cases cochées d'abord telles qu'elles sont (tout, tant qu'on n'a rien choisi). ?>
+            <details class="fiche__ajout">
+              <summary><?= e(t('dosf.choisir')) ?></summary>
+              <form<?= $envoi ?> method="post" action="<?= url('dossiers/' . $id . '/revision/liens') ?>">
+                <input type="hidden" name="_csrf" value="<?= e(Session::jetonCsrf()) ?>">
+                <p class="champ__aide"><?= e(t('dosf.choisir_aide')) ?></p>
+                <?php foreach ($arbre['noeuds'] as $n): ?>
+                  <label class="case" style="margin-left:<?= (int) $n['profondeur'] * 1.2 ?>rem">
+                    <input type="checkbox" name="<?= $n['genre'] === 'dossier' ? 'dossiers' : 'cours' ?>[]" value="<?= (int) $n['id'] ?>"<?= $n['relie'] ? ' checked' : '' ?>>
+                    <span><?= $n['genre'] === 'dossier' ? e((string) $n['icone']) . ' ' . e((string) $n['nom']) : ($n['seul'] ? e(Fichiers::icone((string) $n['fichier_mime'], (string) $n['fichier_nom'])) : '📄') . ' ' . e((string) $n['titre']) ?></span>
+                  </label>
+                <?php endforeach; ?>
+                <div class="actions">
+                  <button class="bouton bouton--petit" type="submit"><?= e(t('dosf.enregistrer_choix')) ?></button>
+                  <button class="bouton bouton--secondaire bouton--petit" type="submit" name="tout" value="1"><?= e(t('dosf.tout_relier')) ?></button>
+                </div>
+              </form>
+            </details>
+          <?php endif; ?>
+        <?php else: ?>
         <?php if ($vide): ?>
           <p class="discret fiche__vide"><?= e(t('dosf.vide')) ?></p>
         <?php endif; ?>
@@ -372,6 +439,7 @@ $nbElements = $elementsPossibles
               <?php endforeach; ?>
             </ul>
           </div>
+        <?php endif; ?>
         <?php endif; ?>
       </div>
     </div>
