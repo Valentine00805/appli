@@ -387,7 +387,8 @@ final class CoursController
         $dossiersAvecFiche = [];
         $dossiersSansFiche = [];
         foreach (FicheDossier::pourRevision($userId, $matiereId, $termes) as $d) {
-            if (trim((string) $d['fiche_revision']) !== '') {
+            // Du texte, ou le moindre élément rattaché : comme pour un cours, c'est déjà une fiche.
+            if (trim((string) $d['fiche_revision']) !== '' || (int) $d['nb_elements'] > 0) {
                 $dossiersAvecFiche[] = $d;
             } else {
                 $dossiersSansFiche[] = $d;

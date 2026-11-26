@@ -496,7 +496,8 @@ final class DossiersController
         FicheDossier::dossier(Auth::id(), $id) ?? $this->introuvable();
         $fiche = TexteRiche::depuisFormulaire((string) ($_POST['fiche_revision'] ?? ''));
         FicheDossier::enregistrer(Auth::id(), $id, $fiche);
-        Session::flash('succes', t($fiche === '' ? 'dosf.fl.vide' : 'dosf.fl.enregistree'));
+        // Sans texte ni élément rattaché, la fiche disparaît ; avec des éléments (un fichier, un lien…), elle reste.
+        Session::flash('succes', t($fiche === '' && !FicheDossier::ecrite(Auth::id(), $id) ? 'dosf.fl.vide' : 'dosf.fl.enregistree'));
         redirect('dossiers/' . $id . '/revision');
     }
 

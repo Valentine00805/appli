@@ -266,9 +266,19 @@ final class FicheDossier
             return false;
         }
 
-        return (int) Database::valeur(
+        // Du texte, ou le moindre élément rattaché (fichier, lien, renvoi, évènement) : comme pour un cours, c'est déjà une fiche.
+        $texte = (int) Database::valeur(
             'SELECT COUNT(*) FROM dossiers WHERE id = ? AND user_id = ? AND TRIM(COALESCE(fiche_revision, \'\')) <> \'\'',
             [$id, $moi]
+        ) > 0;
+        if ($texte || !self::elementsDisponibles()) {
+            return $texte;
+        }
+
+        return (int) Database::valeur(
+            'SELECT (SELECT COUNT(*) FROM fichiers WHERE dossier_id = ? AND user_id = ? AND pour_fiche = 1)
+                  + (SELECT COUNT(*) FROM fiche_elements WHERE dossier_id = ? AND user_id = ?)',
+            [$id, $moi, $id, $moi]
         ) > 0;
     }
 
@@ -298,9 +308,24 @@ final class FicheDossier
         if (!self::disponible()) {
             return [];
         }
+        // Comme une fiche de cours, la fiche d'un dossier existe dès qu'elle porte du texte OU le moindre élément (un fichier, un lien, un renvoi,
+        // un évènement) ; sans la seconde migration, il n'y a que le texte.
+        $elements = self::elementsDisponibles();
+        $compte = static fn (string $table, string $condition): string => '(SELECT COUNT(*) FROM ' . $table . ' WHERE dossier_id = d.id AND ' . $condition . ')';
         $lignes = Database::all(
             'SELECT d.id, d.nom, d.icone, d.fiche_revision, COALESCE(d.fiche_modifiee_le, d.created_at) AS modifiee_le,
-                    m.nom AS matiere_nom, m.couleur AS matiere_couleur
+                    m.nom AS matiere_nom, m.couleur AS matiere_couleur'
+            . ($elements ? ',
+                    ' . $compte('fichiers', 'pour_fiche = 1') . ' AS nb_fichiers,
+                    ' . $compte('fiche_elements', 'type = \'lien\'') . ' AS nb_liens,
+                    ' . $compte('fiche_elements', 'type = \'cours\'') . ' AS nb_renvois,
+                    ' . $compte('fiche_elements', 'type = \'evenement\'') . ' AS nb_evenements,
+                    GREATEST(COALESCE(d.fiche_modifiee_le, d.created_at),
+                             COALESCE((SELECT MAX(f.created_at) FROM fichiers f WHERE f.dossier_id = d.id AND f.pour_fiche = 1), d.created_at),
+                             COALESCE((SELECT MAX(e.created_at) FROM fiche_elements e WHERE e.dossier_id = d.id), d.created_at)) AS derniere_modif,
+                    CONCAT_WS(\' \',
+                        (SELECT GROUP_CONCAT(f.nom_origine SEPARATOR \' \') FROM fichiers f WHERE f.dossier_id = d.id AND f.pour_fiche = 1),
+                        (SELECT GROUP_CONCAT(CONCAT_WS(\' \', e.libelle, e.url) SEPARATOR \' \') FROM fiche_elements e WHERE e.dossier_id = d.id)) AS texte_elements' : '') . '
                FROM dossiers d LEFT JOIN matieres m ON m.id = d.matiere_id
               WHERE d.user_id = ?' . ($matiere === null ? '' : ' AND d.matiere_id = ?') . '
               ORDER BY d.nom, d.id',
@@ -308,7 +333,7 @@ final class FicheDossier
         );
         $fiches = [];
         foreach ($lignes as $l) {
-            $meule = (string) $l['nom'] . ' ' . TexteRiche::versTexte($l['fiche_revision']);
+            $meule = (string) $l['nom'] . ' ' . TexteRiche::versTexte($l['fiche_revision']) . ' ' . (string) ($l['texte_elements'] ?? '');
             foreach ($termes as $terme) {
                 if ($terme !== '' && mb_stripos($meule, $terme) === false) {
                     continue 2;
@@ -319,11 +344,15 @@ final class FicheDossier
                 'titre' => (string) $l['nom'],
                 'icone' => (string) $l['icone'],
                 'fiche_revision' => $l['fiche_revision'],
-                'updated_at' => $l['modifiee_le'],
-                'modifiee_le' => $l['modifiee_le'],
+                'updated_at' => $l['derniere_modif'] ?? $l['modifiee_le'],
+                'modifiee_le' => $l['derniere_modif'] ?? $l['modifiee_le'],
                 'matiere_nom' => $l['matiere_nom'],
                 'matiere_couleur' => $l['matiere_couleur'],
-                'nb_fichiers' => 0, 'nb_liens' => 0, 'nb_renvois' => 0, 'nb_evenements' => 0, 'nb_cartes' => 0, 'nb_cartes_dues' => 0, 'nb_elements' => 0,
+                'nb_fichiers' => (int) ($l['nb_fichiers'] ?? 0), 'nb_liens' => (int) ($l['nb_liens'] ?? 0),
+                'nb_renvois' => (int) ($l['nb_renvois'] ?? 0), 'nb_evenements' => (int) ($l['nb_evenements'] ?? 0),
+                // Les cartes sont celles des cours : la carte d'un dossier n'en compte pas (pas d'anneau, pas de paquet).
+                'nb_cartes' => 0, 'nb_cartes_dues' => 0,
+                'nb_elements' => (int) ($l['nb_fichiers'] ?? 0) + (int) ($l['nb_liens'] ?? 0) + (int) ($l['nb_renvois'] ?? 0) + (int) ($l['nb_evenements'] ?? 0),
                 'trouve_ailleurs' => false,
                 'dossier' => true,
             ];

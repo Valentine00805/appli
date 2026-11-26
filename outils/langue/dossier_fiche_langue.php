@@ -141,6 +141,13 @@ try {
     [$avecLien] = $appel($a, $url . '?fenetre=1');
     $dire('la page le montre (lien externe sûr, avec son site)', $oui(preg_match('~<a href="https://exemple\.fr/ressource" target="_blank" rel="noopener noreferrer">\s*Ma ressource ↗</a>\s*<span class="fiche__url discret">exemple\.fr</span>~u', $avecLien) === 1), 'oui');
     $idLien = (int) ($liens[0]['id'] ?? 0);
+    // Sans le moindre texte, un lien suffit : comme pour un cours, le dossier est une fiche de la liste « Révision » (et non « sans fiche »)
+    [$listeLien] = $appel($a, 'revision');
+    [$ouvertLien] = $appel($a, 'cours?dossier=' . $dossier);
+    $posSansFiche = (int) strpos($listeLien, 'Cours sans fiche');
+    $posCarte = strpos($listeLien, 'dossiers/' . $dossier . '/revision" data-fenetre');
+    $dire('un dossier sans texte mais avec un lien est une fiche de « Révision » (carte « Dossier · 1 lien », avant « Cours sans fiche »), et son bouton porte « • »',
+        $oui($posCarte !== false && $posCarte < $posSansFiche && preg_match('~fiche-carte__compteurs">Dossier · 🔗 1 lien</p>~u', $listeLien) === 1 && str_contains($ouvertLien, '📝 Fiche de révision •')), 'oui');
 
     // Un renvoi vers un autre cours : le mien, une seule fois ; jamais celui de B
     $appel($a, $url . '/elements', ['_csrf' => $csrfA, 'type' => 'cours', 'cible' => $horsDossier, 'libelle' => 'À relire']);
