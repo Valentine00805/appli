@@ -27,6 +27,8 @@
           $estVideo = Fichiers::estVideo((string) $f['mime'], (string) $f['nom_origine']);
           // Un PDF se lit sur place, comme une vidéo : le navigateur sait le faire seul.
           $estPdf = Fichiers::estPdf((string) $f['mime'], (string) $f['nom_origine']);
+          // Une page web (.html) se lit dans la fiche, dans un cadre : le serveur l'enferme (aucun script, aucun accès au site).
+          $estPage = Fichiers::estPageWeb((string) $f['nom_origine']);
           // Pour un PDF, « durée » veut dire nombre de pages, et « position » page atteinte.
           $pages = $estPdf ? (int) $f['duree_lecture'] : 0;
           // Page atteinte : zéro tant qu'on n'a pas tourné de page, comme un
@@ -34,7 +36,7 @@
           $pageAtteinte = $pages > 0 ? min(max(0, (int) $f['position_lecture']), $pages) : 0;
           $pageLue = max(1, $pageAtteinte);
           ?>
-          <li class="fichier<?= $estAudio || $estVideo || $estPdf ? ' fichier--media' : '' ?>">
+          <li class="fichier<?= $estAudio || $estVideo || $estPdf || $estPage ? ' fichier--media' : '' ?>">
             <?php // L'image se voit en entier plus bas : la vignette ferait double emploi. ?>
             <span class="fichier__icone" aria-hidden="true"><?= Fichiers::icone($f['mime'], $f['nom_origine']) ?></span>
             <span style="min-width:0">
@@ -167,6 +169,20 @@
                     <?= e(t('fiche.pdf_onglet')) ?>
                   </a>
                 </span>
+              </span>
+            <?php endif; ?>
+
+            <?php if ($estPage): ?>
+              <?php
+              /*
+               * La page, telle qu'elle est, en lecture seule. L'enfermement vient de l'en-tête « Content-Security-Policy: sandbox » du fichier ; un
+               * attribut « sandbox » sur le cadre le rendrait vide (le site interdit d'être encadré par une origine étrangère).
+               */
+              ?>
+              <span class="fichier__web">
+                <iframe src="<?= url('fichiers/' . $f['id']) ?>" referrerpolicy="no-referrer" loading="lazy"
+                        title="<?= e($f['nom_origine']) ?>"></iframe>
+                <span class="champ__aide"><?= e(t('fiche.page_web_aide')) ?></span>
               </span>
             <?php endif; ?>
           </li>

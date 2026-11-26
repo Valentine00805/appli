@@ -223,6 +223,20 @@ try {
     $dire('retirer le fichier l\'efface (base et disque) et ramène à la fiche du dossier',
         $codeRetireFichier . ' · ' . $oui(str_ends_with($apresFichier, '/' . $url)) . ' · ' . bd_valeur('SELECT COUNT(*) FROM fichiers WHERE id = ?', [$idFichier]) . ' · ' . $oui(!is_file($racine . '/storage/uploads/' . basename((string) ($f['nom_stocke'] ?? 'x')))), '200 · oui · 0 · oui');
 
+    // Une page web (.html) déposée dans la fiche du dossier : lue sur place, dans un cadre enfermé par le serveur
+    $envoyer($a, $url . '/fichiers', 'page-dossier.html', '<p>Dans la fiche du dossier</p><script>alert(1)</script>', $csrfA);
+    $page = bd_all('SELECT id, cours_id, dossier_id FROM fichiers WHERE user_id = ? AND nom_origine = ?', [$idA, 'page-dossier.html'])[0] ?? null;
+    [$avecPage] = $appel($a, $url . '?fenetre=1');
+    [, , , $entetesPage] = $appel($a, 'fichiers/' . (int) ($page['id'] ?? 0));
+    $dire('une page web déposée dans la fiche du dossier s\'y lit dans un cadre (sans attribut « sandbox », enfermée par le serveur), sans cours créé',
+        $oui($page !== null && $page['cours_id'] === null && (int) $page['dossier_id'] === $dossier
+            && preg_match('#<span class="fichier__web">\s*<iframe src="[^"]*/fichiers/' . (int) $page['id'] . '" referrerpolicy="no-referrer" loading="lazy"#', $avecPage) === 1
+            && !str_contains($avecPage, 'sandbox=') && !str_contains($avecPage, '<script>alert(1)')
+            && str_starts_with($entetesPage['content-security-policy'] ?? '', 'sandbox;')), 'oui');
+    if ($page !== null) {
+        $appel($a, 'fichiers/' . (int) $page['id'] . '/supprimer', ['_csrf' => $csrfA]);
+    }
+
     // Ce que les cours du dossier ont déjà : cartes, cartes mentales, diaporamas
     bd_run('INSERT INTO cartes (user_id, cours_id, question, reponse, origine, empreinte, boite, revoir_le) VALUES (?, ?, ?, ?, ?, ?, ?, CURDATE())', [$idA, $coursOrdinaire, 'Qu\'est-ce qu\'un port ?', 'Une interface.', 'main', md5('port'), 1]);
     bd_run('INSERT INTO cartes (user_id, cours_id, question, reponse, origine, empreinte, boite, revoir_le) VALUES (?, ?, ?, ?, ?, ?, ?, CURDATE())', [$idA, $dansAnnexes, 'Question des annexes', 'Hors du dossier.', 'main', md5('annexe'), 1]);

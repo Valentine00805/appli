@@ -122,6 +122,16 @@ try {
     [$fiche] = $appel($a, 'cours/' . $cours);
     $dire('la fiche du cours liste la page web avec son icône 🌐 et le lien vers l\'aperçu', $oui(str_contains($fiche, '🌐') && str_contains($fiche, 'fichiers/' . $html . '/apercu')), 'oui');
 
+    // Dans la FICHE de révision : la page se lit sur place, dans un cadre (le serveur l'enferme)
+    $appel($a, 'cours/' . $cours . '/revision/fichiers', ['_csrf' => $csrf, 'fichiers[0]' => $fichier('page-fiche.html', '<p>Dans la fiche</p><script>alert(1)</script>', 'text/html')]);
+    $dansFiche = $idFichier('page-fiche.html');
+    [$ficheRev] = $appel($a, 'revision/' . $cours . '?fenetre=1');
+    $dire('une page web déposée dans la fiche de révision s\'y lit dans un cadre, sans attribut « sandbox » (l\'enfermement vient du serveur), avec sa mention ; la zone de dépôt la cite',
+        $oui(preg_match('#<span class="fichier__web">\s*<iframe src="[^"]*/fichiers/' . $dansFiche . '" referrerpolicy="no-referrer" loading="lazy"\s+title="page-fiche.html"></iframe>#', $ficheRev) === 1
+            && !str_contains($ficheRev, 'sandbox=') && str_contains($ficheRev, 'Page web en lecture seule') && str_contains($ficheRev, 'page web (.html)') && !str_contains($ficheRev, '<script>alert(1)')), 'oui');
+    [, , , $eFiche] = $appel($a, 'fichiers/' . $dansFiche);
+    $dire('et ce fichier de la fiche reste servi enfermé (sandbox)', $oui(str_starts_with($eFiche['content-security-policy'] ?? '', 'sandbox;')), 'oui');
+
     echo "\n4. Ce qui n'a pas changé\n";
     $appel($a, 'cours/' . $cours . '/fichiers', ['_csrf' => $csrf, 'fichiers[0]' => $fichier('dessin.svg', '<svg xmlns="http://www.w3.org/2000/svg" onload="alert(1)"/>', 'image/svg+xml'), 'fichiers[1]' => $fichier('note.txt', 'bonjour', 'text/plain')]);
     [, , , $eSvg] = $appel($a, 'fichiers/' . $idFichier('dessin.svg'));
