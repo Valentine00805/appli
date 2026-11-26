@@ -730,8 +730,10 @@ final class CoursController
         $userId = Auth::id();
 
         $fichier = Database::one(
-            'SELECT f.*, c.id AS cours_id, c.titre AS cours_titre
+            'SELECT f.*, c.id AS cours_id, c.titre AS cours_titre, c.est_fichier AS cours_est_fichier,
+                    m.nom AS matiere_nom, m.couleur AS matiere_couleur
              FROM fichiers f JOIN cours c ON c.id = f.cours_id
+             LEFT JOIN matieres m ON m.id = c.matiere_id
              WHERE f.id = ? AND f.user_id = ?',
             [$id, $userId]
         );
@@ -849,6 +851,83 @@ final class CoursController
         }
 
         Vue::afficher('cours/apercu', $donnees, $nom);
+    }
+
+    /**
+     * La matière d'un fichier gardé comme tel (un « simple » cours importé), choisie dans une fenêtre — sans l'ouvrir comme un cours ni le
+     * transformer en cours : il reste un fichier, qui se range seulement sous une matière.
+     *
+     * @return array{cours: array, fichier: array}  le cours-fichier et son fichier ; 404 pour tout autre
+     */
+    private function fichierSeul(int $id): array
+    {
+        Auth::exiger();
+        $cours = Database::one(
+            'SELECT c.*, m.nom AS matiere_nom, m.couleur AS matiere_couleur
+             FROM cours c LEFT JOIN matieres m ON m.id = c.matiere_id
+             WHERE c.id = ? AND c.user_id = ? AND c.est_fichier = 1',
+            [$id, Auth::id()]
+        ) ?? $this->introuvable();
+        $fichier = Database::one(
+            'SELECT * FROM fichiers WHERE cours_id = ? AND pour_fiche = 0 AND user_id = ? ORDER BY id LIMIT 1',
+            [$id, Auth::id()]
+        ) ?? $this->introuvable();
+
+        return ['cours' => $cours, 'fichier' => $fichier];
+    }
+
+    public function formulaireMatiere(int $id): void
+    {
+        ['cours' => $cours, 'fichier' => $fichier] = $this->fichierSeul($id);
+        $donnees = [
+            'cours' => $cours,
+            'fichier' => $fichier,
+            'matieres' => $this->matieres(Auth::id()),
+            'retour' => self::retourDemande(),
+        ];
+        if (Vue::enFenetre()) {
+            Vue::fragment('cours/matiere_fichier', $donnees);
+
+            return;
+        }
+        Vue::afficher('cours/matiere_fichier', $donnees, t('cours.fm.titre'));
+    }
+
+    public function changerMatiere(int $id): void
+    {
+        Session::verifierCsrf();
+        ['fichier' => $fichier] = $this->fichierSeul($id);
+        $demandee = entier_ou_null($_POST['matiere_id'] ?? null);
+        $matiere = $this->matiereValide(Auth::id(), $demandee);
+        // Une matière qui n'est pas la sienne ne rend pas le fichier « sans matière » en douce : on refuse, rien ne change.
+        if ($demandee !== null && $matiere === null) {
+            Session::flash('erreur', t('cours.fm.err'));
+            redirect('cours/' . $id . '/matiere', self::versRetour());
+        }
+        // Seule la matière change : le titre, le contenu, le dossier restent, et le fichier reste un fichier.
+        Database::run('UPDATE cours SET matiere_id = ? WHERE id = ? AND user_id = ? AND est_fichier = 1', [$matiere, $id, Auth::id()]);
+        Session::flash('succes', t('cours.fm.ok'));
+        if (self::retourDemande() !== '') {
+            repartir_vers('cours');
+        }
+        redirect('fichiers/' . (int) $fichier['id'] . '/apercu');
+    }
+
+    /** La page qu'on regardait derrière la fenêtre (« ?retour=/chemin ») : un chemin du site, rien d'autre. */
+    private static function retourDemande(): string
+    {
+        $retour = $_GET['retour'] ?? $_POST['retour'] ?? '';
+
+        return is_string($retour) && $retour !== '' && $retour[0] === '/' && !str_starts_with($retour, '//') && !preg_match('/[\r\n]/', $retour)
+            && (BASE_URL === '' || str_starts_with($retour, BASE_URL . '/')) ? $retour : '';
+    }
+
+    /** @return array<string, string> */
+    private static function versRetour(): array
+    {
+        $retour = self::retourDemande();
+
+        return $retour === '' ? [] : ['retour' => $retour];
     }
 
     /**

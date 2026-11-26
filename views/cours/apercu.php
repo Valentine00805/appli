@@ -28,9 +28,21 @@ $dansUneFenetre = $dansUneFenetre ?? false;
       </p>
     <?php endif; ?>
     <h1><?= e(Fichiers::icone($fichier['mime'], $fichier['nom_origine'])) ?> <?= e((string) $fichier['nom_origine']) ?></h1>
-    <p><?= e(ucfirst($format)) ?> · <?= e(taille_lisible((int) $fichier['taille'])) ?></p>
+    <p>
+      <?= e(ucfirst($format)) ?> · <?= e(taille_lisible((int) $fichier['taille'])) ?>
+      <?php if (!empty($fichier['cours_est_fichier']) && $fichier['matiere_nom'] !== null): ?>
+        <span class="pastille" style="background:<?= e((string) $fichier['matiere_couleur']) ?>;color:<?= e(couleur_texte((string) $fichier['matiere_couleur'])) ?>"><?= e((string) $fichier['matiere_nom']) ?></span>
+      <?php endif; ?>
+    </p>
   </div>
   <div class="actions">
+    <?php if (!empty($fichier['cours_est_fichier'])): ?>
+      <?php // Un fichier gardé comme tel : on le range sous une matière, sans l'ouvrir comme un cours ni le transformer en cours. ?>
+      <a class="bouton bouton--secondaire" href="<?= url('cours/' . (int) $fichier['cours_id'] . '/matiere', $dansUneFenetre ? [] : ['retour' => (string) ($_SERVER['REQUEST_URI'] ?? '')]) ?>"
+         <?= $dansUneFenetre ? 'data-fenetre-dessus data-relire-derriere' : 'data-fenetre' ?>>
+        🏷️ <?= e(t('cours.fm.bouton')) ?>
+      </a>
+    <?php endif; ?>
     <?php if (EditionDocument::modifiable((string) $fichier['nom_origine'])): ?>
       <?php // Dans la fenêtre, l'éditeur prend la place de l'aperçu. ?>
       <a class="bouton bouton--secondaire" href="<?= url('fichiers/' . $fichier['id'] . '/modifier') ?>"

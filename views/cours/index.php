@@ -463,6 +463,16 @@ for ($haut = $courant; $haut !== null;) {
               <span class="pastille"><?= e($c['dossier_icone'] . ' ' . $c['dossier_nom']) ?></span>
             <?php endif; ?>
           </div>
+          <?php
+          // La matière d'un fichier gardé comme tel : une pastille qui s'ouvre sur le choix (ou « ＋ Matière »), sans ouvrir le fichier comme un cours.
+          $versMatiere = url('cours/' . (int) $c['id'] . '/matiere', ['retour' => (string) ($_SERVER['REQUEST_URI'] ?? '')]);
+          ?>
+          <?php if ($c['matiere_nom'] !== null): ?>
+            <a class="pastille cours-carte__matiere" href="<?= $versMatiere ?>" data-fenetre style="background:<?= e($c['matiere_couleur']) ?>;color:<?= e(couleur_texte($c['matiere_couleur'])) ?>"
+               title="<?= e(t('cours.fm.changer', ['nom' => (string) $c['matiere_nom']])) ?>"><?= e($c['matiere_nom']) ?></a>
+          <?php else: ?>
+            <a class="cours-carte__matiere cours-carte__matiere--vide" href="<?= $versMatiere ?>" data-fenetre><?= e(t('cours.fm.ajouter')) ?></a>
+          <?php endif; ?>
           <a class="cours-carte__cours discret" href="<?= url('cours/' . $c['id']) ?>" data-fenetre><?= e(t('cours.ouvrir_comme_cours')) ?></a>
         </div>
         <?php continue; ?>

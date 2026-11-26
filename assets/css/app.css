@@ -5026,3 +5026,8 @@ summary.cal-volet__sous-titre:focus-visible { outline: 2px solid var(--accent, #
 .cal-volet__nouveau-groupe:hover .cal-volet__nouveau-groupe-plus, .cal-volet__nouveau-groupe:focus-visible .cal-volet__nouveau-groupe-plus { color: var(--accent); transform: rotate(90deg); }
 .cal-volet__nouveau-groupe:active { transform: scale(.98); }
 
+/* La matière d'un fichier gardé comme tel (carte de « Mes cours ») : la pastille de la matière, ou un lien discret pour en choisir une. */
+.cours-carte__matiere { align-self: flex-start; text-decoration: none; }
+a.pastille.cours-carte__matiere:hover, a.pastille.cours-carte__matiere:focus-visible { filter: brightness(.93); text-decoration: none; }
+.cours-carte__matiere--vide { font-size: .82rem; color: var(--texte-doux); padding: .1rem .5rem; border: 1px dashed var(--bordure-forte); border-radius: 999px; }
+.cours-carte__matiere--vide:hover, .cours-carte__matiere--vide:focus-visible { color: var(--accent); border-color: var(--accent); background: var(--accent-doux); text-decoration: none; }
