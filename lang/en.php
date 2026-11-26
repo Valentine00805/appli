@@ -5149,4 +5149,6 @@ Class: Year 3 Sciences',
     'tr.fd.supprimer_autres' => 'This folder contains files uploaded by other members: only an administrator can delete it with its contents.',
     'tr.fd.fl.supprime_fichiers.un' => 'Folder deleted, along with its file.',
     'tr.fd.fl.supprime_fichiers.plusieurs' => 'Folder deleted, along with its {n} files.',
+    'fmt.html' => 'web page (HTML)',
+    'ap.html_aide' => 'Web page shown read-only: its scripts and links are disabled for safety. Download the file to open it as is in your browser.',
 ];

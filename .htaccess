@@ -35,6 +35,9 @@ RedirectMatch 404 (?i)/\.git(/|ignore|attributes|$)
     Header set X-Content-Type-Options "nosniff"
     Header set X-Frame-Options "SAMEORIGIN"
     Header set Referrer-Policy "same-origin"
+    # Le serveur n'a pas à annoncer sa version de PHP : ce n'est utile qu'à qui cherche une faille précise.
+    Header unset X-Powered-By
+    Header always unset X-Powered-By
 </IfModule>
 
 # Cache des ressources statiques.

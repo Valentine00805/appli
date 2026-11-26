@@ -5161,4 +5161,6 @@ Classe : L3 Sciences',
     'tr.fd.supprimer_autres' => 'Ce dossier contient des fichiers déposés par d’autres membres : seul un administrateur peut le supprimer avec son contenu.',
     'tr.fd.fl.supprime_fichiers.un' => 'Dossier supprimé, avec son fichier.',
     'tr.fd.fl.supprime_fichiers.plusieurs' => 'Dossier supprimé, avec ses {n} fichiers.',
+    'fmt.html' => 'page web (HTML)',
+    'ap.html_aide' => 'Page web affichée en lecture seule : ses scripts et ses liens sont désactivés, par sécurité. Téléchargez le fichier pour l’ouvrir tel quel dans votre navigateur.',
 ];

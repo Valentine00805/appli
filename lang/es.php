@@ -5149,4 +5149,6 @@ Clase: 3.º de Ciencias',
     'tr.fd.supprimer_autres' => 'Esta carpeta contiene archivos subidos por otros miembros: solo un administrador puede eliminarla con su contenido.',
     'tr.fd.fl.supprime_fichiers.un' => 'Carpeta eliminada, con su archivo.',
     'tr.fd.fl.supprime_fichiers.plusieurs' => 'Carpeta eliminada, con sus {n} archivos.',
+    'fmt.html' => 'página web (HTML)',
+    'ap.html_aide' => 'Página web mostrada en solo lectura: sus scripts y enlaces están desactivados por seguridad. Descargue el archivo para abrirlo tal cual en su navegador.',
 ];

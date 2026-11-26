@@ -40,7 +40,7 @@ $telecharger = url('travaux/fichiers/' . $id, ['telecharger' => 1]);
     <?= t('ap.diapo_aide') ?>
     <a href="<?= url('travaux/fichiers/' . $id . '/apercu', ['texte' => 1]) ?>"<?= $dansUneFenetre ? ' data-fenetre-dessus' : '' ?>><?= e(t('ap.diapo_texte')) ?></a>
   </div>
-<?php elseif (!in_array($genre, ['pdf', 'image', 'audio', 'video'], true) && $erreur === null): ?>
+<?php elseif (!in_array($genre, ['pdf', 'image', 'audio', 'video', 'html'], true) && $erreur === null): ?>
   <div class="flash flash--info" style="margin-bottom:1.25rem">
     <?php if ($peutDiapos): ?>
       <?= t('ap.texte_aide', ['format' => e($format)]) ?>
@@ -73,6 +73,13 @@ $telecharger = url('travaux/fichiers/' . $id, ['telecharger' => 1]);
   <?php if ($diaporama['tronque']): ?>
     <p class="champ__aide"><?= e(t('ap.diapo_tronque', ['n' => ApercuPresentation::DIAPOS_MAX, 'total' => $diaporama['total']])) ?></p>
   <?php endif; ?>
+<?php elseif ($genre === 'html'): ?>
+  <?php // Une page web : dans un cadre. L'enfermement (aucun script, aucun accès au site) vient du serveur, par l'en-tête « Content-Security-Policy: sandbox » du fichier ; un attribut « sandbox » sur le cadre le rendrait vide (le site interdit d'être encadré par une origine étrangère). ?>
+  <div class="carte apercu-cadre">
+    <iframe src="<?= $adresse ?>" referrerpolicy="no-referrer"
+            title="<?= e((string) $nom) ?>"></iframe>
+  </div>
+  <p class="champ__aide" style="margin-top:.6rem"><?= e(t('ap.html_aide')) ?></p>
 <?php elseif ($genre === 'pdf'): ?>
   <div class="carte apercu-cadre">
     <iframe src="<?= $adresse ?>" title="<?= e($nom) ?>"></iframe>

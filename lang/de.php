@@ -5149,4 +5149,6 @@ Klasse: 3. Jahr Naturwissenschaften',
     'tr.fd.supprimer_autres' => 'Dieser Ordner enthält Dateien anderer Mitglieder: Nur ein Administrator kann ihn samt Inhalt löschen.',
     'tr.fd.fl.supprime_fichiers.un' => 'Ordner samt Datei gelöscht.',
     'tr.fd.fl.supprime_fichiers.plusieurs' => 'Ordner samt {n} Dateien gelöscht.',
+    'fmt.html' => 'Webseite (HTML)',
+    'ap.html_aide' => 'Webseite nur zum Lesen angezeigt: Ihre Skripte und Links sind aus Sicherheitsgründen deaktiviert. Laden Sie die Datei herunter, um sie unverändert im Browser zu öffnen.',
 ];

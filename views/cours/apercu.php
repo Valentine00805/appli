@@ -53,7 +53,7 @@ $dansUneFenetre = $dansUneFenetre ?? false;
     <?= t('ap.diapo_aide') ?>
     <a href="<?= url('fichiers/' . $fichier['id'] . '/apercu', ['texte' => 1]) ?>"<?= $dansUneFenetre ? ' data-fenetre' : '' ?>><?= e(t('ap.diapo_texte')) ?></a>
   </div>
-<?php elseif (!in_array($genre, ['pdf', 'image'], true)): ?>
+<?php elseif (!in_array($genre, ['pdf', 'image', 'html'], true)): ?>
   <div class="flash flash--info" style="margin-bottom:1.25rem">
     <?php if ($peutDiapos): ?>
       <?= t('ap.texte_aide', ['format' => e($format)]) ?>
@@ -91,6 +91,13 @@ $dansUneFenetre = $dansUneFenetre ?? false;
   <?php if ($diaporama['tronque']): ?>
     <p class="champ__aide"><?= e(t('ap.diapo_tronque', ['n' => ApercuPresentation::DIAPOS_MAX, 'total' => $diaporama['total']])) ?></p>
   <?php endif; ?>
+<?php elseif ($genre === 'html'): ?>
+  <?php // Une page web : dans un cadre. L'enfermement (aucun script, aucun accès au site) vient du serveur, par l'en-tête « Content-Security-Policy: sandbox » du fichier ; un attribut « sandbox » sur le cadre le rendrait vide (le site interdit d'être encadré par une origine étrangère). ?>
+  <div class="carte apercu-cadre">
+    <iframe src="<?= url('fichiers/' . $fichier['id']) ?>" referrerpolicy="no-referrer"
+            title="<?= e((string) $fichier['nom_origine']) ?>"></iframe>
+  </div>
+  <p class="champ__aide" style="margin-top:.6rem"><?= e(t('ap.html_aide')) ?></p>
 <?php elseif ($genre === 'pdf'): ?>
   <?php // Le document lui-même, dans la page, avec la visionneuse du navigateur. ?>
   <div class="carte apercu-cadre">

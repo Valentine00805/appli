@@ -182,7 +182,12 @@ final class Fichiers
              */
             $mime = self::mimeMedia((string) $fichier['nom_origine']) ?? $mime;
         }
-        $enLigne = !$telecharger && (in_array($mime, $enLigneAutorise, true) || $estMedia);
+        // Une page web déposée par quelqu'un n'est pas du code de confiance : elle ne s'affiche qu'enfermée dans un bac à sable (plus bas).
+        $estPageWeb = self::estPageWeb((string) $fichier['nom_origine']);
+        if ($estPageWeb) {
+            $mime = 'text/html; charset=utf-8';
+        }
+        $enLigne = !$telecharger && (in_array($mime, $enLigneAutorise, true) || $estMedia || $estPageWeb);
         $disposition = $enLigne ? 'inline' : 'attachment';
 
         $taille = (int) filesize($chemin);
@@ -211,7 +216,14 @@ final class Fichiers
          * la politique la plus stricte.
          */
         $politique = 'default-src \'none\'; img-src \'self\'; ';
-        if ($enLigne && $mime === 'application/pdf') {
+        if ($enLigne && $estPageWeb) {
+            /*
+             * « sandbox » sans aucune permission : pas de script, pas de formulaire, pas de fenêtre, et surtout une origine à part — la page ne
+             * peut ni lire les cookies de la session ni agir au nom de la personne qui la regarde. Seuls restent ses styles et les images
+             * incluses dans le fichier lui-même ; rien ne part vers un autre site.
+             */
+            $politique = "sandbox; default-src 'none'; style-src 'unsafe-inline'; img-src data:; font-src data:; media-src data:";
+        } elseif ($enLigne && $mime === 'application/pdf') {
             $politique .= 'object-src \'self\'; frame-src \'self\'';
         } elseif ($enLigne && $estMedia) {
             $politique .= 'object-src \'none\'; media-src \'self\'';
@@ -311,6 +323,12 @@ final class Fichiers
     public static function estMedia(string $mime, string $nom = ''): bool
     {
         return self::estAudio($mime, $nom) || self::estVideo($mime, $nom);
+    }
+
+    /** Une page web (HTML) : à ne montrer qu'enfermée. */
+    public static function estPageWeb(string $nom): bool
+    {
+        return in_array(strtolower(pathinfo($nom, PATHINFO_EXTENSION)), ['html', 'htm'], true);
     }
 
     /** Un PDF, que le navigateur sait afficher dans la page. */
@@ -429,6 +447,7 @@ final class Fichiers
             in_array($ext, ['ppt', 'pptx', 'odp'], true) => '📊',
             in_array($ext, ['xls', 'xlsx', 'ods', 'csv'], true) => '📈',
             in_array($ext, ['txt', 'md'], true)           => '📝',
+            in_array($ext, ['html', 'htm'], true)         => '🌐',
             in_array($ext, ['one', 'onepkg'], true)      => '📓',
             in_array($ext, ['zip', 'rar', '7z'], true)   => '🗜️',
             in_array($ext, self::AUDIO, true)            => '🎧',

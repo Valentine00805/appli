@@ -158,6 +158,8 @@ Config::charger([
         'extensions_autorisees' => [
             'pdf', 'doc', 'docx', 'odt', 'ppt', 'pptx', 'odp', 'xls', 'xlsx', 'ods',
             'txt', 'md', 'csv', 'rtf',
+            // Les pages web : gardées et lisibles, mais jamais exécutées — servies dans un bac à sable (voir Fichiers::envoyer).
+            'html', 'htm',
             /*
              * Les carnets OneNote : gardés et retéléchargeables, mais rien de
              * plus. Leur format est fermé, et personne d'autre que OneNote ne

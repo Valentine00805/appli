@@ -34,6 +34,8 @@ final class ApercuDocument
     /** Que le navigateur sait afficher lui-même : on l'intègre dans la page. */
     private const IMAGES = ['png', 'jpg', 'jpeg', 'gif', 'webp'];
     private const BRUTS  = ['txt', 'md'];
+    /** Les pages web : montrées dans un cadre en bac à sable, jamais intégrées à la page. */
+    private const HTMLS  = ['html', 'htm'];
 
     /** Lignes affichées au plus : un gros classeur ne doit pas noyer la page. */
     public const LIGNES_MAX = 500;
@@ -54,6 +56,7 @@ final class ApercuDocument
      *   'pdf'      → le document lui-même, intégré dans la page
      *   'image'    → l'image elle-même
      *   'brut'     → le contenu du fichier, tel quel
+     *   'html'     → une page web, dans un cadre en bac à sable
      */
     public static function genre(string $nomOrigine): ?string
     {
@@ -65,6 +68,7 @@ final class ApercuDocument
             $ext === 'pdf'                          => 'pdf',
             in_array($ext, self::IMAGES, true)      => 'image',
             in_array($ext, self::BRUTS, true)       => 'brut',
+            in_array($ext, self::HTMLS, true)       => 'html',
             default                                 => null,
         };
     }
@@ -189,6 +193,7 @@ final class ApercuDocument
         return t('fmt.' . match (self::extension($nomOrigine)) {
             'docx', 'odt', 'pptx', 'odp', 'xlsx', 'csv', 'pdf', 'txt', 'md' => self::extension($nomOrigine),
             'png', 'jpg', 'jpeg', 'gif', 'webp' => 'image',
+            'html', 'htm' => 'html',
             default => 'document',
         });
     }
