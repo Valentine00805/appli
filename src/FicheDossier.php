@@ -496,6 +496,21 @@ final class FicheDossier
               ORDER BY d.nom, d.id',
             $matiere === null ? [$moi] : [$moi, $matiere]
         );
+        // L'avancement de révision d'un dossier, comme celui d'un cours : ce qui se lit ou s'écoute dans les fichiers de sa fiche, et où en est le paquet
+        // de cartes des cours qu'elle relie. Chaque anneau pèse pareil ; ce qui n'a jamais été ouvert compte pour zéro.
+        $medias = [];
+        if ($elements) {
+            foreach (fichiers_suivis(Database::all(
+                'SELECT id, dossier_id, nom_origine, mime, position_lecture, duree_lecture FROM fichiers WHERE user_id = ? AND pour_fiche = 1 AND dossier_id IS NOT NULL',
+                [$moi]
+            )) as $f) {
+                $medias[(int) $f['dossier_id']][] = $f;
+            }
+        }
+        $cartesParCours = [];
+        foreach (Database::all('SELECT cours_id, COUNT(*) AS n, SUM(boite) AS s FROM cartes WHERE user_id = ? GROUP BY cours_id', [$moi]) as $k) {
+            $cartesParCours[(int) $k['cours_id']] = [(int) $k['n'], (int) $k['s']];
+        }
         $fiches = [];
         foreach ($lignes as $l) {
             $meule = (string) $l['nom'] . ' ' . TexteRiche::versTexte($l['fiche_revision']) . ' ' . (string) ($l['texte_elements'] ?? '');
@@ -520,10 +535,31 @@ final class FicheDossier
                 'nb_elements' => (int) ($l['nb_fichiers'] ?? 0) + (int) ($l['nb_liens'] ?? 0) + (int) ($l['nb_renvois'] ?? 0) + (int) ($l['nb_evenements'] ?? 0),
                 'trouve_ailleurs' => false,
                 'dossier' => true,
+                'anneaux' => $medias[(int) $l['id']] ?? [],
+                'paquet' => $cartesParCours === [] ? null : self::avancementDesCartes((int) $l['id'], $moi, $cartesParCours),
             ];
         }
 
         return $fiches;
+    }
+
+    /**
+     * Où en est le paquet de cartes des cours que la fiche du dossier relie : la boîte moyenne de toutes leurs cartes, en pourcentage (null sans carte).
+     *
+     * @param array<int, array{0: int, 1: int}> $cartesParCours  cours => [nombre de cartes, somme des boîtes]
+     */
+    private static function avancementDesCartes(int $id, int $moi, array $cartesParCours): ?int
+    {
+        $total = 0;
+        $somme = 0;
+        foreach (self::coursRelies($moi, $id) as $coursId) {
+            if (isset($cartesParCours[$coursId])) {
+                $total += $cartesParCours[$coursId][0];
+                $somme += $cartesParCours[$coursId][1];
+            }
+        }
+
+        return avancement_cartes($total, $total > 0 ? $somme / $total : 1.0);
     }
 
     /** Range des fiches comme la liste « Révision » le fait : par matière (sans matière en dernier), la plus récente d'abord, ou la plus ancienne. */

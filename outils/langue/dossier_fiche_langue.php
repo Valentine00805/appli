@@ -344,7 +344,7 @@ try {
     bd_run('INSERT INTO matieres (user_id, nom, couleur) VALUES (?, ?, ?)', [$idA, 'Maths', '#1e88e5']);
     $maths = (int) bd_valeur('SELECT id FROM matieres WHERE user_id = ? AND nom = ?', [$idA, 'Maths']);
     [$liste] = $appel($a, 'revision');
-    $carteDossier = '~<a class="carte fiche-carte" href="[^"]*/' . $url . '" data-fenetre>\s*<h3 class="fiche-carte__titre">🏛️ Architecture</h3>\s*<p class="fiche-carte__extrait">À retenir de tout le dossier : le cœur ne dépend de rien\.</p>\s*<p class="fiche-carte__compteurs">Dossier</p>\s*</a>~u';
+    $carteDossier = '~<a class="carte fiche-carte" href="[^"]*/' . $url . '" data-fenetre>\s*<h3 class="fiche-carte__titre">🏛️ Architecture</h3>\s*(?:<p class="fiche-carte__ecoute">.*?</p>\s*)?<p class="fiche-carte__extrait">À retenir de tout le dossier : le cœur ne dépend de rien\.</p>\s*<p class="fiche-carte__compteurs">Dossier(?: · [^<]*)?</p>\s*</a>~us';
     $dire('elle paraît dans « Révision » comme une fiche classique : la même carte (titre avec l\'icône, extrait du texte, étiquette « Dossier »), qui s\'ouvre en fenêtre',
         $oui(preg_match($carteDossier, $liste) === 1), 'oui');
     $positionH2 = strpos($liste, '<h2 class="revisions__matiere">');
@@ -382,7 +382,33 @@ try {
     [$cherche] = $appel($a, 'revision?q=' . rawurlencode('cœur'));
     [$pasTrouve] = $appel($a, 'revision?q=zzz');
     $dire('la recherche la trouve par son texte (« cœur ») — surlignée —, et pas pour un mot absent', $oui(str_contains($cherche, 'dossiers/' . $dossier . '/revision') && str_contains($cherche, '<mark') && !str_contains($pasTrouve, 'dossiers/' . $dossier . '/revision')), 'oui');
-    $dire('aucune carte de dossier ne porte l\'anneau d\'un cours : le numéro d\'un dossier n\'est pas celui d\'un cours (pas d\'anneau, pas de cartes à revoir)', $oui(preg_match($carteDossier, $liste) === 1 && !str_contains((string) (preg_match($carteDossier, $liste, $mm) ? $mm[0] : ''), 'anneau')), 'oui');
+    // L'avancement de révision : l'anneau de la carte du dossier, comme celui d'un cours (fichiers suivis de sa fiche + cartes des cours reliés)
+    bd_run('DELETE FROM cartes WHERE user_id = ?', [$idA]);
+    $anneauDe = static function () use ($appel, $a, $carteDossier): string {
+        [$l] = $appel($a, 'revision');
+        return preg_match($carteDossier, $l, $m) === 1 ? $m[0] : 'CARTE ABSENTE';
+    };
+    $carte0 = $anneauDe();
+    $dire('sans fichier suivi ni carte, la carte du dossier n\'a pas d\'anneau (rien à mesurer)', $oui($carte0 !== 'CARTE ABSENTE' && !str_contains($carte0, 'anneau')), 'oui');
+    bd_run('INSERT INTO cartes (user_id, cours_id, question, reponse, origine, empreinte, boite, revoir_le) VALUES (?, ?, ?, ?, ?, ?, ?, CURDATE())', [$idA, $coursAvecFiche, 'Q avancement', 'R', 'main', md5('avancement'), 5]);
+    $carte1 = $anneauDe();
+    $dire('une carte apprise (boîte 5) dans un cours du dossier : l\'anneau de la carte du dossier affiche 100 %, « 1 élément »',
+        $oui(str_contains($carte1, 'fiche-carte__ecoute') && str_contains($carte1, '>100<span class="anneau__pourcent">%</span>') && str_contains($carte1, '1 élément')), 'oui');
+    bd_run('INSERT INTO fichiers (user_id, cours_id, dossier_id, pour_fiche, nom_origine, nom_stocke, mime, taille, position_lecture, duree_lecture) VALUES (?, NULL, ?, 1, ?, ?, ?, ?, ?, ?)', [$idA, $dossier, 'cours-audio.mp3', 'zz_dfi_audio.mp3', 'audio/mpeg', 10, 50, 100]);
+    $carte2 = $anneauDe();
+    $dire('avec en plus un enregistrement de la fiche du dossier écouté à moitié : la moyenne des deux anneaux, 75 %, « 2 éléments »',
+        $oui(str_contains($carte2, '>75<span class="anneau__pourcent">%</span>') && str_contains($carte2, '2 éléments')), 'oui');
+    // Les cartes d'un cours que la fiche ne relie plus ne comptent plus
+    $appel($a, $url . '/liens', ['_csrf' => $csrfA, 'cours' => [$coursOrdinaire]]);
+    $carte3 = $anneauDe();
+    $dire('si la fiche ne relie plus que le cours sans carte, l\'anneau ne mesure plus que l\'enregistrement : 50 %',
+        $oui(str_contains($carte3, '>50<span class="anneau__pourcent">%</span>')), 'oui');
+    $appel($a, $url . '/liens', ['_csrf' => $csrfA, 'tout' => '1']);
+    // En page de fiche, la moyenne de la fiche entière en tête, comme pour un cours
+    [$pageFiche] = $appel($a, $url . '?fenetre=1');
+    $dire('et la page de la fiche porte l\'anneau de tout (75 %) en tête, comme celle d\'un cours', $oui(str_contains($pageFiche, 'data-total-fiche') && str_contains($pageFiche, '>75<span class="anneau__pourcent">%</span>')), 'oui');
+    bd_run('DELETE FROM fichiers WHERE nom_stocke = ?', ['zz_dfi_audio.mp3']);
+    bd_run('DELETE FROM cartes WHERE user_id = ?', [$idA]);
     $dire('les dossiers sans fiche vont avec « Cours sans fiche » : « Annexes » et « Dossier vide », étiquetés « Dossier », pour en commencer une',
         $oui(preg_match('~href="[^"]*/dossiers/' . $vide . '/revision" data-fenetre>\s*<span>\s*<span class="evt-ligne__titre">🏛️ Dossier vide</span><br>\s*<span class="evt-ligne__meta">\s*Dossier · ~u', $liste) === 1 && str_contains($liste, 'dossiers/' . $annexes . '/revision')), 'oui');
     $appel($a, $url, ['_csrf' => $csrfA, 'fiche_revision' => '']);

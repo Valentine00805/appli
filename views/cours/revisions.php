@@ -177,9 +177,9 @@ $compteurs = static function (array $c): array {
 
         <h3 class="fiche-carte__titre"><?= !empty($c['dossier']) ? e($c['icone']) . ' ' : '' ?><?= surligner(e($c['titre']), $termes) ?></h3>
 
-        <?php // Les anneaux et les paquets de cartes sont ceux des cours : un dossier n'en a pas (et son numéro n'est pas celui d'un cours). ?>
-        <?php $mediasFiche = empty($c['dossier']) ? ($anneaux[(int) $c['id']] ?? []) : []; ?>
-        <?php $paquet = empty($c['dossier']) ? ($paquets[(int) $c['id']] ?? null) : null; ?>
+        <?php // L'anneau d'un dossier se calcule à part (son numéro n'est pas celui d'un cours) : les fichiers de sa fiche, et les cartes des cours qu'elle relie. ?>
+        <?php $mediasFiche = !empty($c['dossier']) ? ($c['anneaux'] ?? []) : ($anneaux[(int) $c['id']] ?? []); ?>
+        <?php $paquet = !empty($c['dossier']) ? ($c['paquet'] ?? null) : ($paquets[(int) $c['id']] ?? null); ?>
         <?php if ($mediasFiche !== [] || $paquet !== null): ?>
           <?php $a = avancement_anneaux($mediasFiche, $paquet === null ? [] : [$paquet]); ?>
           <p class="fiche-carte__ecoute">

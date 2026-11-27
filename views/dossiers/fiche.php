@@ -80,6 +80,16 @@ $nbElements = $elementsPossibles
       <div style="min-width:0">
         <h2 style="margin:0"><?= e(t('fiche.titre')) ?></h2>
       </div>
+      <?php
+      // Où l'on en est de toute la fiche : la moyenne des anneaux de ses fichiers et du paquet de cartes des cours reliés (comme une fiche de cours).
+      $avancementFiche = avancement_anneaux(fichiers_suivis($fichiersFiche), $cartes['avancement'] === null ? [] : [$cartes['avancement']]);
+      ?>
+      <?php if ($avancementFiche['total'] > 0): ?>
+        <span class="fiche__total" data-total-fiche>
+          <?= Vue::rendre('cours/_anneau', ['pourcentage' => $avancementFiche['pourcentage'], 'titre' => t('fiche.avancement')]) ?>
+          <span class="fiche__total-mot"><?= tn('fiche.suivis', $avancementFiche['total']) ?></span>
+        </span>
+      <?php endif; ?>
     </div>
 
     <div class="fiche-grille">
