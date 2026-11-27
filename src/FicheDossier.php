@@ -501,7 +501,7 @@ final class FicheDossier
         $medias = [];
         if ($elements) {
             foreach (fichiers_suivis(Database::all(
-                'SELECT id, dossier_id, nom_origine, mime, position_lecture, duree_lecture FROM fichiers WHERE user_id = ? AND pour_fiche = 1 AND dossier_id IS NOT NULL',
+                'SELECT id, dossier_id, nom_origine, mime, position_lecture, duree_lecture' . Quizz::colonnes() . ' FROM fichiers WHERE user_id = ? AND pour_fiche = 1 AND dossier_id IS NOT NULL',
                 [$moi]
             )) as $f) {
                 $medias[(int) $f['dossier_id']][] = $f;

@@ -173,8 +173,10 @@ function fichiers_suivis(array $fichiers): array
         $mime = (string) ($fichier['mime'] ?? '');
         $nom = (string) ($fichier['nom_origine'] ?? '');
         $pdfSuivi = Fichiers::estPdf($mime, $nom) && (int) ($fichier['duree_lecture'] ?? 0) > 0;
+        // Un quizz (page web) dès qu'il a signalé où l'on en est.
+        $quizzSuivi = Fichiers::estPageWeb($nom) && (int) ($fichier['quizz_total'] ?? 0) > 0;
 
-        if (Fichiers::estMedia($mime, $nom) || $pdfSuivi) {
+        if (Fichiers::estMedia($mime, $nom) || $pdfSuivi || $quizzSuivi) {
             $suivis[] = $fichier;
         }
     }
@@ -257,6 +259,10 @@ function avancement_cartes(int $total, float $moyenne): ?int
 function avancement_lecture(array $fichier): ?int
 {
     $nom = (string) ($fichier['nom_origine'] ?? '');
+    // Un quizz se mesure à son score (bonnes réponses / questions de la série).
+    if (Fichiers::estPageWeb($nom)) {
+        return Quizz::pourcentage($fichier);
+    }
     return Fichiers::estPdf((string) ($fichier['mime'] ?? ''), $nom)
         ? avancement_pages($fichier)
         : avancement_media($fichier);

@@ -123,6 +123,10 @@ CREATE TABLE IF NOT EXISTS `fichiers` (
   -- Où l'on s'est arrêté dans un enregistrement, et sa durée : en secondes.
   `position_lecture` INT UNSIGNED NOT NULL DEFAULT 0,
   `duree_lecture`    INT UNSIGNED NOT NULL DEFAULT 0,
+  -- Un quizz (page web d'une fiche) signale où l'on en est : questions de la série, faites, bonnes réponses.
+  `quizz_total`  INT UNSIGNED NOT NULL DEFAULT 0,
+  `quizz_fait`   INT UNSIGNED NOT NULL DEFAULT 0,
+  `quizz_bonnes` INT UNSIGNED NOT NULL DEFAULT 0,
   `created_at` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `idx_fichiers_cours` (`cours_id`),

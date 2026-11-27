@@ -277,6 +277,24 @@ final class CoursController
         exit;
     }
 
+    /**
+     * Un quizz (page web d'une fiche) signale où l'on en est : questions faites, bonnes réponses, total de la série. Le serveur garde le dernier
+     * état ; des nombres qui n'ont pas de sens, ou un fichier qui n'est pas mon quizz, ne changent rien.
+     */
+    public function resultatQuizz(int $id): void
+    {
+        Auth::exiger();
+        Session::verifierCsrf();
+        $userId = Auth::id();
+
+        if (!Quizz::disponible() || Database::valeur('SELECT id FROM fichiers WHERE id = ? AND user_id = ?', [$id, $userId]) === null) {
+            $this->introuvable();
+        }
+        $nombre = static fn (string $cle): int => ctype_digit((string) ($_POST[$cle] ?? '')) && strlen((string) $_POST[$cle]) <= 7 ? (int) $_POST[$cle] : -1;
+        http_response_code(Quizz::enregistrer($id, $userId, $nombre('fait'), $nombre('bonnes'), $nombre('total')) ? 204 : 422);
+        exit;
+    }
+
     /** Toutes les fiches de révision, groupées par matière. */
     public function revisions(): void
     {
@@ -432,7 +450,7 @@ final class CoursController
         }
 
         $lignes = Database::all(
-            'SELECT id, cours_id, nom_origine, mime, position_lecture, duree_lecture
+            'SELECT id, cours_id, nom_origine, mime, position_lecture, duree_lecture' . Quizz::colonnes() . '
                FROM fichiers
               WHERE user_id = ? AND pour_fiche = 1
                 AND cours_id IN (' . implode(',', array_fill(0, count($ids), '?')) . ')',

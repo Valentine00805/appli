@@ -55,6 +55,7 @@ require __DIR__ . '/src/RecapProjet.php';
 require __DIR__ . '/src/RecapProjetPdf.php';
 require __DIR__ . '/src/ExportPdf.php';
 require __DIR__ . '/src/FicheDossier.php';
+require __DIR__ . '/src/Quizz.php';
 require __DIR__ . '/src/WebPush.php';
 require __DIR__ . '/src/Rappels.php';
 require __DIR__ . '/src/FileNotifications.php';
@@ -580,6 +581,7 @@ $routes = [
     ['GET',  'fichiers/{id}/modifier',    [CoursController::class, 'modifierFichier']],
     ['POST', 'fichiers/{id}/modifier',    [CoursController::class, 'enregistrerFichier']],
     ['POST', 'fichiers/{id}/position',    [CoursController::class, 'positionLecture']],
+    ['POST', 'fichiers/{id}/quizz',       [CoursController::class, 'resultatQuizz']],
     ['POST', 'fichiers/{id}/supprimer',   [CoursController::class, 'supprimerFichier']],
 
     ['GET',  'calendrier',                [CalendrierController::class, 'index']],

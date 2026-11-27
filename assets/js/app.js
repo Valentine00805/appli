@@ -6751,6 +6751,83 @@
     }
   };
 
+  /*
+   * L'avancement d'un quizz. Il tourne enfermé dans son cadre : il ne peut parler qu'à cette page, par « postMessage », avec trois nombres — les
+   * questions faites, les bonnes réponses, le total de la série. On ne croit que le cadre lui-même (la fenêtre qui envoie doit être celle d'un des
+   * cadres de la fiche), et que des nombres qui ont un sens. Les deux anneaux suivent en direct (l'avancement, le score), le score rejoint celui de
+   * toute la fiche, et le serveur garde le dernier état.
+   */
+  var cadresQuizz = [].slice.call(racine.querySelectorAll(".quizz__cadre"));
+  if (jetonLecture && cadresQuizz.length) {
+    var peindreAnneauQuizz = function (zone, part) {
+      var anneau = zone ? zone.querySelector(".anneau") : null;
+      if (!anneau) { return; }
+      var trait = anneau.querySelector(".anneau__part");
+      var texte = anneau.querySelector(".anneau__texte");
+      if (trait) { trait.setAttribute("stroke-dasharray", part + " 100"); }
+      if (texte) { texte.innerHTML = part + "<span class='anneau__pourcent'>%</span>"; }
+      anneau.classList.remove("anneau--inconnu");
+      anneau.classList.toggle("anneau--fini", part >= 100);
+    };
+    var entierQuizz = function (valeur) {
+      var n = Math.floor(Number(valeur));
+      return isFinite(n) ? n : -1;
+    };
+    var enAttente = {};
+
+    window.addEventListener("message", function (evenement) {
+      var donnees = evenement.data;
+      if (!donnees || typeof donnees !== "object" || donnees.quizz !== true) { return; }
+
+      cadresQuizz.forEach(function (cadre) {
+        if (!cadre.contentWindow || cadre.contentWindow !== evenement.source) { return; }
+        var quizz = cadre.closest(".quizz");
+        var mesures = quizz ? quizz.querySelector("[data-quizz-mesures]") : null;
+        if (!mesures) { return; }
+
+        var fait = entierQuizz(donnees.fait);
+        var bonnes = entierQuizz(donnees.bonnes);
+        var total = entierQuizz(donnees.total);
+        if (total < 1 || total > 100000 || fait < 0 || fait > total || bonnes < 0 || bonnes > fait) { return; }
+
+        var id = mesures.getAttribute("data-quizz-mesures");
+        var zoneAvancement = mesures.querySelector("[data-quizz-avancement]");
+        var zoneScore = mesures.querySelector("[data-quizz-score]");
+        peindreAnneauQuizz(zoneAvancement, Math.round(fait / total * 100));
+        peindreAnneauQuizz(zoneScore, Math.round(bonnes / total * 100));
+
+        var texteFait = mesures.querySelector("[data-quizz-texte-fait]");
+        var texteBonnes = mesures.querySelector("[data-quizz-texte-bonnes]");
+        if (texteFait) {
+          texteFait.textContent = (mesures.getAttribute("data-modele-fait") || "")
+            .split("{fait}").join(String(fait)).split("{total}").join(String(total));
+        }
+        if (texteBonnes) {
+          texteBonnes.textContent = (mesures.getAttribute("data-modele-bonnes") || "").split("{bonnes}").join(String(bonnes));
+        }
+        // Le score compte dans l'anneau de la fiche dès que le quizz a signalé quelque chose.
+        if (zoneScore && !zoneScore.hasAttribute("data-avancement")) { zoneScore.setAttribute("data-avancement", "quizz-" + id); }
+        majTotalFiche();
+
+        // Au serveur : pas plus d'un envoi par seconde, le dernier état part toujours (un quizz signale à chaque réponse).
+        var envoyerQuizz = function () {
+          var corps = new URLSearchParams();
+          corps.set("_csrf", jeton);
+          corps.set("fait", String(fait));
+          corps.set("bonnes", String(bonnes));
+          corps.set("total", String(total));
+          var url = mesures.getAttribute("data-quizz-url");
+          if (navigator.sendBeacon) {
+            navigator.sendBeacon(url, corps);
+          } else {
+            fetch(url, { method: "POST", body: corps, credentials: "same-origin", keepalive: true });
+          }
+        };
+        if (enAttente[id]) { window.clearTimeout(enAttente[id]); }
+        enAttente[id] = window.setTimeout(envoyerQuizz, 800);
+      });
+    });
+  }
   if (jetonLecture && lecteurs.length) {
 
     var minutage = function (secondes) {
